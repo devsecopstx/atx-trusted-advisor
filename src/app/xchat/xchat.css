@@ -1986,7 +1986,7 @@ html[data-xf-ui="soft"] .xchat-sjp__card {
 }
 
 .xchat-markdown .xchat-md-code-inline {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.84em;
   padding: 0.1em 0.35em;
   border-radius: 4px;
@@ -2245,7 +2245,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-await__timer {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;

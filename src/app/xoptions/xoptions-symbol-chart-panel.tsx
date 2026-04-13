@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import { downsampleTimeSeries } from "@/lib/chart/downsample-time-series";
+import { XF_FONT_MONO_FALLBACK } from "@/lib/xf-font-stacks";
 import { useXfUiSoft } from "@/lib/use-xf-ui-soft";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
@@ -16,6 +17,13 @@ type Candle = { t: string; o: number; h: number; l: number; c: number; v: number
 
 export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; enabled: boolean }) {
   const xfSoft = useXfUiSoft();
+  const xfFontMono = useMemo(() => {
+    if (typeof document === "undefined") {
+      return XF_FONT_MONO_FALLBACK;
+    }
+    const raw = getComputedStyle(document.documentElement).getPropertyValue("--xf-font-mono").trim();
+    return raw || XF_FONT_MONO_FALLBACK;
+  }, []);
   const [candles, setCandles] = useState<Candle[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +104,7 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
         background: "transparent",
         toolbar: { show: true },
         zoom: { enabled: true },
-        fontFamily: "ui-monospace, monospace"
+        fontFamily: xfFontMono
       },
       theme: { mode },
       plotOptions: {
@@ -124,7 +132,7 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
       },
       tooltip: { theme: mode }
     };
-  }, [xfSoft]);
+  }, [xfSoft, xfFontMono]);
 
   const volOptions = useMemo<ApexOptions>(() => {
     const label = xfSoft ? "#64748b" : "#94a3b8";
@@ -137,7 +145,7 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
         background: "transparent",
         height: 140,
         toolbar: { show: false },
-        fontFamily: "ui-monospace, monospace"
+        fontFamily: xfFontMono
       },
       colors: [barColor],
       theme: { mode },
@@ -169,7 +177,7 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
       },
       tooltip: { theme: mode }
     };
-  }, [xfSoft]);
+  }, [xfSoft, xfFontMono]);
 
   if (!enabled) {
     return null;

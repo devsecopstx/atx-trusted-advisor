@@ -4,6 +4,7 @@
  */
 
 .xoptions-workspace {
+  font-family: var(--xf-font-sans);
   color: var(--xf-text-300);
 }
 
@@ -464,7 +465,7 @@ html[data-xf-ui="soft"] .xoptions-steps {
   margin: 0;
   padding: 0.3rem 0.15rem 0;
   border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.625rem;
   line-height: 1.4;
   color: var(--xf-text-400);
@@ -472,7 +473,7 @@ html[data-xf-ui="soft"] .xoptions-steps {
 }
 
 .xoptions-price-ladder__chg {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.5625rem;
   font-weight: 600;
   line-height: 1.2;
@@ -519,7 +520,7 @@ html[data-xf-ui="soft"] .xoptions-steps {
 }
 
 .xoptions-price-ladder__value {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.6875rem;
   font-weight: 600;
   color: var(--xf-text-200);
@@ -1055,7 +1056,7 @@ html[data-xf-ui="soft"] .xoptions-strategy-jobs-toggle {
 }
 
 .xoptions-symbol-row__sym {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-weight: 600;
 }
 
@@ -2535,7 +2536,7 @@ html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
 
 .xoptions-review-order__risk-meter-label {
   font-size: 0.65rem;
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
   color: var(--xf-text-400);
 }
 

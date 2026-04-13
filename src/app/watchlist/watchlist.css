@@ -376,7 +376,7 @@ button.xf-watchlist-sort-btn:hover {
 }
 
 .xf-watchlist-table-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.8rem;
 }
 
@@ -387,7 +387,7 @@ button.xf-watchlist-sort-btn:hover {
   box-sizing: border-box;
   padding: 0.35rem 0.45rem;
   margin-bottom: 0.35rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.78rem;
   color: var(--xf-text-100);
   background: rgba(0, 0, 0, 0.35);
@@ -479,7 +479,7 @@ button.xf-watchlist-sort-btn:hover {
 .xf-watchlist-sym-cell__label {
   font-weight: 650;
   color: var(--xf-text-100);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.8rem;
 }
 
@@ -641,14 +641,14 @@ a.xf-watchlist-sym-cell__ext:hover {
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   color: var(--xf-text-100);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
 }
 
 .xf-symbol-shape__delta {
   font-size: 0.88rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
 }
 
 .xf-symbol-shape__delta--up {
@@ -739,7 +739,7 @@ a.xf-watchlist-sym-cell__ext:hover {
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(0, 0, 0, 0.35);
   color: var(--xf-text-100);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.82rem;
   padding: 0.35rem 0.5rem;
 }
@@ -781,7 +781,7 @@ a.xf-watchlist-sym-cell__ext:hover {
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--xf-xoptions-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--xf-font-mono);
 }
 
 .xf-watchlist-exec__badge {
@@ -938,7 +938,7 @@ a.xf-watchlist-sym-cell__ext:hover {
 }
 
 .xf-watchlist-kbd {
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.72rem;
   padding: 0.05rem 0.25rem;
   border-radius: 4px;
@@ -978,7 +978,7 @@ a.xf-watchlist-sym-cell__ext:hover {
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(0, 0, 0, 0.35);
   color: var(--xf-text-100);
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
 }
 
 .xf-watchlist-search-close {

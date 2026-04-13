@@ -117,7 +117,7 @@ html[data-xf-ui="soft"] .import-activity {
   border: 1px solid var(--ia-border-strong);
   background: var(--ia-field-bg);
   padding: 0.5rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.75rem;
   line-height: 1.35;
   color: var(--xf-text-100);
@@ -286,7 +286,7 @@ html[data-xf-ui="soft"] .import-activity__broker-tile--active {
   justify-content: center;
   border-radius: 4px;
   border: 1px solid var(--ia-border);
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 8px;
   text-transform: uppercase;
   color: var(--ia-tertiary-text);
@@ -425,7 +425,7 @@ html:not([data-xf-ui="soft"]) .import-activity__danger-btn:focus-visible {
   max-height: 8rem;
   overflow: auto;
   white-space: pre-wrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   color: var(--ia-secondary-text);
 }
 

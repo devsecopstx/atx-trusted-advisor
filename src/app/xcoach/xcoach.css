@@ -220,7 +220,7 @@
 /* xStrategyBuilder — option builder preview (dark brand; legacy wheel UX pattern) */
 
 .xsb-inline-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.85em;
   padding: 0.08em 0.28em;
   border-radius: 6px;

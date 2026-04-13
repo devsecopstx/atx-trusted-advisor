@@ -8,6 +8,9 @@
   /** Between primary body and muted; used by rails, tables, secondary labels */
   --xf-text-200: color-mix(in srgb, var(--xf-text-100) 38%, var(--xf-text-300) 62%);
   --xf-text-400: #888f9f;
+  /** UI typography — `--font-inter` from `next/font` in `src/app/layout.tsx`; fallback matches `globals.css` */
+  --xf-font-sans: var(--font-inter, "Inter", "SF Pro Display", "Segoe UI", sans-serif);
+  --xf-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --xf-blue-400: #d1d6de;
   --xf-cyan-400: #c6ccd6;
   --xf-purple-400: #c7ccd5;
@@ -53,7 +56,7 @@ body {
     radial-gradient(circle at 86% 82%, rgba(255, 255, 255, 0.03), transparent 40%),
     linear-gradient(160deg, var(--xf-bg-900) 0%, var(--xf-bg-800) 100%);
   color: var(--xf-text-100);
-  font-family: "Inter", "SF Pro Display", "Segoe UI", sans-serif;
+  font-family: var(--xf-font-sans);
 }
 
 .xf-noise-overlay::before {

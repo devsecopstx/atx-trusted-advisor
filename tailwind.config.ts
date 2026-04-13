@@ -13,7 +13,13 @@ const config: Config = {
     preflight: false,
   },
   theme: {
-    extend: {},
+    extend: {
+      /** Align with `atx-docs/design-system/atxfinance-brand-kit.css` (--xf-font-sans / --xf-font-mono) */
+      fontFamily: {
+        sans: ["var(--xf-font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--xf-font-mono)", "ui-monospace", "monospace"]
+      }
+    }
   },
   plugins: [],
 };

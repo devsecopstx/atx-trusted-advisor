@@ -225,7 +225,7 @@
   margin-top: 0.25rem;
   font-size: 0.75rem;
   color: var(--xf-text-300);
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
 }
 
 .portfolio-account-card__value {
@@ -396,7 +396,7 @@
   font-size: 0.72rem;
   word-break: break-all;
   color: var(--xf-text-300);
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
 }
 
 .portfolio-tech-details .portfolio-scoring-readonly {
@@ -799,7 +799,7 @@
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
   font-size: 0.62rem;
   font-weight: 700;
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
   color: var(--xf-text-300);
 }
 
@@ -1156,7 +1156,7 @@
 }
 
 .portfolio-manage-table__mono {
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.78rem;
 }
 
@@ -1773,7 +1773,7 @@
 }
 
 .portfolio-consolidated-holdings__mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
 }
 
 .portfolio-consolidated-holdings__muted {
@@ -1789,7 +1789,7 @@
 
 .portfolio-consolidated-holdings__sym-ticker {
   font-weight: 700;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.82rem;
 }
 
@@ -1806,7 +1806,7 @@
 }
 
 .portfolio-consolidated-holdings__leg-ref {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.65rem;
   color: var(--xf-text-400);
   word-break: break-all;
@@ -2763,7 +2763,7 @@ html[data-xf-ui="soft"] .portfolio-alerts-console.xf-widget {
 }
 
 .portfolio-alerts-pill--sym {
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
   color: var(--xf-gain-green);
   border-color: color-mix(in srgb, var(--xf-gain-green) 40%, transparent);
   background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);

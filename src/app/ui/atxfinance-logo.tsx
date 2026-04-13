@@ -15,7 +15,7 @@ export function AtxFinanceMark({ size, className }: AtxFinanceMarkProps) {
     >
       <text
         fill="var(--xf-gain-green)"
-        fontFamily="var(--font-inter, Inter, system-ui, sans-serif)"
+        fontFamily="var(--xf-font-sans)"
         fontSize="18"
         fontWeight="700"
         letterSpacing="-0.04em"

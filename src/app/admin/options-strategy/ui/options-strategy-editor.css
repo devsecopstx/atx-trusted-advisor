@@ -21,7 +21,7 @@
   overflow: auto;
   margin-top: 0.35rem;
   padding: 0.65rem 0.75rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.8rem;
   line-height: 1.45;
   color: var(--xf-text-100);

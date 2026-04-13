@@ -72,7 +72,7 @@
 .xsb-hero-subcopy .xsb-inline-code {
   padding: 0.06em 0.32em;
   font-size: 0.9em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--xf-font-mono);
   border-radius: 0.25rem;
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
   background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
@@ -1263,7 +1263,7 @@ html[data-xf-ui="soft"] .xsb-builder-preview--friendly select {
 .xsb-account-context-card__ref {
   font-size: 0.72rem;
   color: var(--xsb-f-muted);
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
 }
 
 .xsb-account-context-card__dl {

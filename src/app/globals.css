@@ -264,7 +264,7 @@ html[data-xf-ui="soft"] .app-hero-icon-img {
 /* ── Font & letter-spacing ─────────────────── */
 
 html {
-  font-family: var(--font-inter, "Inter", "SF Pro Display", "Segoe UI", sans-serif);
+  font-family: var(--xf-font-sans);
 }
 
 body {
@@ -2044,7 +2044,7 @@ button.xf-icon-edit-btn:disabled {
 
 .admin-scoring-factor-cell__id {
   margin-top: 0.12rem;
-  font-family: ui-monospace, monospace;
+  font-family: var(--xf-font-mono);
   font-size: 0.65rem;
   color: var(--xf-text-400);
 }
