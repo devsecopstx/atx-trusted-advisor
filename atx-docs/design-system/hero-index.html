@@ -10,27 +10,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="aTx Trusted Advisory — Austin's platform for high-net-worth families and their advisors. Multi-portfolio consolidation, xChat intelligence, xOptions mastery, real-time tracking, Texas tax advantages.">
     <title>aTx Trusted Advisory • No Atoms moved, just Gains earned</title>
+    <!--
+      Third-party (static prototype only; production ships Next.js + npm Tailwind + `next/font`):
+      - cdn.tailwindcss.com — browser JIT playground
+      - cdnjs Font Awesome — icons
+      - fonts.googleapis.com — Inter (supplements linked brand kit)
+    -->
+    <link rel="stylesheet" href="./atxfinance-brand-kit.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap');
-        :root { --accent: #00d4ff; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
         * { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
-        .hero-bg { background: linear-gradient(90deg, #0a0a0a 0%, #1a1a2e 100%); }
-        .nav-link { position: relative; }
-        .nav-link:after { content: ''; position: absolute; width: 0; height: 2px; bottom: -2px; left: 0; background-color: #00d4ff; }
-        .nav-link:hover:after { width: 100%; }
-        .section-header { font-family: 'Space Grotesk', sans-serif; }
-        .cta-button {
-            background: linear-gradient(90deg, #00d4ff, #00a3cc);
-            box-shadow: 0 0 30px -5px #00d4ff;
+        .hero-bg {
+            background: linear-gradient(90deg, var(--xf-bg-900) 0%, color-mix(in srgb, var(--xf-surface-700) 55%, var(--xf-bg-900)) 100%);
         }
-        .cta-button:hover { box-shadow: 0 0 40px -5px #00d4ff; transform: translateY(-2px); }
+        .nav-link { position: relative; }
+        .nav-link:after { content: ''; position: absolute; width: 0; height: 2px; bottom: -2px; left: 0; background-color: var(--xf-gain-green); }
+        .nav-link:hover:after { width: 100%; }
+        .section-header { font-family: var(--xf-font-sans); }
+        .cta-button {
+            background: linear-gradient(90deg, var(--xf-gain-green), color-mix(in srgb, var(--xf-gain-green) 72%, var(--xf-bg-900)));
+            box-shadow: 0 0 30px -5px color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
+        }
+        .cta-button:hover {
+            box-shadow: 0 0 40px -5px color-mix(in srgb, var(--xf-gain-green) 48%, transparent);
+            transform: translateY(-2px);
+        }
         .feature-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .feature-card:hover { transform: translateY(-4px); box-shadow: 0 25px 50px -12px rgb(0 212 255 / 0.15); }
-        .xchat-window { background: #111113; border: 1px solid #ffffff10; box-shadow: 0 25px 50px -12px rgb(0 212 255 / 0.15); }
-        .chat-bubble-ai { background: #1a1a2e; border-radius: 20px 20px 20px 4px; }
-        .chat-bubble-user { background: #00d4ff; color: #0a0a0a; border-radius: 20px 20px 4px 20px; }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 25px 50px -12px color-mix(in srgb, var(--xf-gain-green) 18%, transparent);
+        }
+        .xchat-window {
+            background: var(--xf-surface-700);
+            border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+            box-shadow: 0 25px 50px -12px color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
+        }
+        .chat-bubble-ai { background: var(--xf-surface-600); border-radius: 20px 20px 20px 4px; }
+        .chat-bubble-user { background: var(--xf-gain-green); color: var(--xf-bg-900); border-radius: 20px 20px 4px 20px; }
+        .xf-accent-text { color: var(--xf-gain-green); }
+        .xf-accent-hover:hover { border-color: var(--xf-gain-green); color: var(--xf-gain-green); }
+        .xf-accent-icon-hover:hover { background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent); }
+        .xf-surface-chat { background: var(--xf-surface-700); }
+        .xf-pill-accent {
+            background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+            color: var(--xf-gain-green);
+        }
+        .xf-demo-avatar {
+            width: 2rem;
+            height: 2rem;
+            background: var(--xf-gain-green);
+            color: var(--xf-bg-900);
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        .xf-send-btn {
+            background: var(--xf-gain-green);
+            color: var(--xf-bg-900);
+        }
+        .xf-send-btn:hover {
+            filter: brightness(1.06);
+        }
     </style>
 </head>
 <body class="bg-zinc-950 text-white font-sans">
@@ -58,7 +103,7 @@
                 </div>
 
                 <div class="flex items-center gap-x-4">
-                    <a href="https://atx.fintech-advisor.ai/account/billing" class="text-sm font-semibold px-6 py-2.5 rounded-3xl border border-white/30 hover:border-[#00d4ff] hover:text-[#00d4ff]">Log in</a>
+                    <a href="https://atx.fintech-advisor.ai/account/billing" class="xf-accent-hover text-sm font-semibold px-6 py-2.5 rounded-3xl border border-white/30">Log in</a>
                     <a href="https://atx.fintech-advisor.ai/account/billing" class="cta-button text-zinc-950 font-semibold px-8 py-2.5 rounded-3xl flex items-center gap-x-2">Get Started Free</a>
                 </div>
             </div>
@@ -90,8 +135,8 @@
                     </a>
                     
                     <button onclick="document.getElementById('xchat-demo').scrollIntoView({ behavior: 'smooth' })" class="flex items-center gap-x-3 text-white/80 hover:text-white group">
-                        <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover:bg-[#00d4ff]/10">
-                            <i class="fa-solid fa-robot text-[#00d4ff]"></i>
+                        <div class="xf-accent-icon-hover w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                            <i class="fa-solid fa-robot xf-accent-text"></i>
                         </div>
                         <div>
                             <div class="text-sm font-medium">Try xChat Live Demo</div>
@@ -112,7 +157,7 @@
                 <div class="xchat-window rounded-3xl p-2 bg-zinc-900/80 backdrop-blur-2xl border border-white/10">
                     <div class="bg-black rounded-3xl overflow-hidden">
                         <!-- Real app header style -->
-                        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#111113]">
+                        <div class="xf-surface-chat flex items-center justify-between px-6 py-4 border-b border-white/10">
                             <div class="flex items-center gap-x-3">
                                 <div class="text-amber-400 text-2xl">⚡</div>
                                 <div class="font-semibold text-lg">aTx Trusted Advisory</div>
@@ -129,7 +174,7 @@
                         </div>
 
                         <!-- Chat area -->
-                        <div id="chat-messages" class="h-80 overflow-y-auto px-6 space-y-6 text-sm bg-[#111113]"></div>
+                        <div id="chat-messages" class="xf-surface-chat h-80 overflow-y-auto px-6 space-y-6 text-sm"></div>
 
                         <!-- Quick prompts -->
                         <div class="px-6 pb-4 flex flex-wrap gap-2 text-xs">
@@ -144,7 +189,7 @@
                                 <input id="chat-input" type="text" placeholder="What's on your mind?" 
                                        class="flex-1 bg-transparent outline-none px-5 text-sm placeholder:text-white/40">
                                 <button onclick="sendMessage()" 
-                                        class="w-10 h-10 bg-emerald-500 text-white rounded-3xl flex items-center justify-center font-medium">
+                                        class="xf-send-btn w-10 h-10 rounded-3xl flex items-center justify-center font-medium">
                                     Send
                                 </button>
                             </div>
@@ -160,12 +205,12 @@
     <!-- PLATFORM / ABOUT SECTION -->
     <section id="platform" class="max-w-screen-2xl mx-auto px-8 py-24 bg-zinc-900">
         <div class="text-center mb-16">
-            <span class="uppercase text-xs tracking-widest font-medium text-[#00d4ff]">Built in Austin for Austin families</span>
+            <span class="xf-accent-text uppercase text-xs tracking-widest font-medium">Built in Austin for Austin families</span>
             <h2 class="section-header text-5xl tracking-tighter mt-3">Sophisticated portfolio management for high-net-worth families and their advisors</h2>
         </div>
         <div class="grid md:grid-cols-3 gap-8 text-center md:text-left">
             <div class="feature-card bg-black rounded-3xl p-8">
-                <i class="fa-solid fa-layer-group text-4xl text-[#00d4ff] mb-6"></i>
+                <i class="fa-solid fa-layer-group text-4xl xf-accent-text mb-6"></i>
                 <h3 class="text-2xl font-semibold mb-2">Consolidate everything</h3>
                 <p class="text-white/70">Multiple accounts, generations, stocks, options, and real estate — all in one secure dashboard.</p>
             </div>
@@ -199,7 +244,7 @@
 
     <section id="xoptions" class="max-w-screen-2xl mx-auto px-8 py-24">
         <div class="text-center">
-            <span class="px-4 py-1 bg-[#00d4ff]/10 text-[#00d4ff] rounded-3xl text-sm">xOptions • Precision Strategy Builder</span>
+            <span class="xf-pill-accent px-4 py-1 rounded-3xl text-sm">xOptions • Precision Strategy Builder</span>
             <h2 class="section-header text-5xl tracking-tighter mt-6">From idea to execution in four steps</h2>
         </div>
         <div class="mt-12 text-center text-white/70">Input symbol • Choose outlook • Select strategy • Choose contract. Real-time Greeks, payoff curves, IV/OI heatmaps, and one-click IBKR path.</div>
@@ -231,7 +276,7 @@
             const container = document.getElementById('chat-messages');
             container.innerHTML = demoMessages.map(msg => {
                 return msg.type === 'ai' 
-                    ? `<div class="flex gap-3"><div class="w-8 h-8 bg-[#00d4ff] text-zinc-950 rounded-2xl flex items-center justify-center text-xl">⚡</div><div class="chat-bubble-ai max-w-[75%] p-4">${msg.text}</div></div>`
+                    ? `<div class="flex gap-3"><div class="xf-demo-avatar">⚡</div><div class="chat-bubble-ai max-w-[75%] p-4">${msg.text}</div></div>`
                     : `<div class="flex justify-end"><div class="chat-bubble-user max-w-[75%] p-4">${msg.text}</div></div>`;
             }).join('');
             container.scrollTop = container.scrollHeight;

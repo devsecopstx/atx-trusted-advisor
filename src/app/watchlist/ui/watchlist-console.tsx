@@ -29,6 +29,7 @@ import {
 } from "@/app/admin/ui/crud-icons";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
+import { XF_FONT_SANS_FALLBACK } from "@/lib/xf-font-stacks";
 import type { WatchlistRowStatus } from "@/modules/core-admin/types";
 import {
     MAX_WATCHLIST_SYMBOLS,
@@ -1068,7 +1069,7 @@ export function WatchlistConsole({
       .join("");
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Watchlist — advisor</title>
 <style>
-body{font-family:system-ui,sans-serif;background:#090909;color:#f6f8fc;padding:24px;}
+body{font-family:${XF_FONT_SANS_FALLBACK};background:#090909;color:#f6f8fc;padding:24px;}
 h1{color:#8b5cf6;font-size:18px;} .muted{color:#888f9f;font-size:12px;} table{width:100%;border-collapse:collapse;font-size:12px;}
 th,td{border:1px solid #333;padding:6px;text-align:left;} th{color:#b5bac6;}
 </style></head><body>

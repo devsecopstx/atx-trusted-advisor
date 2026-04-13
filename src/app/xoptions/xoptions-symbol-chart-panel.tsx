@@ -5,8 +5,9 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import { downsampleTimeSeries } from "@/lib/chart/downsample-time-series";
-import { XF_FONT_MONO_FALLBACK } from "@/lib/xf-font-stacks";
+import { resolveDesignTokenColor } from "@/lib/resolve-design-token-color";
 import { useXfUiSoft } from "@/lib/use-xf-ui-soft";
+import { XF_FONT_MONO_FALLBACK } from "@/lib/xf-font-stacks";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -94,9 +95,22 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
     [volSeries]
   );
 
+  const apexPalette = useMemo(() => {
+    const labelFb = xfSoft ? "rgb(100, 116, 139)" : "rgb(136, 143, 159)";
+    const gridFb = xfSoft ? "rgba(100, 116, 139, 0.22)" : "rgba(136, 143, 159, 0.22)";
+    const gridVolFb = xfSoft ? "rgba(100, 116, 139, 0.16)" : "rgba(136, 143, 159, 0.15)";
+    const volBarFb = xfSoft ? "rgba(139, 92, 246, 0.55)" : "rgba(139, 92, 246, 0.62)";
+    return {
+      label: resolveDesignTokenColor("--xf-text-400", "color", labelFb),
+      grid: resolveDesignTokenColor("--xf-chart-apex-grid", "borderTop", gridFb),
+      gridVol: resolveDesignTokenColor("--xf-chart-apex-grid", "borderTop", gridVolFb),
+      up: resolveDesignTokenColor("--xf-chart-gain", "color", "#39ff14"),
+      down: resolveDesignTokenColor("--xf-chart-loss", "color", "#f5a0ad"),
+      volume: resolveDesignTokenColor("--xf-chart-apex-volume", "background", volBarFb)
+    };
+  }, [xfSoft]);
+
   const chartOptions = useMemo<ApexOptions>(() => {
-    const label = xfSoft ? "#64748b" : "#94a3b8";
-    const grid = xfSoft ? "rgba(100, 116, 139, 0.22)" : "rgba(148, 163, 184, 0.22)";
     const mode = xfSoft ? "light" : "dark";
     return {
       chart: {
@@ -110,35 +124,32 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
       plotOptions: {
         candlestick: {
           colors: {
-            upward: "#22c55e",
-            downward: "#ef4444"
+            upward: apexPalette.up,
+            downward: apexPalette.down
           }
         }
       },
       grid: {
-        borderColor: grid
+        borderColor: apexPalette.grid
       },
       xaxis: {
         type: "datetime",
-        labels: { style: { colors: label } }
+        labels: { style: { colors: apexPalette.label } }
       },
       yaxis: {
         tooltip: { enabled: true },
         labels: {
           formatter: (v: number) => v.toFixed(2),
-          style: { colors: label }
+          style: { colors: apexPalette.label }
         },
         opposite: true
       },
       tooltip: { theme: mode }
     };
-  }, [xfSoft, xfFontMono]);
+  }, [xfSoft, xfFontMono, apexPalette]);
 
   const volOptions = useMemo<ApexOptions>(() => {
-    const label = xfSoft ? "#64748b" : "#94a3b8";
-    const grid = xfSoft ? "rgba(100, 116, 139, 0.16)" : "rgba(148, 163, 184, 0.15)";
     const mode = xfSoft ? "light" : "dark";
-    const barColor = xfSoft ? "rgba(139, 92, 246, 0.55)" : "rgba(59, 130, 246, 0.65)";
     return {
       chart: {
         type: "bar",
@@ -147,7 +158,7 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
         toolbar: { show: false },
         fontFamily: xfFontMono
       },
-      colors: [barColor],
+      colors: [apexPalette.volume],
       theme: { mode },
       plotOptions: {
         bar: {
@@ -156,12 +167,12 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
       },
       dataLabels: { enabled: false },
       grid: {
-        borderColor: grid,
+        borderColor: apexPalette.gridVol,
         padding: { left: 8, right: 8 }
       },
       xaxis: {
         type: "datetime",
-        labels: { show: true, style: { colors: label, fontSize: "10px" } }
+        labels: { show: true, style: { colors: apexPalette.label, fontSize: "10px" } }
       },
       yaxis: {
         labels: {
@@ -171,13 +182,13 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
             if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
             return String(Math.round(v));
           },
-          style: { colors: label }
+          style: { colors: apexPalette.label }
         },
         opposite: true
       },
       tooltip: { theme: mode }
     };
-  }, [xfSoft, xfFontMono]);
+  }, [xfSoft, xfFontMono, apexPalette]);
 
   if (!enabled) {
     return null;

@@ -55,6 +55,8 @@ Austin, TX
 
 ## SendGrid Dynamic Template HTML (with watermark)
 
+Email clients do not reliably support `var(--xf-*)` or external stylesheets. Inline hex below intentionally mirrors `atx-docs/design-system/atxfinance-brand-kit.css` (`--xf-bg-900` / marketing canvas `#050505`, card surface `#0b0b0b`, body text `--xf-text-100` `#f6f8fc`, link accent `--xf-gain-green` `#39ff14`, border near slate-800 `#1f2937`).
+
 ```html
 <!doctype html>
 <html>
@@ -76,7 +78,7 @@ Austin, TX
             "
           >
             <tr>
-              <td style="padding:28px;font-family:Arial,Helvetica,sans-serif;color:#f1f5f9;line-height:1.6;">
+              <td style="padding:28px;font-family:Arial,Helvetica,sans-serif;color:#f6f8fc;line-height:1.6;">
                 <p style="margin:0 0 12px;">Hi {{first_name}},</p>
                 <p style="margin:0 0 12px;">
                   You are in the <strong>aTxFinance beta circle</strong>.

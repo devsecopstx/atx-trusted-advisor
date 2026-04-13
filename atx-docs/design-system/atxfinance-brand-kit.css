@@ -27,6 +27,9 @@
   --xf-chart-bar-hi: #d4d9e0;
   --xf-chart-gain: #39ff14;
   --xf-chart-loss: #f5a0ad;
+  /** ApexCharts / canvas APIs need resolved rgb(); read via `resolveDesignTokenColor` in app code */
+  --xf-chart-apex-grid: color-mix(in srgb, var(--xf-text-400) 22%, transparent);
+  --xf-chart-apex-volume: color-mix(in srgb, var(--xf-xoptions-accent) 58%, transparent);
   --xf-glow-blue: 0 0 16px rgba(255, 255, 255, 0.1);
   --xf-glow-purple: 0 0 16px rgba(255, 255, 255, 0.08);
   --xf-radius-sm: 12px;
