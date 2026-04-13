@@ -17,6 +17,8 @@ import { PortfoliosWorkspaceSidebar } from "./portfolios-workspace-sidebar";
 
 export type PortfoliosWorkspaceDeskHints = {
   watchlistSymbolCount: number;
+  /** Server-resolved symbols for visibility when hot IV/OI scan is empty or still loading. */
+  watchlistPreviewSymbols?: string[];
   activeAlertsCount: number;
   ibkrLinkedAccountCount: number | null;
 };
@@ -28,6 +30,8 @@ type Props = {
   topHoldings: PortfoliosHeroTopHolding[];
   /** Cookie / workspace active book — same scope as full watchlist when using `?portfolioId=`. */
   chosenPortfolioId: string | null;
+  /** Fallback book id for watchlist hot API when cookie book is unset (symbols are still tenant.user-global). */
+  deskWatchlistPortfolioId?: string | null;
   defaultPortfolioId: string | null;
   workspaceBook: AppUserDefaultBook | null;
   totalBookUsd: number;
@@ -43,6 +47,7 @@ export function PortfoliosWorkspaceClient({
   accountSlices,
   topHoldings,
   chosenPortfolioId,
+  deskWatchlistPortfolioId = null,
   defaultPortfolioId,
   workspaceBook,
   totalBookUsd,
@@ -100,7 +105,7 @@ export function PortfoliosWorkspaceClient({
               <section className="portfolios-workspace-col portfolios-workspace-col--c min-w-0">
                 <PortfoliosWatchlistCompact
                   deskHints={workspaceDeskHints}
-                  portfolioId={chosenPortfolioId}
+                  portfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
                 />
                 <PortfoliosMiniHoldingsGlance topHoldings={topHoldings} />
                 <PortfoliosMarketsNewsCard />

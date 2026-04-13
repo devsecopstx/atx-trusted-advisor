@@ -135,6 +135,12 @@ export function PortfoliosWatchlistCompact({
               </>
             ) : null}
           </p>
+          {deskHints && deskHints.watchlistSymbolCount > 0 ? (
+            <p className="mt-1 mb-0 max-w-[22rem] text-[0.58rem] leading-snug text-[var(--xf-text-500)]">
+              Same desk as your Watchlist tab (one list per user). The table below only shows underlyings that clear the
+              liquid IV/OI bar — not a second watchlist.
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {onOpenFullWatchlist ? (
@@ -182,6 +188,30 @@ export function PortfoliosWatchlistCompact({
         </div>
       </div>
 
+      {deskHints?.watchlistPreviewSymbols && deskHints.watchlistPreviewSymbols.length > 0 ? (
+        <div className="mb-2 flex flex-wrap gap-1">
+          <span className="text-[0.58rem] font-medium uppercase tracking-wide text-[var(--xf-text-500)]">
+            Desk symbols
+          </span>
+          <div className="flex w-full flex-wrap gap-1">
+            {deskHints.watchlistPreviewSymbols.map((sym, i) => (
+              <span
+                key={`${sym}-${i}`}
+                className="inline-flex max-w-[11rem] truncate rounded border border-white/10 bg-[var(--xf-bg-800)] px-1.5 py-0.5 font-mono text-[0.62rem] font-semibold text-[var(--xf-text-200)]"
+                title={sym}
+              >
+                {sym}
+              </span>
+            ))}
+          </div>
+          {deskHints.watchlistSymbolCount > deskHints.watchlistPreviewSymbols.length ? (
+            <p className="mb-0 mt-1 w-full text-[0.58rem] text-[var(--xf-text-500)]">
+              +{deskHints.watchlistSymbolCount - deskHints.watchlistPreviewSymbols.length} more on full watchlist
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {err ? (
         <p className="text-xs text-red-300" role="alert">
           {err}
@@ -192,7 +222,15 @@ export function PortfoliosWatchlistCompact({
         <p className="text-xs text-[var(--xf-text-300)]">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="text-xs leading-relaxed text-[var(--xf-text-400)]">
-          No symbols met the IV/OI scan yet, or your watchlist is empty.{" "}
+          {deskHints && deskHints.watchlistSymbolCount > 0 ? (
+            <>
+              No underlying met the hot scan (nearest expiry, ~70% IV and 100+ OI) for your{" "}
+              {deskHints.watchlistSymbolCount} watchlist leg{deskHints.watchlistSymbolCount === 1 ? "" : "s"}. Open the
+              full watchlist for desk metrics; equity tickers scan on the root symbol, option legs on their underlying.
+            </>
+          ) : (
+            <>Your watchlist is empty.</>
+          )}{" "}
           {onOpenFullWatchlist ? (
             <button
               className="text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] underline hover:no-underline"
@@ -208,8 +246,8 @@ export function PortfoliosWatchlistCompact({
             >
               Open watchlist
             </Link>
-          )}{" "}
-          to add tickers.
+          )}
+          {deskHints && deskHints.watchlistSymbolCount > 0 ? "" : " to add tickers."}
         </p>
       ) : (
         <>

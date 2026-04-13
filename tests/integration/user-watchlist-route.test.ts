@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NextResponse } from "next/server";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
+import { NextResponse } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sessionMocks = vi.hoisted(() => ({
   requireSessionUser: vi.fn()
@@ -61,15 +61,15 @@ beforeEach(() => {
 });
 
 describe("user watchlist route", () => {
-  it("GET filters out expired call options and keeps puts/non-options; includes quotes when requested", async () => {
+  it("GET returns all symbols including expired-style call legs; includes quotes when requested", async () => {
     // Arrange
     const wl = {
       _id: "w1",
       name: "My Watchlist",
       symbols: [
-        { symbol: "TSLA240112C00100000", addedAt: new Date("2024-01-01T00:00:00Z") }, // expired call
-        { symbol: "TSLA260412P00100000", addedAt: new Date("2026-01-01T00:00:00Z") }, // put (kept)
-        { symbol: "TSLA", addedAt: new Date("2026-01-01T00:00:00Z") } // equity (kept)
+        { symbol: "TSLA240112C00100000", addedAt: new Date("2024-01-01T00:00:00Z") }, // past-dated call OCC shape
+        { symbol: "TSLA260412P00100000", addedAt: new Date("2026-01-01T00:00:00Z") },
+        { symbol: "TSLA", addedAt: new Date("2026-01-01T00:00:00Z") }
       ]
     } satisfies { _id: string; name: string; symbols: Array<{ symbol: string; addedAt: Date }> };
     repoMocks.ensureUserWatchlistForSessionUser.mockResolvedValue(wl);
@@ -80,7 +80,6 @@ describe("user watchlist route", () => {
       "TSLA260412P00100000",
       { symbol: "TSLA260412P00100000", contractType: "put" } as unknown as SymbolLookupResult
     );
-    // No quote for the expired call – it should be filtered regardless
     lookupMocks.lookupSymbols.mockResolvedValue(map);
 
     // Act
@@ -92,13 +91,11 @@ describe("user watchlist route", () => {
     const symbols = json.data.symbols as Array<{ symbol: string }>;
     const withQuotes = json.data.symbolsWithQuotes as Array<{ symbol: string; quote: unknown }>;
 
-    // Should not include expired call
-    expect(symbols.some((s) => s.symbol === "TSLA240112C00100000")).toBe(false);
-    expect(withQuotes.some((s) => s.symbol === "TSLA240112C00100000")).toBe(false);
-
-    // Should include put and equity
-    expect(symbols.map((s) => s.symbol).sort()).toEqual(["TSLA", "TSLA260412P00100000"].sort());
-    expect(withQuotes.map((s) => s.symbol).sort()).toEqual(["TSLA", "TSLA260412P00100000"].sort());
+    const expected = ["TSLA", "TSLA240112C00100000", "TSLA260412P00100000"].sort();
+    expect(symbols.map((s) => s.symbol).sort()).toEqual(expected);
+    expect(withQuotes.map((s) => s.symbol).sort()).toEqual(expected);
+    const expiredRow = withQuotes.find((s) => s.symbol === "TSLA240112C00100000");
+    expect(expiredRow?.quote).toBeNull();
   });
 
   it("PATCH removeSymbols removes an exact symbol and returns updated payload", async () => {

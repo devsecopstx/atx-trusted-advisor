@@ -89,8 +89,6 @@ type WatchlistApiData = {
   symbolsWithQuotes?: WatchlistRow[];
 };
 
-import { isExpiredCallOption } from "@/modules/watchlist/option-expiration";
-
 function buildRows(data: WatchlistApiData): WatchlistRow[] {
   const base = data.symbolsWithQuotes?.length
     ? data.symbolsWithQuotes
@@ -107,8 +105,7 @@ function buildRows(data: WatchlistApiData): WatchlistRow[] {
         lastPrice: s.lastPrice,
         lastUpdatedAt: s.lastUpdatedAt
       }));
-  // Client-side safeguard: hide expired CALL options (ET) in case of cache lag
-  return base.filter((r) => !isExpiredCallOption(r.symbol));
+  return base;
 }
 
 function chunkSymbols<T>(items: T[], size: number): T[][] {
@@ -559,18 +556,48 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   );
 });
 
-function WatchlistIconBadge({ logoUrl, symbol }: { logoUrl?: string | null; symbol: string }) {
-  if (logoUrl) {
-    return (
-      <div className="xf-watchlist-icon-badge xf-watchlist-icon-badge--img">
-        {/* eslint-disable-next-line @next/next/no-img-element -- remote CDN; matches compact watchlist */}
-        <img alt="" height={28} src={logoUrl} width={28} />
-      </div>
-    );
+function watchlistSymbolInitialsStyle(symbol: string): CSSProperties {
+  const seed = symbol.trim().toUpperCase();
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   }
+  const hue = h % 360;
+  return {
+    background: `hsl(${hue} 70% 20%)`,
+    color: `hsl(${hue} 80% 92%)`
+  };
+}
+
+function WatchlistIconBadge({ logoUrl, symbol }: { logoUrl?: string | null; symbol: string }) {
+  const [broken, setBroken] = useState(false);
+  const trimmedLogo = (logoUrl ?? "").trim();
+  const showRemote = Boolean(trimmedLogo) && !broken;
+  const letters = useMemo(() => {
+    const s = symbol.trim().toUpperCase();
+    return s.slice(0, 2) || "?";
+  }, [symbol]);
+  const initialsStyle = useMemo(() => watchlistSymbolInitialsStyle(symbol), [symbol]);
+
   return (
-    <div aria-hidden className="xf-watchlist-icon-badge">
-      {symbol.slice(0, 2).toUpperCase()}
+    <div className="xf-watchlist-icon-badge xf-watchlist-icon-badge--stack">
+      <div aria-hidden className="xf-watchlist-icon-badge__initials" style={initialsStyle}>
+        {letters}
+      </div>
+      {showRemote ? (
+        // eslint-disable-next-line @next/next/no-img-element -- IEX/Yahoo CDN from quote lookup
+        <img
+          alt=""
+          className="xf-watchlist-icon-badge__logo"
+          decoding="async"
+          height={28}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          src={trimmedLogo}
+          width={28}
+          onError={() => setBroken(true)}
+        />
+      ) : null}
     </div>
   );
 }

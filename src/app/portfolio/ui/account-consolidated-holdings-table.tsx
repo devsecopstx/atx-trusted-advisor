@@ -6,6 +6,7 @@ import { DeleteIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
+import { underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 function fmtUsd(n: number): string {
@@ -16,9 +17,10 @@ function fmtPct(n: number): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 }
 
-function underlyingSymbol(p: SerializablePosition): string | null {
+/** Equity root for Yahoo batch quotes + equity logos (OCC option lines → underlying). */
+function quoteLookupKey(p: SerializablePosition): string | null {
   if (p.type === "stock" || p.type === "option") {
-    return p.symbol.trim().toUpperCase();
+    return underlyingForYahooOptionsChain(p.symbol);
   }
   return null;
 }
@@ -42,7 +44,10 @@ function rowMarkUsd(p: SerializablePosition, quotes: Record<string, SymbolLookup
     return Math.max(0, p.amount);
   }
   if (p.type === "stock") {
-    const u = p.symbol.trim().toUpperCase();
+    const u = quoteLookupKey(p);
+    if (!u) {
+      return p.shares * p.purchasePrice;
+    }
     const last = quotes[u]?.price;
     if (last != null && Number.isFinite(last)) {
       return p.shares * last;
@@ -76,7 +81,7 @@ function dayChangeSortValue(
   p: SerializablePosition,
   quotes: Record<string, SymbolLookupResult | null>
 ): number | null {
-  const u = underlyingSymbol(p);
+  const u = quoteLookupKey(p);
   if (!u) {
     return null;
   }
@@ -189,7 +194,7 @@ export function AccountConsolidatedHoldingsTable({
   const quoteSymbols = useMemo(() => {
     const s = new Set<string>();
     for (const p of positions) {
-      const u = underlyingSymbol(p);
+      const u = quoteLookupKey(p);
       if (u) s.add(u);
     }
     return [...s];
@@ -257,7 +262,7 @@ export function AccountConsolidatedHoldingsTable({
         </thead>
         <tbody>
           {sortedPositions.map((p) => {
-            const u = underlyingSymbol(p);
+            const u = quoteLookupKey(p);
             const q = u ? quotes[u] ?? null : null;
             const showQuote = p.type === "stock" || p.type === "option";
             const mark = rowMarkUsd(p, quotes);

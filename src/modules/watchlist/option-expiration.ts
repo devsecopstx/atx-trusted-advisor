@@ -40,6 +40,15 @@ export function parseOccOptionSymbol(raw: string): ParsedOccOption | null {
 }
 
 /**
+ * Yahoo `quote` / `options` expect an **underlying** ticker. OCC compact option symbols must map to root.
+ */
+export function underlyingForYahooOptionsChain(raw: string): string {
+  const s = raw.trim().toUpperCase();
+  const occ = parseOccOptionSymbol(s);
+  return occ?.underlying ?? s;
+}
+
+/**
  * Compute today’s civil date in America/New_York and return YYYY-MM-DD.
  */
 export function todayEtYmd(now: Date = new Date()): string {

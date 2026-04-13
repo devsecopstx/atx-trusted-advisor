@@ -15,9 +15,9 @@ import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     adminListPortfolioAlerts,
+    ensureUserWatchlistForSessionUser,
     getDefaultPortfolio,
     getPortfolioByIdForSessionUser,
-    getPortfolioWatchlist,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
@@ -94,7 +94,7 @@ export async function PortfolioPageBody({ session }: Props) {
       accountsLoadError =
         "Linked accounts could not be loaded. Try Sync to repair defaults, or refresh the page.";
     }
-    if (accounts.length > 0 && portfolio._id) {
+    if (portfolio._id) {
       const portfolioIdHex = portfolio._id.toHexString();
       const accountIds = accounts.flatMap((a) => (a._id ? [a._id] : []));
       const settled = await Promise.allSettled([
@@ -104,10 +104,9 @@ export async function PortfolioPageBody({ session }: Props) {
           portfolioId: portfolioIdHex,
           accountIds
         }),
-        getPortfolioWatchlist({
+        ensureUserWatchlistForSessionUser({
           userId: session.userId,
-          tenantId: session.tenantId,
-          portfolioId: portfolioIdHex
+          tenantId: session.tenantId
         }),
         adminListPortfolioAlerts(portfolioIdHex),
         tryIbkrLinkedAccountsSnapshotForSession(session)
@@ -125,9 +124,18 @@ export async function PortfolioPageBody({ session }: Props) {
         console.error(`[portfolio] positions load failed userId=${session.userId} detail=${detail}`);
       }
 
+      const watchlistPreviewSymbols =
+        wlR.status === "fulfilled"
+          ? (wlR.value?.symbols ?? [])
+              .map((s) => (typeof s.symbol === "string" ? s.symbol.trim().toUpperCase() : ""))
+              .filter(Boolean)
+              .slice(0, 14)
+          : undefined;
+
       deskPrefetch = {
         watchlistSymbolCount:
           wlR.status === "fulfilled" ? (wlR.value?.symbols?.length ?? 0) : 0,
+        watchlistPreviewSymbols,
         activeAlertsCount:
           alR.status === "fulfilled" ? alR.value.filter((a) => a.status === "active").length : 0,
         ibkrLinkedAccountCount:

@@ -13,6 +13,7 @@ import {
     type WatchlistSymbol
 } from "@/modules/core-admin/types";
 import { summarizeNearestExpiryOptionsHighlight } from "@/modules/find-options/options-hot-scan";
+import { underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
 import {
     LOOKUP_ROUTE,
     lookupSymbols,
@@ -94,6 +95,7 @@ async function buildJsonPayload(
   quotes: boolean,
   chainGlance: boolean
 ): Promise<Record<string, unknown>> {
+  const rawSymbols = watchlist.symbols ?? [];
   const symbols = toIsoSymbolRows(watchlist);
   const symbolsDetailed = symbols;
 
@@ -118,7 +120,6 @@ async function buildJsonPayload(
       }>
     | undefined;
 
-  const rawSymbols = watchlist.symbols ?? [];
   if (quotes) {
     const map = await lookupSymbols(rawSymbols.map((s) => s.symbol));
     const glanceBySymbol = new Map<
@@ -135,7 +136,9 @@ async function buildJsonPayload(
       const keys = rawSymbols.map((s) => s.symbol.trim().toUpperCase()).filter(Boolean);
       for (let i = 0; i < keys.length; i += CHAIN_GLANCE_BATCH) {
         const batch = keys.slice(i, i + CHAIN_GLANCE_BATCH);
-        const results = await Promise.all(batch.map((sym) => summarizeNearestExpiryOptionsHighlight(sym)));
+        const results = await Promise.all(
+          batch.map((sym) => summarizeNearestExpiryOptionsHighlight(underlyingForYahooOptionsChain(sym)))
+        );
         batch.forEach((sym, j) => {
           const g = results[j];
           glanceBySymbol.set(
@@ -156,7 +159,8 @@ async function buildJsonPayload(
       const key = s.symbol.trim().toUpperCase();
       const base = {
         ...watchlistSymbolToJsonRow(s),
-        quote: map.get(s.symbol) ?? null
+        /** Keys in {@link lookupSymbols} map are normalized uppercase. */
+        quote: map.get(key) ?? map.get(s.symbol.trim()) ?? null
       };
       if (chainGlance) {
         return { ...base, chainGlance: glanceBySymbol.get(key) ?? null };

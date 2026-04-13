@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalSto
 
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 
+import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { outlookIconClassForSlug, OutlookIconFor } from "@/app/ui/outlook-icons";
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
 import {
@@ -97,6 +98,13 @@ type HotRow = {
 type SnapshotPayload = {
   symbol: string;
   lastPrice: number | null;
+  change: number | null;
+  changePercent: number | null;
+  dayLow: number | null;
+  dayHigh: number | null;
+  fiftyTwoWeekLow: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyDayAverage: number | null;
   rsi14: number | null;
   currency: string | null;
 };
@@ -121,6 +129,13 @@ const PORTFOLIOS_LAST_XOPTIONS_SYMBOL_KEY = "xf_portfolios_last_xoptions_symbol_
 
 function priceAtPctMove(last: number, pct: number): number {
   return last * (1 + pct / 100);
+}
+
+function formatUsd2(n: number | null | undefined): string | null {
+  if (n == null || !Number.isFinite(n)) {
+    return null;
+  }
+  return `$${n.toFixed(2)}`;
 }
 
 function riskLabel(r: DeskAccountSlice["riskProfile"] | null | undefined): string {
@@ -645,6 +660,52 @@ export function XoptionsStrategyBuilderWorkspace() {
     const p = snapshot.lastPrice;
     return Number.isFinite(p) ? p : null;
   }, [snapshot, symbolUpper]);
+
+  const snapshotDetailLine = useMemo(() => {
+    if (!snapshot || snapshot.symbol !== symbolUpper) {
+      return null;
+    }
+    const parts: string[] = [];
+    const dL = formatUsd2(snapshot.dayLow);
+    const dH = formatUsd2(snapshot.dayHigh);
+    if (dL && dH) {
+      parts.push(`Day ${dL} – ${dH}`);
+    }
+    const wL = formatUsd2(snapshot.fiftyTwoWeekLow);
+    const wH = formatUsd2(snapshot.fiftyTwoWeekHigh);
+    if (wL && wH) {
+      parts.push(`52w ${wL} – ${wH}`);
+    }
+    const ma = formatUsd2(snapshot.fiftyDayAverage);
+    if (ma) {
+      parts.push(`50 MA ${ma}`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }, [snapshot, symbolUpper]);
+
+  const sessionChangeLine = useMemo(() => {
+    if (!snapshot || snapshot.symbol !== symbolUpper) {
+      return null;
+    }
+    const ch = snapshot.change != null && Number.isFinite(snapshot.change) ? snapshot.change : null;
+    const pct =
+      snapshot.changePercent != null && Number.isFinite(snapshot.changePercent)
+        ? snapshot.changePercent
+        : null;
+    if (ch == null && pct == null) {
+      return null;
+    }
+    const up = (pct != null && pct >= 0) || (pct == null && ch != null && ch >= 0);
+    const bits: string[] = [];
+    if (ch != null) {
+      bits.push(`${ch >= 0 ? "+" : ""}$${ch.toFixed(2)}`);
+    }
+    if (pct != null) {
+      bits.push(`${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`);
+    }
+    return { text: bits.join(" · "), up } as const;
+  }, [snapshot, symbolUpper]);
+
   const step1Complete = symbolUpper.length >= 1 && !snapLoading;
   const canGoStep2 = step1Complete;
 
@@ -782,23 +843,31 @@ export function XoptionsStrategyBuilderWorkspace() {
             >
               Symbol
             </label>
-            <div className="relative">
-              <input
-                id="xo-symbol"
-                className="crud-input w-full pr-10 font-mono text-base uppercase md:text-lg"
-                placeholder="e.g. AAPL"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                autoComplete="off"
-                spellCheck={false}
-                aria-label="Underlying symbol"
-              />
-              <span
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--xf-text-400)]"
-                aria-hidden
+            <div className="flex items-stretch gap-2">
+              <div
+                className="flex w-11 shrink-0 items-center justify-center self-center rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)]"
+                aria-hidden={!symbolUpper}
               >
-                🔍
-              </span>
+                {symbolUpper ? <PortfolioSymbolMark symbol={symbolUpper} size={34} /> : null}
+              </div>
+              <div className="relative min-w-0 flex-1">
+                <input
+                  id="xo-symbol"
+                  className="crud-input w-full pr-10 font-mono text-base uppercase md:text-lg"
+                  placeholder="e.g. AAPL"
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-label="Underlying symbol"
+                />
+                <span
+                  className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--xf-text-400)]"
+                  aria-hidden
+                >
+                  🔍
+                </span>
+              </div>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -824,31 +893,45 @@ export function XoptionsStrategyBuilderWorkspace() {
                   No last price
                 </div>
               ) : (
-                <div
-                  className="xoptions-price-ladder min-w-0 flex-1"
-                  role="status"
-                  aria-label={`Price levels vs last ${quoteLastPrice.toFixed(2)}`}
-                >
-                  {([-15, -10, -5] as const).map((pct) => (
-                    <span key={pct} className="xoptions-price-ladder__cell">
-                      <span className="xoptions-price-ladder__label">{pct}%</span>
-                      <span className="xoptions-price-ladder__value">
-                        ${priceAtPctMove(quoteLastPrice, pct).toFixed(2)}
+                <div className="xoptions-quote-block min-w-0 flex-1">
+                  <div
+                    className="xoptions-price-ladder"
+                    role="status"
+                    aria-label={`Price levels vs last ${quoteLastPrice.toFixed(2)}`}
+                  >
+                    {([-15, -10, -5] as const).map((pct) => (
+                      <span key={pct} className="xoptions-price-ladder__cell">
+                        <span className="xoptions-price-ladder__label">{pct}%</span>
+                        <span className="xoptions-price-ladder__value">
+                          ${priceAtPctMove(quoteLastPrice, pct).toFixed(2)}
+                        </span>
                       </span>
+                    ))}
+                    <span className="xoptions-price-ladder__cell xoptions-price-ladder__cell--spot">
+                      <span className="xoptions-price-ladder__label">Last</span>
+                      <span className="xoptions-price-ladder__value">${quoteLastPrice.toFixed(2)}</span>
+                      {sessionChangeLine ? (
+                        <span
+                          className={`xoptions-price-ladder__chg ${sessionChangeLine.up ? "value-gain" : "value-loss"}`}
+                        >
+                          {sessionChangeLine.text}
+                        </span>
+                      ) : null}
                     </span>
-                  ))}
-                  <span className="xoptions-price-ladder__cell xoptions-price-ladder__cell--spot">
-                    <span className="xoptions-price-ladder__label">Last</span>
-                    <span className="xoptions-price-ladder__value">${quoteLastPrice.toFixed(2)}</span>
-                  </span>
-                  {([5, 10, 15] as const).map((pct) => (
-                    <span key={pct} className="xoptions-price-ladder__cell">
-                      <span className="xoptions-price-ladder__label">+{pct}%</span>
-                      <span className="xoptions-price-ladder__value">
-                        ${priceAtPctMove(quoteLastPrice, pct).toFixed(2)}
+                    {([5, 10, 15] as const).map((pct) => (
+                      <span key={pct} className="xoptions-price-ladder__cell">
+                        <span className="xoptions-price-ladder__label">+{pct}%</span>
+                        <span className="xoptions-price-ladder__value">
+                          ${priceAtPctMove(quoteLastPrice, pct).toFixed(2)}
+                        </span>
                       </span>
-                    </span>
-                  ))}
+                    ))}
+                  </div>
+                  {snapshotDetailLine ? (
+                    <p className="xoptions-quote-detail-row" role="status">
+                      {snapshotDetailLine}
+                    </p>
+                  ) : null}
                 </div>
               )
             ) : null}
@@ -889,7 +972,10 @@ export function XoptionsStrategyBuilderWorkspace() {
                               setActiveStep(1);
                             }}
                           >
-                            <span className="xoptions-symbol-row__sym">{row.symbol}</span>
+                            <span className="xoptions-symbol-row__lead">
+                              <PortfolioSymbolMark symbol={row.symbol} size={22} />
+                              <span className="xoptions-symbol-row__sym">{row.symbol}</span>
+                            </span>
                             <span className="xoptions-symbol-row__meta">
                               {row.shares.toLocaleString()} sh · ${row.marketValue.toLocaleString("en-US", {
                                 minimumFractionDigits: 0,
@@ -922,7 +1008,10 @@ export function XoptionsStrategyBuilderWorkspace() {
                             setActiveStep(1);
                           }}
                         >
-                          <span className="xoptions-symbol-row__sym">{row.symbol}</span>
+                          <span className="xoptions-symbol-row__lead">
+                            <PortfolioSymbolMark symbol={row.symbol} size={22} />
+                            <span className="xoptions-symbol-row__sym">{row.symbol}</span>
+                          </span>
                           <span className="xoptions-symbol-row__meta">
                             {row.impliedVolatilityPercent.toFixed(0)}% · {row.openInterest.toLocaleString()}
                           </span>
@@ -952,7 +1041,10 @@ export function XoptionsStrategyBuilderWorkspace() {
             <span className="xoptions-step__num">1</span>
             <span className="xoptions-step__title">{STEPS[0]?.title}</span>
             {activeStep !== 1 && symbolUpper ? (
-              <span className="xoptions-step__summary font-mono">{symbolUpper}</span>
+              <span className="xoptions-step__summary inline-flex items-center gap-1.5">
+                <PortfolioSymbolMark symbol={symbolUpper} size={20} />
+                <span className="font-mono">{symbolUpper}</span>
+              </span>
             ) : null}
           </button>
           {activeStep === 1 ? (

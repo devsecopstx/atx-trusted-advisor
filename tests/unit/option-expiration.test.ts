@@ -1,5 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { isExpiredCallOption, parseOccOptionSymbol, todayEtYmd } from "@/modules/watchlist/option-expiration";
+import {
+    isExpiredCallOption,
+    parseOccOptionSymbol,
+    todayEtYmd,
+    underlyingForYahooOptionsChain
+} from "@/modules/watchlist/option-expiration";
+import { describe, expect, it } from "vitest";
 
 function makeDateEt(ymd: string): Date {
   // Construct a Date corresponding to 12:00 in ET on the given ymd to avoid DST edges.
@@ -24,6 +29,12 @@ describe("option-expiration utils", () => {
     const now = makeDateEt("2026-04-12");
     expect(isExpiredCallOption(past, now)).toBe(true);
     expect(isExpiredCallOption(today, now)).toBe(false);
+  });
+
+  it("maps OCC lines to underlying for Yahoo options chain", () => {
+    expect(underlyingForYahooOptionsChain("aapl240419c00195000")).toBe("AAPL");
+    expect(underlyingForYahooOptionsChain("TSLA")).toBe("TSLA");
+    expect(underlyingForYahooOptionsChain("BRK.B")).toBe("BRK.B");
   });
 
   it("ignores non-call instruments and malformed symbols", () => {

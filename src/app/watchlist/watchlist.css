@@ -437,16 +437,36 @@ button.xf-watchlist-sort-btn:hover {
   overflow: hidden;
 }
 
-.xf-watchlist-icon-badge--img {
+.xf-watchlist-icon-badge--stack {
+  position: relative;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.xf-watchlist-icon-badge--img img {
+.xf-watchlist-icon-badge__logo {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: inherit;
+}
+
+.xf-watchlist-icon-badge__initials {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--xf-radius-sm, 8px) - 1px);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  user-select: none;
 }
 
 .xf-watchlist-sym-cell {

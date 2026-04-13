@@ -1,32 +1,30 @@
-import { ObjectId } from "mongodb";
-
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
-import { canonicalMongoObjectIdHex, normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
-    ensurePortfolioWatchlistForUser,
-    getDefaultPortfolio,
-    listPortfolioAccounts,
-    listPortfolioPositionsByAccount,
-    listPortfoliosForSessionUser,
-    provisionDefaultPortfolioForUser
+  ensureUserWatchlistForSessionUser,
+  getDefaultPortfolio,
+  listPortfolioAccounts,
+  listPortfolioPositionsByAccount,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
 import {
-    normalizePositionType,
-    parseAccountOutlook,
-    type Account,
-    type AccountOutlook,
-    type Portfolio
+  normalizePositionType,
+  parseAccountOutlook,
+  type Account,
+  type AccountOutlook,
+  type Portfolio
 } from "@/modules/core-admin/types";
+import { underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import {
-    loadWorkspaceSnapshotPreload,
-    normalizeWorkspaceContentRev,
-    type WorkspaceSnapshotPreload
+  loadWorkspaceSnapshotPreload,
+  normalizeWorkspaceContentRev,
+  type WorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
@@ -375,8 +373,8 @@ export type HotWatchlistRow = {
   contractType: "call" | "put";
 };
 
-const DEFAULT_HOT_IV_MIN = 70;
-const DEFAULT_HOT_OI_MIN = 100;
+const DEFAULT_HOT_IV_MIN = 50;
+const DEFAULT_HOT_OI_MIN = 50;
 const MAX_WATCHLIST_SCAN = 18;
 
 export async function getHotWatchlistSymbols(
@@ -384,26 +382,10 @@ export async function getHotWatchlistSymbols(
   limit: number,
   opts?: { portfolioId?: string | null }
 ): Promise<{ rows: HotWatchlistRow[]; scanned: number }> {
-  let portfolio: Portfolio | null = null;
-  const rawPid = normalizeMongoObjectIdParam(opts?.portfolioId ?? "");
-  if (rawPid && ObjectId.isValid(rawPid)) {
-    const canon = canonicalMongoObjectIdHex(rawPid);
-    const rows = await listPortfoliosForSessionUser({
-      userId: session.userId,
-      tenantId: session.tenantId
-    });
-    portfolio = rows.find((p) => p._id?.toHexString() === canon) ?? null;
-  }
-  if (!portfolio?._id) {
-    portfolio = await resolveDefaultPortfolio(session);
-  }
-  if (!portfolio?._id) {
-    return { rows: [], scanned: 0 };
-  }
-
-  const watchlist = await ensurePortfolioWatchlistForUser({
+  void opts;
+  /** Tenant-scoped user watchlist (one doc per user) — same symbols on /portfolios, /portfolio, /watchlist. */
+  const watchlist = await ensureUserWatchlistForSessionUser({
     userId: session.userId,
-    portfolioId: portfolio._id.toHexString(),
     tenantId: session.tenantId
   });
   const raw = watchlist?.symbols ?? [];
@@ -412,14 +394,24 @@ export async function getHotWatchlistSymbols(
 
   const candidates: HotWatchlistRow[] = [];
   let scanned = 0;
+  /** One Yahoo chain fetch per underlying (many watchlist legs can share the same name). */
+  const chainScanByUnderlying = new Map<string, Awaited<ReturnType<typeof scanUnderlyingForHotOptions>>>();
+  const addedUnderlyings = new Set<string>();
+
   for (const sym of unique) {
     scanned += 1;
-    const r = await scanUnderlyingForHotOptions({
-      symbol: sym,
-      ivMinPct: DEFAULT_HOT_IV_MIN,
-      minOi: DEFAULT_HOT_OI_MIN
-    });
-    if (r.meetsHotCriteria && r.best) {
+    const chainSym = underlyingForYahooOptionsChain(sym);
+    let r = chainScanByUnderlying.get(chainSym);
+    if (!r) {
+      r = await scanUnderlyingForHotOptions({
+        symbol: chainSym,
+        ivMinPct: DEFAULT_HOT_IV_MIN,
+        minOi: DEFAULT_HOT_OI_MIN
+      });
+      chainScanByUnderlying.set(chainSym, r);
+    }
+    if (r.meetsHotCriteria && r.best && !addedUnderlyings.has(chainSym)) {
+      addedUnderlyings.add(chainSym);
       candidates.push({
         symbol: r.symbol,
         spot: r.underlyingSpot,
@@ -465,9 +457,22 @@ export async function getFindOptionsBootstrap(
 export type SymbolSnapshotPayload = {
   symbol: string;
   lastPrice: number | null;
+  /** Session dollar change (regular). */
+  change: number | null;
+  /** Session percent change (regular), as displayed percent (e.g. -1.25 = -1.25%). */
+  changePercent: number | null;
+  dayLow: number | null;
+  dayHigh: number | null;
+  fiftyTwoWeekLow: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyDayAverage: number | null;
   rsi14: number | null;
   currency: string | null;
 };
+
+function quoteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
 
 export async function getSymbolSnapshot(_session: SessionUser, symbol: string): Promise<SymbolSnapshotPayload | null> {
   const sym = symbol.trim().toUpperCase();
@@ -478,6 +483,13 @@ export async function getSymbolSnapshot(_session: SessionUser, symbol: string): 
   const yf = getYahooFinance2();
   let lastPrice: number | null = null;
   let currency: string | null = null;
+  let change: number | null = null;
+  let changePercent: number | null = null;
+  let dayLow: number | null = null;
+  let dayHigh: number | null = null;
+  let fiftyTwoWeekLow: number | null = null;
+  let fiftyTwoWeekHigh: number | null = null;
+  let fiftyDayAverage: number | null = null;
   try {
     const quote = (await yf.quote(sym)) as Record<string, unknown>;
     const p = quote["regularMarketPrice"] ?? quote["postMarketPrice"] ?? quote["preMarketPrice"];
@@ -486,11 +498,22 @@ export async function getSymbolSnapshot(_session: SessionUser, symbol: string): 
     }
     const c = quote["currency"];
     currency = typeof c === "string" ? c : null;
+    change = quoteNumber(quote["regularMarketChange"]);
+    changePercent = quoteNumber(quote["regularMarketChangePercent"]);
+    dayLow = quoteNumber(quote["regularMarketDayLow"]);
+    dayHigh = quoteNumber(quote["regularMarketDayHigh"]);
+    fiftyTwoWeekLow = quoteNumber(quote["fiftyTwoWeekLow"]);
+    fiftyTwoWeekHigh = quoteNumber(quote["fiftyTwoWeekHigh"]);
+    fiftyDayAverage = quoteNumber(quote["fiftyDayAverage"]);
   } catch {
     const map = await lookupSymbols([sym]);
     const q = map.get(sym);
     lastPrice = typeof q?.price === "number" && Number.isFinite(q.price) ? q.price : null;
     currency = q?.currency ?? null;
+    change = q?.change != null && Number.isFinite(q.change) ? q.change : null;
+    changePercent = q?.changePercent != null && Number.isFinite(q.changePercent) ? q.changePercent : null;
+    dayLow = q?.low != null && Number.isFinite(q.low) ? q.low : null;
+    dayHigh = q?.high != null && Number.isFinite(q.high) ? q.high : null;
   }
 
   let rsi14: number | null = null;
@@ -513,6 +536,13 @@ export async function getSymbolSnapshot(_session: SessionUser, symbol: string): 
   return {
     symbol: sym,
     lastPrice,
+    change,
+    changePercent,
+    dayLow,
+    dayHigh,
+    fiftyTwoWeekLow,
+    fiftyTwoWeekHigh,
+    fiftyDayAverage,
     rsi14,
     currency
   };

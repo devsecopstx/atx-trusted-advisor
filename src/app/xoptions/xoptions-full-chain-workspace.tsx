@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { XoptionsChainScanner } from "@/app/xoptions/xoptions-chain-scanner";
 import { XoptionsOptionStatsPanel } from "@/app/xoptions/xoptions-option-stats-panel";
 import { XoptionsSymbolChartPanel } from "@/app/xoptions/xoptions-symbol-chart-panel";
@@ -79,8 +80,11 @@ export function XoptionsFullChainWorkspace({
             ← Back to xOptions
           </Link>
           <h1 className="mt-2 font-semibold text-[var(--xf-text-100)]">Full option chain workspace</h1>
-          <p className="xoptions-hint mt-1 text-xs">
-            <span className="font-mono">{symbol}</span>
+          <p className="xoptions-hint mt-1 flex flex-wrap items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-2">
+              <PortfolioSymbolMark symbol={symbol} size={24} />
+              <span className="font-mono">{symbol}</span>
+            </span>
             {snapshot?.lastPrice != null && Number.isFinite(snapshot.lastPrice) ? (
               <>
                 {" "}

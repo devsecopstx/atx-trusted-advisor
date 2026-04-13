@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { defaultWatchlistLogoUrl } from "@/modules/watchlist/equity-logo-url";
+
 type PortfolioSymbolMarkProps = {
   symbol: string;
   logoUrl?: string;
@@ -13,16 +15,19 @@ export function PortfolioSymbolMark({ symbol, logoUrl, title, size = 28 }: Portf
   const [broken, setBroken] = useState(false);
   const sym = symbol.trim().toUpperCase();
   const initials = sym.length >= 2 ? sym.slice(0, 2) : sym || "—";
+  const fromApi = (logoUrl ?? "").trim();
+  const fromCdn = defaultWatchlistLogoUrl(sym) ?? "";
+  const imgSrc = !broken && (fromApi || fromCdn) ? fromApi || fromCdn : "";
 
   return (
     <span className="portfolio-symbol-mark" title={title ?? sym} style={{ width: size, height: size }}>
-      {!broken && logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- remote logo URLs from Yahoo / ticker CDN
+      {imgSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element -- remote equity logos (Fool CDN / API)
         <img
           alt=""
           className="portfolio-symbol-mark__img"
           height={size}
-          src={logoUrl}
+          src={imgSrc}
           width={size}
           onError={() => setBroken(true)}
         />

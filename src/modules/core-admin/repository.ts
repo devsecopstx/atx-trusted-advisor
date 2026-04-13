@@ -57,6 +57,7 @@ import {
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
 import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";
+import { pickPreferredWatchlistDocument } from "@/modules/watchlist/watchlist-doc-preference";
 import {
     mergeBaseFromRawWatchlistEntry,
     symbolFromRawWatchlistEntry
@@ -1446,9 +1447,8 @@ function userWatchlistSessionScopeFilter(
 }
 
 /**
- * `uniq_watchlist_per_user` keys `{ tenantId, userId }`, so **legacy `tenantId: null` and tenant-scoped rows**
- * can both exist for one user. `findOne` without sort is undefined; batch jobs may update the fresher doc while
- * GET returned the stale one. Prefer the row scanners / PATCH last touched.
+ * Multiple `portfolio_watchlists` rows can match one user (legacy `portfolioId` vs tenant-global, or duplicate
+ * stubs). Prefer the desk users expect: most symbols, then user-global (no `portfolioId`), then recency.
  */
 async function findLatestWatchlistMatchingFilter(
   db: import("mongodb").Db,
@@ -1457,10 +1457,8 @@ async function findLatestWatchlistMatchingFilter(
   const rows = await db
     .collection<Watchlist>(collections.watchlists)
     .find(filter as Filter<Watchlist>)
-    .sort({ updatedAt: -1, _id: -1 })
     .toArray();
-  const doc = Array.isArray(rows) && rows.length > 0 ? rows[0] : undefined;
-  return doc ?? null;
+  return pickPreferredWatchlistDocument(rows);
 }
 
 function defaultPortfolioMarkerFilter(
@@ -3025,7 +3023,7 @@ export async function getUserWatchlist(input: {
   const db = await getDb();
   const doc = await findLatestWatchlistMatchingFilter(
     db,
-    userWatchlistSessionScopeFilter(input.userId, input.tenantId)
+    userWatchlistSessionScopeFilter(input.userId, input.tenantId, "allowLegacyUserScope")
   );
   if (!doc) {
     return null;
@@ -3234,7 +3232,7 @@ export async function mutateUserWatchlistSymbols(input: MutateUserWatchlistInput
   }
 
   const db = await getDb();
-  const filter = userWatchlistSessionScopeFilter(input.userId, input.tenantId);
+  const filter = userWatchlistSessionScopeFilter(input.userId, input.tenantId, "allowLegacyUserScope");
   const doc = await findLatestWatchlistMatchingFilter(db, filter);
   if (!doc?._id) {
     return null;

@@ -452,6 +452,33 @@ html[data-xf-ui="soft"] .xoptions-steps {
   cursor: not-allowed;
 }
 
+/* Quote ladder + session change + day / 52w / MA detail */
+.xoptions-quote-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.xoptions-quote-detail-row {
+  margin: 0;
+  padding: 0.3rem 0.15rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.625rem;
+  line-height: 1.4;
+  color: var(--xf-text-400);
+  word-break: break-word;
+}
+
+.xoptions-price-ladder__chg {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-top: 0.06rem;
+}
+
 /* Last ±5/10/15% reference prices (same row as Next) */
 .xoptions-price-ladder {
   display: flex;
@@ -1018,6 +1045,13 @@ html[data-xf-ui="soft"] .xoptions-strategy-jobs-toggle {
 .xoptions-symbol-row:hover {
   background: color-mix(in srgb, var(--xf-text-100) 7%, transparent);
   border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+}
+
+.xoptions-symbol-row__lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .xoptions-symbol-row__sym {

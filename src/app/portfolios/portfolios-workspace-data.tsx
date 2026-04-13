@@ -18,7 +18,7 @@ import { WORKSPACE_PORTFOLIO_COOKIE_NAME } from "@/lib/workspace-portfolio-cooki
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import {
     adminListPortfolioAlerts,
-    getPortfolioWatchlist,
+    ensureUserWatchlistForSessionUser,
     listPortfoliosForSessionUser
 } from "@/modules/core-admin/repository";
 import { portfolioKindChoiceLabel } from "@/modules/core-admin/types";
@@ -83,13 +83,10 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
       limit: 5
     }),
     loadAppUserDefaultBook(session, { portfolioRows: portfolios }),
-    chosenPortfolioId
-      ? getPortfolioWatchlist({
-          userId: session.userId,
-          tenantId: session.tenantId,
-          portfolioId: chosenPortfolioId
-        })
-      : Promise.resolve(null),
+    ensureUserWatchlistForSessionUser({
+      userId: session.userId,
+      tenantId: session.tenantId
+    }),
     chosenPortfolioId ? adminListPortfolioAlerts(chosenPortfolioId) : Promise.resolve([]),
     tryIbkrLinkedAccountsSnapshotForSession(session)
   ]);
@@ -125,6 +122,9 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
     initialRows[0]?.id ??
     null;
 
+  /** Any owned book id for portfolio-scoped watchlist API paths; symbols are tenant.user-global. */
+  const deskWatchlistPortfolioId = chosenPortfolioId ?? defaultPortfolioIdForImport;
+
   const totalBookUsd = initialRows.reduce((s, r) => s + Math.max(0, r.valueUsd), 0);
 
   const mongoConnection = shouldShowAppUserDbLabel() ? getMongoConnectionLabel() : "";
@@ -137,8 +137,14 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
     roles: session.roles
   });
 
+  const watchlistPreviewSymbols = (watchlistDoc?.symbols ?? [])
+    .map((s) => (typeof s.symbol === "string" ? s.symbol.trim().toUpperCase() : ""))
+    .filter(Boolean)
+    .slice(0, 14);
+
   const workspaceDeskHints = {
     watchlistSymbolCount: watchlistDoc?.symbols?.length ?? 0,
+    watchlistPreviewSymbols,
     activeAlertsCount: alertsRows.filter((a) => a.status === "active").length,
     ibkrLinkedAccountCount: ibkrSnap?.accountCount ?? null
   };
@@ -153,6 +159,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
       />
       <PortfoliosWorkspaceClient
         chosenPortfolioId={chosenPortfolioId}
+        deskWatchlistPortfolioId={deskWatchlistPortfolioId}
         accountDetails={{
           email: session.email,
           username: session.username,

@@ -159,6 +159,13 @@ describe("GET /api/app-user/find-options/*", () => {
     serviceMocks.getSymbolSnapshot.mockResolvedValue({
       symbol: "TSLA",
       lastPrice: 100,
+      change: 1.25,
+      changePercent: 0.5,
+      dayLow: 98,
+      dayHigh: 101,
+      fiftyTwoWeekLow: 80,
+      fiftyTwoWeekHigh: 120,
+      fiftyDayAverage: 95,
       rsi14: 55.2,
       currency: "USD"
     });

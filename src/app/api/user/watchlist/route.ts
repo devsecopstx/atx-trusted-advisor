@@ -17,7 +17,6 @@ import {
     lookupSymbols,
     type SymbolLookupResult
 } from "@/modules/watchlist/yahoo-symbol-lookup";
-import { isExpiredCallOption } from "@/modules/watchlist/option-expiration";
 
 const watchlistAddEntrySchema = z.object({
   symbol: z.string().trim().min(1).max(32),
@@ -80,16 +79,8 @@ async function buildJsonPayload(
   watchlist: Watchlist,
   quotes: boolean
 ): Promise<Record<string, unknown>> {
-  // Filter out expired CALL options per business rule (ET cutoff, keep expiring-today visible)
-  const rawSymbolsAll = watchlist.symbols ?? [];
-  const rawSymbols = rawSymbolsAll.filter((s) => !isExpiredCallOption(s.symbol));
-
-  const filteredWatchlist: Watchlist = {
-    ...watchlist,
-    symbols: rawSymbols
-  } as Watchlist;
-
-  const symbols = toIsoSymbolRows(filteredWatchlist);
+  const rawSymbols = watchlist.symbols ?? [];
+  const symbols = toIsoSymbolRows(watchlist);
   const symbolsDetailed = symbols;
 
   let symbolsWithQuotes:
@@ -117,7 +108,7 @@ async function buildJsonPayload(
 
   return {
     data: {
-      ...filteredWatchlist,
+      ...watchlist,
       symbols,
       symbolsDetailed,
       ...(symbolsWithQuotes ? { symbolsWithQuotes } : {})
