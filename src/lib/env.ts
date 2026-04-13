@@ -90,7 +90,6 @@ const envSchema = z.object({
   /** Optional X handle for admin seed match when userinfo has no email (case-insensitive; `@` optional). */
   ADMIN_SEED_X_USERNAME: optionalNonEmptyString,
   ADMIN_X_USERNAMES: z.string().optional(),
-  ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
   /**
    * When true, `POST /api/xchat/ask` uses xAI hosted continuity (`store_messages` + `previous_response_id`)
    * for turns with `threadId`, skipping Mongo recent-turn injection when a prior response id exists.
@@ -406,7 +405,6 @@ export function isAllowAnyXUserLoginEnabled(): boolean {
   return false;
 }
 
-/** When true, xChat emits detailed payload logs for RAG/expert learning. Set ENABLE_XCHAT_DEBUG=true in GCP. Tenant override: `core_tenants.tenantPreferences.xchat_debug_enabled`. */
 export type LicensingPitchContact = {
   licensingEmail?: string;
   licensingXUrl?: string;
@@ -450,18 +448,6 @@ export function getLicensingPitchContact(): LicensingPitchContact {
     licensingXLabel: xLabelOverride ?? LICENSING_PITCH_CONTACT_DEFAULTS.licensingXLabel,
     companyEmail: companyOverride
   };
-}
-
-/** Env-only gate for xChat `[xchat/debug]` logs (`ENABLE_XCHAT_DEBUG`). */
-export function isXchatDebugEnvEnabled(): boolean {
-  const val = process.env.ENABLE_XCHAT_DEBUG;
-  if (typeof val === "boolean") {
-    return val;
-  }
-  if (typeof val === "string") {
-    return val.trim().toLowerCase() === "true";
-  }
-  return false;
 }
 
 /** App_user header “stealth” DB chip: on in dev/test; in production only if `APP_USER_SHOW_DB_ENDPOINT=true`. */

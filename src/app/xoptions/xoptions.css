@@ -20,6 +20,41 @@
   color: var(--xf-text-400);
 }
 
+/**
+ * `PortfolioSymbolMark` — this route does not import `portfolio.css`; without these rules the
+ * wrapper stays inline and ignores `width`/`height`, so equity logos never paint. Keep in sync
+ * with `.portfolio-symbol-mark*` in `src/app/portfolio/portfolio.css`.
+ */
+.portfolio-symbol-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 45%, transparent);
+  overflow: hidden;
+}
+
+.portfolio-symbol-mark__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portfolio-symbol-mark__fallback {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--xf-text-200);
+}
+
+html[data-xf-ui="soft"] .portfolio-symbol-mark {
+  border-color: color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
 /* One row: Account | Target expiration | At a glance — equal thirds */
 .xoptions-page-kicker {
   margin: 0;

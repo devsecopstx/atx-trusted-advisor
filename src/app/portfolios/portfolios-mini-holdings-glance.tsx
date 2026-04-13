@@ -1,5 +1,6 @@
 "use client";
 
+import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
 
 import type { PortfoliosHeroTopHolding } from "./portfolios-hero-left-column";
@@ -26,8 +27,11 @@ export function PortfoliosMiniHoldingsGlance({ topHoldings }: Props) {
               key={h.symbol}
               className="flex justify-between gap-2 font-mono text-xs tabular-nums text-[var(--xf-text-100)]"
             >
-              <span>{h.symbol}</span>
-              <span className="text-[var(--xf-text-300)]">{formatUsdWhole(h.bookUsd)}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <PortfolioSymbolMark symbol={h.symbol} size={20} />
+                <span className="truncate">{h.symbol}</span>
+              </span>
+              <span className="shrink-0 text-[var(--xf-text-300)]">{formatUsdWhole(h.bookUsd)}</span>
             </li>
           ))}
         </ul>

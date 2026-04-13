@@ -2089,6 +2089,7 @@
   }
 }
 
+/* Duplicated on xOptions (`xoptions.css`) — that layout does not import this file. */
 .portfolio-symbol-mark {
   display: inline-flex;
   align-items: center;

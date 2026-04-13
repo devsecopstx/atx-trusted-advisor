@@ -1,10 +1,10 @@
 /**
- * xChat debug logging — enabled via ENABLE_XCHAT_DEBUG=true.
- * Emits structured payloads for RAG/expert learning. Configure Cloud Logging
+ * xChat structured debug — **tenant workspace only** (`tenantPreferences.xchat_debug_enabled`,
+ * set in Admin → Tenant workspace). Emits payloads for RAG/expert learning. Configure Cloud Logging
  * retention (e.g. 30 days) at project or log-bucket level.
  *
  * **Taxonomy (for Cloud Logging filters):**
- * - **`[xchat/debug]`** — opt-in JSON lines (`ENABLE_XCHAT_DEBUG=true`). Fields
+ * - **`[xchat/debug]`** — opt-in JSON lines when request ALS has tenant debug on; never from browser runtimes. Fields
  *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_ask_pre_request` |
  *   `xchat_ask_provider_error` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats`.
  *   Workspace snapshot (same prefix, not in `XCHAT_DEBUG_LOG_TYPES`): `workspace_snapshot_load` | `workspace_snapshot_build`.
@@ -13,14 +13,28 @@
  *   provider failures (always on; no full prompts).
  * - **`[xchat/batch]`** — operational errors on batch submit/poll (always on).
  */
-import { isXchatDebugEnvEnabled } from "@/lib/env";
 import { getXchatTenantDebugFromContext } from "@/lib/xchat-debug-context";
 
-function isXchatDebugEnabled(): boolean {
-  if (isXchatDebugEnvEnabled()) {
-    return true;
+/** Never emit `[xchat/debug]` from browser bundles (even if code is accidentally client-reachable). */
+function isBrowserLikeRuntime(): boolean {
+  return typeof window !== "undefined";
+}
+
+/**
+ * True when structured `[xchat/debug]` logs should run: **only** if the request is wrapped with
+ * `runWithXchatTenantDebugAsync` / `runWithXchatTenantDebug` and the tenant has
+ * `xchat_debug_enabled` (see xChat / history / batch API routes).
+ * Always false in the browser — diagnostics are server-only (Cloud Logging / `next dev` terminal).
+ */
+export function isXchatStructuredDebugEnabled(): boolean {
+  if (isBrowserLikeRuntime()) {
+    return false;
   }
   return getXchatTenantDebugFromContext();
+}
+
+function isXchatDebugEnabled(): boolean {
+  return isXchatStructuredDebugEnabled();
 }
 
 export const XCHAT_DEBUG_LOG_TYPES = [

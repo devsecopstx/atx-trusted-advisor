@@ -12,7 +12,7 @@
 
 - Map xAI and management API failures to **stable** `{ error, code?, details? }` shapes; avoid leaking raw provider errors to app_user clients.
 - Retry classification: distinguish user-fixable (payload, quota) vs operator (provider outage) vs fail-closed (persona/model denied).
-- Observability: keep `[xchat/ask]` / `[xchat/batch]` logs short and PII-safe; extend opt-in `ENABLE_XCHAT_DEBUG` only for structured diagnostics.
+- Observability: keep `[xchat/ask]` / `[xchat/batch]` logs short and PII-safe; structured `[xchat/debug]` is tenant-workspace opt-in only (`xchat-debug-logging.md`).
 
 ## Tests
 

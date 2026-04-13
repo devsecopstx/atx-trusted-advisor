@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
+import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 
 import type { PortfoliosWorkspaceDeskHints } from "./portfolios-workspace-client";
 
@@ -197,10 +198,11 @@ export function PortfoliosWatchlistCompact({
             {deskHints.watchlistPreviewSymbols.map((sym, i) => (
               <span
                 key={`${sym}-${i}`}
-                className="inline-flex max-w-[11rem] truncate rounded border border-white/10 bg-[var(--xf-bg-800)] px-1.5 py-0.5 font-mono text-[0.62rem] font-semibold text-[var(--xf-text-200)]"
+                className="inline-flex max-w-[13rem] items-center gap-1 truncate rounded border border-white/10 bg-[var(--xf-bg-800)] py-0.5 pl-1 pr-1.5 font-mono text-[0.62rem] font-semibold text-[var(--xf-text-200)]"
                 title={sym}
               >
-                {sym}
+                <PortfolioSymbolMark symbol={sym} size={18} />
+                <span className="min-w-0 truncate">{sym}</span>
               </span>
             ))}
           </div>
@@ -282,12 +284,7 @@ export function PortfoliosWatchlistCompact({
                     className="border-t border-white/5 font-mono tabular-nums text-[var(--xf-text-100)]"
                   >
                     <td className="py-1 pr-1 align-middle">
-                      <div
-                        aria-hidden
-                        className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] text-[0.6rem] font-bold text-[var(--xf-text-200)]"
-                      >
-                        {r.symbol.slice(0, 2)}
-                      </div>
+                      <PortfolioSymbolMark symbol={r.symbol} size={26} />
                     </td>
                     <td className="py-1 pr-2 align-middle font-semibold">{r.symbol}</td>
                     <td className="py-1 pr-2 align-middle text-[var(--xf-text-200)]">{formatSpotUsd(r.spot)}</td>

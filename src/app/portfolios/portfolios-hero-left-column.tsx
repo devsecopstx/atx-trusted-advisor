@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { UploadIcon } from "@/app/admin/ui/crud-icons";
+import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
 import type { NearestExpiryOptionsGlance } from "@/modules/find-options/options-hot-scan";
 import { type MarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
@@ -185,8 +186,11 @@ export function PortfoliosHeroLeftColumn({
           <ul className="portfolios-hero-left__holdings">
             {topHoldings.map((h) => (
               <li key={h.symbol} className="portfolios-hero-left__holding-row font-mono tabular-nums">
-                <span className="text-[var(--xf-text-100)]">{h.symbol}</span>
-                <span className="text-[var(--xf-text-300)]">{formatUsdWhole(h.bookUsd)}</span>
+                <span className="portfolios-hero-left__holding-sym flex min-w-0 items-center gap-2">
+                  <PortfolioSymbolMark symbol={h.symbol} size={22} />
+                  <span className="text-[var(--xf-text-100)]">{h.symbol}</span>
+                </span>
+                <span className="shrink-0 text-[var(--xf-text-300)]">{formatUsdWhole(h.bookUsd)}</span>
               </li>
             ))}
           </ul>
@@ -202,14 +206,20 @@ export function PortfoliosHeroLeftColumn({
               <li key={row.symbol} className="portfolios-hero-left__options-line font-mono text-xs">
                 {row.highlight ? (
                   <>
-                    <span className="text-[var(--xf-text-100)]">{row.symbol}</span>{" "}
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                      <PortfolioSymbolMark symbol={row.symbol} size={18} />
+                      <span className="text-[var(--xf-text-100)]">{row.symbol}</span>
+                    </span>{" "}
                     <span className="text-[var(--xf-text-300)]">
                       {row.highlight.contractType} {row.highlight.strike} · IV {row.highlight.impliedVolatilityPercent}%
                       · OI {formatOi(row.highlight.openInterest)}
                     </span>
                   </>
                 ) : (
-                  <span className="text-[var(--xf-text-300)]">{row.symbol} — no chain data</span>
+                  <span className="inline-flex min-w-0 flex-wrap items-center gap-1.5 text-[var(--xf-text-300)]">
+                    <PortfolioSymbolMark symbol={row.symbol} size={18} />
+                    <span>{row.symbol} — no chain data</span>
+                  </span>
                 )}
               </li>
             ))}

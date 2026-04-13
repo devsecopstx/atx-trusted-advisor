@@ -1,6 +1,5 @@
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
-import { isXchatDebugEnvEnabled } from "@/lib/env";
-import { getXchatTenantDebugFromContext } from "@/lib/xchat-debug-context";
+import { isXchatStructuredDebugEnabled } from "@/lib/xchat-debug";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
@@ -308,7 +307,7 @@ async function buildPreloadFromPortfolio(
   }));
 
   const elapsedMs = Math.round(performance.now() - t0);
-  if (isXchatDebugEnvEnabled() || getXchatTenantDebugFromContext()) {
+  if (isXchatStructuredDebugEnabled()) {
     console.info("[xchat/debug]", {
       type: "workspace_snapshot_build",
       source: "mongo",
@@ -332,7 +331,7 @@ export async function loadWorkspaceSnapshotPreload(
   const portfolio = await resolveDefaultPortfolio(ctx);
   if (!portfolio?._id) {
     const elapsedMs = Math.round(performance.now() - tStart);
-    if (isXchatDebugEnvEnabled() || getXchatTenantDebugFromContext()) {
+    if (isXchatStructuredDebugEnabled()) {
       console.info("[xchat/debug]", {
         type: "workspace_snapshot_load",
         source: "null",
@@ -363,7 +362,7 @@ export async function loadWorkspaceSnapshotPreload(
         Array.isArray(parsed.positionsFull)
       ) {
         const elapsedMs = Math.round(performance.now() - tStart);
-        if (isXchatDebugEnvEnabled() || getXchatTenantDebugFromContext()) {
+        if (isXchatStructuredDebugEnabled()) {
           console.info("[xchat/debug]", {
             type: "workspace_snapshot_load",
             source: "cache",
@@ -392,7 +391,7 @@ export async function loadWorkspaceSnapshotPreload(
     }
   }
   const elapsedMs = Math.round(performance.now() - tStart);
-  if (isXchatDebugEnvEnabled() || getXchatTenantDebugFromContext()) {
+  if (isXchatStructuredDebugEnabled()) {
     console.info("[xchat/debug]", {
       type: "workspace_snapshot_load",
       source: built ? "mongo" : "null",

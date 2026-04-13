@@ -123,7 +123,7 @@ Turn **off** or tighten profiling after the investigation window — sustained l
 
 ### 8.2 xChat debug: workspace snapshot timing
 
-With **`ENABLE_XCHAT_DEBUG=true`** and/or **Admin → Tenant workspace → xChat debug** (see **`atx-docs/xchat/xchat-debug-logging.md`**), **`src/modules/xchat/workspace-snapshot-for-prompt.ts`** logs:
+With **Admin → Tenant workspace → xChat debug** enabled (see **`atx-docs/xchat/xchat-debug-logging.md`**), **`src/modules/xchat/workspace-snapshot-for-prompt.ts`** logs:
 
 | `type` | Meaning |
 |--------|---------|
