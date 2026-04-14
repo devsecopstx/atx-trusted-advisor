@@ -4,7 +4,7 @@ import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 
 const LOOKUP_CACHE_TTL_MS = 5 * 60 * 1000;
 /** Bumps in-memory cache when lookup payload shape changes (e.g. logo resolution). */
-const LOOKUP_CACHE_KEY_VER = "v4";
+const LOOKUP_CACHE_KEY_VER = "v5";
 
 type CacheEntry = {
   expiresAt: number;
@@ -28,6 +28,9 @@ export type SymbolLookupResult = {
   volume?: number;
   low?: number;
   high?: number;
+  /** Trailing 52-week range from Yahoo quote when available. */
+  fiftyTwoWeekLow?: number;
+  fiftyTwoWeekHigh?: number;
   currency?: string;
   source: typeof LOOKUP_ROUTE;
 };
@@ -60,14 +63,19 @@ function setCached(symbol: string, data: SymbolLookupResult): void {
 }
 
 function snapshotToLookupBase(symbol: string, snap: MarketQuoteSnapshot): SymbolLookupResult {
+  const name =
+    [snap.shortName, snap.longName].find((s) => typeof s === "string" && s.trim().length > 0)?.trim() ?? undefined;
   return {
     symbol,
+    companyName: name,
     price: snap.price,
     change: snap.change,
     changePercent: snap.changePercent,
     volume: snap.volume,
     low: snap.dayLow,
     high: snap.dayHigh,
+    fiftyTwoWeekLow: snap.fiftyTwoWeekLow,
+    fiftyTwoWeekHigh: snap.fiftyTwoWeekHigh,
     currency: snap.currency,
     source: LOOKUP_ROUTE
   };

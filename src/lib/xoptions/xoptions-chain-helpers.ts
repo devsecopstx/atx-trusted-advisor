@@ -170,7 +170,10 @@ export function chainRowMoneynessClass(
     return "xoptions-contract-row--atm";
   }
   const itm = side === "call" ? strike < spot : strike > spot;
-  return itm ? "xoptions-contract-row--itm" : "";
+  if (itm) {
+    return "xoptions-contract-row--itm";
+  }
+  return "xoptions-contract-row--otm";
 }
 
 /** Minimal leg shape for chain-row liquidity filtering (xOptions UI + scanner). */

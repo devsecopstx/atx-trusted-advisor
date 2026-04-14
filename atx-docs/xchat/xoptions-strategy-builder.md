@@ -16,6 +16,12 @@ The strategy builder is a **gated, four-step** flow (mirrors common broker resea
 
 Steps **unlock in order** (horizontal stepper + vertical sections). Clearing the symbol resets to step 1 and locks later steps.
 
+### Choose-contract chain (HNWI layout)
+
+- **Headers:** Strike, Bid, Ask, Mid, Last, IV, Volume, Open Interest, Delta, Gamma, Theta, Vega, BE (tooltips on headers). **Last** prefers API `premium` when present, else mid.
+- **Layouts:** **Columns & layouts** above the table — presets **Default**, **Greeks**, **Liquidity**, **Advanced**; show/hide columns (Strike always on); drag to reorder. Persisted in **`localStorage`** as **`xoptions:chainColumnLayout:v1`**.
+- **Moneyness:** **ATM** band + pill, **ITM** green tint, **OTM** neutral tint; Vol/OI heatmap unchanged in spirit.
+
 ## API
 
 - **`GET /api/app-user/find-options/context`** — Returns `portfolio`, `accounts[]` (custodian rows with `optionsApproved`, `extAccountId`, desk fields), and `account` (default selection summary, including `optionsApproved`).

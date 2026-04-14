@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { IconEditButton } from "@/app/ui/icon-edit-control";
+import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 
 export type PortfolioAccountManageOption = {
   id: string;
@@ -16,12 +18,15 @@ type Props = {
   /** When set with `onSelectedAccountIdChange`, the bar is controlled (e.g. table row radios). */
   selectedAccountId?: string;
   onSelectedAccountIdChange?: (accountId: string) => void;
+  /** When set, account changes sync workspace account (rail / xOptions) and enable deep link context. */
+  portfolioIdHex?: string;
 };
 
 export function PortfolioAccountManageBar({
   accounts,
   selectedAccountId: controlledId,
-  onSelectedAccountIdChange
+  onSelectedAccountIdChange,
+  portfolioIdHex
 }: Props) {
   const router = useRouter();
   const preferredId = useMemo(() => {
@@ -54,6 +59,14 @@ export function PortfolioAccountManageBar({
     if (!effectiveId) return;
     router.push(`/portfolio/accounts/${encodeURIComponent(effectiveId)}`);
   }
+
+  const buildStrategyHref =
+    portfolioIdHex &&
+    effectiveId &&
+    isLikelyMongoObjectIdHex(portfolioIdHex) &&
+    isLikelyMongoObjectIdHex(effectiveId)
+      ? `/xoptions?portfolioId=${encodeURIComponent(portfolioIdHex)}&accountId=${encodeURIComponent(effectiveId)}`
+      : null;
 
   return (
     <div
@@ -101,6 +114,11 @@ export function PortfolioAccountManageBar({
           ))}
         </select>
       </label>
+      {buildStrategyHref ? (
+        <Link className="portfolio-account-manage-bar__build-strategy" href={buildStrategyHref}>
+          Build Strategy
+        </Link>
+      ) : null}
       <IconEditButton
         disabled={!effectiveId}
         label="Edit account"

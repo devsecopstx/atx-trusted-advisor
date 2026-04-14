@@ -22,7 +22,12 @@ import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-port
 import { PortfoliosWatchlistCompact } from "@/app/portfolios/portfolios-watchlist-compact";
 import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
 import { WatchlistConsole } from "@/app/watchlist/ui/watchlist-console";
+import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { formatUsd2, formatUsdWhole, type PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
+import {
+    dispatchWorkspaceAccountChanged,
+    writeStoredWorkspaceAccountId
+} from "@/lib/workspace-account-selection";
 import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
 export type PortfolioManageShellProps = {
@@ -65,6 +70,22 @@ export function PortfolioManageShell({
   const bumpWatchlistAside = useCallback(() => {
     setWatchlistAsideRefreshKey((k) => k + 1);
   }, []);
+
+  const setSelectedAccountHexSynced = useCallback(
+    (id: string) => {
+      setSelectedAccountHex(id);
+      if (
+        portfolioIdHex &&
+        isLikelyMongoObjectIdHex(portfolioIdHex) &&
+        id &&
+        isLikelyMongoObjectIdHex(id)
+      ) {
+        writeStoredWorkspaceAccountId(portfolioIdHex, id);
+        dispatchWorkspaceAccountChanged({ portfolioId: portfolioIdHex, accountId: id });
+      }
+    },
+    [portfolioIdHex]
+  );
 
   const resolvedSelectedHex = useMemo(() => {
     if (manageOptions.some((a) => a.id === selectedAccountHex)) return selectedAccountHex;
@@ -249,7 +270,7 @@ export function PortfolioManageShell({
       <PortfolioAccountsSection
         portfolioIdHex={portfolioIdHex}
         selectedAccountHex={resolvedSelectedHex}
-        onSelectedAccountHexChange={setSelectedAccountHex}
+        onSelectedAccountHexChange={setSelectedAccountHexSynced}
         manageOptions={manageOptions}
         rows={rows}
         totalAccounts={totalAccounts}
@@ -313,8 +334,9 @@ export function PortfolioManageShell({
           {topBand}
           <PortfolioAccountManageBar
             accounts={manageOptions}
+            portfolioIdHex={portfolioIdHex}
             selectedAccountId={resolvedSelectedHex}
-            onSelectedAccountIdChange={setSelectedAccountHex}
+            onSelectedAccountIdChange={setSelectedAccountHexSynced}
           />
           <PortfolioManageTabs
             activeTab={workspaceTab}

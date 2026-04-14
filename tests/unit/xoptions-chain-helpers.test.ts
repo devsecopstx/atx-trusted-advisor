@@ -45,12 +45,13 @@ describe("chainRowMoneynessClass", () => {
   it("marks ATM strike before ITM for calls", () => {
     expect(chainRowMoneynessClass(100, 105, "call", 100)).toBe("xoptions-contract-row--atm");
     expect(chainRowMoneynessClass(95, 105, "call", 100)).toBe("xoptions-contract-row--itm");
-    expect(chainRowMoneynessClass(110, 105, "call", 100)).toBe("");
+    expect(chainRowMoneynessClass(110, 105, "call", 100)).toBe("xoptions-contract-row--otm");
   });
 
   it("marks ATM for puts and ITM when strike above spot", () => {
     expect(chainRowMoneynessClass(100, 100, "put", 100)).toBe("xoptions-contract-row--atm");
     expect(chainRowMoneynessClass(110, 100, "put", 100)).toBe("xoptions-contract-row--itm");
+    expect(chainRowMoneynessClass(90, 100, "put", 100)).toBe("xoptions-contract-row--otm");
   });
 });
 

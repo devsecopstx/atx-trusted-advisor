@@ -1368,6 +1368,33 @@ button.xoptions-chain-cta.cta.cta-secondary:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+/* Choose contract — HNWI chain density & quote emphasis */
+.xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi {
+  font-size: 0.68rem;
+}
+
+.xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__th-pad,
+.xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__td-pad {
+  padding-top: 0.48rem;
+  padding-bottom: 0.48rem;
+  padding-left: 0.35rem;
+  padding-right: 0.45rem;
+}
+
+.xoptions-chain-table__quote-major {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.xoptions-chain-layout-toolbar summary {
+  list-style: none;
+}
+
+.xoptions-chain-layout-toolbar summary::-webkit-details-marker {
+  display: none;
+}
+
 .xoptions-chain-table__th-label {
   display: inline-flex;
   align-items: center;
@@ -1476,19 +1503,24 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
 }
 
 .xoptions-chain-table__select-btn {
-  padding: 0.18rem 0.45rem;
+  padding: 0.28rem 0.62rem;
   border-radius: var(--xf-radius-sm);
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
-  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
-  color: var(--xf-text-200);
-  font-size: 0.55rem;
-  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 38%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+  color: var(--xf-text-100);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.35;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-text-100) 6%, transparent);
   transition:
     opacity 0.12s ease,
     background 0.12s ease,
-    border-color 0.12s ease;
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.12s ease;
 }
 
 .xoptions-chain-table__row--interactive {
@@ -1500,13 +1532,15 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
 }
 
 .xoptions-chain-table__select-btn:hover {
-  background: color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
-  border-color: color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+  transform: translateY(-0.5px);
 }
 
 @media (hover: none) {
   .xoptions-chain-table__select-btn {
-    opacity: 0.55;
+    opacity: 0.72;
   }
 }
 
@@ -1514,12 +1548,12 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
   tbody
   tr.xoptions-chain-table__row--interactive:nth-child(even):not(.xoptions-contract-row--selected):not(
     .xoptions-contract-row--atm
-  ):not(.xoptions-contract-row--itm) {
+  ):not(.xoptions-contract-row--itm):not(.xoptions-contract-row--otm) {
   background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
 }
 
 .xoptions-chain-table--contract-chooser tbody tr.xoptions-chain-table__row--interactive:hover {
-  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--xf-text-100) 11%, transparent);
 }
 
 .xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected:hover {
@@ -2282,9 +2316,15 @@ html[data-xf-ui="soft"] .xoptions-contract-overlay__card {
   color: var(--xf-gain-green);
 }
 
-/* ATM: light “white” row; ITM: light grey (OTM uses default table background). */
+/* ATM: elevated band (institutional scan); ITM: green tint; OTM: cool neutral tint */
 .xoptions-contract-row--atm {
-  background: color-mix(in srgb, var(--xf-text-100) 96%, var(--xf-bg-900) 4%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--xf-gain-green) 8%, transparent) 0%,
+    color-mix(in srgb, var(--xf-text-100) 14%, transparent) 50%,
+    color-mix(in srgb, #a78bfa 12%, transparent) 100%
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #a78bfa 35%, transparent);
 }
 
 .xoptions-contract-row--atm td,
@@ -2302,10 +2342,15 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid {
   background: color-mix(in srgb, var(--xf-gain-green) 7%, transparent);
 }
 
+.xoptions-contract-row--otm:not(.xoptions-contract-row--atm):not(.xoptions-contract-row--itm) {
+  background: color-mix(in srgb, var(--xf-text-100) 4.5%, transparent);
+}
+
 .xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected {
-  border-left: 3px solid #8b5cf6;
-  outline: 1px solid color-mix(in srgb, var(--xf-text-100) 38%, transparent);
-  background: color-mix(in srgb, var(--xf-text-100) 11%, transparent);
+  border-left: 4px solid #8b5cf6;
+  outline: 1px solid color-mix(in srgb, #a78bfa 42%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #8b5cf6 28%, transparent);
 }
 
 .xoptions-contract__chain-foot {
@@ -2342,6 +2387,15 @@ html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
   border-radius: 2px;
   background: color-mix(in srgb, var(--xf-gain-green) 18%, transparent);
   border: 1px solid color-mix(in srgb, var(--xf-gain-green) 32%, transparent);
+}
+
+.xoptions-contract__otm-swatch {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
 }
 
 .xoptions-contract-payoff__empty--box {

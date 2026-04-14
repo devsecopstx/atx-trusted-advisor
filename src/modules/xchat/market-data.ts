@@ -7,6 +7,9 @@ export const MARKET_DATA_DISCLAIMER =
 export type MarketQuoteSnapshot = {
   symbol: string;
   currency?: string;
+  /** Yahoo `shortName` / `longName` when present on quote payload. */
+  shortName?: string;
+  longName?: string;
   price?: number;
   open?: number;
   dayHigh?: number;
@@ -15,6 +18,9 @@ export type MarketQuoteSnapshot = {
   change?: number;
   changePercent?: number;
   volume?: number;
+  /** Trailing 52-week range from Yahoo quote when available. */
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
   marketState?: string;
   asOf?: string;
   source: "yahoo-finance2";
@@ -50,6 +56,8 @@ export async function getYahooMarketQuote(input: {
   return {
     symbol,
     currency: toString(quote.currency),
+    shortName: toString(quote.shortName),
+    longName: toString(quote.longName),
     price: toNumber(quote.regularMarketPrice),
     open: toNumber(quote.regularMarketOpen),
     dayHigh: toNumber(quote.regularMarketDayHigh),
@@ -58,6 +66,8 @@ export async function getYahooMarketQuote(input: {
     change: toNumber(quote.regularMarketChange),
     changePercent: toNumber(quote.regularMarketChangePercent),
     volume: toNumber(quote.regularMarketVolume),
+    fiftyTwoWeekHigh: toNumber(quote.fiftyTwoWeekHigh),
+    fiftyTwoWeekLow: toNumber(quote.fiftyTwoWeekLow),
     marketState: toString(quote.marketState),
     asOf:
       regularMarketTime instanceof Date

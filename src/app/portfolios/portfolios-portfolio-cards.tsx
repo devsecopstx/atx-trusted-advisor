@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
+import {
+    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
+    XCHAT_PENDING_PROMPT_STORAGE_KEY,
+    XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME
+} from "@/lib/xchat/xchat-pending-prompt";
 
 import type { WorkspacePortfolioRow } from "./portfolios-dashboard-client";
 import { PortfoliosPortfolioCardItem } from "./portfolios-portfolio-card-item";
@@ -68,6 +73,26 @@ export function PortfoliosPortfolioCards({ initialRows, accountSlices }: Props) 
     [router]
   );
 
+  const askAdvisor = useCallback((row: WorkspacePortfolioRow) => {
+    try {
+      const label = row.name.trim() || "this";
+      const prompt = `Show my ${label} portfolio`;
+      sessionStorage.setItem(XCHAT_PENDING_PROMPT_STORAGE_KEY, prompt);
+      sessionStorage.setItem(
+        XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
+        XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME
+      );
+    } catch {
+      // ignore quota / private mode
+    }
+    const q = new URLSearchParams({
+      portfolioId: row.id,
+      rail: "xchat",
+      item: "composer"
+    });
+    router.push(`/xchat?${q.toString()}`);
+  }, [router]);
+
   if (initialRows.length === 0) {
     return (
       <p className="portfolios-workspace-card-muted text-sm text-[var(--xf-text-300)]">
@@ -85,6 +110,7 @@ export function PortfoliosPortfolioCards({ initialRows, accountSlices }: Props) 
               accountSlices={accountSlices}
               opening={openingId === row.id}
               row={row}
+              onAskAdvisor={askAdvisor}
               onOpen={openBook}
             />
           </li>
@@ -132,6 +158,7 @@ export function PortfoliosPortfolioCards({ initialRows, accountSlices }: Props) 
                 accountSlices={accountSlices}
                 opening={openingId === row.id}
                 row={row}
+                onAskAdvisor={askAdvisor}
                 onOpen={openBook}
               />
             </div>

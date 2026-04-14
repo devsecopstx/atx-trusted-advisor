@@ -5,6 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
+import {
+    buildXoptionsStrategyBuilderHref,
+    isValidXoptionsUnderlyingSymbol
+} from "@/lib/xoptions/xoptions-desk-deep-link";
 
 import type { PortfoliosWorkspaceDeskHints } from "./portfolios-workspace-client";
 
@@ -195,16 +199,29 @@ export function PortfoliosWatchlistCompact({
             Desk symbols
           </span>
           <div className="flex w-full flex-wrap gap-1">
-            {deskHints.watchlistPreviewSymbols.map((sym, i) => (
-              <span
-                key={`${sym}-${i}`}
-                className="inline-flex max-w-[13rem] items-center gap-1 truncate rounded border border-white/10 bg-[var(--xf-bg-800)] py-0.5 pl-1 pr-1.5 font-mono text-[0.62rem] font-semibold text-[var(--xf-text-200)]"
-                title={sym}
-              >
-                <PortfolioSymbolMark symbol={sym} size={18} />
-                <span className="min-w-0 truncate">{sym}</span>
-              </span>
-            ))}
+            {deskHints.watchlistPreviewSymbols.map((sym, i) => {
+              const xoHref =
+                portfolioId && isValidXoptionsUnderlyingSymbol(sym)
+                  ? buildXoptionsStrategyBuilderHref(portfolioId, sym)
+                  : null;
+              const inner = (
+                <>
+                  <PortfolioSymbolMark symbol={sym} size={18} />
+                  <span className="min-w-0 truncate">{sym}</span>
+                </>
+              );
+              const className =
+                "inline-flex max-w-[13rem] items-center gap-1 truncate rounded border border-white/10 bg-[var(--xf-bg-800)] py-0.5 pl-1 pr-1.5 font-mono text-[0.62rem] font-semibold text-[var(--xf-text-200)] transition-colors hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_40%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]";
+              return xoHref ? (
+                <Link key={`${sym}-${i}`} className={className} href={xoHref} title={`Open ${sym} in xOptions`}>
+                  {inner}
+                </Link>
+              ) : (
+                <span key={`${sym}-${i}`} className={className} title={sym}>
+                  {inner}
+                </span>
+              );
+            })}
           </div>
           {deskHints.watchlistSymbolCount > deskHints.watchlistPreviewSymbols.length ? (
             <p className="mb-0 mt-1 w-full text-[0.58rem] text-[var(--xf-text-500)]">
@@ -278,15 +295,38 @@ export function PortfoliosWatchlistCompact({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {rows.map((r) => {
+                  const xoHref =
+                    portfolioId && isValidXoptionsUnderlyingSymbol(r.symbol)
+                      ? buildXoptionsStrategyBuilderHref(portfolioId, r.symbol)
+                      : null;
+                  return (
                   <tr
                     key={`${r.symbol}-${r.contractType}-${r.strike}`}
                     className="border-t border-white/5 font-mono tabular-nums text-[var(--xf-text-100)]"
                   >
                     <td className="py-1 pr-1 align-middle">
-                      <PortfolioSymbolMark symbol={r.symbol} size={26} />
+                      {xoHref ? (
+                        <Link href={xoHref} title={`Open ${r.symbol} in xOptions`}>
+                          <PortfolioSymbolMark symbol={r.symbol} size={26} />
+                        </Link>
+                      ) : (
+                        <PortfolioSymbolMark symbol={r.symbol} size={26} />
+                      )}
                     </td>
-                    <td className="py-1 pr-2 align-middle font-semibold">{r.symbol}</td>
+                    <td className="py-1 pr-2 align-middle font-semibold">
+                      {xoHref ? (
+                        <Link
+                          className="text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] underline-offset-2 hover:underline"
+                          href={xoHref}
+                          title={`Open ${r.symbol} in xOptions`}
+                        >
+                          {r.symbol}
+                        </Link>
+                      ) : (
+                        r.symbol
+                      )}
+                    </td>
                     <td className="py-1 pr-2 align-middle text-[var(--xf-text-200)]">{formatSpotUsd(r.spot)}</td>
                     <td className="py-1 pr-2 align-middle text-[var(--xf-text-200)]">
                       {r.impliedVolatilityPercent.toFixed(0)}%
@@ -296,7 +336,8 @@ export function PortfoliosWatchlistCompact({
                       {r.contractType} {r.strike.toFixed(2)}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -26,7 +26,10 @@ import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-conversation-types";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
-import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
+import {
+    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
+    XCHAT_PENDING_PROMPT_STORAGE_KEY
+} from "@/lib/xchat/xchat-pending-prompt";
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
@@ -386,8 +389,10 @@ export function XchatConversation({
   const [collectionsScopeDegraded, setCollectionsScopeDegraded] = useState(false);
   const [personaPickerRows, setPersonaPickerRows] = useState<Array<{ _id: string; name: string }>>([]);
   const [personaListError, setPersonaListError] = useState<string | null>(null);
+  const [personaListFetched, setPersonaListFetched] = useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
   const [suggestedPersonaId, setSuggestedPersonaId] = useState<string | null>(null);
+  const [pendingPreferredPersonaName, setPendingPreferredPersonaName] = useState<string | null>(null);
   const [privacyPrefs, setPrivacyPrefs] = useState<XchatPrivacyPrefs | null>(() =>
     serverBootstrap
       ? {
@@ -549,17 +554,21 @@ export function XchatConversation({
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(XCHAT_PENDING_PROMPT_STORAGE_KEY);
-      if (!raw) {
-        return;
+      if (raw) {
+        sessionStorage.removeItem(XCHAT_PENDING_PROMPT_STORAGE_KEY);
+        setInput((prev) => {
+          if (prev.trim()) {
+            return prev;
+          }
+          pendingComposerFromHandoffRef.current = true;
+          return raw;
+        });
       }
-      sessionStorage.removeItem(XCHAT_PENDING_PROMPT_STORAGE_KEY);
-      setInput((prev) => {
-        if (prev.trim()) {
-          return prev;
-        }
-        pendingComposerFromHandoffRef.current = true;
-        return raw;
-      });
+      const personaName = sessionStorage.getItem(XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY)?.trim();
+      if (personaName) {
+        sessionStorage.removeItem(XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY);
+        setPendingPreferredPersonaName(personaName);
+      }
     } catch {
       // ignore quota / private mode
     }
@@ -770,9 +779,11 @@ export function XchatConversation({
     if (personaPickerLocked) {
       setPersonaPickerRows([]);
       setPersonaListError(null);
+      setPersonaListFetched(true);
       return;
     }
     let active = true;
+    setPersonaListFetched(false);
     async function loadPersonas() {
       setPersonaListError(null);
       try {
@@ -800,6 +811,10 @@ export function XchatConversation({
         if (active) {
           setPersonaListError("Could not load persona list");
         }
+      } finally {
+        if (active) {
+          setPersonaListFetched(true);
+        }
       }
     }
     void loadPersonas();
@@ -807,6 +822,28 @@ export function XchatConversation({
       active = false;
     };
   }, [includeSuperAgentInPersonaPicker, personaPickerLocked]);
+
+  useEffect(() => {
+    if (!pendingPreferredPersonaName) {
+      return;
+    }
+    if (personaPickerLocked) {
+      setPendingPreferredPersonaName(null);
+      return;
+    }
+    if (!personaListFetched) {
+      return;
+    }
+    const want = pendingPreferredPersonaName.trim().toLowerCase();
+    if (personaPickerRows.length > 0) {
+      const hit = personaPickerRows.find((p) => p.name.trim().toLowerCase() === want);
+      if (hit) {
+        userPickedPersonaRef.current = true;
+        setSelectedPersonaId(hit._id);
+      }
+    }
+    setPendingPreferredPersonaName(null);
+  }, [pendingPreferredPersonaName, personaPickerRows, personaPickerLocked, personaListFetched]);
 
   useEffect(() => {
     if (suggestedPersonaId && !userPickedPersonaRef.current) {

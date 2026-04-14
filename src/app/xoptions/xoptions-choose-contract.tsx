@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useSyncExternalStore,
+    type ReactNode
+} from "react";
 
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
 import { XoptionsGreekCalcExplainer } from "@/app/xoptions/xoptions-greek-calc-explainer";
@@ -13,6 +21,21 @@ import {
     makeOptionChainCacheKey,
     setCachedOptionChain
 } from "@/lib/xoptions/xoptions-chain-cache";
+import {
+    CHAIN_COLUMN_LABELS,
+    CHAIN_LAYOUT_STORAGE_KEY,
+    deriveStateFromSaved,
+    isChainGreekColumnId,
+    normalizeColumnOrder,
+    parseSavedLayout,
+    savedMatchesPreset,
+    serializeSavedLayout,
+    visibleOrderedColumnsFromSaved,
+    XOPTIONS_CHAIN_DATA_COLUMN_IDS,
+    type XoptionsChainDataColumnId,
+    type XoptionsChainLayoutPresetId,
+    type XoptionsChainSavedLayout
+} from "@/lib/xoptions/xoptions-chain-column-layout";
 import {
     chainHeatMixPercent,
     chainRowMoneynessClass,
@@ -31,7 +54,10 @@ import {
     isTaxEducationEnabled,
     subscribeXoptionsEducationPrefs
 } from "@/lib/xoptions/xoptions-education-preferences";
-import { resolveXoptionsExpirationForHorizon } from "@/lib/xoptions/xoptions-expiration-default";
+import {
+    partitionExpirationsForStrikeDatePicker,
+    resolveXoptionsExpirationForHorizon
+} from "@/lib/xoptions/xoptions-expiration-default";
 import {
     buildXoptionsOrderReview,
     formatXoptionsOrderReviewPlainText,
@@ -40,6 +66,8 @@ import {
 
 type ChainLeg = {
   last_quote: { bid: number; ask: number };
+  /** Last trade price per share when provided by chain payload; otherwise UI falls back to mid. */
+  premium?: number;
   open_interest?: number;
   volume?: number;
   /** Percentage, e.g. 35.5 = 35.5% */
@@ -236,6 +264,133 @@ function ChainSortHint() {
   );
 }
 
+const CHAIN_LAYOUT_PRESETS: { id: XoptionsChainLayoutPresetId; label: string }[] = [
+  { id: "default", label: "Default" },
+  { id: "greeks", label: "Greeks" },
+  { id: "liquidity", label: "Liquidity" },
+  { id: "advanced", label: "Advanced" }
+];
+
+function ChainColumnLayoutToolbar({
+  savedLayout,
+  onSavedLayoutChange
+}: {
+  savedLayout: XoptionsChainSavedLayout;
+  onSavedLayoutChange: (next: XoptionsChainSavedLayout) => void;
+}) {
+  const { order, hidden } = useMemo(() => deriveStateFromSaved(savedLayout), [savedLayout]);
+
+  const toggleColumn = (id: XoptionsChainDataColumnId, visible: boolean) => {
+    if (id === "strike" && !visible) {
+      return;
+    }
+    const nextHidden = new Set(hidden);
+    if (visible) {
+      nextHidden.delete(id);
+    } else {
+      nextHidden.add(id);
+    }
+    const shown = XOPTIONS_CHAIN_DATA_COLUMN_IDS.filter((c) => !nextHidden.has(c));
+    if (shown.length === 0) {
+      return;
+    }
+    onSavedLayoutChange({
+      kind: "custom",
+      order: normalizeColumnOrder(order),
+      hidden: XOPTIONS_CHAIN_DATA_COLUMN_IDS.filter((c) => nextHidden.has(c))
+    });
+  };
+
+  const reorder = (fromId: XoptionsChainDataColumnId, toId: XoptionsChainDataColumnId) => {
+    if (fromId === toId) {
+      return;
+    }
+    const o = [...order];
+    const fi = o.indexOf(fromId);
+    const ti = o.indexOf(toId);
+    if (fi < 0 || ti < 0) {
+      return;
+    }
+    const [item] = o.splice(fi, 1);
+    o.splice(ti, 0, item);
+    onSavedLayoutChange({
+      kind: "custom",
+      order: normalizeColumnOrder(o),
+      hidden: XOPTIONS_CHAIN_DATA_COLUMN_IDS.filter((c) => hidden.has(c))
+    });
+  };
+
+  return (
+    <details className="xoptions-chain-layout-toolbar group mb-2 rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] px-2 py-1.5">
+      <summary className="cursor-pointer select-none text-[0.65rem] font-semibold tracking-wide text-[var(--xf-text-300)] outline-none marker:text-[var(--xf-text-400)] [&::-webkit-details-marker]:hidden">
+        Columns & layouts
+      </summary>
+      <div className="mt-2 space-y-2 border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pt-2">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Layout presets">
+          {CHAIN_LAYOUT_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className={`rounded-md border px-2 py-1 text-[0.62rem] font-semibold transition-colors ${
+                savedMatchesPreset(savedLayout, p.id)
+                  ? "border-[color-mix(in_srgb,var(--xf-gain-green)_55%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] text-[var(--xf-text-100)]"
+                  : "border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-transparent text-[var(--xf-text-300)] hover:border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] hover:text-[var(--xf-text-200)]"
+              }`}
+              onClick={() => onSavedLayoutChange({ kind: "preset", preset: p.id })}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <p className="m-0 text-[0.58rem] leading-snug text-[var(--xf-text-500)]">
+          Drag rows to reorder. Presets and custom layouts are saved in this browser (
+          <span className="font-mono">{CHAIN_LAYOUT_STORAGE_KEY}</span>).
+        </p>
+        <ul className="m-0 max-h-48 list-none space-y-1 overflow-y-auto p-0">
+          {order.map((cid) => {
+            const meta = CHAIN_COLUMN_LABELS[cid];
+            const checked = !hidden.has(cid);
+            return (
+              <li
+                key={cid}
+                className="flex items-center gap-2 rounded border border-transparent px-1 py-0.5 hover:border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)]"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("application/x-xo-chain-col", cid);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const from = e.dataTransfer.getData("application/x-xo-chain-col") as XoptionsChainDataColumnId;
+                  if (from && XOPTIONS_CHAIN_DATA_COLUMN_IDS.includes(from)) {
+                    reorder(from, cid);
+                  }
+                }}
+              >
+                <span className="cursor-grab text-[0.55rem] text-[var(--xf-text-500)]" aria-hidden>
+                  ⋮⋮
+                </span>
+                <input
+                  type="checkbox"
+                  className="accent-[var(--xf-gain-green)]"
+                  checked={checked}
+                  disabled={cid === "strike"}
+                  onChange={(ev) => toggleColumn(cid, ev.target.checked)}
+                  aria-label={`Show ${meta.abbr} column`}
+                />
+                <span className="min-w-0 flex-1 text-[0.62rem] font-medium text-[var(--xf-text-200)]">
+                  {meta.abbr}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </details>
+  );
+}
+
 export function XoptionsChooseContract({
   symbol,
   weeks,
@@ -253,6 +408,8 @@ export function XoptionsChooseContract({
   const u = symbol.trim().toUpperCase();
 
   const [expirations, setExpirations] = useState<string[]>([]);
+  /** When `strike_dates`, expiration `<select>` lists weekly (4 wk) + monthly (3rd Fri, ~18 mo) only. */
+  const [expirationListMode, setExpirationListMode] = useState<"all" | "strike_dates">("all");
   const [expiration, setExpiration] = useState("");
   const [chain, setChain] = useState<ChainPayload | null>(null);
   const [loadingExp, setLoadingExp] = useState(false);
@@ -263,6 +420,10 @@ export function XoptionsChooseContract({
   const [showAllStrikes, setShowAllStrikes] = useState(false);
   /** Mobile-only: show Δ/Γ/Θ/Vega columns (desktop always shows). */
   const [mobileGreeksOpen, setMobileGreeksOpen] = useState(false);
+  const [chainLayoutSaved, setChainLayoutSaved] = useState<XoptionsChainSavedLayout>({
+    kind: "preset",
+    preset: "default"
+  });
   const [selectedStrike, setSelectedStrike] = useState<number | null>(null);
   const [limitPrice, setLimitPrice] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -293,6 +454,7 @@ export function XoptionsChooseContract({
 
   useEffect(() => {
     setExpiration("");
+    setExpirationListMode("all");
     setSelectedStrike(null);
     setLimitPrice("");
     setQuantity("");
@@ -300,6 +462,43 @@ export function XoptionsChooseContract({
     setShowAllStrikes(false);
     setError(null);
   }, [u]);
+
+  useEffect(() => {
+    const parsed = parseSavedLayout(
+      typeof window !== "undefined" ? window.localStorage.getItem(CHAIN_LAYOUT_STORAGE_KEY) : null
+    );
+    if (parsed) {
+      setChainLayoutSaved(parsed);
+    }
+  }, []);
+
+  const persistChainLayout = useCallback((next: XoptionsChainSavedLayout) => {
+    setChainLayoutSaved(next);
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.localStorage.setItem(CHAIN_LAYOUT_STORAGE_KEY, serializeSavedLayout(next));
+    } catch {
+      /* quota / private mode */
+    }
+  }, []);
+
+  const strikeDateBuckets = useMemo(
+    () => partitionExpirationsForStrikeDatePicker(expirations),
+    [expirations]
+  );
+
+  useEffect(() => {
+    if (expirationListMode !== "strike_dates") {
+      return;
+    }
+    const allowed = new Set([...strikeDateBuckets.weekly, ...strikeDateBuckets.monthly]);
+    const cur = expiration.slice(0, 10);
+    if (cur && !allowed.has(cur)) {
+      setExpiration("");
+    }
+  }, [expirationListMode, expiration, strikeDateBuckets]);
 
   useEffect(() => {
     if (!strategyStartBasis || strategyStartBasis.mode !== "stock") {
@@ -513,6 +712,22 @@ export function XoptionsChooseContract({
     return maxVolumeAndOpenInterestForSide(tableRowsForDisplay, side);
   }, [chain, tableRowsForDisplay, side]);
 
+  const visibleChainDataCols = useMemo(
+    () => visibleOrderedColumnsFromSaved(chainLayoutSaved),
+    [chainLayoutSaved]
+  );
+
+  const chainTableColSpan = visibleChainDataCols.length + 2;
+
+  const chainChooserThClass = (cid: XoptionsChainDataColumnId) =>
+    [
+      "xoptions-chain-table__th-pad",
+      isChainGreekColumnId(cid) ? "xoptions-chain-table__col-greek" : "",
+      cid === "strike" ? "" : "text-right"
+    ]
+      .filter(Boolean)
+      .join(" ");
+
   const truncated = showAllStrikes && baseRows.length > CHAIN_TABLE_MAX;
 
   const selectedRow = useMemo(() => {
@@ -648,7 +863,8 @@ export function XoptionsChooseContract({
   const overlayChecklist = (
     <ul className="xoptions-contract-overlay__list">
       <li className={expiration ? "xoptions-contract-overlay__li--done" : ""}>
-        Pick a horizon chip or an expiration date (chain loads after this)
+        Pick a horizon chip, use <strong>Choose strike dates</strong> for weekly/monthly expirations, or pick any
+        expiration (chain loads after this)
       </li>
       <li className={selectedStrike != null ? "xoptions-contract-overlay__li--done" : ""}>
         Select a strike price
@@ -698,23 +914,77 @@ export function XoptionsChooseContract({
           </div>
 
           <div className="xoptions-contract__control">
-            <label className="xoptions-contract__label" htmlFor="xo-contract-exp">
-              Expiration
-            </label>
+            <div className="mb-0.5 flex flex-wrap items-center justify-between gap-2">
+              <label className="xoptions-contract__label m-0" htmlFor="xo-contract-exp">
+                Expiration
+              </label>
+              {expirations.length > 0 && !loadingExp ? (
+                <button
+                  type="button"
+                  className="m-0 border-0 bg-transparent p-0 text-xs font-medium text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] underline-offset-2 hover:underline"
+                  onClick={() => setExpirationListMode((m) => (m === "all" ? "strike_dates" : "all"))}
+                >
+                  {expirationListMode === "all" ? "Choose strike dates" : "Show all expirations"}
+                </button>
+              ) : null}
+            </div>
             <select
               id="xo-contract-exp"
               className="crud-input xoptions-contract__input mt-0.5 w-full font-mono text-sm"
               value={expiration}
-              disabled={loadingExp || expirations.length === 0}
+              disabled={
+                loadingExp ||
+                expirations.length === 0 ||
+                (expirationListMode === "strike_dates" &&
+                  strikeDateBuckets.weekly.length === 0 &&
+                  strikeDateBuckets.monthly.length === 0)
+              }
               onChange={(e) => onExpirationSelectChange(e.target.value)}
             >
-              <option value="">{loadingExp ? "Loading…" : "Choose expiration to load chain"}</option>
-              {expirations.map((d) => (
-                <option key={d} value={d}>
-                  {formatExpirationLabel(d)}
-                </option>
-              ))}
+              <option value="">
+                {loadingExp
+                  ? "Loading…"
+                  : expirationListMode === "strike_dates"
+                    ? strikeDateBuckets.weekly.length === 0 && strikeDateBuckets.monthly.length === 0
+                      ? "No weekly/monthly expirations in range"
+                      : "Choose expiration to load chain"
+                    : "Choose expiration to load chain"}
+              </option>
+              {expirationListMode === "all"
+                ? expirations.map((d) => (
+                    <option key={d} value={d}>
+                      {formatExpirationLabel(d)}
+                    </option>
+                  ))
+                : (
+                    <>
+                      {strikeDateBuckets.weekly.length > 0 ? (
+                        <optgroup label="Weekly (next 4 weeks)">
+                          {strikeDateBuckets.weekly.map((d) => (
+                            <option key={d} value={d}>
+                              {formatExpirationLabel(d)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                      {strikeDateBuckets.monthly.length > 0 ? (
+                        <optgroup label="Monthly (through 18 months)">
+                          {strikeDateBuckets.monthly.map((d) => (
+                            <option key={d} value={d}>
+                              {formatExpirationLabel(d)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                    </>
+                  )}
             </select>
+            {expirationListMode === "strike_dates" ? (
+              <p className="xoptions-hint mt-1 text-xs text-[var(--xf-text-400)]">
+                Weekly = expirations within the next 4 weeks. Monthly = standard 3rd-Friday expirations up to ~18 months
+                out. Use <strong>Show all expirations</strong> for the full chain calendar.
+              </p>
+            ) : null}
             <a className="xoptions-contract__help" href="/xstrategybuilder/strategy-options">
               How to pick an expiration date
             </a>
@@ -890,89 +1160,39 @@ export function XoptionsChooseContract({
                       </button>
                     </div>
                     <div ref={chainTableScrollRef} className="xoptions-contract__table-scroll min-w-0">
+                    <ChainColumnLayoutToolbar
+                      savedLayout={chainLayoutSaved}
+                      onSavedLayoutChange={persistChainLayout}
+                    />
                     <table
-                      className={`xoptions-chain-table xoptions-chain-table--compact xoptions-chain-table--contract-chooser w-full min-w-[56rem] border-collapse text-left text-[0.62rem] ${mobileGreeksOpen ? "xoptions-chain-table--greeks-mobile-open" : ""}`}
+                      className={`xoptions-chain-table xoptions-chain-table--compact xoptions-chain-table--contract-chooser xoptions-chain-table--hnwi w-full border-collapse text-left ${mobileGreeksOpen ? "xoptions-chain-table--greeks-mobile-open" : ""}`}
+                      style={{
+                        minWidth: `${Math.max(44, 10 + visibleChainDataCols.length * 3.35)}rem`
+                      }}
                     >
                       <thead>
                         <tr className="xoptions-chain-table__head">
                           <th className="xoptions-chain-table__th-pad w-8" scope="col" />
-                          <th className="xoptions-chain-table__th-pad" scope="col" title="Strike price">
-                            <span className="xoptions-chain-table__th-label">
-                              Strike <ChainSortHint />
-                            </span>
-                          </th>
-                          <th className="xoptions-chain-table__th-pad" scope="col" title="Best bid per share">
-                            <span className="xoptions-chain-table__th-label">
-                              Bid <ChainSortHint />
-                            </span>
-                          </th>
-                          <th className="xoptions-chain-table__th-pad" scope="col" title="Best ask per share">
-                            <span className="xoptions-chain-table__th-label">
-                              Ask <ChainSortHint />
-                            </span>
-                          </th>
-                          <th className="xoptions-chain-table__th-pad" scope="col" title="Midpoint (bid + ask) / 2">
-                            <span className="xoptions-chain-table__th-label">
-                              Mid <ChainSortHint />
-                            </span>
-                          </th>
-                          <th className="xoptions-chain-table__th-pad" scope="col" title="Breakeven at expiration using bid/ask mid">
-                            <span className="xoptions-chain-table__th-label">
-                              BE <ChainSortHint />
-                            </span>
-                          </th>
-                          <th className="xoptions-chain-table__th-pad" scope="col" title="Implied volatility (annualized)">
-                            <span className="xoptions-chain-table__th-label">
-                              IV% <ChainSortHint />
-                            </span>
-                          </th>
-                          <th className="xoptions-chain-table__th-pad text-right" scope="col" title="Contract volume (today)">
-                            <span className="xoptions-chain-table__th-label xoptions-chain-table__th-label--end">
-                              Vol <ChainSortHint />
-                            </span>
-                          </th>
-                          <th className="xoptions-chain-table__th-pad text-right" scope="col" title="Open interest">
-                            <span className="xoptions-chain-table__th-label xoptions-chain-table__th-label--end">
-                              OI <ChainSortHint />
-                            </span>
-                          </th>
-                          <th
-                            className="xoptions-chain-table__th-pad xoptions-chain-table__col-greek"
-                            scope="col"
-                            title="Delta: how much the option price changes per $1 move in the stock."
-                          >
-                            <span className="xoptions-chain-table__th-label">
-                              Δ <ChainSortHint />
-                            </span>
-                          </th>
-                          <th
-                            className="xoptions-chain-table__th-pad xoptions-chain-table__col-greek"
-                            scope="col"
-                            title="Gamma: how fast delta changes as the stock moves."
-                          >
-                            <span className="xoptions-chain-table__th-label">
-                              Γ <ChainSortHint />
-                            </span>
-                          </th>
-                          <th
-                            className="xoptions-chain-table__th-pad xoptions-chain-table__col-greek"
-                            scope="col"
-                            title="Theta: estimated daily time decay in dollars per share."
-                          >
-                            <span className="xoptions-chain-table__th-label">
-                              Θ/day <ChainSortHint />
-                            </span>
-                          </th>
-                          <th
-                            className="xoptions-chain-table__th-pad xoptions-chain-table__col-greek"
-                            scope="col"
-                            title="Vega: sensitivity per one percentage-point change in implied volatility."
-                          >
-                            <span className="xoptions-chain-table__th-label">
-                              Vega <ChainSortHint />
-                            </span>
-                          </th>
-                          <th className="xoptions-chain-table__th-pad w-16 text-right" scope="col" aria-label="Row action" />
+                          {visibleChainDataCols.map((cid) => {
+                            const meta = CHAIN_COLUMN_LABELS[cid];
+                            const labelClass =
+                              cid === "strike"
+                                ? "xoptions-chain-table__th-label"
+                                : "xoptions-chain-table__th-label xoptions-chain-table__th-label--end";
+                            return (
+                              <th
+                                key={cid}
+                                className={chainChooserThClass(cid)}
+                                scope="col"
+                                title={meta.title}
+                              >
+                                <span className={labelClass}>
+                                  {meta.abbr} <ChainSortHint />
+                                </span>
+                              </th>
+                            );
+                          })}
+                          <th className="xoptions-chain-table__th-pad w-[4.5rem] text-right" scope="col" aria-label="Row action" />
                         </tr>
                       </thead>
                       <tbody>
@@ -987,7 +1207,10 @@ export function XoptionsChooseContract({
                                 className="xoptions-chain-table__row"
                                 data-xo-strike={row.strike}
                               >
-                                <td colSpan={14} className="xoptions-chain-table__td-pad xoptions-chain-table__empty">
+                                <td
+                                  colSpan={chainTableColSpan}
+                                  className="xoptions-chain-table__td-pad xoptions-chain-table__empty"
+                                >
                                   {row.strike} — no quote
                                 </td>
                               </tr>
@@ -996,6 +1219,8 @@ export function XoptionsChooseContract({
                           const bid = leg.last_quote.bid;
                           const ask = leg.last_quote.ask;
                           const mid = (bid + ask) / 2;
+                          const lastPx =
+                            leg.premium != null && Number.isFinite(leg.premium) ? leg.premium : mid;
                           const spreadAbs = ask - bid;
                           const be = breakevenLong(side, row.strike, mid);
                           const selected = selectedStrike === row.strike;
@@ -1017,6 +1242,14 @@ export function XoptionsChooseContract({
                             oiMix > 0
                               ? { background: `color-mix(in srgb, var(--xf-gain-green) ${oiMix}%, transparent)` }
                               : undefined;
+                          const greekCell = (cid: XoptionsChainDataColumnId, node: ReactNode) => (
+                            <td
+                              key={cid}
+                              className={`xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle text-right font-semibold`}
+                            >
+                              {node}
+                            </td>
+                          );
                           return (
                             <tr
                               key={row.strike}
@@ -1034,68 +1267,130 @@ export function XoptionsChooseContract({
                                   aria-label={`Strike ${row.strike}`}
                                 />
                               </td>
-                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__strike-cell align-middle">
-                                <span className="xoptions-chain-table__strike-val font-mono tabular-nums">
-                                  {row.strike}
-                                </span>
-                                {isAtm ? (
-                                  <span className="xoptions-chain-table__atm-badge">ATM</span>
-                                ) : null}
-                              </td>
-                              <td className="xoptions-chain-table__td-pad align-middle">
-                                <div className="flex flex-col gap-0.5">
-                                  <button
-                                    type="button"
-                                    className="xoptions-contract__bid xoptions-contract__bid--emphasis font-mono tabular-nums text-left"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedStrike(row.strike);
-                                      syncLimitFromBid(row.strike);
-                                    }}
-                                  >
-                                    ${bid.toFixed(2)}
-                                  </button>
-                                  <span className="xoptions-chain-table__spread-hint font-mono tabular-nums">
-                                    {spreadAbs.toFixed(2)} spread
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="xoptions-chain-table__td-pad xoptions-contract__ask-cell font-mono tabular-nums align-middle">
-                                ${ask.toFixed(2)}
-                              </td>
-                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__mid-cell font-mono tabular-nums align-middle">
-                                ${mid.toFixed(2)}
-                              </td>
-                              <td className="xoptions-chain-table__td-pad font-mono tabular-nums align-middle">
-                                ${be.toFixed(2)}
-                              </td>
-                              <td className="xoptions-chain-table__td-pad font-mono tabular-nums align-middle">
-                                {ivDisplay}
-                              </td>
-                              <td
-                                className="xoptions-chain-table__td-pad xoptions-chain-table__heat-cell font-mono tabular-nums text-right align-middle"
-                                style={volCellStyle}
-                              >
-                                {vol.toLocaleString()}
-                              </td>
-                              <td
-                                className="xoptions-chain-table__td-pad xoptions-chain-table__heat-cell font-mono tabular-nums text-right align-middle"
-                                style={oiCellStyle}
-                              >
-                                {oiVal.toLocaleString()}
-                              </td>
-                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle">
-                                {formatGreek(g?.delta, 3)}
-                              </td>
-                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle">
-                                {formatGreek(g?.gamma, 4)}
-                              </td>
-                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle">
-                                {formatGreek(g?.theta_per_day, 3)}
-                              </td>
-                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle">
-                                {formatGreek(g?.vega_per_one_percent_iv, 3)}
-                              </td>
+                              {visibleChainDataCols.map((cid) => {
+                                if (cid === "strike") {
+                                  return (
+                                    <td
+                                      key={cid}
+                                      className="xoptions-chain-table__td-pad xoptions-chain-table__strike-cell align-middle"
+                                    >
+                                      <span className="xoptions-chain-table__strike-val font-mono tabular-nums">
+                                        {row.strike}
+                                      </span>
+                                      {isAtm ? (
+                                        <span className="xoptions-chain-table__atm-badge">ATM</span>
+                                      ) : null}
+                                    </td>
+                                  );
+                                }
+                                if (cid === "bid") {
+                                  return (
+                                    <td key={cid} className="xoptions-chain-table__td-pad align-middle text-right">
+                                      <div className="flex flex-col items-end gap-0.5">
+                                        <button
+                                          type="button"
+                                          className="xoptions-contract__bid xoptions-contract__bid--emphasis xoptions-chain-table__quote-major font-mono tabular-nums text-right"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedStrike(row.strike);
+                                            syncLimitFromBid(row.strike);
+                                          }}
+                                        >
+                                          ${bid.toFixed(2)}
+                                        </button>
+                                        <span className="xoptions-chain-table__spread-hint font-mono tabular-nums">
+                                          {spreadAbs.toFixed(2)} spread
+                                        </span>
+                                      </div>
+                                    </td>
+                                  );
+                                }
+                                if (cid === "ask") {
+                                  return (
+                                    <td
+                                      key={cid}
+                                      className="xoptions-chain-table__td-pad xoptions-contract__ask-cell xoptions-chain-table__quote-major font-mono tabular-nums align-middle text-right font-semibold"
+                                    >
+                                      ${ask.toFixed(2)}
+                                    </td>
+                                  );
+                                }
+                                if (cid === "mid") {
+                                  return (
+                                    <td
+                                      key={cid}
+                                      className="xoptions-chain-table__td-pad xoptions-chain-table__mid-cell xoptions-chain-table__quote-major font-mono tabular-nums align-middle text-right font-semibold"
+                                    >
+                                      ${mid.toFixed(2)}
+                                    </td>
+                                  );
+                                }
+                                if (cid === "last") {
+                                  return (
+                                    <td
+                                      key={cid}
+                                      className="xoptions-chain-table__td-pad xoptions-chain-table__quote-major font-mono tabular-nums align-middle text-right font-semibold"
+                                    >
+                                      ${lastPx.toFixed(2)}
+                                    </td>
+                                  );
+                                }
+                                if (cid === "be") {
+                                  return (
+                                    <td
+                                      key={cid}
+                                      className="xoptions-chain-table__td-pad font-mono tabular-nums align-middle text-right font-semibold"
+                                    >
+                                      ${be.toFixed(2)}
+                                    </td>
+                                  );
+                                }
+                                if (cid === "iv") {
+                                  return (
+                                    <td
+                                      key={cid}
+                                      className="xoptions-chain-table__td-pad font-mono tabular-nums align-middle text-right font-semibold"
+                                    >
+                                      {ivDisplay}
+                                    </td>
+                                  );
+                                }
+                                if (cid === "volume") {
+                                  return (
+                                    <td
+                                      key={cid}
+                                      className="xoptions-chain-table__td-pad xoptions-chain-table__heat-cell font-mono tabular-nums text-right align-middle font-semibold"
+                                      style={volCellStyle}
+                                    >
+                                      {vol.toLocaleString()}
+                                    </td>
+                                  );
+                                }
+                                if (cid === "oi") {
+                                  return (
+                                    <td
+                                      key={cid}
+                                      className="xoptions-chain-table__td-pad xoptions-chain-table__heat-cell font-mono tabular-nums text-right align-middle font-semibold"
+                                      style={oiCellStyle}
+                                    >
+                                      {oiVal.toLocaleString()}
+                                    </td>
+                                  );
+                                }
+                                if (cid === "delta") {
+                                  return greekCell(cid, formatGreek(g?.delta, 3));
+                                }
+                                if (cid === "gamma") {
+                                  return greekCell(cid, formatGreek(g?.gamma, 4));
+                                }
+                                if (cid === "theta") {
+                                  return greekCell(cid, formatGreek(g?.theta_per_day, 3));
+                                }
+                                if (cid === "vega") {
+                                  return greekCell(cid, formatGreek(g?.vega_per_one_percent_iv, 3));
+                                }
+                                return null;
+                              })}
                               <td className="xoptions-chain-table__select-cell xoptions-chain-table__td-pad text-right align-middle">
                                 <button
                                   type="button"
@@ -1130,6 +1425,9 @@ export function XoptionsChooseContract({
                       </span>
                       <span className="inline-flex items-center gap-1">
                         <span className="xoptions-contract__itm-swatch" aria-hidden /> ITM
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="xoptions-contract__otm-swatch" aria-hidden /> OTM
                       </span>
                     </span>
                   </p>

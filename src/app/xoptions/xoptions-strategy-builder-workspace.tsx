@@ -1,10 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+    Suspense,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useState,
+    useSyncExternalStore
+} from "react";
 
+import { isLikelyMongoObjectIdHex, normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import {
+    dispatchWorkspaceAccountChanged,
+    writeStoredWorkspaceAccountId
+} from "@/lib/workspace-account-selection";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
+import { isValidXoptionsUnderlyingSymbol, normalizeXoptionsUnderlyingSymbol } from "@/lib/xoptions/xoptions-desk-deep-link";
 
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { outlookIconClassForSlug, OutlookIconFor } from "@/app/ui/outlook-icons";
@@ -127,6 +141,13 @@ const STEPS = [
 /** Written when the user enters a symbol; read on `/portfolios` for "Resume". */
 const PORTFOLIOS_LAST_XOPTIONS_SYMBOL_KEY = "xf_portfolios_last_xoptions_symbol_v1";
 
+function readXoptionsUrlSearchParams(): URLSearchParams {
+  if (typeof window === "undefined") {
+    return new URLSearchParams();
+  }
+  return new URLSearchParams(window.location.search);
+}
+
 function priceAtPctMove(last: number, pct: number): number {
   return last * (1 + pct / 100);
 }
@@ -237,6 +258,9 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [factorWeights, setFactorWeights] = useState(buildDefaultFactorWeights);
 
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchParamsKey = searchParams.toString();
   const showStrategyBuilderJobs = useSyncExternalStore(
     subscribeXoptionsStrategyBuilderVisibility,
     isXoptionsStrategyBuilderVisible,
@@ -400,9 +424,60 @@ export function XoptionsStrategyBuilderWorkspace() {
     }
   }, []);
 
+  /** Prefer `window.location` — `useSearchParams()` can be empty on first paint for dynamic client-only chunks. */
+  const urlBootstrapKey = useMemo(() => {
+    const q = readXoptionsUrlSearchParams();
+    return `${normalizeMongoObjectIdParam(q.get("portfolioId") ?? "")}|${normalizeMongoObjectIdParam(q.get("accountId") ?? "")}|${(q.get("symbol") ?? "").trim().toUpperCase()}`;
+  }, [pathname, searchParamsKey]);
+
+  useLayoutEffect(() => {
+    const q = readXoptionsUrlSearchParams();
+    const symRaw = normalizeXoptionsUnderlyingSymbol(q.get("symbol") ?? "");
+    if (symRaw && isValidXoptionsUnderlyingSymbol(symRaw)) {
+      setSymbol(symRaw);
+    }
+  }, [pathname, searchParamsKey]);
+
   useEffect(() => {
-    void loadWorkspace();
-  }, [loadWorkspace]);
+    let cancelled = false;
+    void (async () => {
+      const q = readXoptionsUrlSearchParams();
+      const symRaw = normalizeXoptionsUnderlyingSymbol(q.get("symbol") ?? "");
+      if (symRaw && isValidXoptionsUnderlyingSymbol(symRaw)) {
+        setSymbol(symRaw);
+      }
+      const portfolioKey = normalizeMongoObjectIdParam(q.get("portfolioId") ?? "");
+      if (portfolioKey && isLikelyMongoObjectIdHex(portfolioKey)) {
+        await fetch("/api/user/workspace-portfolio", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ portfolioId: portfolioKey })
+        }).catch(() => {});
+      }
+      const accountKey = normalizeMongoObjectIdParam(q.get("accountId") ?? "");
+      const accountIdForLoad =
+        accountKey && isLikelyMongoObjectIdHex(accountKey) ? accountKey : null;
+      if (
+        portfolioKey &&
+        isLikelyMongoObjectIdHex(portfolioKey) &&
+        accountIdForLoad
+      ) {
+        writeStoredWorkspaceAccountId(portfolioKey, accountIdForLoad);
+        dispatchWorkspaceAccountChanged({
+          portfolioId: portfolioKey,
+          accountId: accountIdForLoad
+        });
+      }
+      if (cancelled) {
+        return;
+      }
+      await loadWorkspace(accountIdForLoad);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadWorkspace, urlBootstrapKey]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");

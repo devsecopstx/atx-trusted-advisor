@@ -41,7 +41,13 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 | **Bull call debit spread** | [bull-call-debit-spread.md](../bull-call-debit-spread/bull-call-debit-spread.md) | Moderate (capped risk / reward) | Bullish (defined-risk leverage) | `xfinance-strategy-bull-call-debit-spread` | [`skill-bull-call-debit-spread`](../../../../.cursor/skills/skill-bull-call-debit-spread/SKILL.md) |
 | **Iron condor** | [iron-condor.md](../iron-condor/iron-condor.md) | Moderate (defined risk if range holds) | Neutral / range-bound premium | `xfinance-strategy-iron-condor` | [`skill-iron-condor`](../../../../.cursor/skills/skill-iron-condor/SKILL.md) |
 | **Calendar spread** | [calendar-spread.md](../calendar-spread/calendar-spread.md) | Moderate (volatility differential) | Neutral–directional (term structure / theta vs. long leg) | `xfinance-strategy-calendar-spread` | [`skill-calendar-spread`](../../../../.cursor/skills/skill-calendar-spread/SKILL.md) |
+| **Broken wing butterfly** | [broken-wing-butterfly.md](../broken-wing-butterfly/broken-wing-butterfly.md) | Moderate (defined risk when closed) | Neutral–directional (skewed wing) | `xfinance-strategy-broken-wing-butterfly` | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Jade lizard** | [jade-lizard.md](../jade-lizard/jade-lizard.md) | Moderate | Neutral–bullish (put risk; call side capped by spread) | `xfinance-strategy-jade-lizard` | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Ratio spread** | [ratio-spread.md](../ratio-spread/ratio-spread.md) | Aggressive | Directional / event vol (structure-dependent) | `xfinance-strategy-ratio-spread` | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **ZEBRA** | [zebra.md](../zebra/zebra.md) | Aggressive | Directional (bullish or bearish variant) | `xfinance-strategy-zebra` | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
 | **LEAP + CC overlay** | [leap-call-cc-overlay.md](../leap-call-cc-overlay/leap-call-cc-overlay.md) | Aggressive (leverage, decay) | Bullish aggressive (LEAP + overlay income) | `xfinance-strategy-leap-call-cc-overlay` | [`skill-leap-call-cc-overlay`](../../../../.cursor/skills/skill-leap-call-cc-overlay/SKILL.md) |
+
+*The four strategies above link to [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) until dedicated `skill-*` playbooks ship.*
 
 Shared principles (not a single strategy): [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md).
 

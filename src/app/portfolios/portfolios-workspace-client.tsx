@@ -107,7 +107,10 @@ export function PortfoliosWorkspaceClient({
                   deskHints={workspaceDeskHints}
                   portfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
                 />
-                <PortfoliosMiniHoldingsGlance topHoldings={topHoldings} />
+                <PortfoliosMiniHoldingsGlance
+                  deskPortfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
+                  topHoldings={topHoldings}
+                />
                 <PortfoliosMarketsNewsCard />
               </section>
             </div>

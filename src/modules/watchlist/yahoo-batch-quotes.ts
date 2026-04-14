@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 
 import {
-  getRedisClient,
-  getRedisQuoteCacheTtlSeconds
+    getRedisClient,
+    getRedisQuoteCacheTtlSeconds
 } from "@/lib/redis-client";
 import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
@@ -44,11 +44,11 @@ export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuot
     if (Array.isArray(quotes)) {
       for (const q of quotes) {
         if (isRecord(q) && "symbol" in q) {
-          results.push(normalizeQuote(q));
+          results.push(normalizeYahooBatchQuoteRow(q));
         }
       }
     } else if (isRecord(quotes)) {
-      results.push(normalizeQuote(quotes));
+      results.push(normalizeYahooBatchQuoteRow(quotes));
     }
 
     if (redis && results.length > 0) {
@@ -72,11 +72,18 @@ export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuot
   }
 }
 
-function normalizeQuote(raw: Record<string, unknown>): MarketQuoteSnapshot {
+/** Normalizes a single Yahoo `quote()` row — exported for unit tests. */
+export function normalizeYahooBatchQuoteRow(raw: Record<string, unknown>): MarketQuoteSnapshot {
   const price = typeof raw.regularMarketPrice === "number" ? raw.regularMarketPrice : undefined;
+  const toStr = (k: string): string | undefined =>
+    typeof raw[k] === "string" && String(raw[k]).trim() ? String(raw[k]).trim() : undefined;
+  const toNum = (k: string): number | undefined =>
+    typeof raw[k] === "number" && Number.isFinite(raw[k] as number) ? (raw[k] as number) : undefined;
 
   return {
     symbol: String(raw.symbol || "").toUpperCase(),
+    shortName: toStr("shortName"),
+    longName: toStr("longName"),
     price,
     open: typeof raw.regularMarketOpen === "number" ? raw.regularMarketOpen : undefined,
     dayHigh: typeof raw.regularMarketDayHigh === "number" ? raw.regularMarketDayHigh : undefined,
@@ -85,6 +92,8 @@ function normalizeQuote(raw: Record<string, unknown>): MarketQuoteSnapshot {
     change: typeof raw.regularMarketChange === "number" ? raw.regularMarketChange : undefined,
     changePercent: typeof raw.regularMarketChangePercent === "number" ? raw.regularMarketChangePercent : undefined,
     volume: typeof raw.regularMarketVolume === "number" ? raw.regularMarketVolume : undefined,
+    fiftyTwoWeekHigh: toNum("fiftyTwoWeekHigh"),
+    fiftyTwoWeekLow: toNum("fiftyTwoWeekLow"),
     asOf: new Date().toISOString(),
     source: "yahoo-finance2",
     disclaimer: "Market data from Yahoo Finance — delayed.",

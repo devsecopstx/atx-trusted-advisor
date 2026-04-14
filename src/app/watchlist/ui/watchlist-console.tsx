@@ -187,7 +187,7 @@ function buildDirtyAddEntries(baseline: WatchlistRow[], draft: WatchlistRow[]): 
   return out;
 }
 
-type WatchlistSortColumn = "instrument" | "targetEntry";
+type WatchlistSortColumn = "instrument" | "targetEntry" | "iv" | "oi";
 
 /** Whole-dollar notional: round(100× live quote) for sort and display. */
 function getTargetEntryNumeric(row: WatchlistRow): number | null {
@@ -207,6 +207,56 @@ function formatTargetEntryCell(row: WatchlistRow): string {
   return "—";
 }
 
+function getIvSortValue(row: WatchlistRow): number | null {
+  const iv = row.chainGlance?.impliedVolatilityPercent;
+  return iv != null && Number.isFinite(iv) ? iv : null;
+}
+
+function getOiSortValue(row: WatchlistRow): number | null {
+  const oi = row.chainGlance?.openInterest;
+  return oi != null && Number.isFinite(oi) ? oi : null;
+}
+
+function tieSymbol(a: WatchlistRow, b: WatchlistRow): number {
+  return a.symbol.localeCompare(b.symbol, undefined, { sensitivity: "base" });
+}
+
+/** Sort numeric column; nulls last; tie-break by symbol. */
+function compareNumericColumn(
+  mult: number,
+  va: number | null,
+  vb: number | null,
+  a: WatchlistRow,
+  b: WatchlistRow
+): number {
+  if (va === null && vb === null) {
+    return tieSymbol(a, b);
+  }
+  if (va === null) {
+    return 1;
+  }
+  if (vb === null) {
+    return -1;
+  }
+  const cmp = va - vb;
+  if (cmp !== 0) {
+    return mult * cmp;
+  }
+  return tieSymbol(a, b);
+}
+
+function truncateCompanyBlurb(name: string, maxLen: number): string {
+  const t = name.trim();
+  if (t.length <= maxLen) {
+    return t;
+  }
+  return `${t.slice(0, Math.max(0, maxLen - 1))}…`;
+}
+
+function formatUsd2(n: number): string {
+  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+}
+
 function applyWatchlistSort(
   list: WatchlistRow[],
   sortColumn: WatchlistSortColumn,
@@ -216,24 +266,18 @@ function applyWatchlistSort(
   const out = [...list];
   out.sort((a, b) => {
     if (sortColumn === "instrument") {
-      return mult * a.symbol.localeCompare(b.symbol, undefined, { sensitivity: "base" });
+      return mult * tieSymbol(a, b);
     }
-    const va = getTargetEntryNumeric(a);
-    const vb = getTargetEntryNumeric(b);
-    if (va === null && vb === null) {
-      return mult * a.symbol.localeCompare(b.symbol, undefined, { sensitivity: "base" });
+    if (sortColumn === "targetEntry") {
+      return compareNumericColumn(mult, getTargetEntryNumeric(a), getTargetEntryNumeric(b), a, b);
     }
-    if (va === null) {
-      return 1;
+    if (sortColumn === "iv") {
+      return compareNumericColumn(mult, getIvSortValue(a), getIvSortValue(b), a, b);
     }
-    if (vb === null) {
-      return -1;
+    if (sortColumn === "oi") {
+      return compareNumericColumn(mult, getOiSortValue(a), getOiSortValue(b), a, b);
     }
-    const cmp = va - vb;
-    if (cmp !== 0) {
-      return mult * cmp;
-    }
-    return a.symbol.localeCompare(b.symbol, undefined, { sensitivity: "base" });
+    return tieSymbol(a, b);
   });
   return out;
 }
@@ -273,7 +317,7 @@ function ivBadgeParts(row: WatchlistRow): { label: string; pct: number | null } 
   return { label: `${iv.toFixed(1)}% (${pct}th)`, pct };
 }
 
-const WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX = 52;
+const WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX = 64;
 const WATCHLIST_VIRTUAL_MIN_ROWS = 10;
 
 type WatchlistRowTrProps = {
@@ -335,6 +379,15 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   const te = getTargetEntryNumeric(row);
   const riskPct = formatPortfolioRiskPct(te, portfolioTotalUsd);
   const lastPrim = formatLastUpdateCell(row);
+  const companyFull = row.quote?.companyName?.trim() ?? "";
+  const companyBlurb = companyFull ? truncateCompanyBlurb(companyFull, 52) : "";
+  const wkLo = row.quote?.fiftyTwoWeekLow;
+  const wkHi = row.quote?.fiftyTwoWeekHigh;
+  const has52w =
+    typeof wkLo === "number" &&
+    Number.isFinite(wkLo) &&
+    typeof wkHi === "number" &&
+    Number.isFinite(wkHi);
   const lastTitle =
     lastPrim !== "—"
       ? undefined
@@ -349,25 +402,40 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
       </td>
       <td>
         <div className="xf-watchlist-sym-cell">
-          <span className="xf-watchlist-sym-cell__label">{row.symbol}</span>
-          {symbolInPortfolioStocks ? (
-            <span className="xf-watchlist-in-book" title="Held in this portfolio book">
-              ✓
-            </span>
+          <div className="xf-watchlist-sym-cell__row">
+            <span className="xf-watchlist-sym-cell__label">{row.symbol}</span>
+            {symbolInPortfolioStocks ? (
+              <span className="xf-watchlist-in-book" title="Held in this portfolio book">
+                ✓
+              </span>
+            ) : null}
+            <a
+              className="xf-watchlist-sym-cell__ext"
+              href={`https://finance.yahoo.com/quote/${encodeURIComponent(row.symbol)}`}
+              rel="noreferrer"
+              target="_blank"
+              title={`${row.symbol} on Yahoo Finance`}
+            >
+              <ExternalLinkIcon className="crud-icon" aria-hidden />
+              <span className="sr-only">Yahoo Finance ({row.symbol})</span>
+            </a>
+          </div>
+          {companyBlurb ? (
+            <div className="xf-watchlist-sym-cell__company" title={companyFull}>
+              {companyBlurb}
+            </div>
           ) : null}
-          <a
-            className="xf-watchlist-sym-cell__ext"
-            href={`https://finance.yahoo.com/quote/${encodeURIComponent(row.symbol)}`}
-            rel="noreferrer"
-            target="_blank"
-            title={`${row.symbol} on Yahoo Finance`}
-          >
-            <ExternalLinkIcon className="crud-icon" aria-hidden />
-            <span className="sr-only">Yahoo Finance ({row.symbol})</span>
-          </a>
         </div>
       </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatSpotCell(row)}</td>
+      <td className="xf-watchlist-table-mono xf-watchlist-spot-cell">
+        <div className="xf-watchlist-spot-cell__px">{formatSpotCell(row)}</div>
+        {has52w ? (
+          <div className="xf-watchlist-spot-cell__52w" title="52-week range (trailing)">
+            <span className="xf-watchlist-spot-cell__52w-label">52w</span>{" "}
+            {formatUsd2(wkLo)} – {formatUsd2(wkHi)}
+          </div>
+        ) : null}
+      </td>
       <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
         <span className="xf-watchlist-iv-wrap">
           {ivParts.pct != null && ivParts.pct >= 94 ? (
@@ -1703,8 +1771,48 @@ ${bodyRows}
                         </button>
                       </th>
                       <th scope="col">Spot</th>
-                      <th scope="col">IV</th>
-                      <th scope="col">OI</th>
+                      <th
+                        aria-sort={
+                          sort.column === "iv"
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        scope="col"
+                      >
+                        <button
+                          className="xf-watchlist-sort-btn"
+                          type="button"
+                          onClick={() => toggleWatchlistSort("iv")}
+                        >
+                          IV
+                          <span aria-hidden className="xf-watchlist-sort-indicator">
+                            {sort.column === "iv" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                          </span>
+                        </button>
+                      </th>
+                      <th
+                        aria-sort={
+                          sort.column === "oi"
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        scope="col"
+                      >
+                        <button
+                          className="xf-watchlist-sort-btn"
+                          type="button"
+                          onClick={() => toggleWatchlistSort("oi")}
+                        >
+                          OI
+                          <span aria-hidden className="xf-watchlist-sort-indicator">
+                            {sort.column === "oi" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                          </span>
+                        </button>
+                      </th>
                       <th scope="col">Leg</th>
                       <th
                         aria-sort={
