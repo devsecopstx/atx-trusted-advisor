@@ -172,10 +172,10 @@ class PortfolioNestedResourceService(
             ?: return null
 
         val brokerLocked = existing["brokerImportLocked"] as? Boolean == true
-        if (brokerLocked && (body.containsKey("type") || body.containsKey("extAccountId"))) {
+        if (brokerLocked && body.containsKey("type")) {
             throw ResponseStatusException(
                 HttpStatus.CONFLICT,
-                "Broker and account ref are locked after first import. Ask an admin to override.",
+                "Broker type is locked after a CSV import. Account ref can still be updated.",
             )
         }
 
@@ -205,7 +205,7 @@ class PortfolioNestedResourceService(
             changed = true
         }
 
-        if (body.containsKey("extAccountId") && !brokerLocked) {
+        if (body.containsKey("extAccountId")) {
             val ref = (body["extAccountId"] as? String)?.trim() ?: ""
             if (ref.isNotEmpty()) {
                 upd.set("extAccountId", ref.take(200))

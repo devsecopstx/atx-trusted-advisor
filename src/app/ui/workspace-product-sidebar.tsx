@@ -417,9 +417,9 @@ export function WorkspaceProductSidebar({
         <SidebarLink href="/xchat?rail=xchat&item=examples" nested title="Open xChat examples panel">
           Examples
         </SidebarLink>
-        <SidebarLink href="/xchat?rail=xchat&item=history" nested title="Open xChat history panel">
+        <SidebarLink href="/xchat?rail=xchat&item=history" nested title="Conversations">
           <ChatHistoryRailIcon className="portfolios-workspace-sidebar__glyph" />
-          <span>Chat history</span>
+          <span>Conversations</span>
         </SidebarLink>
       </div>
     </RouteSyncedDetails>
@@ -445,7 +445,7 @@ export function WorkspaceProductSidebar({
           {
             key: "xchat-history",
             href: "/xchat?rail=xchat&item=history",
-            label: "Chat history",
+            label: "Conversations",
             isActive: xchatHistoryDeepLinkActive,
             icon: (
               <ChatHistoryRailIcon className="h-[1.15rem] w-[1.15rem] shrink-0 text-[var(--xf-text-200)]" />

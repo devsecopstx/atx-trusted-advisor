@@ -1468,7 +1468,7 @@ export function XchatConversation({
                   <RailDisclosure
                     defaultOpen={initialXchatItem === "history"}
                     icon={<ChatHistoryRailIcon className="app-user-rail-disclosure__glyph" />}
-                    title="Chat history"
+                    title="Conversations"
                   >
                     <div className="xchat-sidebar-privacy-row">
                       <span className="xchat-sidebar-privacy-row__label">Keep your last 10 messages?</span>

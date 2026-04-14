@@ -49,4 +49,4 @@ Swagger UI:
 ## Notes
 - This service uses ShedLock + Mongo to coordinate schedules across nodes. Each scheduled method acquires a distributed lock in Mongo before running.
 - For long-running work, producers publish to Pub/Sub. A consumer (pull subscriber) handles retries and DLQ routing. Initial implementation provides stubs and health indicators.
-- Observability: Micrometer metrics (GMP scrape) + OTEL tracing (OTLP).
+- Observability: Micrometer metrics (GMP scrape) + OTEL tracing (OTLP). Outbound **`RestTemplate`** calls use a custom **`ClientRequestObservationConvention`** so Prometheus **`http.client.requests`** `uri` tags stay low-cardinality (xAI collection/file ids templated); see **`ClientHttpMetricsConventionConfig`**. Yahoo chain traffic uses **`java.net.http.HttpClient`** and is not in that meter.

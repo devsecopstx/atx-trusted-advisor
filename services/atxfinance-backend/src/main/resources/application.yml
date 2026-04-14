@@ -32,6 +32,10 @@ management:
     export:
       prometheus:
         enabled: true
+    web:
+      client:
+        # Safety net if a new outbound URL shape bypasses templating (default is often 100).
+        max-uri-tags: 200
 
 shedlock:
   defaults:

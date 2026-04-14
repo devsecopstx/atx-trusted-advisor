@@ -3934,7 +3934,7 @@ export type UpdatePortfolioAccountInput = {
   type?: AccountType;
   riskProfile?: "conservative" | "balanced" | "growth" | null;
   outlook?: AccountOutlook | null;
-  /** When true (admin paths), `extAccountId` / `type` may be updated even if `brokerImportLocked`. */
+  /** When true (admin paths), `type` may be updated even if `brokerImportLocked`. `extAccountId` is always patchable for the account owner. */
   bypassBrokerImportLock?: boolean;
 };
 
@@ -3966,15 +3966,15 @@ export async function updatePortfolioAccountForUser(
   if (typeof input.cashBalance === "number" && Number.isFinite(input.cashBalance) && input.cashBalance >= 0) {
     $set.cashBalance = input.cashBalance;
   }
-  const refBrokerLocked = Boolean(existing.brokerImportLocked) && !input.bypassBrokerImportLock;
-  if (!refBrokerLocked && typeof input.extAccountId === "string") {
+  const brokerTypeLocked = Boolean(existing.brokerImportLocked) && !input.bypassBrokerImportLock;
+  if (typeof input.extAccountId === "string") {
     const ref = input.extAccountId.trim();
     if (ref) {
       $set.extAccountId = ref;
     }
   }
   if (
-    !refBrokerLocked &&
+    !brokerTypeLocked &&
     input.type !== undefined &&
     (accountTypeValues as readonly AccountType[]).includes(input.type)
   ) {
@@ -4020,7 +4020,7 @@ export async function updatePortfolioAccountForUser(
 }
 
 /**
- * Marks an account as tied to a broker CSV import (locks ref + broker type for app-user PATCH).
+ * Marks an account as tied to a broker CSV import (locks broker `type` for app-user PATCH; `extAccountId` remains editable).
  */
 export async function markPortfolioAccountBrokerImportLocked(input: {
   userId: string;

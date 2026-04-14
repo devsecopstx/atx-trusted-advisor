@@ -270,30 +270,30 @@ function AccountWorkspaceInner({
                   {account.extAccountRefMasked}
                 </div>
                 <p id="acct-ext-ref-hint-locked" className="portfolio-edit-field__hint">
-                  {brokerLocked
-                    ? "Broker import is linked to this ref — it cannot be changed here."
-                    : "Stored broker ref (last four shown). Use the field below only when replacing the full broker account id."}
+                  {brokerLocked && refSaved
+                    ? "CSV import is tied to this account. Broker type is locked below. Only the last characters of the ref are shown above for privacy."
+                    : brokerLocked && !refSaved
+                      ? "Broker type is locked after import. Set or correct the broker account id used for CSV matching."
+                      : "Stored broker ref (last four shown above). Edit below to replace the full id."}
                 </p>
-                {!brokerLocked && refSaved ? (
-                  <>
-                    <label className="sr-only" htmlFor="acct-ext-ref-replace">
-                      Replace account ref (optional)
-                    </label>
-                    <input
-                      id="acct-ext-ref-replace"
-                      className="crud-input portfolio-edit-account-card__input font-mono text-xs mt-2"
-                      value={refReplaceDraft}
-                      onChange={(e) => setRefReplaceDraft(e.target.value)}
-                      autoComplete="off"
-                      placeholder="New account ref (optional)"
-                      maxLength={200}
-                      aria-describedby="acct-ext-ref-replace-hint"
-                    />
-                    <p id="acct-ext-ref-replace-hint" className="portfolio-edit-field__hint">
-                      Leave blank to keep the current ref. Saving overwrites the stored value when you enter text here.
-                    </p>
-                  </>
-                ) : null}
+                <label className="portfolio-edit-field__label mt-3" htmlFor="acct-ext-ref-replace">
+                  Update account ref
+                </label>
+                <input
+                  id="acct-ext-ref-replace"
+                  className="crud-input portfolio-edit-account-card__input font-mono text-xs"
+                  value={refReplaceDraft}
+                  onChange={(e) => setRefReplaceDraft(e.target.value)}
+                  autoComplete="off"
+                  placeholder={refSaved ? "New broker account id (optional)" : "Broker account id"}
+                  maxLength={200}
+                  aria-describedby="acct-ext-ref-replace-hint"
+                />
+                <p id="acct-ext-ref-replace-hint" className="portfolio-edit-field__hint">
+                  {refSaved
+                    ? "Leave blank to keep the current ref. Enter text and click Update account to save a new id."
+                    : "Enter your broker account identifier, then click Update account."}
+                </p>
               </>
             )}
           </div>

@@ -86,12 +86,12 @@ export async function PATCH(
   if (!existing?._id) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
-  if (
-    existing.brokerImportLocked &&
-    (parsed.data.extAccountId !== undefined || parsed.data.type !== undefined)
-  ) {
+  if (existing.brokerImportLocked && parsed.data.type !== undefined) {
     return NextResponse.json(
-      { error: "Broker and account ref are locked after first import. Ask an admin to override." },
+      {
+        error:
+          "Broker type is locked after a CSV import. You can still update the account ref from Account details."
+      },
       { status: 409 }
     );
   }

@@ -114,7 +114,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 
 - `GET /api/portfolios/default`
 - `GET /api/portfolios/:portfolioId/accounts`
-- `PATCH /api/portfolios/:portfolioId/accounts/:accountId` — name, cash, desk fields, custodian **`type`**; **`extAccountId`** may be updated when **`brokerImportLocked`** is false (still **409** if import-locked and body touches ref or type)
+- `PATCH /api/portfolios/:portfolioId/accounts/:accountId` — name, cash, desk fields, **`extAccountId`** (always when valid); custodian **`type`** — **409** if **`brokerImportLocked`** and body includes **`type`** (ref remains editable after import)
 - `GET /api/user/watchlist` — canonical **user-global** watchlist (session); optional `?quotes=1`
 - `PATCH /api/user/watchlist` — same store as portfolio-scoped routes below
 - `GET /api/portfolios/:portfolioId/watchlist` — shim: requires owned `portfolioId`, reads/writes user watchlist. Query **`quotes=1`** adds per-symbol quotes; add **`chainGlance=1`** (only with **`quotes=1`**) to attach **`chainGlance`** `{ contractType, strike, impliedVolatilityPercent, openInterest }` per row from nearest-expiry options (Yahoo)

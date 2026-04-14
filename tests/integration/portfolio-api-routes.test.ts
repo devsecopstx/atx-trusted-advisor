@@ -528,7 +528,7 @@ describe("portfolio API routes", () => {
     );
   });
 
-  it("returns 409 when app user attempts to change ref or broker on a broker-import-locked account", async () => {
+  it("allows app user to change extAccountId on a broker-import-locked account", async () => {
     repositoryMocks.updatePortfolioAccountForUser.mockClear();
     const lockedRow = [
       {
@@ -551,6 +551,45 @@ describe("portfolio API routes", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ extAccountId: "new-ref" })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extAccountId: "new-ref"
+      })
+    );
+  });
+
+  it("returns 409 when app user attempts to change broker type on a broker-import-locked account", async () => {
+    repositoryMocks.updatePortfolioAccountForUser.mockClear();
+    const lockedRow = [
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+        userId: "507f1f77bcf86cd799439011",
+        portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+        name: "defaultaccount",
+        type: "fidelity",
+        extAccountId: "ext_account_xref",
+        brokerImportLocked: true,
+        cashBalance: 25_000,
+        isDefault: true,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-01T00:00:00.000Z")
+      }
+    ];
+    repositoryMocks.listPortfolioAccounts.mockResolvedValue(lockedRow);
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "schwab" })
       }),
       {
         params: Promise.resolve({
