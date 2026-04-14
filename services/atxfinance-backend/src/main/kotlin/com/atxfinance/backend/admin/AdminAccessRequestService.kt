@@ -3,6 +3,7 @@ package com.atxfinance.backend.admin
 import com.atxfinance.backend.audit.AuditEventService
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.identity.CoreUserService
+import com.atxfinance.backend.identity.CredentialInviteService
 import com.atxfinance.backend.portfolio.BsonJson
 import com.atxfinance.backend.portfolio.DefaultPortfolioProvisionService
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
@@ -25,6 +26,7 @@ class AdminAccessRequestService(
     private val coreUserService: CoreUserService,
     private val auditEventService: AuditEventService,
     private val defaultPortfolioProvisionService: DefaultPortfolioProvisionService,
+    private val credentialInviteService: CredentialInviteService,
 ) {
     private val actionableStatuses = setOf("new", "triaged", "pending")
     private val allStatuses = setOf("new", "triaged", "pending", "approved", "rejected", "expired")
@@ -290,6 +292,7 @@ class AdminAccessRequestService(
                         "userEmail" to email,
                     ),
                 )
+                credentialInviteService.maybeIssueInviteAndSendEmail(ObjectId(targetUserId), email)
             }
         }
         return ReviewResult.Ok(documentToAccessRequestMap(reviewed))

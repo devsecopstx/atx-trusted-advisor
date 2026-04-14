@@ -33,11 +33,21 @@ const bootstrapMocks = vi.hoisted(() => ({
   enqueueAccessRequestBootstrap: vi.fn()
 }));
 
+const emailCredentialMocks = vi.hoisted(() => ({
+  issueCredentialInviteForUser: vi.fn().mockResolvedValue({ rawToken: "test-invite-token" })
+}));
+
+const sendCredentialEmailMocks = vi.hoisted(() => ({
+  sendAccessApprovedPasswordInviteEmail: vi.fn().mockResolvedValue(true)
+}));
+
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
+vi.mock("@/modules/identity/email-credentials-repository", () => emailCredentialMocks);
+vi.mock("@/lib/send-email-credential-messages", () => sendCredentialEmailMocks);
 
 import {
     DELETE as deleteAccessRequest,

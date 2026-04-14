@@ -88,6 +88,26 @@ async function createIdentityIndexes(): Promise<void> {
           partialFilterExpression: { isDefault: true },
           name: "uniq_default_tenant"
         }
+      ),
+    db
+      .collection<CoreUser>(collections.users)
+      .createIndex(
+        { credentialInviteTokenHash: 1 },
+        {
+          unique: true,
+          sparse: true,
+          name: "uniq_core_user_credential_invite_token"
+        }
+      ),
+    db
+      .collection<CoreUser>(collections.users)
+      .createIndex(
+        { passwordResetTokenHash: 1 },
+        {
+          unique: true,
+          sparse: true,
+          name: "uniq_core_user_password_reset_token"
+        }
       )
   ]);
 }

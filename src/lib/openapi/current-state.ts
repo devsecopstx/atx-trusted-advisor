@@ -50,6 +50,26 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
     tag: "auth"
   },
+  {
+    path: "/api/auth/email/login",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "auth"
+  },
+  {
+    path: "/api/auth/email/complete-invite",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "auth"
+  },
+  {
+    path: "/api/auth/email/forgot-password",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "auth"
+  },
+  {
+    path: "/api/auth/email/reset-password",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "auth"
+  },
   { path: "/api/auth/x/login", operations: [{ method: "GET", auth: "public" }], tag: "auth" },
   {
     path: "/api/auth/x/callback",

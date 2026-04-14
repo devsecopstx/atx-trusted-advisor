@@ -40,6 +40,19 @@ export type CoreUser = {
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;
+  /**
+   * Scrypt password hash (`hashPassword` in `password-crypto.ts`).
+   * OAuth-only users omit this until they complete email invite or set password.
+   */
+  passwordHash?: string;
+  /** Set when the user completes an approval invite or password reset (credentials path). */
+  credentialsVerifiedAt?: Date;
+  /** SHA-256 hex of one-time post-approval setup token (see `hashAuthLookupToken`). */
+  credentialInviteTokenHash?: string;
+  credentialInviteExpiresAt?: Date;
+  /** SHA-256 hex of password-reset token. */
+  passwordResetTokenHash?: string;
+  passwordResetExpiresAt?: Date;
   /** Observed on last successful OAuth / link-email completion (admin visibility). */
   lastLoginIp?: string;
   /** e.g. CF-IPCountry when present. */

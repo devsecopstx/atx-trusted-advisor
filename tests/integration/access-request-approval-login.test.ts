@@ -80,6 +80,14 @@ const envMocks = vi.hoisted(() => ({
   getAtxfinanceBackendOrigin: vi.fn(() => undefined)
 }));
 
+const emailCredentialMocks = vi.hoisted(() => ({
+  issueCredentialInviteForUser: vi.fn().mockResolvedValue({ rawToken: "test-invite-token" })
+}));
+
+const sendCredentialEmailMocks = vi.hoisted(() => ({
+  sendAccessApprovedPasswordInviteEmail: vi.fn().mockResolvedValue(true)
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
@@ -89,6 +97,8 @@ vi.mock("@/lib/env", () => envMocks);
 vi.mock("@/modules/identity/login-audit", () => ({
   appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
 }));
+vi.mock("@/modules/identity/email-credentials-repository", () => emailCredentialMocks);
+vi.mock("@/lib/send-email-credential-messages", () => sendCredentialEmailMocks);
 
 import { PATCH as patchAccessRequest } from "@/app/api/admin/access-requests/[requestId]/route";
 import { GET as getAccessRequests } from "@/app/api/admin/access-requests/route";

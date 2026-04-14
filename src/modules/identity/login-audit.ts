@@ -4,7 +4,7 @@ import { getDb } from "@/lib/mongodb";
 
 const COLLECTION = "audit_login" as const;
 
-export type LoginAuditProvider = "x_oauth" | "google_oauth" | "link_email";
+export type LoginAuditProvider = "x_oauth" | "google_oauth" | "link_email" | "email_password";
 
 export type LoginAuditRecord = {
   _id?: ObjectId;

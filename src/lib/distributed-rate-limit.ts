@@ -52,7 +52,11 @@ export type BffRouteRateLimitPolicyKey =
   | "positions_create"
   | "positions_delete"
   | "admin_audit_list"
-  | "admin_login_audit_list";
+  | "admin_login_audit_list"
+  | "auth_email_login"
+  | "auth_email_forgot"
+  | "auth_email_complete_invite"
+  | "auth_email_reset";
 
 const BFF_ROUTE_POLICY_CLASS_MAP: Record<BffRouteRateLimitPolicyKey, RouteRateLimitClass> = {
   strategy_jobs_list: "standard",
@@ -68,7 +72,11 @@ const BFF_ROUTE_POLICY_CLASS_MAP: Record<BffRouteRateLimitPolicyKey, RouteRateLi
   positions_create: "strict",
   positions_delete: "strict",
   admin_audit_list: "strict",
-  admin_login_audit_list: "strict"
+  admin_login_audit_list: "strict",
+  auth_email_login: "strict",
+  auth_email_forgot: "strict",
+  auth_email_complete_invite: "strict",
+  auth_email_reset: "strict"
 };
 
 function clampPositiveInt(value: number, fallback: number): number {

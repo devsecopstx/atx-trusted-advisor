@@ -164,7 +164,12 @@ const envSchema = z.object({
   /** Often same as `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; mounted as a separate secret alias. */
   STRIPE_PUBLIC_KEY: optionalNonEmptyString,
   /** Server-only Stripe secret (`sk_…`); Checkout — never expose to the client. */
-  STRIPE_SECRET_KEY: optionalNonEmptyString
+  STRIPE_SECRET_KEY: optionalNonEmptyString,
+  /**
+   * Optional absolute origin for auth invite/reset links in email (`https://app.example.com`, no trailing slash).
+   * When unset, handlers use the incoming request origin.
+   */
+  PUBLIC_APP_BASE_URL: optionalUrl
 });
 
 export const REQUIRED_RUNTIME_ENV_VARS = [

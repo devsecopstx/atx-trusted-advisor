@@ -15,6 +15,11 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `GET /api/auth/x/login`
 - `GET /api/auth/x/callback`
 - `POST /api/auth/link-email`
+- `POST /api/auth/email/login` — email + password; sets session when `core_users.passwordHash` matches and `canUserLogin`
+- `POST /api/auth/email/complete-invite` — body `token`, `password` (post-approval invite from email)
+- `POST /api/auth/email/forgot-password` — body `email` (always **200** `{ ok: true }` when rate limit allows)
+- `POST /api/auth/email/reset-password` — body `token`, `password`
+- **Product pages (App Router):** **`/login`** (OAuth + email/password), **`/login/set-password`**, **`/login/forgot-password`**, **`/login/reset-password`** — see **`atx-docs/guides/auth-and-access.md`**
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 
@@ -37,7 +42,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 
 - **Plan / role / tenant only:** **`requestedPlan`**, **`requestedRole`** (`global_admin` \| `advisor` \| `operator` \| `viewer`), and/or **`targetTenantId`** (24-char hex, or **`""`** to clear **`tenantId`** on the row). Audits **`updated_plan`**, **`updated_role`**, **`assigned_tenant`** as applicable.
 
-- **`status: "approved"`:** Requires **`requestedRole`**, **`requestedPlan`**, and non-empty **`targetTenantId`** in the **same** request; after persisting updates the row must have **`tenantId`** or **400** `access_request_tenant_required`. Provisioning + **`upsertTenantMembership`** use that tenant (no platform-default resolve on approve). Optional **`reviewNote`**.
+- **`status: "approved"`:** Requires **`requestedRole`**, **`requestedPlan`**, and non-empty **`targetTenantId`** in the **same** request; after persisting updates the row must have **`tenantId`** or **400** `access_request_tenant_required`. Provisioning + **`upsertTenantMembership`** use that tenant (no platform-default resolve on approve). Optional **`reviewNote`**. Users without **`passwordHash`** get a credential-invite token + desk email (set-password link); **Next** runs xAI user-bootstrap after invite; **Spring** **`CredentialInviteService`** when this route is BFF-proxied — **`PUBLIC_APP_BASE_URL`** + SMTP on the service that sends.
 
 - **`status: "rejected"`:** Optional **`reviewNote`**; no tenant/plan/role requirement beyond the usual payload rule above.
 

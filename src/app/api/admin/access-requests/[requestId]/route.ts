@@ -5,6 +5,7 @@ import { z } from "zod";
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminAccessRequestsRequestToBackend } from "@/lib/backend-bff";
+import { sendAccessApprovedPasswordInviteEmail } from "@/lib/send-email-credential-messages";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import { enqueueAccessRequestBootstrap } from "@/modules/core-admin/access-request-bootstrap";
@@ -21,6 +22,7 @@ import {
     ACTIONABLE_ACCESS_REQUEST_STATUSES,
     type AccessRequest
 } from "@/modules/core-admin/types";
+import { issueCredentialInviteForUser } from "@/modules/identity/email-credentials-repository";
 import {
     addRoleToCoreUser,
     assertCanAddUserToTenant,
@@ -355,18 +357,73 @@ async function handleUpdate(request: Request, context: RouteContext) {
         }
       });
     } else {
-      await enqueueAccessRequestBootstrap({
-        requestId,
-        userId: existing.userId,
-        userEmail: approvedUser.email,
-        tenantId: applicantPortfolioTenantId!,
-        requestedPlan: effectivePlan,
-        actor: {
-          userId: session.userId,
-          email: session.email,
-          username: session.username
+      // Credential invite first: independent of xAI per-user collection bootstrap (quota errors there must not block password setup).
+      if (
+        approvedUserObjectId &&
+        (!approvedUser.passwordHash || approvedUser.passwordHash.length === 0)
+      ) {
+        const issued = await issueCredentialInviteForUser(approvedUserObjectId);
+        if (issued) {
+          const sent = await sendAccessApprovedPasswordInviteEmail({
+            request,
+            to: approvedUser.email,
+            rawToken: issued.rawToken
+          });
+          if (!sent) {
+            console.warn(
+              "[access-request/approve] credential invite email not sent (desk SMTP off or failure)",
+              { userId: approvedUserObjectId.toHexString() }
+            );
+            await createAuditEvent({
+              entityType: "access_request",
+              entityId: requestId,
+              action: "credential_invite_email_failed",
+              actor: {
+                userId: session.userId,
+                email: session.email,
+                username: session.username
+              },
+              details: {
+                userId: existing.userId,
+                reason: "desk_smtp_off_or_send_failed"
+              }
+            });
+          }
         }
-      });
+      }
+      try {
+        await enqueueAccessRequestBootstrap({
+          requestId,
+          userId: existing.userId,
+          userEmail: approvedUser.email,
+          tenantId: applicantPortfolioTenantId!,
+          requestedPlan: effectivePlan,
+          actor: {
+            userId: session.userId,
+            email: session.email,
+            username: session.username
+          }
+        });
+      } catch (bootstrapEnqueueError) {
+        console.error("[access-request/approve] bootstrap enqueue failed", bootstrapEnqueueError);
+        await createAuditEvent({
+          entityType: "access_request",
+          entityId: requestId,
+          action: "bootstrap_enqueue_failed",
+          actor: {
+            userId: session.userId,
+            email: session.email,
+            username: session.username
+          },
+          details: {
+            userId: existing.userId,
+            reason:
+              bootstrapEnqueueError instanceof Error
+                ? bootstrapEnqueueError.message.slice(0, 500)
+                : "unknown"
+          }
+        });
+      }
     }
   }
 

@@ -8,7 +8,7 @@ Canonical proxied routes live in `src/lib/bff-proxy-routes.ts` (see `tests/smoke
 |------|--------|
 | Self-service `POST /api/access-requests` | Audit + optional Slack (`SlackWebhookService`). |
 | `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` | Read-only admin probes. |
-| **`/api/admin/access-requests` (collection + by id)** | `AdminAccessRequestsController`: list/create/review/delete. Async xAI user-bootstrap after approve still runs only when approval is handled on **Next** (proxy off); JVM records audit (`bootstrap_deferred`, etc.). |
+| **`/api/admin/access-requests` (collection + by id)** | `AdminAccessRequestsController`: list/create/review/delete. On approve, JVM **`CredentialInviteService`** issues password-invite Mongo fields + desk email when `PUBLIC_APP_BASE_URL` + SMTP are mounted on Spring. Async xAI user-bootstrap (`runAccessRequestBootstrap`) still runs only when approval is handled on **Next** (BFF proxy off for that request path or local); JVM records `bootstrap_deferred`. |
 
 ## Shipped on Kotlin + BFF — **PR 3 (tasks migration)**
 
