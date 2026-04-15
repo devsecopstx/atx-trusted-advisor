@@ -508,6 +508,36 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "401": json401Session()
     }
   },
+  "POST /api/internal/scheduler/execute-task": {
+    summary: "Execute one Mongo-defined scheduled task on Next (JVM delegate)",
+    description:
+      "Server-to-server only. Spring `NextSchedulerExecuteClient` calls this so admin scheduled jobs run on the Next task-runner (Yahoo watchlist refresh, scanners, etc.). Authenticate with header `X-Atx-Scheduler-Secret` equal to `ATX_SCHEDULER_INTERNAL_SECRET` (same value on JVM and Next; min 24 chars). Not cookie session auth.",
+    parameters: [
+      {
+        name: "X-Atx-Scheduler-Secret",
+        in: "header",
+        required: true,
+        description: "Shared secret; must match `ATX_SCHEDULER_INTERNAL_SECRET`.",
+        schema: { type: "string", minLength: 24 }
+      }
+    ],
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("SchedulerInternalExecuteTaskRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Run finished (check `status` in payload).", "SchedulerInternalExecuteTaskResponseEnvelope"),
+      "400": jsonResponse("Invalid JSON or body validation.", "ValidationErrorResponse"),
+      "401": jsonResponse("Missing or invalid scheduler secret.", "ErrorResponse"),
+      "404": jsonResponse("Task id not found.", "ErrorResponse"),
+      "503": jsonResponse("Next has no `ATX_SCHEDULER_INTERNAL_SECRET` configured.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
   "GET /api/recommendations": {
     summary: "List recommendations for the signed-in user",
     description:
@@ -1035,6 +1065,35 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     properties: {
       error: { type: "string" },
       details: { type: "object", additionalProperties: true }
+    }
+  },
+  SchedulerInternalExecuteTaskRequest: {
+    type: "object",
+    required: ["taskId"],
+    properties: {
+      taskId: { type: "string", minLength: 1, description: "Mongo `admin_scheduled_tasks` document id (24-char hex)." },
+      triggeredBy: {
+        type: "string",
+        minLength: 1,
+        maxLength: 200,
+        description: "Optional audit label (e.g. `system-scheduler` or `scheduler:ops@…`)."
+      }
+    }
+  },
+  SchedulerInternalExecuteTaskData: {
+    type: "object",
+    required: ["runId", "status"],
+    properties: {
+      runId: { type: "string", description: "Hex string of `admin_task_runs` insert id." },
+      status: { type: "string", description: "Task runner terminal or in-progress status." },
+      output: { type: "object", additionalProperties: true, description: "Structured runner output when present." }
+    }
+  },
+  SchedulerInternalExecuteTaskResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: { $ref: "#/components/schemas/SchedulerInternalExecuteTaskData" }
     }
   },
   ConflictErrorResponse: {

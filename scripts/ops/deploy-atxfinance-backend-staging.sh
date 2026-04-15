@@ -22,6 +22,17 @@ docker build --platform linux/amd64 -f "${ROOT}/Dockerfile.backend" -t "${IMAGE}
 echo "==> docker push ${IMAGE}"
 docker push "${IMAGE}"
 
+SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest"
+if gcloud secrets describe REDIS_URL --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},REDIS_URL=REDIS_URL:latest"
+  echo "==> Binding REDIS_URL secret (present in project)"
+fi
+if gcloud secrets describe ATX_SCHEDULER_INTERNAL_SECRET --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe ATX_SCHEDULER_NEXT_BASE_URL --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},ATX_SCHEDULER_INTERNAL_SECRET=ATX_SCHEDULER_INTERNAL_SECRET:latest,ATX_SCHEDULER_NEXT_BASE_URL=ATX_SCHEDULER_NEXT_BASE_URL:latest"
+  echo "==> Binding scheduler delegate secrets (JVM → Next execute-task)"
+fi
+
 echo "==> Cloud Run deploy ${SERVICE}"
 gcloud run deploy "${SERVICE}" \
   --project="${PROJECT}" \
@@ -34,7 +45,7 @@ gcloud run deploy "${SERVICE}" \
   --memory=1Gi \
   --min-instances=0 \
   --max-instances=5 \
-  --set-secrets="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest" \
+  --set-secrets="${SECRETS}" \
   --quiet
 
 URL="$(gcloud run services describe "${SERVICE}" --project="${PROJECT}" --region="${REGION}" --format='value(status.url)')"

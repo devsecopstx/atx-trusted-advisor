@@ -23,8 +23,8 @@ Allowed categories ("type") today:
 - `compliance` — Compliance scans/policy checks
 - `notifications` — Digest or ad-hoc notification producers
 - `user-history` — Data/insights generation for user activity history (delegates to `UserHistoryAgentService`)
-- `watchlist_price_scanner` — Watchlist Yahoo batch quotes + price alerts (**Next.js** task-runner; Kotlin worker returns noop success when BFF runs the tick)
-- `options_scanner` — Full Yahoo/Mongo scan on **Next.js** task-runner; JVM tick runs **`OptionsStrategyEngine`** dry-run summary when the scheduler executes on Kotlin (`AdminScheduledTasksService`)
+- `watchlist_price_scanner` — Watchlist Yahoo batch quotes, desk **rationale** / `rowStatus`, and optional price-move **alerts** — **Next.js** `runWatchlistPriceScanner` (`task-runner.ts`). On the JVM, real work runs only when **`ATX_SCHEDULER_NEXT_BASE_URL`** + **`ATX_SCHEDULER_INTERNAL_SECRET`** delegate to **`POST /api/internal/scheduler/execute-task`**; otherwise Kotlin simulates execution for that category.
+- `options_scanner` — Yahoo chains, **`portfolio_recommendations`**, optional Grok rationale, **alerts**, optional watchlist row side-effects — **Next.js** `executeOptionsStrategyScannerJob`. Same **JVM→Next delegate** contract as `watchlist_price_scanner`; without delegate, Kotlin simulates.
 
 Notes:
 - Legacy Mongo documents may include `portfolioId`; schedulers exclude them from due-task queries.

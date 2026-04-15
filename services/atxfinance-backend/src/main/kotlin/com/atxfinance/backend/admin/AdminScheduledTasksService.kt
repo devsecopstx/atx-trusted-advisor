@@ -26,6 +26,7 @@ class AdminScheduledTasksService(
     private val props: AtxfinanceProperties,
     private val userHistoryAgentService: UserHistoryAgentService,
     private val optionsStrategyEngine: OptionsStrategyEngine,
+    private val nextSchedulerExecuteClient: NextSchedulerExecuteClient,
     private val lockProvider: net.javacrumbs.shedlock.core.LockProvider,
     @org.springframework.beans.factory.annotation.Qualifier("schedulerTaskExecutor")
     private val taskExecutor: org.springframework.core.task.TaskExecutor,
@@ -225,6 +226,14 @@ class AdminScheduledTasksService(
         return enqueueScheduledTaskInternal(task, triggeredBy, null, advanceSchedule = true)
     }
 
+    private fun shouldDelegateToNext(category: String): Boolean =
+        category != "user-history" && nextSchedulerExecuteClient.isConfigured()
+
+    private fun delegateToNext(taskIdHex: String, triggeredBy: String): ExecutionResult {
+        val (runId, status, output) = nextSchedulerExecuteClient.executeTask(taskIdHex, triggeredBy)
+        return ExecutionResult(runIdHex = runId, status = status, output = output)
+    }
+
     private fun enqueueScheduledTaskInternal(
         task: Document,
         triggeredBy: String,
@@ -236,6 +245,10 @@ class AdminScheduledTasksService(
         val tenantOid = tenantOverride ?: baseTenantOid
         val taskName = task.getString("name") ?: "task"
         val category = task.getString("category") ?: "sync-broker"
+
+        if (shouldDelegateToNext(category) && !(baseTenantOid == null && tenantOverride != null)) {
+            return delegateToNext(taskId.toHexString(), triggeredBy)
+        }
 
         val runDoc = Document()
         runDoc["taskId"] = taskId
@@ -360,13 +373,15 @@ class AdminScheduledTasksService(
                 val simpleLock = maybeLock.get()
                 try {
                     val tenantOid = task.getObjectId("tenantId")
+                    val category = task.getString("category") ?: ""
                     if (tenantOid != null) {
                         val res = enqueueScheduledTaskInternal(task, SYSTEM_SCHEDULER_TRIGGER, null, advanceSchedule = true)
                         accepted.add(res)
+                    } else if (shouldDelegateToNext(category)) {
+                        accepted.add(delegateToNext(taskId.toHexString(), SYSTEM_SCHEDULER_TRIGGER))
                     } else {
-                        // Fan-out: run once per tenant when task is system-wide (no tenantId)
+                        // Fan-out: run once per tenant when task is system-wide (no tenantId) — JVM stubs only
                         val nowStarted = Date()
-                        // Advance schedule once for the task prior to fan-out so we don't advance per-tenant
                         advanceScheduleAfterStart(task, nowStarted)
                         for (tid in listAllTenantIds()) {
                             val res = enqueueScheduledTaskInternal(task, SYSTEM_SCHEDULER_TRIGGER, tid, advanceSchedule = false)

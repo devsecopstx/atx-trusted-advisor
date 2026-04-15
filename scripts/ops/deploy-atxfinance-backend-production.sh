@@ -32,6 +32,11 @@ if gcloud secrets describe REDIS_URL --project="${PROJECT}" --format='value(name
   SECRETS="${SECRETS},REDIS_URL=REDIS_URL:latest"
   echo "==> Binding REDIS_URL secret (present in project)"
 fi
+if gcloud secrets describe ATX_SCHEDULER_INTERNAL_SECRET --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe ATX_SCHEDULER_NEXT_BASE_URL --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},ATX_SCHEDULER_INTERNAL_SECRET=ATX_SCHEDULER_INTERNAL_SECRET:latest,ATX_SCHEDULER_NEXT_BASE_URL=ATX_SCHEDULER_NEXT_BASE_URL:latest"
+  echo "==> Binding scheduler delegate secrets (JVM → Next execute-task)"
+fi
 
 echo "==> Cloud Run deploy ${SERVICE}"
 gcloud run deploy "${SERVICE}" \

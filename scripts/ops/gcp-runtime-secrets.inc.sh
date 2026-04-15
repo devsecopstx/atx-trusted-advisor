@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 # Source-only: required runtime secret names in GCP Secret Manager.
 # Keep in sync with:
-#   - scripts/ops/verify-gcp-runtime-secrets.sh (--with-desk-smtp)
+#   - scripts/ops/verify-gcp-runtime-secrets.sh (--with-desk-smtp, --with-scheduler-delegate)
 #   - .github/workflows/deploy-cloud-run.yml (preflight loop)
 #   - .github/workflows/deploy-cloud-run-production.yml (preflight loop)
 # Optional secrets (export/diff with --include-optional): GCP_RUNTIME_SECRETS_OPTIONAL.
@@ -33,6 +33,15 @@ GCP_RUNTIME_SECRETS_GOOGLE_OAUTH=(
 GCP_RUNTIME_SECRETS_OPTIONAL=(
   "GOOGLE_CLIENT_ID"
   "GOOGLE_CLIENT_SECRET"
+  # JVM → Next `POST /api/internal/scheduler/execute-task` (Spring Cloud Run). Sync: sync-scheduler-delegate-secrets-from-env.sh
+  "ATX_SCHEDULER_INTERNAL_SECRET"
+  "ATX_SCHEDULER_NEXT_BASE_URL"
+)
+
+# Kotlin scheduler delegate (optional; verify with --with-scheduler-delegate).
+GCP_RUNTIME_SECRETS_SCHEDULER_DELEGATE=(
+  "ATX_SCHEDULER_INTERNAL_SECRET"
+  "ATX_SCHEDULER_NEXT_BASE_URL"
 )
 
 # Portfolio desk email (SMTP). Use verify-gcp-runtime-secrets.sh --with-desk-smtp after creating all five in Secret Manager.

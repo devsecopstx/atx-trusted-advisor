@@ -134,6 +134,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "user-feedback"
   },
   {
+    path: "/api/internal/scheduler/execute-task",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "admin-tasks"
+  },
+  {
     path: "/api/integrations/ibkr/status",
     operations: [{ method: "GET", auth: "session" }],
     tag: "integrations"
@@ -886,7 +891,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "admin-system": "Admin system-level diagnostics and scheduled task controls.",
   "admin-options-strategy":
     "Global admin CRUD for tenant options-strategy catalog and Mongo-backed `options_strategy_preferences` (markdown seed from `atx-docs/rag-collection/options-strategy` via `npm run seed:options-strategy-prefs`). Next-authoritative — not proxied to Spring.",
-  "admin-tasks": "Admin task catalog and task-run controls.",
+  "admin-tasks":
+    "Admin task catalog and task-run controls; internal `POST /api/internal/scheduler/execute-task` for JVM→Next scheduled execution (shared secret, not session).",
   "admin-tenants":
     "Global admin tenant surfaces: workspace limits, portfolio scoring defaults on core_tenants, and read-only tenant register (all tenants + tenant_admin directory).",
   "admin-users": "Admin management of user records, roles, plans, and settings.",

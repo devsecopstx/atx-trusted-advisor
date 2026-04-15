@@ -1,5 +1,10 @@
 # Disable internal scheduler during @SpringBootTest so polls never hit the DB unexpectedly.
+spring:
+  quartz:
+    auto-startup: false
+
 app:
   atxfinance:
     scheduler:
       enabled: false
+      driver: simple

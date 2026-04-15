@@ -3,6 +3,17 @@ package com.atxfinance.backend.config
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.NestedConfigurationProperty
 
+/**
+ * JVM → Next delegate: [NextSchedulerExecuteClient] POSTs to Next `/api/internal/scheduler/execute-task`
+ * with [internalSecret] so Yahoo-backed scanners run on the Node task-runner.
+ */
+data class SchedulerDelegateProps(
+    /** Next Cloud Run origin (no trailing slash), e.g. `https://…run.app`. */
+    val nextBaseUrl: String = "",
+    /** Shared with Next `ATX_SCHEDULER_INTERNAL_SECRET` (min 24 chars when delegating). */
+    val internalSecret: String = "",
+)
+
 @ConfigurationProperties(prefix = "app.atxfinance")
 data class AtxfinanceProperties(
     val sessionCookieName: String = "xf_core_session",
@@ -57,6 +68,12 @@ data class AtxfinanceProperties(
     val redis: RedisProps = RedisProps(),
     @NestedConfigurationProperty
     val scheduler: SchedulerProps = SchedulerProps(),
+    /**
+     * When [SchedulerDelegateProps.nextBaseUrl] and [SchedulerDelegateProps.internalSecret] are set, JVM scheduled
+     * execution delegates to Next **`POST /api/internal/scheduler/execute-task`** so Yahoo-backed jobs run for real.
+     */
+    @NestedConfigurationProperty
+    val schedulerDelegate: SchedulerDelegateProps = SchedulerDelegateProps(),
 )
 
 /** Optional Memorystore / Redis — empty [RedisProps.url] disables Redis-backed features. */
@@ -85,9 +102,14 @@ data class RedisProps(
  * live in [com.atxfinance.backend.admin.AdminScheduledTasksService].
  */
 data class SchedulerProps(
-    /** When false, [com.atxfinance.backend.scheduling.AdminSchedulerPoller] is not registered. */
+    /** When false, no background poll runs (Quartz or simple). */
     val enabled: Boolean = true,
-    /** `@Scheduled` fixed rate in milliseconds. */
+    /**
+     * `simple` = Spring `@Scheduled` [com.atxfinance.backend.scheduling.AdminSchedulerPoller].
+     * `quartz` = Quartz RAM store + repeating trigger (standard scheduler API for prod MVP).
+     */
+    val driver: String = "quartz",
+    /** Poll interval for due-task scan (Quartz trigger or simple `@Scheduled` rate). */
     val pollIntervalMs: Long = 60_000L,
     /** Cap due tasks claimed per poll (across tenants). */
     val maxTasksPerPoll: Int = 50,

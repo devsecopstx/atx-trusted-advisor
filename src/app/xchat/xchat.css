@@ -3449,12 +3449,6 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
   display: none;
 }
 
-.app-user-rail-account-panel__db-tenant-redacted {
-  font-size: 0.65rem;
-  color: var(--xf-text-300);
-  line-height: 1.25;
-}
-
 .app-user-rail-account-panel__db-body {
   margin-top: 0.35rem;
   display: flex;

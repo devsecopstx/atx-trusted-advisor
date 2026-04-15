@@ -116,6 +116,10 @@ export function TasksConsole() {
   const [runs, setRuns] = useState<TaskRun[]>([]);
   /** Default: current UTC calendar day; optional rolling 30 days. */
   const [runHistoryWindow, setRunHistoryWindow] = useState<"today" | "30d">("today");
+  /** Run history tab — filter/sort apply to rows already loaded for the window. */
+  const [runCategoryFilter, setRunCategoryFilter] = useState<"" | ScheduledTaskDoc["category"]>("");
+  const [runSortField, setRunSortField] = useState<"startedAt" | "status">("startedAt");
+  const [runSortDir, setRunSortDir] = useState<"asc" | "desc">("desc");
   const [deliveryChannels, setDeliveryChannels] = useState<DeliveryChannelRow[]>([]);
   const [status, setStatus] = useState("Ready — tap refresh");
   const [loading, setLoading] = useState(false);
@@ -162,6 +166,35 @@ export function TasksConsole() {
     () => SCHEDULED_TASK_CATEGORY_CATALOG[createJobType],
     [createJobType]
   );
+
+  const filteredSortedRuns = useMemo(() => {
+    const list =
+      runCategoryFilter === ""
+        ? [...runs]
+        : runs.filter((r) => r.category === runCategoryFilter);
+    const statusRank: Record<TaskRun["status"], number> = { failed: 3, running: 2, success: 1 };
+    list.sort((a, b) => {
+      if (runSortField === "startedAt") {
+        const ta = new Date(a.startedAt).getTime();
+        const tb = new Date(b.startedAt).getTime();
+        const primary = runSortDir === "desc" ? tb - ta : ta - tb;
+        if (primary !== 0) {
+          return primary;
+        }
+        const sa = statusRank[a.status] ?? 0;
+        const sb = statusRank[b.status] ?? 0;
+        return sb - sa;
+      }
+      const ra = statusRank[a.status] ?? 0;
+      const rb = statusRank[b.status] ?? 0;
+      const primary = runSortDir === "desc" ? rb - ra : ra - rb;
+      if (primary !== 0) {
+        return primary;
+      }
+      return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+    });
+    return list;
+  }, [runs, runCategoryFilter, runSortField, runSortDir]);
 
   const refreshTasks = useCallback(async () => {
     try {
@@ -895,15 +928,65 @@ export function TasksConsole() {
                   <option value="30d">Last 30 days</option>
                 </select>
               </label>
+              <label className="flex flex-col gap-1 text-sm" style={{ minWidth: "14rem" }}>
+                <span className="status-text text-xs uppercase tracking-wide">Job type</span>
+                <select
+                  aria-label="Filter task runs by job type"
+                  className="crud-input text-sm"
+                  disabled={loading}
+                  value={runCategoryFilter}
+                  onChange={(e) =>
+                    setRunCategoryFilter(
+                      e.target.value === "" ? "" : (e.target.value as ScheduledTaskDoc["category"])
+                    )
+                  }
+                >
+                  <option value="">All types</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {JOB_TYPE_LABELS[c]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm" style={{ minWidth: "11rem" }}>
+                <span className="status-text text-xs uppercase tracking-wide">Sort by</span>
+                <select
+                  aria-label="Sort task runs"
+                  className="crud-input text-sm"
+                  disabled={loading}
+                  value={`${runSortField}:${runSortDir}`}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "startedAt:desc" || v === "startedAt:asc") {
+                      setRunSortField("startedAt");
+                      setRunSortDir(v.endsWith("desc") ? "desc" : "asc");
+                    } else if (v === "status:desc" || v === "status:asc") {
+                      setRunSortField("status");
+                      setRunSortDir(v.endsWith("desc") ? "desc" : "asc");
+                    }
+                  }}
+                >
+                  <option value="startedAt:desc">Started — newest first</option>
+                  <option value="startedAt:asc">Started — oldest first</option>
+                  <option value="status:desc">Status — failed first</option>
+                  <option value="status:asc">Status — success first</option>
+                </select>
+              </label>
               <p className="status-text" style={{ margin: 0, flex: "1 1 12rem", alignSelf: "flex-end" }}>
                 Default shows runs that <strong>started</strong> on the current UTC date. Widen to 30 days for
-                troubleshooting; polling and refresh use the same window.
+                troubleshooting; polling and refresh use the same window. Filter and sort apply to the loaded rows
+                only.
               </p>
             </div>
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Execution history for tenant-level scheduled tasks (newest first).
+              Execution history for tenant-level scheduled tasks.
             </p>
-            {runs.length > 0 ? (
+            {runs.length === 0 ? (
+              <p className="status-text">No task runs yet.</p>
+            ) : filteredSortedRuns.length === 0 ? (
+              <p className="status-text">No runs match the selected job type. Choose &quot;All types&quot; or widen the time window.</p>
+            ) : (
               <div className="crud-table-wrap">
                 <table className="crud-table">
                   <thead>
@@ -918,7 +1001,7 @@ export function TasksConsole() {
                     </tr>
                   </thead>
                   <tbody>
-                    {runs.map((run) => (
+                    {filteredSortedRuns.map((run) => (
                       <tr key={run._id ?? run.startedAt}>
                         <td>{run.taskName}</td>
                         <td>{JOB_TYPE_LABELS[run.category as ScheduledTaskDoc["category"]] ?? run.category}</td>
@@ -938,8 +1021,6 @@ export function TasksConsole() {
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <p className="status-text">No task runs yet.</p>
             )}
           </div>
         ) : (

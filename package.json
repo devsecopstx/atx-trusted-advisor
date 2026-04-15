@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.7.0",
+  "version": "3.7.2",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -64,6 +64,7 @@
     "ops:secrets:verify:prod:with-google-oauth": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --with-google-oauth --require-backend-origin",
     "ops:secrets:verify:staging:with-desk-smtp": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GOOGLE_PROJECT_ID_STAGING:-${GCP_PROJECT_ID_STAGING:-fintech-advisor-staging}}\" --with-google-oauth --with-desk-smtp --require-backend-origin",
     "ops:secrets:verify:prod:with-desk-smtp": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --with-desk-smtp --require-backend-origin",
+    "ops:secrets:verify:prod:with-scheduler-delegate": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --with-scheduler-delegate --require-backend-origin",
     "ops:secrets:export:prod": "bash scripts/ops/export-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --output .env.prod.gcp-export",
     "ops:secrets:diff:prod": "bash scripts/ops/diff-local-env-vs-gcp-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --env-file .env.prod",
     "ops:secrets:diff:prod:optional": "bash scripts/ops/diff-local-env-vs-gcp-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --env-file .env.prod --include-optional",
@@ -71,6 +72,8 @@
     "ops:secrets:sync-redis": "bash scripts/ops/sync-redis-url-secret.sh",
     "ops:secrets:sync-redis:staging": "bash scripts/ops/sync-redis-url-secret.sh .env.stage",
     "ops:secrets:sync-redis:prod": "bash scripts/ops/sync-redis-url-secret.sh .env.prod",
+    "ops:secrets:sync-scheduler-delegate:staging": "bash scripts/ops/sync-scheduler-delegate-secrets-from-env.sh .env.stage",
+    "ops:secrets:sync-scheduler-delegate:prod": "bash scripts/ops/sync-scheduler-delegate-secrets-from-env.sh .env.prod",
     "ops:secrets:sync-mongodb:staging": "bash scripts/ops/sync-mongodb-uri-secret-from-env.sh .env.stage",
     "ops:secrets:sync-mongodb:prod": "bash scripts/ops/sync-mongodb-uri-secret-from-env.sh .env.prod",
     "ops:secrets:sync-stripe-publishable:staging": "bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.stage",

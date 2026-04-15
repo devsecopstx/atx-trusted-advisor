@@ -81,4 +81,4 @@ Stable keys live in **`src/modules/scanner/core-scanner-service.ts`**. When addi
 
 ## Kotlin scheduler
 
-Kotlin tick may **noop** for some categories while **Next** runs the real job. Do not assume JVM execution updates Mongo for **`options_scanner`** / **`watchlist_price_scanner`** full chain — see **`schedule-tasks-admin.md`** and backend admin task service.
+When **`ATX_SCHEDULER_NEXT_BASE_URL`** + **`ATX_SCHEDULER_INTERNAL_SECRET`** are configured, the JVM poller **delegates** due **`options_scanner`** / **`watchlist_price_scanner`** (and other non-`user-history` categories) to Next **`POST /api/internal/scheduler/execute-task`**, which runs the same **`executeScheduledTask`** mutations as tick/manual. **Without** that delegate, Kotlin still **simulates** those categories — Mongo watchlists / recommendations / alerts do **not** update on the JVM path alone. See **`schedule-tasks-admin.md`** and **`AdminScheduledTasksService`** (`shouldDelegateToNext`).

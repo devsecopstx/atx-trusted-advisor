@@ -80,15 +80,15 @@ These are **vertical migration tracks**: same Mongo collections and contracts as
 
 ### Internal scheduler daemon (Spring-owned)
 
-**Status:** **shipped** in `services/atxfinance-backend` — `AdminSchedulerPoller` (`@Scheduled` + ShedLock) calls `AdminScheduledTasksService.enqueueDueTasksForSystemPoll` with **`system-scheduler`** as `triggeredBy`. **HTTP** `POST /api/admin/scheduler/tick` unchanged (per-tenant session scope). Env: **`ADMIN_SCHEDULER_ENABLED`**, **`ADMIN_SCHEDULER_POLL_INTERVAL_MS`**, **`ADMIN_SCHEDULER_MAX_TASKS_PER_POLL`** (see `application.yml`). Tests default **`app.atxfinance.scheduler.enabled=false`** via `src/test/resources/application.yml`. See [PLAN.md — Product backlog](../PLAN.md#product-backlog) (priority **9**, Spring internal scheduler).
+**Status:** **shipped** in `services/atxfinance-backend` — default **`ADMIN_SCHEDULER_DRIVER=quartz`**: Quartz fires a fixed-interval poll job; **`AdminDueTasksQuartzJob`** (or the **`simple`** driver’s **`AdminSchedulerPoller`**) acquires ShedLock **`pollDueMongoTasks`** and calls **`AdminScheduledTasksService.enqueueDueTasksForSystemPoll`** with **`system-scheduler`** as `triggeredBy`. **HTTP** `POST /api/admin/scheduler/tick` unchanged (per-tenant session scope). Env: **`ADMIN_SCHEDULER_ENABLED`**, **`ADMIN_SCHEDULER_DRIVER`**, **`ADMIN_SCHEDULER_POLL_INTERVAL_MS`**, **`ADMIN_SCHEDULER_MAX_TASKS_PER_POLL`**, optional **`ATX_SCHEDULER_NEXT_BASE_URL`** + **`ATX_SCHEDULER_INTERNAL_SECRET`** (JVM→Next delegate for Yahoo-backed jobs via **`POST /api/internal/scheduler/execute-task`** — mirror the secret on Next). See `application.yml` and repo `.env.example` files. Tests default **`app.atxfinance.scheduler.enabled=false`** and **`spring.quartz.auto-startup: false`** via `src/test/resources/application.yml`.
 
-**Behavior:** On service start, Spring enables a **daemon-style** poll (every **60s**) that finds due **`admin_scheduled_tasks`** and invokes the same execution stack as **`AdminScheduledTasksController` → `AdminScheduledTasksService.enqueueDueTasks`** / **`enqueueScheduledTask`** (audit **`admin_task_runs`**, **`nextRunAt`** / cron advancement, success and failure paths aligned with Next **`task-runner.ts`**). **Trigger string** for runs should be **`system-scheduler`** (or equivalent) so logs and run records distinguish **HTTP tick** vs **internal poll**.
+**Behavior:** Poll finds due **`admin_scheduled_tasks`** (Mongo remains SSOT for cron / `nextRunAt`) and runs the same execution path as **`AdminScheduledTasksController`** (audit **`admin_task_runs`**, schedule advancement, parity with Next **`task-runner.ts`** when delegated). **Trigger string** for runs should be **`system-scheduler`** (or equivalent) so logs distinguish **HTTP tick** vs **internal poll**.
 
-**Cloud Run:** With **`min-instances=1`** on the backend service, the poller stays resident without external schedulers. **Scale-out:** the repo already includes **ShedLock** with **`MongoLockProvider`** (`SchedulingConfig`); **`enqueueDueTasks`** uses a **per-task** programmatic lock before enqueue. Add **`@SchedulerLock`** on the poller method (or document where to add it) so **multiple replicas** do not duplicate poll-side work; v1 stays **no Quartz** unless we explicitly adopt it.
+**Cloud Run:** With **`min-instances=1`** on the backend service, the scheduler stays resident. **Scale-out:** ShedLock **`pollDueMongoTasks`** prevents duplicate poll-side work across replicas.
 
-**Optional:** `application.yml` property to **disable** the internal poller in local dev (Next tick or manual only).
+**Optional:** Set **`ADMIN_SCHEDULER_DRIVER=simple`** for minimal local JVM (or rely on Next **`/api/admin/scheduler/tick`** / manual only).
 
-**Non-goals:** Removing Next **`/api/admin/scheduler/tick`**; adding **Quartz** for the first iteration.
+**Non-goals:** Removing Next **`/api/admin/scheduler/tick`**; per-row Quartz `CronTrigger` sync (today Quartz only drives **poll cadence**, not one trigger per Mongo task).
 
 ### PR 4 — Deploy-note-configs + broker import (migration)
 

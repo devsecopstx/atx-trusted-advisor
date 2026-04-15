@@ -1027,6 +1027,21 @@ export async function getScheduledTaskById(
     .findOne(scheduledTaskTenantReadScope({ _id: new ObjectId(id) }, options?.tenantId));
 }
 
+/**
+ * Load a tenant-level scheduled task by id for JVM → Next delegate (`/api/internal/scheduler/execute-task`).
+ * No tenant scope — caller must enforce shared-secret auth. Excludes portfolio-bound rows.
+ */
+export async function getScheduledTaskByIdForInternalDelegate(taskId: string): Promise<ScheduledTask | null> {
+  if (!ObjectId.isValid(taskId)) {
+    return null;
+  }
+  const db = await getDb();
+  return db.collection<ScheduledTask>(collections.scheduledTasks).findOne({
+    _id: new ObjectId(taskId),
+    $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
+  });
+}
+
 export async function listDueScheduledTasks(
   now: Date,
   options?: TenantScopedOptions

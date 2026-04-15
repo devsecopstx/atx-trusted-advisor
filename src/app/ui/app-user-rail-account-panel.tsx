@@ -132,7 +132,6 @@ export function AppUserRailAccountPanel({
         ? `mongodb://${mongoConnection}`
         : null;
   const tenantTrimmed = tenantIdHex?.trim() ?? "";
-  const tenantPreview = tenantTrimmed ? tenantIdHexLastFourUserFacing(tenantTrimmed) : "";
   const showDatabaseDisclosure = Boolean((mongoConnection && mongoHref) || tenantTrimmed);
 
   return (
@@ -160,21 +159,8 @@ export function AppUserRailAccountPanel({
         <details className="app-user-rail-account-panel__db">
           <summary className="app-user-rail-account-panel__db-summary">
             <span className="app-user-rail-account-panel__meta-k">Database</span>
-            {tenantPreview ? (
-              <span
-                className="app-user-rail-account-panel__db-tenant-redacted font-mono"
-                title={tenantTrimmed ? `Tenant id ${tenantTrimmed}` : undefined}
-              >
-                Tenant {tenantPreview}
-              </span>
-            ) : null}
           </summary>
           <div className="app-user-rail-account-panel__db-body">
-            {mongoConnection && mongoHref ? (
-              <a className="app-user-rail-account-panel__code app-user-rail-account-panel__code-link" href={mongoHref}>
-                {mongoConnection}
-              </a>
-            ) : null}
             {tenantTrimmed ? (
               <p className="app-user-rail-account-panel__meta app-user-rail-account-panel__meta--tenant-id">
                 <span className="app-user-rail-account-panel__meta-k">Tenant id</span>
@@ -185,6 +171,11 @@ export function AppUserRailAccountPanel({
                   {tenantIdHexLastFourUserFacing(tenantTrimmed)}
                 </span>
               </p>
+            ) : null}
+            {mongoConnection && mongoHref ? (
+              <a className="app-user-rail-account-panel__code app-user-rail-account-panel__code-link" href={mongoHref}>
+                {mongoConnection}
+              </a>
             ) : null}
           </div>
         </details>

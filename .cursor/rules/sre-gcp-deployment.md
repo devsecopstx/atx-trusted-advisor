@@ -78,14 +78,17 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 | `STRIPE_PUBLIC_KEY` | `STRIPE_PUBLIC_KEY` (or same value as publishable) | Alias for publishable key; keep in sync or duplicate `pk_…` value |
 | `GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_ID` | Google OAuth client id (Sign in with Google) — **required in staging** for verify + deploy preflight |
 | `GOOGLE_CLIENT_SECRET` | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret — **required in staging** when using Google login |
+| `ATX_SCHEDULER_INTERNAL_SECRET` | `ATX_SCHEDULER_INTERNAL_SECRET` | **Spring Cloud Run only:** shared secret (≥24 chars) with Next `ATX_SCHEDULER_INTERNAL_SECRET` for `POST /api/internal/scheduler/execute-task` |
+| `ATX_SCHEDULER_NEXT_BASE_URL` | `ATX_SCHEDULER_NEXT_BASE_URL` | **Spring Cloud Run only:** Next public origin (no trailing slash), e.g. same as `PROD_BASE_URL` when Next serves that host |
 
 **Sync from env file to Secret Manager**
 
 - **Redis:** `bash scripts/ops/sync-redis-url-secret.sh .env.stage` or `.env.prod` (requires `REDIS_URL` + project id in file).
+- **Scheduler delegate (Spring → Next):** `npm run ops:secrets:sync-scheduler-delegate:staging` / `:prod` (runs `scripts/ops/sync-scheduler-delegate-secrets-from-env.sh`; requires both `ATX_*` keys in the env file). Then **redeploy** `atxfinance-backend-*` (`deploy-atxfinance-backend-production.sh` binds them when both secrets exist) **or** merge bindings: `gcloud run services update atxfinance-backend-prod --region=us-central1 --project=<id> --update-secrets=ATX_SCHEDULER_INTERNAL_SECRET=ATX_SCHEDULER_INTERNAL_SECRET:latest,ATX_SCHEDULER_NEXT_BASE_URL=ATX_SCHEDULER_NEXT_BASE_URL:latest`. Mount the **same** `ATX_SCHEDULER_INTERNAL_SECRET` on the **Next** Cloud Run service.
 - **Stripe publishable (both secrets):** `bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.stage` or `.env.prod` (requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; `STRIPE_PUBLIC_KEY` optional and defaults to the same value).
 - **Google OAuth:** `bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.stage` or `.env.prod` (requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`).
 
-**Preflight:** `npm run ops:secrets:verify:staging` / `ops:secrets:verify:prod` (or `verify-gcp-runtime-secrets.sh --project …`) asserts core app secrets with non-empty latest versions. **Staging** verify also requires **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`** (`--with-google-oauth`). Production verify does not require Google keys; deploy still binds them when both exist in Secret Manager.
+**Preflight:** `npm run ops:secrets:verify:staging` / `ops:secrets:verify:prod` (or `verify-gcp-runtime-secrets.sh --project …`) asserts core app secrets with non-empty latest versions. **Staging** verify also requires **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`** (`--with-google-oauth`). Production verify does not require Google keys; deploy still binds them when both exist in Secret Manager. Optional: **`npm run ops:secrets:verify:prod:with-scheduler-delegate`** (`--with-scheduler-delegate`) asserts both `ATX_*` GSM secrets exist and the internal secret is ≥24 chars.
 
 **Export / diff vs local `.env.prod`:** `atx-docs/sre-ops/gcp-secrets-export-diff.md` — `npm run ops:secrets:export:prod` (writes `.env.prod.gcp-export`, sensitive), `npm run ops:secrets:diff:prod` (masked `MATCH`/`MISMATCH`; use for xAI key rotation checks).
 

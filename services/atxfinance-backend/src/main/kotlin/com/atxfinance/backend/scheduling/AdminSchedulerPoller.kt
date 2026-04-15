@@ -3,7 +3,7 @@ package com.atxfinance.backend.scheduling
 import com.atxfinance.backend.admin.AdminScheduledTasksService
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Conditional
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.util.Date
@@ -23,11 +23,7 @@ import java.util.Date
  * heavy work runs on `schedulerTaskExecutor` inside [AdminScheduledTasksService.enqueueScheduledTask].
  */
 @Component
-@ConditionalOnProperty(
-    name = ["app.atxfinance.scheduler.enabled"],
-    havingValue = "true",
-    matchIfMissing = true,
-)
+@Conditional(SchedulerSimplePollerCondition::class)
 class AdminSchedulerPoller(
     private val adminScheduledTasksService: AdminScheduledTasksService,
 ) {

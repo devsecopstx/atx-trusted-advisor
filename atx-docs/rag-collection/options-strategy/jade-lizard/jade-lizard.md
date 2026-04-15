@@ -1,26 +1,38 @@
 ---
-id: xfinance-strategy-jade-lizard
-name: xfinance-strategy-jade-lizard
-description: Jade lizard — short OTM put plus short call spread for neutral-to-bullish income with capped risk on the call side.
+id: xfinance-strategy-broken-wing-butterfly
+name: Broken Wing Butterfly
+description: Asymmetric butterfly with intentionally unequal wings — defined-risk directional skew for income or mild bias.
+risk: Moderate (defined risk when fully legged; max loss = net debit paid; skewed max-profit zone)
+outlook: 
+  - Conservative (protective overlay on core holdings)
+  - Balanced (neutral-to-mildly bullish/bearish income generation)
+  - Aggressive (high-IV directional plays on liquid names)
+cursorSkill: skill-options-broken-wing-butterfly
+tags: 
+  - asymmetric-butterfly
+  - defined-risk
+  - directional-skew
+  - income-generation
+  - high-iv
 ---
 
-# xFinance Strategy: Jade lizard
+# xFinance Strategy: Broken wing butterfly
 
 ## How Commonly Used
 
-Medium
+Medium (advanced)
 
 ## Strategy
 
-Combine a **short OTM put** with a **short call spread** (short nearer call, long further OTM call). Goal is **net credit** (or very small debit) with **no naked call risk above the long call**; primary risk remains on the **put** side (assignment / downside). Fits **neutral-to-slightly-bullish** views where call upside is not the main bet.
+Build a **butterfly** with **intentionally unequal wings**: e.g. long one lower strike, short two middle strikes, long one higher strike where the upper (or lower) wing is **wider** than the other. Shifts max-profit zone and buying power vs a symmetric fly; payoff is still **defined risk** when fully long/short as a closed structure (no extra naked pieces).
 
 ## Risk Profile
 
-Moderate (put downside and assignment; call side defined by the long wing)
+Moderate (defined risk when structured as a closed butterfly; outcome depends on width, net debit/credit, and where spot settles)
 
 ## Guardrails
 
-- Ensure the call spread is fully covered by the long call — do not leave a naked short call.
-- Size the short put for cash-secured or margin rules you actually run under.
-- Track earnings, dividends, and early assignment on the put leg.
-- Educational context only; not financial advice — do not cite hypothetical backtests as product proof.
+- Label max profit, max loss, and breakeven(s) after fills; broken wings skew all three vs a symmetric fly.
+- Avoid illiquid strikes; multi-leg inventory is hard to adjust in wide markets.
+- Reconcile with margin and “worst case” at expiration under your broker’s methodology.
+- Educational context only; not financial advice.

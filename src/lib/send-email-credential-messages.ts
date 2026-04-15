@@ -5,17 +5,40 @@ export async function sendAccessApprovedPasswordInviteEmail(input: {
   request: Request;
   to: string;
   rawToken: string;
+  /** Optional greeting; falls back to "Valued Client" in body when omitted. */
+  firstName?: string | null;
 }): Promise<boolean> {
   const origin = resolvePublicAppOrigin(input.request);
   const link = `${origin}/login/set-password?token=${encodeURIComponent(input.rawToken)}`;
-  const subject = "Your xFinance access is approved — set your password";
+  const setPasswordLink = `${origin}/login/set-password?token=${encodeURIComponent(input.rawToken)}`;
+  const subject = "Welcome to aTx Finance – Your Account is Ready";
   const text = [
-    "Your access request was approved.",
+    `Dear ${input.firstName || "Valued Client"},`,
     "",
-    "Set your password to sign in with email:",
-    link,
+    "Your access request has been approved. Welcome to **aTx Finance**.",
     "",
-    "This link expires in 7 days. If you did not request access, ignore this email."
+    "We built aTx Finance as your personal command center for sophisticated portfolio management, xAI-powered conversational strategy (xChat), and institutional-grade options analysis (xOptions).",
+    "",
+    "To complete your setup and sign in with email + password, please set your secure password now:",
+    "",
+    setPasswordLink,
+    "",
+    "🔒 This secure link expires in **7 days**. For your protection, please do not forward or share it.",
+    "",
+    "Once signed in you will be able to immediately:",
+    "• Connect and monitor multiple portfolios with real-time holdings, alerts, and performance",
+    "• Engage xChat – your xAI co-pilot for market insights and tailored strategy ideas",
+    "• Build, analyze, and stress-test options strategies (conservative income, balanced, or aggressive growth)",
+    "",
+    "If you have any questions or need onboarding assistance, simply reply to this email or use the in-app support.",
+    "",
+    "We look forward to helping you and your team make better, data-driven decisions.",
+    "",
+    "Best regards,",
+    "The aTx Finance Team",
+    "support@atx.fintech-advisor.ai",
+    "",
+    "P.S. All communications are secured end-to-end and your data is never shared."
   ].join("\n");
   return sendDeskPlainEmail({ to: input.to, subject, text });
 }

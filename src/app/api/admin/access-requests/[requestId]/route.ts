@@ -364,10 +364,16 @@ async function handleUpdate(request: Request, context: RouteContext) {
       ) {
         const issued = await issueCredentialInviteForUser(approvedUserObjectId);
         if (issued) {
+          const display =
+            approvedUser.googleAccount?.displayName?.trim() ||
+            approvedUser.xAccount?.displayName?.trim() ||
+            "";
+          const firstName = display ? display.split(/\s+/)[0] : undefined;
           const sent = await sendAccessApprovedPasswordInviteEmail({
             request,
             to: approvedUser.email,
-            rawToken: issued.rawToken
+            rawToken: issued.rawToken,
+            ...(firstName ? { firstName } : {})
           });
           if (!sent) {
             console.warn(

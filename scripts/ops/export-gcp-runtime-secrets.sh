@@ -24,7 +24,7 @@ Usage:
   bash scripts/ops/export-gcp-runtime-secrets.sh --project <gcp-project-id> [--output <file>] [--include-optional] [--include-desk-smtp]
 
   --output <file>   Write KEY=value lines (default: stdout). File is sensitive — add to .gitignore.
-  --include-optional  Also export GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET when present in the project.
+  --include-optional  Also export GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / ATX_SCHEDULER_* when present in the project.
   --include-desk-smtp   Also export SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM when present.
 
 Requires: gcloud auth with secretmanager.versions.access on the target project.

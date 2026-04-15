@@ -2,6 +2,9 @@ server:
   port: 8080
 
 spring:
+  quartz:
+    job-store-type: memory
+    wait-for-jobs-to-complete-on-shutdown: true
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
@@ -72,8 +75,12 @@ app:
       oauth-flow-cookie-max-age-seconds: ${OAUTH_FLOW_TTL_SECONDS:1800}
     scheduler:
       enabled: ${ADMIN_SCHEDULER_ENABLED:true}
+      driver: ${ADMIN_SCHEDULER_DRIVER:quartz}
       poll-interval-ms: ${ADMIN_SCHEDULER_POLL_INTERVAL_MS:60000}
       max-tasks-per-poll: ${ADMIN_SCHEDULER_MAX_TASKS_PER_POLL:50}
+    scheduler-delegate:
+      next-base-url: ${ATX_SCHEDULER_NEXT_BASE_URL:}
+      internal-secret: ${ATX_SCHEDULER_INTERNAL_SECRET:}
   pubsub:
     project-id: ${PUBSUB_PROJECT_ID:}
     topic: ${PUBSUB_TOPIC:atxfinance-backend-requests}

@@ -40,6 +40,19 @@ type WatchlistPriceUpdate = {
   rowStatus: "review";
 };
 
+function watchlistScannerSkippedMissingTenantId(startMs: number): ScheduledCategoryResult {
+  const durationSeconds = Number(((Date.now() - startMs) / 1000).toFixed(1));
+  return {
+    status: "success",
+    output: `watchlist_price_scanner: skipped=true reason=missing_scheduled_task_tenantId — set tenantId on this scheduled task (or use a system-wide row so the runner fans out per tenant). Without tenantId, the job would not match the tenant-scoped watchlist sweep contract. duration_s=${durationSeconds}`,
+    auditDetails: {
+      skipped: true,
+      skipReason: "missing_tenant_id" as const,
+      durationSeconds
+    }
+  };
+}
+
 export async function runWatchlistPriceScanner(
   task: ScheduledTask,
   runOptions?: { bypassMarketWindow?: boolean }
@@ -49,6 +62,10 @@ export async function runWatchlistPriceScanner(
   const bypassMarketWindow = Boolean(runOptions?.bypassMarketWindow);
 
   try {
+    if (!tenantId) {
+      return watchlistScannerSkippedMissingTenantId(start);
+    }
+
     const market = resolveUsMarketDayContext(new Date());
     const watchlists = await listWatchlistsForTenantScope(tenantId);
     const watchlistsWithSymbols = watchlists.filter((w) => (w.symbols?.length ?? 0) > 0).length;

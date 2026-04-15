@@ -21,8 +21,8 @@ usage() {
 Usage:
   bash scripts/ops/diff-local-env-vs-gcp-secrets.sh --project <gcp-project-id> --env-file <path>
 
-  --include-optional   Also compare optional keys (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
-                       when each secret exists in GCP.
+  --include-optional   Also compare optional keys (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
+                       ATX_SCHEDULER_*, …) when each secret exists in GCP.
   --include-desk-smtp  Also compare SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM
                        when each secret exists in GCP.
 

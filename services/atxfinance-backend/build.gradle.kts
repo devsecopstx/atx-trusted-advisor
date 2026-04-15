@@ -39,6 +39,8 @@ dependencies {
     implementation(libs.springdoc.webmvc.ui)
 
     // MongoDB + ShedLock provider
+    implementation("org.springframework.boot:spring-boot-starter-quartz")
+    implementation("org.springframework:spring-context-support")
     implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation(libs.shedlock.spring)

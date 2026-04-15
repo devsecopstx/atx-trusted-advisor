@@ -10,12 +10,13 @@ EXPECT_NON_EMPTY="true"
 REQUIRE_NON_EMPTY_SLACK_WEBHOOK="false"
 WITH_GOOGLE_OAUTH="false"
 WITH_DESK_SMTP="false"
+WITH_SCHEDULER_DELEGATE="false"
 REQUIRE_BACKEND_ORIGIN="false"
 
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/ops/verify-gcp-runtime-secrets.sh [--project <gcp-project-id>] [--expect-non-empty true|false] [--require-non-empty-slack-webhook true|false] [--with-google-oauth] [--with-desk-smtp] [--require-backend-origin]
+  bash scripts/ops/verify-gcp-runtime-secrets.sh [--project <gcp-project-id>] [--expect-non-empty true|false] [--require-non-empty-slack-webhook true|false] [--with-google-oauth] [--with-desk-smtp] [--with-scheduler-delegate] [--require-backend-origin]
 
   If --project is omitted, uses GOOGLE_PROJECT_ID, GOOGLE_CLOUD_PROJECT, or GCP_PROJECT_ID (e.g. after
   'set -a && source .env.stage && set +a'). Staging default in docs: GOOGLE_PROJECT_ID=fintech-advisor-staging.
@@ -23,6 +24,8 @@ Usage:
   --with-google-oauth   Also require GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (Sign in with Google).
                         npm run ops:secrets:verify:staging passes this flag.
   --with-desk-smtp      Also require SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM (portfolio desk email).
+  --with-scheduler-delegate
+                        Also require ATX_SCHEDULER_INTERNAL_SECRET and ATX_SCHEDULER_NEXT_BASE_URL (Spring → Next delegate).
   --require-backend-origin
                         Require non-empty ATXFINANCE_BACKEND_ORIGIN in the current environment and validate format
                         (https://... for non-local hosts; no :8080 on public hosts).
@@ -56,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       WITH_DESK_SMTP="true"
       shift
       ;;
+    --with-scheduler-delegate)
+      WITH_SCHEDULER_DELEGATE="true"
+      shift
+      ;;
     --require-backend-origin)
       REQUIRE_BACKEND_ORIGIN="true"
       shift
@@ -87,7 +94,7 @@ if [[ "$WITH_GOOGLE_OAUTH" == "true" ]]; then
   REQUIRED_SECRETS+=("${GCP_RUNTIME_SECRETS_GOOGLE_OAUTH[@]}")
 fi
 
-echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK with_google_oauth=$WITH_GOOGLE_OAUTH with_desk_smtp=$WITH_DESK_SMTP require_backend_origin=$REQUIRE_BACKEND_ORIGIN"
+echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK with_google_oauth=$WITH_GOOGLE_OAUTH with_desk_smtp=$WITH_DESK_SMTP with_scheduler_delegate=$WITH_SCHEDULER_DELEGATE require_backend_origin=$REQUIRE_BACKEND_ORIGIN"
 
 if [[ "$REQUIRE_BACKEND_ORIGIN" == "true" ]]; then
   BACKEND_ORIGIN="${ATXFINANCE_BACKEND_ORIGIN:-}"
@@ -117,6 +124,10 @@ if [[ "$WITH_DESK_SMTP" == "true" ]]; then
   REQUIRED_SECRETS+=("${GCP_RUNTIME_SECRETS_DESK_SMTP[@]}")
 fi
 
+if [[ "$WITH_SCHEDULER_DELEGATE" == "true" ]]; then
+  REQUIRED_SECRETS+=("${GCP_RUNTIME_SECRETS_SCHEDULER_DELEGATE[@]}")
+fi
+
 for secret in "${REQUIRED_SECRETS[@]}"; do
   if ! gcloud secrets describe "$secret" --project "$PROJECT" --format="value(name)" >/dev/null 2>&1; then
     echo "[verify-secrets] missing: $secret" >&2
@@ -143,6 +154,21 @@ if [[ "$EXPECT_NON_EMPTY" == "true" ]]; then
     fi
     echo "[verify-secrets] non-empty-latest-version: $secret"
   done
+fi
+
+if [[ "$WITH_SCHEDULER_DELEGATE" == "true" && "$EXPECT_NON_EMPTY" == "true" ]]; then
+  ssec="$(
+    gcloud secrets versions access latest \
+      --secret="ATX_SCHEDULER_INTERNAL_SECRET" \
+      --project="$PROJECT" \
+      2>/dev/null || true
+  )"
+  ssec="$(printf '%s' "$ssec" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  if [[ ${#ssec} -lt 24 ]]; then
+    echo "[verify-secrets] ATX_SCHEDULER_INTERNAL_SECRET latest version must be at least 24 characters (matches Next delegate gate)" >&2
+    exit 1
+  fi
+  echo "[verify-secrets] scheduler delegate internal secret length ok (>=24)"
 fi
 
 echo "[verify-secrets] ok: all required runtime secrets validated for $PROJECT"
