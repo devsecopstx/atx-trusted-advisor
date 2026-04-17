@@ -137,7 +137,7 @@
     "stripe": "^17.7.0",
     "swagger-ui-dist": "^5.32.1",
     "swagger-ui-react": "^5.32.1",
-    "yahoo-finance2": "^3.13.2",
+    "yahoo-finance2": "^3.14.0",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },

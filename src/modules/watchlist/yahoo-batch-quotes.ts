@@ -6,6 +6,7 @@ import {
 } from "@/lib/redis-client";
 import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -37,7 +38,11 @@ export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuot
       }
     }
 
-    const quotes: unknown = await getYahooFinance2().quote(uniqueSymbols);
+    const quotes: unknown = await yahooQuoteWithValidationFallback(
+      getYahooFinance2(),
+      uniqueSymbols,
+      "batch quote"
+    );
 
     const results: MarketQuoteSnapshot[] = [];
 

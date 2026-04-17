@@ -7,6 +7,7 @@ import { normalizePositionType } from "@/modules/core-admin/types";
 import { scannerCircuitAllow } from "@/modules/scanner/scanner-circuit-breaker";
 import { getYahooBatchQuotes } from "@/modules/watchlist/yahoo-batch-quotes";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
 const POSITION_COLLECTION = "portfolio_positions";
 const WATCHLIST_COLLECTION = "portfolio_watchlists";
@@ -139,7 +140,7 @@ export async function fetchRawYahooQuotesWithCircuit(
   }
   const yf = getYahooFinance2();
   try {
-    const raw = await yf.quote(symbols);
+    const raw = await yahooQuoteWithValidationFallback(yf, symbols, "phase3 batch quote");
     const rows: Record<string, unknown>[] = [];
     if (Array.isArray(raw)) {
       for (const r of raw) {

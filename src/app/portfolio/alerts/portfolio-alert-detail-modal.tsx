@@ -61,7 +61,7 @@ export function PortfolioAlertDetailModal({ portfolioId, portfolioName, row, onC
     void Promise.resolve()
       .then(() => {
         if (cancelled) {
-          return;
+          return null;
         }
         setNarrative(null);
         setNarrativeModel(null);
@@ -75,7 +75,7 @@ export function PortfolioAlertDetailModal({ portfolioId, portfolioName, row, onC
         });
       })
       .then(async (res) => {
-        if (cancelled) {
+        if (cancelled || res === null) {
           return;
         }
         const j = (await res.json().catch(() => ({}))) as {

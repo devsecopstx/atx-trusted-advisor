@@ -5,28 +5,29 @@ import { getEnv } from "@/lib/env";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
-  ensureUserWatchlistForSessionUser,
-  getDefaultPortfolio,
-  listPortfolioAccounts,
-  listPortfolioPositionsByAccount,
-  provisionDefaultPortfolioForUser
+    ensureUserWatchlistForSessionUser,
+    getDefaultPortfolio,
+    listPortfolioAccounts,
+    listPortfolioPositionsByAccount,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
 import {
-  normalizePositionType,
-  parseAccountOutlook,
-  type Account,
-  type AccountOutlook,
-  type Portfolio
+    normalizePositionType,
+    parseAccountOutlook,
+    type Account,
+    type AccountOutlook,
+    type Portfolio
 } from "@/modules/core-admin/types";
 import { underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import {
-  loadWorkspaceSnapshotPreload,
-  normalizeWorkspaceContentRev,
-  type WorkspaceSnapshotPreload
+    loadWorkspaceSnapshotPreload,
+    normalizeWorkspaceContentRev,
+    type WorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
 import { scanUnderlyingForHotOptions } from "./options-hot-scan";
 import { computeRsiFromCloses } from "./rsi";
@@ -491,7 +492,7 @@ export async function getSymbolSnapshot(_session: SessionUser, symbol: string): 
   let fiftyTwoWeekHigh: number | null = null;
   let fiftyDayAverage: number | null = null;
   try {
-    const quote = (await yf.quote(sym)) as Record<string, unknown>;
+    const quote = (await yahooQuoteWithValidationFallback(yf, sym, "find-options snapshot")) as Record<string, unknown>;
     const p = quote["regularMarketPrice"] ?? quote["postMarketPrice"] ?? quote["preMarketPrice"];
     if (typeof p === "number" && Number.isFinite(p)) {
       lastPrice = p;

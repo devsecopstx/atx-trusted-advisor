@@ -69,6 +69,30 @@ describe("getYahooBatchQuotes (Redis cache)", () => {
     await resetRedisClientForTests();
   });
 
+  it("retries Yahoo batch with validateResult: false when schema validation fails", async () => {
+    await resetRedisClientForTests();
+    delete process.env.REDIS_URL;
+    quoteFn
+      .mockRejectedValueOnce(new Error("FailedYahooValidationError: Failed validation: #/definitions/QuoteResponseArray"))
+      .mockResolvedValueOnce([
+        {
+          symbol: "AAPL",
+          regularMarketPrice: 222,
+          regularMarketOpen: 220,
+          regularMarketDayHigh: 223,
+          regularMarketDayLow: 219,
+          regularMarketPreviousClose: 218,
+          regularMarketChange: 4,
+          regularMarketChangePercent: 1.8,
+          regularMarketVolume: 2000
+        }
+      ]);
+    const out = await getYahooBatchQuotes(["AAPL"]);
+    expect(quoteFn).toHaveBeenCalledTimes(2);
+    expect(quoteFn.mock.calls[1]).toEqual([["AAPL"], {}, { validateResult: false }]);
+    expect(out[0]?.price).toBe(222);
+  });
+
   it("uses Yahoo once then serves Redis on second identical batch", async () => {
     const first = await getYahooBatchQuotes(["AAPL"]);
     const second = await getYahooBatchQuotes(["AAPL"]);

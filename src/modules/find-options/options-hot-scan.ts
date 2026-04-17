@@ -1,4 +1,5 @@
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
 /** Yahoo may return IV as decimal (0.35) or percent-like (35). */
 export function impliedVolatilityPercent(raw: number | undefined | null): number {
@@ -53,7 +54,7 @@ export async function scanUnderlyingForHotOptions(input: {
   let underlyingSpot: number | null = null;
 
   try {
-    const q = (await yf.quote(sym)) as { regularMarketPrice?: number };
+    const q = (await yahooQuoteWithValidationFallback(yf, sym, "hot-scan spot")) as { regularMarketPrice?: number };
     const px = q?.regularMarketPrice;
     underlyingSpot = typeof px === "number" && Number.isFinite(px) ? px : null;
   } catch {

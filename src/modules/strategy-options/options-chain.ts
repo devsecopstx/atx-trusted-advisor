@@ -3,6 +3,7 @@
  * `apps/frontend/src/app/api/options/route.ts` (keep behavior aligned on upstream changes).
  */
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 import { NextResponse } from "next/server";
 
 import { europeanOptionGreeks } from "@/lib/xoptions/xoptions-bs-greeks";
@@ -610,7 +611,11 @@ export async function getStrategyOptionsChain(requestUrl: string): Promise<NextR
     // Get current stock price
     let stockPrice = targetStrike;
     try {
-      const quote = await yahooFinance.quote(underlying);
+      const quote = (await yahooQuoteWithValidationFallback(
+        yahooFinance,
+        underlying,
+        "options-chain underlying"
+      )) as { regularMarketPrice?: number };
       stockPrice = quote.regularMarketPrice || targetStrike;
     } catch {
       // Fallback to strike

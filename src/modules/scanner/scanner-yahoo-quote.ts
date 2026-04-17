@@ -6,6 +6,7 @@ import {
     scannerCircuitRecordSuccess
 } from "@/modules/scanner/scanner-circuit-breaker";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
 /**
  * Single-symbol Yahoo quote for scanner loops — shares circuit breaker with option-chain fetches.
@@ -20,7 +21,7 @@ export async function quoteUnderlyingForScanner(
   }
   const yahoo = getYahooFinance2();
   try {
-    const q = (await yahoo.quote(symbol)) as {
+    const q = (await yahooQuoteWithValidationFallback(yahoo, symbol, "scanner underlying quote")) as {
       regularMarketPrice?: number;
       postMarketPrice?: number;
     };
