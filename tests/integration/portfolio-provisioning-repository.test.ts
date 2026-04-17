@@ -12,6 +12,7 @@ import {
     getDefaultPortfolio,
     listPortfoliosForSessionUser,
     provisionDefaultPortfolioForUser,
+    updatePortfolioAccountForUser,
     upsertPositionForAccount
 } from "@/modules/core-admin/repository";
 
@@ -463,6 +464,8 @@ describe("portfolio provisioning repository", () => {
           name: "myaccount",
           outlook: "bearish",
           riskProfile: "growth",
+          extAccountId: "9876543210",
+          type: "merrill",
           updatedAt: new Date()
         }
       }
@@ -485,9 +488,45 @@ describe("portfolio provisioning repository", () => {
     expect(aAfter?.name).toBe("myaccount");
     expect(aAfter?.outlook).toBe("bearish");
     expect(aAfter?.riskProfile).toBe("growth");
+    expect(aAfter?.extAccountId).toBe("9876543210");
+    expect(aAfter?.type).toBe("merrill");
     expect(wAfter?.name).toBe("MyWatchlist");
     expect(again.portfolio.name).toBe("myPortfolio");
     expect(again.account.name).toBe("myaccount");
+  });
+
+  it("preserves PATCH’d extAccountId and broker type on default account after repeat provision (edit account + OAuth path)", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+
+    const { portfolio, account } = await provisionDefaultPortfolioForUser({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+    const portfolioId = portfolio._id!.toHexString();
+    const accountId = account._id!.toHexString();
+
+    const updated = await updatePortfolioAccountForUser({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      portfolioId,
+      accountId,
+      name: "myaccount",
+      extAccountId: "USER-EDIT-REF-8888",
+      type: "merrill",
+      cashBalance: 25_000
+    });
+    expect(updated?.extAccountId).toBe("USER-EDIT-REF-8888");
+    expect(updated?.type).toBe("merrill");
+
+    await provisionDefaultPortfolioForUser({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+
+    const doc = await fakeDb.db.collection("portfolio_accounts").findOne({ _id: account._id });
+    expect(doc?.extAccountId).toBe("USER-EDIT-REF-8888");
+    expect(doc?.type).toBe("merrill");
   });
 
   it("rejects position writes when account does not belong to portfolio", async () => {

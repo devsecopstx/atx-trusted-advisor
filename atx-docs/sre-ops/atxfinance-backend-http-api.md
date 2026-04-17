@@ -21,7 +21,7 @@ Same contracts as the matching Next.js App Router handlers when the core app **B
 |--------|------|---------|
 | GET | `/api/portfolios/{portfolioId}` | **200** `{ "data": { ... } }` summary payload (accounts from `portfolio_accounts`, portfolio from `tenant_portfolio` / `TENANT_PORTFOLIO_COLLECTION`). **401** / **400** invalid id / **404** not owned. |
 | PATCH | `/api/portfolios/{portfolioId}` | Body `{ "name": string }` (1–200 chars). **200** `{ "data": ... }`. |
-| GET | `/api/portfolios/default` | **200** `{ "data": ... }` default portfolio summary; provisions default portfolio + account + watchlist when missing (aligned with `provisionDefaultPortfolioForUser`). |
+| GET | `/api/portfolios/default` | **200** `{ "data": ... }` default portfolio summary; provisions default portfolio + account + watchlist when missing (aligned with Next `provisionDefaultPortfolioForUser`). Repeat provision does **not** reset **`extAccountId`** or **`type`** on an **existing** default account (**≥3.7.3**). |
 | POST | `/api/portfolios/default` | **200** `{ "data": ..., "synced": true }` same as GET + sync flag; **500** on provision failure (same user-facing message as Next). |
 | GET | `/api/portfolios/current` | Same as **GET** `/api/portfolios/default`. |
 | GET | `/api/portfolios/{portfolioId}/accounts` | **200** `{ "data": [...] }` account rows with embedded **positions** from `portfolio_positions`. Provisions defaults if account list empty. |

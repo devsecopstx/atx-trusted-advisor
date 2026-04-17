@@ -10,6 +10,7 @@ const sessionMocks = vi.hoisted(() => ({
 }));
 
 const repositoryMocks = vi.hoisted(() => ({
+  adminCreatePortfolioAlert: vi.fn(),
   adminListPortfolioAlerts: vi.fn(),
   deleteAllPortfolioAlertsForPortfolio: vi.fn(),
   getDefaultPortfolio: vi.fn(),
@@ -64,6 +65,18 @@ vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
   };
 });
 
+vi.mock("@/modules/notifications/portfolio-notification-service", () => {
+  const emptyDesk = {
+    slack: { targets: 0, postsOk: 0 },
+    email: { targets: 0, sent: 0, skipped: 0, failed: 0 },
+    sms: { targets: 0, skipped: 0 },
+    push: { targets: 0, skipped: 0 }
+  };
+  return {
+    dispatchPortfolioDeskEvents: () => Promise.resolve(emptyDesk)
+  };
+});
+
 vi.mock("@/modules/core-admin/repository", async () => {
   const actual = await vi.importActual<typeof import("@/modules/core-admin/repository")>(
     "@/modules/core-admin/repository"
@@ -98,7 +111,8 @@ import {
 import { GET as getPortfolioAccounts, POST as postPortfolioAccount } from "@/app/api/portfolios/[portfolioId]/accounts/route";
 import {
     DELETE as deletePortfolioAlerts,
-    GET as getPortfolioAlerts
+    GET as getPortfolioAlerts,
+    POST as postPortfolioAlerts
 } from "@/app/api/portfolios/[portfolioId]/alerts/route";
 import { GET as getPortfolioById, PATCH as patchPortfolioById } from "@/app/api/portfolios/[portfolioId]/route";
 import { GET as getPortfolioWatchlist } from "@/app/api/portfolios/[portfolioId]/watchlist/route";
@@ -201,6 +215,22 @@ describe("portfolio API routes", () => {
       updatedAt: new Date("2025-01-01T00:00:00.000Z")
     });
     repositoryMocks.adminListPortfolioAlerts.mockResolvedValue([]);
+    repositoryMocks.adminCreatePortfolioAlert.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd7994390aa" },
+      tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+      portfolioName: "Default Portfolio",
+      accountId: { toHexString: () => "507f1f77bcf86cd799439099" },
+      accountName: "defaultaccount",
+      title: "AAPL — holdings watch",
+      body: "test body",
+      severity: "info",
+      status: "active",
+      symbol: "AAPL",
+      createdAt: new Date("2025-01-02T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-02T00:00:00.000Z")
+    });
     repositoryMocks.deleteAllPortfolioAlertsForPortfolio.mockResolvedValue(0);
     repositoryMocks.updatePortfolioForUser.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
@@ -346,6 +376,72 @@ describe("portfolio API routes", () => {
     expect(repositoryMocks.deleteAllPortfolioAlertsForPortfolio).toHaveBeenCalledWith(
       "507f1f77bcf86cd799439033"
     );
+  });
+
+  it("POST /api/portfolios/:id/alerts creates a desk alert for the session portfolio (Edit Account holdings)", async () => {
+    repositoryMocks.adminCreatePortfolioAlert.mockClear();
+    repositoryMocks.adminCreatePortfolioAlert.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd7994390aa" },
+      tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+      portfolioName: "Default Portfolio",
+      accountId: { toHexString: () => "507f1f77bcf86cd799439099" },
+      accountName: "defaultaccount",
+      title: "TSLA — holdings watch",
+      body: "Last vs avg cost baseline",
+      severity: "warning",
+      status: "active",
+      symbol: "TSLA",
+      createdAt: new Date("2025-01-02T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-02T00:00:00.000Z")
+    });
+    const response = await postPortfolioAlerts(
+      new Request("http://test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "TSLA — holdings watch",
+          body: "Last vs avg cost baseline",
+          severity: "warning",
+          symbol: "TSLA",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }),
+      { params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" }) }
+    );
+    expect(response.status).toBe(201);
+    const payload = (await response.json()) as { data: { title: string; symbol: string | null } };
+    expect(payload.data.title).toBe("TSLA — holdings watch");
+    expect(payload.data.symbol).toBe("TSLA");
+    expect(repositoryMocks.adminCreatePortfolioAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        portfolioId: "507f1f77bcf86cd799439033",
+        title: "TSLA — holdings watch",
+        body: "Last vs avg cost baseline",
+        severity: "warning",
+        symbol: "TSLA",
+        accountId: "507f1f77bcf86cd799439099",
+        status: "active"
+      })
+    );
+  });
+
+  it("POST /api/portfolios/:id/alerts returns 400 when accountId is not in the portfolio", async () => {
+    repositoryMocks.adminCreatePortfolioAlert.mockClear();
+    const response = await postPortfolioAlerts(
+      new Request("http://test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Orphan alert",
+          accountId: "507f1f77bcf86cd7994390bb"
+        })
+      }),
+      { params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" }) }
+    );
+    expect(response.status).toBe(400);
+    expect(repositoryMocks.adminCreatePortfolioAlert).not.toHaveBeenCalled();
   });
 
   it("GET /api/portfolios/:id/watchlist provisions when missing then returns TSLA root", async () => {

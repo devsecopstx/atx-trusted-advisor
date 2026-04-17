@@ -5,6 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RRuleScheduleBuilderModal } from "@/app/admin/tasks/ui/rrule-schedule-builder-modal";
 import { AddIcon, DeleteIcon, RefreshIcon, RunIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import {
+    ADMIN_TASKS_DISPLAY_TIME_ZONE_OPTIONS,
+    DEFAULT_ADMIN_TASKS_DISPLAY_TIME_ZONE,
+    formatDateTimeInTimeZone,
+    loadStoredAdminTasksDisplayTimeZone,
+    persistAdminTasksDisplayTimeZone
+} from "@/lib/admin-tasks-display-timezone";
 import { SCHEDULED_TASK_CATEGORY_CATALOG } from "@/lib/scheduled-task-category-catalog";
 import {
     SCHEDULED_TASK_CATEGORIES,
@@ -121,6 +128,8 @@ export function TasksConsole() {
   const [runSortField, setRunSortField] = useState<"startedAt" | "status">("startedAt");
   const [runSortDir, setRunSortDir] = useState<"asc" | "desc">("desc");
   const [deliveryChannels, setDeliveryChannels] = useState<DeliveryChannelRow[]>([]);
+  /** Timestamps (next run, run history, channel updated); cron matching stays UTC — see copy in Tasks tab. */
+  const [displayTimeZone, setDisplayTimeZone] = useState(DEFAULT_ADMIN_TASKS_DISPLAY_TIME_ZONE);
   const [status, setStatus] = useState("Ready — tap refresh");
   const [loading, setLoading] = useState(false);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
@@ -439,6 +448,13 @@ export function TasksConsole() {
   }
 
   useEffect(() => {
+    const stored = loadStoredAdminTasksDisplayTimeZone();
+    if (stored) {
+      setDisplayTimeZone(stored);
+    }
+  }, []);
+
+  useEffect(() => {
     void refreshAll();
     pollRef.current = setInterval(() => {
       void refreshAll();
@@ -458,7 +474,7 @@ export function TasksConsole() {
 
   return (
     <section className="panel stack-gap">
-      <div className="tool-row">
+      <div className="tool-row" style={{ flexWrap: "wrap", alignItems: "flex-end", gap: "0.75rem" }}>
         <button
           className="cta cta-primary"
           disabled={loading || !hasAnyDirty}
@@ -470,7 +486,29 @@ export function TasksConsole() {
         <button className="cta cta-secondary" disabled={loading} onClick={() => void refreshAll()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh
         </button>
-        <p className="status-text">{status}</p>
+        <label className="flex flex-col gap-1 text-sm" style={{ minWidth: "14rem" }}>
+          <span className="status-text text-xs uppercase tracking-wide">Display timezone</span>
+          <select
+            aria-label="Timezone for schedule and run timestamps"
+            className="crud-input text-sm"
+            disabled={loading}
+            value={displayTimeZone}
+            onChange={(e) => {
+              const next = e.target.value;
+              setDisplayTimeZone(next);
+              persistAdminTasksDisplayTimeZone(next);
+            }}
+          >
+            {ADMIN_TASKS_DISPLAY_TIME_ZONE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="status-text" style={{ margin: 0, flex: "1 1 12rem" }}>
+          {status}
+        </p>
       </div>
 
       <div
@@ -576,7 +614,7 @@ export function TasksConsole() {
             disabled={loading}
           >
             Task runs ({runs.length}
-            {runHistoryWindow === "today" ? " · today UTC" : " · 30d"})
+            {runHistoryWindow === "today" ? " · today (UTC window)" : " · 30d"})
           </button>
           <button
             type="button"
@@ -598,7 +636,9 @@ export function TasksConsole() {
               <strong>combined output across tenants</strong>. Use <strong>Schedule tasks</strong> to add schedules.
               Set a delivery channel to post after every run (manual or scheduler). Delivery channels are still
               chosen from your tenant&apos;s admin list; the job itself is not stored with a single{" "}
-              <code className="font-mono text-xs">tenantId</code>.
+              <code className="font-mono text-xs">tenantId</code>.{" "}
+              <strong>Cron expressions use UTC</strong> (engine matches UTC clock); <strong>Next run</strong> and run
+              history timestamps use the <strong>display timezone</strong> you pick above (default Central).
             </p>
             {tasks.length > 0 ? (
               <div className="crud-table-wrap">
@@ -733,7 +773,11 @@ export function TasksConsole() {
                               }
                             />
                           </td>
-                          <td>{row.nextRunAt ? new Date(row.nextRunAt).toLocaleString() : "—"}</td>
+                          <td>
+                            {row.nextRunAt
+                              ? formatDateTimeInTimeZone(row.nextRunAt, displayTimeZone)
+                              : "—"}
+                          </td>
                           <td>
                             <div className="tool-row" style={{ gap: "0.25rem", flexWrap: "wrap" }}>
                               <button
@@ -974,9 +1018,9 @@ export function TasksConsole() {
                 </select>
               </label>
               <p className="status-text" style={{ margin: 0, flex: "1 1 12rem", alignSelf: "flex-end" }}>
-                Default shows runs that <strong>started</strong> on the current UTC date. Widen to 30 days for
-                troubleshooting; polling and refresh use the same window. Filter and sort apply to the loaded rows
-                only.
+                Default shows runs that <strong>started</strong> on the current UTC calendar day (API window). The{" "}
+                <strong>Started</strong> column uses your display timezone. Widen to 30 days for troubleshooting;
+                polling and refresh use the same window. Filter and sort apply to the loaded rows only.
               </p>
             </div>
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
@@ -1013,7 +1057,7 @@ export function TasksConsole() {
                           </span>
                         </td>
                         <td>{run.triggeredBy}</td>
-                        <td>{new Date(run.startedAt).toLocaleString()}</td>
+                        <td>{formatDateTimeInTimeZone(run.startedAt, displayTimeZone)}</td>
                         <td>{run.durationMs != null ? `${run.durationMs}ms` : "—"}</td>
                         <td className="output-cell">{run.output || "—"}</td>
                       </tr>
@@ -1059,7 +1103,7 @@ export function TasksConsole() {
                               : "—"}
                         </td>
                         <td className="font-mono text-xs text-slate-400">
-                          {new Date(ch.updatedAt).toLocaleString()}
+                          {formatDateTimeInTimeZone(ch.updatedAt, displayTimeZone)}
                         </td>
                       </tr>
                     ))}

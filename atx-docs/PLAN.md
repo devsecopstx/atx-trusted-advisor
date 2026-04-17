@@ -39,6 +39,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Shipped stack, features, CI
 - **Email + password auth (shipped 3.6.17–3.6.18):** `/login` (OAuth-first + email/password), set-password / forgot / reset routes, `POST /api/auth/email/*`, post-approve invite on **Next**; **Spring** **`CredentialInviteService`** when BFF proxies approve — see [auth-and-access.md](./guides/auth-and-access.md). **Open product:** `/xchat` guest CTA ordering (email vs OAuth prominence) behind env/tenant flag TBD; optional **`/register`** alias; pre-login **email verification** flow not shipped — track under **100** / tenant narrative.
 - **xChat vision paste — still open:** virus scan policy, optional max dimensions, EXIF strip, batch/admin harness parity.
 - Watchlist quote freshness: background refresh cadence + last-updated + stale badge on `/watchlist` and related tables.
+- **Edit Account → automated scanner / price-alert thresholds (backlog, not a regression):** Consolidated holdings already exposes **Avg cost** vs **Last** and a **Desk** flow that **`POST /api/portfolios/{portfolioId}/alerts`** (portfolio row + optional desk channels). **Still backlog:** row-level binding to **`price-alert-service`**, scheduled scanner thresholds from those fields, and **option mark** quotes when chain data is wired per `yahooRef` — [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md).
 
 ### Desk email & delivery (ops / PR review)
 
@@ -54,7 +55,6 @@ Living backlog for atx app, xChat, admin, and BFF. **Shipped stack, features, CI
 
 ### Open UX work
 
-- **Edit Account → scanner alerts** — Consolidated holdings table (app **3.3.8+**) exposes **Avg cost** vs **Last** (underlying). **Next:** wire “set alert” / options-scanner thresholds to `price-alert-service` (or scheduled scanner config) using those fields; add **option mark** quotes when chain API is available per `yahooRef`. Plan: [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md).
 - **Wheel strategy visual** — Subtle, accessible motion for the wheel / income-cycle story on marketing and in-product surfaces (e.g. pitch hero motif, optional branded flow diagram). Respect `prefers-reduced-motion`; keep loops slow and non-distracting.
 - **Onboarding workflows** — Stagger or transition steps in admin xPersona onboarding and related core-admin flows (directory load, filter changes, empty states) so progress feels guided without hurting scan speed for operators.
 

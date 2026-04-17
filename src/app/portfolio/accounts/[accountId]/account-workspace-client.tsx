@@ -94,9 +94,12 @@ function AccountWorkspaceInner({
     setOutlook(account.outlook ?? "neutral");
     setBrokerType(coerceAccountType(account.type));
   }, [
+    account._id,
     account.name,
     account.cashBalance,
     account.hasExtAccountRef,
+    account.extAccountRefMasked,
+    account.brokerImportLocked,
     account.riskProfile,
     account.outlook,
     account.type

@@ -21,25 +21,25 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
   ScheduledTaskCategoryCatalogEntry
 > = {
   price_scanner: {
-    displayName: "Price scanner (weekday desk window, UTC)",
+    displayName: "Price scanner (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "price-scanner-job",
     description:
       "Reads portfolios, holdings, and watchlists, fetches Yahoo quotes, updates tenant market calendar during the desk window, and drives portfolio price alerts."
   },
   options_scanner: {
-    displayName: "Options strategy scanner (weekday desk window, UTC)",
+    displayName: "Options strategy scanner (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "options-scanner-job",
     description:
       "Runs the unified options strategy scanner: strategy/prefs inventory, option positions and watchlist targets, Yahoo chain passes, portfolio_recommendations upserts, and SELL-signal alerts (Next.js executor; JVM tick is engine dry-run only when scheduled on Kotlin)."
   },
   user_access_requests: {
-    displayName: "User access requests (weekday desk window, UTC)",
+    displayName: "User access requests (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "user-access-request-job",
     description:
       "Monitors the access-request queue (actionable backlog and recent approvals) for admin operations."
   },
   "sync-broker": {
-    displayName: "Broker sync (weekday desk window, UTC)",
+    displayName: "Broker sync (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "sync-broker-job",
     description:
       "Broker sync / holdings import. When appBrokerImportJobId is set (app user /import-activity), Next runs staged CSV from app_broker_import_jobs; otherwise a placeholder success summary until live connectors are wired."
@@ -51,25 +51,25 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
       "Runs rebalance / allocation-drift analysis after US cash close (UTC-oriented cron); execution on Next.js task-runner."
   },
   compliance: {
-    displayName: "Compliance (weekday desk window, UTC)",
+    displayName: "Compliance (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "compliance-job",
     description:
       "Placeholder compliance scan; records a completed summary until compliance rules engine is integrated."
   },
   notifications: {
-    displayName: "Notifications digest (weekday desk window, UTC)",
+    displayName: "Notifications digest (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "notifications-job",
     description:
       "Placeholder notification digest task for scheduled summaries until notification dispatch is fully connected."
   },
   "user-history": {
-    displayName: "User history agent (weekday desk window, UTC)",
+    displayName: "User history agent (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "user-history-job",
     description:
       "Runs the user-history agent pass for xChat context hygiene (tenant-scoped; may execute on Kotlin worker when enabled)."
   },
   watchlist_price_scanner: {
-    displayName: "Watchlist price scanner (weekday desk window, UTC)",
+    displayName: "Watchlist price scanner (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "watchlist-price-scanner-job",
     description:
       "Tenant-scoped sweep: every `portfolio_watchlists` row for the tenant (one canonical watchlist per user). Processes each user’s symbol list in order; duplicate tickers in the same list each get their own quote-backed row update. Yahoo batch quotes, `lastPrice` updates, optional **finance-advisor** xPersona Grok rationale per row (capped by `WATCHLIST_SCANNER_GROK_MAX_CALLS`), scanner audit line on `rationale`, `rowStatus` → `review`, and price-move alerts. Same US market desk window as `price_scanner` (skips with keyed `watchlist_price_scanner: skipped — …` when closed/holiday). Summaries include `persona_grok_calls`, `rows_marked_review`, `items_updated`, `symbols_quoted`, `duration_s`, …."
@@ -87,7 +87,7 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
       "income and cash-flow projection pass after US close; runs on Next.js task-runner."
   },
   options_expiration_roll_manager: {
-    displayName: "Options expiration / roll (weekday desk window, UTC)",
+    displayName: "Options expiration / roll (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "options-expiration-roll-manager-job",
     description:
       "options expiration and roll manager; runs on Next.js task-runner."

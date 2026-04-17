@@ -20,8 +20,8 @@ export const SCHEDULED_TASK_CATEGORIES = [
 
 export type ScheduledTaskCategory = (typeof SCHEDULED_TASK_CATEGORIES)[number];
 
-/** Weekday desk window: every 15m from 08:00–17:59 UTC (align cron TZ with your scheduler if needed). */
-export const DEFAULT_SCHEDULED_TASK_CRON = "0,15,30,45 8-17 * * 1-5";
+/** Weekday UTC: top of each hour 14:00–21:59 UTC Mon–Fri; task runners still gate US RTH (`resolveUsMarketDayContext`). */
+export const DEFAULT_SCHEDULED_TASK_CRON = "0 14-21 * * 1-5";
 
 /** Post-US-close snapshots (UTC-oriented; adjust if scheduler TZ differs). */
 const EOD_US_CRON_UTC = "0 21 * * 1-5";

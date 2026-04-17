@@ -202,7 +202,9 @@ export function AccountHoldingsCrudCard({
       <p className="portfolio-edit-holdings-card__table-hint">
         Consolidated view: <strong>Last</strong> and <strong>Day Δ</strong> use the underlying quote (Yahoo).{" "}
         <strong>Value</strong> uses live stock marks; options show <strong>book</strong> (contracts × 100 × premium) until
-        option marks ship. Use <strong>Avg cost</strong> vs <strong>Last</strong> for scanner / alert baselines.
+        option marks ship. Use <strong>Avg cost</strong> vs <strong>Last</strong> for baselines; the{" "}
+        <strong>Desk</strong> column saves a portfolio alert (prefilled body) to <strong>Alerts</strong> + optional desk
+        channels.
       </p>
       {error ? (
         <p className="status-text status-error" role="alert">
@@ -216,8 +218,10 @@ export function AccountHoldingsCrudCard({
           <AccountConsolidatedHoldingsTable
             pending={pending}
             portfolioIdHex={portfolioIdHex}
+            accountIdHex={accountIdHex}
             positions={positions}
             onRemove={removePosition}
+            onDeskAlertSaved={() => startTransition(() => router.refresh())}
           />
         </div>
       )}

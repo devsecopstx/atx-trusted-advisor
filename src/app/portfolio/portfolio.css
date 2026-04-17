@@ -1849,6 +1849,35 @@
   min-height: 0;
 }
 
+.portfolio-consolidated-holdings__th-desk {
+  text-align: center;
+  min-width: 2.75rem;
+}
+
+.portfolio-consolidated-holdings__desk {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.portfolio-consolidated-holdings__desk-btn {
+  padding: 0.3rem 0.4rem;
+  min-height: 0;
+}
+
+.portfolio-consolidated-holdings__dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.portfolio-consolidated-holdings__dialog-textarea {
+  min-height: 6rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.8rem;
+}
+
 .portfolio-consolidated-holdings__total td,
 .portfolio-consolidated-holdings__total th {
   padding: 0.55rem 0.5rem;

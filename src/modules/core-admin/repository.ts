@@ -3574,9 +3574,11 @@ export async function provisionDefaultPortfolioForUser(
     updatedAt: now,
     ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
   };
+  /**
+   * Idempotent re-provision (OAuth, portfolio shell, etc.): keep broker `type` and `extAccountId`
+   * as the user set them — do not reset to paper defaults (same idea as portfolio name above).
+   */
   const accountSetForExisting = {
-    type: accountType,
-    extAccountId,
     isDefault: true,
     updatedAt: now,
     ...(tenantObjectId ? { tenantId: tenantObjectId } : {})

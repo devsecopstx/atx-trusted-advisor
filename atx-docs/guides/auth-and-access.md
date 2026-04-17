@@ -41,7 +41,7 @@ Reference: `src/modules/surface-policy.ts` and `src/proxy.ts`.
 
 **Admin → Access requests:** Per-row **role**, **plan**, and **tenant** pickers; optional **note** on approve/reject (**`reviewNote`**, stored on the request + audit snippet). **Save tenant** / **Save plan only** still issue **`PUT`** with **`targetTenantId`** or **`requestedPlan`** alone. Clearing tenant (**`targetTenantId`: `""`**) removes **`tenantId`** from the row for pending requests; **Approve** remains blocked until a tenant is selected again.
 
-**Names on re-login:** OAuth completion still runs **idempotent** default-book provisioning so the book exists, but repeat runs **must not** reset user-edited **portfolio / account / watchlist names** (or existing **cash** on the default account). Defaults apply only when inserting new rows or when a name was never set.
+**Names on re-login:** OAuth completion still runs **idempotent** default-book provisioning so the book exists, but repeat runs **must not** reset user-edited **portfolio / account / watchlist names** (or existing **cash** on the default account). Defaults apply only when inserting new rows or when a name was never set. **Broker identity on the default account:** repeat provision **must not** overwrite **`portfolio_accounts.extAccountId`** or **`type`** once the default account row exists (**Next `provisionDefaultPortfolioForUser`**, Spring **`DefaultPortfolioProvisionService.provision`** — **≥3.7.3**), so CSV import matching and Account details edits are not clobbered by the next login or shell provision.
 
 ### Admin approval → default book (portfolio, $25k account, TSLA watchlist)
 

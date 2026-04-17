@@ -1,5 +1,7 @@
 package com.atxfinance.backend.web
 
+import com.atxfinance.backend.portfolio.DefaultPortfolioProvisionService
+import com.atxfinance.backend.session.ResolvedSession
 import com.atxfinance.backend.session.SessionCookieParser
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -39,6 +41,9 @@ class BackendHttpApiCrudIntegrationTest {
 
     @Autowired
     private lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    private lateinit var provisionService: DefaultPortfolioProvisionService
 
     companion object {
         private const val AUTH_SECRET = "01234567890123456789012345678901"
@@ -314,5 +319,49 @@ class BackendHttpApiCrudIntegrationTest {
                 HttpStatus.BAD_REQUEST,
             )
         assertTrue(r.path("error").asText().contains("portfolioId"))
+    }
+
+    @Test
+    fun `repeat provision preserves default account ext ref and broker type`() {
+        val ch = cookieHeaders()
+        ch.contentType = MediaType.APPLICATION_JSON
+
+        val defaultGet = json("/api/portfolios/default", HttpMethod.GET, null, ch)
+        val portfolioId = defaultGet.path("data").path("_id").asText()
+        assertTrue(portfolioId.isNotEmpty())
+
+        val accountsBefore = json("/api/portfolios/$portfolioId/accounts", HttpMethod.GET, null, ch)
+        val data = accountsBefore.path("data")
+        assertTrue(data.isArray)
+        val defaultRow =
+            (0 until data.size())
+                .asSequence()
+                .map { data[it] }
+                .firstOrNull { it.path("isDefault").asBoolean(false) }
+                ?: data[0]
+        val defaultAccountId = defaultRow.path("_id").asText()
+        assertTrue(defaultAccountId.isNotEmpty())
+
+        json(
+            "/api/portfolios/$portfolioId/accounts/$defaultAccountId",
+            HttpMethod.PATCH,
+            """{"name":"defaultaccount","extAccountId":"USER-KEEP-REF-1234","type":"merrill","cashBalance":25000}""",
+            ch,
+        )
+
+        val session = ResolvedSession(userId = USER_ID, tenantId = TENANT_ID)
+        provisionService.provision(session, listOf("TSLA"))
+        provisionService.provision(session, listOf("TSLA"))
+
+        val accountsAfter = json("/api/portfolios/$portfolioId/accounts", HttpMethod.GET, null, ch)
+        val afterData = accountsAfter.path("data")
+        val afterDefault =
+            (0 until afterData.size())
+                .asSequence()
+                .map { afterData[it] }
+                .firstOrNull { it.path("_id").asText() == defaultAccountId }
+                ?: error("default account missing after provision")
+        assertEquals("USER-KEEP-REF-1234", afterDefault.path("extAccountId").asText())
+        assertEquals("merrill", afterDefault.path("type").asText())
     }
 }

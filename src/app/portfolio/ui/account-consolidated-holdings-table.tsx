@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { DeleteIcon } from "@/app/admin/ui/crud-icons";
+import { ActivityPulseIcon, DeleteIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
@@ -36,6 +37,42 @@ function optionLegLabel(p: SerializablePosition & { type: "option" }): string {
   }
   const cp = p.optionType === "put" ? "Put" : "Call";
   return `${p.contracts} ${cp} ${expDisp} @ ${p.strike}`;
+}
+
+function defaultDeskAlertTitle(underlyingUpper: string, p: SerializablePosition): string {
+  if (p.type === "option") {
+    return `${underlyingUpper} — option leg (holdings)`;
+  }
+  return `${underlyingUpper} — holdings watch`;
+}
+
+function defaultDeskAlertBody(
+  p: SerializablePosition,
+  underlying: string,
+  q: SymbolLookupResult | null,
+  markUsd: number
+): string {
+  const lines: string[] = [];
+  lines.push("Source: Edit Account holdings");
+  lines.push(`Underlying: ${underlying}`);
+  if (q?.price != null && Number.isFinite(q.price)) {
+    lines.push(`Last (underlying): ${fmtUsd(q.price)}`);
+  } else {
+    lines.push("Last (underlying): —");
+  }
+  if (p.type === "stock") {
+    lines.push(`Shares: ${p.shares}`);
+    lines.push(`Avg cost / share: ${fmtUsd(p.purchasePrice)}`);
+  } else if (p.type === "option") {
+    lines.push(optionLegLabel(p));
+    lines.push(`Premium / contract: ${fmtUsd(p.premiumPerContract)}`);
+    lines.push(`Book value (approx): ${fmtUsd(markUsd)}`);
+    if (p.yahooRef?.trim()) {
+      lines.push(`Yahoo ref: ${p.yahooRef.trim()}`);
+    }
+  }
+  lines.push("Compare Last vs Avg cost for scanner baselines or manual review.");
+  return lines.join("\n");
 }
 
 /** Mark-to-model for one row (stocks use live last when available; options use book; cash = notional). */
@@ -134,6 +171,9 @@ type AccountConsolidatedHoldingsTableProps = {
   pending: boolean;
   onRemove: (positionId: string) => void;
   portfolioIdHex?: string;
+  /** When set with `portfolioIdHex`, rows get a **Desk alert** action (POST `/api/portfolios/.../alerts`). */
+  accountIdHex?: string;
+  onDeskAlertSaved?: () => void;
 };
 
 type HoldingsSortState = { col: HoldingsSortColumn; dir: "asc" | "desc" };
@@ -189,7 +229,9 @@ export function AccountConsolidatedHoldingsTable({
   positions,
   pending,
   onRemove,
-  portfolioIdHex
+  portfolioIdHex,
+  accountIdHex,
+  onDeskAlertSaved
 }: AccountConsolidatedHoldingsTableProps) {
   const quoteSymbols = useMemo(() => {
     const s = new Set<string>();
@@ -203,6 +245,85 @@ export function AccountConsolidatedHoldingsTable({
   const { quotes, loading } = useSymbolQuotes(quoteSymbols, { portfolioIdHex });
 
   const [sort, setSort] = useState<HoldingsSortState | null>(null);
+
+  const deskDialogRef = useRef<HTMLDialogElement>(null);
+  const [deskCtx, setDeskCtx] = useState<{
+    position: SerializablePosition;
+    underlying: string;
+    quote: SymbolLookupResult | null;
+    markUsd: number;
+  } | null>(null);
+  const [deskTitle, setDeskTitle] = useState("");
+  const [deskBody, setDeskBody] = useState("");
+  const [deskSeverity, setDeskSeverity] = useState<"info" | "warning" | "critical">("info");
+  const [deskBusy, setDeskBusy] = useState(false);
+  const [deskError, setDeskError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (deskCtx && deskDialogRef.current) {
+      deskDialogRef.current.showModal();
+    }
+  }, [deskCtx]);
+
+  const openDeskDialog = useCallback(
+    (
+      p: SerializablePosition,
+      underlying: string,
+      quote: SymbolLookupResult | null,
+      markUsd: number
+    ) => {
+      const u = underlying.trim().toUpperCase();
+      setDeskError(null);
+      setDeskTitle(defaultDeskAlertTitle(u, p));
+      setDeskBody(defaultDeskAlertBody(p, u, quote, markUsd));
+      setDeskSeverity("info");
+      setDeskCtx({ position: p, underlying: u, quote, markUsd });
+    },
+    []
+  );
+
+  const closeDeskDialog = useCallback(() => {
+    deskDialogRef.current?.close();
+    setDeskCtx(null);
+  }, []);
+
+  async function submitDeskAlert() {
+    if (!portfolioIdHex || !accountIdHex || !deskCtx) {
+      return;
+    }
+    setDeskError(null);
+    setDeskBusy(true);
+    try {
+      const sym =
+        deskCtx.position.type === "stock" || deskCtx.position.type === "option"
+          ? deskCtx.underlying
+          : undefined;
+      const res = await fetch(
+        `/api/portfolios/${encodeURIComponent(portfolioIdHex)}/alerts`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: deskTitle.trim(),
+            body: deskBody.trim() || undefined,
+            severity: deskSeverity,
+            symbol: sym,
+            accountId: accountIdHex
+          })
+        }
+      );
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setDeskError(payload.error ?? "Could not save alert");
+        return;
+      }
+      closeDeskDialog();
+      onDeskAlertSaved?.();
+    } finally {
+      setDeskBusy(false);
+    }
+  }
 
   const setSortColumn = useCallback((col: HoldingsSortColumn) => {
     setSort((prev) => {
@@ -229,37 +350,46 @@ export function AccountConsolidatedHoldingsTable({
     return t;
   }, [positions, quotes]);
 
+  const showDeskAlertCol = Boolean(portfolioIdHex && accountIdHex);
+
   return (
-    <div className="portfolio-consolidated-holdings__scroll">
-      <table className="portfolio-consolidated-holdings">
-        <thead>
-          <tr>
-            <HoldingsSortHeader col="symbol" label="Symbol" sort={sort} onSort={setSortColumn} />
-            <th scope="col">Position</th>
-            <th scope="col" className="portfolio-consolidated-holdings__num">
-              Last
-              <span className="portfolio-consolidated-holdings__th-sub">underlying</span>
-            </th>
-            <HoldingsSortHeader
-              alignEnd
-              col="dayChange"
-              label="Day Δ"
-              sort={sort}
-              onSort={setSortColumn}
-            />
-            <th scope="col" className="portfolio-consolidated-holdings__num">
-              Value
-            </th>
-            <th scope="col" className="portfolio-consolidated-holdings__num">
-              % acct
-            </th>
-            <HoldingsSortHeader alignEnd col="qty" label="Qty" sort={sort} onSort={setSortColumn} />
-            <th scope="col" className="portfolio-consolidated-holdings__num">
-              Avg cost
-            </th>
-            <th scope="col" aria-label="Remove" />
-          </tr>
-        </thead>
+    <>
+      <div className="portfolio-consolidated-holdings__scroll">
+        <table className="portfolio-consolidated-holdings">
+          <thead>
+            <tr>
+              <HoldingsSortHeader col="symbol" label="Symbol" sort={sort} onSort={setSortColumn} />
+              <th scope="col">Position</th>
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                Last
+                <span className="portfolio-consolidated-holdings__th-sub">underlying</span>
+              </th>
+              <HoldingsSortHeader
+                alignEnd
+                col="dayChange"
+                label="Day Δ"
+                sort={sort}
+                onSort={setSortColumn}
+              />
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                Value
+              </th>
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                % acct
+              </th>
+              <HoldingsSortHeader alignEnd col="qty" label="Qty" sort={sort} onSort={setSortColumn} />
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                Avg cost
+              </th>
+              {showDeskAlertCol ? (
+                <th scope="col" className="portfolio-consolidated-holdings__th-desk">
+                  Desk
+                  <span className="portfolio-consolidated-holdings__th-sub">alert</span>
+                </th>
+              ) : null}
+              <th scope="col" aria-label="Remove" />
+            </tr>
+          </thead>
         <tbody>
           {sortedPositions.map((p) => {
             const u = quoteLookupKey(p);
@@ -371,6 +501,23 @@ export function AccountConsolidatedHoldingsTable({
                 </td>
                 <td className="portfolio-consolidated-holdings__num">{qtyCell}</td>
                 <td className="portfolio-consolidated-holdings__num">{avgCell}</td>
+                {showDeskAlertCol ? (
+                  <td className="portfolio-consolidated-holdings__desk">
+                    {showQuote && u ? (
+                      <button
+                        type="button"
+                        className="cta cta-secondary portfolio-consolidated-holdings__desk-btn"
+                        disabled={pending}
+                        onClick={() => openDeskDialog(p, u, q, mark)}
+                        aria-label={`Create desk alert for ${u}`}
+                      >
+                        <ActivityPulseIcon className="crud-icon" aria-hidden />
+                      </button>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                ) : null}
                 <td>
                   <button
                     type="button"
@@ -385,22 +532,100 @@ export function AccountConsolidatedHoldingsTable({
               </tr>
             );
           })}
-        </tbody>
-        {positions.length > 0 ? (
-          <tfoot>
-            <tr className="portfolio-consolidated-holdings__total">
-              <th scope="row" colSpan={4} className="portfolio-consolidated-holdings__total-label">
-                Total (mark)
-              </th>
-              <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">
-                {fmtUsd(totalMark)}
-              </td>
-              <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">100%</td>
-              <td colSpan={3} />
-            </tr>
-          </tfoot>
-        ) : null}
-      </table>
-    </div>
+          </tbody>
+          {positions.length > 0 ? (
+            <tfoot>
+              <tr className="portfolio-consolidated-holdings__total">
+                <th scope="row" colSpan={4} className="portfolio-consolidated-holdings__total-label">
+                  Total (mark)
+                </th>
+                <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">
+                  {fmtUsd(totalMark)}
+                </td>
+                <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">100%</td>
+                <td colSpan={showDeskAlertCol ? 4 : 3} />
+              </tr>
+            </tfoot>
+          ) : null}
+        </table>
+      </div>
+
+      <dialog
+        ref={deskDialogRef}
+        className="portfolio-alerts-preview-dialog"
+        onClose={() => setDeskCtx(null)}
+      >
+        <form
+          className="portfolio-alerts-preview-dialog__inner"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitDeskAlert();
+          }}
+        >
+          <h2 className="portfolio-alerts-preview-dialog__title">Save desk alert</h2>
+          <p className="portfolio-edit-holdings-card__table-hint" style={{ marginTop: 0 }}>
+            Creates an in-app portfolio alert (same list as{" "}
+            {portfolioIdHex ? (
+              <Link
+                className="portfolio-alerts-preview-dialog__link"
+                href={`/portfolio/alerts?portfolioId=${encodeURIComponent(portfolioIdHex)}`}
+              >
+                Alerts
+              </Link>
+            ) : (
+              "Alerts"
+            )}
+            ). Optional Slack/email still follow delivery channels for this book.
+          </p>
+          {deskError ? (
+            <p className="status-text status-error" role="alert">
+              {deskError}
+            </p>
+          ) : null}
+          <label className="stack-gap portfolio-consolidated-holdings__dialog-field">
+            <span className="portfolio-edit-field__label">Title</span>
+            <input
+              className="crud-input"
+              value={deskTitle}
+              onChange={(e) => setDeskTitle(e.target.value)}
+              maxLength={200}
+              required
+              autoComplete="off"
+            />
+          </label>
+          <label className="stack-gap portfolio-consolidated-holdings__dialog-field">
+            <span className="portfolio-edit-field__label">Body</span>
+            <textarea
+              className="crud-input portfolio-consolidated-holdings__dialog-textarea"
+              value={deskBody}
+              onChange={(e) => setDeskBody(e.target.value)}
+              maxLength={4000}
+              rows={8}
+            />
+          </label>
+          <label className="stack-gap portfolio-consolidated-holdings__dialog-field">
+            <span className="portfolio-edit-field__label">Severity</span>
+            <select
+              className="crud-input"
+              value={deskSeverity}
+              onChange={(e) => setDeskSeverity(e.target.value as "info" | "warning" | "critical")}
+              aria-label="Alert severity"
+            >
+              <option value="info">Info</option>
+              <option value="warning">Warning</option>
+              <option value="critical">Critical</option>
+            </select>
+          </label>
+          <div className="portfolio-alerts-preview-dialog__footer">
+            <button type="button" className="portfolio-alerts-preview-dialog__close" onClick={closeDeskDialog}>
+              Cancel
+            </button>
+            <button type="submit" className="cta cta-primary" disabled={deskBusy}>
+              {deskBusy ? "Saving…" : "Save alert"}
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </>
   );
 }

@@ -120,7 +120,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 
 - `GET /api/portfolios/default`
 - `GET /api/portfolios/:portfolioId/accounts`
-- `PATCH /api/portfolios/:portfolioId/accounts/:accountId` — name, cash, desk fields, **`extAccountId`** (always when valid); custodian **`type`** — **409** if **`brokerImportLocked`** and body includes **`type`** (ref remains editable after import)
+- `PATCH /api/portfolios/:portfolioId/accounts/:accountId` — name, cash, desk fields, **`extAccountId`** (non-empty string updates stored ref); custodian **`type`** — **409** if **`brokerImportLocked`** and body includes **`type`** (ref remains editable after import). Repeat default-book provision (**`provisionDefaultPortfolioForUser`**, app **≥3.7.3**) does not overwrite user-set **`extAccountId`** / **`type`** on the default account — integration: **`portfolio-provisioning-repository`**.
 - `GET /api/user/watchlist` — canonical **user-global** watchlist (session); optional `?quotes=1`
 - `PATCH /api/user/watchlist` — same store as portfolio-scoped routes below
 - `GET /api/portfolios/:portfolioId/watchlist` — shim: requires owned `portfolioId`, reads/writes user watchlist. Query **`quotes=1`** adds per-symbol quotes; add **`chainGlance=1`** (only with **`quotes=1`**) to attach **`chainGlance`** `{ contractType, strike, impliedVolatilityPercent, openInterest }` per row from nearest-expiry options (Yahoo)
@@ -204,6 +204,7 @@ Browsers call these on the **Next** origin; Next forwards to Kotlin when the bac
 ## Portfolio alerts (app_user + admin)
 
 - `GET /api/portfolios/:portfolioId/alerts` — session; list alerts for an owned portfolio (may BFF to Spring)
+- `POST /api/portfolios/:portfolioId/alerts` — session; create portfolio alert (`title`, optional `body`, `severity`, optional `symbol`, optional `accountId` hex on the book); desk channels when configured (may BFF)
 - `DELETE /api/portfolios/:portfolioId/alerts` — session; bulk clear (may BFF)
 - `GET /api/admin/portfolios/:portfolioId/alerts` — global admin
 - `POST /api/admin/portfolios/:portfolioId/alerts` — global admin

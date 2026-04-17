@@ -13,7 +13,8 @@ import java.util.Date
 
 /**
  * Ports `getDefaultPortfolio` + `provisionDefaultPortfolioForUser` from
- * `src/modules/core-admin/repository.ts`.
+ * `src/modules/core-admin/repository.ts`. Repeat [provision] does not reset
+ * `extAccountId` or `type` on an existing default account (insert/upsert path still seeds defaults).
  */
 @Service
 class DefaultPortfolioProvisionService(
@@ -196,14 +197,17 @@ class DefaultPortfolioProvisionService(
             props.accountsCollection,
         )
 
-        val accountSetExisting = Update()
-            .set("type", "fidelity")
-            .set("extAccountId", defaultAccountRef)
-            .set("isDefault", true)
-            .set("updatedAt", now)
-        if (tenantOid != null) {
-            accountSetExisting.set("tenantId", tenantOid)
-        }
+        // Idempotent re-provision: do not reset broker `type` or `extAccountId` on an existing default
+        // account (matches Next `provisionDefaultPortfolioForUser` — user-set refs survive OAuth / shell).
+        val accountSetExisting =
+            Update()
+                .set("isDefault", true)
+                .set("updatedAt", now)
+                .apply {
+                    if (tenantOid != null) {
+                        set("tenantId", tenantOid)
+                    }
+                }
 
         if (account?.getObjectId("_id") != null) {
             val aid = account!!.getObjectId("_id")!!
