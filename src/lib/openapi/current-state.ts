@@ -741,6 +741,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "portfolios"
   },
   {
+    path: "/api/portfolios/{portfolioId}/alerts/{alertId}/narrative",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "portfolios"
+  },
+  {
     path: "/api/portfolios/{portfolioId}/recommendations",
     operations: [
       { method: "GET", auth: "session" },

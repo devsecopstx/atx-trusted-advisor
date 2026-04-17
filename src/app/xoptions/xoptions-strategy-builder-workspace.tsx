@@ -487,6 +487,23 @@ export function XoptionsStrategyBuilderWorkspace() {
     return () => mq.removeEventListener("change", fn);
   }, []);
 
+  /** Alerts desk deep-link: `/xoptions?symbol=…&step=4&portfolioId=…` opens the contract step. */
+  useEffect(() => {
+    const q = readXoptionsUrlSearchParams();
+    if (q.get("step") !== "4") {
+      return;
+    }
+    const sym = normalizeXoptionsUnderlyingSymbol(symbol);
+    if (!isValidXoptionsUnderlyingSymbol(sym)) {
+      return;
+    }
+    if (snapLoading) {
+      return;
+    }
+    setUnlockedStep((u) => Math.max(u, 4));
+    setActiveStep(4);
+  }, [symbol, snapLoading, searchParamsKey]);
+
   useEffect(() => {
     if (!ctx?.portfolio?.id) {
       return;

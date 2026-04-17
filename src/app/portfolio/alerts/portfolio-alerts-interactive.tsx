@@ -1,13 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 
+import { PortfolioAlertDetailModal } from "@/app/portfolio/alerts/portfolio-alert-detail-modal";
 import { PortfolioAlertsToolbar } from "@/app/portfolio/alerts/portfolio-alerts-toolbar";
-import { formatPortfolioAlertBodyForDisplay } from "@/lib/portfolio-alert-display";
+import {
+    buildActionPreviewLines,
+    buildHumanAlertSummary,
+    buildRiskPills,
+    buildSimulateXoptionsHref,
+    classifyAlertSurface,
+    dteBadgeTone,
+    extractCloseKindFromBody,
+    formatContractDeskLabel,
+    formatRelativeTime,
+    optionPositionLabelFromClose,
+    parseContractKey,
+    parseContractKeyFromBody,
+    scannerRuleLine,
+    type ActionPreviewKind,
+    type PortfolioAlertRowVm
+} from "@/lib/portfolio-alert-desk-present";
 import {
     alertDteBucket,
-    extractAlertQuantSnippet,
     inferAlertRiskKind,
     isOptionStyleAlert,
     parseAlertDte,
@@ -15,22 +31,7 @@ import {
     type AlertRiskKind
 } from "@/lib/portfolio-alert-insights";
 
-export type PortfolioAlertRowVm = {
-  id: string;
-  title: string;
-  body: string | null;
-  severity: "info" | "warning" | "critical";
-  status: string;
-  symbol: string | null;
-  portfolioName: string | null;
-  accountId: string | null;
-  accountName: string | null;
-  accountType: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type PreviewKind = "close" | "roll30" | "rollStrike";
+export type { PortfolioAlertRowVm } from "@/lib/portfolio-alert-desk-present";
 
 const DTE_LABELS: Record<AlertDteBucketId, string> = {
   "0-7": "0–7 DTE",
@@ -57,27 +58,22 @@ function severityRowClass(sev: string): string {
   return "portfolio-alerts-table__row--info";
 }
 
-function buildActionPreview(kind: PreviewKind, row: PortfolioAlertRowVm): string {
-  const sym = row.symbol ?? "this underlying";
-  const dte = parseAlertDte(row.body, row.title);
-  const dteBit = dte !== null ? ` Current leg ~${dte} DTE.` : "";
-  switch (kind) {
-    case "close":
-      return `Close — ${sym}:${dteBit} Plan an exit at the next liquid session; size vs open risk and confirm fills with your broker. Not financial advice.`;
-    case "roll30":
-      return `Roll ~30 DTE — ${sym}:${dteBit} Target a cycle near 30 days out to reset theta; check earnings and open interest before anchoring strikes. Not financial advice.`;
-    case "rollStrike":
-      return `Roll & adjust strike — ${sym}:${dteBit} Roll forward and nudge strike ~2–5 Δ to rebalance premium vs assignment risk (verify chain quotes). Not financial advice.`;
-    default:
-      return "";
-  }
+function IconClose({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
 }
 
-const PREVIEW_TITLES: Record<PreviewKind, string> = {
-  close: "Close leg",
-  roll30: "Roll ~30 DTE",
-  rollStrike: "Roll & adjust strike"
-};
+function IconCalendar({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export function PortfolioAlertsInteractive(props: {
   portfolioId: string;
@@ -85,8 +81,8 @@ export function PortfolioAlertsInteractive(props: {
   rows: PortfolioAlertRowVm[];
 }) {
   const { portfolioId, portfolioName, rows } = props;
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [preview, setPreview] = useState<{ kind: PreviewKind; title: string; body: string } | null>(null);
+  const [detailRow, setDetailRow] = useState<PortfolioAlertRowVm | null>(null);
+  const [actionPreview, setActionPreview] = useState<{ kind: ActionPreviewKind; row: PortfolioAlertRowVm } | null>(null);
 
   const [accountType, setAccountType] = useState<string>("all");
   const [dteBucket, setDteBucket] = useState<AlertDteBucketId | "all">("all");
@@ -146,9 +142,7 @@ export function PortfolioAlertsInteractive(props: {
     const warnings = rows.filter((r) => r.severity === "warning").length;
     const critical = rows.filter((r) => r.severity === "critical").length;
     const syms = new Set(rows.map((r) => (r.symbol ?? "").trim().toUpperCase()).filter(Boolean));
-    const accounts = new Set(
-      rows.map((r) => (r.accountName ?? "").trim()).filter(Boolean)
-    );
+    const accounts = new Set(rows.map((r) => (r.accountName ?? "").trim()).filter(Boolean));
     return {
       total: rows.length,
       warnings,
@@ -167,15 +161,6 @@ export function PortfolioAlertsInteractive(props: {
     setDteBucket("all");
     setRiskKind("all");
     setSymbol("all");
-  }, []);
-
-  const openPreview = useCallback((kind: PreviewKind, row: PortfolioAlertRowVm) => {
-    setPreview({
-      kind,
-      title: PREVIEW_TITLES[kind],
-      body: buildActionPreview(kind, row)
-    });
-    dialogRef.current?.showModal();
   }, []);
 
   const xoptionsHref = `/xoptions?portfolioId=${encodeURIComponent(portfolioId)}`;
@@ -307,31 +292,74 @@ export function PortfolioAlertsInteractive(props: {
           role="region"
           aria-label={`Alerts table, ${filtered.length} row${filtered.length === 1 ? "" : "s"}`}
         >
-          <table className="portfolio-alerts-table">
+          <table className="portfolio-alerts-table portfolio-alerts-table--desk">
             <caption className="portfolio-alerts-table__caption">
               Desk and scanner alerts for {portfolioName}
             </caption>
             <thead className="portfolio-alerts-table__head">
               <tr>
-                <th scope="col">Book · Account</th>
-                <th scope="col">Alert</th>
-                <th scope="col">Symbol</th>
-                <th scope="col">Level · signal</th>
+                <th scope="col">Contract / signal</th>
+                <th scope="col">Book · account</th>
+                <th scope="col">Severity · rule</th>
+                <th scope="col">Risks · read</th>
                 <th scope="col">Status</th>
                 <th scope="col">Updated</th>
-                <th scope="col">Suggested actions</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((r) => {
                 const sevClass = severityRowClass(r.severity);
-                const snippet = extractAlertQuantSnippet(r.body, r.title);
+                const surface = classifyAlertSurface(r.title, r.body);
+                const ck = parseContractKeyFromBody(r.body);
+                const parsed = ck ? parseContractKey(ck) : null;
+                const closeKind = extractCloseKindFromBody(r.body);
                 const optionRow = isOptionStyleAlert(r.title, r.body);
-                const created = new Date(r.createdAt);
+                const meta = r.metadata;
+                const dte = meta?.metrics.dte ?? parseAlertDte(r.body, r.title);
+                const dteTone = dteBadgeTone(dte);
+                const pills = buildRiskPills(r.body, r.title, meta);
+                const summaryLine = buildHumanAlertSummary(r.body, r.title, meta);
+                const previews = buildActionPreviewLines({
+                  parsed,
+                  closeKind,
+                  symbol: r.symbol,
+                  metadata: meta
+                });
                 const updated = new Date(r.updatedAt);
+                const created = new Date(r.createdAt);
+                const rel = formatRelativeTime(r.updatedAt);
+                const contractPrimary =
+                  surface === "options_scanner" && parsed
+                    ? formatContractDeskLabel(parsed)
+                    : scannerRuleLine(r.title);
+                const dirBadge =
+                  optionRow && parsed && closeKind
+                    ? `${optionPositionLabelFromClose(closeKind, parsed.optionType)} · ${closeKind.replace(/_/g, " ")}`
+                    : surface === "watchlist_price"
+                      ? "Price break"
+                      : "Desk";
+
                 return (
                   <Fragment key={r.id}>
-                    <tr className={`portfolio-alerts-table__row ${sevClass}`}>
+                    <tr
+                      className={`portfolio-alerts-table__row portfolio-alerts-table__row--clickable ${sevClass}`}
+                      tabIndex={0}
+                      aria-label={`Open detail for ${contractPrimary}`}
+                      onClick={() => setDetailRow(r)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setDetailRow(r);
+                        }
+                      }}
+                    >
+                      <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--contract">
+                        <span className="portfolio-alerts-contract__id">{contractPrimary}</span>
+                        <span className={`portfolio-alerts-dir-badge portfolio-alerts-dir-badge--${closeKind === "BUY_TO_CLOSE" ? "btc" : closeKind === "SELL_TO_CLOSE" ? "stc" : "na"}`}>
+                          {dirBadge}
+                        </span>
+                      </td>
                       <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--book">
                         <span className="portfolio-alerts-table__book-name">
                           {r.portfolioName?.trim() || portfolioName}
@@ -346,35 +374,38 @@ export function PortfolioAlertsInteractive(props: {
                           <span className="portfolio-alerts-table__account-type">{r.accountType}</span>
                         ) : null}
                       </td>
-                      <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--title">
-                        <span className="portfolio-alerts-table__title-text">{r.title}</span>
-                      </td>
-                      <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--symbol">
-                        {r.symbol ? (
-                          <span className="portfolio-alerts-pill portfolio-alerts-pill--sym">{r.symbol}</span>
-                        ) : (
-                          <span className="portfolio-alerts-table__dash" aria-label="No symbol">
-                            —
-                          </span>
-                        )}
-                      </td>
-                      <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--level">
-                        <div className="portfolio-alerts-level-stack">
+                      <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--sev-rule">
+                        <div className="portfolio-alerts-sev-rule">
                           <span
                             className={`portfolio-alerts-pill portfolio-alerts-pill--severity portfolio-alerts-pill--sev-${r.severity}`}
                           >
                             {r.severity}
                           </span>
-                          <span className="portfolio-alerts-quant-snippet" title={snippet}>
-                            {snippet}
-                          </span>
+                          {dte != null ? (
+                            <span className={`portfolio-alerts-dte-badge portfolio-alerts-dte-badge--${dteTone}`}>
+                              {dte} DTE
+                            </span>
+                          ) : null}
+                          <span className="portfolio-alerts-sev-rule__text">{scannerRuleLine(r.title)}</span>
                         </div>
+                      </td>
+                      <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--risks">
+                        <div className="portfolio-alerts-risk-pill-row">
+                          {pills.map((p) => (
+                            <span key={p.id} className="portfolio-alerts-risk-pill portfolio-alerts-risk-pill--compact">
+                              <span className="portfolio-alerts-risk-pill__k">{p.label}</span>
+                              <span className="portfolio-alerts-risk-pill__v">{p.value}</span>
+                            </span>
+                          ))}
+                        </div>
+                        <p className="portfolio-alerts-one-liner">{summaryLine}</p>
                       </td>
                       <td className="portfolio-alerts-table__cell">
                         <span className="portfolio-alerts-pill portfolio-alerts-pill--status">{r.status}</span>
                       </td>
                       <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--time">
-                        <time dateTime={updated.toISOString()} title={created.toISOString()}>
+                        <span className="portfolio-alerts-time__rel">{rel}</span>
+                        <time className="portfolio-alerts-time__abs" dateTime={updated.toISOString()} title={created.toISOString()}>
                           {updated.toLocaleString(undefined, {
                             month: "short",
                             day: "numeric",
@@ -384,47 +415,63 @@ export function PortfolioAlertsInteractive(props: {
                           })}
                         </time>
                         <span className="portfolio-alerts-table__created-hint" title={created.toISOString()}>
-                          {" "}
-                          · created {created.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          created {created.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                         </span>
                       </td>
                       <td className="portfolio-alerts-table__cell portfolio-alerts-table__cell--actions">
+                        <button
+                          type="button"
+                          className="portfolio-alerts-view-detail"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetailRow(r);
+                          }}
+                        >
+                          View detail
+                        </button>
                         {optionRow ? (
+                          <div className="portfolio-alerts-actions portfolio-alerts-actions--rich">
+                            {(["close", "roll30", "rollStrike"] as const).map((kind) => {
+                              const pv = previews[kind];
+                              const icon = kind === "close" ? <IconClose className="portfolio-alerts-actions__ico" /> : <IconCalendar className="portfolio-alerts-actions__ico" />;
+                              return (
+                                <button
+                                  key={kind}
+                                  type="button"
+                                  className="portfolio-alerts-actions__btn portfolio-alerts-actions__btn--stack"
+                                  title={pv.tooltip}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActionPreview({ kind, row: r });
+                                  }}
+                                >
+                                  <span className="portfolio-alerts-actions__btn-row">
+                                    {icon}
+                                    <span>
+                                      {kind === "close" ? "Close" : kind === "roll30" ? "Roll 30 DTE" : "Roll & strike"}
+                                    </span>
+                                    <span className="portfolio-alerts-actions__framing">({pv.framing})</span>
+                                  </span>
+                                  <span className="portfolio-alerts-actions__preview-line">{pv.primary}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : surface === "watchlist_price" ? (
                           <div className="portfolio-alerts-actions">
-                            <button
-                              type="button"
-                              className="portfolio-alerts-actions__btn"
-                              onClick={() => openPreview("close", r)}
+                            <Link
+                              className="portfolio-alerts-actions__link"
+                              href={r.symbol ? `${xoptionsHref}&symbol=${encodeURIComponent(r.symbol.trim().toUpperCase())}` : xoptionsHref}
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              Close
-                            </button>
-                            <button
-                              type="button"
-                              className="portfolio-alerts-actions__btn"
-                              onClick={() => openPreview("roll30", r)}
-                            >
-                              Roll 30 DTE
-                            </button>
-                            <button
-                              type="button"
-                              className="portfolio-alerts-actions__btn"
-                              onClick={() => openPreview("rollStrike", r)}
-                            >
-                              Roll &amp; adjust strike
-                            </button>
+                              Add to xOptions
+                            </Link>
                           </div>
                         ) : (
                           <span className="portfolio-alerts-table__dash">—</span>
                         )}
                       </td>
                     </tr>
-                    {r.body ? (
-                      <tr className={`portfolio-alerts-table__detail ${sevClass}`}>
-                        <td className="portfolio-alerts-table__rationale" colSpan={7}>
-                          {formatPortfolioAlertBodyForDisplay(r.body)}
-                        </td>
-                      </tr>
-                    ) : null}
                   </Fragment>
                 );
               })}
@@ -433,26 +480,76 @@ export function PortfolioAlertsInteractive(props: {
         </div>
       )}
 
-      <dialog ref={dialogRef} className="portfolio-alerts-preview-dialog" onClose={() => setPreview(null)}>
-        {preview ? (
-          <div className="portfolio-alerts-preview-dialog__inner">
-            <h2 className="portfolio-alerts-preview-dialog__title">{preview.title}</h2>
-            <p className="portfolio-alerts-preview-dialog__body">{preview.body}</p>
-            <div className="portfolio-alerts-preview-dialog__footer">
-              <Link className="portfolio-alerts-preview-dialog__link" href={xoptionsHref}>
-                Open xOptions
-              </Link>
-              <button
-                type="button"
-                className="portfolio-alerts-preview-dialog__close"
-                onClick={() => dialogRef.current?.close()}
-              >
-                Dismiss
-              </button>
-            </div>
+      <PortfolioAlertDetailModal
+        portfolioId={portfolioId}
+        portfolioName={portfolioName}
+        row={detailRow}
+        onClose={() => setDetailRow(null)}
+      />
+
+      {actionPreview ? (
+        <div
+          className="portfolio-alerts-action-scrim"
+          role="presentation"
+          onClick={() => setActionPreview(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setActionPreview(null);
+            }
+          }}
+        >
+          <div
+            className="portfolio-alerts-action-scrim__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="portfolio-alerts-action-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const k = parseContractKeyFromBody(actionPreview.row.body);
+              const parsed = k ? parseContractKey(k) : null;
+              const lines = buildActionPreviewLines({
+                parsed,
+                closeKind: extractCloseKindFromBody(actionPreview.row.body),
+                symbol: actionPreview.row.symbol,
+                metadata: actionPreview.row.metadata
+              })[actionPreview.kind];
+              const sim = buildSimulateXoptionsHref({
+                portfolioId,
+                accountId: actionPreview.row.accountId,
+                symbol: actionPreview.row.symbol
+              });
+              return (
+                <>
+                  <h2 id="portfolio-alerts-action-title" className="portfolio-alerts-preview-dialog__title">
+                    {actionPreview.kind === "close"
+                      ? "Close leg"
+                      : actionPreview.kind === "roll30"
+                        ? "Roll ~30 DTE"
+                        : "Roll & adjust strike"}
+                  </h2>
+                  <p className="portfolio-alerts-preview-dialog__body">{lines.primary}</p>
+                  <p className="portfolio-alerts-preview-dialog__body portfolio-alerts-action-scrim__hint">{lines.tooltip}</p>
+                  <div className="portfolio-alerts-preview-dialog__footer">
+                    {sim ? (
+                      <Link className="portfolio-alerts-preview-dialog__link" href={sim} onClick={() => setActionPreview(null)}>
+                        Simulate in xOptions
+                      </Link>
+                    ) : (
+                      <Link className="portfolio-alerts-preview-dialog__link" href={xoptionsHref} onClick={() => setActionPreview(null)}>
+                        Open xOptions
+                      </Link>
+                    )}
+                    <button type="button" className="portfolio-alerts-preview-dialog__close" onClick={() => setActionPreview(null)}>
+                      Dismiss
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
-        ) : null}
-      </dialog>
+        </div>
+      ) : null}
     </>
   );
 }

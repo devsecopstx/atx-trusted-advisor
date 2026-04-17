@@ -2114,6 +2114,31 @@ export async function adminListPortfolioAlerts(portfolioId: string): Promise<Por
     .toArray();
 }
 
+export async function adminGetPortfolioAlert(
+  portfolioId: string,
+  alertId: string
+): Promise<PortfolioAlert | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(alertId)) {
+    return null;
+  }
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return null;
+  }
+  const db = await getDb();
+  return db.collection<PortfolioAlert>(collections.portfolioAlerts).findOne(
+    withTenantScope(
+      {
+        _id: new ObjectId(alertId),
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid
+      },
+      ctx.tenantId
+    )
+  );
+}
+
 export async function adminCreatePortfolioAlert(input: {
   portfolioId: string;
   title: string;

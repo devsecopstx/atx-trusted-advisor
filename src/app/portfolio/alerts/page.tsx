@@ -128,7 +128,8 @@ export default async function PortfolioAlertsPage({
         accountName: a.accountName ?? null,
         accountType: a.accountId ? typeByAccountId[a.accountId.toHexString()] ?? null : null,
         createdAt: a.createdAt.toISOString(),
-        updatedAt: a.updatedAt.toISOString()
+        updatedAt: a.updatedAt.toISOString(),
+        metadata: a.metadata ?? null
       }));
     } catch (error) {
       const detail = caughtErrorMessage(error);
