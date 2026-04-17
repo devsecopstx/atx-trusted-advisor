@@ -205,6 +205,7 @@ Browsers call these on the **Next** origin; Next forwards to Kotlin when the bac
 
 - `GET /api/portfolios/:portfolioId/alerts` — session; list alerts for an owned portfolio (may BFF to Spring)
 - `POST /api/portfolios/:portfolioId/alerts` — session; create portfolio alert (`title`, optional `body`, `severity`, optional `symbol`, optional `accountId` hex on the book); desk channels when configured (may BFF)
+- `POST /api/portfolios/:portfolioId/alerts/:alertId/narrative` — session; owned portfolio; short xAI desk paragraph from alert payload (**200** `{ "data": { "narrative", "model" } }`; **404** alert missing; **503** `narrative_unavailable` when xAI errors). May BFF when portfolio routes proxy to Spring.
 - `DELETE /api/portfolios/:portfolioId/alerts` — session; bulk clear (may BFF)
 - `GET /api/admin/portfolios/:portfolioId/alerts` — global admin
 - `POST /api/admin/portfolios/:portfolioId/alerts` — global admin
