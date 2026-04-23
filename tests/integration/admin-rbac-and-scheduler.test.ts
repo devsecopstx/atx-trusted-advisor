@@ -9,7 +9,8 @@ const authMocks = vi.hoisted(() => ({
 
 const repositoryMocks = vi.hoisted(() => ({
   listScheduledTasks: vi.fn(),
-  listDueScheduledTasks: vi.fn()
+  listDueScheduledTasks: vi.fn(),
+  claimDueScheduledTaskForExecution: vi.fn()
 }));
 
 const runnerMocks = vi.hoisted(() => ({
@@ -50,6 +51,7 @@ describe("admin RBAC and scheduler semantics", () => {
     authMocks.requireAdminTenantIdHex.mockResolvedValue("507f1f77bcf86cd799439022");
     repositoryMocks.listScheduledTasks.mockResolvedValue([]);
     repositoryMocks.listDueScheduledTasks.mockResolvedValue([]);
+    repositoryMocks.claimDueScheduledTaskForExecution.mockResolvedValue(null);
     runnerMocks.executeScheduledTask.mockResolvedValue({
       runId: new ObjectId("507f1f77bcf86cd799439055"),
       status: "success",
@@ -91,7 +93,7 @@ describe("admin RBAC and scheduler semantics", () => {
   });
 
   it("runs due tasks for tenant and tags scheduler trigger", async () => {
-    repositoryMocks.listDueScheduledTasks.mockResolvedValueOnce([
+    const dueTasks = [
       {
         _id: new ObjectId("507f1f77bcf86cd799439044"),
         tenantId: new ObjectId("507f1f77bcf86cd799439022"),
@@ -108,7 +110,11 @@ describe("admin RBAC and scheduler semantics", () => {
         scheduleCron: "0 5 * * *",
         enabled: true
       }
-    ]);
+    ];
+    repositoryMocks.listDueScheduledTasks.mockResolvedValueOnce(dueTasks);
+    repositoryMocks.claimDueScheduledTaskForExecution
+      .mockResolvedValueOnce(dueTasks[0])
+      .mockResolvedValueOnce(dueTasks[1]);
 
     const response = await postSchedulerTick(
       new Request("http://localhost/api/admin/scheduler/tick", { method: "POST" })
@@ -123,6 +129,7 @@ describe("admin RBAC and scheduler semantics", () => {
     expect(repositoryMocks.listDueScheduledTasks).toHaveBeenCalledWith(expect.any(Date), {
       tenantId: "507f1f77bcf86cd799439022"
     });
+    expect(repositoryMocks.claimDueScheduledTaskForExecution).toHaveBeenCalledTimes(2);
     expect(runnerMocks.executeScheduledTask).toHaveBeenCalledTimes(2);
     expect(runnerMocks.executeScheduledTask).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Daily Broker Sync" }),
@@ -131,7 +138,8 @@ describe("admin RBAC and scheduler semantics", () => {
         userId: "507f1f77bcf86cd799439011",
         email: "admin@example.com",
         username: "admin-user"
-      }
+      },
+      { scheduleAlreadyClaimed: true }
     );
   });
 });

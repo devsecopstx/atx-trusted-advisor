@@ -1064,6 +1064,50 @@ export async function listDueScheduledTasks(
     .toArray();
 }
 
+/**
+ * Atomically claims a due tenant-level scheduled task by moving `nextRunAt` forward.
+ * Returns the updated task document when this caller won the claim; `null` means another
+ * node/tick already claimed or task is no longer due.
+ */
+export async function claimDueScheduledTaskForExecution(input: {
+  taskId: ObjectId;
+  now: Date;
+  tenantId?: string;
+}): Promise<ScheduledTask | null> {
+  const db = await getDb();
+  const dueFilter = scheduledTaskTenantReadScope(
+    {
+      _id: input.taskId,
+      enabled: true,
+      nextRunAt: { $lte: input.now },
+      $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
+    },
+    input.tenantId
+  ) as Filter<ScheduledTask>;
+  const candidate = await db.collection<ScheduledTask>(collections.scheduledTasks).findOne(dueFilter, {
+    projection: { scheduleCron: 1, scheduleRRule: 1 }
+  });
+  if (!candidate) {
+    return null;
+  }
+  const nextRunAt =
+    computeNextRunAtFromSchedule(
+      { scheduleCron: candidate.scheduleCron, scheduleRRule: candidate.scheduleRRule },
+      input.now
+    ) ??
+    new Date(input.now.getTime() + 24 * 60 * 60 * 1000);
+  return db.collection<ScheduledTask>(collections.scheduledTasks).findOneAndUpdate(
+    dueFilter,
+    {
+      $set: {
+        lastRunAt: input.now,
+        nextRunAt
+      }
+    },
+    { returnDocument: "after" }
+  );
+}
+
 const CORE_TENANTS_COLLECTION = "core_tenants";
 
 /** Sorted `core_tenants._id` values — used when `admin_scheduled_tasks` rows omit `tenantId` (system-wide jobs). */

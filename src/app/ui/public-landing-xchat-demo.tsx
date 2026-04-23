@@ -10,22 +10,30 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 
 import "./public-landing-xchat-demo.css";
 
-const USER_PROMPT = "add CIFR to my watchlist";
+const DEMO_TURNS = [
+  {
+    userPrompt: "show my watchlist",
+    aiMarkdown: `Absolutely - here is your **watchlist snapshot**.
 
-const AI_MARKDOWN = `CIFR was already on your **DefaultWatchlist** (upsert confirmed; Stock/balanced defaults applied). Current spot: **$16.98** (100× target notional: **$1,698**).
+**Watchlist (top symbols):**
+- TSLA: $346.72
+- NVDA: $188.53
+- AAPL: $259.94
+- MSFT: $415.22
+- PLTR: $78.44`
+  },
+  {
+    userPrompt: "Covered call ideas for TSLA with 7-14 DTE and IV > 70%",
+    aiMarkdown: `Got it - filtered for **TSLA**, **DTE 7-14**, **IV > 70%**.
 
-**Updated watchlist (9 items):**
-- TSLA: $346.72 / $34,672
-- NVDA: $188.53 / $18,853
-- AAPL: $259.94 / $25,994
-- AMD: $112.40 / $11,240
-- MSFT: $415.22 / $41,522
-- GOOGL: $191.10 / $19,110
-- META: $602.88 / $60,288
-- PLTR: $78.44 / $7,844
-- CIFR: $16.98 / $1,698
+**TSLA covered call ideas:**
+- Sell **TSLA 385C** (DTE 7, IV 74.1%) - est. credit **$5.10**
+- Sell **TSLA 395C** (DTE 10, IV 72.8%) - est. credit **$4.05**
+- Sell **TSLA 405C** (DTE 14, IV 71.3%) - est. credit **$3.22**
 
-Say **show my watchlist** for full details/rationale.`;
+Idea candidates only - confirm live chain/liquidity before placing.`
+  }
+] as const;
 
 function XchatThreadCollapseChevronIcon() {
   return (
@@ -110,10 +118,31 @@ function PublicLandingXchatDemoSequence({ reducedMotion, onCycleComplete }: Publ
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
   const [composerValue, setComposerValue] = useState("");
-  const [showUserBubble, setShowUserBubble] = useState(false);
-  const [showAwaiting, setShowAwaiting] = useState(false);
-  const [aiContent, setAiContent] = useState("");
+  const [renderedTurns, setRenderedTurns] = useState(() =>
+    DEMO_TURNS.map((turn) => ({
+      userPrompt: turn.userPrompt,
+      showUserBubble: false,
+      showAwaiting: false,
+      aiContent: ""
+    }))
+  );
   const [composerBusy, setComposerBusy] = useState(false);
+
+  const patchTurnState = useCallback(
+    (
+      turnIdx: number,
+      patch: Partial<{
+        showUserBubble: boolean;
+        showAwaiting: boolean;
+        aiContent: string;
+      }>
+    ) => {
+      setRenderedTurns((prev) =>
+        prev.map((turn, idx) => (idx === turnIdx ? { ...turn, ...patch } : turn))
+      );
+    },
+    []
+  );
 
   const clearTimers = useCallback(() => {
     for (const id of timeoutsRef.current) {
@@ -139,82 +168,98 @@ function PublicLandingXchatDemoSequence({ reducedMotion, onCycleComplete }: Publ
 
   useEffect(() => {
     scrollToEnd();
-  }, [showUserBubble, showAwaiting, aiContent, scrollToEnd]);
+  }, [renderedTurns, scrollToEnd]);
 
   useEffect(() => {
     clearTimers();
-
-    const chunks = splitStreamChunks(AI_MARKDOWN);
-    let chunkIdx = 0;
+    setComposerValue("");
+    setComposerBusy(false);
+    setRenderedTurns(
+      DEMO_TURNS.map((turn) => ({
+        userPrompt: turn.userPrompt,
+        showUserBubble: false,
+        showAwaiting: false,
+        aiContent: ""
+      }))
+    );
 
     const typeMs = reducedMotion ? 0 : 38;
     const pauseBeforeType = reducedMotion ? 200 : 900;
     const pauseAfterType = reducedMotion ? 150 : 520;
     const awaitingMs = reducedMotion ? 400 : 1500;
     const chunkGap = reducedMotion ? 0 : 42;
+    const betweenTurnsPauseMs = reducedMotion ? 450 : 900;
+    const endCyclePauseMs = 8000;
 
-    const afterIntro = () => {
-      if (reducedMotion) {
-        setComposerValue(USER_PROMPT);
+    const runTurn = (turnIdx: number) => {
+      const turn = DEMO_TURNS[turnIdx];
+      if (!turn) {
+        schedule(onCycleComplete, endCyclePauseMs);
+        return;
+      }
+
+      const chunks = splitStreamChunks(turn.aiMarkdown);
+      let chunkIdx = 0;
+
+      const afterTypedPrompt = () => {
+        setComposerValue("");
+        patchTurnState(turnIdx, { showUserBubble: true });
+        setComposerBusy(true);
+        scrollToEnd();
         schedule(() => {
-          setComposerValue("");
-          setShowUserBubble(true);
-          setComposerBusy(true);
+          patchTurnState(turnIdx, { showAwaiting: true });
           schedule(() => {
-            setShowAwaiting(true);
-            schedule(() => {
-              setShowAwaiting(false);
-              setAiContent(AI_MARKDOWN);
-              setComposerBusy(false);
-              schedule(onCycleComplete, 8000);
-            }, awaitingMs);
-          }, 200);
-        }, pauseAfterType);
+            patchTurnState(turnIdx, { showAwaiting: false });
+            const pushChunk = () => {
+              if (chunkIdx >= chunks.length) {
+                setComposerBusy(false);
+                schedule(() => runTurn(turnIdx + 1), betweenTurnsPauseMs);
+                return;
+              }
+              patchTurnState(turnIdx, {
+                aiContent:
+                  renderedTurnsRef.current[turnIdx]!.aiContent + chunks[chunkIdx]!
+              });
+              chunkIdx += 1;
+              schedule(pushChunk, chunkGap);
+            };
+            pushChunk();
+          }, awaitingMs);
+        }, reducedMotion ? 120 : 280);
+      };
+
+      if (reducedMotion) {
+        setComposerValue(turn.userPrompt);
+        schedule(afterTypedPrompt, pauseAfterType);
         return;
       }
 
       let i = 0;
       const typeNext = () => {
-        if (i >= USER_PROMPT.length) {
-          schedule(() => {
-            setComposerValue("");
-            setShowUserBubble(true);
-            setComposerBusy(true);
-            scrollToEnd();
-            schedule(() => {
-              setShowAwaiting(true);
-              schedule(() => {
-                setShowAwaiting(false);
-                const pushChunk = () => {
-                  if (chunkIdx >= chunks.length) {
-                    setComposerBusy(false);
-                    schedule(onCycleComplete, 8000);
-                    return;
-                  }
-                  setAiContent((prev) => prev + chunks[chunkIdx]!);
-                  chunkIdx += 1;
-                  schedule(pushChunk, chunkGap);
-                };
-                pushChunk();
-              }, awaitingMs);
-            }, 280);
-          }, pauseAfterType);
+        if (i >= turn.userPrompt.length) {
+          schedule(afterTypedPrompt, pauseAfterType);
           return;
         }
         i += 1;
-        setComposerValue(USER_PROMPT.slice(0, i));
+        setComposerValue(turn.userPrompt.slice(0, i));
         schedule(typeNext, typeMs);
       };
-
-      schedule(typeNext, pauseBeforeType);
+      schedule(typeNext, turnIdx === 0 ? pauseBeforeType : 350);
     };
 
-    schedule(afterIntro, reducedMotion ? 120 : 650);
+    schedule(() => runTurn(0), reducedMotion ? 120 : 650);
 
     return () => clearTimers();
-  }, [reducedMotion, clearTimers, schedule, scrollToEnd, onCycleComplete]);
+  }, [reducedMotion, clearTimers, schedule, scrollToEnd, onCycleComplete, patchTurnState]);
 
-  const showThreadChrome = showUserBubble || showAwaiting || aiContent.length > 0;
+  const renderedTurnsRef = useRef(renderedTurns);
+  useEffect(() => {
+    renderedTurnsRef.current = renderedTurns;
+  }, [renderedTurns]);
+
+  const showThreadChrome = renderedTurns.some(
+    (turn) => turn.showUserBubble || turn.showAwaiting || turn.aiContent.length > 0
+  );
 
   return (
     <div
@@ -252,50 +297,54 @@ function PublicLandingXchatDemoSequence({ reducedMotion, onCycleComplete }: Publ
                 </button>
               ) : null}
 
-              {showUserBubble ? (
-                <div className="xchat-msg xchat-msg-user">
-                  <div className="xchat-msg-user-body">
-                    <div className="xchat-msg-user-body__text">{USER_PROMPT}</div>
-                  </div>
-                </div>
-              ) : null}
+              {renderedTurns.map((turn, turnIdx) => (
+                <div key={`demo-turn-${turnIdx}`}>
+                  {turn.showUserBubble ? (
+                    <div className="xchat-msg xchat-msg-user">
+                      <div className="xchat-msg-user-body">
+                        <div className="xchat-msg-user-body__text">{turn.userPrompt}</div>
+                      </div>
+                    </div>
+                  ) : null}
 
-              {showAwaiting ? (
-                <div aria-busy="true" aria-live="polite" className="xchat-await" role="status">
-                  <div className="xchat-await__row">
-                    <div aria-hidden className="xchat-typing">
-                      <span className="xchat-typing-dot" />
-                      <span className="xchat-typing-dot" />
-                      <span className="xchat-typing-dot" />
+                  {turn.showAwaiting ? (
+                    <div aria-busy="true" aria-live="polite" className="xchat-await" role="status">
+                      <div className="xchat-await__row">
+                        <div aria-hidden className="xchat-typing">
+                          <span className="xchat-typing-dot" />
+                          <span className="xchat-typing-dot" />
+                          <span className="xchat-typing-dot" />
+                        </div>
+                        <div className="xchat-await__copy">
+                          <span className="xchat-await__title">Advisor is working</span>
+                          <span className="xchat-await__hint">Sending to xAI…</span>
+                          <span aria-label="Elapsed time" className="xchat-await__timer">
+                            00:00.0
+                          </span>
+                        </div>
+                      </div>
+                      <div aria-hidden className="xchat-await__skeleton">
+                        <div className="xchat-await__sk-track xchat-await__sk-track--long">
+                          <span className="xchat-await__sk-line" />
+                        </div>
+                        <div className="xchat-await__sk-track xchat-await__sk-track--med">
+                          <span className="xchat-await__sk-line" />
+                        </div>
+                        <div className="xchat-await__sk-track xchat-await__sk-track--short">
+                          <span className="xchat-await__sk-line" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="xchat-await__copy">
-                      <span className="xchat-await__title">Advisor is working</span>
-                      <span className="xchat-await__hint">Sending to xAI…</span>
-                      <span aria-label="Elapsed time" className="xchat-await__timer">
-                        00:00.0
-                      </span>
-                    </div>
-                  </div>
-                  <div aria-hidden className="xchat-await__skeleton">
-                    <div className="xchat-await__sk-track xchat-await__sk-track--long">
-                      <span className="xchat-await__sk-line" />
-                    </div>
-                    <div className="xchat-await__sk-track xchat-await__sk-track--med">
-                      <span className="xchat-await__sk-line" />
-                    </div>
-                    <div className="xchat-await__sk-track xchat-await__sk-track--short">
-                      <span className="xchat-await__sk-line" />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
+                  ) : null}
 
-              {aiContent.length > 0 ? (
-                <div aria-live="polite" className="xchat-msg xchat-msg-ai">
-                  <small className="xchat-msg-ai__persona">advisor</small>
-                  <XchatMarkdownBody content={aiContent} />
+                  {turn.aiContent.length > 0 ? (
+                    <div aria-live="polite" className="xchat-msg xchat-msg-ai">
+                      <small className="xchat-msg-ai__persona">advisor</small>
+                      <XchatMarkdownBody content={turn.aiContent} />
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              ))}
 
             </div>
           </div>

@@ -36,6 +36,11 @@ export type ScheduledTaskExecutionOptions = {
    * Set only for `POST /api/admin/tasks/{taskId}/run` (global_admin manual run), not scheduler tick.
    */
   bypassMarketWindow?: boolean;
+  /**
+   * When true, caller already atomically claimed and advanced the schedule window in Mongo.
+   * Used by scheduler tick claim flow to avoid double-advancing `nextRunAt`.
+   */
+  scheduleAlreadyClaimed?: boolean;
 };
 
 export async function executeScheduledTask(
@@ -65,10 +70,12 @@ export async function executeScheduledTask(
   }
 
   const startedAt = run.startedAt;
-  await markTaskRunWindow(task._id, startedAt, {
-    scheduleCron: task.scheduleCron,
-    scheduleRRule: task.scheduleRRule
-  });
+  if (!executionOptions?.scheduleAlreadyClaimed) {
+    await markTaskRunWindow(task._id, startedAt, {
+      scheduleCron: task.scheduleCron,
+      scheduleRRule: task.scheduleRRule
+    });
+  }
 
   const execution = await runScheduledCategory(task, executionOptions);
   const completedAt = new Date();
@@ -195,10 +202,12 @@ async function executeSystemWideScheduledTask(
 
   const tenants = await listCoreTenantObjectIds();
   const startedAt = new Date();
-  await markTaskRunWindow(templateTask._id, startedAt, {
-    scheduleCron: templateTask.scheduleCron,
-    scheduleRRule: templateTask.scheduleRRule
-  });
+  if (!executionOptions?.scheduleAlreadyClaimed) {
+    await markTaskRunWindow(templateTask._id, startedAt, {
+      scheduleCron: templateTask.scheduleCron,
+      scheduleRRule: templateTask.scheduleRRule
+    });
+  }
 
   if (tenants.length === 0) {
     const run = await createTaskRun({

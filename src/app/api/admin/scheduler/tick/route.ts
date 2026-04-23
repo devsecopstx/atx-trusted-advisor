@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
-import { listDueScheduledTasks } from "@/modules/core-admin/repository";
+import {
+    claimDueScheduledTaskForExecution,
+    listDueScheduledTasks
+} from "@/modules/core-admin/repository";
 import { executeScheduledTask } from "@/modules/core-admin/task-runner";
 
 export async function POST(request: Request) {
@@ -21,18 +24,35 @@ export async function POST(request: Request) {
     return tenantIdHex;
   }
 
-  const dueTasks = await listDueScheduledTasks(new Date(), {
+  const now = new Date();
+  const dueTasks = await listDueScheduledTasks(now, {
     tenantId: tenantIdHex
   });
-  const results = await Promise.all(
-    dueTasks.map(async (task) =>
-      executeScheduledTask(task, `scheduler:${session.username}`, {
+  const results = [];
+  for (const task of dueTasks) {
+    if (!task._id) {
+      continue;
+    }
+    const claimedTask = await claimDueScheduledTaskForExecution({
+      taskId: task._id,
+      now,
+      tenantId: tenantIdHex
+    });
+    if (!claimedTask) {
+      continue;
+    }
+    const run = await executeScheduledTask(
+      claimedTask,
+      `scheduler:${session.username}`,
+      {
         userId: session.userId,
         email: session.email,
         username: session.username
-      })
-    )
-  );
+      },
+      { scheduleAlreadyClaimed: true }
+    );
+    results.push(run);
+  }
 
   return NextResponse.json({
     data: {

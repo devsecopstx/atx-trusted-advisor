@@ -355,7 +355,7 @@ class AdminScheduledTasksService(
     fun enqueueDueTasks(now: Date, session: ResolvedSession): List<ExecutionResult> {
         val due = listDueTasks(now, session)
         val username = session.username?.takeIf { it.isNotBlank() } ?: session.userId
-        return enqueueDueTaskDocuments(due, "scheduler:$username")
+        return enqueueDueTaskDocuments(due, "scheduler:$username", now)
     }
 
     /**
@@ -372,19 +372,20 @@ class AdminScheduledTasksService(
             if (maybeLock.isPresent) {
                 val simpleLock = maybeLock.get()
                 try {
-                    val tenantOid = task.getObjectId("tenantId")
-                    val category = task.getString("category") ?: ""
+                    val dueTask = refetchDueTenantLevelTask(taskId, now) ?: continue
+                    val tenantOid = dueTask.getObjectId("tenantId")
+                    val category = dueTask.getString("category") ?: ""
                     if (tenantOid != null) {
-                        val res = enqueueScheduledTaskInternal(task, SYSTEM_SCHEDULER_TRIGGER, null, advanceSchedule = true)
+                        val res = enqueueScheduledTaskInternal(dueTask, SYSTEM_SCHEDULER_TRIGGER, null, advanceSchedule = true)
                         accepted.add(res)
                     } else if (shouldDelegateToNext(category)) {
                         accepted.add(delegateToNext(taskId.toHexString(), SYSTEM_SCHEDULER_TRIGGER))
                     } else {
                         // Fan-out: run once per tenant when task is system-wide (no tenantId) — JVM stubs only
                         val nowStarted = Date()
-                        advanceScheduleAfterStart(task, nowStarted)
+                        advanceScheduleAfterStart(dueTask, nowStarted)
                         for (tid in listAllTenantIds()) {
-                            val res = enqueueScheduledTaskInternal(task, SYSTEM_SCHEDULER_TRIGGER, tid, advanceSchedule = false)
+                            val res = enqueueScheduledTaskInternal(dueTask, SYSTEM_SCHEDULER_TRIGGER, tid, advanceSchedule = false)
                             accepted.add(res)
                         }
                     }
@@ -396,7 +397,7 @@ class AdminScheduledTasksService(
         return accepted
     }
 
-    private fun enqueueDueTaskDocuments(due: List<Document>, triggeredBy: String): List<ExecutionResult> {
+    private fun enqueueDueTaskDocuments(due: List<Document>, triggeredBy: String, now: Date): List<ExecutionResult> {
         val accepted = mutableListOf<ExecutionResult>()
         for (task in due) {
             val taskId = task.getObjectId("_id") ?: continue
@@ -406,7 +407,8 @@ class AdminScheduledTasksService(
             if (maybeLock.isPresent) {
                 val simpleLock = maybeLock.get()
                 try {
-                    val res = enqueueScheduledTask(task, triggeredBy)
+                    val dueTask = refetchDueTenantLevelTask(taskId, now) ?: continue
+                    val res = enqueueScheduledTask(dueTask, triggeredBy)
                     accepted.add(res)
                 } finally {
                     simpleLock.unlock()
@@ -414,6 +416,23 @@ class AdminScheduledTasksService(
             }
         }
         return accepted
+    }
+
+    /**
+     * Re-check due state inside the per-task lock so stale snapshots from another node cannot enqueue twice.
+     */
+    private fun refetchDueTenantLevelTask(taskId: ObjectId, now: Date): Document? {
+        val tenantLevelOnly = Criteria().orOperator(
+            Criteria.where("portfolioId").exists(false),
+            Criteria.where("portfolioId").`is`(null),
+        )
+        val due = Criteria().andOperator(
+            Criteria.where("_id").`is`(taskId),
+            Criteria.where("enabled").`is`(true),
+            Criteria.where("nextRunAt").lte(now),
+            tenantLevelOnly,
+        )
+        return mongoTemplate.findOne(Query.query(due), Document::class.java, props.scheduledTasksCollection)
     }
 
     class BadTaskPayloadException(message: String) : RuntimeException(message)
