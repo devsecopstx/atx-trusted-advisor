@@ -391,6 +391,7 @@ describe("atxfinance tool executor", () => {
       "watchlist_remove_symbols",
       "account_health",
       "task_status",
+      "options_scan",
       "market_quote"
     ]);
   });
