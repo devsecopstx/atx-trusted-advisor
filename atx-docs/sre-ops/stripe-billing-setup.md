@@ -76,3 +76,7 @@ Checkout success and cancel redirect to `/account/billing?checkout=success` and 
 ## Compliance copy
 
 Billing UI includes a short **not financial advice** note. Keep Stripe receipts and tax settings in the Stripe Dashboard per your entity.
+
+## Future: multi-provider billing (X Money)
+
+**Today** this doc is Stripe-only. **Roadmap (priority 704):** add **X Money** as a second checkout + webhook provider without breaking existing Stripe subscribers — shared internal billing boundary (checkout creation, webhook verify + idempotency, entitlement writes to `core_users`), new env/Secret Manager entries, and billing UI affordance on `/account/billing`. Full phased plan, test/doc gap list, and zero-downtime rollout notes: [`atx-docs/PLAN.md`](../PLAN.md) § **xMoney & crypto portfolio (704)**.

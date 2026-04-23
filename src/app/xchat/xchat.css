@@ -2822,6 +2822,58 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   transform: none;
 }
 
+/* Pill shortcuts below composer (portfolios / watchlist / xOptions) */
+.xchat-composer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.1rem 0 0.15rem;
+  box-sizing: border-box;
+}
+
+.xchat-composer-nav .xf-hover-hint {
+  display: flex;
+}
+
+.xchat-composer-nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--xf-text-200, rgba(255, 255, 255, 0.86));
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  max-width: 100%;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.xchat-composer-nav__link:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--xf-text-100, #fff);
+}
+
+.xchat-composer-nav__link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-focus, #3b82f6) 80%, transparent);
+  outline-offset: 2px;
+}
+
+.xchat-composer-nav__icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
 .xchat-composer-hint {
   align-self: stretch;
   margin: 0;
@@ -2918,6 +2970,18 @@ html[data-xf-ui="soft"] .xchat-composer-hint {
   background: color-mix(in srgb, var(--xf-text-100) 7%, transparent);
   border-color: color-mix(in srgb, var(--xf-text-100) 12%, transparent);
   color: var(--xf-text-300);
+}
+
+html[data-xf-ui="soft"] .xchat-composer-nav__link {
+  border-color: color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-200);
+}
+
+html[data-xf-ui="soft"] .xchat-composer-nav__link:hover {
+  border-color: color-mix(in srgb, var(--xf-text-100) 26%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  color: var(--xf-text-100);
 }
 
 html[data-xf-ui="soft"] .xchat-composer-hint__pill {

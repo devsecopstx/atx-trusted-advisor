@@ -253,6 +253,19 @@ function truncateCompanyBlurb(name: string, maxLen: number): string {
   return `${t.slice(0, Math.max(0, maxLen - 1))}…`;
 }
 
+const WATCHLIST_RATIONALE_PREVIEW_MAX_CHARS = 180;
+
+function getRationalePreview(raw?: string): string {
+  const compact = (raw ?? "").trim().replace(/\s+/g, " ");
+  if (!compact) {
+    return "";
+  }
+  if (compact.length <= WATCHLIST_RATIONALE_PREVIEW_MAX_CHARS) {
+    return compact;
+  }
+  return `${compact.slice(0, WATCHLIST_RATIONALE_PREVIEW_MAX_CHARS - 1)}…`;
+}
+
 function formatUsd2(n: number): string {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 }
@@ -394,6 +407,26 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
       : listLoadedAtLabel
         ? `Last refreshed: ${listLoadedAtLabel}`
         : undefined;
+  const [rationaleDialogOpen, setRationaleDialogOpen] = useState(false);
+  const [rationaleDialogEditing, setRationaleDialogEditing] = useState(false);
+  const [rationaleDraft, setRationaleDraft] = useState(row.rationale ?? "");
+  const rationaleHasValue = (row.rationale ?? "").trim().length > 0;
+  const rationalePreview = useMemo(() => getRationalePreview(row.rationale), [row.rationale]);
+
+  const closeRationaleDialog = useCallback(() => {
+    setRationaleDialogOpen(false);
+    setRationaleDialogEditing(false);
+    setRationaleDraft(row.rationale ?? "");
+  }, [row.rationale]);
+
+  const saveRationaleDialog = useCallback(async () => {
+    const prev = (row.rationale ?? "").trim();
+    const next = rationaleDraft.trim();
+    if (prev !== next) {
+      await patchRowMeta(row.symbol, { rationale: next });
+    }
+    setRationaleDialogOpen(false);
+  }, [patchRowMeta, rationaleDraft, row.rationale, row.symbol]);
 
   return (
     <tr className={rowClassName} style={rowStyle}>
@@ -513,25 +546,27 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             onChange={(e) => updateDraftRow(row.symbol, { rationale: e.target.value })}
           />
         ) : (
-          <textarea
-            key={`${row.addedAt}-${row.symbol}-${row.rationale ?? ""}`}
-            aria-label={`${row.symbol} rationale`}
-            className="xf-watchlist-rationale-input"
-            defaultValue={row.rationale ?? ""}
-            placeholder="One-line thesis"
-            rows={2}
-            disabled={mutating}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              const prev = (row.rationale ?? "").trim();
-              if (v === prev) {
-                return;
-              }
-              void patchRowMeta(row.symbol, { rationale: v });
-            }}
-          />
+          <div
+            className={`xf-watchlist-rationale-preview${!rationaleHasValue ? " xf-watchlist-rationale-preview--empty" : ""}`}
+          >
+            {rationaleHasValue ? rationalePreview : "No rationale yet. Add one before marking Active."}
+          </div>
         )}
         <div className="xf-watchlist-rationale-actions">
+          {!editMode ? (
+            <button
+              className="xf-watchlist-rationale-expand-link"
+              disabled={mutating}
+              type="button"
+              onClick={() => {
+                setRationaleDraft(row.rationale ?? "");
+                setRationaleDialogEditing(false);
+                setRationaleDialogOpen(true);
+              }}
+            >
+              Expand
+            </button>
+          ) : null}
           <button
             className="xf-watchlist-ai-suggest"
             disabled={mutating || aiSuggestBusy}
@@ -541,6 +576,71 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             ✦ AI Suggest
           </button>
         </div>
+        {!editMode && rationaleDialogOpen ? (
+          <div className="xf-watchlist-rationale-modal-backdrop" role="presentation" onClick={closeRationaleDialog}>
+            <div
+              aria-label={`${row.symbol} rationale`}
+              aria-modal="true"
+              className="xf-watchlist-rationale-modal"
+              role="dialog"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="xf-watchlist-rationale-modal__title">{row.symbol} rationale</h3>
+              {rationaleDialogEditing ? (
+                <textarea
+                  aria-label={`${row.symbol} rationale editor`}
+                  className="xf-watchlist-rationale-editor"
+                  placeholder="One-line thesis"
+                  rows={8}
+                  value={rationaleDraft}
+                  onChange={(e) => setRationaleDraft(e.target.value)}
+                />
+              ) : (
+                <div className="xf-watchlist-rationale-modal__content">
+                  {rationaleDraft.trim().length > 0
+                    ? rationaleDraft
+                    : "No rationale set yet. Click Edit to add one."}
+                </div>
+              )}
+              <div className="xf-watchlist-rationale-modal__actions">
+                <button className="xf-watchlist-rationale-modal__btn" type="button" onClick={closeRationaleDialog}>
+                  Close
+                </button>
+                {rationaleDialogEditing ? (
+                  <>
+                    <button
+                      className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--secondary"
+                      type="button"
+                      onClick={() => {
+                        setRationaleDraft(row.rationale ?? "");
+                        setRationaleDialogEditing(false);
+                      }}
+                    >
+                      Cancel edit
+                    </button>
+                    <button
+                      className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--primary"
+                      disabled={mutating}
+                      type="button"
+                      onClick={() => void saveRationaleDialog()}
+                    >
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--primary"
+                    disabled={mutating}
+                    type="button"
+                    onClick={() => setRationaleDialogEditing(true)}
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </td>
       <td className="xf-watchlist-table-mono">
         {editMode ? (

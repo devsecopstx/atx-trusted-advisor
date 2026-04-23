@@ -17,7 +17,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Shipped stack, features, CI
 | **200**  | **IBKR — Client Portal integration & execution path**        | **Full spec + phased plan:** [ibkr-automation.md](./design-system/ibkr-automation.md). **Goal:** user-authorized IBKR (read balances/positions/orders/executions; later manual orders + rules/automation); paper before live; audit every API call/order; rate limits + circuit breakers; no credentials in client bundles (`src/modules/ibkr-integration/README.md`). **Shipped (app 3.2.x):** consent (`ibkr_user_consents`), sealed httpOnly CP session, `GET /api/integrations/ibkr/accounts`, `/account/integrations/ibkr`. **Open next:** operator paper-account test harness; CP session **refresh / re-auth UX** (token/OAuth-style SSO still future). **Then (per spec phases):** live portfolio sync + pacing-safe caching; contract/market-data helpers; order builder + `/iserver/order/confirm` preview; automation rule engine + kill switches; pre-trade risk dashboard + notifications; tests/monitoring + production hardening/rollout. **Blocks** custodian-automated execution narrative alongside **900** until this path matures. |
 | **900**  | **Automated trades w/ verify**                               | Ship only after **ETRADE** and **IBKR** execution/custodian path; until then alerts / manual execution only.                                                                                                                                                                                                                                                                                                                                   |
 | **703**  | **xChat — voice input (short prompts)**                      | **Voice capture** for brief utterances (e.g. *“add NVDA to my watchlist”*): browser **Web Speech API** and/or STT provider; **intent routing** into existing NL / tool paths (`watchlist` mutations, etc.) with explicit **confirm-before-mutate** for destructive or multi-symbol actions.                                                                                                                                                    |
-| **704**  | **Billing — accept xMoney via xAI API (exploratory)**       | **Lower priority.** Evaluate whether xAI billing surfaces can support xMoney settlement; if not, integrate xMoney as a separate provider behind checkout/webhook abstraction. Define plan mapping parity with Stripe, webhook lifecycle contract, and failover/rollback posture before implementation.                                                                                                                                    |
+| **704**  | **Billing — xMoney parallel checkout + crypto book (phased)** | **Production-grade roadmap:** [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap) — Phase 0 (billing), Phase 1 (crypto book + quotes), **Phase 2** (xAI strategies / alerts / xOptions payoff), **Phase 3** (optional X Money wallet sync + settlement). **Today:** Stripe-only; no multi-provider adapter yet. **External API:** [docs.xmoney.com/api/reference](https://docs.xmoney.com/api/reference). |
 
 
 ### Multi-tenant (priority **10**) — locked decisions (pre–Phase 2)
@@ -95,6 +95,93 @@ For the **core xStrategyBuilder loop** (collect → validate → synthesize → 
 
 **Deferred (not billing-blockers):** In-product usage meter / soft-limit banner on xChat — [current-state-features.md](./design-system/current-state-features.md).
 
+**Next (704):** X Money as a **second** settlement path — see [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap). Stripe remains default for existing customers until product opts users into X Money checkout.
+
+---
+
+## xMoney & crypto portfolio (704) — technical integration roadmap
+
+Phased, production-grade delivery with **zero downtime** for existing Stripe subscribers: ship X Money **additively** (new routes + env + optional UI), keep **`POST /api/webhooks/stripe`** unchanged, gate net-new X Money flows behind config/tenant flags until verified in staging, and avoid rewriting in-flight Checkout sessions.
+
+### Phase 0 — Billing via X Money (~1 week target; depends on API access)
+
+**Goal:** X Money as a **parallel** checkout provider alongside Stripe (conceptually the same boundaries as [stripe-billing-setup.md](./sre-ops/stripe-billing-setup.md): hosted checkout → webhook → `core_users.subscriptionPlan` + customer reference).
+
+| Workstream | Detail |
+|------------|--------|
+| **Provider abstraction** | Today, billing is **Stripe-concrete** (`src/app/api/billing/checkout-session/route.ts`, `portal-session`, `webhooks/stripe`). Introduce a small **internal** interface (e.g. `createSubscriptionCheckout`, `verifyWebhook`, `mapExternalPlanToAtxTier`) with Stripe as first implementation; add X Money implementation calling public API patterns (payment links, recurring subscriptions per [docs.xmoney.com/api/reference](https://docs.xmoney.com/api/reference)). |
+| **Webhooks** | New route e.g. `POST /api/webhooks/xmoney` with signature verification, idempotency store (event id or order id → processed), handlers aligned to product lifecycle: **`order.completed`**, **`subscription.updated`** / cancelled analogs — map to same `updateCoreUserSubscriptionPlan` / entitlement paths as Stripe. |
+| **Mongo / `core_users`** | Add **`payment_provider`**: `stripe` \| `xmoney`. Persist X Money **subscription** and/or **order** ids needed for support and portal-like flows (exact field names TBD against API); keep **`stripeCustomerId`** for legacy Stripe users. |
+| **UI** | **`/account/billing`**: second CTA **Fund with X Money** (or product copy) next to existing Stripe button; only render when X Money is configured. Deep-link or API flow for **X-linked wallet** per X Money docs. |
+| **Portal parity** | Stripe uses **Customer Portal**; X Money may differ — document whether users manage payment method / cancel in X Money hub vs in-app; do not remove Stripe portal for mixed-provider tenants until parity is explicit. |
+
+**Zero-downtime notes:** No migration of existing `stripeCustomerId` rows required for launch; new checkouts pick provider; admin override of `subscriptionPlan` stays valid; feature flag env (e.g. `XMONEY_BILLING_ENABLED`) + allowlist tenant id optional.
+
+### Phase 1 — Crypto asset support in portfolio DB & UI (~2–3 weeks after Phase 0)
+
+**Goal:** Crypto alongside equity/options in the same book model and consolidated holdings story.
+
+| Workstream | Detail |
+|------------|--------|
+| **Schema** | Extend **`tenant_portfolio`**, **`portfolio_accounts`**, **`portfolio_positions`** (and any serializers): **`asset_type`**: `"equity"` \| `"option"` \| `"cash"` \| **`"crypto"`** + **`symbol`** (BTC, ETH, SOL, …). Reuse **avg_cost**, **qty**, **last_price**, **% of book**; Greeks only where data exists. |
+| **Quotes** | **`find-options`** / **`market/workspace-pulse`** (and related): surface crypto quotes + chain metadata via **Yahoo** + **IBKR** where account has consent. |
+| **IBKR** | Existing consent + **`GET /api/integrations/ibkr/accounts`** path; extend snapshot ingestion for **crypto balances** when CP/API exposes them (product assumption: IBKR EEA crypto rollout — validate against live paper). No new custodian required for that slice. |
+| **UI** | Consolidated holdings table ([portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md)): unified **% exposure** and risk columns where applicable (theta/gamma N/A for spot crypto — show **—** or hide per row type). |
+
+### Phase 2 — xAI-powered crypto strategies & alerts (~3–4 weeks after Phase 1)
+
+**Goal:** Treat crypto as a first-class **strategy and risk** surface alongside options, reusing schedulers and narrative patterns you already ship.
+
+| Workstream | Detail |
+|------------|--------|
+| **OptionsStrategyEngine + scanners** | Reuse **OptionsStrategyEngine** and **scanner / scheduled jobs** ([strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md), [scanners-phase3-plan.md](./design-system/scheduled-task/scanners-phase3-plan.md) patterns): add **crypto-specific** rule templates (e.g. *BTC 30-day covered call*, *ETH strangle for volatility crush*), validation, and desk-safe defaults consistent with equity/options jobs. |
+| **Alert modal (portfolio)** | Extend the alert UX you are speccing for consolidated holdings: **Crypto** severity or category **pills**; **xAI narrative** block with **conservative / balanced / aggressive** outlook copy (grounded on positions + quotes; same guardrails as other xChat/xOptions disclosures). |
+| **xOptions — crypto payoff** | New or extended **xOptions** flow: **Step 4 payoff charts** include **BTC / ETH** (and other supported) **options chains** — primary path **IBKR** where entitled; optional **Coinbase Derivatives** nano futures / listed crypto derivatives for advanced tiers only if product + compliance sign off (feature-flagged). |
+| **Cross-asset portfolio alerts** | **`POST /api/portfolios/{id}/alerts`** (and/or scanner-derived alerts): flag **concentration across asset classes** — e.g. *“Your 18% BTC exposure is 2.4× your equity book delta”* — using Phase 1 position marks + optional Greek/delta proxies where defined. |
+
+**Dependencies:** Phase 1 **schema + quotes** stable enough for jobs to read crypto rows; entitlements unchanged unless you tier crypto strategies separately.
+
+### Phase 3 — Full X Money wallet sync (ongoing; optional / aggressive)
+
+**Goal:** Optional **read/write** X Money integration for balances and, when custodians allow, **settlement** — same **audit and containment** bar as IBKR.
+
+| Workstream | Detail |
+|------------|--------|
+| **Read path** | Pull **X Money balance** (and optionally recent activity) into **portfolio summary** / workspace pulse — read-only first; cache + rate limits; no hot-path blocking on wallet API failures (degrade gracefully). |
+| **Write / settlement** | **Direct settlement** of options/crypto trades from **X Money wallet** only when **IBKR** (or chosen executor) exposes a supported flow — treat as **opt-in** per tenant/user; kill switch + feature flag. |
+| **Audit** | **Every** wallet pull, link, and settlement attempt: **`correlationId`** end-to-end + **`admin_audit_events`** (and structured app logs), mirroring [ibkr-automation.md](./design-system/ibkr-automation.md) / existing IBKR correlation discipline — no silent cross-asset money movement. |
+
+**Posture:** Phase 3 is **not** required for Phases 0–2; ship only after billing (0) and book (1) are proven in prod, and legal/ops sign off on read/write money-movement scope.
+
+### Tests — current coverage vs gaps
+
+**Existing (Stripe / billing UI):** `tests/unit/atx-billing-plans.test.ts`, `billing-plan-workspace-display.test.ts`, `billing-workspace-limit-labels.test.ts`, `stripe-price-resolve.test.ts`, `tenant-plan-overrides-stripe.test.ts`; integration: `billing-checkout-session-route.test.ts`, `billing-portal-session-route.test.ts`, `stripe-webhook-route.test.ts`.
+
+**Gaps to close when implementing 704:**
+
+- **Checkout success path:** Integration tests today mostly assert **401/503** branches on `checkout-session`; add a **mocked provider** happy path that returns a redirect URL and validates metadata (`atx_user_id`, `atx_plan_id`) round-trip contract.
+- **Portal session:** Same pattern — assert behavior when external customer id exists vs missing (Stripe today; X Money TBD).
+- **X Money webhooks:** Contract tests from **fixture payloads** (signature + body) → `subscriptionPlan` + `payment_provider` updates; **duplicate delivery** idempotency.
+- **Dual provider:** Matrix test — user on Stripe cannot be downgraded by unrelated X Money event; user on X Money not altered by Stripe `customer.subscription.deleted` if subscription ids are disjoint.
+- **E2E (optional / staging):** One manual or Playwright path: billing page → X Money checkout sandbox → webhook → entitled UI (conscious gap today; [payment-audit-checklist.md](./sre-ops/payment-audit-checklist.md) is Stripe-only).
+- **Phase 2:** Unit/integration coverage for **crypto scanner rules** (job payload → intended symbols/legs), **alert create** payloads with crypto severity + narrative fields, and **payoff / chain** helpers (mocked market data — no mandatory live IBKR/Coinbase in CI).
+- **Phase 3:** Contract tests for **wallet read** client (fixtures); **no** default CI against live X Money — assert **audit rows** + `correlationId` propagation on mocked success/failure paths; settlement behind flag with dry-run mode tests if exposed.
+
+### Docs — current coverage vs gaps
+
+**Existing:** [stripe-billing-setup.md](./sre-ops/stripe-billing-setup.md), [payment-audit-checklist.md](./sre-ops/payment-audit-checklist.md) (Stripe), [api-endpoints.md](./guides/api-endpoints.md) billing rows, [deploy-and-ops.md](./guides/deploy-and-ops.md) Stripe secrets.
+
+**Gaps to close when implementing 704:**
+
+- **`api-endpoints.md`:** Document `POST /api/billing/checkout-session` provider parameter or parallel **`POST /api/billing/xmoney/...`** once routes are stable; add webhook path and env var table for X Money secrets (API key, webhook secret, optional publishable client id).
+- **`deploy-and-ops.md` + Secret Manager scripts:** Mirror Stripe pattern for X Money credentials; verify job lists (`gcp-runtime-secrets.inc.sh` / `verify-gcp-runtime-secrets.sh`) when vars are finalized.
+- **`payment-audit-checklist.md`:** Add an **X Money** subsection (Dashboard/log checks + `core_users.payment_provider` + external ids).
+- **Data model:** Document new `core_users` fields in [auth-and-access.md](./guides/auth-and-access.md) or a short **`atx-docs/sre-ops/billing-data-model.md`** (subscription + provider ids, migration notes).
+- **OpenAPI / `CURRENT_STATE_ROUTES`:** Register new routes for inventory tests when shipped.
+- **Phase 1:** Portfolio schema doc + `ibkr-automation.md` note on crypto snapshot fields; extend consolidated-holdings semantics table for crypto row rules.
+- **Phase 2:** Spec the **alert modal** crypto pills + xAI narrative contract (request/response or UI props); document new **scanner / strategy job** types and xOptions **Step 4** crypto chain sources (IBKR vs optional Coinbase Derivatives) in [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) and [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md) (or linked xOptions doc).
+- **Phase 3:** Runbook: X Money **OAuth / API keys**, refresh, incident response, and **audit evidence** pack (align with [audit-lineage-and-controls.md](./sre-ops/audit-lineage-and-controls.md)); explicit **kill switch** env and operator checklist before enabling write/settlement.
+
 ---
 
 ## SRE / platform gaps
@@ -113,6 +200,7 @@ For the **core xStrategyBuilder loop** (collect → validate → synthesize → 
 - `**POST /api/import/broker/clean`:** Documented in `**api-endpoints.md`** and [app-user import](./design-system/portfolio/app-user-import-activity.md); no dedicated route integration test yet (destructive — mock `**deleteAllPositionsForPortfolio`** + job/task deletes if added). **Partial `mappings` / row toggles:** covered by unit tests on `**validateBrokerImportMappings**` in `**app-broker-import-job.test.ts**`; full apply path remains integration-heavy (job + scheduled task).
 - **Email/password:** unit tests **`password-crypto`**, **`auth-token-hash`**; approve-route integration uses mocks for invite/SMTP; audit actions **`credential_invite_email_failed`**, **`bootstrap_enqueue_failed`** documented in **`auth-and-access.md`** / **`current-state-features.md`** — no CI E2E against live SMTP.
 - **Stripe / webhook closure (app 2.10.22):** Added integration coverage for webhook handling and public access-request non-proxy behavior under backend-origin mode (`tests/integration/stripe-webhook-route.test.ts`, `tests/integration/access-requests-public-rate-limit.test.ts`); deploy/runtime docs synced for `STRIPE_WEBHOOK_SECRET`.
+- **X Money / multi-provider billing (704):** No automated coverage yet — follow the gap list under [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap) § Tests.
 
 ### BFF / consolidation (intentionally Next-only for now)
 

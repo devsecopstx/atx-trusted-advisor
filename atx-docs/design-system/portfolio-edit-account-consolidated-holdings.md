@@ -38,5 +38,6 @@
 2. **Automated scanner / threshold alerts** — Row- or field-level rules in `price-alert-service` (or scheduled scanner metadata) using **Last** vs **Avg cost** / future option mid; distinct from the manual **Desk** portfolio alert shipped above.
 3. **Filter / search** — Broker-style symbol filter when account has many legs.
 4. **Collapsible groups** — If multi-account view ever merges here; single-account table is flat today.
+5. **Crypto positions** — `asset_type: "crypto"` + symbol; Yahoo / IBKR quotes; unified % of book with equity/options — [`PLAN.md`](../PLAN.md) § **xMoney & crypto portfolio (704)** Phase 1.
 
 See **PLAN.md** → **Deferred product TODOs** for the scanner/threshold backlog line.

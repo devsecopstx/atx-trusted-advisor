@@ -862,19 +862,61 @@ a.xf-watchlist-sym-cell__ext:hover {
 
 .xf-watchlist-rationale-input {
   width: 100%;
-  min-height: 2.5rem;
+  min-height: 3rem;
   resize: vertical;
   border-radius: var(--xf-radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(0, 0, 0, 0.35);
   color: var(--xf-text-100);
-  font-size: 0.78rem;
-  padding: 0.35rem 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  padding: 0.45rem 0.55rem;
   font-family: inherit;
+}
+
+.xf-watchlist-rationale-preview {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 88%, transparent);
+  color: var(--xf-text-100);
+  min-height: 3.15rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.79rem;
+  line-height: 1.45;
+}
+
+.xf-watchlist-rationale-preview--empty {
+  color: var(--xf-text-400);
+  font-style: italic;
 }
 
 .xf-watchlist-rationale-actions {
   margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.xf-watchlist-rationale-expand-link {
+  border: none;
+  background: transparent;
+  color: var(--xf-text-200);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.xf-watchlist-rationale-expand-link:hover:not(:disabled) {
+  color: var(--xf-xoptions-accent);
+}
+
+.xf-watchlist-rationale-expand-link:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .xf-watchlist-ai-suggest {
@@ -889,6 +931,105 @@ a.xf-watchlist-sym-cell__ext:hover {
 
 .xf-watchlist-ai-suggest:disabled {
   opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.xf-watchlist-rationale-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(5, 7, 12, 0.68);
+}
+
+.xf-watchlist-rationale-modal {
+  width: min(42rem, calc(100vw - 2rem));
+  max-height: min(80vh, 40rem);
+  overflow: auto;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-xoptions-accent) 35%, transparent);
+  background: var(--xf-surface-700);
+  box-shadow: var(--xf-shadow-card);
+  padding: 0.95rem;
+}
+
+.xf-watchlist-rationale-modal__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.xf-watchlist-rationale-modal__content {
+  min-height: 11rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--xf-bg-900) 90%, transparent);
+  color: var(--xf-text-100);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  padding: 0.6rem 0.65rem;
+  white-space: pre-wrap;
+}
+
+.xf-watchlist-rationale-editor {
+  width: 100%;
+  min-height: 11rem;
+  resize: vertical;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: color-mix(in srgb, var(--xf-bg-900) 90%, transparent);
+  color: var(--xf-text-100);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  padding: 0.6rem 0.65rem;
+  font-family: inherit;
+}
+
+.xf-watchlist-rationale-modal__actions {
+  margin-top: 0.7rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.xf-watchlist-rationale-modal__btn {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: var(--xf-text-200);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.38rem 0.65rem;
+  cursor: pointer;
+}
+
+.xf-watchlist-rationale-modal__btn--primary {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 15%, transparent);
+  color: var(--xf-gain-green);
+}
+
+.xf-watchlist-rationale-modal__btn--secondary {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: var(--xf-text-300);
+}
+
+.xf-watchlist-rationale-modal__btn:hover:not(:disabled) {
+  color: var(--xf-text-100);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.xf-watchlist-rationale-modal__btn--primary:hover:not(:disabled) {
+  border-color: var(--xf-gain-green);
+  color: var(--xf-gain-green);
+}
+
+.xf-watchlist-rationale-modal__btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 

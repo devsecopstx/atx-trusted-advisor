@@ -15,6 +15,7 @@ import {
 } from "@/modules/core-admin/repository";
 import type { AccountOutlook, WatchlistSymbol } from "@/modules/core-admin/types";
 import { parseAccountOutlook } from "@/modules/core-admin/types";
+import { fetchYahooOptionChainForExpiration } from "@/modules/strategy-options/options-chain";
 import {
     WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
     WATCHLIST_ENTRY_DEFAULT_STRATEGY,
@@ -47,6 +48,7 @@ import {
     type WorkspaceSnapshotContext,
     type WorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
+import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 export type {
     WorkspaceSnapshotContext,
@@ -222,6 +224,229 @@ function parseTickerListFromArgs(args: Record<string, unknown>, max: number): st
     }
   }
   return [];
+}
+
+type ToolOptionsScanFilters = {
+  optionType: "call" | "put";
+  minDte: number;
+  maxDte: number;
+  minAbsDelta: number | null;
+  maxAbsDelta: number | null;
+  minIvPct: number | null;
+  minOi: number | null;
+  minBid: number | null;
+};
+
+type ToolOptionsScanLeg = {
+  expiration: string;
+  dte: number;
+  strike: number;
+  optionType: "call" | "put";
+  bid: number;
+  ask: number;
+  mid: number;
+  ivPct: number;
+  openInterest: number;
+  deltaAbs: number | null;
+  deltaRaw: number | null;
+};
+
+function parseNumberArg(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) {
+    return v;
+  }
+  if (typeof v === "string") {
+    const n = Number.parseFloat(v.trim());
+    if (Number.isFinite(n)) {
+      return n;
+    }
+  }
+  return null;
+}
+
+function clampInt(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function daysToExpirationUtc(yyyyMmDd: string): number {
+  const exp = new Date(`${yyyyMmDd.slice(0, 10)}T00:00:00.000Z`);
+  if (Number.isNaN(exp.getTime())) {
+    return Number.POSITIVE_INFINITY;
+  }
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const expUtc = Date.UTC(exp.getUTCFullYear(), exp.getUTCMonth(), exp.getUTCDate());
+  return Math.max(0, Math.ceil((expUtc - todayUtc) / 86400000));
+}
+
+function normalizeExpirationDateToken(raw: Date | string): string | null {
+  const parsed = raw instanceof Date ? raw : new Date(raw);
+  if (!Number.isFinite(parsed.getTime())) {
+    return null;
+  }
+  const y = parsed.getUTCFullYear();
+  const m = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(parsed.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function parseOptionType(v: unknown): "call" | "put" | null {
+  if (typeof v !== "string") {
+    return null;
+  }
+  const s = v.trim().toLowerCase();
+  if (s === "call" || s === "calls") {
+    return "call";
+  }
+  if (s === "put" || s === "puts") {
+    return "put";
+  }
+  return null;
+}
+
+function parseScanQueryFilters(query: string): Partial<ToolOptionsScanFilters> {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    return {};
+  }
+  const out: Partial<ToolOptionsScanFilters> = {};
+
+  if (/\bputs?\b/.test(q)) {
+    out.optionType = "put";
+  } else if (/\bcalls?\b/.test(q)) {
+    out.optionType = "call";
+  }
+
+  const dteMax = q.match(/\bdte\s*(?:<=|<|=)\s*(\d{1,3})\b/);
+  if (dteMax) {
+    out.maxDte = clampInt(Number.parseInt(dteMax[1]!, 10), 0, 365);
+  }
+  const dteMin = q.match(/\bdte\s*(?:>=|>)\s*(\d{1,3})\b/);
+  if (dteMin) {
+    out.minDte = clampInt(Number.parseInt(dteMin[1]!, 10), 0, 365);
+  }
+
+  const deltaRange = q.match(/\bdelta\b[^\d-]*([0-9]*\.?[0-9]+)\s*[-to]+\s*([0-9]*\.?[0-9]+)/);
+  if (deltaRange) {
+    const a = Number.parseFloat(deltaRange[1]!);
+    const b = Number.parseFloat(deltaRange[2]!);
+    if (Number.isFinite(a) && Number.isFinite(b)) {
+      out.minAbsDelta = Math.max(0, Math.min(a, b));
+      out.maxAbsDelta = Math.min(1, Math.max(a, b));
+    }
+  } else {
+    const deltaMin = q.match(/\bdelta\s*(?:>=|>)\s*([0-9]*\.?[0-9]+)/);
+    const deltaMax = q.match(/\bdelta\s*(?:<=|<)\s*([0-9]*\.?[0-9]+)/);
+    if (deltaMin) {
+      const v = Number.parseFloat(deltaMin[1]!);
+      if (Number.isFinite(v)) {
+        out.minAbsDelta = Math.max(0, Math.min(1, v));
+      }
+    }
+    if (deltaMax) {
+      const v = Number.parseFloat(deltaMax[1]!);
+      if (Number.isFinite(v)) {
+        out.maxAbsDelta = Math.max(0, Math.min(1, v));
+      }
+    }
+  }
+
+  const ivMin = q.match(/\b(?:iv|vol(?:atility)?)\s*(?:>=|>)\s*([0-9]*\.?[0-9]+)/);
+  if (ivMin) {
+    const v = Number.parseFloat(ivMin[1]!);
+    if (Number.isFinite(v)) {
+      out.minIvPct = Math.max(0, v);
+    }
+  }
+
+  const oiMin = q.match(/\b(?:oi|open\s*interest)\s*(?:>=|>)\s*(\d+(?:\.\d+)?)\b/);
+  if (oiMin) {
+    const v = Number.parseFloat(oiMin[1]!);
+    if (Number.isFinite(v)) {
+      out.minOi = Math.max(0, v);
+    }
+  }
+
+  const bidMin = q.match(/\bbid\s*(?:>=|>)\s*([0-9]*\.?[0-9]+)/);
+  if (bidMin) {
+    const v = Number.parseFloat(bidMin[1]!);
+    if (Number.isFinite(v)) {
+      out.minBid = Math.max(0, v);
+    }
+  }
+
+  return out;
+}
+
+function buildOptionsScanFilters(args: Record<string, unknown>): ToolOptionsScanFilters {
+  const parsedFromQuery =
+    typeof args.query === "string" ? parseScanQueryFilters(args.query) : {};
+  const optionType =
+    parseOptionType(args.optionType) ??
+    parseOptionType(args.contractType) ??
+    parsedFromQuery.optionType ??
+    "put";
+  const minDteArg = parseNumberArg(args.minDte);
+  const maxDteArg = parseNumberArg(args.maxDte);
+  const minDte = clampInt(
+    minDteArg ?? parsedFromQuery.minDte ?? 0,
+    0,
+    365
+  );
+  const maxDte = clampInt(
+    maxDteArg ?? parsedFromQuery.maxDte ?? 7,
+    0,
+    365
+  );
+  const minAbsDelta = parseNumberArg(args.minDelta) ?? parsedFromQuery.minAbsDelta ?? null;
+  const maxAbsDelta = parseNumberArg(args.maxDelta) ?? parsedFromQuery.maxAbsDelta ?? null;
+  const minIvPct =
+    parseNumberArg(args.minIvPct) ??
+    parseNumberArg(args.minVolPct) ??
+    parseNumberArg(args.ivMinPct) ??
+    parsedFromQuery.minIvPct ??
+    null;
+  const minOi =
+    parseNumberArg(args.minOi) ??
+    parseNumberArg(args.minOpenInterest) ??
+    parsedFromQuery.minOi ??
+    null;
+  const minBid = parseNumberArg(args.minBid) ?? parsedFromQuery.minBid ?? null;
+  return {
+    optionType,
+    minDte: Math.min(minDte, maxDte),
+    maxDte: Math.max(minDte, maxDte),
+    minAbsDelta: minAbsDelta != null ? Math.max(0, Math.min(1, minAbsDelta)) : null,
+    maxAbsDelta: maxAbsDelta != null ? Math.max(0, Math.min(1, maxAbsDelta)) : null,
+    minIvPct: minIvPct != null ? Math.max(0, minIvPct) : null,
+    minOi: minOi != null ? Math.max(0, minOi) : null,
+    minBid: minBid != null ? Math.max(0, minBid) : null
+  };
+}
+
+function legPassesToolScanFilters(leg: ToolOptionsScanLeg, filters: ToolOptionsScanFilters): boolean {
+  if (leg.optionType !== filters.optionType) {
+    return false;
+  }
+  if (leg.dte < filters.minDte || leg.dte > filters.maxDte) {
+    return false;
+  }
+  if (filters.minIvPct != null && leg.ivPct < filters.minIvPct) {
+    return false;
+  }
+  if (filters.minOi != null && leg.openInterest < filters.minOi) {
+    return false;
+  }
+  if (filters.minBid != null && leg.bid < filters.minBid) {
+    return false;
+  }
+  if (filters.minAbsDelta != null && (leg.deltaAbs == null || leg.deltaAbs < filters.minAbsDelta)) {
+    return false;
+  }
+  if (filters.maxAbsDelta != null && (leg.deltaAbs == null || leg.deltaAbs > filters.maxAbsDelta)) {
+    return false;
+  }
+  return true;
 }
 
 export type XfinanceToolExecutorContext = {
@@ -592,6 +817,135 @@ function buildOperations(
           triggeredBy: r.triggeredBy,
           durationMs: r.durationMs
         }))
+      };
+    },
+
+    options_scan: async (args, ctx: ExecutorContext) => {
+      void ctx;
+      const symbol =
+        typeof args.underlying === "string"
+          ? args.underlying.trim().toUpperCase()
+          : typeof args.symbol === "string"
+            ? args.symbol.trim().toUpperCase()
+            : "";
+      if (!symbol || !/^[A-Z0-9.\-]{1,12}$/.test(symbol)) {
+        return {
+          error: "invalid_symbol",
+          hint: "Provide a valid symbol via `symbol` or `underlying`, e.g. `RDW`."
+        };
+      }
+
+      const filters = buildOptionsScanFilters(args);
+      const yahoo = getYahooFinance2();
+      let expirationDates: string[] = [];
+      try {
+        const optionsResult = (await yahoo.options(symbol)) as { expirationDates?: Array<Date | string> };
+        expirationDates = (optionsResult.expirationDates ?? [])
+          .map(normalizeExpirationDateToken)
+          .filter((x): x is string => typeof x === "string");
+      } catch {
+        expirationDates = [];
+      }
+      if (expirationDates.length === 0) {
+        return {
+          symbol,
+          spot: null,
+          criteria: filters,
+          examined: 0,
+          matched: 0,
+          rows: [],
+          note: "No option expiration dates available from Yahoo for this symbol."
+        };
+      }
+
+      const quote = await getYahooMarketQuote({ symbol }).catch(() => null);
+      const spot =
+        quote && typeof quote.price === "number" && Number.isFinite(quote.price) ? quote.price : null;
+      const expInRange = expirationDates
+        .map((exp) => ({ exp, dte: daysToExpirationUtc(exp) }))
+        .filter((x) => x.dte >= filters.minDte && x.dte <= filters.maxDte)
+        .sort((a, b) => a.dte - b.dte)
+        .slice(0, 8);
+
+      if (expInRange.length === 0) {
+        return {
+          symbol,
+          spot,
+          criteria: filters,
+          examined: 0,
+          matched: 0,
+          rows: [],
+          note: "No expirations found within requested DTE bounds."
+        };
+      }
+
+      const allLegs: ToolOptionsScanLeg[] = [];
+      for (const { exp, dte } of expInRange) {
+        const stockPrice = spot ?? 0;
+        const chain = await fetchYahooOptionChainForExpiration(symbol, exp, stockPrice, Math.max(1, dte));
+        if (!chain?.optionChain?.length) {
+          continue;
+        }
+        for (const row of chain.optionChain) {
+          const leg = filters.optionType === "put" ? row.put : row.call;
+          if (!leg) {
+            continue;
+          }
+          const bid = leg.last_quote?.bid;
+          const ask = leg.last_quote?.ask;
+          if (
+            typeof bid !== "number" ||
+            !Number.isFinite(bid) ||
+            typeof ask !== "number" ||
+            !Number.isFinite(ask)
+          ) {
+            continue;
+          }
+          const ivPct = typeof leg.implied_volatility === "number" && Number.isFinite(leg.implied_volatility)
+            ? leg.implied_volatility
+            : 0;
+          const oi = typeof leg.open_interest === "number" && Number.isFinite(leg.open_interest)
+            ? leg.open_interest
+            : 0;
+          const deltaRaw =
+            typeof leg.greeks?.delta === "number" && Number.isFinite(leg.greeks.delta)
+              ? leg.greeks.delta
+              : null;
+          allLegs.push({
+            expiration: exp,
+            dte,
+            strike: row.strike,
+            optionType: filters.optionType,
+            bid,
+            ask,
+            mid: (bid + ask) / 2,
+            ivPct,
+            openInterest: oi,
+            deltaAbs: deltaRaw == null ? null : Math.abs(deltaRaw),
+            deltaRaw
+          });
+        }
+      }
+
+      const matched = allLegs.filter((leg) => legPassesToolScanFilters(leg, filters));
+      matched.sort((a, b) => {
+        if (a.dte !== b.dte) return a.dte - b.dte;
+        if (b.openInterest !== a.openInterest) return b.openInterest - a.openInterest;
+        return b.bid - a.bid;
+      });
+
+      return {
+        symbol,
+        spot,
+        criteria: filters,
+        expirationsExamined: expInRange.map((x) => ({ expiration: x.exp, dte: x.dte })),
+        examined: allLegs.length,
+        matched: matched.length,
+        rows: matched.slice(0, 40),
+        note:
+          matched.length === 0
+            ? "No contracts matched all active filters. Loosen one threshold and retry."
+            : undefined
       };
     },
 

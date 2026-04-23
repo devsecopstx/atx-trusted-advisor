@@ -5,6 +5,7 @@ import type { ClipboardEvent, FormEvent, KeyboardEvent, MutableRefObject, RefObj
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
+import { XchatComposerNav } from "./xchat-composer-nav";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
 import { compactPersonaOptionLabel } from "./xchat-persona-label";
 
@@ -188,6 +189,7 @@ export function XchatComposerPanel({
           </button>
         </div>
       </form>
+      <XchatComposerNav />
       <p className="xchat-composer-hint" role="note">
         <span className="xchat-composer-hint__pill">Beta</span>
         <span className="xchat-composer-hint__text">

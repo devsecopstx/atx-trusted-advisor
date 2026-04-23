@@ -23,15 +23,58 @@ export const ATXFINANCE_TOOL_DEFINITION = {
             "watchlist_remove_symbols",
             "account_health",
             "task_status",
+            "options_scan",
             "market_quote"
           ],
           description:
-            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt, entryPrice/targetEntryPrice when set) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers."
+            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt, entryPrice/targetEntryPrice when set) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. options_scan: scan Yahoo option chains by filters (optionType, DTE, delta, IV, OI, bid); accepts either structured fields or a natural-language `query` such as 'RDW CSP scan put DTE<=7 delta 0.15-0.30 vol>40 OI>500 bid>0.10'. market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers."
         },
         symbol: {
           type: "string",
           description:
-            "Single ticker: market_quote, or one symbol for watchlist_add_symbols / watchlist_remove_symbols."
+            "Single ticker: market_quote, watchlist_add_symbols/watchlist_remove_symbols, or options_scan (alias for underlying)."
+        },
+        underlying: {
+          type: "string",
+          description: "Underlying ticker for options_scan."
+        },
+        query: {
+          type: "string",
+          description:
+            "Natural-language scanner criteria for options_scan, e.g. 'RDW CSP scan for put, DTE<=7, delta 0.15-0.3, vol>40%, OI>500, bid>0.10'."
+        },
+        optionType: {
+          type: "string",
+          enum: ["call", "put"],
+          description: "options_scan leg side."
+        },
+        minDte: {
+          type: "number",
+          description: "options_scan minimum days-to-expiration."
+        },
+        maxDte: {
+          type: "number",
+          description: "options_scan maximum days-to-expiration."
+        },
+        minDelta: {
+          type: "number",
+          description: "options_scan minimum absolute delta (0..1)."
+        },
+        maxDelta: {
+          type: "number",
+          description: "options_scan maximum absolute delta (0..1)."
+        },
+        minIvPct: {
+          type: "number",
+          description: "options_scan minimum implied volatility percent."
+        },
+        minOi: {
+          type: "number",
+          description: "options_scan minimum open interest."
+        },
+        minBid: {
+          type: "number",
+          description: "options_scan minimum bid price."
         },
         symbols: {
           type: "array",
