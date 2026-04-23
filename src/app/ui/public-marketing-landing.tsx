@@ -3,13 +3,13 @@
 import Link from "next/link";
 
 import { LightningBolt } from "@/app/ui/atxfinance-logo";
-import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
-import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
+import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { LandingProductScreenshot } from "@/app/ui/landing-product-screenshot";
-import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
+import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { PublicLandingXchatDemo } from "@/app/ui/public-landing-xchat-demo";
+import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 
 const X_OAUTH_LOGIN = "/api/auth/x/login?next=%2Fxchat";
 const XCHAT_GUEST = "/xchat";
@@ -90,13 +90,18 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
               aTx Trusted Advisory
             </p>
 
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--xf-text-300)] sm:text-sm">
+              Powered by xAI
+            </p>
+
             <h1 className="mt-2 text-4xl font-bold leading-[1.08] tracking-tighter text-[var(--xf-text-100)] sm:text-5xl md:text-6xl">
               Generate Consistent Income. Spend Just 30–60 Minutes a Week.
             </h1>
 
             <p className="mt-4 max-w-2xl text-lg font-semibold leading-snug text-[var(--xf-text-200)] sm:text-xl md:text-2xl">
-              Hassle-free options income for busy wealth builders — your personal options engine with AI-curated wheel,
-              covered-call, and LEAP workflows. Grok-backed xChat and execution-style tools.{" "}
+              Hassle-free options income for busy wealth builders and HNWI portfolios — your personal options engine
+              with AI-curated wheel, covered-call, and LEAP workflows. Powered by xAI with Grok-backed xChat and
+              execution-style tools.{" "}
               <span className="text-[var(--xf-text-100)]">One hour a week max.</span>
             </p>
 
@@ -186,7 +191,7 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
 
             <p className="mt-4 text-sm text-[var(--xf-text-400)] sm:mt-6">
               <span className="font-medium text-[var(--xf-text-300)]">One workspace:</span> portfolios &amp; watchlist ·
-              xChat (Grok / xAI) · xOptions strategy builder
+              xChat (Powered by xAI) · xOptions strategy builder for HNWI workflows
             </p>
           </div>
 
