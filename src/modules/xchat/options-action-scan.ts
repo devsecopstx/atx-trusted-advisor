@@ -12,7 +12,7 @@ import { fetchYahooOptionChainForExpiration } from "@/modules/strategy-options/o
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { getPlanLimits } from "@/modules/xchat/plan-limits";
 
-const MAX_PRO_REPORT_ROWS = 40;
+const MAX_PRO_REPORT_ROWS = 20;
 const MAX_BASIC_HOLDINGS_ROWS = 5;
 
 export type OptionsAction = "ROLL" | "BTC" | "HOLD" | "LET_EXPIRE" | "STC" | "OPEN" | "MONITOR" | "WAIT";
@@ -366,7 +366,7 @@ function deriveWatchlistAction(input: {
   };
 }
 
-function renderReportMarkdown(input: {
+export function renderOptionsActionReportMarkdown(input: {
   rows: OptionsActionReportRow[];
   isBasicTier: boolean;
   generatedAtIso: string;
@@ -409,7 +409,7 @@ export async function buildOptionsActionReport(
   const portfolioId = await getOrProvisionDefaultPortfolioId(input.userId, input.tenantId);
   if (!portfolioId) {
     const generatedAt = new Date().toISOString();
-    const asMarkdown = renderReportMarkdown({
+    const asMarkdown = renderOptionsActionReportMarkdown({
       rows: [],
       isBasicTier,
       generatedAtIso: generatedAt
@@ -516,7 +516,7 @@ export async function buildOptionsActionReport(
   const rows = basicFiltered.slice(0, maxRows);
   const truncated = basicFiltered.length > rows.length;
   const generatedAt = new Date().toISOString();
-  const asMarkdown = renderReportMarkdown({
+  const asMarkdown = renderOptionsActionReportMarkdown({
     rows,
     isBasicTier,
     generatedAtIso: generatedAt

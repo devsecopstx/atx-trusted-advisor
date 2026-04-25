@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 
+import { OptionsActionScanReport } from "@/app/reports/scan/ui/options-action-scan-report";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XchatStrategyJobPreflightCards } from "@/app/xchat/ui/xchat-strategy-job-preflight";
 
@@ -37,6 +38,8 @@ export const XchatThreadMessageBubble = memo(
               onLaunch={onStrategyLaunch}
               onStayInChat={onStrategyStay}
             />
+          ) : msg.optionsActionScan ? (
+            <OptionsActionScanReport data={msg.optionsActionScan} shareMode="enabled" />
           ) : (
             <XchatMarkdownBody content={msg.content} />
           )
@@ -69,6 +72,7 @@ export const XchatThreadMessageBubble = memo(
     prev.msg.attachmentPreviewUrl === next.msg.attachmentPreviewUrl &&
     prev.msg.persona === next.msg.persona &&
     prev.msg.strategyJobOffer === next.msg.strategyJobOffer &&
+    prev.msg.optionsActionScan === next.msg.optionsActionScan &&
     prev.emphasizeStrategyJobPrimary === next.emphasizeStrategyJobPrimary &&
     prev.strategyJobLaunchBusy === next.strategyJobLaunchBusy &&
     prev.loading === next.loading &&

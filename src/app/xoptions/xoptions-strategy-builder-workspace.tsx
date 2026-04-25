@@ -148,6 +148,32 @@ function readXoptionsUrlSearchParams(): URLSearchParams {
   return new URLSearchParams(window.location.search);
 }
 
+function parseContractPrefillFromUrl(): {
+  expiration: string;
+  strike: number;
+  contractType: "call" | "put";
+} | null {
+  const q = readXoptionsUrlSearchParams();
+  const contractTypeRaw = (q.get("contractType") ?? "").trim().toLowerCase();
+  const expirationRaw = (q.get("expiration") ?? "").trim();
+  const strikeRaw = (q.get("strike") ?? "").trim();
+  if (contractTypeRaw !== "call" && contractTypeRaw !== "put") {
+    return null;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(expirationRaw)) {
+    return null;
+  }
+  const strike = Number.parseFloat(strikeRaw);
+  if (!Number.isFinite(strike) || strike <= 0) {
+    return null;
+  }
+  return {
+    expiration: expirationRaw,
+    strike,
+    contractType: contractTypeRaw
+  };
+}
+
 function priceAtPctMove(last: number, pct: number): number {
   return last * (1 + pct / 100);
 }
@@ -426,8 +452,15 @@ export function XoptionsStrategyBuilderWorkspace() {
 
   /** Prefer `window.location` — `useSearchParams()` can be empty on first paint for dynamic client-only chunks. */
   const urlBootstrapKey = useMemo(() => {
+    void pathname;
+    void searchParamsKey;
     const q = readXoptionsUrlSearchParams();
     return `${normalizeMongoObjectIdParam(q.get("portfolioId") ?? "")}|${normalizeMongoObjectIdParam(q.get("accountId") ?? "")}|${(q.get("symbol") ?? "").trim().toUpperCase()}`;
+  }, [pathname, searchParamsKey]);
+  const initialContractPrefill = useMemo(() => {
+    void pathname;
+    void searchParamsKey;
+    return parseContractPrefillFromUrl();
   }, [pathname, searchParamsKey]);
 
   useLayoutEffect(() => {
@@ -1420,6 +1453,7 @@ export function XoptionsStrategyBuilderWorkspace() {
                 portfolioApproxValue={portfolioApproxValue}
                 holdingSharesForSymbol={holdingSharesForSymbol}
                 strategyStartBasis={strategyStartBasis}
+                initialContractPrefill={initialContractPrefill}
               />
               </XoptionsErrorBoundary>
               <div className="max-w-xl">

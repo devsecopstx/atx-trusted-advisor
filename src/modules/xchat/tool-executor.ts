@@ -963,8 +963,7 @@ function buildOperations(
         truncated: report.truncated,
         rowCount: report.rows.length,
         rows: report.rows,
-        disclaimer: report.disclaimer,
-        markdown: report.asMarkdown
+        disclaimer: report.disclaimer
       };
     },
 

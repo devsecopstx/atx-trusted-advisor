@@ -1,3 +1,5 @@
+import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
+
 export type Message = {
   id: string;
   role: "user" | "ai" | "error";
@@ -10,6 +12,8 @@ export type Message = {
   serverLogId?: string;
   /** Server suggested handoff to `/xoptions?strategyJob=1` (strategy_job_preflight). */
   strategyJobOffer?: boolean;
+  /** Structured options action scan payload for rich table rendering. */
+  optionsActionScan?: OptionsActionScanDisplayData;
 };
 
 export type HistoryItem = {

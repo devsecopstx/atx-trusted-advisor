@@ -45,6 +45,9 @@ import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
+import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
+import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
+import { renderOptionsActionReportMarkdown } from "@/modules/xchat/options-action-scan";
 import {
     MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
     resolveXchatPersonaDeclaredCollectionIds,
@@ -747,25 +750,58 @@ export async function POST(request: Request) {
     const optionsScanResult = await executor("atx_function", { operation: "options_action_scan" });
     const optionsScanDurationMs = Math.max(0, Date.now() - optionsScanStartedAt);
     let responseMarkdown = "I could not build your options action scan right now.";
-    let optionsRows: Array<Record<string, unknown>> = [];
+    let optionsRows: OptionsActionReportRow[] = [];
     let optionsTruncated = false;
+    let optionsGeneratedAt = new Date().toISOString();
+    let optionsPlanTier: OptionsActionScanDisplayData["planTier"] = "basic";
+    let optionsDisclaimer = "Not financial advice.";
     let optionsScanError = optionsScanResult.error;
     try {
       const parsed = JSON.parse(optionsScanResult.result) as {
-        markdown?: string;
-        rows?: Array<Record<string, unknown>>;
+        error?: string;
+        rows?: OptionsActionReportRow[];
         truncated?: boolean;
+        generatedAt?: string;
+        planTier?: OptionsActionScanDisplayData["planTier"];
+        disclaimer?: string;
       };
-      if (typeof parsed.markdown === "string" && parsed.markdown.trim().length > 0) {
-        responseMarkdown = parsed.markdown;
+      if (typeof parsed.error === "string" && parsed.error.trim().length > 0) {
+        optionsScanError = parsed.error;
       }
       optionsRows = Array.isArray(parsed.rows) ? parsed.rows : [];
       optionsTruncated = parsed.truncated === true;
+      optionsGeneratedAt =
+        typeof parsed.generatedAt === "string" && parsed.generatedAt.trim().length > 0
+          ? parsed.generatedAt
+          : optionsGeneratedAt;
+      optionsPlanTier = parsed.planTier ?? optionsPlanTier;
+      optionsDisclaimer =
+        typeof parsed.disclaimer === "string" && parsed.disclaimer.trim().length > 0
+          ? parsed.disclaimer
+          : optionsDisclaimer;
+      if (optionsRows.length > 0) {
+        const isBasicTier = optionsPlanTier === "basic";
+        responseMarkdown = renderOptionsActionReportMarkdown({
+          rows: optionsRows,
+          isBasicTier,
+          generatedAtIso: optionsGeneratedAt
+        });
+      } else if (optionsScanError) {
+        responseMarkdown = `I could not build your options action scan right now. (${optionsScanError})`;
+      }
     } catch {
       optionsScanError = optionsScanError ?? "options_action_scan_parse_failed";
+      responseMarkdown = `I could not build your options action scan right now. (${optionsScanError})`;
     }
 
     const output = preprocessXchatMarkdown(responseMarkdown);
+    const optionsActionScan: OptionsActionScanDisplayData = {
+      generatedAt: optionsGeneratedAt,
+      planTier: optionsPlanTier,
+      truncated: optionsTruncated,
+      rows: optionsRows,
+      disclaimer: optionsDisclaimer
+    };
     let optionsScanReportId: string | undefined;
     if (userId) {
       const prefs = await getCoreUserOptionsScanPreferences(userId);
@@ -775,7 +811,7 @@ export async function POST(request: Request) {
         source: "on_demand",
         frequency: prefs.frequency,
         deliveryChannel: prefs.deliveryChannel,
-        rows: optionsRows as never,
+        rows: optionsRows,
         truncated: optionsTruncated,
         reportMarkdown: output
       });
@@ -825,6 +861,7 @@ export async function POST(request: Request) {
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
           logId: chatLogId?.toHexString(),
+          optionsActionScan,
           optionsScanReportId,
           toolCalls: [{ name: "atx_function", durationMs: optionsScanDurationMs }]
         }

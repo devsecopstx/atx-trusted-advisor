@@ -37,6 +37,7 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 - **xChat vision paste — still open:** virus scan policy, optional max dimensions, EXIF strip, batch/admin harness parity.
 - Watchlist quote freshness: background refresh cadence + last-updated + stale badge on `/watchlist` and related tables.
+- **Options action scan share/report hardening:** watermark/recipient banner controls for `/reports/scan/{token}`, optional signed-download audit trail, and configurable expiry beyond the default 24h token TTL.
 - **Edit Account → automated scanner / price-alert thresholds (backlog, not a regression):** Consolidated holdings already exposes **Avg cost** vs **Last** and a **Desk** flow that **`POST /api/portfolios/{portfolioId}/alerts`** (portfolio row + optional desk channels). **Still backlog:** row-level binding to **`price-alert-service`**, scheduled scanner thresholds from those fields, and **option mark** quotes when chain data is wired per `yahooRef` — [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md).
 
 ### Desk email & delivery (ops / PR review)

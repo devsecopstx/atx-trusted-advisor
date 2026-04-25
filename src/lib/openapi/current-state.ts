@@ -149,6 +149,16 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "user-feedback"
   },
   {
+    path: "/api/reports/create",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "reports"
+  },
+  {
+    path: "/api/reports/scan/{token}",
+    operations: [{ method: "GET", auth: "public" }],
+    tag: "reports"
+  },
+  {
     path: "/api/internal/scheduler/execute-task",
     operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
     tag: "admin-tasks"

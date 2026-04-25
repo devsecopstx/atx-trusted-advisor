@@ -682,41 +682,45 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
         {lastPrim}
       </td>
       <td className="xf-watchlist-actions-cell">
-        <details className="xf-watchlist-row-actions-dd">
-          <summary className="xf-watchlist-row-actions-summary">Menu</summary>
-          <div className="xf-watchlist-row-actions-panel">
-            <button type="button" onClick={() => onOpenAnalyze(row)}>
-              Analyze (P/L)
-            </button>
-            <button type="button" onClick={() => onOpenFlipCredit(row)}>
-              Flip to Credit
-            </button>
-            {enableAddToHoldings ? (
-              <button
-                disabled={editMode || symbolInPortfolioStocks || addHoldingsBusy || mutating}
-                type="button"
-                onClick={() => onAddToHoldings?.(row)}
-              >
-                Add to Portfolio
+        <div className="xf-watchlist-row-actions-inline">
+          <details className="xf-watchlist-row-actions-dd">
+            <summary className="xf-watchlist-row-actions-summary">Actions</summary>
+            <div className="xf-watchlist-row-actions-panel">
+              <button type="button" onClick={() => onOpenAnalyze(row)}>
+                Analyze (P/L)
               </button>
-            ) : (
-              <Link className="xf-watchlist-dd-link" href={`/portfolio?portfolioId=${encodeURIComponent(portfolioId)}`}>
-                Add to Portfolio
-              </Link>
-            )}
-            <button type="button" onClick={() => onExportLeg(row)}>
-              Export leg CSV
-            </button>
-            <button
-              className="xf-watchlist-dd-danger"
-              disabled={(mutating && !editMode) || removingThisSymbol}
-              type="button"
-              onClick={() => void onRemoveSymbol(row.symbol)}
-            >
-              Delete
-            </button>
-          </div>
-        </details>
+              <button type="button" onClick={() => onOpenFlipCredit(row)}>
+                Flip to Credit
+              </button>
+              {enableAddToHoldings ? (
+                <button
+                  disabled={editMode || symbolInPortfolioStocks || addHoldingsBusy || mutating}
+                  type="button"
+                  onClick={() => onAddToHoldings?.(row)}
+                >
+                  Add to Portfolio
+                </button>
+              ) : (
+                <Link className="xf-watchlist-dd-link" href={`/portfolio?portfolioId=${encodeURIComponent(portfolioId)}`}>
+                  Add to Portfolio
+                </Link>
+              )}
+              <button type="button" onClick={() => onExportLeg(row)}>
+                Export leg CSV
+              </button>
+            </div>
+          </details>
+          <button
+            aria-label={`Delete ${row.symbol} from watchlist`}
+            className="xf-watchlist-row-delete-btn"
+            disabled={(mutating && !editMode) || removingThisSymbol}
+            title={`Delete ${row.symbol}`}
+            type="button"
+            onClick={() => void onRemoveSymbol(row.symbol)}
+          >
+            <DeleteIcon className="crud-icon" />
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -1801,10 +1805,6 @@ ${bodyRows}
               >
                 <DedupeIcon className="crud-icon" />
                 Remove duplicates
-              </button>
-              <button className="xf-watchlist-toolbar-btn xf-watchlist-toolbar-btn--danger" disabled type="button">
-                <DeleteIcon className="crud-icon" />
-                Delete
               </button>
               <button
                 className="xf-watchlist-toolbar-btn xf-watchlist-toolbar-btn--primary"

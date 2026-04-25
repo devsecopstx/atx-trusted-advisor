@@ -175,6 +175,8 @@ export type XoptionsChooseContractProps = {
   holdingSharesForSymbol?: number | null;
   /** Step 3 cash or share sizing — stock mode prefills contract quantity when empty. */
   strategyStartBasis?: StrategyStartBasis | null;
+  /** Optional deep-link contract prefill from scan/report actions. */
+  initialContractPrefill?: { expiration: string; strike: number; contractType: "call" | "put" } | null;
 };
 
 export type XoptionsSelectedOptionMeta = {
@@ -403,7 +405,8 @@ export function XoptionsChooseContract({
   onSelectedOptionMetaChange,
   portfolioApproxValue = null,
   holdingSharesForSymbol = null,
-  strategyStartBasis = null
+  strategyStartBasis = null,
+  initialContractPrefill = null
 }: XoptionsChooseContractProps) {
   const u = symbol.trim().toUpperCase();
 
@@ -427,6 +430,7 @@ export function XoptionsChooseContract({
   const [selectedStrike, setSelectedStrike] = useState<number | null>(null);
   const [limitPrice, setLimitPrice] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [prefillApplied, setPrefillApplied] = useState(false);
   const strategyDefaultsResolved = useMemo(
     () => strategyDefaults(strategyChoiceId),
     [strategyChoiceId]
@@ -461,6 +465,7 @@ export function XoptionsChooseContract({
     setChain(null);
     setShowAllStrikes(false);
     setError(null);
+    setPrefillApplied(false);
   }, [u]);
 
   useEffect(() => {
@@ -520,6 +525,13 @@ export function XoptionsChooseContract({
   }, [strategyDefaultsResolved]);
 
   useEffect(() => {
+    if (!initialContractPrefill || prefillApplied) {
+      return;
+    }
+    setSide(initialContractPrefill.contractType);
+  }, [initialContractPrefill, prefillApplied]);
+
+  useEffect(() => {
     if (!u) {
       setExpirations([]);
       return;
@@ -553,6 +565,15 @@ export function XoptionsChooseContract({
       cancelled = true;
     };
   }, [u]);
+
+  useEffect(() => {
+    if (!initialContractPrefill || prefillApplied) {
+      return;
+    }
+    if (expirations.includes(initialContractPrefill.expiration)) {
+      setExpiration(initialContractPrefill.expiration);
+    }
+  }, [expirations, initialContractPrefill, prefillApplied]);
 
   useEffect(() => {
     if (!u || !expiration) {
@@ -631,6 +652,28 @@ export function XoptionsChooseContract({
       cancelled = true;
     };
   }, [u, expiration, lastPrice]);
+
+  useEffect(() => {
+    if (!initialContractPrefill || prefillApplied || !chain) {
+      return;
+    }
+    if (chain.expiration !== initialContractPrefill.expiration) {
+      return;
+    }
+    const nearestStrike = chain.optionChain.reduce<number | null>((closest, row) => {
+      if (closest == null) {
+        return row.strike;
+      }
+      const currentDistance = Math.abs(row.strike - initialContractPrefill.strike);
+      const bestDistance = Math.abs(closest - initialContractPrefill.strike);
+      return currentDistance < bestDistance ? row.strike : closest;
+    }, null);
+    if (nearestStrike != null) {
+      setSelectedStrike(nearestStrike);
+      setQuantity((prev) => (prev.trim() ? prev : "1"));
+    }
+    setPrefillApplied(true);
+  }, [chain, initialContractPrefill, prefillApplied]);
 
   const applyWeekHorizon = useCallback(
     (days: number) => {

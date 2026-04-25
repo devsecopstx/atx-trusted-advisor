@@ -33,6 +33,7 @@ import {
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
+import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 
 const XchatThreadPanelLazy = dynamic(
   () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),
@@ -1174,6 +1175,7 @@ export function XchatConversation({
           logId?: string;
           toolCalls?: AskToolCallSummary[];
           strategyJobOffer?: boolean;
+          optionsActionScan?: OptionsActionScanDisplayData;
           model?: string;
           xaiUsage?: {
             inputTokens: number;
@@ -1259,7 +1261,8 @@ export function XchatConversation({
             persona: resolvedName,
             timestamp: Date.now(),
             serverLogId: logId,
-            strategyJobOffer: Boolean(payload.data?.strategyJobOffer)
+            strategyJobOffer: Boolean(payload.data?.strategyJobOffer),
+            optionsActionScan: payload.data?.optionsActionScan
           }
         ];
         const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);

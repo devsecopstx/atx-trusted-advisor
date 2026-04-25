@@ -1072,12 +1072,24 @@ a.xf-watchlist-sym-cell__ext:hover {
 }
 
 .xf-watchlist-actions-cell {
-  min-width: 5.5rem;
+  min-width: 8rem;
   position: relative;
+  overflow: visible;
+}
+
+.xf-watchlist-row-actions-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .xf-watchlist-row-actions-dd {
   position: relative;
+  z-index: 10;
+}
+
+.xf-watchlist-row-actions-dd[open] {
+  z-index: 1200;
 }
 
 .xf-watchlist-row-actions-summary {
@@ -1089,6 +1101,36 @@ a.xf-watchlist-sym-cell__ext:hover {
   padding: 0.15rem 0;
 }
 
+.xf-watchlist-row-delete-btn {
+  border: 1px solid color-mix(in srgb, var(--xf-danger-400) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-danger-400) 16%, transparent);
+  color: var(--xf-danger-400);
+  border-radius: 6px;
+  width: 1.7rem;
+  height: 1.7rem;
+  min-width: 1.7rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.xf-watchlist-row-delete-btn .crud-icon,
+.xf-watchlist-row-delete-btn svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.xf-watchlist-row-delete-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--xf-danger-400) 24%, transparent);
+}
+
+.xf-watchlist-row-delete-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .xf-watchlist-row-actions-dd[open] .xf-watchlist-row-actions-summary {
   color: var(--xf-text-100);
 }
@@ -1096,7 +1138,7 @@ a.xf-watchlist-sym-cell__ext:hover {
 .xf-watchlist-row-actions-panel {
   position: absolute;
   right: 0;
-  z-index: 5;
+  z-index: 1201;
   min-width: 11rem;
   margin-top: 0.25rem;
   padding: 0.35rem;
@@ -1107,6 +1149,7 @@ a.xf-watchlist-sym-cell__ext:hover {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  pointer-events: auto;
 }
 
 .xf-watchlist-row-actions-panel button,

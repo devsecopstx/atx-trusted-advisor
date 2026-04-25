@@ -508,6 +508,40 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "401": json401Session()
     }
   },
+  "POST /api/reports/create": {
+    summary: "Create temporary public options scan share link",
+    description:
+      "Session-scoped route for turning an options action scan payload into a 24-hour temporary share URL (`/reports/scan/{token}`). Stored in Mongo `options_scan_reports` with TTL on `expiresAt`.",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("OptionsScanShareCreateRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Share link created.", "OptionsScanShareCreateResponseEnvelope"),
+      "400": jsonResponse("Invalid JSON payload.", "ValidationErrorResponse"),
+      "401": json401Session()
+    }
+  },
+  "GET /api/reports/scan/{token}": {
+    summary: "Fetch public options scan report by temporary token",
+    parameters: [
+      {
+        name: "token",
+        in: "path",
+        required: true,
+        schema: { type: "string" }
+      }
+    ],
+    responses: {
+      "200": jsonResponse("Public scan report payload.", "OptionsScanSharePublicResponseEnvelope"),
+      "400": jsonResponse("Token is required.", "ErrorResponse"),
+      "404": jsonResponse("Report token is missing, invalid, or expired.", "ErrorResponse")
+    }
+  },
   "POST /api/internal/scheduler/execute-task": {
     summary: "Execute one Mongo-defined scheduled task on Next (JVM delegate)",
     description:
@@ -994,6 +1028,76 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       ok: { type: "boolean", enum: [true] }
     }
   },
+  OptionsScanReportRow: {
+    type: "object",
+    required: ["source", "symbol", "recommendedAction", "why", "urgency", "targetWindow", "confidence"],
+    properties: {
+      source: { type: "string", enum: ["holding", "watchlist"] },
+      symbol: { type: "string" },
+      strike: { type: "number" },
+      exp: { type: "string", format: "date" },
+      type: { type: "string", enum: ["call", "put"] },
+      qty: { type: "number" },
+      recommendedAction: {
+        type: "string",
+        enum: ["ROLL", "BTC", "HOLD", "LET_EXPIRE", "STC", "OPEN", "MONITOR", "WAIT"]
+      },
+      why: { type: "string" },
+      urgency: { type: "string", enum: ["high", "med", "low"] },
+      targetWindow: { type: "string" },
+      confidence: { type: "string", enum: ["high", "medium", "low"] }
+    }
+  },
+  OptionsScanShareScanData: {
+    type: "object",
+    required: ["generatedAt", "planTier", "truncated", "rows", "disclaimer"],
+    properties: {
+      generatedAt: { type: "string", format: "date-time" },
+      planTier: { type: "string", enum: ["basic", "premium", "premium_plus", "global_admin"] },
+      truncated: { type: "boolean" },
+      rows: { type: "array", items: refSchema("OptionsScanReportRow") },
+      disclaimer: { type: "string" }
+    }
+  },
+  OptionsScanShareCreateRequest: {
+    type: "object",
+    required: ["scanData"],
+    properties: {
+      scanData: refSchema("OptionsScanShareScanData")
+    }
+  },
+  OptionsScanShareCreateResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["shareUrl", "shareToken", "expiresAt", "expiresIn"],
+        properties: {
+          shareUrl: { type: "string" },
+          shareToken: { type: "string" },
+          expiresAt: { type: "string", format: "date-time" },
+          expiresIn: { type: "string", enum: ["24 hours"] }
+        }
+      }
+    }
+  },
+  OptionsScanSharePublicResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["scanData", "createdAt", "expiresAt", "accessCount"],
+        properties: {
+          scanData: refSchema("OptionsScanShareScanData"),
+          createdAt: { type: "string", format: "date-time" },
+          expiresAt: { type: "string", format: "date-time" },
+          accessCount: { type: "integer", minimum: 1 }
+        }
+      }
+    }
+  },
   RecommendationCreateRequest: {
     type: "object",
     required: ["title"],
@@ -1242,6 +1346,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "boolean",
         description:
           "True when the server returned a one-turn strategy-job preflight instead of a full model pass (suppressed after thread opt-out)."
+      },
+      optionsActionScan: {
+        allOf: [refSchema("OptionsScanShareScanData")],
+        description:
+          "Present for direct `options_action_scan` asks. Enables rich table/card rendering plus export/share actions in xChat."
       },
       multiAgentDowngraded: {
         type: "boolean",

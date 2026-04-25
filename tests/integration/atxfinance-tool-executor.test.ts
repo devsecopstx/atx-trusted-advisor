@@ -433,7 +433,7 @@ describe("atxfinance tool executor", () => {
     const data = JSON.parse(result.result) as {
       rowCount: number;
       rows: Array<{ symbol: string; recommendedAction: string }>;
-      markdown: string;
+      disclaimer: string;
     };
     expect(optionsActionScanMocks.buildOptionsActionReport).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -447,7 +447,7 @@ describe("atxfinance tool executor", () => {
       symbol: "TSLA",
       recommendedAction: "ROLL"
     });
-    expect(data.markdown).toContain("Options action scan");
+    expect(data.disclaimer).toContain("Not financial advice");
   });
 
   it("watchlist_add_symbols calls mutatePortfolioWatchlistSymbols with addEntries and desk defaults when unset", async () => {
