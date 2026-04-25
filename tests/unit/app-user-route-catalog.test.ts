@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
     assertCatalogMatchesWorkspaceProductPrefixes,
     getAppUserRouteCatalog,
-    isPathVisibleForRoleByCatalogDefaults
+    isPathVisibleForRoleByCatalogDefaults,
+    listVisiblePrefixPathsForRole
 } from "@/modules/platform/app-user-route-catalog";
 
 describe("app-user-route-catalog", () => {
@@ -22,5 +23,17 @@ describe("app-user-route-catalog", () => {
     expect(isPathVisibleForRoleByCatalogDefaults("/account/billing", "viewer")).toBe(true);
     expect(isPathVisibleForRoleByCatalogDefaults("/admin/users", "viewer")).toBe(false);
     expect(isPathVisibleForRoleByCatalogDefaults("/admin/users", "global_admin")).toBe(true);
+  });
+
+  it("applies per-tenant route overrides by route id", () => {
+    const withoutOverrides = listVisiblePrefixPathsForRole("viewer");
+    expect(withoutOverrides).toContain("/watchlist");
+    const withOverrides = listVisiblePrefixPathsForRole("viewer", {
+      watchlist: false,
+      xoptions: false
+    });
+    expect(withOverrides).not.toContain("/watchlist");
+    expect(withOverrides).not.toContain("/xoptions");
+    expect(withOverrides).toContain("/xchat");
   });
 });

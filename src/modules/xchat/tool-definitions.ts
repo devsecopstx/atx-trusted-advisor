@@ -24,10 +24,11 @@ export const ATXFINANCE_TOOL_DEFINITION = {
             "account_health",
             "task_status",
             "options_scan",
+            "options_action_scan",
             "market_quote"
           ],
           description:
-            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt, entryPrice/targetEntryPrice when set) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. options_scan: scan Yahoo option chains by filters (optionType, DTE, delta, IV, OI, bid); accepts either structured fields or a natural-language `query` such as 'RDW CSP scan put DTE<=7 delta 0.15-0.30 vol>40 OI>500 bid>0.10'. market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers."
+            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt, entryPrice/targetEntryPrice when set) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. options_scan: scan Yahoo option chains by filters (optionType, DTE, delta, IV, OI, bid); accepts either structured fields or a natural-language `query` such as 'RDW CSP scan put DTE<=7 delta 0.15-0.30 vol>40 OI>500 bid>0.10'. options_action_scan: deterministic options action report across live option holdings + watchlist symbols with recommended actions (ROLL/BTC/HOLD/LET_EXPIRE/STC/OPEN/MONITOR). market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers."
         },
         symbol: {
           type: "string",

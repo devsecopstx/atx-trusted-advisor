@@ -27,6 +27,7 @@ import {
 import type {
     AuthContext,
     CoreUser,
+    CoreUserOptionsScanPreferences,
     Tenant,
     TenantMembership
 } from "@/modules/identity/types";
@@ -39,6 +40,10 @@ const collections = {
 } as const;
 
 let ensureIndexesPromise: Promise<void> | null = null;
+const DEFAULT_OPTIONS_SCAN_PREFERENCES: CoreUserOptionsScanPreferences = {
+  frequency: "off",
+  deliveryChannel: "inapp"
+};
 
 export async function ensureIdentityIndexes(): Promise<void> {
   if (!ensureIndexesPromise) {
@@ -107,6 +112,16 @@ async function createIdentityIndexes(): Promise<void> {
           unique: true,
           sparse: true,
           name: "uniq_core_user_password_reset_token"
+        }
+      ),
+    db
+      .collection<CoreUser>(collections.users)
+      .createIndex(
+        { emailVerificationTokenHash: 1 },
+        {
+          unique: true,
+          sparse: true,
+          name: "uniq_core_user_email_verification_token"
         }
       )
   ]);
@@ -629,6 +644,128 @@ export async function getCoreUserById(userId: ObjectId): Promise<CoreUser | null
   await ensureIdentityIndexes();
   const db = await getDb();
   return db.collection<CoreUser>(collections.users).findOne({ _id: userId });
+}
+
+function parseCoreUserOptionsScanPreferencesFromUnknown(
+  raw: unknown
+): CoreUserOptionsScanPreferences {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return { ...DEFAULT_OPTIONS_SCAN_PREFERENCES };
+  }
+  const record = raw as Record<string, unknown>;
+  const frequency =
+    record.frequency === "weekly" || record.frequency === "monthly" || record.frequency === "off"
+      ? record.frequency
+      : DEFAULT_OPTIONS_SCAN_PREFERENCES.frequency;
+  const deliveryChannel =
+    record.deliveryChannel === "email" || record.deliveryChannel === "inapp"
+      ? record.deliveryChannel
+      : DEFAULT_OPTIONS_SCAN_PREFERENCES.deliveryChannel;
+  const lastRunAt =
+    record.lastRunAt instanceof Date
+      ? record.lastRunAt
+      : typeof record.lastRunAt === "string"
+        ? new Date(record.lastRunAt)
+        : undefined;
+  return {
+    frequency,
+    deliveryChannel,
+    ...(lastRunAt && !Number.isNaN(lastRunAt.getTime()) ? { lastRunAt } : {})
+  };
+}
+
+export async function getCoreUserOptionsScanPreferences(
+  userId: ObjectId
+): Promise<CoreUserOptionsScanPreferences> {
+  const user = await getCoreUserById(userId);
+  return parseCoreUserOptionsScanPreferencesFromUnknown(user?.optionsScanPreferences);
+}
+
+export async function updateCoreUserOptionsScanPreferences(
+  userId: ObjectId,
+  patch: Partial<CoreUserOptionsScanPreferences>
+): Promise<CoreUserOptionsScanPreferences | null> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const existing = await db.collection<CoreUser>(collections.users).findOne({ _id: userId });
+  if (!existing?._id) {
+    return null;
+  }
+  const current = parseCoreUserOptionsScanPreferencesFromUnknown(existing.optionsScanPreferences);
+  const next: CoreUserOptionsScanPreferences = {
+    frequency:
+      patch.frequency === "weekly" || patch.frequency === "monthly" || patch.frequency === "off"
+        ? patch.frequency
+        : current.frequency,
+    deliveryChannel:
+      patch.deliveryChannel === "email" || patch.deliveryChannel === "inapp"
+        ? patch.deliveryChannel
+        : current.deliveryChannel,
+    ...(patch.lastRunAt instanceof Date
+      ? { lastRunAt: patch.lastRunAt }
+      : current.lastRunAt
+        ? { lastRunAt: current.lastRunAt }
+        : {})
+  };
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: userId },
+    {
+      $set: {
+        optionsScanPreferences: next,
+        updatedAt: new Date()
+      }
+    }
+  );
+  return next;
+}
+
+export type TenantOptionsScanUser = {
+  userId: ObjectId;
+  tenantId: ObjectId;
+  email: string;
+  roles: CoreUser["roles"];
+  subscriptionPlan?: CoreUser["subscriptionPlan"];
+  optionsScanPreferences: CoreUserOptionsScanPreferences;
+};
+
+export async function listTenantUsersEligibleForOptionsScan(
+  tenantId: ObjectId
+): Promise<TenantOptionsScanUser[]> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const memberships = await db
+    .collection<TenantMembership>(collections.memberships)
+    .find({ tenantId })
+    .project({ userId: 1, tenantId: 1 })
+    .toArray();
+  const userIds = memberships
+    .map((row) => row.userId)
+    .filter((id): id is ObjectId => id instanceof ObjectId);
+  if (userIds.length === 0) {
+    return [];
+  }
+  const userRows = await db
+    .collection<CoreUser>(collections.users)
+    .find({ _id: { $in: userIds }, status: "active" })
+    .project({
+      email: 1,
+      roles: 1,
+      subscriptionPlan: 1,
+      optionsScanPreferences: 1
+    })
+    .toArray();
+  return userRows
+    .filter((row) => row._id && typeof row.email === "string")
+    .map((row) => ({
+      userId: row._id!,
+      tenantId,
+      email: row.email,
+      roles: Array.isArray(row.roles) ? row.roles : [],
+      subscriptionPlan: row.subscriptionPlan,
+      optionsScanPreferences: parseCoreUserOptionsScanPreferencesFromUnknown(
+        row.optionsScanPreferences
+      )
+    }));
 }
 
 export async function getCoreUserXfUiThemePreferenceForHex(

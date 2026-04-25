@@ -302,6 +302,7 @@ export type WorkspaceProductSidebarProps = {
   accountFeedbackPageLabel?: string;
   workspaceBook?: AppUserDefaultBook | null;
   showReferenceDocs?: boolean;
+  visiblePathPrefixes?: string[];
   xchatSection?: ReactNode;
 };
 
@@ -321,8 +322,14 @@ export function WorkspaceProductSidebar({
   accountFeedbackPageLabel,
   workspaceBook = null,
   showReferenceDocs = true,
+  visiblePathPrefixes,
   xchatSection
 }: WorkspaceProductSidebarProps) {
+  const isPathVisible = useCallback(
+    (pathPrefix: string) =>
+      !visiblePathPrefixes || visiblePathPrefixes.some((allowed) => allowed === pathPrefix),
+    [visiblePathPrefixes]
+  );
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const narrowViewport = useSyncExternalStore(subscribeMaxWidth980, getMaxWidth980Snapshot, () => false);
@@ -399,10 +406,10 @@ export function WorkspaceProductSidebar({
       : "/portfolio/alerts";
 
   const portfolioRouteMatch =
-    pathname.startsWith("/portfolios") ||
-    pathname.startsWith("/portfolio") ||
-    pathname.startsWith("/watchlist") ||
-    pathname.startsWith("/import-activity");
+    (isPathVisible("/portfolios") && pathname.startsWith("/portfolios")) ||
+    (isPathVisible("/portfolio") && pathname.startsWith("/portfolio")) ||
+    (isPathVisible("/watchlist") && pathname.startsWith("/watchlist")) ||
+    (isPathVisible("/import-activity") && pathname.startsWith("/import-activity"));
 
   const fallbackXchatSection = (
     <RouteSyncedDetails
@@ -435,20 +442,24 @@ export function WorkspaceProductSidebar({
   );
 
   const collapsedIcons: CollapsedIconItem[] = [
-    {
+    ...(isPathVisible("/portfolios")
+      ? [{
       key: "portfolio",
       href: "/portfolios",
       label: "Portfolio workspace",
       isActive: portfolioRouteMatch,
       icon: <LucideMonitorIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
-    },
-    {
+    }]
+      : []),
+    ...(isPathVisible("/xchat")
+      ? [{
       key: "xchat",
       href: "/xchat",
       label: "xChat",
       isActive: pathname.startsWith("/xchat"),
       icon: <RailSidebarZapIcon className="text-[var(--xf-lightning-yellow)]" size="disclosure" />
-    },
+    }]
+      : []),
     ...(pathname.startsWith("/xchat")
       ? ([
           {
@@ -462,13 +473,15 @@ export function WorkspaceProductSidebar({
           }
         ] satisfies CollapsedIconItem[])
       : []),
-    {
+    ...(isPathVisible("/xoptions")
+      ? [{
       key: "xoptions",
       href: "/xoptions",
       label: "xOptions",
       isActive: pathname.startsWith("/xoptions"),
       icon: <XoptionsRocketIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
-    },
+    }]
+      : []),
     ...(showAttachmentsRail
       ? ([
           {
@@ -505,6 +518,7 @@ export function WorkspaceProductSidebar({
 
   const expandedNav = (
     <nav className="portfolios-workspace-sidebar" aria-label="Workspace">
+      {isPathVisible("/portfolios") || isPathVisible("/portfolio") || isPathVisible("/watchlist") || isPathVisible("/import-activity") ? (
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion"
         routeMatch={portfolioRouteMatch}
@@ -519,20 +533,28 @@ export function WorkspaceProductSidebar({
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
           <WorkspacePortfolioAccountPickerCard book={workspaceBook} />
+          {isPathVisible("/portfolios") ? (
           <SidebarLink href="/portfolios" nested title="Books overview">
             myPortfolios
           </SidebarLink>
+          ) : null}
+          {isPathVisible("/watchlist") ? (
           <SidebarLink href={watchlistHref} nested title="Watchlist workspace">
             Watchlist
           </SidebarLink>
+          ) : null}
+          {isPathVisible("/portfolio") ? (
           <SidebarLink href={alertsHref} nested title="Portfolio alerts">
             Alerts
           </SidebarLink>
+          ) : null}
         </div>
       </RouteSyncedDetails>
+      ) : null}
 
       {xchatSection ?? fallbackXchatSection}
 
+      {isPathVisible("/xoptions") ? (
       <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/xoptions")}>
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
@@ -614,6 +636,7 @@ export function WorkspaceProductSidebar({
           ) : null}
         </div>
       </RouteSyncedDetails>
+      ) : null}
 
       {showAttachmentsRail ? (
         <RouteSyncedDetails
@@ -632,6 +655,7 @@ export function WorkspaceProductSidebar({
         </RouteSyncedDetails>
       ) : null}
 
+      {isPathVisible("/resources") ? (
       <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/resources")}>
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
@@ -681,6 +705,7 @@ export function WorkspaceProductSidebar({
           </SidebarLink>
         </div>
       </RouteSyncedDetails>
+      ) : null}
 
       {isGlobalAdmin ? (
         <SidebarLink href="/admin" title="Admin Hub">

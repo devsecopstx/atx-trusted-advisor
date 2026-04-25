@@ -144,7 +144,7 @@ If **`npm install` still fails**, check **Node version** matches the range in `p
 
 Before approving **production** deploy:
 
-0. **Version:** Root `package.json`, root `package-lock.json` `packages[""].version`, and `APP_VERSION` from `src/lib/app-version.ts` match the intended release (e.g. tag **v2.5.0**).
+0. **Version:** Root `package.json`, root `package-lock.json` `packages[""].version`, and `APP_VERSION` from `src/lib/app-version.ts` match the intended release (e.g. tag **v3.7.10**).
 1. **`npm run ci:gate`** green on the release ref (lint, typecheck, **`docs:links`** over all **`atx-docs/**/*.md`**, OpenAPI parity tests, unit + integration tests).
 2. **`NODE_ENV=production npm run build`** succeeds (Next.js compile + static generation).
 3. **`services/atxfinance-backend/**` changed on the release:** **`./gradlew test`** (from `services/atxfinance-backend`) green — do not approve prod with only Next-side green.

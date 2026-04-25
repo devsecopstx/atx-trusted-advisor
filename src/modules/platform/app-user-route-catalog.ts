@@ -41,6 +41,7 @@ export const appUserRouteCatalogSchema = z.object({
 export type AppUserRouteCatalog = z.infer<typeof appUserRouteCatalogSchema>;
 export type AppUserRouteCatalogEntry = z.infer<typeof catalogEntrySchema>;
 export type PlatformRoleForRoutes = z.infer<typeof platformRoleSchema>;
+export type AppUserRouteVisibilityOverrides = Partial<Record<string, boolean>>;
 
 let cached: AppUserRouteCatalog | null = null;
 
@@ -84,6 +85,31 @@ export function isPathVisibleForRoleByCatalogDefaults(pathname: string, role: Pl
     }
   }
   return false;
+}
+
+/** Effective route visibility: catalog defaults, optionally overridden per tenant by route id. */
+export function isRouteVisibleForRole(
+  entry: AppUserRouteCatalogEntry,
+  role: PlatformRoleForRoutes,
+  overrides?: AppUserRouteVisibilityOverrides | null
+): boolean {
+  const override = overrides?.[entry.id];
+  if (typeof override === "boolean") {
+    return override;
+  }
+  return entry.defaultVisibleForRoles.includes(role);
+}
+
+/** Prefix paths visible to a role after tenant overrides are applied. */
+export function listVisiblePrefixPathsForRole(
+  role: PlatformRoleForRoutes,
+  overrides?: AppUserRouteVisibilityOverrides | null
+): string[] {
+  return getAppUserRouteCatalog()
+    .entries.filter((entry) => entry.pathMatch === "prefix")
+    .filter((entry) => isRouteVisibleForRole(entry, role, overrides))
+    .map((entry) => entry.pathPattern)
+    .sort();
 }
 
 /** Assert catalog workspace shell roots align with `surface-policy` (call from tests). */

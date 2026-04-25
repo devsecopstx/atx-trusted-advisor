@@ -24,6 +24,7 @@ import {
 } from "@/modules/watchlist/default-upsert-fields";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
+import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
 import {
     deleteCachedToolResult,
     getCachedToolResult,
@@ -452,6 +453,7 @@ function legPassesToolScanFilters(leg: ToolOptionsScanLeg, filters: ToolOptionsS
 export type XfinanceToolExecutorContext = {
   userId: string;
   tenantId?: string;
+  subscriptionPlan?: "basic" | "premium" | "premium_plus";
   workspacePortfolioId?: string | null;
   /**
    * Eager preload (tests, batch, or explicit opt-in). When this key is present (including `null`),
@@ -946,6 +948,23 @@ function buildOperations(
           matched.length === 0
             ? "No contracts matched all active filters. Loosen one threshold and retry."
             : undefined
+      };
+    },
+
+    options_action_scan: async (_args, ctx: ExecutorContext) => {
+      const report = await buildOptionsActionReport({
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        subscriptionPlan: ctx.subscriptionPlan
+      });
+      return {
+        generatedAt: report.generatedAt,
+        planTier: report.planTier,
+        truncated: report.truncated,
+        rowCount: report.rows.length,
+        rows: report.rows,
+        disclaimer: report.disclaimer,
+        markdown: report.asMarkdown
       };
     },
 

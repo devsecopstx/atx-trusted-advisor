@@ -27,6 +27,7 @@ import {
 import { executePriceScannerJob } from "@/modules/scanner/price-scanner-job";
 import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-strategy-scanner";
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
+import { runOptionsActionScheduledDigest } from "@/modules/xchat/options-action-scheduled-task";
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 
 /** Options for {@link executeScheduledTask} — e.g. admin **Run** on `/admin/tasks` vs cron/tick. */
@@ -174,10 +175,7 @@ async function runScheduledCategory(
         output: `Compliance scan completed for task "${task.name}".`
       };
     case "notifications":
-      return {
-        status: "success",
-        output: `Notification digest dispatched for task "${task.name}".`
-      };
+      return runOptionsActionScheduledDigest(task);
     default:
       return {
         status: "failed",

@@ -59,8 +59,14 @@ const defaultWorkspaceLimits = {
 
 const identityMocks = vi.hoisted(() => ({
   getCoreUserById: vi.fn(),
+  getCoreUserOptionsScanPreferences: vi.fn(),
+  updateCoreUserOptionsScanPreferences: vi.fn(),
   getTenantByHexId: vi.fn(),
   resolvedWorkspaceLimitsForTenant: vi.fn()
+}));
+
+const optionsScanReportMocks = vi.hoisted(() => ({
+  createOptionsScanReport: vi.fn()
 }));
 
 const workspaceSnapshotMocks = vi.hoisted(() => ({
@@ -86,6 +92,7 @@ vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
 vi.mock("@/modules/xchat/user-preferences-repository", () => prefsMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
+vi.mock("@/modules/xchat/options-action-report-repository", () => optionsScanReportMocks);
 vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => ({
   loadWorkspaceSnapshotPreload: workspaceSnapshotMocks.loadWorkspaceSnapshotPreload,
   formatWorkspaceServerSnapshotBlock: workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock
@@ -169,8 +176,20 @@ describe("xchat ask route collection retrieval", () => {
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     identityMocks.getCoreUserById.mockResolvedValue(null);
+    identityMocks.getCoreUserOptionsScanPreferences.mockResolvedValue({
+      frequency: "off",
+      deliveryChannel: "inapp"
+    });
+    identityMocks.updateCoreUserOptionsScanPreferences.mockResolvedValue({
+      frequency: "off",
+      deliveryChannel: "inapp",
+      lastRunAt: new Date("2026-04-25T00:00:00.000Z")
+    });
     identityMocks.getTenantByHexId.mockResolvedValue(null);
     identityMocks.resolvedWorkspaceLimitsForTenant.mockReturnValue(defaultWorkspaceLimits);
+    optionsScanReportMocks.createOptionsScanReport.mockResolvedValue(
+      new ObjectId("507f1f77bcf86cd7994390ab")
+    );
     coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValue(null);
     verifierMocks.verifyXaiCollectionNonBlocking.mockImplementation(() => {});
     ragReadinessMocks.getScopeReadinessSummary.mockResolvedValue({
@@ -1517,5 +1536,84 @@ describe("xchat ask route collection retrieval", () => {
     } finally {
       createSpy.mockRestore();
     }
+  });
+
+  it("routes options_scan to direct deterministic options action scan", async () => {
+    const createSpy = vi.spyOn(toolExecutorModule, "createXfinanceToolExecutor");
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atx_function" }]
+        }
+      })
+    );
+    createSpy.mockReturnValueOnce(
+      (async () => ({
+        result: JSON.stringify({
+          markdown:
+            "### Options action scan\n\n| source | symbol | strike | exp | type | qty | action | why | urgency | target_window | confidence |\n|---|---|---:|---|---|---:|---|---|---|---|---|\n| holding | TSLA | 250.00 | 2026-05-01 | call | -1 | ROLL | Assignment risk elevated. | high | this week | high |",
+          rows: [
+            {
+              source: "holding",
+              symbol: "TSLA",
+              strike: 250,
+              exp: "2026-05-01",
+              type: "call",
+              qty: -1,
+              recommendedAction: "ROLL",
+              why: "Assignment risk elevated.",
+              urgency: "high",
+              targetWindow: "this week",
+              confidence: "high"
+            }
+          ],
+          truncated: false
+        })
+      })) as never
+    );
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "scan my options holdings"
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data?: { model?: string; response?: string } };
+    expect(payload.data?.model).toBe("options_action_scan_direct");
+    expect(payload.data?.response ?? "").toContain("Options action scan");
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+    expect(optionsScanReportMocks.createOptionsScanReport).toHaveBeenCalled();
+    expect(identityMocks.updateCoreUserOptionsScanPreferences).toHaveBeenCalled();
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionPlan: undefined
+      })
+    );
+    createSpy.mockRestore();
+  });
+
+  it("requires explicit mutation confirmation for watchlist mutate intents", async () => {
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "add NVDA to my watchlist"
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      data?: { needsMutationConfirm?: boolean; confirmMutationCode?: string };
+    };
+    expect(payload.data?.needsMutationConfirm).toBe(true);
+    expect(payload.data?.confirmMutationCode).toBe("confirm_before_mutate");
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
   });
 });

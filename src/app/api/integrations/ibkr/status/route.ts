@@ -16,6 +16,8 @@ import {
     newIbkrCorrelationId
 } from "@/modules/ibkr-integration/ibkr-correlation";
 
+const REAUTH_AFTER_MS = 6 * 60 * 60 * 1000;
+
 export async function GET() {
   const correlationId = newIbkrCorrelationId();
   const session = await requireApprovedAppUserSession();
@@ -29,6 +31,8 @@ export async function GET() {
   const issuedRaw = jar.get(IBKR_CP_SESSION_ISSUED_MS_COOKIE_NAME)?.value;
   const issuedMs = issuedRaw ? Number(issuedRaw) : NaN;
   const sessionIssuedAtMs = Number.isFinite(issuedMs) ? issuedMs : null;
+  const sessionAgeMs = sessionIssuedAtMs ? Math.max(0, Date.now() - sessionIssuedAtMs) : null;
+  const reauthRecommended = Boolean(sessionPresent && sessionAgeMs && sessionAgeMs > REAUTH_AFTER_MS);
 
   let consentRecorded = false;
   if (cfg.enabled) {
@@ -46,6 +50,7 @@ export async function GET() {
       sessionBodyAllowed: ibkrAllowsSessionCookiePost(),
       sessionCookieMaxAgeSec: IBKR_CP_SESSION_MAX_AGE_SEC,
       sessionIssuedAtMs,
+      reauthRecommended,
       oauthBrokerSsoAvailable: false,
       sessionHint:
         "Client Portal uses a gateway session cookie you paste (or operator env). There is no broker OAuth SSO in-app yet — re-paste after gateway logout or if API calls return ibkr_upstream_auth.",

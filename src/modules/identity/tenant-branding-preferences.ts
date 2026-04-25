@@ -39,6 +39,13 @@ export type TenantPreferences = TenantBrandingPreferences & {
   xchat_team_attachments_collection_id?: string;
   /** Display name returned by xAI (see `buildTenantXchatAttachmentsCollectionName` in `tenant-xchat-team-collection.ts`). */
   xchat_team_attachments_collection_name?: string;
+  /**
+   * Per-tenant app-user route visibility overrides by catalog route id.
+   * Example: `{ watchlist: false, xoptions: true }`.
+   */
+  app_user_route_visibility_overrides?: Record<string, boolean>;
+  /** Opt-in bootstrap policy for provisioning default portfolio + watchlist for new approved users. */
+  bootstrap_default_portfolio_watchlist?: boolean;
 };
 
 

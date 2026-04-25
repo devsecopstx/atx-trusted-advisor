@@ -19,6 +19,8 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `POST /api/auth/email/complete-invite` — body `token`, `password` (post-approval invite from email)
 - `POST /api/auth/email/forgot-password` — body `email` (always **200** `{ ok: true }` when rate limit allows)
 - `POST /api/auth/email/reset-password` — body `token`, `password`
+- `POST /api/auth/email/request-verification` — body `email`; issues/rotates verify-email token (privacy-safe response)
+- `POST /api/auth/email/verify` — body `token`; confirms email and records welcome-email hook
 - **Product pages (App Router):** **`/login`** (OAuth + email/password), **`/login/set-password`**, **`/login/forgot-password`**, **`/login/reset-password`** — see **`atx-docs/guides/auth-and-access.md`**
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
@@ -52,6 +54,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `POST /api/admin/tenants/create` — **`global_admin`** only; **Next-only** (not proxied). Same Mongo contract as **`npm run generate:tenant-spec`** + **`npm run seed:tenant -- --file tenant-specs/<slug>.yaml`** (no YAML on disk). Body: **`slug`**, **`name`**, optional **`initialAdminEmail`** / **`initialAdminXUserId`** / **`initialAdminPlatformRole`** / **`setAsDefaultSessionTenant`**, optional **`xfUiTheme`** (`light` \| `dark` \| `system`), optional **`xfBrandPalette`** (`default` \| `violet` \| `cyan` \| `amber` \| `rose` \| `emerald`), optional **`xfHeroIconUrl`** (https, loopback http, or `data:image/*;base64,…` per server validation), optional **`workspaceLimits`** (partial object — same keys as tenant-spec YAML; validated by `sanitizeWorkspaceLimitsPartial`). UI: **Admin → Create tenant** (`/admin/tenant-register/create`).
 - `DELETE /api/admin/tenants/{tenantId}` — **`global_admin`** only when tenant has **zero** memberships and is **not** the platform default. Attempts **xAI Management API** delete of **`tenantPreferences.xchat_team_attachments_collection_id`** when **`XAI_MANAGEMENT_API_KEY`** is configured; **502** `xai_collection_delete_failed` if delete fails (Mongo row retained). Response **200** may include **`data.xaiTeamAttachmentsCollection`** (`outcome`, optional **`collectionId`**).
 - `GET/PATCH /api/admin/tenants/{tenantId}/workspace-limits` — tenant quotas + prefs; **GET** may one-time persist default **`workspaceLimits`** scalars if missing. UI: **`/admin/tenant-register/{tenantId}/workspace-limits`** (arbitrary tenant) or **`/admin/tenant-preferences/workspace-limits`** (session tenant).
+- `POST /api/admin/tenants/{tenantId}/memberships` — assign user tenant membership/role (`tenant_admin` or `member`) and set it as default tenant session context.
 
 ## Admin users
 
@@ -84,6 +87,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 ## Admin platform / compliance
 
 - `GET /api/admin/platform/route-catalog` — **`global_admin`** only; returns the parsed **app-user route catalog** (same shape as **`data/platform/app-user-route-catalog.json`**) for **DB import** / compliance tooling. **Plan:** [tenant-ux-plan.md](../design-system/tenant-ux-plan.md).
+- `GET/PATCH /api/admin/platform/route-catalog/{tenantId}` — tenant-specific route visibility overrides (`tenantPreferences.app_user_route_visibility_overrides`).
 
 ## Admin delivery channels (tenant)
 
@@ -153,6 +157,8 @@ All IBKR JSON responses set response header **`X-Correlation-Id`** (UUID) for su
 - `GET /api/integrations/ibkr/accounts/:accountId/positions` — session; CP **`portfolio2/{accountId}/positions`** with legacy fallback (allowlisted).
 - `GET /api/integrations/ibkr/accounts/:accountId/orders` — session; switch account then **`GET /v1/api/iserver/account/orders`** (allowlisted).
 - `GET /api/integrations/ibkr/accounts/:accountId/executions` — session; switch account then **`GET /v1/api/iserver/account/trades`** (`days` 1–7); response field **`executions`** (IBKR “trades”). Allowlisted.
+- `POST /api/integrations/ibkr/accounts/:accountId/orders/preview` — MVP forward contract (`501 not_implemented`) for upcoming order-preview path.
+- `GET /api/integrations/ibkr/accounts/:accountId/automation-rules` — MVP forward contract (`501 not_implemented`) for automation rules.
 
 UI: **`/account/integrations/ibkr`** (read-only snapshot uses **`snapshot`**).
 
@@ -228,6 +234,7 @@ These are **not** OpenAPI JSON routes; listed for operator and support alignment
 ## xChat
 
 - `GET` / `POST /api/app-user/xchat/attachments` — **Premium+** tenant workspace uploads (`/xchat` attachments panel). **`POST`** sends multipart **`file`** → xAI Files API → Mongo **`rag_source_files`** (`tenant_premium_attachments` scope); links into **`core_tenants.tenantPreferences.xchat_team_attachments_collection_id`** when provisioned (**`XAI_TEAM_ID`** + **`XAI_MANAGEMENT_API_KEY`**). Linking runs in the same request as upload (does not wait for embedding **complete**).
+- `POST /api/app-user/xchat/voice-transcribe` — MVP voice composer contract; normalizes browser STT transcript before `/api/xchat/ask`.
 - `POST /api/xchat/ask` — Non-streaming **`/v1/responses`** tool-loop (JSON response, not SSE). Body may include optional **`threadId`** and **`recentMessages`**; when **`XCHAT_USE_REMOTE_HISTORY=true`** and a prior turn stored **`xaiResponseId`** for the same **`threadId`** + persona, the server sends xAI **`previous_response_id`** / **`store_messages`** and omits injecting **`recentMessages`** into the system prompt for that continuation. RAG pre-search and wired **`collections_search`/`file_search`** use **persona-linked** collection ids only (not deploy env team KB alone). Body may include optional **`portfolioId`** (24-char Mongo id, user-owned portfolio) so workspace snapshot and **`atx_function`** resolve that portfolio instead of the cookie/default — align with **`/watchlist?portfolioId=`** or open **`/xchat?portfolioId=`** for the same scope. Deterministic **“show my watchlist”** style prompts return a direct watchlist listing with **Spot** and **Target entry** in **`$`** (no per-row **added** timestamps). JSON `data` includes `model`, `logId`, collection search status fields, and optional `xaiUsage` (token counts) when xAI returns a `usage` object; optional `strategyJobOffer`, `multiAgentDowngraded` / `personaModelRequested`. The `/xchat` Persona rail **Status** shows last model plus last-turn and session token sums from `xaiUsage` when present.
 - `POST /api/xchat/batch`
 - `GET /api/xchat/batch`

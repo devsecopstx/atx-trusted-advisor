@@ -12,6 +12,12 @@ import type {
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
 export type { SubscriptionPlan };
 
+export type CoreUserOptionsScanPreferences = {
+  frequency: "weekly" | "monthly" | "off";
+  deliveryChannel: "inapp" | "email";
+  lastRunAt?: Date;
+};
+
 export type CoreUser = {
   _id?: ObjectId;
   email: string;
@@ -47,12 +53,17 @@ export type CoreUser = {
   passwordHash?: string;
   /** Set when the user completes an approval invite or password reset (credentials path). */
   credentialsVerifiedAt?: Date;
+  /** Set when email ownership has been verified via `/api/auth/email/verify`. */
+  emailVerifiedAt?: Date;
   /** SHA-256 hex of one-time post-approval setup token (see `hashAuthLookupToken`). */
   credentialInviteTokenHash?: string;
   credentialInviteExpiresAt?: Date;
   /** SHA-256 hex of password-reset token. */
   passwordResetTokenHash?: string;
   passwordResetExpiresAt?: Date;
+  /** SHA-256 hex of verify-email token for credentials login. */
+  emailVerificationTokenHash?: string;
+  emailVerificationExpiresAt?: Date;
   /** Observed on last successful OAuth / link-email completion (admin visibility). */
   lastLoginIp?: string;
   /** e.g. CF-IPCountry when present. */
@@ -63,6 +74,8 @@ export type CoreUser = {
    * Synced from the theme picker; wins over tenant default on sign-in.
    */
   xfUiTheme?: XfUiThemePreference;
+  /** Cadence + delivery config for options action scans (scheduled nudges). */
+  optionsScanPreferences?: CoreUserOptionsScanPreferences;
 };
 
 export type Tenant = {

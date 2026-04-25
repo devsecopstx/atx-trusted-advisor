@@ -14,6 +14,7 @@ const USERS = "core_users";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const RESET_TTL_MS = 60 * 60 * 1000;
+const VERIFY_EMAIL_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function createRawAuthToken(): string {
   return randomBytes(32).toString("base64url");
@@ -177,6 +178,71 @@ export async function completePasswordReset(input: {
       $unset: {
         passwordResetTokenHash: "",
         passwordResetExpiresAt: ""
+      }
+    }
+  );
+  if (res.modifiedCount !== 1) {
+    return { ok: false, code: "invalid_or_expired" };
+  }
+  return { ok: true, userId: user._id };
+}
+
+export async function issueEmailVerificationForUser(userId: ObjectId): Promise<{ rawToken: string } | null> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const rawToken = createRawAuthToken();
+  const tokenHash = hashAuthLookupToken(rawToken);
+  const expires = new Date(Date.now() + VERIFY_EMAIL_TTL_MS);
+  const now = new Date();
+  const res = await db.collection<CoreUser>(USERS).updateOne(
+    { _id: userId },
+    {
+      $set: {
+        emailVerificationTokenHash: tokenHash,
+        emailVerificationExpiresAt: expires,
+        updatedAt: now
+      }
+    }
+  );
+  return res.matchedCount === 1 ? { rawToken } : null;
+}
+
+export type CompleteEmailVerificationResult =
+  | { ok: true; userId: ObjectId }
+  | { ok: false; code: "invalid_or_expired" | "already_verified" };
+
+export async function completeEmailVerification(input: {
+  rawToken: string;
+}): Promise<CompleteEmailVerificationResult> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const tokenHash = hashAuthLookupToken(input.rawToken.trim());
+  const user = await db.collection<CoreUser>(USERS).findOne({ emailVerificationTokenHash: tokenHash });
+  if (!user?._id) {
+    return { ok: false, code: "invalid_or_expired" };
+  }
+  if (user.emailVerifiedAt instanceof Date) {
+    return { ok: false, code: "already_verified" };
+  }
+  const exp = user.emailVerificationExpiresAt;
+  if (!exp || exp.getTime() < Date.now()) {
+    return { ok: false, code: "invalid_or_expired" };
+  }
+  const res = await db.collection<CoreUser>(USERS).updateOne(
+    {
+      _id: user._id,
+      emailVerificationTokenHash: tokenHash,
+      emailVerificationExpiresAt: { $gt: now }
+    },
+    {
+      $set: {
+        emailVerifiedAt: now,
+        updatedAt: now
+      },
+      $unset: {
+        emailVerificationTokenHash: "",
+        emailVerificationExpiresAt: ""
       }
     }
   );

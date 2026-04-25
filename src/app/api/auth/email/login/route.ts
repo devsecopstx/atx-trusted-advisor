@@ -74,6 +74,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_credentials" }, { status: 401 });
   }
 
+  if (!user.emailVerifiedAt) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "email_password",
+      errorCode: "email_unverified",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      userId: user._id.toHexString(),
+      email: user.email
+    });
+    return NextResponse.json({ error: "email_unverified" }, { status: 403 });
+  }
+
   try {
     await finalizeEmailPasswordSession({ user, loginMeta });
   } catch (err) {

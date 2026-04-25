@@ -12,6 +12,7 @@ type StatusPayload = {
   consentSummary: string | null;
   sessionCookieMaxAgeSec?: number;
   sessionIssuedAtMs?: number | null;
+  reauthRecommended?: boolean;
   oauthBrokerSsoAvailable?: boolean;
   sessionHint?: string | null;
 };
@@ -253,6 +254,11 @@ export function IbkrConnectPanel() {
         ) : null}
         {status.sessionHint ? (
           <p className="mt-1 font-mono text-[10px] text-[var(--xf-text-muted,#64748b)]">{status.sessionHint}</p>
+        ) : null}
+        {status.reauthRecommended ? (
+          <p className="mt-2 font-mono text-[10px] text-amber-400/90">
+            Session is stale. Re-paste a fresh Client Portal cookie before loading accounts/snapshot.
+          </p>
         ) : null}
         <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--xf-text-muted,#64748b)]">
           Not financial advice. Educational use only.

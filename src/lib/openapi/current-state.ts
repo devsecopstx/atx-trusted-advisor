@@ -70,6 +70,16 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
     tag: "auth"
   },
+  {
+    path: "/api/auth/email/request-verification",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "auth"
+  },
+  {
+    path: "/api/auth/email/verify",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "auth"
+  },
   { path: "/api/auth/x/login", operations: [{ method: "GET", auth: "public" }], tag: "auth" },
   {
     path: "/api/auth/x/callback",
@@ -129,6 +139,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/app-user/xchat/voice-transcribe",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xchat"
+  },
+  {
     path: "/api/user-feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "user-feedback"
@@ -183,6 +198,16 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/integrations/ibkr/accounts/{accountId}/executions",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/accounts/{accountId}/orders/preview",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/accounts/{accountId}/automation-rules",
     operations: [{ method: "GET", auth: "session" }],
     tag: "integrations"
   },
@@ -406,6 +431,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-platform"
   },
   {
+    path: "/api/admin/platform/route-catalog/{tenantId}",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-platform"
+  },
+  {
     path: "/api/admin/portfolios",
     operations: [
       { method: "GET", auth: "admin" },
@@ -541,6 +574,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "GET", auth: "admin" },
       { method: "PATCH", auth: "admin", hasRequestBody: true }
     ],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/memberships",
+    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
     tag: "admin-tenants"
   },
   {

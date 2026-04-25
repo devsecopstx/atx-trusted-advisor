@@ -66,6 +66,29 @@ export function shouldOfferStrategyJobPreflight(message: string): boolean {
   return terms.some((t) => m.includes(t));
 }
 
+/**
+ * One-turn direct routing to deterministic options action scan (holdings + watchlist recommendations).
+ * Keeps this narrow so generic options learning asks still use normal chat.
+ */
+export function shouldRunOptionsActionScan(message: string): boolean {
+  const m = message.trim().toLowerCase();
+  if (!m) {
+    return false;
+  }
+  if (m === "options_scan" || m === "/options_scan") {
+    return true;
+  }
+  const patterns: RegExp[] = [
+    /\bscan my options\b/,
+    /\bcheck my options holdings\b/,
+    /\boptions health check\b/,
+    /\bscan options holdings\b/,
+    /\boptions action scan\b/,
+    /\bwhat should i do with my options\b/
+  ];
+  return patterns.some((pattern) => pattern.test(m));
+}
+
 /** Stored on the assistant turn for clients that render plain text; the chat UI uses a dedicated card layout instead. */
 export const STRATEGY_JOB_PREFLIGHT_MARKDOWN = `### Structured options planning
 

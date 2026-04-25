@@ -27,6 +27,7 @@ import {
     tenantWorkspaceLimitsScalarsMissing,
     type TenantPlanWorkspaceOverrides
 } from "@/modules/identity/tenant-workspace-limits";
+import type { Tenant } from "@/modules/identity/types";
 
 type RouteContext = {
   params: Promise<{ tenantId: string }>;
@@ -225,6 +226,40 @@ export async function PATCH(request: Request, context: RouteContext) {
       if (afterTheme?._id) {
         updated = afterTheme;
       }
+    }
+  }
+
+  if (
+    tpBody &&
+    typeof tpBody === "object" &&
+    !Array.isArray(tpBody) &&
+    "bootstrap_default_portfolio_watchlist" in (tpBody as Record<string, unknown>)
+  ) {
+    const raw = (tpBody as Record<string, unknown>).bootstrap_default_portfolio_watchlist;
+    if (raw !== null && typeof raw !== "boolean") {
+      return NextResponse.json(
+        { error: "Invalid bootstrap_default_portfolio_watchlist — use boolean or null" },
+        { status: 400 }
+      );
+    }
+    const db = await getDb();
+    const updateResult = await db.collection<Tenant>("core_tenants").findOneAndUpdate(
+      { _id: updated._id },
+      raw === null
+        ? {
+            $unset: { "tenantPreferences.bootstrap_default_portfolio_watchlist": "" },
+            $set: { updatedAt: new Date() }
+          }
+        : {
+            $set: {
+              "tenantPreferences.bootstrap_default_portfolio_watchlist": raw,
+              updatedAt: new Date()
+            }
+          },
+      { returnDocument: "after" }
+    );
+    if (updateResult?._id) {
+      updated = updateResult;
     }
   }
 

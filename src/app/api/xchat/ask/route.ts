@@ -33,13 +33,18 @@ import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getCoreUserById } from "@/modules/identity/repository";
+import {
+    getCoreUserById,
+    getCoreUserOptionsScanPreferences,
+    updateCoreUserOptionsScanPreferences
+} from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
+import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
 import {
     MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
     resolveXchatPersonaDeclaredCollectionIds,
@@ -67,6 +72,7 @@ import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-v
 import {
     heavySynthesisIntent,
     shouldOfferStrategyJobPreflight,
+    shouldRunOptionsActionScan,
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
 import {
@@ -95,6 +101,7 @@ const askSchema = z
     imageAttachment: xchatPasteImageAttachmentSchema.optional(),
     threadId: z.string().trim().min(1).max(128).optional(),
     strategyJobOptOut: z.boolean().optional(),
+    confirmMutations: z.boolean().optional(),
     recentMessages: z
       .array(
         z.object({
@@ -183,6 +190,21 @@ function isDirectWatchlistRequest(message: string): boolean {
   );
 }
 
+function isMutationIntentMessage(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  const hasMutationVerb =
+    normalized.includes(" add ") ||
+    normalized.startsWith("add ") ||
+    normalized.includes(" remove ") ||
+    normalized.startsWith("remove ") ||
+    normalized.includes(" delete ") ||
+    normalized.startsWith("delete ");
+  return hasMutationVerb && normalized.includes("watchlist");
+}
+
 export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
@@ -238,6 +260,7 @@ export async function POST(request: Request) {
     : messageRaw;
   const threadId = parsed.data.threadId?.trim() || undefined;
   const workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
+  const confirmMutations = parsed.data.confirmMutations === true;
   const isAdminSession = isGlobalAdmin(session.roles);
   let subscriptionPlan: SubscriptionPlan | undefined;
   let limiterRemainingMinute: number | undefined;
@@ -552,6 +575,31 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!confirmMutations && isMutationIntentMessage(messageTrimmed)) {
+    const confirmCopy =
+      "This request looks like a watchlist mutation. Please confirm by sending the same ask with confirmMutations=true.";
+    return NextResponse.json(
+      {
+        data: {
+          response: confirmCopy,
+          needsMutationConfirm: true,
+          confirmMutationCode: "confirm_before_mutate",
+          model: "mutation_confirm_gate",
+          personaName: persona.name
+        }
+      },
+      {
+        headers: buildLimiterHeaders({
+          remainingMinute: limiterRemainingMinute,
+          remainingHour: limiterRemainingHour,
+          remainingDay: limiterRemainingDay,
+          hourlyLimit: limiterHourlyLimit,
+          dailyLimit: limiterDailyLimit
+        })
+      }
+    );
+  }
+
   if (!strategyJobOptOut && !visionImage && shouldOfferStrategyJobPreflight(messageTrimmed)) {
     const responseMarkdown = preprocessXchatMarkdown(STRATEGY_JOB_PREFLIGHT_MARKDOWN);
     const preflightRequestId = buildDeterministicId(
@@ -683,10 +731,121 @@ export async function POST(request: Request) {
   const hasXfinanceTool = xapiConfig.tools.some((t) => isAtxFunctionToolType(t.type));
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
 
+  if (!visionImage && hasXfinanceTool && shouldRunOptionsActionScan(messageTrimmed)) {
+    const executor = createXfinanceToolExecutor({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      subscriptionPlan,
+      workspacePortfolioId,
+      workspaceLazyLoad: {
+        userId: session.userId,
+        tenantId: session.tenantId,
+        workspacePortfolioId
+      }
+    });
+    const optionsScanStartedAt = Date.now();
+    const optionsScanResult = await executor("atx_function", { operation: "options_action_scan" });
+    const optionsScanDurationMs = Math.max(0, Date.now() - optionsScanStartedAt);
+    let responseMarkdown = "I could not build your options action scan right now.";
+    let optionsRows: Array<Record<string, unknown>> = [];
+    let optionsTruncated = false;
+    let optionsScanError = optionsScanResult.error;
+    try {
+      const parsed = JSON.parse(optionsScanResult.result) as {
+        markdown?: string;
+        rows?: Array<Record<string, unknown>>;
+        truncated?: boolean;
+      };
+      if (typeof parsed.markdown === "string" && parsed.markdown.trim().length > 0) {
+        responseMarkdown = parsed.markdown;
+      }
+      optionsRows = Array.isArray(parsed.rows) ? parsed.rows : [];
+      optionsTruncated = parsed.truncated === true;
+    } catch {
+      optionsScanError = optionsScanError ?? "options_action_scan_parse_failed";
+    }
+
+    const output = preprocessXchatMarkdown(responseMarkdown);
+    let optionsScanReportId: string | undefined;
+    if (userId) {
+      const prefs = await getCoreUserOptionsScanPreferences(userId);
+      const reportId = await createOptionsScanReport({
+        userId,
+        tenantId: tenantId ?? undefined,
+        source: "on_demand",
+        frequency: prefs.frequency,
+        deliveryChannel: prefs.deliveryChannel,
+        rows: optionsRows as never,
+        truncated: optionsTruncated,
+        reportMarkdown: output
+      });
+      optionsScanReportId = reportId.toHexString();
+      await updateCoreUserOptionsScanPreferences(userId, { lastRunAt: new Date() });
+    }
+
+    const chatLogId = shouldPersistHistory
+      ? await saveXChatLog({
+          threadId,
+          requestId,
+          correlationId,
+          userId,
+          tenantId: tenantId ?? undefined,
+          userEmail: session.email,
+          requestedBy: session.username,
+          personaId: persona?._id,
+          personaName: persona.name,
+          scope,
+          message: messageForPersistence,
+          response: output,
+          contextChunkIds: [],
+          model: "options_action_scan_direct",
+          strategyJobOptOut,
+          retentionExpiresAt,
+          xapiToolCalls: [
+            {
+              name: "atx_function",
+              args: { operation: "options_action_scan" },
+              resultHash: buildSha256Hex(optionsScanResult.result),
+              durationMs: optionsScanDurationMs,
+              ...(optionsScanError ? { error: optionsScanError } : {})
+            }
+          ]
+        })
+      : null;
+
+    return NextResponse.json(
+      {
+        data: {
+          response: output,
+          model: "options_action_scan_direct",
+          personaName: persona.name,
+          modelSelectionSource,
+          contextCount: 0,
+          contextSource: "none",
+          collectionSearchStatus: "skipped_no_collections",
+          collectionSearchNonReadyFileCount: 0,
+          logId: chatLogId?.toHexString(),
+          optionsScanReportId,
+          toolCalls: [{ name: "atx_function", durationMs: optionsScanDurationMs }]
+        }
+      },
+      {
+        headers: buildLimiterHeaders({
+          remainingMinute: limiterRemainingMinute,
+          remainingHour: limiterRemainingHour,
+          remainingDay: limiterRemainingDay,
+          hourlyLimit: limiterHourlyLimit,
+          dailyLimit: limiterDailyLimit
+        })
+      }
+    );
+  }
+
   if (!visionImage && hasXfinanceTool && isDirectWatchlistRequest(messageTrimmed)) {
     const executor = createXfinanceToolExecutor({
       userId: session.userId,
       tenantId: session.tenantId,
+      subscriptionPlan,
       workspacePortfolioId,
       workspaceLazyLoad: {
         userId: session.userId,
@@ -922,6 +1081,7 @@ export async function POST(request: Request) {
       ? createXfinanceToolExecutor({
           userId: session.userId,
           tenantId: session.tenantId,
+          subscriptionPlan,
           workspacePortfolioId,
           ...(hasXfinanceTool
             ? {

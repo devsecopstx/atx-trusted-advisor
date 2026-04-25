@@ -30,6 +30,8 @@ export function EmailLoginPanel({ nextPath }: { nextPath: string }) {
             ? "Invalid email or password."
             : data.error === "not_authorized"
               ? "Your account is not approved for sign-in yet."
+              : data.error === "email_unverified"
+                ? "Email is not verified yet. Check your inbox for a verification link."
               : data.error === "suspended"
                 ? "This account is suspended."
                 : data.error === "no_tenant"

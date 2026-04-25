@@ -66,6 +66,7 @@ export function CreateTenantConsole() {
   const [tagline, setTagline] = useState("");
   const [xfUiTheme, setXfUiTheme] = useState<"" | "light" | "dark" | "system">("");
   const [xfBrandPalette, setXfBrandPalette] = useState<"" | XfBrandPaletteId>("");
+  const [bootstrapDefaultPortfolioWatchlist, setBootstrapDefaultPortfolioWatchlist] = useState(false);
 
   const [initialAdminEmail, setInitialAdminEmail] = useState("");
   const [initialAdminXUserId, setInitialAdminXUserId] = useState("");
@@ -163,6 +164,7 @@ export function CreateTenantConsole() {
       if (xfBrandPalette) {
         body.xfBrandPalette = xfBrandPalette;
       }
+      body.bootstrapDefaultPortfolioWatchlist = bootstrapDefaultPortfolioWatchlist;
 
       const email = initialAdminEmail.trim();
       if (email) {
@@ -224,6 +226,7 @@ export function CreateTenantConsole() {
     tagline,
     xfUiTheme,
     xfBrandPalette,
+    bootstrapDefaultPortfolioWatchlist,
     initialAdminEmail,
     initialAdminXUserId,
     initialAdminPlatformRole,
@@ -498,6 +501,14 @@ export function CreateTenantConsole() {
                   ))}
                 </select>
                 <span className="status-text text-xs">Advanced: xf_brand_palette for future token packs.</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  checked={bootstrapDefaultPortfolioWatchlist}
+                  type="checkbox"
+                  onChange={(ev) => setBootstrapDefaultPortfolioWatchlist(ev.target.checked)}
+                />
+                Bootstrap default portfolio/watchlist on first approved access
               </label>
             </div>
           </details>

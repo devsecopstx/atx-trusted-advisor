@@ -172,16 +172,18 @@ function PublicLandingXchatDemoSequence({ reducedMotion, onCycleComplete }: Publ
 
   useEffect(() => {
     clearTimers();
-    setComposerValue("");
-    setComposerBusy(false);
-    setRenderedTurns(
-      DEMO_TURNS.map((turn) => ({
-        userPrompt: turn.userPrompt,
-        showUserBubble: false,
-        showAwaiting: false,
-        aiContent: ""
-      }))
-    );
+    queueMicrotask(() => {
+      setComposerValue("");
+      setComposerBusy(false);
+      setRenderedTurns(
+        DEMO_TURNS.map((turn) => ({
+          userPrompt: turn.userPrompt,
+          showUserBubble: false,
+          showAwaiting: false,
+          aiContent: ""
+        }))
+      );
+    });
 
     const typeMs = reducedMotion ? 0 : 38;
     const pauseBeforeType = reducedMotion ? 200 : 900;
@@ -216,10 +218,16 @@ function PublicLandingXchatDemoSequence({ reducedMotion, onCycleComplete }: Publ
                 schedule(() => runTurn(turnIdx + 1), betweenTurnsPauseMs);
                 return;
               }
-              patchTurnState(turnIdx, {
-                aiContent:
-                  renderedTurnsRef.current[turnIdx]!.aiContent + chunks[chunkIdx]!
-              });
+              setRenderedTurns((prev) =>
+                prev.map((turnState, idx) =>
+                  idx === turnIdx
+                    ? {
+                        ...turnState,
+                        aiContent: turnState.aiContent + chunks[chunkIdx]!
+                      }
+                    : turnState
+                )
+              );
               chunkIdx += 1;
               schedule(pushChunk, chunkGap);
             };
@@ -251,11 +259,6 @@ function PublicLandingXchatDemoSequence({ reducedMotion, onCycleComplete }: Publ
 
     return () => clearTimers();
   }, [reducedMotion, clearTimers, schedule, scrollToEnd, onCycleComplete, patchTurnState]);
-
-  const renderedTurnsRef = useRef(renderedTurns);
-  useEffect(() => {
-    renderedTurnsRef.current = renderedTurns;
-  }, [renderedTurns]);
 
   const showThreadChrome = renderedTurns.some(
     (turn) => turn.showUserBubble || turn.showAwaiting || turn.aiContent.length > 0

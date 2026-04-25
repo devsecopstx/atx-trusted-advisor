@@ -19,8 +19,13 @@ const marketDataMocks = vi.hoisted(() => ({
   getYahooMarketQuote: vi.fn()
 }));
 
+const optionsActionScanMocks = vi.hoisted(() => ({
+  buildOptionsActionReport: vi.fn()
+}));
+
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/modules/xchat/market-data", () => marketDataMocks);
+vi.mock("@/modules/xchat/options-action-scan", () => optionsActionScanMocks);
 vi.mock("@/modules/xchat/tool-cache", () => ({
   getCachedToolResult: () => null,
   setCachedToolResult: () => undefined,
@@ -199,6 +204,28 @@ describe("atxfinance tool executor", () => {
       price: 250.12,
       source: "yahoo-finance2",
       disclaimer: "market disclaimer"
+    });
+    optionsActionScanMocks.buildOptionsActionReport.mockResolvedValue({
+      planTier: "premium_plus",
+      truncated: false,
+      generatedAt: "2026-04-25T00:00:00.000Z",
+      disclaimer: "Not financial advice.",
+      rows: [
+        {
+          source: "holding",
+          symbol: "TSLA",
+          strike: 250,
+          exp: "2026-05-01",
+          type: "call",
+          qty: -1,
+          recommendedAction: "ROLL",
+          why: "Assignment risk elevated.",
+          urgency: "high",
+          targetWindow: "this week",
+          confidence: "high"
+        }
+      ],
+      asMarkdown: "### Options action scan"
     });
   });
 
@@ -392,8 +419,35 @@ describe("atxfinance tool executor", () => {
       "account_health",
       "task_status",
       "options_scan",
+      "options_action_scan",
       "market_quote"
     ]);
+  });
+
+  it("options_action_scan returns deterministic report payload", async () => {
+    const executor = createXfinanceToolExecutor({
+      ...ctx,
+      subscriptionPlan: "premium_plus"
+    });
+    const result = await executor("atx_function", { operation: "options_action_scan" });
+    const data = JSON.parse(result.result) as {
+      rowCount: number;
+      rows: Array<{ symbol: string; recommendedAction: string }>;
+      markdown: string;
+    };
+    expect(optionsActionScanMocks.buildOptionsActionReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        subscriptionPlan: "premium_plus"
+      })
+    );
+    expect(data.rowCount).toBe(1);
+    expect(data.rows[0]).toMatchObject({
+      symbol: "TSLA",
+      recommendedAction: "ROLL"
+    });
+    expect(data.markdown).toContain("Options action scan");
   });
 
   it("watchlist_add_symbols calls mutatePortfolioWatchlistSymbols with addEntries and desk defaults when unset", async () => {

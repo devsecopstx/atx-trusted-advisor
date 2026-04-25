@@ -23,6 +23,7 @@ const createTenantBodySchema = z.object({
   xfAccentColor: z.string().max(32).optional(),
   xfTenantLogoUrl: z.string().max(MAX_XF_TENANT_LOGO_URL_CHARS).optional(),
   xfTenantTagline: z.string().max(60).optional(),
+  bootstrapDefaultPortfolioWatchlist: z.boolean().optional(),
   /** Partial workspace limits — same validation as tenant-spec YAML (`sanitizeWorkspaceLimitsPartial`). */
   workspaceLimits: z.record(z.string(), z.unknown()).optional()
 });
@@ -73,6 +74,9 @@ function bodyToSpecV1Doc(
   const tag = body.xfTenantTagline?.trim();
   if (tag) {
     tp.xf_tenant_tagline = tag.slice(0, 60);
+  }
+  if (body.bootstrapDefaultPortfolioWatchlist !== undefined) {
+    tp.bootstrap_default_portfolio_watchlist = body.bootstrapDefaultPortfolioWatchlist;
   }
   tenant.tenantPreferences = tp;
 
