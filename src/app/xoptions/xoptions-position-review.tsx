@@ -2,13 +2,10 @@
 
 import type { ReactNode } from "react";
 
+import { XoptionsOrderPreviewCard } from "@/app/xoptions/xoptions-order-preview-card";
 import type { StrategyChoiceId } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import { strategyShortLabel } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import type { XoptionsOpeningAction, XoptionsOrderReview } from "@/lib/xoptions/xoptions-order-preview";
-import { XOPTIONS_REVIEW_ORDER_FOOTNOTE } from "@/lib/xoptions/xoptions-order-preview";
-
-const POSITION_FOOTER_DISCLAIMER =
-  "Not financial, tax, or legal advice. Options involve substantial risk of loss. Consult licensed professionals.";
 
 type MetricProps = {
   label: string;
@@ -88,6 +85,11 @@ type XoptionsPositionReviewProps = {
   taxEducationEnabled: boolean;
   holdingSharesForSymbol: number | null;
   yahooOptionSymbol: string | null;
+  strike: number;
+  expirationYyyyMmDd: string;
+  quantity: number;
+  limitPricePerShare: number;
+  side: "call" | "put";
 };
 
 export function XoptionsPositionReview({
@@ -100,7 +102,12 @@ export function XoptionsPositionReview({
   portfolioApproxValue,
   taxEducationEnabled,
   holdingSharesForSymbol,
-  yahooOptionSymbol
+  yahooOptionSymbol,
+  strike,
+  expirationYyyyMmDd,
+  quantity,
+  limitPricePerShare,
+  side
 }: XoptionsPositionReviewProps) {
   const title = strategyLabel?.trim() || strategyShortLabel(strategyChoiceId) || "Single-leg option";
   const pctRef =
@@ -232,20 +239,19 @@ export function XoptionsPositionReview({
       )}
 
       <div className="xoptions-review-order__info mt-3 border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pt-2">
-        <p className="xoptions-review-order__narrative m-0 text-[0.72rem] leading-relaxed text-[var(--xf-text-300)]">
-          {orderReview.narrative}
-        </p>
-        {yahooOptionSymbol ? (
-          <p className="xoptions-review-order__footnote mt-2 mb-0 text-[0.6rem] text-[var(--xf-text-500)]">
-            Chain id: <span className="font-mono">{yahooOptionSymbol}</span>
-          </p>
-        ) : null}
-        <p className="xoptions-review-order__footnote mt-2 mb-0 text-[0.58rem] text-[var(--xf-text-500)]">{XOPTIONS_REVIEW_ORDER_FOOTNOTE}</p>
+        <XoptionsOrderPreviewCard
+          symbol={underlying}
+          strike={strike}
+          expirationYyyyMmDd={expirationYyyyMmDd}
+          quantity={quantity}
+          optionSide={side}
+          openingAction={openingAction}
+          limitPricePerShare={limitPricePerShare}
+          probabilityOtmPercent={orderReview.probabilityOtmPercent}
+          strategyType={title}
+          chainId={yahooOptionSymbol}
+        />
       </div>
-
-      <footer className="xoptions-position-review__footer mt-3 border-t border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] pt-2 text-[0.58rem] leading-snug text-[var(--xf-text-500)]">
-        {POSITION_FOOTER_DISCLAIMER}
-      </footer>
     </div>
   );
 }

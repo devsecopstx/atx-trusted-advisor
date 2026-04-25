@@ -955,7 +955,8 @@ function buildOperations(
       const report = await buildOptionsActionReport({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
-        subscriptionPlan: ctx.subscriptionPlan
+        subscriptionPlan: ctx.subscriptionPlan,
+        workspacePortfolioId: ctx.workspacePortfolioId
       });
       return {
         generatedAt: report.generatedAt,

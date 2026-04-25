@@ -2,7 +2,8 @@ import { ObjectId } from "mongodb";
 
 import {
     getDefaultPortfolio,
-    getUserWatchlist,
+    getPortfolioByIdForSessionUser,
+    getPortfolioWatchlist,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
@@ -47,6 +48,7 @@ type BuildOptionsActionReportInput = {
   userId: string;
   tenantId?: string;
   subscriptionPlan?: SubscriptionPlan;
+  workspacePortfolioId?: string | null;
   includeWatchlist?: boolean;
 };
 
@@ -142,18 +144,30 @@ function chooseHighestUrgency(rows: OptionsActionReportRow[]): OptionsActionRepo
   });
 }
 
-async function getOrProvisionDefaultPortfolioId(
-  userId: string,
-  tenantId?: string
-): Promise<string | null> {
-  const existing = await getDefaultPortfolio(userId, { tenantId });
+async function getWorkspacePortfolioIdOrProvision(input: {
+  userId: string;
+  tenantId?: string;
+  workspacePortfolioId?: string | null;
+}): Promise<string | null> {
+  const requestedPortfolioId = input.workspacePortfolioId?.trim();
+  if (requestedPortfolioId) {
+    const selected = await getPortfolioByIdForSessionUser({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      portfolioId: requestedPortfolioId
+    });
+    if (selected?._id) {
+      return selected._id.toHexString();
+    }
+  }
+  const existing = await getDefaultPortfolio(input.userId, { tenantId: input.tenantId });
   if (existing?._id) {
     return existing._id.toHexString();
   }
   try {
     const created = await provisionDefaultPortfolioForUser({
-      userId,
-      tenantId,
+      userId: input.userId,
+      tenantId: input.tenantId,
       watchlistSymbols: ["TSLA"]
     });
     return created.portfolio._id?.toHexString() ?? null;
@@ -406,7 +420,11 @@ export async function buildOptionsActionReport(
   const planLimits = getPlanLimits(resolvedPlan);
   const isBasicTier = !isGlobalAdminPath && resolvedPlan === "basic";
 
-  const portfolioId = await getOrProvisionDefaultPortfolioId(input.userId, input.tenantId);
+  const portfolioId = await getWorkspacePortfolioIdOrProvision({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    workspacePortfolioId: input.workspacePortfolioId
+  });
   if (!portfolioId) {
     const generatedAt = new Date().toISOString();
     const asMarkdown = renderOptionsActionReportMarkdown({
@@ -473,8 +491,9 @@ export async function buildOptionsActionReport(
 
   const watchlistRows: OptionsActionReportRow[] = [];
   if (input.includeWatchlist !== false) {
-    const watchlist = await getUserWatchlist({
+    const watchlist = await getPortfolioWatchlist({
       userId: input.userId,
+      portfolioId,
       tenantId: input.tenantId
     });
     const holdingSymbols = new Set(holdingRows.map((row) => row.symbol));

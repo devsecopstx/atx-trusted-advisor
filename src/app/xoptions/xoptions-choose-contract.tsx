@@ -1184,7 +1184,7 @@ export function XoptionsChooseContract({
             <div
               className={`xoptions-contract__grid${!payoffPreviewEnabled ? " xoptions-contract__grid--no-payoff" : ""}`}
             >
-          <div className="xoptions-contract__chain-wrap relative min-w-0">
+          <div id="xoptions-chain-panel" className="xoptions-contract__chain-wrap relative min-w-0">
             <div
               className={`xoptions-contract__panel-inner ${chainPanelLocked ? "xoptions-contract__panel-inner--locked" : ""}`}
             >
@@ -1590,6 +1590,11 @@ export function XoptionsChooseContract({
                   taxEducationEnabled={taxEducationEnabled}
                   holdingSharesForSymbol={holdingSharesForSymbol}
                   yahooOptionSymbol={yahooOptionSymbol}
+                  strike={selectedStrike ?? 0}
+                  expirationYyyyMmDd={expiration}
+                  quantity={qtyOk ? qtyNum : 1}
+                  limitPricePerShare={premiumNum}
+                  side={side}
                 />
               </div>
             ) : null}
@@ -1607,6 +1612,11 @@ export function XoptionsChooseContract({
                 taxEducationEnabled={taxEducationEnabled}
                 holdingSharesForSymbol={holdingSharesForSymbol}
                 yahooOptionSymbol={yahooOptionSymbol}
+                strike={selectedStrike ?? 0}
+                expirationYyyyMmDd={expiration}
+                quantity={qtyOk ? qtyNum : 1}
+                limitPricePerShare={premiumNum}
+                side={side}
               />
             </aside>
           ) : null}

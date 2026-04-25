@@ -427,7 +427,8 @@ describe("atxfinance tool executor", () => {
   it("options_action_scan returns deterministic report payload", async () => {
     const executor = createXfinanceToolExecutor({
       ...ctx,
-      subscriptionPlan: "premium_plus"
+      subscriptionPlan: "premium_plus",
+      workspacePortfolioId: portfolioId.toHexString()
     });
     const result = await executor("atx_function", { operation: "options_action_scan" });
     const data = JSON.parse(result.result) as {
@@ -439,7 +440,8 @@ describe("atxfinance tool executor", () => {
       expect.objectContaining({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
-        subscriptionPlan: "premium_plus"
+        subscriptionPlan: "premium_plus",
+        workspacePortfolioId: portfolioId.toHexString()
       })
     );
     expect(data.rowCount).toBe(1);
