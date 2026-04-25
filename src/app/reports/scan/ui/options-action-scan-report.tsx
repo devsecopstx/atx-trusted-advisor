@@ -5,9 +5,9 @@ import autoTable from "jspdf-autotable";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { parseOccOptionSymbol } from "@/modules/watchlist/option-expiration";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
-import { parseOccOptionSymbol } from "@/modules/watchlist/option-expiration";
 
 type ConfidenceDots = "●●●" | "●●" | "●";
 type SortKey = "symbol" | "action" | "urgency" | "confidence" | "expiry";
@@ -370,14 +370,14 @@ export function OptionsActionScanReport({
         ) : null}
         <div className="flex flex-wrap gap-2">
           <button
-            className="rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_35%,transparent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--xf-xoptions-accent)] transition hover:bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_12%,transparent)]"
+            className="xchat-scan-action-btn xchat-scan-action-btn--accent"
             type="button"
             onClick={() => exportPdf(data)}
           >
             Download PDF Report
           </button>
           <button
-            className="rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_20%,transparent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--xf-text-200)] transition hover:bg-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)]"
+            className="xchat-scan-action-btn xchat-scan-action-btn--neutral"
             type="button"
             onClick={() => exportCsv(data)}
           >
@@ -385,7 +385,7 @@ export function OptionsActionScanReport({
           </button>
           {shareMode === "enabled" ? (
             <button
-              className="rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--xf-gain-green)] transition hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] disabled:opacity-60"
+              className="xchat-scan-action-btn xchat-scan-action-btn--gain"
               disabled={shareBusy}
               type="button"
               onClick={() => void createShareLink()}
@@ -398,7 +398,7 @@ export function OptionsActionScanReport({
           <div className="flex flex-wrap items-center gap-2 rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] px-2.5 py-2 text-xs">
             <span className="font-medium text-[var(--xf-text-100)]">{share.shareUrl}</span>
             <button
-              className="rounded border border-[color-mix(in_srgb,var(--xf-text-100)_20%,transparent)] px-1.5 py-0.5 text-[0.68rem] text-[var(--xf-text-200)]"
+              className="xchat-scan-action-btn xchat-scan-action-btn--compact xchat-scan-action-btn--neutral"
               type="button"
               onClick={() => void navigator.clipboard.writeText(share.shareUrl)}
             >

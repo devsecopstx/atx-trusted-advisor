@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { OptionsActionScanReport } from "@/app/reports/scan/ui/options-action-scan-report";
+import "@/app/xchat/xchat.css";
 import { getOptionsScanSharedReportForPublicView } from "@/modules/xchat/options-scan-share-repository";
 
 type PageProps = {
