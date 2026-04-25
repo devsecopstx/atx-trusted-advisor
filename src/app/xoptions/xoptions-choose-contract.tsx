@@ -744,6 +744,16 @@ export function XoptionsChooseContract({
   const limitOk = limitPrice.trim() !== "" && Number.isFinite(limitNum) && limitNum >= 0;
   const qtyNum = parseInt(quantity, 10);
   const qtyOk = quantity.trim() !== "" && Number.isFinite(qtyNum) && qtyNum >= 1;
+  const roughBudgetUsd = strategyStartBasis?.mode === "cash" ? strategyStartBasis.usd : null;
+  const maxEstimatedContractsFromCash = useMemo(() => {
+    if (roughBudgetUsd == null || !Number.isFinite(roughBudgetUsd) || roughBudgetUsd <= 0) {
+      return null;
+    }
+    if (!limitOk || limitNum <= 0) {
+      return null;
+    }
+    return Math.max(0, Math.floor(roughBudgetUsd / (limitNum * 100)));
+  }, [roughBudgetUsd, limitNum, limitOk]);
 
   const dataReady = Boolean(
     expiration && selectedStrike != null && limitOk && qtyOk
@@ -1067,7 +1077,11 @@ export function XoptionsChooseContract({
                   currency: "USD",
                   maximumFractionDigits: 0
                 }).format(strategyStartBasis.usd)}
-                . Adjust contracts to match risk.
+                .{" "}
+                {maxEstimatedContractsFromCash == null
+                  ? "Enter a limit to estimate max contracts from cash."
+                  : `Max est contracts from cash: ${maxEstimatedContractsFromCash}.`}{" "}
+                Adjust contracts to match risk.
               </p>
             ) : null}
           </div>

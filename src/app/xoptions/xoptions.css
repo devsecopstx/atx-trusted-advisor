@@ -1333,7 +1333,8 @@ button.xoptions-chain-cta.cta.cta-secondary:disabled {
 
 .xoptions-chain-table__head {
   border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
-  color: var(--xf-text-400);
+  color: var(--xf-text-200);
+  background: color-mix(in srgb, var(--xf-bg-900) 84%, var(--xf-text-100) 16%);
 }
 
 .xoptions-chain-table__row {
@@ -1398,8 +1399,12 @@ button.xoptions-chain-cta.cta.cta-secondary:disabled {
 .xoptions-chain-table__th-label {
   display: inline-flex;
   align-items: center;
-  gap: 0.12rem;
-  font-weight: 650;
+  gap: 0.18rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--xf-text-100);
+  white-space: nowrap;
 }
 
 .xoptions-chain-table__th-label--end {
@@ -1411,10 +1416,10 @@ button.xoptions-chain-cta.cta.cta-secondary:disabled {
   display: inline-flex;
   flex-direction: column;
   line-height: 0.62;
-  font-size: 0.48rem;
-  font-weight: 500;
-  color: var(--xf-text-500);
-  opacity: 0.62;
+  font-size: 0.52rem;
+  font-weight: 700;
+  color: var(--xf-text-300);
+  opacity: 0.82;
   margin-left: 0.06rem;
 }
 

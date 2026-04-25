@@ -389,10 +389,19 @@ export function WorkspaceProductSidebar({
     defaultPortfolioId !== null
       ? `/import-activity?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
       : "/import-activity";
+  const watchlistHref =
+    defaultPortfolioId !== null
+      ? `/watchlist?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
+      : "/watchlist";
+  const alertsHref =
+    defaultPortfolioId !== null
+      ? `/portfolio/alerts?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
+      : "/portfolio/alerts";
 
   const portfolioRouteMatch =
     pathname.startsWith("/portfolios") ||
     pathname.startsWith("/portfolio") ||
+    pathname.startsWith("/watchlist") ||
     pathname.startsWith("/import-activity");
 
   const fallbackXchatSection = (
@@ -512,6 +521,12 @@ export function WorkspaceProductSidebar({
           <WorkspacePortfolioAccountPickerCard book={workspaceBook} />
           <SidebarLink href="/portfolios" nested title="Books overview">
             myPortfolios
+          </SidebarLink>
+          <SidebarLink href={watchlistHref} nested title="Watchlist workspace">
+            Watchlist
+          </SidebarLink>
+          <SidebarLink href={alertsHref} nested title="Portfolio alerts">
+            Alerts
           </SidebarLink>
         </div>
       </RouteSyncedDetails>

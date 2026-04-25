@@ -678,13 +678,10 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
           </select>
         )}
       </td>
-      <td
-        className="xf-watchlist-table-mono xf-watchlist-table-nowrap xf-watchlist-last-up"
-        title={lastTitle}
-      >
+      <td className="xf-watchlist-table-mono xf-watchlist-last-up" title={lastTitle}>
         {lastPrim}
       </td>
-      <td>
+      <td className="xf-watchlist-actions-cell">
         <details className="xf-watchlist-row-actions-dd">
           <summary className="xf-watchlist-row-actions-summary">Menu</summary>
           <div className="xf-watchlist-row-actions-panel">
