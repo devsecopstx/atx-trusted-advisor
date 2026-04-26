@@ -61,3 +61,22 @@ export async function sendPasswordResetEmail(input: {
   ].join("\n");
   return sendDeskPlainEmail({ to: input.to, subject, text });
 }
+
+export async function sendEmailVerificationEmail(input: {
+  request: Request;
+  to: string;
+  rawToken: string;
+}): Promise<boolean> {
+  const origin = resolvePublicAppOrigin(input.request);
+  const link = `${origin}/login/verify-email?token=${encodeURIComponent(input.rawToken)}`;
+  const subject = "Verify your email for aTx Finance";
+  const text = [
+    "Confirm your email to finish account activation.",
+    "",
+    "Open this link to verify your email (expires in 24 hours):",
+    link,
+    "",
+    "If you did not request this, you can ignore this email."
+  ].join("\n");
+  return sendDeskPlainEmail({ to: input.to, subject, text });
+}

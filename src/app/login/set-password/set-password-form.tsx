@@ -35,7 +35,11 @@ export function SetPasswordForm() {
         credentials: "include",
         body: JSON.stringify({ token, password })
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; redirect?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        redirect?: string;
+        verificationSent?: boolean;
+      };
       if (!res.ok) {
         setError(
           data.error === "invalid_or_expired"
@@ -44,6 +48,10 @@ export function SetPasswordForm() {
               ? "Password already set. Sign in or use forgot password."
               : data.error === "not_authorized"
                 ? "Your account is not approved yet."
+              : data.error === "email_unverified"
+                ? data.verificationSent
+                  ? "Password saved. Verify your email from the message we just sent, then sign in."
+                  : "Password saved, but we could not deliver a verification email. Use 'resend verification' on login."
                 : data.error ?? "Could not set password."
         );
         return;

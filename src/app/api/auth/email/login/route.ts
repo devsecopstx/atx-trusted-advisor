@@ -10,8 +10,12 @@ import {
     getBffRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
 import { EmailPasswordSessionError, finalizeEmailPasswordSession } from "@/lib/finalize-email-password-session";
+import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { verifyUserPassword } from "@/modules/identity/email-credentials-repository";
+import {
+  issueEmailVerificationForUser,
+  verifyUserPassword
+} from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import { getCoreUserByEmail } from "@/modules/identity/repository";
 
@@ -75,6 +79,18 @@ export async function POST(request: Request) {
   }
 
   if (!user.emailVerifiedAt) {
+    try {
+      const issued = await issueEmailVerificationForUser(user._id);
+      if (issued?.rawToken) {
+        await sendEmailVerificationEmail({
+          request,
+          to: user.email,
+          rawToken: issued.rawToken
+        });
+      }
+    } catch {
+      // Preserve deterministic auth response; verification delivery failures are non-fatal here.
+    }
     await appendLoginAuditRecord({
       outcome: "failure",
       provider: "email_password",

@@ -15,13 +15,13 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `GET /api/auth/x/login`
 - `GET /api/auth/x/callback`
 - `POST /api/auth/link-email`
-- `POST /api/auth/email/login` — email + password; sets session when `core_users.passwordHash` matches and `canUserLogin`
-- `POST /api/auth/email/complete-invite` — body `token`, `password` (post-approval invite from email)
+- `POST /api/auth/email/login` — email + password; requires `emailVerifiedAt` and now re-issues verification email on `email_unverified`
+- `POST /api/auth/email/complete-invite` — body `token`, `password` (post-approval invite from email); for unverified users returns `403 email_unverified` and sends verification email instead of opening a session
 - `POST /api/auth/email/forgot-password` — body `email` (always **200** `{ ok: true }` when rate limit allows)
 - `POST /api/auth/email/reset-password` — body `token`, `password`
-- `POST /api/auth/email/request-verification` — body `email`; issues/rotates verify-email token (privacy-safe response)
+- `POST /api/auth/email/request-verification` — body `email`; issues/rotates verify-email token and sends verification email for known unverified users (privacy-safe response)
 - `POST /api/auth/email/verify` — body `token`; confirms email and records welcome-email hook
-- **Product pages (App Router):** **`/login`** (OAuth + email/password), **`/login/set-password`**, **`/login/forgot-password`**, **`/login/reset-password`** — see **`atx-docs/guides/auth-and-access.md`**
+- **Product pages (App Router):** **`/login`** (OAuth + email/password), **`/login/verify-email`**, **`/login/set-password`**, **`/login/forgot-password`**, **`/login/reset-password`** — see **`atx-docs/guides/auth-and-access.md`**
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 

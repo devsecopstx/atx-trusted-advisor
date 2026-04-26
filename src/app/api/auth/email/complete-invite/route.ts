@@ -10,8 +10,12 @@ import {
     getBffRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
 import { EmailPasswordSessionError, finalizeEmailPasswordSession } from "@/lib/finalize-email-password-session";
+import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { completeCredentialInvite } from "@/modules/identity/email-credentials-repository";
+import {
+  completeCredentialInvite,
+  issueEmailVerificationForUser
+} from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import { getCoreUserById } from "@/modules/identity/repository";
 
@@ -72,6 +76,36 @@ export async function POST(request: Request) {
   const user = await getCoreUserById(result.userId);
   if (!user?._id) {
     return NextResponse.json({ error: "user_missing" }, { status: 500 });
+  }
+
+  if (!user.emailVerifiedAt) {
+    let verificationSent = false;
+    try {
+      const issued = await issueEmailVerificationForUser(user._id);
+      if (issued?.rawToken) {
+        verificationSent = await sendEmailVerificationEmail({
+          request,
+          to: user.email,
+          rawToken: issued.rawToken
+        });
+      }
+    } catch {
+      verificationSent = false;
+    }
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "email_password",
+      errorCode: "invite_email_unverified",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      userId: user._id.toHexString(),
+      email: user.email
+    });
+    return NextResponse.json(
+      { error: "email_unverified", verificationSent },
+      { status: 403 }
+    );
   }
 
   try {
