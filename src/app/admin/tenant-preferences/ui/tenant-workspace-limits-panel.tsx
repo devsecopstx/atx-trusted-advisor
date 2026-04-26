@@ -7,8 +7,8 @@ import { ATX_BILLING_PLAN_IDS, ATX_BILLING_PLANS, type AtxBillingPlanId } from "
 import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
-    DEFAULT_TENANT_PLAN_PRICE,
     DEFAULT_TENANT_WORKSPACE_LIMITS,
+    defaultTenantPlanPriceFor,
     type TenantPlanWorkspaceOverrides,
     type TenantPlanWorkspaceRow,
     type TenantWorkspaceLimits
@@ -120,8 +120,9 @@ function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undef
   }
   for (const planId of ATX_BILLING_PLAN_IDS) {
     const row = po[planId];
+    const defaultPrice = defaultTenantPlanPriceFor(planId);
     if (!row) {
-      d[planId] = { price: String(DEFAULT_TENANT_PLAN_PRICE) };
+      d[planId] = { price: String(defaultPrice) };
       continue;
     }
     for (const f of QUOTA_FIELDS) {
@@ -137,7 +138,7 @@ function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undef
       d[planId].chatHistoryMax = String(row.chatHistoryMax);
     }
     const listPrice = row.price;
-    d[planId].price = listPrice != null ? String(listPrice) : String(DEFAULT_TENANT_PLAN_PRICE);
+    d[planId].price = listPrice != null ? String(listPrice) : String(defaultPrice);
     if (typeof row.stripeProductId === "string" && row.stripeProductId.trim() !== "") {
       d[planId].stripeProductId = row.stripeProductId.trim();
     }
@@ -151,6 +152,7 @@ function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undef
 function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOverrides {
   const out: TenantPlanWorkspaceOverrides = {};
   for (const planId of ATX_BILLING_PLAN_IDS) {
+    const defaultPrice = defaultTenantPlanPriceFor(planId);
     const partial: TenantPlanWorkspaceRow = {};
     for (const f of QUOTA_FIELDS) {
       const raw = drafts[planId]?.[f.key]?.trim() ?? "";
@@ -183,12 +185,8 @@ function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOv
       }
     }
     const rawPrice = drafts[planId]?.price?.trim() ?? "";
-    const priceNum =
-      rawPrice === ""
-        ? DEFAULT_TENANT_PLAN_PRICE
-        : Number.parseInt(rawPrice, 10);
-    partial.price =
-      Number.isFinite(priceNum) && priceNum >= 1 ? priceNum : DEFAULT_TENANT_PLAN_PRICE;
+    const priceNum = rawPrice === "" ? defaultPrice : Number.parseInt(rawPrice, 10);
+    partial.price = Number.isFinite(priceNum) && priceNum >= 1 ? priceNum : defaultPrice;
     const rawStripeProd = drafts[planId]?.stripeProductId?.trim() ?? "";
     if (rawStripeProd !== "" && /^prod_[a-zA-Z0-9_]+$/.test(rawStripeProd)) {
       partial.stripeProductId = rawStripeProd;
@@ -591,8 +589,8 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
           <code className="font-mono text-[0.7rem]">premium_monthly</code>,{" "}
           <code className="font-mono text-[0.7rem]">premium_plus_monthly</code> (aligned with{" "}
           <code className="font-mono text-[0.7rem]">core_users.subscriptionPlan</code>). Empty limit cells inherit the
-          tenant row above for <em>those</em> fields. List price (USD) defaults to {DEFAULT_TENANT_PLAN_PRICE}{" "}
-          per plan when unset. Optional Stripe <strong>prod_…</strong> / <strong>price_…</strong> ids override env{" "}
+          tenant row above for <em>those</em> fields. List price (USD) defaults to each plan&apos;s catalog value when
+          unset. Optional Stripe <strong>prod_…</strong> / <strong>price_…</strong> ids override env{" "}
           <code className="font-mono text-[0.65rem]">STRIPE_PRICE_*</code> for Checkout for this tenant; leave blank to
           use platform env. Saving persists all three tiers.
         </p>
@@ -640,8 +638,8 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                       className="crud-input text-sm"
                       min={1}
                       max={1_000_000}
-                      placeholder={String(DEFAULT_TENANT_PLAN_PRICE)}
-                      title={`Default ${DEFAULT_TENANT_PLAN_PRICE} USD if cleared`}
+                      placeholder={String(defaultTenantPlanPriceFor(planId))}
+                      title={`Default ${defaultTenantPlanPriceFor(planId)} USD if cleared`}
                       type="number"
                       value={planDrafts[planId]?.price ?? ""}
                       onChange={(e) => {

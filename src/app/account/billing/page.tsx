@@ -54,7 +54,6 @@ export default async function AccountBillingPage({
 
   let tenant = approved && session?.tenantId ? await getTenantByHexIdCached(session.tenantId) : null;
   if (!tenant) {
-    // For unauthenticated guests or missing tenant, load system default tenant so pricing/limits come from DB
     const defaultTenantId = await resolveTenantIdHexForGlobalAdminConsole(undefined);
     if (defaultTenantId) {
       tenant = await getTenantByHexIdCached(defaultTenantId);
@@ -170,7 +169,7 @@ export default async function AccountBillingPage({
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
                   Select a plan, then continue with Register for access. Basic is the default selection. Limits below are
-                  list defaults (xChat <strong>UTC day</strong> and <strong>UTC hour</strong> rows); signed-in users see
+                  core workspace defaults (xChat <strong>UTC day</strong> and <strong>UTC hour</strong> rows); signed-in users see
                   tenant-resolved caps.
                 </p>
               </header>

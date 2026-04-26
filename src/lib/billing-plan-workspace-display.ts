@@ -7,7 +7,7 @@ import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
 import type { AtxBillingPlan, AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import {
     applyTenantPlanRowToBase,
-    DEFAULT_TENANT_WORKSPACE_LIMITS,
+    defaultTenantPlanPriceFor,
     mergeTenantWorkspaceLimits,
     normalizePlanOverridesFromUnknown,
     type TenantPlanWorkspaceRow
@@ -24,13 +24,6 @@ export const BILLING_WORKSPACE_LABEL_XCHAT_HOURLY = "xChat prompts / hr (UTC)";
 export const BILLING_WORKSPACE_LABEL_XCHAT_DAILY = "xChat prompts / day (UTC)";
 export const BILLING_WORKSPACE_LABEL_CHANGE_PERSONA = "Change persona";
 export const BILLING_WORKSPACE_LABEL_CHAT_HISTORY = "Chat history max (turns)";
-
-/** Column in `ATX_BILLING_PLAN_LIMIT_ROWS` for each retail plan. */
-const PLAN_ID_TO_LIMIT_COLUMN: Record<AtxBillingPlanId, "basic" | "premium" | "premiumPlus"> = {
-  basic: "basic",
-  premium_monthly: "premium",
-  premium_plus_monthly: "premiumPlus"
-};
 
 type BillingWorkspaceQuotaKey =
   | "userXoptionsLimit"
@@ -75,6 +68,13 @@ export const BILLING_WORKSPACE_LIMIT_SPECS: readonly {
   }
 ] as const;
 
+/** Column in `ATX_BILLING_PLAN_LIMIT_ROWS` for each retail plan. */
+const PLAN_ID_TO_LIMIT_COLUMN: Record<AtxBillingPlanId, "basic" | "premium" | "premiumPlus"> = {
+  basic: "basic",
+  premium_monthly: "premium",
+  premium_plus_monthly: "premiumPlus"
+};
+
 /** Shown after the four quota rows on Account → Billing (tenant + per-plan effective). */
 export const BILLING_WORKSPACE_PREFERENCE_SPECS: readonly {
   label: string;
@@ -113,7 +113,7 @@ export function billingCardPriceParts(
   if (typeof p === "number" && Number.isInteger(p) && p >= 1 && p <= 1_000_000) {
     return { priceAmount: `$${p}`, periodNote: plan.periodNote };
   }
-  return { priceAmount: plan.priceLabel, periodNote: plan.periodNote };
+  return { priceAmount: `$${defaultTenantPlanPriceFor(plan.id)}`, periodNote: plan.periodNote };
 }
 
 /**
@@ -133,16 +133,19 @@ export function billingCardWorkspaceDisplay(input: {
     const col = PLAN_ID_TO_LIMIT_COLUMN[plan.id];
     const quotaRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => {
       const catalogRow = ATX_BILLING_PLAN_LIMIT_ROWS.find((r) => r.metric === spec.catalogMetric);
-      const value = catalogRow?.[col] ?? "—";
-      return { label: spec.label, value };
+      return {
+        label: spec.label,
+        value: catalogRow?.[col] ?? "—"
+      };
     });
+    const guestBase = mergeTenantWorkspaceLimits(null);
     const prefRows = BILLING_WORKSPACE_PREFERENCE_SPECS.map((spec) => {
       if (spec.kind === "boolean") {
-        return { label: spec.label, value: formatChangePersonaEnabled(true) };
+        return { label: spec.label, value: formatChangePersonaEnabled(guestBase.changePersonaEnabled) };
       }
       return {
         label: spec.label,
-        value: formatWorkspaceLimitScalar(DEFAULT_TENANT_WORKSPACE_LIMITS.chatHistoryMax)
+        value: formatWorkspaceLimitScalar(guestBase.chatHistoryMax)
       };
     });
     return { priceParts, limitRows: [...quotaRows, ...prefRows] };
@@ -151,10 +154,7 @@ export function billingCardWorkspaceDisplay(input: {
   const base = mergeTenantWorkspaceLimits(tenant.workspaceLimits ?? null);
   const effective = applyTenantPlanRowToBase(base, planOverrides, plan.id);
   const quotaRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => {
-    const forLimits =
-      spec.limitKey === "userChatLimit" || spec.limitKey === "userChatHourlyLimit"
-        ? base
-        : effective;
+    const forLimits = effective;
     return {
       label: spec.label,
       value:

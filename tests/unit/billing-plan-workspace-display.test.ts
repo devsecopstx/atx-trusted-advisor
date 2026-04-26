@@ -27,7 +27,7 @@ describe("billingCardWorkspaceDisplay", () => {
   const basicPlan = ATX_BILLING_PLANS[0];
   const premiumPlan = ATX_BILLING_PLANS[1];
 
-  it("guest uses catalog quota rows plus default prefs and default list price", () => {
+  it("guest uses catalog quota rows plus default prefs and list price", () => {
     const d = billingCardWorkspaceDisplay({ tenant: null, plan: basicPlan });
     expect(d.priceParts).toEqual({ priceAmount: "$9", periodNote: "per month" });
     expect(d.limitRows).toHaveLength(7);
@@ -61,7 +61,7 @@ describe("billingCardWorkspaceDisplay", () => {
     expect(d.priceParts).toEqual({ priceAmount: "$12", periodNote: "per month" });
   });
 
-  it("billing card: xChat day/hr from tenant base; xOptions from plan-effective merge", () => {
+  it("billing card: tenant plan row applies to all quota fields shown on the card", () => {
     const tenant = mockTenant({
       workspaceLimits: {
         userChatLimit: 20,
@@ -75,11 +75,11 @@ describe("billingCardWorkspaceDisplay", () => {
     const chatHr = d.limitRows.find((r) => r.label === "xChat prompts / hr (UTC)");
     const xopt = d.limitRows.find((r) => r.label === "xOptions views / hr");
     expect(xopt?.value).toBe("7");
-    expect(chatDay?.value).toBe("20");
-    expect(chatHr?.value).toBe("Unlimited");
+    expect(chatDay?.value).toBe("5");
+    expect(chatHr?.value).toBe("3");
   });
 
-  it("normalizes legacy premium_plus_yearly planOverrides for Premium+ card (price only; xChat day uses tenant base)", () => {
+  it("normalizes legacy premium_plus_yearly planOverrides for Premium+ card (including quota rows)", () => {
     const plusPlan = ATX_BILLING_PLANS[2];
     const tenant = mockTenant({
       workspaceLimits: {
@@ -91,7 +91,7 @@ describe("billingCardWorkspaceDisplay", () => {
     const d = billingCardWorkspaceDisplay({ tenant, plan: plusPlan });
     expect(d.priceParts).toEqual({ priceAmount: "$350", periodNote: "per month" });
     const chat = d.limitRows.find((r) => r.label === "xChat prompts / day (UTC)");
-    expect(chat?.value).toBe("10");
+    expect(chat?.value).toBe("99");
   });
 
   it("tenant resolves change persona + chat history from plan row", () => {

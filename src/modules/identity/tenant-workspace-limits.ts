@@ -5,6 +5,7 @@
  * Legacy key `premium_plus_yearly` is normalized to `premium_plus_monthly` on read.
  */
 import {
+    ATX_BILLING_PLANS,
     ATX_BILLING_PLAN_IDS,
     LEGACY_ATX_BILLING_PLAN_ID_PREMIUM_PLUS,
     type AtxBillingPlanId
@@ -32,8 +33,26 @@ export type TenantWorkspaceLimits = {
   maxUsersPerTenant: number;
 };
 
-/** Default list price (USD, whole units) per plan when `planOverrides.*.price` is unset. */
+/** Fallback list price (USD, whole units) when plan defaults are unavailable. */
 export const DEFAULT_TENANT_PLAN_PRICE = 10;
+
+const DEFAULT_TENANT_PLAN_PRICE_BY_ID: Record<AtxBillingPlanId, number> = ATX_BILLING_PLANS.reduce(
+  (acc, plan) => {
+    const parsed = Number.parseInt(plan.priceLabel.replace(/^\$/, ""), 10);
+    acc[plan.id] = Number.isFinite(parsed) && parsed >= 1 ? parsed : DEFAULT_TENANT_PLAN_PRICE;
+    return acc;
+  },
+  {
+    basic: DEFAULT_TENANT_PLAN_PRICE,
+    premium_monthly: DEFAULT_TENANT_PLAN_PRICE,
+    premium_plus_monthly: DEFAULT_TENANT_PLAN_PRICE
+  } satisfies Record<AtxBillingPlanId, number>
+);
+
+/** Default list price for a billing plan (catalog price unless unavailable). */
+export function defaultTenantPlanPriceFor(planId: AtxBillingPlanId): number {
+  return DEFAULT_TENANT_PLAN_PRICE_BY_ID[planId] ?? DEFAULT_TENANT_PLAN_PRICE;
+}
 
 /** Per-plan workspace row: quota overrides plus optional admin-managed list price. */
 export type TenantPlanWorkspaceRow = Partial<TenantWorkspaceLimits> & {
@@ -48,10 +67,16 @@ export type TenantPlanWorkspaceRow = Partial<TenantWorkspaceLimits> & {
 /** Partial limits (and optional price) per retail plan; omitted limit fields fall back to merged tenant defaults. */
 export type TenantPlanWorkspaceOverrides = Partial<Record<AtxBillingPlanId, TenantPlanWorkspaceRow>>;
 
-export function resolvedTenantPlanPrice(row: TenantPlanWorkspaceRow | undefined): number {
+export function resolvedTenantPlanPrice(
+  row: TenantPlanWorkspaceRow | undefined,
+  planId?: AtxBillingPlanId
+): number {
   const p = row?.price;
   if (typeof p === "number" && Number.isInteger(p) && p >= 1 && p <= 1_000_000) {
     return p;
+  }
+  if (planId) {
+    return defaultTenantPlanPriceFor(planId);
   }
   return DEFAULT_TENANT_PLAN_PRICE;
 }
