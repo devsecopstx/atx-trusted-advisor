@@ -566,6 +566,9 @@ export function WorkspaceProductSidebar({
           <SidebarLink href="/xoptions" nested title="xOptions — strategy builder and chains">
             <span className="portfolios-workspace-sidebar__emph">Open xOptions</span>
           </SidebarLink>
+          <SidebarLink href="/xoptions/wheel" nested title="xWheel Studio — wheel ideas and reports">
+            xWheel Studio
+          </SidebarLink>
           {showXoptionsToggle ? (
             <>
               <div className="xchat-sidebar-privacy-row">

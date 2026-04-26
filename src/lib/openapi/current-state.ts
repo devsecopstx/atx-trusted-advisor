@@ -131,6 +131,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xoptions"
   },
   {
+    path: "/api/xoptions/wheel/generate",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xoptions"
+  },
+  {
     path: "/api/app-user/xchat/attachments",
     operations: [
       { method: "GET", auth: "session" },
@@ -154,7 +159,17 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "reports"
   },
   {
+    path: "/api/reports/wheel",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "reports"
+  },
+  {
     path: "/api/reports/scan/{token}",
+    operations: [{ method: "GET", auth: "public" }],
+    tag: "reports"
+  },
+  {
+    path: "/api/reports/wheel/{token}",
     operations: [{ method: "GET", auth: "public" }],
     tag: "reports"
   },

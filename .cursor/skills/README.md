@@ -17,6 +17,14 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 ---
 
+## Default skill policy (mandatory)
+
+- `skill-options-scan` — Use for **all** `options_scan` and report generation work (**MANDATORY**).
+- `atxdesign-review-audit` — Use for any API or schema changes.
+- `test-commit-push` — Run before committing report-related code.
+
+---
+
 ## Design & review
 
 | Skill | |

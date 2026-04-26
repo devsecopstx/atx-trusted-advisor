@@ -90,6 +90,7 @@ export function SimplePersonaEditor({
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
   const [showToolsPreview, setShowToolsPreview] = useState(false);
   const [includeHostedSearch, setIncludeHostedSearch] = useState(false);
+  const [includeCodeInterpreter, setIncludeCodeInterpreter] = useState(false);
   const router = useRouter();
 
   // Generate preview of tools JSON based on selected collections
@@ -105,6 +106,10 @@ export function SimplePersonaEditor({
       tools.push({ type: "x_search" });
     }
 
+    if (includeCodeInterpreter) {
+      tools.push({ type: "code_interpreter" });
+    }
+
     // Add collections_search tool if collections are selected
     if (selectedCollectionIds.length > 0) {
       tools.push({
@@ -114,7 +119,7 @@ export function SimplePersonaEditor({
     }
 
     return tools;
-  }, [selectedCollectionIds, includeHostedSearch]);
+  }, [selectedCollectionIds, includeHostedSearch, includeCodeInterpreter]);
 
   const filteredCollections = useMemo(() => {
     const q = collectionFilter.trim().toLowerCase();
@@ -191,7 +196,11 @@ export function SimplePersonaEditor({
           (tool: { type?: string }) => tool.type === "web_search"
         );
         const hasXSearch = loadedTools.some((tool: { type?: string }) => tool.type === "x_search");
+        const hasCodeInterpreter = loadedTools.some(
+          (tool: { type?: string }) => tool.type === "code_interpreter"
+        );
         setIncludeHostedSearch(hasWebSearch && hasXSearch);
+        setIncludeCodeInterpreter(hasCodeInterpreter);
 
         setStatus("Loaded");
       } catch (error) {
@@ -230,6 +239,10 @@ export function SimplePersonaEditor({
         if (includeHostedSearch) {
           tools.push({ type: "web_search" });
           tools.push({ type: "x_search" });
+        }
+
+        if (includeCodeInterpreter) {
+          tools.push({ type: "code_interpreter" });
         }
 
         // Add collections_search tool if collections are selected
@@ -278,7 +291,16 @@ export function SimplePersonaEditor({
         setStatus(error instanceof Error ? error.message : "Failed to save persona");
       }
     },
-    [form, mode, personaId, router, selectedCollectionIds, collections, includeHostedSearch]
+    [
+      form,
+      mode,
+      personaId,
+      router,
+      selectedCollectionIds,
+      collections,
+      includeHostedSearch,
+      includeCodeInterpreter
+    ]
   );
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -438,6 +460,15 @@ export function SimplePersonaEditor({
                   type="checkbox"
                 />
                 <span style={{ fontSize: "0.9rem" }}>Web & X Search</span>
+              </label>
+
+              <label className={styles.checkboxRow}>
+                <input
+                  checked={includeCodeInterpreter}
+                  onChange={(event) => setIncludeCodeInterpreter(event.target.checked)}
+                  type="checkbox"
+                />
+                <span style={{ fontSize: "0.9rem" }}>Code Interpreter</span>
               </label>
             </div>
 
