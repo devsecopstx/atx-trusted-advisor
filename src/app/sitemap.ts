@@ -16,6 +16,11 @@ const publicRoutes = [
     changeFrequency: "weekly" as const,
     priority: 0.8,
   },
+  {
+    path: "/llms.txt",
+    changeFrequency: "monthly" as const,
+    priority: 0.4,
+  },
   // Resources (public, guest-accessible)
   { path: "/resources/about", changeFrequency: "monthly" as const, priority: 0.6 },
   { path: "/resources/decision-workflow", changeFrequency: "monthly" as const, priority: 0.6 },

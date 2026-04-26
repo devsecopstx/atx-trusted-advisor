@@ -13,7 +13,7 @@ import {
 } from "@/modules/platform/tenant-route-policy";
 
 type RouteContext = {
-  params: Promise<{ tenantId: string; role: PlatformRoleForRoutes }>;
+  params: Promise<{ tenantId: string; role: string }>;
 };
 
 const roleSchema = z.enum(["global_admin", "advisor", "operator", "viewer"]);
