@@ -1,0 +1,28 @@
+# aTx Trusted Advisory (xFinance)
+
+aTx Trusted Advisory is a fintech decision-support platform focused on options workflows. It combines strategy building, AI-assisted analysis, and portfolio context for educational use by approved users. It does not provide personalized investment advice.
+
+## Key Product Pages
+- https://atxtrustedadvisory.com/xoptions - xOptions workspace for options strategy workflows, chain context, and wheel-oriented execution support.
+- https://atxtrustedadvisory.com/xchat - xChat workspace for AI-assisted options analysis, scenario exploration, and strategy rationale checks.
+
+## Educational Pillars (Options Strategy Guides)
+- https://atxtrustedadvisory.com/resources/getting-started - foundation guide: onboarding, options basics, strategy patterns, risk/disclosure orientation.
+- https://atxtrustedadvisory.com/resources/building-wheel - wheel strategy playbook: cash-secured puts, covered-call cadence, premium targets, risk controls.
+- https://atxtrustedadvisory.com/resources/building-wheel/wheel-vs-iron-condor - comparative educational guide for wheel and iron-condor frameworks.
+- https://atxtrustedadvisory.com/resources/decision-workflow - decision workflow for evaluating opportunities and applying process discipline.
+- https://atxtrustedadvisory.com/resources/secret-sauce - high-level explanation of how platform signals, context, and AI synthesis are combined.
+
+## Disclaimers and Legal
+- https://atxtrustedadvisory.com/legal/terms - terms of service.
+- https://atxtrustedadvisory.com/legal/privacy - privacy policy.
+- https://atxtrustedadvisory.com/legal/security - security disclosures and controls overview.
+- https://atxtrustedadvisory.com/legal/imprint - legal entity and imprint details.
+- https://atxtrustedadvisory.com/legal/vulnerability - responsible vulnerability reporting path.
+
+## API and Documentation
+- https://atxtrustedadvisory.com/api/openapi - OpenAPI document for available HTTP routes.
+- https://atxtrustedadvisory.com/resources/about - product and platform overview page.
+
+## Compliance Note
+Educational conversations only. Not personalized investment advice. Content and model outputs are informational and illustrative; users remain solely responsible for investment decisions.
