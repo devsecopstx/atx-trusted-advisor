@@ -19,6 +19,17 @@ const WORKSPACE_LIMITS_JSON_PLACEHOLDER = `{
   "userChatHourlyLimit": 0
 }`;
 
+const ROUTE_OVERRIDES_JSON_PLACEHOLDER = `{
+  "watchlist": false,
+  "xoptions": true
+}`;
+
+const DEFAULT_LANDING_JSON_PLACEHOLDER = `{
+  "advisor": "/xchat",
+  "operator": "/portfolios",
+  "viewer": "/xchat"
+}`;
+
 type CreateTenantResponse = {
   data: {
     tenantId: string;
@@ -76,6 +87,8 @@ export function CreateTenantConsole() {
   const [setAsDefaultSessionTenant, setSetAsDefaultSessionTenant] = useState(true);
 
   const [workspaceLimitsJson, setWorkspaceLimitsJson] = useState("");
+  const [routeOverridesJson, setRouteOverridesJson] = useState("");
+  const [defaultLandingJson, setDefaultLandingJson] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -195,6 +208,46 @@ export function CreateTenantConsole() {
         body.workspaceLimits = parsedWl as Record<string, unknown>;
       }
 
+      const routeOverridesTrim = routeOverridesJson.trim();
+      if (routeOverridesTrim) {
+        let parsedOverrides: unknown;
+        try {
+          parsedOverrides = JSON.parse(routeOverridesTrim) as unknown;
+        } catch {
+          setStatus(null);
+          setError("Route visibility overrides: invalid JSON.");
+          return;
+        }
+        if (
+          parsedOverrides === null ||
+          typeof parsedOverrides !== "object" ||
+          Array.isArray(parsedOverrides)
+        ) {
+          setStatus(null);
+          setError("Route visibility overrides JSON must be an object map.");
+          return;
+        }
+        body.appUserRouteVisibilityOverrides = parsedOverrides as Record<string, boolean>;
+      }
+
+      const defaultLandingTrim = defaultLandingJson.trim();
+      if (defaultLandingTrim) {
+        let parsedLanding: unknown;
+        try {
+          parsedLanding = JSON.parse(defaultLandingTrim) as unknown;
+        } catch {
+          setStatus(null);
+          setError("Default landing by role: invalid JSON.");
+          return;
+        }
+        if (parsedLanding === null || typeof parsedLanding !== "object" || Array.isArray(parsedLanding)) {
+          setStatus(null);
+          setError("Default landing by role JSON must be an object map.");
+          return;
+        }
+        body.defaultLandingPathByRole = parsedLanding as Record<string, string>;
+      }
+
       const res = await fetch("/api/admin/tenants/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -231,7 +284,9 @@ export function CreateTenantConsole() {
     initialAdminXUserId,
     initialAdminPlatformRole,
     setAsDefaultSessionTenant,
-    workspaceLimitsJson
+    workspaceLimitsJson,
+    routeOverridesJson,
+    defaultLandingJson
   ]);
 
   const fieldClass =
@@ -509,6 +564,34 @@ export function CreateTenantConsole() {
                   onChange={(ev) => setBootstrapDefaultPortfolioWatchlist(ev.target.checked)}
                 />
                 Bootstrap default portfolio/watchlist on first approved access
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">App-user route visibility overrides (optional JSON)</span>
+                <textarea
+                  className={`${fieldClass} min-h-[8rem] font-mono text-xs leading-relaxed`}
+                  spellCheck={false}
+                  placeholder={ROUTE_OVERRIDES_JSON_PLACEHOLDER}
+                  value={routeOverridesJson}
+                  onChange={(ev) => setRouteOverridesJson(ev.target.value)}
+                />
+                <span className="status-text text-xs">
+                  Route id -&gt; boolean (from admin platform route catalog), e.g. disable watchlist for this tenant.
+                </span>
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Default landing path by role (optional JSON)</span>
+                <textarea
+                  className={`${fieldClass} min-h-[8rem] font-mono text-xs leading-relaxed`}
+                  spellCheck={false}
+                  placeholder={DEFAULT_LANDING_JSON_PLACEHOLDER}
+                  value={defaultLandingJson}
+                  onChange={(ev) => setDefaultLandingJson(ev.target.value)}
+                />
+                <span className="status-text text-xs">
+                  Role -&gt; path map. Paths must be visible for that role after route overrides.
+                </span>
               </label>
             </div>
           </details>

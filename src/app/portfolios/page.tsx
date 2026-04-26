@@ -2,8 +2,10 @@ import { Suspense } from "react";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
+import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
 import { canUserLogin } from "@/modules/identity/authorization";
+import { redirect } from "next/navigation";
 
 import { PortfoliosWorkspaceData } from "./portfolios-workspace-data";
 import { PortfoliosWorkspaceSkeleton } from "./portfolios-workspace-skeleton";
@@ -51,6 +53,11 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
         session={session}
       />
     );
+  }
+
+  const routeGuard = await resolveRouteGuardForSessionPath(session, "/portfolios");
+  if (!routeGuard.allowed) {
+    redirect(routeGuard.redirectPath);
   }
 
   const focusRaw = singleParam(sp.focus)?.trim() ?? "";

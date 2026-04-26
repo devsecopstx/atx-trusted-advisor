@@ -7,6 +7,7 @@ import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-pu
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
+import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
@@ -45,6 +46,11 @@ export default async function WatchlistPage({
 
   if (!canUserLogin(session.roles)) {
     redirect(`/xchat?next=${encodeURIComponent(watchlistReturnPath())}`);
+  }
+
+  const routeGuard = await resolveRouteGuardForSessionPath(session, "/watchlist");
+  if (!routeGuard.allowed) {
+    redirect(routeGuard.redirectPath);
   }
 
   let portfolio: Awaited<ReturnType<typeof getDefaultPortfolio>> = null;

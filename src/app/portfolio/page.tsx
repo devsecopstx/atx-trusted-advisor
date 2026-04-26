@@ -6,9 +6,11 @@ import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
+import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,11 @@ export default async function PortfolioPage({ searchParams }: PageProps) {
         session={null}
       />
     );
+  }
+
+  const routeGuard = await resolveRouteGuardForSessionPath(session, "/portfolio");
+  if (!routeGuard.allowed) {
+    redirect(routeGuard.redirectPath);
   }
 
   const [workspaceRailProps, workspaceTenant] = await Promise.all([

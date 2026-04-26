@@ -6,12 +6,13 @@ import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getCoreUserById, getTenantByHexId } from "@/modules/identity/repository";
+import { getCoreUserById } from "@/modules/identity/repository";
 import {
-    listVisiblePrefixPathsForRole,
-    type AppUserRouteVisibilityOverrides,
-    type PlatformRoleForRoutes
+    listVisiblePrefixPathsForRole
 } from "@/modules/platform/app-user-route-catalog";
+import {
+    getTenantRoutePolicyForSession
+} from "@/modules/platform/tenant-route-policy";
 
 export type WorkspaceProductSidebarServerProps = Pick<
   WorkspaceProductSidebarProps,
@@ -23,32 +24,6 @@ export type WorkspaceProductSidebarServerProps = Pick<
   | "visiblePathPrefixes"
   | "workspaceBook"
 >;
-
-function resolvePlatformRoleForRoutes(session: SessionUser): PlatformRoleForRoutes {
-  if (isGlobalAdmin(session.roles)) {
-    return "global_admin";
-  }
-  if (session.roles.includes("advisor")) {
-    return "advisor";
-  }
-  if (session.roles.includes("operator")) {
-    return "operator";
-  }
-  return "viewer";
-}
-
-function parseRouteVisibilityOverrides(raw: unknown): AppUserRouteVisibilityOverrides {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return {};
-  }
-  const out: AppUserRouteVisibilityOverrides = {};
-  for (const [routeId, value] of Object.entries(raw)) {
-    if (typeof value === "boolean") {
-      out[routeId] = value;
-    }
-  }
-  return out;
-}
 
 /**
  * Serializable props for {@link WorkspaceProductSidebar} from a session (server).
@@ -69,13 +44,10 @@ export async function getWorkspaceProductSidebarPropsForSession(
     const user = await getCoreUserById(new ObjectId(session.userId));
     subscriptionPlan = normalizeSubscriptionPlan(user?.subscriptionPlan);
   }
-  const tenant = session.tenantId?.trim() ? await getTenantByHexId(session.tenantId.trim()) : null;
-  const routeOverrides = parseRouteVisibilityOverrides(
-    tenant?.tenantPreferences?.app_user_route_visibility_overrides
-  );
+  const routePolicy = await getTenantRoutePolicyForSession(session);
   const visiblePathPrefixes = listVisiblePrefixPathsForRole(
-    resolvePlatformRoleForRoutes(session),
-    routeOverrides
+    routePolicy.role,
+    routePolicy.routeOverrides
   );
 
   return {

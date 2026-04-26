@@ -2,9 +2,11 @@ import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-pu
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
+import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import { canUserLogin } from "@/modules/identity/authorization";
+import { redirect } from "next/navigation";
 
 import { XoptionsStrategyBuilderMount } from "./xoptions-strategy-builder-mount";
 
@@ -39,6 +41,11 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
         session={session}
       />
     );
+  }
+
+  const routeGuard = await resolveRouteGuardForSessionPath(session, "/xoptions");
+  if (!routeGuard.allowed) {
+    redirect(routeGuard.redirectPath);
   }
 
   const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);

@@ -3,6 +3,8 @@ import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { listVisiblePrefixPathsForRole } from "@/modules/platform/app-user-route-catalog";
+import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 import { AppUserAccountPublicRail } from "./app-user-rail-nav";
@@ -42,6 +44,11 @@ export async function AppUserAccountPublicRailForSession({
 
   if (railVariant === "workspace-product") {
     const workspacePortfolioId = book?.portfolioId?.trim() ? book.portfolioId.trim() : null;
+    const routePolicy = await getTenantRoutePolicyForSession(session);
+    const visiblePathPrefixes = listVisiblePrefixPathsForRole(
+      routePolicy.role,
+      routePolicy.routeOverrides
+    );
     return (
       <WorkspaceProductSidebar
         accountDetails={accountDetails}
@@ -49,6 +56,7 @@ export async function AppUserAccountPublicRailForSession({
         defaultPortfolioId={workspacePortfolioId}
         isGlobalAdmin={admin}
         showReferenceDocs
+        visiblePathPrefixes={visiblePathPrefixes}
         workspaceBook={book}
       />
     );

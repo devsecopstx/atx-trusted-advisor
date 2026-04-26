@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -8,6 +9,9 @@ import { XF_BRAND_PALETTE_IDS } from "@/lib/tenant-branding-palette";
 import { MAX_XF_HERO_ICON_URL_CHARS } from "@/lib/tenant-hero-icon-url";
 import { MAX_XF_TENANT_LOGO_URL_CHARS } from "@/lib/tenant-logo-url";
 import { parseTenantSpecV1Document, sanitizeWorkspaceLimitsPartial } from "@/lib/tenant-spec-v1-parse";
+import type { PlatformRoleForRoutes } from "@/modules/platform/app-user-route-catalog";
+import { getAppUserRouteCatalog } from "@/modules/platform/app-user-route-catalog";
+import { isPathVisibleForRole } from "@/modules/platform/tenant-route-policy";
 import { upsertTenantFromParsedSpecV1 } from "@/modules/platform/tenant-spec-apply";
 
 const createTenantBodySchema = z.object({
@@ -23,6 +27,15 @@ const createTenantBodySchema = z.object({
   xfAccentColor: z.string().max(32).optional(),
   xfTenantLogoUrl: z.string().max(MAX_XF_TENANT_LOGO_URL_CHARS).optional(),
   xfTenantTagline: z.string().max(60).optional(),
+  appUserRouteVisibilityOverrides: z.record(z.string().min(1), z.boolean()).optional(),
+  defaultLandingPathByRole: z
+    .object({
+      global_admin: z.string().min(1).optional(),
+      advisor: z.string().min(1).optional(),
+      operator: z.string().min(1).optional(),
+      viewer: z.string().min(1).optional()
+    })
+    .optional(),
   bootstrapDefaultPortfolioWatchlist: z.boolean().optional(),
   /** Partial workspace limits — same validation as tenant-spec YAML (`sanitizeWorkspaceLimitsPartial`). */
   workspaceLimits: z.record(z.string(), z.unknown()).optional()
@@ -138,6 +151,40 @@ export async function POST(request: Request) {
   try {
     const db = await getDb();
     const result = await upsertTenantFromParsedSpecV1(db, parsedSpec);
+    const validRouteIds = new Set(getAppUserRouteCatalog().entries.map((entry) => entry.id));
+    const routeVisibilityOverrides = parsedBody.data.appUserRouteVisibilityOverrides ?? {};
+    for (const routeId of Object.keys(routeVisibilityOverrides)) {
+      if (!validRouteIds.has(routeId)) {
+        return NextResponse.json({ error: `Unknown route id: ${routeId}` }, { status: 400 });
+      }
+    }
+    const defaultLandingPathByRole = parsedBody.data.defaultLandingPathByRole ?? {};
+    const roleEntries = Object.entries(defaultLandingPathByRole) as Array<[PlatformRoleForRoutes, string]>;
+    for (const [role, path] of roleEntries) {
+      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+      if (!isPathVisibleForRole(normalizedPath, role, routeVisibilityOverrides)) {
+        return NextResponse.json(
+          {
+            error: `Default landing path ${normalizedPath} is not visible for role ${role} with current route policy`
+          },
+          { status: 400 }
+        );
+      }
+    }
+    if (Object.keys(routeVisibilityOverrides).length > 0 || roleEntries.length > 0) {
+      const prefSet: Record<string, unknown> = {};
+      for (const [routeId, visible] of Object.entries(routeVisibilityOverrides)) {
+        prefSet[`tenantPreferences.app_user_route_visibility_overrides.${routeId}`] = visible;
+      }
+      for (const [role, path] of roleEntries) {
+        const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+        prefSet[`tenantPreferences.app_user_default_landing_path_by_role.${role}`] = normalizedPath;
+      }
+      await db.collection("core_tenants").updateOne(
+        { _id: new ObjectId(result.tenantId) },
+        { $set: { ...prefSet, updatedAt: new Date() } }
+      );
+    }
     return NextResponse.json({
       data: {
         ...result,

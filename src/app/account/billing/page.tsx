@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { redirect } from "next/navigation";
 
 import { BillingPlanGrid } from "@/app/account/billing/billing-plan-grid";
 import { AtxBillingPortalButton } from "@/app/account/ui/atx-billing-portal";
@@ -12,13 +13,13 @@ import {
     parseAccessRequestPlanInput,
     type AccessRequestPlanValue
 } from "@/lib/access-request-plans";
+import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
-import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
 import { getStripePublishableKey, isStripeCheckoutConfiguredForTenant } from "@/lib/stripe-config";
 import { canUserLogin } from "@/modules/identity/authorization";
-import { getCoreUserById } from "@/modules/identity/repository";
+import { getCoreUserById, resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
 import { normalizePlanOverridesFromUnknown } from "@/modules/identity/tenant-workspace-limits";
 
 import "./billing-plans.css";
@@ -32,6 +33,12 @@ export default async function AccountBillingPage({
 }) {
   const session = await getSessionUser();
   const approved = session ? canUserLogin(session.roles) : false;
+  if (approved && session) {
+    const routeGuard = await resolveRouteGuardForSessionPath(session, "/account/billing");
+    if (!routeGuard.allowed) {
+      redirect(routeGuard.redirectPath);
+    }
+  }
   const guestReadonly = !approved;
   const googleLoginHref = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`

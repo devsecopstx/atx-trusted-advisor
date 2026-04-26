@@ -44,6 +44,11 @@ export type TenantPreferences = TenantBrandingPreferences & {
    * Example: `{ watchlist: false, xoptions: true }`.
    */
   app_user_route_visibility_overrides?: Record<string, boolean>;
+  /**
+   * Optional per-role default landing paths used when a role is redirected away from a disallowed route.
+   * Example: `{ operator: "/portfolios", viewer: "/xchat" }`.
+   */
+  app_user_default_landing_path_by_role?: Record<string, string>;
   /** Opt-in bootstrap policy for provisioning default portfolio + watchlist for new approved users. */
   bootstrap_default_portfolio_watchlist?: boolean;
 };

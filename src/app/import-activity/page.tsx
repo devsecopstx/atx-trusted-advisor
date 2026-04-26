@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { adminListBrokerCatalog, listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
@@ -33,6 +34,10 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
   }
   if (!canUserLogin(session.roles)) {
     redirect("/xchat");
+  }
+  const routeGuard = await resolveRouteGuardForSessionPath(session, "/import-activity");
+  if (!routeGuard.allowed) {
+    redirect(routeGuard.redirectPath);
   }
 
   const portfoliosRaw = await listPortfoliosForSessionUser({

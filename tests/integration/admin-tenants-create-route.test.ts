@@ -20,13 +20,21 @@ vi.mock("@/modules/platform/tenant-spec-apply", () => applyMocks);
 import { POST as postCreateTenant } from "@/app/api/admin/tenants/create/route";
 
 describe("POST /api/admin/tenants/create", () => {
+  const updateOne = vi.fn();
+
   beforeEach(() => {
+    vi.clearAllMocks();
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
       roles: ["global_admin"]
     });
-    mongoMocks.getDb.mockResolvedValue({});
+    updateOne.mockResolvedValue({ acknowledged: true });
+    mongoMocks.getDb.mockResolvedValue({
+      collection: () => ({
+        updateOne
+      })
+    });
     applyMocks.upsertTenantFromParsedSpecV1.mockResolvedValue({
       tenantId: "507f1f77bcf86cd7994390aa",
       slug: "acme-test",
@@ -57,13 +65,47 @@ describe("POST /api/admin/tenants/create", () => {
     expect(body.data.provisionedInitialAdmin).toBe(true);
     expect(applyMocks.upsertTenantFromParsedSpecV1).toHaveBeenCalledTimes(1);
     expect(applyMocks.upsertTenantFromParsedSpecV1).toHaveBeenCalledWith(
-      {},
+      expect.any(Object),
       expect.objectContaining({
         tenantPreferencesBranding: expect.objectContaining({
           xf_accent_color: "#8b5cf6"
         })
       })
     );
+  });
+
+  it("accepts tenant route policy defaults and visibility overrides", async () => {
+    const response = await postCreateTenant(
+      new Request("http://test/api/admin/tenants/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: "route-policy",
+          name: "Route Policy",
+          appUserRouteVisibilityOverrides: { watchlist: false, xoptions: true },
+          defaultLandingPathByRole: { viewer: "/portfolios", advisor: "/xchat" }
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects disallowed role landing path", async () => {
+    const response = await postCreateTenant(
+      new Request("http://test/api/admin/tenants/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: "route-policy-invalid",
+          name: "Route Policy Invalid",
+          appUserRouteVisibilityOverrides: { xchat: false },
+          defaultLandingPathByRole: { viewer: "/xchat" }
+        })
+      })
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toContain("not visible");
   });
 
   it("passes sanitized workspaceLimits into parsed spec", async () => {
@@ -80,7 +122,7 @@ describe("POST /api/admin/tenants/create", () => {
     );
     expect(response.status).toBe(200);
     expect(applyMocks.upsertTenantFromParsedSpecV1).toHaveBeenCalledWith(
-      {},
+      expect.any(Object),
       expect.objectContaining({
         workspaceLimits: { userChatLimit: 99, userXoptionsLimit: 12 }
       })
@@ -120,7 +162,7 @@ describe("POST /api/admin/tenants/create", () => {
     );
     expect(response.status).toBe(200);
     expect(applyMocks.upsertTenantFromParsedSpecV1).toHaveBeenCalledWith(
-      {},
+      expect.any(Object),
       expect.objectContaining({
         tenantXfUiTheme: "dark",
         tenantPreferencesBranding: expect.objectContaining({

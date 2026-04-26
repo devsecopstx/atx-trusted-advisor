@@ -34,6 +34,9 @@ describe("admin tenant route catalog overrides", () => {
       tenantPreferences: {
         app_user_route_visibility_overrides: {
           watchlist: false
+        },
+        app_user_default_landing_path_by_role: {
+          advisor: "/xchat"
         }
       }
     });
@@ -44,6 +47,10 @@ describe("admin tenant route catalog overrides", () => {
         app_user_route_visibility_overrides: {
           watchlist: false,
           xoptions: true
+        },
+        app_user_default_landing_path_by_role: {
+          advisor: "/xchat",
+          viewer: "/portfolios"
         }
       }
     });
@@ -61,14 +68,20 @@ describe("admin tenant route catalog overrides", () => {
     });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { tenantId: string; overrides: Record<string, boolean>; catalog: { catalogKind: string } };
+      data: {
+        tenantId: string;
+        overrides: Record<string, boolean>;
+        defaultLandingPathByRole: Record<string, string>;
+        catalog: { catalogKind: string };
+      };
     };
     expect(body.data.tenantId).toBe("507f1f77bcf86cd799439022");
     expect(body.data.overrides.watchlist).toBe(false);
+    expect(body.data.defaultLandingPathByRole.advisor).toBe("/xchat");
     expect(body.data.catalog.catalogKind).toBe("app_user_route_catalog");
   });
 
-  it("patches tenant overrides and returns effective map", async () => {
+  it("patches tenant overrides and role landing paths", async () => {
     const res = await patchTenantCatalog(
       new Request("http://test", {
         method: "PATCH",
@@ -77,16 +90,39 @@ describe("admin tenant route catalog overrides", () => {
           overrides: {
             watchlist: false,
             xoptions: true
+          },
+          defaultLandingPathByRole: {
+            viewer: "/portfolios"
           }
         })
       }),
       { params: Promise.resolve({ tenantId: "507f1f77bcf86cd799439022" }) }
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { overrides: Record<string, boolean> } };
+    const body = (await res.json()) as {
+      data: { overrides: Record<string, boolean>; defaultLandingPathByRole: Record<string, string> };
+    };
     expect(body.data.overrides.watchlist).toBe(false);
     expect(body.data.overrides.xoptions).toBe(true);
+    expect(body.data.defaultLandingPathByRole.viewer).toBe("/portfolios");
     expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects default landing path not visible for role", async () => {
+    const res = await patchTenantCatalog(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          overrides: { xchat: false },
+          defaultLandingPathByRole: {
+            viewer: "/xchat"
+          }
+        })
+      }),
+      { params: Promise.resolve({ tenantId: "507f1f77bcf86cd799439022" }) }
+    );
+    expect(res.status).toBe(400);
   });
 
   it("returns 403 passthrough when session is not global admin", async () => {
