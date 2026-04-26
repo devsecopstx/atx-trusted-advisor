@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
-import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
+import { getCachedTenantUxPolicyForSession } from "@/modules/platform/tenant-ux-policy-cache";
 
 export async function GET() {
   const session = await requireApprovedAppUserSession();
@@ -9,14 +9,14 @@ export async function GET() {
     return session;
   }
 
-  const policy = await getTenantRoutePolicyForSession(session);
+  const policy = await getCachedTenantUxPolicyForSession(session);
   return NextResponse.json({
     data: {
       platformRole: policy.role,
-      allowedRoutes: policy.effectiveRolePolicy.allowedRoutes,
-      defaultLanding: policy.effectiveRolePolicy.defaultLanding,
-      flags: policy.effectiveRolePolicy.flags,
-      tenantRoleOverrides: policy.tenantRoles[policy.role] ?? null
+      allowedRoutes: policy.allowedRoutes,
+      defaultLanding: policy.defaultLanding,
+      flags: policy.flags,
+      tenantRoleOverrides: null
     }
   });
 }

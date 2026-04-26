@@ -13,32 +13,32 @@ function request(path: string, cookieValue?: string) {
 }
 
 describe("proxy (middleware) guest HTML routes", () => {
-  it("does not redirect unauthenticated /xoptions (guest shell at URL)", () => {
-    const res = proxy(request("/xoptions"));
+  it("does not redirect unauthenticated /xoptions (guest shell at URL)", async () => {
+    const res = await proxy(request("/xoptions"));
     expect(res.headers.get("location")).toBeNull();
   });
 
-  it("does not redirect unauthenticated /portfolio or /portfolios", () => {
-    expect(proxy(request("/portfolio")).headers.get("location")).toBeNull();
-    expect(proxy(request("/portfolios")).headers.get("location")).toBeNull();
+  it("does not redirect unauthenticated /portfolio or /portfolios", async () => {
+    expect((await proxy(request("/portfolio"))).headers.get("location")).toBeNull();
+    expect((await proxy(request("/portfolios"))).headers.get("location")).toBeNull();
   });
 
-  it("does not redirect unauthenticated /portfolio/accounts/abc", () => {
-    expect(proxy(request("/portfolio/accounts/507f1f77bcf86cd799439011")).headers.get("location")).toBeNull();
+  it("does not redirect unauthenticated /portfolio/accounts/abc", async () => {
+    expect((await proxy(request("/portfolio/accounts/507f1f77bcf86cd799439011"))).headers.get("location")).toBeNull();
   });
 
-  it("still redirects unauthenticated /watchlist to /xchat", () => {
-    const res = proxy(request("/watchlist"));
+  it("still redirects unauthenticated /watchlist to /xchat", async () => {
+    const res = await proxy(request("/watchlist"));
     expect(res.headers.get("location")).toMatch(/\/xchat$/);
   });
 
-  it("returns 401 for unauthenticated API matched by middleware (e.g. /api/admin)", () => {
-    const res = proxy(request("/api/admin/users"));
+  it("returns 401 for unauthenticated API matched by middleware (e.g. /api/admin)", async () => {
+    const res = await proxy(request("/api/admin/users"));
     expect(res.status).toBe(401);
   });
 
-  it("allows /xoptions when session cookie present", () => {
-    const res = proxy(request("/xoptions", "signed"));
+  it("allows /xoptions when session cookie present", async () => {
+    const res = await proxy(request("/xoptions", "signed"));
     expect(res.headers.get("location")).toBeNull();
   });
 });

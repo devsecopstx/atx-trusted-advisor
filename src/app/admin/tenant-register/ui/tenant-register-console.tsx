@@ -352,6 +352,12 @@ export function TenantRegisterConsole() {
                       >
                         Edit
                       </Link>
+                      <Link
+                        className="text-sm font-semibold text-[var(--xf-gain-green)] underline-offset-2 hover:underline"
+                        href={`/admin/tenants/${encodeURIComponent(row.tenantId)}/roles`}
+                      >
+                        Roles
+                      </Link>
                       <button
                         type="button"
                         className="text-left text-sm font-semibold text-[var(--xf-text-300)] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-40"

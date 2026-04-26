@@ -17,13 +17,21 @@ export async function resolveSessionLandingPath(session: SessionUser): Promise<s
   if (isGlobalAdmin(session.roles)) {
     return "/admin";
   }
-  const tenantRoutePolicy = await getTenantRoutePolicyForSession(session);
-  if (tenantRoutePolicy?.effectiveRolePolicy?.defaultLanding) {
-    return tenantRoutePolicy.effectiveRolePolicy.defaultLanding;
+  try {
+    const tenantRoutePolicy = await getTenantRoutePolicyForSession(session);
+    if (tenantRoutePolicy?.effectiveRolePolicy?.defaultLanding) {
+      return tenantRoutePolicy.effectiveRolePolicy.defaultLanding;
+    }
+  } catch {
+    // Preserve legacy fallback behavior when route policy dependencies are unavailable.
   }
   if (!ObjectId.isValid(session.userId)) {
     return "/xchat";
   }
-  const user = await getCoreUserById(new ObjectId(session.userId));
-  return subscriberLandingPathForPlan(user?.subscriptionPlan);
+  try {
+    const user = await getCoreUserById(new ObjectId(session.userId));
+    return subscriberLandingPathForPlan(user?.subscriptionPlan);
+  } catch {
+    return "/xchat";
+  }
 }

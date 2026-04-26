@@ -184,6 +184,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tasks"
   },
   {
+    path: "/api/internal/tenant-ux/policy",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "admin-system"
+  },
+  {
     path: "/api/integrations/ibkr/status",
     operations: [{ method: "GET", auth: "session" }],
     tag: "integrations"

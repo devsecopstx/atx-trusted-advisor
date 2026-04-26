@@ -2,6 +2,11 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
+import {
+    APP_USER_PRODUCT_PATH_PREFIXES,
+    isAppUserProductPath,
+    normalizePathnameForPolicy
+} from "@/modules/platform/app-user-product-prefixes";
 
 const protectedPathPrefixes = [
   "/admin",
@@ -26,6 +31,8 @@ const protectedPathPrefixes = [
 ];
 
 const publicGuestReadablePaths = ["/account/billing"] as const;
+const TENANT_UX_PROXY_POLICY_TTL_MS = 60_000;
+const tenantUxProxyCache = new Map<string, { allowed: boolean; redirectPath: string; expiresAt: number }>();
 
 function isPublicGuestReadablePath(pathname: string): boolean {
   return publicGuestReadablePaths.some(
@@ -38,6 +45,104 @@ function isProtectedPath(pathname: string): boolean {
     return false;
   }
   return protectedPathPrefixes.some((prefix) => pathname.startsWith(prefix));
+}
+
+export function isTenantUxEnforcementV2Enabled(raw = process.env.TENANT_UX_ENFORCEMENT_V2): boolean {
+  if (!raw) {
+    return false;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+export function resolvePolicyPathForRequest(pathname: string): string | null {
+  const p = normalizePathnameForPolicy(pathname);
+  if (isAppUserProductPath(p)) {
+    const match = (APP_USER_PRODUCT_PATH_PREFIXES as readonly string[]).find(
+      (prefix) => p === prefix || p.startsWith(`${prefix}/`)
+    );
+    return match ?? null;
+  }
+  if (p.startsWith("/api/xchat")) return "/xchat";
+  if (p.startsWith("/api/app-user/xchat")) return "/xchat";
+  if (p.startsWith("/api/app-user/find-options")) return "/xoptions";
+  if (p.startsWith("/api/app-user/symbol-chart")) return "/xoptions";
+  if (p.startsWith("/api/app-user/xoptions")) return "/xoptions";
+  if (p.startsWith("/api/user/watchlist")) return "/watchlist";
+  if (p.startsWith("/api/user/workspace-portfolio")) return "/workspace";
+  if (p.startsWith("/api/portfolios")) return "/portfolio";
+  if (p.startsWith("/api/positions")) return "/portfolio";
+  if (p.startsWith("/api/import")) return "/import-activity";
+  if (p.startsWith("/api/integrations")) return "/account";
+  return null;
+}
+
+async function resolveTenantUxPolicyDecision(request: NextRequest, policyPath: string): Promise<{ allowed: boolean; redirectPath: string }> {
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? "";
+  const cacheKey = `${sessionCookie}:${policyPath}`;
+  const hit = tenantUxProxyCache.get(cacheKey);
+  if (hit && hit.expiresAt > Date.now()) {
+    return { allowed: hit.allowed, redirectPath: hit.redirectPath };
+  }
+  const url = new URL("/api/internal/tenant-ux/policy", request.url);
+  url.searchParams.set("pathname", policyPath);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        cookie: request.headers.get("cookie") ?? ""
+      },
+      cache: "no-store"
+    });
+    if (!res.ok) {
+      return { allowed: true, redirectPath: "/xchat" };
+    }
+    const json = (await res.json()) as {
+      data?: { allowed?: boolean; redirectPath?: string };
+    };
+    const decision = {
+      allowed: json?.data?.allowed !== false,
+      redirectPath: json?.data?.redirectPath?.trim() || "/xchat"
+    };
+    tenantUxProxyCache.set(cacheKey, {
+      ...decision,
+      expiresAt: Date.now() + TENANT_UX_PROXY_POLICY_TTL_MS
+    });
+    if (tenantUxProxyCache.size > 500) {
+      const first = tenantUxProxyCache.keys().next();
+      if (!first.done) {
+        tenantUxProxyCache.delete(first.value);
+      }
+    }
+    return decision;
+  } catch {
+    return { allowed: true, redirectPath: "/xchat" };
+  }
+}
+
+async function enforceTenantUxV2(request: NextRequest, pathname: string): Promise<NextResponse | null> {
+  const policyPath = resolvePolicyPathForRequest(pathname);
+  if (!policyPath) {
+    return null;
+  }
+  const decision = await resolveTenantUxPolicyDecision(request, policyPath);
+  if (decision.allowed) {
+    return null;
+  }
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      {
+        error: "Forbidden",
+        code: "tenant_ux_route_forbidden",
+        redirectPath: decision.redirectPath
+      },
+      { status: 403 }
+    );
+  }
+  const redirectUrl = new URL("/access-denied", request.url);
+  redirectUrl.searchParams.set("route", pathname);
+  redirectUrl.searchParams.set("redirect", decision.redirectPath);
+  return NextResponse.redirect(redirectUrl);
 }
 
 /**
@@ -55,7 +160,7 @@ function allowsGuestHtmlRender(pathname: string): boolean {
   );
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (!isProtectedPath(pathname)) {
     return NextResponse.next();
@@ -63,6 +168,12 @@ export function proxy(request: NextRequest) {
 
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   if (hasSession) {
+    if (isTenantUxEnforcementV2Enabled()) {
+      const enforced = await enforceTenantUxV2(request, pathname);
+      if (enforced) {
+        return enforced;
+      }
+    }
     return NextResponse.next();
   }
 
@@ -94,7 +205,9 @@ export const config = {
     "/import-activity",
     "/api/import/:path*",
     "/api/integrations/:path*",
+    "/watchlist",
     "/watchlist/:path*",
+    "/account",
     "/account/:path*",
     "/workspace/:path*",
     "/xfinance/:path*",

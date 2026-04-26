@@ -83,6 +83,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `POST /api/admin/scheduler/tick`
 - `GET /api/admin/task-runs`
 - `POST /api/internal/scheduler/execute-task` — **Server-to-server only** (no session cookie). Requires header `X-Atx-Scheduler-Secret` equal to env **`ATX_SCHEDULER_INTERNAL_SECRET`** (minimum 24 characters; set the same value on the JVM service). JSON body: `{ "taskId": "<admin_scheduled_tasks _id hex>", "triggeredBy"?: string }`. Spring’s scheduler delegate calls this so due **`watchlist_price_scanner`**, **`options_scanner`**, and other Next executors run on the Node task-runner. Returns **503** if the secret is missing/too short, **401** on bad secret, **404** if the task row is missing or portfolio-bound. Hermetic coverage: **`tests/integration/internal-scheduler-execute-task-route.test.ts`**.
+- `GET /api/internal/tenant-ux/policy` — session-scoped resolver used by edge proxy enforcement (`TENANT_UX_ENFORCEMENT_V2`); returns allow/deny + redirect target for a requested pathname.
 
 ## Admin audit/bootstrap
 

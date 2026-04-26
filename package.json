@@ -51,6 +51,7 @@
     "one-time-setup": "npm run local:bootstrap",
     "migrate:xchat-identity": "node --env-file=.env scripts/backfill-xchat-identity.mjs",
     "migrate:default-portfolios": "node --env-file=.env scripts/backfill-default-portfolios.mjs",
+    "migrate:tenant-roles": "node --env-file=.env scripts/migrate-tenant-roles.mjs",
     "migrate:tenant-portfolio": "node --env-file=.env scripts/migrate-portfolio-portfolios-to-tenant-portfolios.mjs",
     "migrate:persona-name-normalized": "node --env-file=.env scripts/backfill-persona-name-normalized.mjs",
     "migrate:persona-tools": "node --env-file=.env scripts/backfill-persona-tools.mjs",

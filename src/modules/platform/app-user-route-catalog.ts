@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { APP_USER_PRODUCT_PATH_PREFIXES } from "@/modules/surface-policy";
+import { APP_USER_PRODUCT_PATH_PREFIXES } from "@/modules/platform/app-user-product-prefixes";
 import rawCatalog from "../../../data/platform/app-user-route-catalog.json";
 
 const platformRoleSchema = z.enum(["global_admin", "advisor", "operator", "viewer"]);

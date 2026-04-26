@@ -18,6 +18,7 @@ import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import { LucideFolderIcon, LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
+import { useTenantUxPolicy } from "@/app/ui/use-tenant-ux-policy";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
@@ -325,10 +326,12 @@ export function WorkspaceProductSidebar({
   visiblePathPrefixes,
   xchatSection
 }: WorkspaceProductSidebarProps) {
+  const { allowedRoutes } = useTenantUxPolicy();
+  const effectiveVisiblePathPrefixes = visiblePathPrefixes ?? allowedRoutes ?? undefined;
   const isPathVisible = useCallback(
     (pathPrefix: string) =>
-      !visiblePathPrefixes || visiblePathPrefixes.some((allowed) => allowed === pathPrefix),
-    [visiblePathPrefixes]
+      !effectiveVisiblePathPrefixes || effectiveVisiblePathPrefixes.some((allowed) => allowed === pathPrefix),
+    [effectiveVisiblePathPrefixes]
   );
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();

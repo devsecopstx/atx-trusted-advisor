@@ -2,28 +2,30 @@ import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
-  requireApprovedAppUserSession: vi.fn()
+  requireSessionUser: vi.fn()
 }));
 
 const policyCacheMocks = vi.hoisted(() => ({
   getCachedTenantUxPolicyForSession: vi.fn()
 }));
 
-vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/platform/tenant-ux-policy-cache", () => policyCacheMocks);
 
-import { GET } from "@/app/api/app-user/me/role/route";
+import { GET } from "@/app/api/internal/tenant-ux/policy/route";
 
-describe("app-user me role endpoint", () => {
+describe("internal tenant ux policy route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authMocks.requireApprovedAppUserSession.mockResolvedValue({
-      userId: "507f1f77bcf86cd799439011",
-      tenantId: "507f1f77bcf86cd799439022",
+    authMocks.requireSessionUser.mockResolvedValue({
+      userId: "u1",
+      tenantId: "t1",
       roles: ["viewer"]
     });
     policyCacheMocks.getCachedTenantUxPolicyForSession.mockResolvedValue({
       role: "viewer",
+      userId: "u1",
+      tenantId: "t1",
       allowedRoutes: ["/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account"],
       defaultLanding: "/portfolios",
       flags: {
@@ -34,22 +36,19 @@ describe("app-user me role endpoint", () => {
     });
   });
 
-  it("returns effective role policy for session", async () => {
-    const res = await GET();
+  it("returns allowed false for disallowed path", async () => {
+    const res = await GET(new Request("http://test/api/internal/tenant-ux/policy?pathname=/xchat"));
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      data: { platformRole: string; defaultLanding: string; flags: { canUseXChat: boolean } };
-    };
-    expect(body.data.platformRole).toBe("viewer");
-    expect(body.data.defaultLanding).toBe("/portfolios");
-    expect(body.data.flags.canUseXChat).toBe(false);
+    const body = (await res.json()) as { data: { allowed: boolean; redirectPath: string } };
+    expect(body.data.allowed).toBe(false);
+    expect(body.data.redirectPath).toBe("/portfolios");
   });
 
-  it("passes through auth response", async () => {
-    authMocks.requireApprovedAppUserSession.mockResolvedValueOnce(
+  it("passes through unauthorized responses", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
-    const res = await GET();
+    const res = await GET(new Request("http://test/api/internal/tenant-ux/policy?pathname=/xchat"));
     expect(res.status).toBe(401);
   });
 });
