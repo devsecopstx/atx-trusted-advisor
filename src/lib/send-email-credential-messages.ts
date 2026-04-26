@@ -33,9 +33,7 @@ export async function sendAccessApprovedPasswordInviteEmail(input: {
     "",
     "We look forward to helping you and your team make better, data-driven decisions.",
     "",
-    "Best regards,",
-    "The aTx Finance Team",
-    "support@atx.fintech-advisor.ai",
+    "support@atxtrustedadvisory.com",
     "",
     "P.S. All communications are secured end-to-end and your data is never shared."
   ].join("\n");

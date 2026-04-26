@@ -159,6 +159,45 @@ export type DeleteTenantTeamXchatAttachmentsCollectionOutcome =
   | { status: "already_absent"; collectionId: string }
   | { status: "failed"; collectionId: string; message: string };
 
+type XaiDeleteErrorPayload = {
+  code?: unknown;
+  message?: unknown;
+};
+
+function tryParseXaiDeleteErrorPayload(message: string): XaiDeleteErrorPayload | null {
+  const marker = "xAI collection delete failed:";
+  const markerIndex = message.indexOf(marker);
+  if (markerIndex < 0) {
+    return null;
+  }
+  const rawPayload = message.slice(markerIndex + marker.length).trim();
+  if (!rawPayload.startsWith("{")) {
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(rawPayload);
+    return parsed && typeof parsed === "object" ? (parsed as XaiDeleteErrorPayload) : null;
+  } catch {
+    return null;
+  }
+}
+
+function isAlreadyAbsentXaiCollectionError(message: string): boolean {
+  const lowered = message.toLowerCase();
+  if (lowered.includes("404") || lowered.includes("not found")) {
+    return true;
+  }
+
+  const payload = tryParseXaiDeleteErrorPayload(message);
+  const payloadCode = typeof payload?.code === "number" ? payload.code : null;
+  const payloadMessage = typeof payload?.message === "string" ? payload.message.toLowerCase() : "";
+  if (payloadCode === 5 && (payloadMessage.includes("doesn't exist") || payloadMessage.includes("does not exist"))) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Deletes the xAI **team** collection stored on `tenantPreferences.xchat_team_attachments_collection_id`.
  * Run **before** removing `core_tenants`. If `status === "failed"`, abort the tenant row delete and surface the error.
@@ -182,8 +221,7 @@ export async function deleteTenantTeamXchatAttachmentsCollection(input: {
     return { status: "deleted", collectionId };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const lowered = message.toLowerCase();
-    if (lowered.includes("404") || lowered.includes("not found")) {
+    if (isAlreadyAbsentXaiCollectionError(message)) {
       return { status: "already_absent", collectionId };
     }
     console.error("[tenant/xchat-team-collection] xAI collection delete failed", {

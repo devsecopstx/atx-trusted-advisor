@@ -42,8 +42,8 @@ Indexes are created best-effort on first use (same pattern as other identity usa
 ## App user surfacing
 
 - `/account/billing` (see `src/app/account/billing/page.tsx`, `billing-plan-grid.tsx`) resolves each retail tier with **`billingCardWorkspaceDisplay`** in `src/lib/billing-plan-workspace-display.ts`:
-  - **Signed-in:** loads `core_tenants` by session `tenantId`. **List price** uses `planOverrides.<tier>.price` when set. **Workspace quota rows:** **xChat day (UTC)** and **xChat hour (UTC)** show **tenant base** scalars only (aligned with `POST /api/xchat/ask`). Other quota rows (xOptions/hr, portfolios, accounts) use **plan-effective** values (`applyTenantPlanRowToBase`). **Change persona** / **Chat history** use plan-effective merges.
-  - **Guests:** list **price** and four **catalog** cap strings from `src/lib/atx-billing-plan-limits.ts` (aligned with `atx-docs/resouces/atx-limits.txt.tsv`).
+  - **Signed-in:** loads `core_tenants` by session `tenantId`. **List price** uses `planOverrides.<tier>.price` when set. **Workspace quota rows** use **plan-effective** values (`applyTenantPlanRowToBase`) for all displayed metrics (xOptions/hr, xChat day/hr UTC, portfolios, accounts). **Change persona** / **Chat history** also use plan-effective merges.
+  - **Guests:** `/account/billing` resolves the platform default tenant when no session tenant is available, then renders read-only plan cards from that tenant’s `workspaceLimits` + `planOverrides` values (same defaults managed in Admin workspace limits).
   - **Workspace limits** block on each card: **five** quota rows (xOptions/hr, xChat day UTC, xChat hr UTC, portfolios, accounts) plus **Change persona** (Yes/No) and **Chat history max (turns)**; **price is not duplicated** in that list (only in the card header).
 
 ## Parsing / Mongo quirks

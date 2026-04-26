@@ -8,6 +8,9 @@ Use this with **Deploy Cloud Run** (`workflow_dispatch`, `confirm_manual_approva
 2. **`NODE_ENV=production npm run build`** — Next compile + SSG.
 3. If **`services/atxfinance-backend/**` changed:** `./gradlew test` from that directory.
 4. **Version:** root `package.json` / `package-lock.json` `packages[""].version` match intended tag; `APP_VERSION` is read from `package.json` via `src/lib/app-version.ts` (no separate hardcoded constant).
+5. **Billing/workspace defaults parity (when billing/workspace code changes):**
+   - Open `/admin/tenant-preferences/workspace-limits?tenant=<targetTenantId>` and confirm intended `workspaceLimits` + `planOverrides`.
+   - Open `/account/billing` (guest and signed-in) and confirm plan cards show matching quota rows and list prices for that tenant default.
 
 ## Secrets and configuration (do not mix layers)
 

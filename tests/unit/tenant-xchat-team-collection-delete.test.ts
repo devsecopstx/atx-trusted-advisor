@@ -50,6 +50,19 @@ describe("deleteTenantTeamXchatAttachmentsCollection", () => {
     ).resolves.toEqual({ status: "already_absent", collectionId: "col_gone" });
   });
 
+  it("treats xAI code 5 missing-collection errors as already_absent", async () => {
+    xaiMocks.deleteXaiCollection.mockRejectedValueOnce(
+      new Error(
+        `xAI collection delete failed: {"code":5,"message":"The collection 'collection_abc' doesn't exist or your team doesn't have access to it.","details":[]}`
+      )
+    );
+    await expect(
+      deleteTenantTeamXchatAttachmentsCollection({
+        tenantPreferences: { xchat_team_attachments_collection_id: "col_gone_5" }
+      })
+    ).resolves.toEqual({ status: "already_absent", collectionId: "col_gone_5" });
+  });
+
   it("returns failed on other API errors", async () => {
     xaiMocks.deleteXaiCollection.mockRejectedValueOnce(new Error("rate limited"));
     await expect(
