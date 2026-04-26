@@ -1,7 +1,7 @@
 # xFinance monorepo — technical architecture & current state
 
-Last updated: 2026-04-25  
-App semver (canonical): root **`package.json`** (currently **3.7.12**; runtime label via `src/lib/app-version.ts` → **`APP_VERSION`** reads the same semver).
+Last updated: 2026-04-26  
+App semver (canonical): root **`package.json`** (currently **3.7.20**; runtime label via `src/lib/app-version.ts` → **`APP_VERSION`** reads the same semver).
 
 This file is the **single consolidated technical architecture** reference for the monorepo: runtime topology, responsibilities, shipped product surfaces, CI/test matrix, pre-production gates, and **known gaps**. Topic deep dives stay in linked **`atx-docs/*`** pages; **open backlog only** in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
 
@@ -279,7 +279,7 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 | **Admin `PATCH/DELETE …/positions/{id}`** — Next until BFF registry + Kotlin parity | `PLAN.md` |
 | **Pub/Sub consumer** on Spring | This doc §2 · `PLAN.md` / release notes |
 | **IBKR** — no broker OAuth/token refresh in-app; no order placement | `ibkr-automation.md` |
-| **Tenant UX (`tenant_ux`)** — per-tenant per-role route allowlists + default landing; **shipped:** `data/platform/app-user-route-catalog.json`, **`GET /api/admin/platform/route-catalog`**, tenant policy persistence (**`GET/PATCH /api/admin/platform/route-catalog/{tenantId}`**), key app_user page route-guard redirects, and workspace rail visibility filtering from tenant policy. **Open:** admin tenant-role matrix UI + API-route/proxy parity. | [tenant-ux-plan.md](./tenant-ux-plan.md) · `PLAN.md` **11** |
+| **Tenant UX (`tenant_ux`)** — per-tenant per-role route allowlists + default landing; **shipped:** route catalog + tenant override persistence, effective tenant role-policy resolver, **`GET /api/app-user/me/role`**, admin tenant-role APIs (**`GET/PUT /api/admin/tenants/{tenantId}/roles`**, **`PATCH /api/admin/tenants/{tenantId}/roles/{role}`**), page-level route guards, workspace rail filtering, and integration/unit coverage (`tenant-roles-api`, `app-user-me-role`, route-policy/surface-policy tests). **Open:** admin matrix UI and edge proxy enforcement parity (feature-flagged rollout path). | [tenant-ux-plan.md](./tenant-ux-plan.md) · `PLAN.md` **11** |
 | **Plan limits UI** — usage meter / soft-limit banner wired to **`getPlanLimits()`** + live workspace counters (429 headers exist; in-chat meter still deferred) | `PLAN.md` (deferred) · branding TODO in `AGENTS.md` |
 | **xChat** — vision paste **shipped** (follow-ups: scan/EXIF/dims/batch — `PLAN.md` deferred); structured **`[xchat/debug]`** gated tenant-only (**app ≥3.6.16**, `xchat-debug-logging.md`); voice (703); **xMoney billing + crypto book (704)** — phased roadmap, test/doc gaps: [`PLAN.md`](../PLAN.md) § **xMoney & crypto portfolio (704)** | `PLAN.md`; **701** privacy history **shipped** (see `PLAN.md` deferred shipped list + `xchat-history-storage.md`) |
 | **OptionsStrategyEngine** — extend scoring / desk notification providers | `PLAN.md` · `reviewer.md` §245 |

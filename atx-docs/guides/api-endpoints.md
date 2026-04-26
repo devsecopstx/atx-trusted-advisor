@@ -93,6 +93,9 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 
 - `GET /api/admin/platform/route-catalog` — **`global_admin`** only; returns the parsed **app-user route catalog** (same shape as **`data/platform/app-user-route-catalog.json`**) for **DB import** / compliance tooling. **Plan:** [tenant-ux-plan.md](../design-system/tenant-ux-plan.md).
 - `GET/PATCH /api/admin/platform/route-catalog/{tenantId}` — tenant-specific route visibility overrides (`tenantPreferences.app_user_route_visibility_overrides`).
+- `GET /api/admin/tenants/{tenantId}/roles` — effective tenant role matrix (`global_admin`, `operator`, `advisor`, `viewer`) with route allowlists, landing paths, and capability flags.
+- `PUT /api/admin/tenants/{tenantId}/roles` — replace full tenant role matrix (`tenantRoles`) in `core_tenants`.
+- `PATCH /api/admin/tenants/{tenantId}/roles/{role}` — partial per-role update (`allowedRoutes`, `defaultLanding`, `flags`) with viewer/global-admin invariants enforced.
 
 ## Admin delivery channels (tenant)
 
@@ -178,6 +181,7 @@ Used by **`/xoptions`** for holdings-aware bootstrap and symbol context (see `at
 - `GET /api/app-user/find-options/watchlist-hot` — “hot” watchlist symbols for the flow
 - `GET /api/app-user/symbol-chart` — chart series for the symbol panel
 - `GET /api/app-user/xoptions/entitlements` — xOptions entitlements / deck usage signals
+- `GET /api/app-user/me/role` — session-scoped effective tenant UX policy (`platformRole`, `allowedRoutes`, `defaultLanding`, `flags`, `tenantRoleOverrides`)
 
 ## Market (lightweight quotes / pulse)
 
