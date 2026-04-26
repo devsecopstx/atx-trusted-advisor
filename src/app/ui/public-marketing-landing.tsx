@@ -6,13 +6,11 @@ import { LightningBolt } from "@/app/ui/atxfinance-logo";
 import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { LandingProductScreenshot } from "@/app/ui/landing-product-screenshot";
-import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { PublicLandingXchatDemo } from "@/app/ui/public-landing-xchat-demo";
 import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 
-const X_OAUTH_LOGIN = "/api/auth/x/login?next=%2Fxchat";
-const XCHAT_GUEST = "/xchat";
+const REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
 
 /** Drop real captures into `public/landing/` (same names, or change paths here). */
 const LANDING_PRODUCT_SHOTS = {
@@ -21,11 +19,7 @@ const LANDING_PRODUCT_SHOTS = {
   xoptions: "/landing/xoptions.png"
 } as const;
 
-type PublicMarketingLandingProps = {
-  googleLoginHref: string | null;
-};
-
-export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandingProps) {
+export function PublicMarketingLanding() {
   const scrollDemo = () => {
     document.getElementById("xchat-demo")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -47,14 +41,14 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <Link
-              href={XCHAT_GUEST}
+              href={REGISTER_TRIAL_HREF}
               className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95 sm:px-5"
               style={{
                 background: "var(--xf-gain-green)",
                 boxShadow: "0 0 24px -4px color-mix(in srgb, var(--xf-gain-green) 45%, transparent)"
               }}
             >
-              Log in or register
+              Register for Trial
             </Link>
           </div>
         </div>
@@ -129,17 +123,17 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
             </ul>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-              <a
-                href={X_OAUTH_LOGIN}
+              <Link
+                href={REGISTER_TRIAL_HREF}
                 className="inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-[var(--xf-bg-900)] sm:text-lg"
                 style={{
                   background: "var(--xf-gain-green)",
                   boxShadow: "0 0 28px -5px color-mix(in srgb, var(--xf-gain-green) 50%, transparent)"
                 }}
               >
-                Sign in to start
+                Register for Trial
                 <span aria-hidden>→</span>
-              </a>
+              </Link>
 
               {/* New secondary CTA: See Plans */}
               <Link
@@ -162,29 +156,6 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
                   <span className="text-xs text-[var(--xf-text-400)]">Scrolls to the demo on this page</span>
                 </span>
               </button>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              {googleLoginHref ? (
-                <a
-                  href={googleLoginHref}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100"
-                >
-                  <GoogleGIcon size={20} />
-                  Sign in with Google
-                </a>
-              ) : null}
-              <a
-                href={X_OAUTH_LOGIN}
-                className={`inline-flex items-center justify-center gap-2 rounded-full border-2 px-6 py-3 text-sm font-semibold transition ${
-                  googleLoginHref
-                    ? "border-[var(--xf-gain-green)]/60 bg-transparent text-[var(--xf-gain-green)] hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)]"
-                    : "border-[var(--xf-gain-green)] bg-[var(--xf-gain-green)] text-[var(--xf-bg-900)] hover:opacity-95"
-                }`}
-              >
-                <XLogoIcon size={20} />
-                Sign in with X
-              </a>
             </div>
 
             <EducationalDisclaimerBanner className="mt-6 max-w-2xl" />
@@ -274,10 +245,10 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href={XCHAT_GUEST}
+              href={REGISTER_TRIAL_HREF}
               className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl bg-[var(--xf-gain-green)] text-[var(--xf-text-100)] hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
-              Log in or register
+              Register for Trial
             </Link>
             <Link
               href="/account/billing"

@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { PublicMarketingLanding } from "@/app/ui/public-marketing-landing";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSessionLandingPath } from "@/lib/default-landing-path";
-import { isGoogleOAuthConfigured } from "@/lib/env";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +20,5 @@ export default async function HomePage() {
     redirect(landing);
   }
 
-  const googleLoginHref = isGoogleOAuthConfigured()
-    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
-    : null;
-
-  return <PublicMarketingLanding googleLoginHref={googleLoginHref} />;
+  return <PublicMarketingLanding />;
 }

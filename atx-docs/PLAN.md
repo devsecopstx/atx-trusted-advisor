@@ -42,7 +42,7 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 ### Desk email & delivery (ops / PR review)
 
-- **Reviewer / infra:** Desk SMTP on **Next** for portfolio `email`, **`POST /api/admin/delivery-channels/.../test`**, and related paths (`src/lib/desk-smtp.ts`) — tenant delivery-channels are **not** BFF-proxied; see [deploy-and-ops.md](./guides/deploy-and-ops.md) (`gcp-runtime-secrets.inc.sh`, `verify-gcp-runtime-secrets.sh`, sync `ops:secrets:sync-desk-smtp:*`). **Current behavior:** [design-system/current-state-features.md](./design-system/current-state-features.md).
+- **Reviewer / infra:** Desk SMTP on **Next** for portfolio `email`, **`POST /api/admin/delivery-channels/.../test`**, and related paths (`src/lib/desk-smtp.ts`) — tenant delivery-channels are **not** BFF-proxied; see [deploy-and-ops.md](./guides/deploy-and-ops.md) (`gcp-runtime-secrets.inc.sh`, `verify-gcp-runtime-secrets.sh`, sync `ops:secrets:sync-desk-smtp:*`). **Reference:** [design-system/current-state-features.md](./design-system/current-state-features.md).
 - **Outstanding:** Portfolio `**sms`** / `**push`** channel kinds (still skipped). **Credential invite + password reset** use desk SMTP when configured (**Next** always; **Spring** when BFF handles approve — mount **`PUBLIC_APP_BASE_URL`** + SMTP on JVM).
 - ZenBusiness hosted mailbox: SMTP host `**mail.b.hostedemail.com`**; [client setup](https://help.zenbusiness.com/Websites_Domains_Emails/Setting_up_Email/How_Do_I_Set_Up_My_Email_on_My_Phone%2C_Computer%2C_Tablet%2C_or_Other_Device%3F).
 
@@ -168,7 +168,7 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 - **`deploy-and-ops.md` + Secret Manager scripts:** Mirror Stripe pattern for X Money credentials; verify job lists (`gcp-runtime-secrets.inc.sh` / `verify-gcp-runtime-secrets.sh`) when vars are finalized.
 - **`payment-audit-checklist.md`:** Add an **X Money** subsection (Dashboard/log checks + `core_users.payment_provider` + external ids).
 - **Data model:** Document new `core_users` fields in [auth-and-access.md](./guides/auth-and-access.md) or a short **`atx-docs/sre-ops/billing-data-model.md`** (subscription + provider ids, migration notes).
-- **OpenAPI / `CURRENT_STATE_ROUTES`:** Register new routes for inventory tests when shipped.
+- **OpenAPI / `CURRENT_STATE_ROUTES`:** Register new routes for inventory tests when implemented.
 - **Phase 1:** Portfolio schema doc + `ibkr-automation.md` note on crypto snapshot fields; extend consolidated-holdings semantics table for crypto row rules.
 - **Phase 2:** Spec the **alert modal** crypto pills + xAI narrative contract (request/response or UI props); document new **scanner / strategy job** types and xOptions **Step 4** crypto chain sources (IBKR vs optional Coinbase Derivatives) in [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) and [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md) (or linked xOptions doc).
 - **Phase 3:** Runbook: X Money **OAuth / API keys**, refresh, incident response, and **audit evidence** pack (align with [audit-lineage-and-controls.md](./sre-ops/audit-lineage-and-controls.md)); explicit **kill switch** env and operator checklist before enabling write/settlement.
@@ -190,7 +190,6 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 
 - `**POST /api/import/broker/clean`:** Documented in `**api-endpoints.md`** and [app-user import](./design-system/portfolio/app-user-import-activity.md); no dedicated route integration test yet (destructive — mock `**deleteAllPositionsForPortfolio`** + job/task deletes if added). **Partial `mappings` / row toggles:** covered by unit tests on `**validateBrokerImportMappings**` in `**app-broker-import-job.test.ts**`; full apply path remains integration-heavy (job + scheduled task).
 - **Email/password:** unit tests **`password-crypto`**, **`auth-token-hash`**; approve-route integration uses mocks for invite/SMTP; audit actions **`credential_invite_email_failed`**, **`bootstrap_enqueue_failed`** documented in **`auth-and-access.md`** / **`current-state-features.md`** — no CI E2E against live SMTP.
-- **Stripe / webhook closure (app 2.10.22):** Added integration coverage for webhook handling and public access-request non-proxy behavior under backend-origin mode (`tests/integration/stripe-webhook-route.test.ts`, `tests/integration/access-requests-public-rate-limit.test.ts`); deploy/runtime docs synced for `STRIPE_WEBHOOK_SECRET`.
 - **X Money / multi-provider billing (704):** No automated coverage yet — follow the gap list under [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap) § Tests.
 
 ### BFF / consolidation (intentionally Next-only for now)
