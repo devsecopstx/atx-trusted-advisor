@@ -11,7 +11,7 @@ import { MAX_XF_TENANT_LOGO_URL_CHARS } from "@/lib/tenant-logo-url";
 import { parseTenantSpecV1Document, sanitizeWorkspaceLimitsPartial } from "@/lib/tenant-spec-v1-parse";
 import type { PlatformRoleForRoutes } from "@/modules/platform/app-user-route-catalog";
 import { getAppUserRouteCatalog } from "@/modules/platform/app-user-route-catalog";
-import { isPathVisibleForRole } from "@/modules/platform/tenant-route-policy";
+import { isPathVisibleForRole, parseTenantRolesByRole } from "@/modules/platform/tenant-route-policy";
 import { upsertTenantFromParsedSpecV1 } from "@/modules/platform/tenant-spec-apply";
 
 const createTenantBodySchema = z.object({
@@ -36,6 +36,7 @@ const createTenantBodySchema = z.object({
       viewer: z.string().min(1).optional()
     })
     .optional(),
+  tenantRoles: z.record(z.string(), z.unknown()).optional(),
   bootstrapDefaultPortfolioWatchlist: z.boolean().optional(),
   /** Partial workspace limits — same validation as tenant-spec YAML (`sanitizeWorkspaceLimitsPartial`). */
   workspaceLimits: z.record(z.string(), z.unknown()).optional()
@@ -171,7 +172,8 @@ export async function POST(request: Request) {
         );
       }
     }
-    if (Object.keys(routeVisibilityOverrides).length > 0 || roleEntries.length > 0) {
+    const tenantRoles = parseTenantRolesByRole(parsedBody.data.tenantRoles);
+    if (Object.keys(routeVisibilityOverrides).length > 0 || roleEntries.length > 0 || Object.keys(tenantRoles).length > 0) {
       const prefSet: Record<string, unknown> = {};
       for (const [routeId, visible] of Object.entries(routeVisibilityOverrides)) {
         prefSet[`tenantPreferences.app_user_route_visibility_overrides.${routeId}`] = visible;
@@ -179,6 +181,9 @@ export async function POST(request: Request) {
       for (const [role, path] of roleEntries) {
         const normalizedPath = path.startsWith("/") ? path : `/${path}`;
         prefSet[`tenantPreferences.app_user_default_landing_path_by_role.${role}`] = normalizedPath;
+      }
+      if (Object.keys(tenantRoles).length > 0) {
+        prefSet.tenantRoles = tenantRoles;
       }
       await db.collection("core_tenants").updateOne(
         { _id: new ObjectId(result.tenantId) },

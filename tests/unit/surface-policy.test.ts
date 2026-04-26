@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    getEffectiveRoutePolicy,
     isAdminConsolePath,
     isAppUserProductPath,
+    isRouteAllowedForRole,
     requireApprovedLoginForProduct
 } from "@/modules/surface-policy";
 
@@ -54,5 +56,56 @@ describe("surface-policy", () => {
       })
     ).toBe(false);
     expect(requireApprovedLoginForProduct(null)).toBe(false);
+  });
+
+  it("resolves tenant role policy from tenant preferences", () => {
+    const policy = getEffectiveRoutePolicy("viewer", {
+      tenantRoles: {
+        viewer: {
+          allowedRoutes: ["/portfolios", "/watchlist", "/xoptions", "/account"],
+          defaultLanding: "/portfolios",
+          flags: {
+            canMutatePortfolios: false,
+            canUseXChat: false,
+            canRunTasks: false
+          }
+        }
+      }
+    });
+    expect(policy?.defaultLanding).toBe("/portfolios");
+    expect(policy?.allowedRoutes.includes("/watchlist")).toBe(true);
+  });
+
+  it("checks route allowlist using tenant override policy", () => {
+    expect(
+      isRouteAllowedForRole("/xchat", "viewer", {
+        tenantRoles: {
+          viewer: {
+            allowedRoutes: ["/portfolios", "/watchlist", "/xoptions", "/account"],
+            defaultLanding: "/portfolios",
+            flags: {
+              canMutatePortfolios: false,
+              canUseXChat: false,
+              canRunTasks: false
+            }
+          }
+        }
+      })
+    ).toBe(false);
+    expect(
+      isRouteAllowedForRole("/watchlist", "viewer", {
+        tenantRoles: {
+          viewer: {
+            allowedRoutes: ["/portfolios", "/watchlist", "/xoptions", "/account"],
+            defaultLanding: "/portfolios",
+            flags: {
+              canMutatePortfolios: false,
+              canUseXChat: false,
+              canRunTasks: false
+            }
+          }
+        }
+      })
+    ).toBe(true);
   });
 });

@@ -8,6 +8,8 @@ import type {
     TenantPlanWorkspaceOverrides,
     TenantWorkspaceLimits
 } from "@/modules/identity/tenant-workspace-limits";
+import type { PlatformRoleForRoutes } from "@/modules/platform/app-user-route-catalog";
+import type { TenantRoleFlags } from "@/modules/platform/tenant-route-policy";
 
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
 export type { SubscriptionPlan };
@@ -93,6 +95,17 @@ export type Tenant = {
   workspaceLimits?: (Partial<TenantWorkspaceLimits> & { planOverrides?: TenantPlanWorkspaceOverrides }) | null;
   /** Branding (one-time) + optional flags (e.g. xchat_debug_enabled). */
   tenantPreferences?: TenantPreferences | null;
+  /** Tenant UX v2 role matrix overrides (route allowlists + default landing + capability flags). */
+  tenantRoles?: Partial<
+    Record<
+      PlatformRoleForRoutes,
+      {
+        allowedRoutes: string[];
+        defaultLanding: string;
+        flags?: Partial<TenantRoleFlags>;
+      }
+    >
+  > | null;
   /**
    * Optional default weights for new books (`tenant_portfolio`) when the portfolio row has no `scoringFactors`.
    * Same shape as portfolio `scoringFactors`; validated in `scoring-factors.ts`.

@@ -1,8 +1,7 @@
 import type { SessionUser } from "@/lib/auth";
 import {
     getTenantRoutePolicyForSession,
-    isPathVisibleForRole,
-    resolveDefaultLandingPathForRole
+    isTenantRolePolicyPathAllowed
 } from "@/modules/platform/tenant-route-policy";
 
 export async function resolveRouteGuardForSessionPath(
@@ -10,11 +9,7 @@ export async function resolveRouteGuardForSessionPath(
   pathname: string
 ): Promise<{ allowed: boolean; redirectPath: string }> {
   const policy = await getTenantRoutePolicyForSession(session);
-  const allowed = isPathVisibleForRole(pathname, policy.role, policy.routeOverrides);
-  const redirectPath = resolveDefaultLandingPathForRole({
-    role: policy.role,
-    overrides: policy.routeOverrides,
-    defaultLandingPathByRole: policy.defaultLandingPathByRole
-  });
+  const allowed = isTenantRolePolicyPathAllowed(pathname, policy.effectiveRolePolicy);
+  const redirectPath = policy.effectiveRolePolicy.defaultLanding;
   return { allowed, redirectPath };
 }

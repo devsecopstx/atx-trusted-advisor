@@ -4,6 +4,7 @@ export type AuditEntityType =
   | "xpersona"
   | "access_request"
   | "core_user"
+  | "tenant"
   | "deploy_note_config"
   | "admin_delivery_channel"
   | "admin_portfolio"

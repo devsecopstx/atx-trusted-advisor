@@ -8,9 +8,6 @@ import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
 import {
-    listVisiblePrefixPathsForRole
-} from "@/modules/platform/app-user-route-catalog";
-import {
     getTenantRoutePolicyForSession
 } from "@/modules/platform/tenant-route-policy";
 
@@ -45,10 +42,7 @@ export async function getWorkspaceProductSidebarPropsForSession(
     subscriptionPlan = normalizeSubscriptionPlan(user?.subscriptionPlan);
   }
   const routePolicy = await getTenantRoutePolicyForSession(session);
-  const visiblePathPrefixes = listVisiblePrefixPathsForRole(
-    routePolicy.role,
-    routePolicy.routeOverrides
-  );
+  const visiblePathPrefixes = routePolicy.effectiveRolePolicy.allowedRoutes;
 
   return {
     accountDetails: {

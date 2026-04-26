@@ -4,6 +4,7 @@ import {
     isPathVisibleForRole,
     parseDefaultLandingPathByRole,
     parseRouteVisibilityOverrides,
+    parseTenantRolesByRole,
     resolveDefaultLandingPathForRole
 } from "@/modules/platform/tenant-route-policy";
 
@@ -57,5 +58,22 @@ describe("tenant-route-policy", () => {
     });
     expect(path).not.toBe("/xchat");
     expect(path).toBe("/account");
+  });
+
+  it("parses tenant role matrix with viewer restrictions", () => {
+    const roles = parseTenantRolesByRole({
+      viewer: {
+        allowedRoutes: ["/xchat", "/portfolios", "/watchlist", "/xoptions", "/account"],
+        defaultLanding: "/xchat",
+        flags: {
+          canMutatePortfolios: true,
+          canUseXChat: true,
+          canRunTasks: true
+        }
+      }
+    });
+    expect(roles.viewer?.allowedRoutes.includes("/xchat")).toBe(false);
+    expect(roles.viewer?.flags.canMutatePortfolios).toBe(false);
+    expect(roles.viewer?.flags.canUseXChat).toBe(false);
   });
 });

@@ -1,5 +1,11 @@
 import type { SessionUser } from "@/lib/auth";
 import { canUserLogin } from "@/modules/identity/authorization";
+import type { PlatformRoleForRoutes } from "@/modules/platform/app-user-route-catalog";
+import { isPathVisibleForRoleByCatalogDefaults } from "@/modules/platform/app-user-route-catalog";
+import {
+    parseTenantRolesByRole,
+    type TenantRolePolicy
+} from "@/modules/platform/tenant-route-policy";
 
 /**
  * URL path prefixes for the **app_user** product shell (xChat chrome, shared nav).
@@ -53,4 +59,25 @@ export function isAdminConsolePath(pathname: string): boolean {
  */
 export function requireApprovedLoginForProduct(session: SessionUser | null): session is SessionUser {
   return session !== null && canUserLogin(session.roles);
+}
+
+export function getEffectiveRoutePolicy(
+  role: PlatformRoleForRoutes,
+  tenantPreferences?: { tenantRoles?: unknown } | null
+): TenantRolePolicy | null {
+  const tenantRoles = parseTenantRolesByRole(tenantPreferences?.tenantRoles);
+  return tenantRoles[role] ?? null;
+}
+
+export function isRouteAllowedForRole(
+  route: string,
+  role: PlatformRoleForRoutes,
+  tenantPreferences?: { tenantRoles?: unknown } | null
+): boolean {
+  const policy = getEffectiveRoutePolicy(role, tenantPreferences);
+  if (!policy) {
+    return isPathVisibleForRoleByCatalogDefaults(route, role);
+  }
+  const normalized = normalizePathname(route);
+  return policy.allowedRoutes.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
 }

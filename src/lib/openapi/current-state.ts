@@ -131,6 +131,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xoptions"
   },
   {
+    path: "/api/app-user/me/role",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "user"
+  },
+  {
     path: "/api/xoptions/wheel/generate",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "xoptions"
@@ -604,6 +609,19 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   {
     path: "/api/admin/tenants/{tenantId}/memberships",
     operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/roles",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PUT", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/roles/{role}",
+    operations: [{ method: "PATCH", auth: "admin", hasRequestBody: true }],
     tag: "admin-tenants"
   },
   {
