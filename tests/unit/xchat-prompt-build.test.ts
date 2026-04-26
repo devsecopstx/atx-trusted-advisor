@@ -38,6 +38,27 @@ describe("buildSessionToolInstructions", () => {
     expect(s).toContain("targetEntryDisplay");
     expect(s).toContain("enumerate **every symbol returned**");
   });
+
+  it("adds HNWI CSP summary-table contract for options_scan output", () => {
+    const s = buildSessionToolInstructions({ hostedSearch: false, atxFunction: true });
+    expect(s).toContain("options_scan");
+    expect(s).toContain("HNWI desk style");
+    expect(s).toContain("Strike | Premium | IV | OI | Delta | Breakeven | ROC (ann.) | Cash Req | Assignment Risk | Desk Note");
+    expect(s).toContain("max 5 rows total");
+    expect(s).toContain("Top 3 ranked ideas");
+    expect(s).toContain("degrade gracefully");
+  });
+
+  it("adds HNWI covered-call summary-table contract for options_scan output", () => {
+    const s = buildSessionToolInstructions({ hostedSearch: false, atxFunction: true });
+    expect(s).toContain("covered-call idea requests");
+    expect(s).toContain(
+      "Strike | Premium | IV | OI | Delta | Upside to Strike | ROC (ann.) | Notional (100sh) | Call-Away Risk | Desk Note"
+    );
+    expect(s).toContain("Best Upside/Income Balance");
+    expect(s).toContain("Upside to Strike = ((strike - spot) / spot) * 100");
+    expect(s).toContain("ROC (ann.) = (premium/spot) * (365/DTE)");
+  });
 });
 
 describe("computeXchatRemoteChainInstructionsFingerprint", () => {
