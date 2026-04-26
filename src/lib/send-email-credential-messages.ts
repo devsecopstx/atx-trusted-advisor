@@ -9,7 +9,6 @@ export async function sendAccessApprovedPasswordInviteEmail(input: {
   firstName?: string | null;
 }): Promise<boolean> {
   const origin = resolvePublicAppOrigin(input.request);
-  const link = `${origin}/login/set-password?token=${encodeURIComponent(input.rawToken)}`;
   const setPasswordLink = `${origin}/login/set-password?token=${encodeURIComponent(input.rawToken)}`;
   const subject = "Welcome to aTx Finance – Your Account is Ready";
   const text = [
