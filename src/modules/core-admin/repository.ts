@@ -3632,7 +3632,7 @@ export async function provisionDefaultPortfolioForUser(
   };
   let account = await db.collection<Account>(collections.accounts).findOne(accountLookupFilter);
 
-  const accountSetForInsert = {
+  const accountInsertDefaults = {
     name: accountName,
     type: accountType,
     extAccountId,
@@ -3680,9 +3680,15 @@ export async function provisionDefaultPortfolioForUser(
         $setOnInsert: {
           userId: input.userId,
           portfolioId: portfolio._id,
-          createdAt: now
+          createdAt: now,
+          ...accountInsertDefaults
         },
-        $set: accountSetForInsert
+        /**
+         * Race-safe upsert: if another request inserts the default row between lookup and upsert,
+         * this branch can match an existing row. Keep mutable defaults out of `$set` so broker
+         * identity (`type` / `extAccountId`) is never clobbered on an existing account.
+         */
+        $set: accountSetForExisting
       },
       { upsert: true }
     );

@@ -67,6 +67,7 @@ function docMatchesFilter(doc: DocumentRecord, filter: Record<string, unknown>):
 
 function buildFakeDb() {
   const stores = new Map<string, DocumentRecord[]>();
+  const forcedFindOneMisses = new Map<string, number>();
 
   function ensureStore(name: string): DocumentRecord[] {
     const existing = stores.get(name);
@@ -86,6 +87,11 @@ function buildFakeDb() {
       countDocuments: async (filter: Record<string, unknown>) =>
         store.filter((doc) => docMatchesFilter(doc, filter)).length,
       findOne: async (filter: Record<string, unknown>) => {
+        const forcedMisses = forcedFindOneMisses.get(name) ?? 0;
+        if (forcedMisses > 0) {
+          forcedFindOneMisses.set(name, forcedMisses - 1);
+          return null;
+        }
         const found = store.find((doc) => docMatchesFilter(doc, filter));
         return (found as T | undefined) ?? null;
       },
@@ -191,6 +197,9 @@ function buildFakeDb() {
     },
     seed(collectionName: string, doc: DocumentRecord) {
       ensureStore(collectionName).push(doc);
+    },
+    forceFindOneMisses(collectionName: string, count: number) {
+      forcedFindOneMisses.set(collectionName, Math.max(0, Math.floor(count)));
     }
   };
 }
@@ -526,6 +535,48 @@ describe("portfolio provisioning repository", () => {
 
     const doc = await fakeDb.db.collection("portfolio_accounts").findOne({ _id: account._id });
     expect(doc?.extAccountId).toBe("USER-EDIT-REF-8888");
+    expect(doc?.type).toBe("merrill");
+  });
+
+  it("does not clobber extAccountId/type when upsert insert branch races an existing default account", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+
+    const userId = "507f1f77bcf86cd799439011";
+    const tenantId = "507f1f77bcf86cd799439022";
+    const tenantOid = new ObjectId(tenantId);
+    const portfolioId = new ObjectId();
+    const accountId = new ObjectId();
+
+    fakeDb.seed("tenant_portfolio", {
+      _id: portfolioId,
+      userId,
+      tenantId: tenantOid,
+      isDefault: true,
+      name: "Default Portfolio",
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-01T00:00:00.000Z")
+    });
+    fakeDb.seed("portfolio_accounts", {
+      _id: accountId,
+      userId,
+      tenantId: tenantOid,
+      portfolioId,
+      name: "myaccount",
+      type: "merrill",
+      extAccountId: "USER-KEEP-REF-1234",
+      cashBalance: 25_000,
+      isDefault: true,
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-01T00:00:00.000Z")
+    });
+    // Simulate a stale read: first account lookup misses, then upsert matches existing row.
+    fakeDb.forceFindOneMisses("portfolio_accounts", 1);
+
+    await provisionDefaultPortfolioForUser({ userId, tenantId });
+
+    const doc = await fakeDb.db.collection("portfolio_accounts").findOne({ _id: accountId });
+    expect(doc?.extAccountId).toBe("USER-KEEP-REF-1234");
     expect(doc?.type).toBe("merrill");
   });
 
