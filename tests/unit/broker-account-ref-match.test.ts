@@ -16,6 +16,11 @@ describe("brokerExportRefMatchesStoredExt", () => {
     expect(brokerExportRefMatchesStoredExt("12-34-5678", "12345678")).toBe(true);
   });
 
+  it("matches slash/whitespace formatted refs with same alphanumeric body", () => {
+    expect(brokerExportRefMatchesStoredExt("1 / 2 / 1", "1/2/1")).toBe(true);
+    expect(brokerExportRefMatchesStoredExt("  1\t/\t2\t/\t1  ", "1 / 2 / 1")).toBe(true);
+  });
+
   it("matches last-4 from export to full stored number", () => {
     expect(brokerExportRefMatchesStoredExt("5678", "12345678")).toBe(true);
     expect(brokerExportRefMatchesStoredExt("5678", "0012345678")).toBe(true);

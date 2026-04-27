@@ -17,6 +17,16 @@ export function brokerExportRefMatchesStoredExt(brokerRef: string, storedExt: st
     return true;
   }
 
+  /**
+   * Formatting-tolerant compare for mixed refs (slashes, spaces, tabs, punctuation).
+   * Example: `1 / 2 / 1` vs `1/2/1` should match before digit-only fallback.
+   */
+  const an = al.replace(/[^a-z0-9]/g, "");
+  const bn = bl.replace(/[^a-z0-9]/g, "");
+  if (an && bn && an === bn) {
+    return true;
+  }
+
   const da = a.replace(/\D/g, "");
   const db = b.replace(/\D/g, "");
   if (da && db && da === db) {

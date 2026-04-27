@@ -2,6 +2,7 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
     memo,
     useCallback,
@@ -15,13 +16,16 @@ import {
 } from "react";
 
 import {
+    ActivityPulseIcon,
     AddIcon,
+    AskIcon,
     BackIcon,
     DedupeIcon,
     DeleteIcon,
     DownloadIcon,
     EditIcon,
     ExternalLinkIcon,
+    FolderPortfolioIcon,
     SaveIcon,
     UnlinkIcon,
     UploadIcon,
@@ -47,6 +51,11 @@ import {
     heuristicIvPercentile,
     type WatchlistMetricRow
 } from "@/app/watchlist/ui/watchlist-metrics";
+import {
+    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
+    XCHAT_PENDING_PROMPT_STORAGE_KEY,
+    XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME
+} from "@/lib/xchat/xchat-pending-prompt";
 import { getSymbolSectorLabel } from "@/modules/watchlist/symbol-sector";
 
 type WatchlistChainGlance = {
@@ -360,9 +369,8 @@ type WatchlistRowTrProps = {
   patchRowMeta: (symbol: string, partial: { rationale?: string; rowStatus?: WatchlistRowStatus }) => Promise<void>;
   aiSuggestBusy: boolean;
   onAiSuggest: (row: WatchlistRow) => void;
-  onExportLeg: (row: WatchlistRow) => void;
-  onOpenAnalyze: (row: WatchlistRow) => void;
-  onOpenFlipCredit: (row: WatchlistRow) => void;
+  onAskAdvisor: (row: WatchlistRow) => void;
+  onShowQuote: (row: WatchlistRow) => void;
 };
 
 const WatchlistRowTr = memo(function WatchlistRowTr({
@@ -384,9 +392,8 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   patchRowMeta,
   aiSuggestBusy,
   onAiSuggest,
-  onExportLeg,
-  onOpenAnalyze,
-  onOpenFlipCredit
+  onAskAdvisor,
+  onShowQuote
 }: WatchlistRowTrProps) {
   const ivParts = ivBadgeParts(row);
   const te = getTargetEntryNumeric(row);
@@ -683,33 +690,47 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
       </td>
       <td className="xf-watchlist-actions-cell">
         <div className="xf-watchlist-row-actions-inline">
-          <details className="xf-watchlist-row-actions-dd">
-            <summary className="xf-watchlist-row-actions-summary">Actions</summary>
-            <div className="xf-watchlist-row-actions-panel">
-              <button type="button" onClick={() => onOpenAnalyze(row)}>
-                Analyze (P/L)
-              </button>
-              <button type="button" onClick={() => onOpenFlipCredit(row)}>
-                Flip to Credit
-              </button>
-              {enableAddToHoldings ? (
-                <button
-                  disabled={editMode || symbolInPortfolioStocks || addHoldingsBusy || mutating}
-                  type="button"
-                  onClick={() => onAddToHoldings?.(row)}
-                >
-                  Add to Portfolio
-                </button>
-              ) : (
-                <Link className="xf-watchlist-dd-link" href={`/portfolio?portfolioId=${encodeURIComponent(portfolioId)}`}>
-                  Add to Portfolio
-                </Link>
-              )}
-              <button type="button" onClick={() => onExportLeg(row)}>
-                Export leg CSV
-              </button>
-            </div>
-          </details>
+          <button
+            aria-label={`Ask advisor for ${row.symbol}`}
+            className="xf-watchlist-row-action-btn"
+            disabled={mutating}
+            title={`Ask advisor about ${row.symbol}`}
+            type="button"
+            onClick={() => onAskAdvisor(row)}
+          >
+            <AskIcon className="crud-icon" />
+          </button>
+          <button
+            aria-label={`Show quote details for ${row.symbol}`}
+            className="xf-watchlist-row-action-btn"
+            disabled={mutating}
+            title={`Show quote details for ${row.symbol}`}
+            type="button"
+            onClick={() => onShowQuote(row)}
+          >
+            <ActivityPulseIcon className="crud-icon" />
+          </button>
+          {enableAddToHoldings ? (
+            <button
+              aria-label={`Add ${row.symbol} to portfolio holdings`}
+              className="xf-watchlist-row-action-btn"
+              disabled={editMode || symbolInPortfolioStocks || addHoldingsBusy || mutating}
+              title={`Add ${row.symbol} to portfolio holdings`}
+              type="button"
+              onClick={() => onAddToHoldings?.(row)}
+            >
+              <AddIcon className="crud-icon" />
+            </button>
+          ) : (
+            <Link
+              aria-label={`Open portfolio to add ${row.symbol}`}
+              className="xf-watchlist-row-action-link"
+              href={`/portfolio?portfolioId=${encodeURIComponent(portfolioId)}`}
+              title={`Open portfolio to add ${row.symbol}`}
+            >
+              <FolderPortfolioIcon className="crud-icon" />
+            </Link>
+          )}
           <button
             aria-label={`Delete ${row.symbol} from watchlist`}
             className="xf-watchlist-row-delete-btn"
@@ -836,36 +857,10 @@ function toCsv(rows: WatchlistRow[]): string {
 
 const WATCHLIST_LIST_NAV_COLLAPSED_KEY = "xf-watchlist-list-sidebar-collapsed";
 const WATCHLIST_PORTFOLIO_TOTAL_LS_KEY = "xf_watchlist_portfolio_total_usd_v1";
-const XOPTIONS_LAST_SYMBOL_LS_KEY = "xf_portfolios_last_xoptions_symbol_v1";
 
 function stripMarkdownishFirstLine(raw: string): string {
   const t = raw.trim().replace(/^#+\s*/m, "").split(/\n/)[0]?.trim() ?? "";
   return t.slice(0, 280);
-}
-
-function oneRowToCsv(row: WatchlistRow): string {
-  const headers = [
-    "Symbol",
-    "Spot",
-    "IV%",
-    "OI",
-    "Leg",
-    "TargetEntry100x",
-    "Rationale",
-    "RowStatus"
-  ];
-  const iv = row.chainGlance?.impliedVolatilityPercent;
-  const line = [
-    row.symbol,
-    row.quote?.price ?? "",
-    iv ?? "",
-    row.chainGlance?.openInterest ?? "",
-    row.chainGlance ? `${row.chainGlance.contractType} ${row.chainGlance.strike}` : "",
-    getTargetEntryNumeric(row) ?? "",
-    (row.rationale ?? "").replaceAll('"', '""'),
-    row.rowStatus ?? "draft"
-  ].join(",");
-  return `${headers.join(",")}\n${line}`;
 }
 
 function WatchlistSidebarChevron({ direction }: { direction: "left" | "right" }) {
@@ -965,6 +960,7 @@ export function WatchlistConsole({
   onWatchlistMutated,
   onBookMutated
 }: WatchlistConsoleProps) {
+  const router = useRouter();
   const watchlistBaseUrl = `${watchlistApiPrefix}/${encodeURIComponent(portfolioId)}/watchlist`;
   const watchlistFetchQuery = "quotes=1&chainGlance=1";
   const [listName, setListName] = useState("Default");
@@ -984,6 +980,7 @@ export function WatchlistConsole({
   const [listLoadedAtLabel, setListLoadedAtLabel] = useState("");
   const [symbolSearch, setSymbolSearch] = useState("");
   const [symbolSearchOpen, setSymbolSearchOpen] = useState(false);
+  const [quotePanelSymbol, setQuotePanelSymbol] = useState<string | null>(null);
   const [aiSuggestSymbol, setAiSuggestSymbol] = useState<string | null>(null);
   const [sort, setSort] = useState<{ column: WatchlistSortColumn; dir: "asc" | "desc" }>({
     column: "instrument",
@@ -1188,38 +1185,32 @@ export function WatchlistConsole({
     [executePatch, onWatchlistMutated, portfolioId]
   );
 
-  const onExportLeg = useCallback((row: WatchlistRow) => {
-    const blob = new Blob([oneRowToCsv(row)], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `atxfinance-leg-${row.symbol.toLowerCase()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, []);
-
-  const pushXoptionsSymbol = useCallback((sym: string) => {
-    try {
-      sessionStorage.setItem(XOPTIONS_LAST_SYMBOL_LS_KEY, sym.trim().toUpperCase());
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const onOpenAnalyze = useCallback(
+  const onAskAdvisor = useCallback(
     (row: WatchlistRow) => {
-      pushXoptionsSymbol(row.symbol);
-      window.location.href = "/xoptions";
+      const symbol = row.symbol.trim().toUpperCase();
+      if (!symbol) {
+        return;
+      }
+      try {
+        sessionStorage.setItem(
+          XCHAT_PENDING_PROMPT_STORAGE_KEY,
+          `Show me CSP ideas for ${symbol}. Include strike, expiration, premium estimate, and assignment risk notes.`
+        );
+        sessionStorage.setItem(
+          XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
+          XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME
+        );
+      } catch {
+        // ignore quota / private mode
+      }
+      const q = new URLSearchParams({
+        portfolioId,
+        rail: "xchat",
+        item: "composer"
+      });
+      router.push(`/xchat?${q.toString()}`);
     },
-    [pushXoptionsSymbol]
-  );
-
-  const onOpenFlipCredit = useCallback(
-    (row: WatchlistRow) => {
-      pushXoptionsSymbol(row.symbol);
-      window.location.href = "/xoptions";
-    },
-    [pushXoptionsSymbol]
+    [portfolioId, router]
   );
 
   const onExportAdvisorPdf = useCallback(() => {
@@ -1550,6 +1541,45 @@ ${bodyRows}
   );
 
   const displayRows = editMode ? draftRows : rows;
+  const topByVolume = useMemo(() => {
+    return [...rows]
+      .filter((r) => typeof r.quote?.volume === "number" && Number.isFinite(r.quote.volume))
+      .sort((a, b) => (b.quote?.volume ?? 0) - (a.quote?.volume ?? 0))
+      .slice(0, 3);
+  }, [rows]);
+  const topByMove = useMemo(() => {
+    return [...rows]
+      .filter((r) => typeof r.quote?.changePercent === "number" && Number.isFinite(r.quote.changePercent))
+      .sort((a, b) => Math.abs(b.quote?.changePercent ?? 0) - Math.abs(a.quote?.changePercent ?? 0))
+      .slice(0, 3);
+  }, [rows]);
+  const quotePanelRow = useMemo(() => {
+    if (!quotePanelSymbol) {
+      return null;
+    }
+    const symbolUpper = quotePanelSymbol.trim().toUpperCase();
+    return rows.find((row) => row.symbol.trim().toUpperCase() === symbolUpper) ?? null;
+  }, [quotePanelSymbol, rows]);
+  const watchlistSummaryText = useMemo(() => {
+    const holdingsLine = `${rows.length} holding${rows.length === 1 ? "" : "s"} tracked`;
+    const volumeLine =
+      topByVolume.length > 0
+        ? `Top volume: ${topByVolume
+            .map((r) => `${r.symbol} ${(r.quote?.volume ?? 0).toLocaleString()}`)
+            .join(" · ")}`
+        : "Top volume: —";
+    const moveLine =
+      topByMove.length > 0
+        ? `Biggest changes: ${topByMove
+            .map((r) => {
+              const pct = r.quote?.changePercent ?? 0;
+              const sign = pct > 0 ? "+" : "";
+              return `${r.symbol} ${sign}${pct.toFixed(2)}%`;
+            })
+            .join(" · ")}`
+        : "Biggest changes: —";
+    return { holdingsLine, volumeLine, moveLine };
+  }, [rows.length, topByMove, topByVolume]);
   const portfolioTotalUsd = useMemo(() => {
     const n = Number.parseFloat(portfolioTotalInput.replace(/[^0-9.-]/g, ""));
     return Number.isFinite(n) && n > 0 ? n : 0;
@@ -1630,7 +1660,9 @@ ${bodyRows}
             </button>
             <div className="xf-watchlist-nav-item">
               {sidebarTitle}
-              <small>General watchlist for tracking positions and opportunities.</small>
+              <small>{watchlistSummaryText.holdingsLine}</small>
+              <small>{watchlistSummaryText.volumeLine}</small>
+              <small>{watchlistSummaryText.moveLine}</small>
             </div>
           </div>
         </aside>
@@ -1651,9 +1683,8 @@ ${bodyRows}
                 <h1 className="xf-watchlist-card-title">{listName}</h1>
               )}
               <p className="xf-watchlist-card-sub">
-                Quotes load from Yahoo Finance. Target entry uses 100× spot (desk quantity/entry in edit mode). Set a
-                portfolio total for % risk (stored locally). <kbd className="xf-watchlist-kbd">⌘K</kbd> filters
-                symbols.
+                {watchlistSummaryText.holdingsLine} · {watchlistSummaryText.volumeLine} ·{" "}
+                {watchlistSummaryText.moveLine}
               </p>
             </header>
 
@@ -1979,9 +2010,8 @@ ${bodyRows}
                             updateDraftRow={updateDraftRow}
                             onAddToHoldings={(r) => void addSymbolToHoldings(r)}
                             onAiSuggest={onAiSuggestRow}
-                            onExportLeg={onExportLeg}
-                            onOpenAnalyze={onOpenAnalyze}
-                            onOpenFlipCredit={onOpenFlipCredit}
+                            onAskAdvisor={onAskAdvisor}
+                            onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
                             onRemoveSymbol={onRemoveSymbol}
                           />
                         );
@@ -2009,9 +2039,8 @@ ${bodyRows}
                             updateDraftRow={updateDraftRow}
                             onAddToHoldings={(r) => void addSymbolToHoldings(r)}
                             onAiSuggest={onAiSuggestRow}
-                            onExportLeg={onExportLeg}
-                            onOpenAnalyze={onOpenAnalyze}
-                            onOpenFlipCredit={onOpenFlipCredit}
+                            onAskAdvisor={onAskAdvisor}
+                            onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
                             onRemoveSymbol={onRemoveSymbol}
                           />
                         );
@@ -2022,6 +2051,89 @@ ${bodyRows}
               </div>
             ) : null}
           </div>
+
+          {quotePanelRow ? (
+            <div className="xf-watchlist-quote-panel-backdrop" role="presentation" onClick={() => setQuotePanelSymbol(null)}>
+              <aside
+                aria-label={`${quotePanelRow.symbol} quote details`}
+                aria-modal="true"
+                className="xf-watchlist-quote-panel"
+                role="dialog"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="xf-watchlist-quote-panel__head">
+                  <h3 className="xf-watchlist-quote-panel__title">
+                    {quotePanelRow.symbol} quote
+                  </h3>
+                  <button
+                    aria-label="Close quote details"
+                    className="xf-watchlist-quote-panel__close"
+                    type="button"
+                    onClick={() => setQuotePanelSymbol(null)}
+                  >
+                    <XMarkIcon className="crud-icon" />
+                  </button>
+                </div>
+                <p className="xf-watchlist-quote-panel__asof">
+                  As of {listLoadedAtLabel || "latest refresh"}
+                </p>
+                <dl className="xf-watchlist-quote-panel__grid">
+                  <div>
+                    <dt>Quote</dt>
+                    <dd>{formatSpotCell(quotePanelRow)}</dd>
+                  </div>
+                  <div>
+                    <dt>Change</dt>
+                    <dd>
+                      {typeof quotePanelRow.quote?.change === "number" &&
+                      Number.isFinite(quotePanelRow.quote.change) &&
+                      typeof quotePanelRow.quote?.changePercent === "number" &&
+                      Number.isFinite(quotePanelRow.quote.changePercent)
+                        ? `${quotePanelRow.quote.change > 0 ? "+" : ""}${quotePanelRow.quote.change.toFixed(2)} (${quotePanelRow.quote.changePercent > 0 ? "+" : ""}${quotePanelRow.quote.changePercent.toFixed(2)}%)`
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Volume</dt>
+                    <dd>
+                      {typeof quotePanelRow.quote?.volume === "number" && Number.isFinite(quotePanelRow.quote.volume)
+                        ? quotePanelRow.quote.volume.toLocaleString()
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Day range</dt>
+                    <dd>
+                      {typeof quotePanelRow.quote?.low === "number" &&
+                      Number.isFinite(quotePanelRow.quote.low) &&
+                      typeof quotePanelRow.quote?.high === "number" &&
+                      Number.isFinite(quotePanelRow.quote.high)
+                        ? `${formatUsd2(quotePanelRow.quote.low)} - ${formatUsd2(quotePanelRow.quote.high)}`
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>52 week range</dt>
+                    <dd>
+                      {typeof quotePanelRow.quote?.fiftyTwoWeekLow === "number" &&
+                      Number.isFinite(quotePanelRow.quote.fiftyTwoWeekLow) &&
+                      typeof quotePanelRow.quote?.fiftyTwoWeekHigh === "number" &&
+                      Number.isFinite(quotePanelRow.quote.fiftyTwoWeekHigh)
+                        ? `${formatUsd2(quotePanelRow.quote.fiftyTwoWeekLow)} - ${formatUsd2(quotePanelRow.quote.fiftyTwoWeekHigh)}`
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Company</dt>
+                    <dd>{quotePanelRow.quote?.companyName?.trim() || quotePanelRow.symbol}</dd>
+                  </div>
+                </dl>
+                <p className="xf-watchlist-quote-panel__foot">
+                  Data source: Yahoo Finance.
+                </p>
+              </aside>
+            </div>
+          ) : null}
 
           {symbolSearchOpen ? (
             <div
