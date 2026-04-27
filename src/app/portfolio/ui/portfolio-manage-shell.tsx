@@ -321,6 +321,7 @@ export function PortfolioManageShell({
       isAdmin={admin}
       portfolioId={portfolioIdHex}
       portfolioStockSymbolsUpper={portfolioStockSymbolsUpper}
+      showLocalSidebar={false}
       variant="embedded"
       onBookMutated={() => router.refresh()}
       onWatchlistMutated={bumpWatchlistAside}

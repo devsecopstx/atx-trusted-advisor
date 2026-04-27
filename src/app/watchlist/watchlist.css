@@ -488,19 +488,30 @@ button.xf-watchlist-sort-btn:hover {
 .xf-watchlist-sym-cell__company {
   margin-top: 0.2rem;
   max-width: 16rem;
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   line-height: 1.25;
-  color: var(--xf-text-muted);
+  color: var(--xf-text-300);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.xf-watchlist-sym-cell__company--muted {
+  color: var(--xf-text-500);
 }
 
 .xf-watchlist-sym-cell__label {
   font-weight: 650;
   color: var(--xf-text-100);
   font-family: var(--xf-font-mono);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
+}
+
+.xf-watchlist-sym-cell__industry {
+  margin-top: 0.16rem;
+  font-size: 0.68rem;
+  color: var(--xf-text-500);
+  line-height: 1.2;
 }
 
 a.xf-watchlist-sym-cell__ext {
@@ -1111,8 +1122,8 @@ a.xf-watchlist-sym-cell__ext:hover {
 .xf-watchlist-row-action-btn,
 .xf-watchlist-row-action-link {
   border: 1px solid rgba(255, 255, 255, 0.14);
-  background: color-mix(in srgb, var(--xf-surface-700) 80%, transparent);
-  color: var(--xf-text-300);
+  background: color-mix(in srgb, var(--xf-surface-700) 84%, transparent);
+  color: var(--xf-xoptions-accent);
   border-radius: 6px;
   width: 1.7rem;
   height: 1.7rem;
@@ -1135,7 +1146,7 @@ a.xf-watchlist-sym-cell__ext:hover {
 
 .xf-watchlist-row-action-btn:hover:not(:disabled),
 .xf-watchlist-row-action-link:hover {
-  color: var(--xf-text-100);
+  color: var(--xf-lightning-yellow);
   border-color: color-mix(in srgb, var(--xf-xoptions-accent) 48%, transparent);
   background: color-mix(in srgb, var(--xf-xoptions-accent) 14%, transparent);
 }
@@ -1146,8 +1157,8 @@ a.xf-watchlist-sym-cell__ext:hover {
 }
 
 .xf-watchlist-row-delete-btn {
-  border: 1px solid color-mix(in srgb, var(--xf-danger-400) 55%, transparent);
-  background: color-mix(in srgb, var(--xf-danger-400) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-danger-400) 58%, transparent);
+  background: color-mix(in srgb, var(--xf-danger-400) 14%, transparent);
   color: var(--xf-danger-400);
   border-radius: 6px;
   width: 1.7rem;
@@ -1167,7 +1178,9 @@ a.xf-watchlist-sym-cell__ext:hover {
 }
 
 .xf-watchlist-row-delete-btn:hover:not(:disabled) {
+  color: #ef4444;
   background: color-mix(in srgb, var(--xf-danger-400) 24%, transparent);
+  border-color: color-mix(in srgb, #ef4444 60%, transparent);
 }
 
 .xf-watchlist-row-delete-btn:disabled {

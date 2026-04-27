@@ -119,7 +119,7 @@ export default async function WatchlistPage({
 
       <div className="xchat-body" style={{ padding: 0 }}>
         <AppUserCollapsibleRailLayout
-          mainClassName="app-user-shell-with-rail--padded"
+          mainClassName="app-user-shell-with-rail--padded w-full max-w-full px-4 md:px-6 lg:px-8"
           preferCollapsed
           rail={<AppUserAccountPublicRailForSession session={session} />}
         >

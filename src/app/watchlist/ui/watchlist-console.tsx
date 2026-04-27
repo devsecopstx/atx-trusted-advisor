@@ -2,7 +2,6 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
     memo,
     useCallback,
@@ -18,14 +17,12 @@ import {
 import {
     ActivityPulseIcon,
     AddIcon,
-    AskIcon,
     BackIcon,
     DedupeIcon,
     DeleteIcon,
     DownloadIcon,
     EditIcon,
     ExternalLinkIcon,
-    FolderPortfolioIcon,
     SaveIcon,
     UnlinkIcon,
     UploadIcon,
@@ -51,12 +48,31 @@ import {
     heuristicIvPercentile,
     type WatchlistMetricRow
 } from "@/app/watchlist/ui/watchlist-metrics";
-import {
-    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
-    XCHAT_PENDING_PROMPT_STORAGE_KEY,
-    XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME
-} from "@/lib/xchat/xchat-pending-prompt";
 import { getSymbolSectorLabel } from "@/modules/watchlist/symbol-sector";
+
+function UpArrowIcon() {
+  return (
+    <svg aria-hidden fill="none" height="16" viewBox="0 0 24 24" width="16">
+      <path d="M12 19V5M12 5l-5 5M12 5l5 5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function DownArrowIcon() {
+  return (
+    <svg aria-hidden fill="none" height="16" viewBox="0 0 24 24" width="16">
+      <path d="M12 5v14M12 19l-5-5M12 19l5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function ReviewListIcon() {
+  return (
+    <svg aria-hidden fill="none" height="16" viewBox="0 0 24 24" width="16">
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  );
+}
 
 type WatchlistChainGlance = {
   contractType: "call" | "put";
@@ -208,6 +224,10 @@ type WatchlistSortColumn = "instrument" | "targetEntry" | "iv" | "oi";
 
 /** Whole-dollar notional: round(100× live quote) for sort and display. */
 function getTargetEntryNumeric(row: WatchlistRow): number | null {
+  const entry = row.entryPrice;
+  if (typeof entry === "number" && Number.isFinite(entry) && entry > 0) {
+    return Math.round(100 * entry);
+  }
   const px = row.quote?.price;
   if (typeof px === "number" && Number.isFinite(px)) {
     return Math.round(100 * px);
@@ -367,17 +387,12 @@ type WatchlistRowTrProps = {
   onRemoveSymbol: (symbol: string) => void;
   rowClassName?: string;
   rowStyle?: CSSProperties;
-  enableAddToHoldings?: boolean;
-  symbolInPortfolioStocks?: boolean;
-  addHoldingsBusy?: boolean;
-  onAddToHoldings?: (row: WatchlistRow) => void;
   portfolioTotalUsd: number;
   listLoadedAtLabel: string;
-  portfolioId: string;
   patchRowMeta: (symbol: string, partial: { rationale?: string; rowStatus?: WatchlistRowStatus }) => Promise<void>;
+  patchRowEntryPrice: (symbol: string, entryPrice: number) => Promise<void>;
   aiSuggestBusy: boolean;
   onAiSuggest: (row: WatchlistRow) => void;
-  onAskAdvisor: (row: WatchlistRow) => void;
   onShowQuote: (row: WatchlistRow) => void;
 };
 
@@ -390,17 +405,12 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   onRemoveSymbol,
   rowClassName,
   rowStyle,
-  enableAddToHoldings = false,
-  symbolInPortfolioStocks = false,
-  addHoldingsBusy = false,
-  onAddToHoldings,
   portfolioTotalUsd,
   listLoadedAtLabel,
-  portfolioId,
   patchRowMeta,
+  patchRowEntryPrice,
   aiSuggestBusy,
   onAiSuggest,
-  onAskAdvisor,
   onShowQuote
 }: WatchlistRowTrProps) {
   const ivParts = ivBadgeParts(row);
@@ -452,27 +462,15 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
         <div className="xf-watchlist-sym-cell">
           <div className="xf-watchlist-sym-cell__row">
             <span className="xf-watchlist-sym-cell__label">{row.symbol}</span>
-            {symbolInPortfolioStocks ? (
-              <span className="xf-watchlist-in-book" title="Held in this portfolio book">
-                ✓
-              </span>
-            ) : null}
-            <a
-              className="xf-watchlist-sym-cell__ext"
-              href={`https://finance.yahoo.com/quote/${encodeURIComponent(row.symbol)}`}
-              rel="noreferrer"
-              target="_blank"
-              title={`${row.symbol} on Yahoo Finance`}
-            >
-              <ExternalLinkIcon className="crud-icon" aria-hidden />
-              <span className="sr-only">Yahoo Finance ({row.symbol})</span>
-            </a>
           </div>
           {companyBlurb ? (
             <div className="xf-watchlist-sym-cell__company" title={companyFull}>
               {companyBlurb}
             </div>
-          ) : null}
+          ) : (
+            <div className="xf-watchlist-sym-cell__company xf-watchlist-sym-cell__company--muted">—</div>
+          )}
+          <div className="xf-watchlist-sym-cell__industry">{getSymbolSectorLabel(row.symbol)}</div>
         </div>
       </td>
       <td className="xf-watchlist-table-mono xf-watchlist-spot-cell">
@@ -699,51 +697,74 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
       <td className="xf-watchlist-actions-cell">
         <div className="xf-watchlist-row-actions-inline">
           <button
-            aria-label={`Ask advisor for ${row.symbol}`}
+            aria-label={`Review ${row.symbol} leg`}
             className="xf-watchlist-row-action-btn"
             disabled={mutating}
-            title={`Ask advisor about ${row.symbol}`}
+            title="Review leg"
             type="button"
-            onClick={() => onAskAdvisor(row)}
+            onClick={() => void patchRowMeta(row.symbol, { rowStatus: "review", rationale: row.rationale })}
           >
-            <AskIcon className="crud-icon" />
+            <ReviewListIcon />
           </button>
           <button
             aria-label={`Show quote details for ${row.symbol}`}
             className="xf-watchlist-row-action-btn"
             disabled={mutating}
-            title={`Show quote details for ${row.symbol}`}
+            title="View quote"
             type="button"
             onClick={() => onShowQuote(row)}
           >
             <ActivityPulseIcon className="crud-icon" />
           </button>
-          {enableAddToHoldings ? (
-            <button
-              aria-label={`Add ${row.symbol} to portfolio holdings`}
-              className="xf-watchlist-row-action-btn"
-              disabled={editMode || symbolInPortfolioStocks || addHoldingsBusy || mutating}
-              title={`Add ${row.symbol} to portfolio holdings`}
-              type="button"
-              onClick={() => onAddToHoldings?.(row)}
-            >
-              <AddIcon className="crud-icon" />
-            </button>
-          ) : (
-            <Link
-              aria-label={`Open portfolio to add ${row.symbol}`}
-              className="xf-watchlist-row-action-link"
-              href={`/portfolio?portfolioId=${encodeURIComponent(portfolioId)}`}
-              title={`Open portfolio to add ${row.symbol}`}
-            >
-              <FolderPortfolioIcon className="crud-icon" />
-            </Link>
-          )}
+          <button
+            aria-label={`Increase target entry for ${row.symbol}`}
+            className="xf-watchlist-row-action-btn"
+            disabled={mutating}
+            title="Increase target entry"
+            type="button"
+            onClick={() => {
+              const basis =
+                typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice) && row.entryPrice > 0
+                  ? row.entryPrice
+                  : typeof row.quote?.price === "number" && Number.isFinite(row.quote.price) && row.quote.price > 0
+                    ? row.quote.price
+                    : null;
+              if (basis == null) {
+                return;
+              }
+              const next = Math.round(basis * 1.01 * 100) / 100;
+              void patchRowEntryPrice(row.symbol, next);
+            }}
+          >
+            <UpArrowIcon />
+          </button>
+          <button
+            aria-label={`Decrease target entry for ${row.symbol}`}
+            className="xf-watchlist-row-action-btn"
+            disabled={mutating}
+            title="Decrease target entry"
+            type="button"
+            onClick={() => {
+              const basis =
+                typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice) && row.entryPrice > 0
+                  ? row.entryPrice
+                  : typeof row.quote?.price === "number" && Number.isFinite(row.quote.price) && row.quote.price > 0
+                    ? row.quote.price
+                    : null;
+              if (basis == null) {
+                return;
+              }
+              const next = Math.round(Math.max(0.01, basis * 0.99) * 100) / 100;
+              void patchRowEntryPrice(row.symbol, next);
+            }}
+          >
+            <DownArrowIcon />
+          </button>
           <button
             aria-label={`Delete ${row.symbol} from watchlist`}
             className="xf-watchlist-row-delete-btn"
             disabled={(mutating && !editMode) || removingThisSymbol}
-            title={`Delete ${row.symbol}`}
+            title="Remove from watchlist"
             type="button"
             onClick={() => void onRemoveSymbol(row.symbol)}
           >
@@ -953,7 +974,7 @@ export type WatchlistConsoleProps = {
   portfolioStockSymbolsUpper?: readonly string[];
   /** Fired after watchlist rows change (PATCH/import/remove) so compact IV/OI rail can reload. */
   onWatchlistMutated?: () => void;
-  /** Fired after a stock is added via “Add to holdings” (parent usually `router.refresh()`). */
+  /** Fired after holdings mutations from watchlist actions (embedded workspace). */
   onBookMutated?: () => void;
   /** App-user shell already has a workspace rail; hide local watchlist sidebar to avoid double sidebars. */
   showLocalSidebar?: boolean;
@@ -971,7 +992,6 @@ export function WatchlistConsole({
   onBookMutated,
   showLocalSidebar = true
 }: WatchlistConsoleProps) {
-  const router = useRouter();
   const watchlistBaseUrl = `${watchlistApiPrefix}/${encodeURIComponent(portfolioId)}/watchlist`;
   const [listName, setListName] = useState("Default");
   const [rows, setRows] = useState<WatchlistRow[]>([]);
@@ -983,7 +1003,6 @@ export function WatchlistConsole({
   const [error, setError] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
   const [removingSymbol, setRemovingSymbol] = useState<string | null>(null);
-  const [addingHoldingsSymbol, setAddingHoldingsSymbol] = useState<string | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [listNavCollapsed, setListNavCollapsed] = useState(true);
   const [portfolioTotalInput, setPortfolioTotalInput] = useState("");
@@ -1004,15 +1023,6 @@ export function WatchlistConsole({
   const [, startTransition] = useTransition();
   const tableScrollParentRef = useRef<HTMLDivElement>(null);
 
-  const portfolioStockSet = useMemo(
-    () =>
-      new Set(
-        portfolioStockSymbolsUpper.map((s) => s.trim().toUpperCase()).filter((s) => s.length > 0)
-      ),
-    [portfolioStockSymbolsUpper]
-  );
-  const enableAddToHoldingsUi =
-    variant === "embedded" && Boolean(addToHoldingsAccountIdHex?.trim());
   const watchlistFetchQuery = useMemo(() => {
     const params = new URLSearchParams();
     params.set("quotes", "1");
@@ -1193,6 +1203,25 @@ export function WatchlistConsole({
     [executePatch, onWatchlistMutated, rows]
   );
 
+  const patchRowEntryPrice = useCallback(
+    async (symbol: string, entryPrice: number) => {
+      if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+        return;
+      }
+      setMutating(true);
+      setError(null);
+      try {
+        await executePatch({ addEntries: [{ symbol, entryPrice }] });
+        onWatchlistMutated?.();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Update failed");
+      } finally {
+        setMutating(false);
+      }
+    },
+    [executePatch, onWatchlistMutated]
+  );
+
   const onAiSuggestRow = useCallback(
     async (row: WatchlistRow) => {
       setAiSuggestSymbol(row.symbol);
@@ -1225,34 +1254,6 @@ export function WatchlistConsole({
       }
     },
     [executePatch, onWatchlistMutated, portfolioId]
-  );
-
-  const onAskAdvisor = useCallback(
-    (row: WatchlistRow) => {
-      const symbol = row.symbol.trim().toUpperCase();
-      if (!symbol) {
-        return;
-      }
-      try {
-        sessionStorage.setItem(
-          XCHAT_PENDING_PROMPT_STORAGE_KEY,
-          `Show me CSP ideas for ${symbol}. Include strike, expiration, premium estimate, and assignment risk notes.`
-        );
-        sessionStorage.setItem(
-          XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
-          XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME
-        );
-      } catch {
-        // ignore quota / private mode
-      }
-      const q = new URLSearchParams({
-        portfolioId,
-        rail: "xchat",
-        item: "composer"
-      });
-      router.push(`/xchat?${q.toString()}`);
-    },
-    [portfolioId, router]
   );
 
   const onExportAdvisorPdf = useCallback(() => {
@@ -1332,68 +1333,6 @@ ${bodyRows}
       setCreatingWatchlist(false);
     }
   }, [load, watchlistBaseUrl]);
-
-  const addSymbolToHoldings = useCallback(
-    async (row: WatchlistRow) => {
-      const accountId = addToHoldingsAccountIdHex?.trim();
-      if (!accountId) {
-        return;
-      }
-      const symbol = row.symbol.trim().toUpperCase();
-      if (!symbol) {
-        return;
-      }
-      let qty = 1;
-      if (row.quantity !== undefined && Number.isFinite(row.quantity) && row.quantity > 0) {
-        qty = row.quantity;
-      }
-      let avgCost: number | undefined;
-      if (row.entryPrice !== undefined && Number.isFinite(row.entryPrice) && row.entryPrice >= 0) {
-        avgCost = row.entryPrice;
-      } else if (row.quote?.price != null && Number.isFinite(row.quote.price) && row.quote.price >= 0) {
-        avgCost = row.quote.price;
-      }
-      if (avgCost === undefined) {
-        const raw = window.prompt(`Average cost per share for ${symbol} (USD):`);
-        if (raw == null) {
-          return;
-        }
-        const n = Number.parseFloat(raw.trim());
-        if (!Number.isFinite(n) || n < 0) {
-          window.alert("Enter a non-negative number for average cost.");
-          return;
-        }
-        avgCost = n;
-      }
-      setAddingHoldingsSymbol(symbol);
-      setError(null);
-      try {
-        const res = await fetch("/api/positions", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            portfolioId,
-            accountId,
-            symbol,
-            qty,
-            avgCost,
-            type: "stock"
-          })
-        });
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        if (!res.ok) {
-          throw new Error(body.error ?? "Could not add holding");
-        }
-        onBookMutated?.();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Add to holdings failed");
-      } finally {
-        setAddingHoldingsSymbol(null);
-      }
-    },
-    [addToHoldingsAccountIdHex, onBookMutated, portfolioId]
-  );
 
   const enterEdit = useCallback(() => {
     editBaselineRef.current = {
@@ -1704,8 +1643,8 @@ ${bodyRows}
   const sidebarTitle = editMode ? draftName || listName : listName;
 
   return (
-    <div className="xf-watchlist-app">
-      <div className="xf-watchlist-layout">
+    <div className="xf-watchlist-app w-full max-w-full">
+      <div className="xf-watchlist-layout w-full max-w-full">
         <aside
           className={`xf-watchlist-sidebar${listNavCollapsed ? " xf-watchlist-sidebar--collapsed" : ""}`}
           hidden={!showLocalSidebar}
@@ -1748,8 +1687,8 @@ ${bodyRows}
           </div>
         </aside>
 
-        <div className="xf-watchlist-main">
-          <div className="xf-watchlist-card xf-noise-overlay">
+        <div className="xf-watchlist-main w-full max-w-full">
+          <div className="xf-watchlist-card xf-noise-overlay w-full max-w-full">
             <header className="xf-watchlist-card-header">
               {editMode ? (
                 <input
@@ -1978,9 +1917,9 @@ ${bodyRows}
             {!loading && rows.length > 0 ? (
               <div
                 ref={tableScrollParentRef}
-                className={`xf-watchlist-table-wrap${watchlistVirtualize ? " xf-watchlist-table-wrap--virtual" : ""}`}
+                className={`xf-watchlist-table-wrap w-full max-w-full overflow-x-auto${watchlistVirtualize ? " xf-watchlist-table-wrap--virtual" : ""}`}
               >
-                <table className={`xf-watchlist-table${watchlistVirtualize ? " xf-watchlist-table--virtual" : ""}`}>
+                <table className={`xf-watchlist-table w-full max-w-full${watchlistVirtualize ? " xf-watchlist-table--virtual" : ""}`}>
                   <thead>
                     <tr>
                       <th scope="col">Icon</th>
@@ -1999,7 +1938,7 @@ ${bodyRows}
                           type="button"
                           onClick={() => toggleWatchlistSort("instrument")}
                         >
-                          Sym
+                          SYMBOL
                           <span aria-hidden className="xf-watchlist-sort-indicator">
                             {sort.column === "instrument" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
                           </span>
@@ -2088,18 +2027,15 @@ ${bodyRows}
                     >
                       {rowVirtualizer.getVirtualItems().map((vr) => {
                         const row = filteredSortedRows[vr.index]!;
-                        const symU = row.symbol.trim().toUpperCase();
                         return (
                           <WatchlistRowTr
                             key={`wl-${vr.index}-${row.addedAt}-${row.symbol}`}
-                            addHoldingsBusy={addingHoldingsSymbol === symU}
                             aiSuggestBusy={aiSuggestSymbol === row.symbol}
                             editMode={editMode}
-                            enableAddToHoldings={enableAddToHoldingsUi}
                             listLoadedAtLabel={listLoadedAtLabel}
                             mutating={mutating}
                             patchRowMeta={patchRowMeta}
-                            portfolioId={portfolioId}
+                            patchRowEntryPrice={patchRowEntryPrice}
                             portfolioTotalUsd={portfolioTotalUsd}
                             removingThisSymbol={removingSymbol === row.symbol}
                             row={row}
@@ -2113,11 +2049,8 @@ ${bodyRows}
                               height: `${vr.size}px`,
                               transform: `translateY(${vr.start}px)`
                             }}
-                            symbolInPortfolioStocks={portfolioStockSet.has(symU)}
                             updateDraftRow={updateDraftRow}
-                            onAddToHoldings={(r) => void addSymbolToHoldings(r)}
                             onAiSuggest={onAiSuggestRow}
-                            onAskAdvisor={onAskAdvisor}
                             onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
                             onRemoveSymbol={onRemoveSymbol}
                           />
@@ -2127,26 +2060,20 @@ ${bodyRows}
                   ) : (
                     <tbody>
                       {filteredSortedRows.map((row, rowIndex) => {
-                        const symU = row.symbol.trim().toUpperCase();
                         return (
                           <WatchlistRowTr
                             key={`wl-${rowIndex}-${row.addedAt}-${row.symbol}`}
-                            addHoldingsBusy={addingHoldingsSymbol === symU}
                             aiSuggestBusy={aiSuggestSymbol === row.symbol}
                             editMode={editMode}
-                            enableAddToHoldings={enableAddToHoldingsUi}
                             listLoadedAtLabel={listLoadedAtLabel}
                             mutating={mutating}
                             patchRowMeta={patchRowMeta}
-                            portfolioId={portfolioId}
+                            patchRowEntryPrice={patchRowEntryPrice}
                             portfolioTotalUsd={portfolioTotalUsd}
                             removingThisSymbol={removingSymbol === row.symbol}
                             row={row}
-                            symbolInPortfolioStocks={portfolioStockSet.has(symU)}
                             updateDraftRow={updateDraftRow}
-                            onAddToHoldings={(r) => void addSymbolToHoldings(r)}
                             onAiSuggest={onAiSuggestRow}
-                            onAskAdvisor={onAskAdvisor}
                             onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
                             onRemoveSymbol={onRemoveSymbol}
                           />
