@@ -13,10 +13,7 @@ import type { SubscriptionPlan, Tenant } from "@/modules/identity/types";
 
 export type { TenantWorkspaceLimits };
 
-/**
- * Tenant-wide `workspaceLimits` row only (ignores `planOverrides`).
- * **xChat ask** daily/hourly caps use this so Admin “tenant row” matches `POST /api/xchat/ask` for every app user on the tenant.
- */
+/** Tenant-wide `workspaceLimits` row only (ignores `planOverrides`). */
 export function tenantBaseWorkspaceLimits(tenant: Tenant | null): TenantWorkspaceLimits {
   return mergeTenantWorkspaceLimits(tenant?.workspaceLimits ?? null);
 }

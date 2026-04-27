@@ -32,8 +32,8 @@ import {
 } from "@/lib/xchat/xchat-pending-prompt";
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
-import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
+import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
 
 const XchatThreadPanelLazy = dynamic(
   () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),
@@ -1189,15 +1189,15 @@ export function XchatConversation({
         code?: string;
         dailyLimit?: number;
         hourlyLimit?: number;
-        xchatLimitSource?: "tenant_workspace_row";
+        xchatLimitSource?: "tenant_plan_effective";
       };
 
       if (!response.ok || !payload.data) {
         const limitSuffix =
           payload.code === "xchat_daily_limit_exceeded" && typeof payload.dailyLimit === "number"
-            ? ` Workspace daily cap: ${payload.dailyLimit} prompts per UTC day (Admin → Tenant workspace → tenant row xChat/d; same value for all users on this tenant).`
+            ? ` Workspace daily cap: ${payload.dailyLimit} prompts per UTC day (effective tenant+plan limit from Admin → Tenant workspace, including plan overrides when configured).`
             : payload.code === "xchat_hourly_limit_exceeded" && typeof payload.hourlyLimit === "number"
-              ? ` Workspace hourly cap: ${payload.hourlyLimit} prompts per UTC hour (tenant row xChat/hr).`
+              ? ` Workspace hourly cap: ${payload.hourlyLimit} prompts per UTC hour (effective tenant+plan limit).`
               : "";
         setMessages((prev) => {
           const added = [

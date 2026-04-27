@@ -14,7 +14,7 @@ import {
 export type TenantWorkspaceLimits = {
   /** xOptions deck / follow-up views per user — labeled **per hour** on `/account/billing` and admin workspace limits; enforced via `app_feature_daily_usage` (UTC day bucket) until hourly metering ships. */
   userXoptionsLimit: number;
-  /** xChat prompts per user per **UTC calendar day** — tenant `workspaceLimits` row only for `POST /api/xchat/ask` (`tenantBaseWorkspaceLimits` in `lib/tenant-workspace-limits.ts`; `planOverrides` xChat/d does not apply). */
+  /** xChat prompts per user per **UTC calendar day**; `POST /api/xchat/ask` enforces the effective tenant + plan value (base + `planOverrides`). */
   userChatLimit: number;
   /**
    * xChat prompts per user per **UTC clock hour**. Omitted or `0` = no hourly product cap (daily + per-minute burst still apply).

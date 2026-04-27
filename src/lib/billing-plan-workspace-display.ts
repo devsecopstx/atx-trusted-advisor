@@ -20,7 +20,7 @@ import type { Tenant } from "@/modules/identity/types";
 export const BILLING_WORKSPACE_LABEL_XOPTIONS = "xOptions views / hr";
 /** UTC clock-hour cap when tenant sets `userChatHourlyLimit` &gt; 0; otherwise billing shows Unlimited. */
 export const BILLING_WORKSPACE_LABEL_XCHAT_HOURLY = "xChat prompts / hr (UTC)";
-/** Tenant `workspaceLimits.userChatLimit` — same source as `POST /api/xchat/ask` day bucket (not plan override rows). */
+/** Effective tenant + plan `userChatLimit` (base + `planOverrides`) for `/account/billing` xChat day row. */
 export const BILLING_WORKSPACE_LABEL_XCHAT_DAILY = "xChat prompts / day (UTC)";
 export const BILLING_WORKSPACE_LABEL_CHANGE_PERSONA = "Change persona";
 export const BILLING_WORKSPACE_LABEL_CHAT_HISTORY = "Chat history max (turns)";

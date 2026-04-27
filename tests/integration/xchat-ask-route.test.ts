@@ -893,6 +893,48 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.headers.get("retry-after")).toBe("30");
   });
 
+  it("applies plan override chat caps for non-admin usage limiter input", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "premiumplus@atxfinance.ai",
+      username: "xf-premiumplus",
+      roles: ["viewer"]
+    });
+    identityMocks.getCoreUserById.mockResolvedValueOnce({
+      subscriptionPlan: "premium_plus"
+    } as never);
+    identityMocks.getTenantByHexId.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439022"),
+      workspaceLimits: {
+        userChatLimit: 1,
+        userChatHourlyLimit: 1,
+        planOverrides: {
+          premium_plus_monthly: {
+            userChatLimit: 1000,
+            userChatHourlyLimit: 250
+          }
+        }
+      }
+    } as never);
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "plan override limiter path" })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(usageLimitMocks.enforceDistributedAskUsageLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dailyPromptLimit: 1000,
+        hourlyPromptLimit: 250
+      })
+    );
+  });
+
   it("returns 400 for invalid ask payload", async () => {
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {

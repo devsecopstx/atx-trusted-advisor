@@ -7,7 +7,7 @@ Per-tenant quotas for the Next.js BFF. Defaults are code-defined; overrides live
 | Key | Default | Enforcement |
 |-----|---------|-------------|
 | `userXoptionsLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** `app_feature_daily_usage` (`feature: xoptions_deck`) UTC day bucket per user+tenant. Signed-in app users with `canUserLogin`; `global_admin` bypass. |
-| `userChatLimit` | 10 | **UTC calendar day** cap on xChat asks. **Runtime:** **tenant `workspaceLimits` row only** (`tenantBaseWorkspaceLimits` in `src/lib/tenant-workspace-limits.ts` + `POST /api/xchat/ask`) — **`planOverrides.*.userChatLimit` does not change ask enforcement**. `global_admin` bypasses workspace caps. |
+| `userChatLimit` | 10 | **UTC calendar day** cap on xChat asks. **Runtime:** `POST /api/xchat/ask` enforces the **effective tenant+plan limit** (base `workspaceLimits` + `planOverrides.<tier>.userChatLimit` when configured). `global_admin` bypasses workspace caps. |
 | `userChatHourlyLimit` | — (omit or `0` = off) | Optional **UTC clock-hour** cap; when &gt; 0, enforced in `ask-usage-limits` before the day bucket. Plan overrides use `0` to clear an inherited hourly cap. |
 | `tenantPortfolioLimit` | 1 | New portfolio rows in tenant for that user (admin + app flows). |
 | `portfolioAccountLimit` | 1 | New `portfolio_accounts` per portfolio. |

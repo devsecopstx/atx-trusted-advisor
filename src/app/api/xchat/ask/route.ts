@@ -13,7 +13,6 @@ import {
 } from "@/lib/server-request-cache";
 import {
     effectiveWorkspaceLimitsForTenantAndPlan,
-    tenantBaseWorkspaceLimits
 } from "@/lib/tenant-workspace-limits";
 import {
     respondWithXaiToolLoop,
@@ -263,9 +262,10 @@ export async function POST(request: Request) {
   let dailyPromptCap: number | undefined;
   let hourlyPromptCap: number | undefined;
   if (!isAdminSession) {
-    const xchatAskWorkspaceLimits = tenantBaseWorkspaceLimits(tenantForDebug);
-    // Tenant `workspaceLimits` row only — not `planOverrides` tier rows — so Admin “xChat prompt caps
-    // (tenant row)” is exactly what `/api/xchat/ask` enforces for all app users on this tenant.
+    const xchatAskWorkspaceLimits = effectiveWorkspaceLimitsForTenantAndPlan(
+      tenantForDebug,
+      subscriptionPlan
+    );
     dailyPromptCap = xchatAskWorkspaceLimits.userChatLimit;
     const h = xchatAskWorkspaceLimits.userChatHourlyLimit;
     hourlyPromptCap = typeof h === "number" && h > 0 ? h : undefined;
@@ -304,7 +304,7 @@ export async function POST(request: Request) {
           typeof usageCheck.dailyLimit === "number"
             ? {
                 dailyLimit: usageCheck.dailyLimit,
-                xchatLimitSource: "tenant_workspace_row" as const
+                xchatLimitSource: "tenant_plan_effective" as const
               }
             : {}),
           ...(usageCheck.code === "xchat_hourly_limit_exceeded" &&
