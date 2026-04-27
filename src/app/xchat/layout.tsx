@@ -14,7 +14,10 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "xChat",
-  description: `xChat for market education and research workflows. ${EDUCATIONAL_ONLY_SHORT}`
+  description: `xChat for market education and research workflows. ${EDUCATIONAL_ONLY_SHORT}`,
+  alternates: {
+    canonical: "/xchat"
+  }
 };
 
 type XchatLayoutProps = {

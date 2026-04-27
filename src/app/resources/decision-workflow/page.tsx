@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: "Decision Workflow | Resources",
   description:
     "End-to-end decision workflow for options users: discover, analyze, build, execute, and manage positions.",
+  alternates: {
+    canonical: "/resources/decision-workflow"
+  },
   openGraph: {
     title: "Decision Workflow | Resources",
     description:

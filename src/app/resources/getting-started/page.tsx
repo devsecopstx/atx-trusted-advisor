@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: "Getting Started with Options | Resources",
   description:
     "Beginner-friendly guide to investing with options: onboarding, daily use, strategies, and risk disclosures.",
+  alternates: {
+    canonical: "/resources/getting-started"
+  },
   openGraph: {
     title: "Getting Started with Options | Resources",
     description:

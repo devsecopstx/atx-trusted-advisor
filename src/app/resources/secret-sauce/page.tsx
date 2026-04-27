@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: "Secret Sauce | Resources",
   description:
     "How xChat produces higher-quality answers: workspace context, blended search, live checks, and tool-loop synthesis.",
+  alternates: {
+    canonical: "/resources/secret-sauce"
+  },
   openGraph: {
     title: "Secret Sauce | Resources",
     description:

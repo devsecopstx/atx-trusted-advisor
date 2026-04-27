@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: "About aTx Trusted Advisory | Resources",
   description:
     "Overview of aTx Trusted Advisory for high-net-worth families and their advisors in Austin — features, benefits, and who it's for.",
+  alternates: {
+    canonical: "/resources/about"
+  },
   openGraph: {
     title: "About aTx Trusted Advisory | Resources",
     description:

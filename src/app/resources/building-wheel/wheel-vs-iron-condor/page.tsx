@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: "Wheel vs Iron Condor | Resources",
   description:
     "Side-by-side comparison of the options wheel income cycle versus an iron condor credit structure.",
+  alternates: {
+    canonical: "/resources/building-wheel/wheel-vs-iron-condor"
+  },
   openGraph: {
     title: "Wheel vs Iron Condor | Resources",
     description:

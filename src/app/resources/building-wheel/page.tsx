@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: "Wheel Strategy Playbook | Resources",
   description:
     "Guide to building the wheel strategy: covered call cadence, premium targets, and risk controls.",
+  alternates: {
+    canonical: "/resources/building-wheel"
+  },
   openGraph: {
     title: "Wheel Strategy Playbook | Resources",
     description:
