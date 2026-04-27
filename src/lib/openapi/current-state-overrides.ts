@@ -542,6 +542,25 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "404": jsonResponse("Report token is missing, invalid, or expired.", "ErrorResponse")
     }
   },
+  "POST /api/reports/scan/apply-watchlist": {
+    summary: "Apply one options scan row to watchlist",
+    description:
+      "Session-scoped one-click mutation used by options scan report rows. Upserts the watchlist symbol metadata and can optionally create a portfolio price alert in the same request.",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("OptionsScanApplyWatchlistRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Row applied to watchlist.", "OptionsScanApplyWatchlistResponseEnvelope"),
+      "400": jsonResponse("Invalid JSON payload.", "ValidationErrorResponse"),
+      "401": json401Session(),
+      "404": jsonResponse("Default portfolio or watchlist not found.", "ErrorResponse")
+    }
+  },
   "POST /api/internal/scheduler/execute-task": {
     summary: "Execute one Mongo-defined scheduled task on Next (JVM delegate)",
     description:
@@ -662,7 +681,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Failed to build ops summary.", "ErrorResponse")
     }
   },
-  "GET /api/admin/tenants/register": {
+  "GET /api/admin/tenants": {
     summary: "Tenant register (platform directory)",
     description:
       "global_admin only. Lists every `core_tenants` row with id, slug, name, platform-default flag, `membershipCount` (all `core_tenant_memberships` for that tenant), optional xChat team KB id/name from `tenantPreferences` (`xchat_team_attachments_collection_id` / `xchat_team_attachments_collection_name`), stored `workspaceLimits` and `tenantPreferences` (JSON objects or null), and `tenant_admin` memberships (email, display name, user id, default session marker). Admin UI (`/admin/tenant-register`) also surfaces last-four id, accent preview from `tenantPreferences.xf_accent_color`, Edit → branding (`/admin/tenant-register/{tenantId}/edit`) or **Workspace limits** (`/admin/tenant-register/{tenantId}/workspace-limits`), Delete when `membershipCount` is 0, and collapsible JSON for workspace limits / preferences.",
@@ -673,7 +692,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
-  "POST /api/admin/tenants/create": {
+  "POST /api/admin/tenants": {
     summary: "Create or update tenant (spec-equivalent, no YAML file)",
     description:
       "global_admin only. Same Mongo contract as `npm run generate:tenant-spec` + `npm run seed:tenant` — upserts `core_tenants` by slug and optionally provisions `initialTenantAdmin` on `core_users` / `core_tenant_memberships`. **Next-only** (not BFF-proxied to Spring).",
@@ -1030,8 +1049,19 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
   },
   OptionsScanReportRow: {
     type: "object",
-    required: ["source", "symbol", "recommendedAction", "why", "urgency", "targetWindow", "confidence"],
+    required: [
+      "rowId",
+      "source",
+      "symbol",
+      "recommendedAction",
+      "why",
+      "urgency",
+      "targetWindow",
+      "confidence",
+      "applyToWatchlist"
+    ],
     properties: {
+      rowId: { type: "string" },
       source: { type: "string", enum: ["holding", "watchlist"] },
       symbol: { type: "string" },
       strike: { type: "number" },
@@ -1045,7 +1075,18 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       why: { type: "string" },
       urgency: { type: "string", enum: ["high", "med", "low"] },
       targetWindow: { type: "string" },
-      confidence: { type: "string", enum: ["high", "medium", "low"] }
+      confidence: { type: "string", enum: ["high", "medium", "low"] },
+      applyToWatchlist: refSchema("OptionsScanReportRowApplyToWatchlistAction")
+    }
+  },
+  OptionsScanReportRowApplyToWatchlistAction: {
+    type: "object",
+    required: ["type", "symbol", "allowPriceAlert", "defaultPriceAlertSeverity"],
+    properties: {
+      type: { type: "string", enum: ["apply_to_watchlist"] },
+      symbol: { type: "string" },
+      allowPriceAlert: { type: "boolean" },
+      defaultPriceAlertSeverity: { type: "string", enum: ["info"] }
     }
   },
   OptionsScanShareScanData: {
@@ -1094,6 +1135,64 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           createdAt: { type: "string", format: "date-time" },
           expiresAt: { type: "string", format: "date-time" },
           accessCount: { type: "integer", minimum: 1 }
+        }
+      }
+    }
+  },
+  OptionsScanApplyWatchlistRequest: {
+    type: "object",
+    required: ["row"],
+    properties: {
+      row: refSchema("OptionsScanReportRow"),
+      createPriceAlert: { type: "boolean" },
+      priceAlertMinAbsMovePercent: { type: "number", minimum: 0.1, maximum: 100 },
+      priceAlert: {
+        type: "object",
+        properties: {
+          severity: { type: "string", enum: ["info", "warning", "critical"] },
+          title: { type: "string", maxLength: 200 },
+          body: { type: "string", maxLength: 4000 }
+        }
+      }
+    }
+  },
+  OptionsScanApplyWatchlistResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["rowId", "symbol", "portfolioId", "watchlist", "priceAlert"],
+        properties: {
+          rowId: { type: "string" },
+          symbol: { type: "string" },
+          portfolioId: { type: "string" },
+          watchlist: {
+            type: "object",
+            required: ["symbolCount", "applied", "alreadyPresent"],
+            properties: {
+              symbolCount: { type: "integer", minimum: 0 },
+              applied: { type: "boolean" },
+              alreadyPresent: { type: "boolean" }
+            }
+          },
+          priceAlert: {
+            nullable: true,
+            oneOf: [
+              {
+                type: "object",
+                required: ["_id", "title", "body", "severity", "symbol", "createdAt"],
+                properties: {
+                  _id: { type: "string" },
+                  title: { type: "string" },
+                  body: { type: "string", nullable: true },
+                  severity: { type: "string", enum: ["info", "warning", "critical"] },
+                  symbol: { type: "string", nullable: true },
+                  createdAt: { type: "string", format: "date-time" }
+                }
+              }
+            ]
+          }
         }
       }
     }

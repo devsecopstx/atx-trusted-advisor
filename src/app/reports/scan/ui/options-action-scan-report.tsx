@@ -1,5 +1,12 @@
 "use client";
 
+import {
+    QueryClient,
+    QueryClientProvider,
+    useMutation,
+    useQuery,
+    useQueryClient
+} from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import Link from "next/link";
@@ -39,6 +46,34 @@ type OptionsActionScanReportProps = {
   title?: string;
   showHeaderSummary?: boolean;
 };
+
+type ApplyWatchlistResponse = {
+  data: {
+    rowId: string;
+    symbol: string;
+    portfolioId: string;
+    watchlist: {
+      symbolCount: number;
+      applied: boolean;
+      alreadyPresent: boolean;
+    };
+    priceAlert: {
+      _id: string;
+      title: string;
+      body: string | null;
+      severity: "info" | "warning" | "critical";
+      symbol: string | null;
+      createdAt: string;
+    } | null;
+  };
+};
+
+type ApplyCacheRow = {
+  status: "pending" | "success" | "error";
+  message?: string;
+};
+
+type ApplyCacheData = Record<string, ApplyCacheRow>;
 
 type RowInstrument = {
   symbol: string;
@@ -279,17 +314,90 @@ function sectionRows(rows: OptionsActionReportRow[], source: OptionsActionReport
   return rows.filter((row) => row.source === source).sort((a, b) => compareRows(a, b, sort));
 }
 
-export function OptionsActionScanReport({
+function OptionsActionScanReportInner({
   data,
   shareMode = "enabled",
   title = "Options Action Scan",
   showHeaderSummary = true
 }: OptionsActionScanReportProps) {
+  const queryClient = useQueryClient();
   const [holdingSort, setHoldingSort] = useState<SortState>(defaultSort);
   const [watchlistSort, setWatchlistSort] = useState<SortState>(defaultSort);
+  const [createAlertByRowId, setCreateAlertByRowId] = useState<Record<string, boolean>>({});
   const [shareBusy, setShareBusy] = useState(false);
   const [share, setShare] = useState<ShareCreateResponse | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+  const applyCacheKey = useMemo(
+    () => ["options_scan_apply_watchlist", data.generatedAt] as const,
+    [data.generatedAt]
+  );
+  const { data: applyCache = {} } = useQuery<ApplyCacheData>({
+    queryKey: applyCacheKey,
+    queryFn: async () => ({}),
+    initialData: {},
+    enabled: false
+  });
+  const applyToWatchlistMutation = useMutation({
+    mutationFn: async (input: {
+      row: OptionsActionReportRow;
+      createPriceAlert: boolean;
+    }): Promise<ApplyWatchlistResponse> => {
+      const response = await fetch("/api/reports/scan/apply-watchlist", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          row: input.row,
+          createPriceAlert: input.createPriceAlert
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as
+        | ApplyWatchlistResponse
+        | { error?: string };
+      if (!response.ok || !("data" in payload)) {
+        throw new Error(
+          "error" in payload && typeof payload.error === "string"
+            ? payload.error
+            : "Could not apply row to watchlist"
+        );
+      }
+      return payload;
+    },
+    onMutate(input) {
+      queryClient.setQueryData<ApplyCacheData>(applyCacheKey, (previous) => ({
+        ...(previous ?? {}),
+        [input.row.rowId]: { status: "pending", message: "Applying…" }
+      }));
+    },
+    onSuccess(payload, input) {
+      queryClient.setQueryData<ApplyCacheData>(applyCacheKey, (previous) => {
+        const createdAlert = payload.data.priceAlert != null;
+        return {
+          ...(previous ?? {}),
+          [input.row.rowId]: {
+            status: "success",
+            message: createdAlert
+              ? "Applied + alert created"
+              : payload.data.watchlist.alreadyPresent
+                ? "Updated watchlist row"
+                : "Added to watchlist"
+          }
+        };
+      });
+    },
+    onError(error, input) {
+      queryClient.setQueryData<ApplyCacheData>(applyCacheKey, (previous) => ({
+        ...(previous ?? {}),
+        [input.row.rowId]: {
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Could not apply row to watchlist"
+        }
+      }));
+    }
+  });
   const generatedAtLabel = useMemo(() => new Date(data.generatedAt).toLocaleString(), [data.generatedAt]);
   const holdings = useMemo(
     () => sectionRows(data.rows, "holding", holdingSort),
@@ -299,6 +407,7 @@ export function OptionsActionScanReport({
     () => sectionRows(data.rows, "watchlist", watchlistSort),
     [data.rows, watchlistSort]
   );
+  const rowApplyEnabled = shareMode === "enabled";
   const closeCount = useMemo(() => closeRecommendationCount(data.rows), [data.rows]);
   const highConfidenceStc = useMemo(
     () =>
@@ -349,6 +458,14 @@ export function OptionsActionScanReport({
     } finally {
       setShareBusy(false);
     }
+  }
+
+  function handleApplyToWatchlist(row: OptionsActionReportRow) {
+    const createPriceAlert = Boolean(createAlertByRowId[row.rowId]);
+    applyToWatchlistMutation.mutate({
+      row,
+      createPriceAlert
+    });
   }
 
   return (
@@ -424,6 +541,13 @@ export function OptionsActionScanReport({
             sort={holdingSort}
             onSortChange={setHoldingSort}
             showGenericHelper={false}
+            applyEnabled={rowApplyEnabled}
+            applyCache={applyCache}
+            createAlertByRowId={createAlertByRowId}
+            onCreateAlertChange={(rowId, checked) =>
+              setCreateAlertByRowId((previous) => ({ ...previous, [rowId]: checked }))
+            }
+            onApplyToWatchlist={handleApplyToWatchlist}
           />
         </section>
 
@@ -436,6 +560,13 @@ export function OptionsActionScanReport({
             sort={watchlistSort}
             onSortChange={setWatchlistSort}
             showGenericHelper
+            applyEnabled={rowApplyEnabled}
+            applyCache={applyCache}
+            createAlertByRowId={createAlertByRowId}
+            onCreateAlertChange={(rowId, checked) =>
+              setCreateAlertByRowId((previous) => ({ ...previous, [rowId]: checked }))
+            }
+            onApplyToWatchlist={handleApplyToWatchlist}
           />
           {genericWatchlistCount > 0 ? (
             <p className="mt-2 text-xs text-[var(--xf-text-400)]">
@@ -462,6 +593,11 @@ function ReportTable(props: {
   sort: SortState;
   onSortChange: (sort: SortState) => void;
   showGenericHelper: boolean;
+  applyEnabled: boolean;
+  applyCache: ApplyCacheData;
+  createAlertByRowId: Record<string, boolean>;
+  onCreateAlertChange: (rowId: string, checked: boolean) => void;
+  onApplyToWatchlist: (row: OptionsActionReportRow) => void;
 }) {
   return (
     <>
@@ -476,12 +612,13 @@ function ReportTable(props: {
               <SortTh label="Exp" sortKey="expiry" {...props} />
               <th className="px-2 py-2 font-semibold uppercase tracking-[0.07em] text-[var(--xf-text-400)]">Why</th>
               <th className="px-2 py-2 font-semibold uppercase tracking-[0.07em] text-[var(--xf-text-400)]">Open</th>
+              <th className="px-2 py-2 font-semibold uppercase tracking-[0.07em] text-[var(--xf-text-400)]">Apply</th>
             </tr>
           </thead>
           <tbody>
             {props.rows.length === 0 ? (
               <tr>
-                <td className="px-2 py-3 text-[var(--xf-text-400)]" colSpan={7}>
+                <td className="px-2 py-3 text-[var(--xf-text-400)]" colSpan={8}>
                   No rows.
                 </td>
               </tr>
@@ -494,10 +631,13 @@ function ReportTable(props: {
                   instrument.type === "put" &&
                   instrument.exp?.endsWith("-05-01") &&
                   Math.abs((instrument.strike ?? 0) - 27.5) < 0.001;
+                const rowApplyState = props.applyCache[row.rowId];
+                const rowCreateAlert = Boolean(props.createAlertByRowId[row.rowId]);
+                const applyPending = rowApplyState?.status === "pending";
                 return (
                   <tr
                     className="border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] transition hover:bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)]"
-                    key={`${row.source}-${row.symbol}-${idx}`}
+                    key={row.rowId || `${row.source}-${row.symbol}-${idx}`}
                   >
                     <td className="px-2 py-2 text-[var(--xf-text-100)]">{instrumentLabel(row)}</td>
                     <td className="px-2 py-2">
@@ -543,6 +683,50 @@ function ReportTable(props: {
                         Open in xOptions
                       </Link>
                     </td>
+                    <td className="px-2 py-2">
+                      {props.applyEnabled ? (
+                        <div className="flex flex-col gap-1">
+                          <button
+                            className="inline-flex items-center justify-center rounded border border-[color-mix(in_srgb,var(--xf-gain-green)_45%,transparent)] px-2 py-1 text-[0.65rem] font-semibold text-[var(--xf-gain-green)] hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={applyPending}
+                            type="button"
+                            onClick={() => props.onApplyToWatchlist(row)}
+                          >
+                            {applyPending ? "Applying…" : "Apply to Watchlist"}
+                          </button>
+                          {row.applyToWatchlist.allowPriceAlert ? (
+                            <label className="inline-flex items-center gap-1 text-[0.62rem] text-[var(--xf-text-400)]">
+                              <input
+                                checked={rowCreateAlert}
+                                className="accent-[var(--xf-gain-green)]"
+                                disabled={applyPending}
+                                type="checkbox"
+                                onChange={(event) =>
+                                  props.onCreateAlertChange(
+                                    row.rowId,
+                                    event.currentTarget.checked
+                                  )
+                                }
+                              />
+                              Create price alert
+                            </label>
+                          ) : null}
+                          {rowApplyState?.message ? (
+                            <span
+                              className={
+                                rowApplyState.status === "error"
+                                  ? "text-[0.62rem] text-[var(--xf-danger-400)]"
+                                  : "text-[0.62rem] text-[var(--xf-text-300)]"
+                              }
+                            >
+                              {rowApplyState.message}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-[0.62rem] text-[var(--xf-text-500)]">—</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })
@@ -556,10 +740,13 @@ function ReportTable(props: {
           <p className="text-xs text-[var(--xf-text-400)]">No rows.</p>
         ) : (
           props.rows.map((row, idx) => {
+            const rowApplyState = props.applyCache[row.rowId];
+            const rowCreateAlert = Boolean(props.createAlertByRowId[row.rowId]);
+            const applyPending = rowApplyState?.status === "pending";
             return (
               <article
                 className="rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-2.5"
-                key={`${row.source}-${row.symbol}-mobile-${idx}`}
+                key={row.rowId || `${row.source}-${row.symbol}-mobile-${idx}`}
               >
                 <p className="text-sm font-semibold text-[var(--xf-text-100)]">{instrumentLabel(row)}</p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
@@ -586,12 +773,71 @@ function ReportTable(props: {
                 >
                   Open in xOptions
                 </Link>
+                {props.applyEnabled ? (
+                  <div className="mt-2 space-y-1">
+                    <button
+                      className="inline-flex w-full items-center justify-center rounded border border-[color-mix(in_srgb,var(--xf-gain-green)_45%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-gain-green)] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={applyPending}
+                      type="button"
+                      onClick={() => props.onApplyToWatchlist(row)}
+                    >
+                      {applyPending ? "Applying…" : "Apply to Watchlist"}
+                    </button>
+                    {row.applyToWatchlist.allowPriceAlert ? (
+                      <label className="inline-flex items-center gap-1 text-[0.62rem] text-[var(--xf-text-400)]">
+                        <input
+                          checked={rowCreateAlert}
+                          className="accent-[var(--xf-gain-green)]"
+                          disabled={applyPending}
+                          type="checkbox"
+                          onChange={(event) =>
+                            props.onCreateAlertChange(
+                              row.rowId,
+                              event.currentTarget.checked
+                            )
+                          }
+                        />
+                        Create price alert
+                      </label>
+                    ) : null}
+                    {rowApplyState?.message ? (
+                      <p
+                        className={
+                          rowApplyState.status === "error"
+                            ? "text-[0.62rem] text-[var(--xf-danger-400)]"
+                            : "text-[0.62rem] text-[var(--xf-text-300)]"
+                        }
+                      >
+                        {rowApplyState.message}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </article>
             );
           })
         )}
       </div>
     </>
+  );
+}
+
+export function OptionsActionScanReport(props: OptionsActionScanReportProps) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: Infinity,
+            gcTime: 10 * 60 * 1000
+          }
+        }
+      })
+  );
+  return (
+    <QueryClientProvider client={queryClient}>
+      <OptionsActionScanReportInner {...props} />
+    </QueryClientProvider>
   );
 }
 

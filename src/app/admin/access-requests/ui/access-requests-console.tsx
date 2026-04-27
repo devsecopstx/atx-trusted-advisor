@@ -244,7 +244,7 @@ export function AccessRequestsConsole() {
     void (async () => {
       try {
         const payload = await parseJson<{ data: TenantRegisterRow[] }>(
-          await fetch("/api/admin/tenants/register", { cache: "no-store" })
+          await fetch("/api/admin/tenants", { cache: "no-store" })
         );
         setTenants(payload.data ?? []);
       } catch {

@@ -21,7 +21,15 @@ export type OptionsActionUrgency = "high" | "med" | "low";
 export type OptionsActionConfidence = "high" | "medium" | "low";
 export type OptionsActionSource = "holding" | "watchlist";
 
+export type OptionsScanRowApplyToWatchlistAction = {
+  type: "apply_to_watchlist";
+  symbol: string;
+  allowPriceAlert: boolean;
+  defaultPriceAlertSeverity: "info";
+};
+
 export type OptionsActionReportRow = {
+  rowId: string;
   source: OptionsActionSource;
   symbol: string;
   strike?: number;
@@ -33,6 +41,7 @@ export type OptionsActionReportRow = {
   urgency: OptionsActionUrgency;
   targetWindow: string;
   confidence: OptionsActionConfidence;
+  applyToWatchlist: OptionsScanRowApplyToWatchlistAction;
 };
 
 export type OptionsActionReport = {
@@ -70,6 +79,11 @@ type OptionMarketSnapshot = {
   mid: number | null;
   isInTheMoney: boolean | null;
 };
+
+type ActionRecommendation = Omit<
+  OptionsActionReportRow,
+  "rowId" | "applyToWatchlist" | "source" | "symbol" | "strike" | "exp" | "type" | "qty"
+>;
 
 const OPTIONS_SCAN_DISCLAIMER =
   "Not financial advice. This is for informational purposes only. Past performance does not guarantee future results.";
@@ -248,7 +262,7 @@ async function fetchHoldingMarketSnapshot(
 function deriveHoldingAction(
   holding: NormalizedOptionHolding,
   market: OptionMarketSnapshot
-): Omit<OptionsActionReportRow, "source" | "symbol" | "strike" | "exp" | "type" | "qty"> {
+): ActionRecommendation {
   const isShort = holding.qty < 0;
   const dte = market.dte;
   const pnlPct =
@@ -343,7 +357,7 @@ function deriveWatchlistAction(input: {
   symbol: string;
   entryPrice?: number;
   spotPrice?: number;
-}): Omit<OptionsActionReportRow, "source" | "symbol" | "strike" | "exp" | "type" | "qty"> {
+}): ActionRecommendation {
   if (input.entryPrice != null && input.spotPrice != null) {
     if (input.spotPrice <= input.entryPrice * 1.02) {
       return {
@@ -378,6 +392,34 @@ function deriveWatchlistAction(input: {
     targetWindow: "monthly",
     confidence: "low"
   };
+}
+
+function buildReportRowId(row: Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist">, index: number): string {
+  const exp = row.exp ?? "na";
+  const contractType = row.type ?? "na";
+  return [
+    row.source,
+    row.symbol,
+    exp,
+    contractType,
+    row.recommendedAction,
+    String(index)
+  ].join(":");
+}
+
+function withApplyAction(
+  rows: Array<Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist">>
+): OptionsActionReportRow[] {
+  return rows.map((row, index) => ({
+    ...row,
+    rowId: buildReportRowId(row, index),
+    applyToWatchlist: {
+      type: "apply_to_watchlist",
+      symbol: row.symbol,
+      allowPriceAlert: true,
+      defaultPriceAlertSeverity: "info"
+    }
+  }));
 }
 
 export function renderOptionsActionReportMarkdown(input: {
@@ -474,7 +516,7 @@ export async function buildOptionsActionReport(
     .filter((row): row is NormalizedOptionHolding => row !== null);
 
   const quoteCache = new Map<string, number | null>();
-  const holdingRows: OptionsActionReportRow[] = [];
+  const holdingRows: Array<Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist">> = [];
   for (const holding of optionHoldings) {
     const market = await fetchHoldingMarketSnapshot(holding, quoteCache);
     const action = deriveHoldingAction(holding, market);
@@ -489,7 +531,7 @@ export async function buildOptionsActionReport(
     });
   }
 
-  const watchlistRows: OptionsActionReportRow[] = [];
+  const watchlistRows: Array<Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist">> = [];
   if (input.includeWatchlist !== false) {
     const watchlist = await getPortfolioWatchlist({
       userId: input.userId,
@@ -527,7 +569,7 @@ export async function buildOptionsActionReport(
     }
   }
 
-  const ranked = chooseHighestUrgency([...holdingRows, ...watchlistRows]);
+  const ranked = chooseHighestUrgency(withApplyAction([...holdingRows, ...watchlistRows]));
   const maxRows = isBasicTier
     ? MAX_BASIC_HOLDINGS_ROWS
     : Math.min(MAX_PRO_REPORT_ROWS, Math.max(10, planLimits.maxToolCalls * 4));

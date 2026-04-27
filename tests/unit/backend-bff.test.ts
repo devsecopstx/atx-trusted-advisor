@@ -137,7 +137,7 @@ describe("proxyPortfolioRequestToBackend (watchlist bypass)", () => {
   });
 });
 
-describe("proxyAdminUsersRequestToBackend (Next-first tenant register + user list)", () => {
+describe("proxyAdminUsersRequestToBackend (Next-first tenants + user list)", () => {
   const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
   beforeEach(() => {
@@ -153,11 +153,11 @@ describe("proxyAdminUsersRequestToBackend (Next-first tenant register + user lis
     delete process.env.ATXFINANCE_BACKEND_ORIGIN;
   });
 
-  it("does not forward GET /api/admin/tenants/register", async () => {
+  it("does not forward GET /api/admin/tenants", async () => {
     vi.resetModules();
     const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
     await expect(
-      proxyAdminUsersRequestToBackend(new Request("https://next.local/api/admin/tenants/register"))
+      proxyAdminUsersRequestToBackend(new Request("https://next.local/api/admin/tenants"))
     ).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });

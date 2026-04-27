@@ -15,9 +15,9 @@ vi.mock("@/lib/backend-bff", () => ({
   proxyAdminUsersRequestToBackend: vi.fn().mockResolvedValue(null)
 }));
 
-import { GET as getTenantRegister } from "@/app/api/admin/tenants/register/route";
+import { GET as getTenantRegister } from "@/app/api/admin/tenants/route";
 
-describe("GET /api/admin/tenants/register", () => {
+describe("GET /api/admin/tenants", () => {
   beforeEach(() => {
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
@@ -50,7 +50,7 @@ describe("GET /api/admin/tenants/register", () => {
   });
 
   it("returns tenant register rows for global_admin", async () => {
-    const response = await getTenantRegister(new Request("http://test/api/admin/tenants/register"));
+    const response = await getTenantRegister(new Request("http://test/api/admin/tenants"));
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       data: Array<{
@@ -77,7 +77,7 @@ describe("GET /api/admin/tenants/register", () => {
     authMocks.requireAdminSession.mockResolvedValueOnce(
       NextResponse.json({ error: "Forbidden" }, { status: 403 })
     );
-    const response = await getTenantRegister(new Request("http://test/api/admin/tenants/register"));
+    const response = await getTenantRegister(new Request("http://test/api/admin/tenants"));
     expect(response.status).toBe(403);
     expect(identityMocks.listTenantRegisterForAdmin).not.toHaveBeenCalled();
   });

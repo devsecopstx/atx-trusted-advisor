@@ -1598,7 +1598,7 @@ describe("xchat ask route collection retrieval", () => {
     createSpy.mockRestore();
   });
 
-  it("requires explicit mutation confirmation for watchlist mutate intents", async () => {
+  it("processes watchlist mutate intents without returning confirmation gate copy", async () => {
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",
@@ -1610,10 +1610,11 @@ describe("xchat ask route collection retrieval", () => {
     );
     expect(response.status).toBe(200);
     const payload = (await response.json()) as {
-      data?: { needsMutationConfirm?: boolean; confirmMutationCode?: string };
+      data?: { needsMutationConfirm?: boolean; response?: string };
     };
-    expect(payload.data?.needsMutationConfirm).toBe(true);
-    expect(payload.data?.confirmMutationCode).toBe("confirm_before_mutate");
-    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+    expect(payload.data?.needsMutationConfirm).not.toBe(true);
+    expect(payload.data?.response).toBe("xAI answer");
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalled();
   });
+
 });

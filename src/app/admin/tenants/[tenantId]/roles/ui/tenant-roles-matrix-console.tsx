@@ -222,7 +222,7 @@ export function TenantRolesMatrixConsole({ tenantId }: Props) {
     setError(null);
     setStatus(null);
     try {
-      const tenants = await parseJson<TenantRegisterPayload>(await fetch("/api/admin/tenants/register"));
+      const tenants = await parseJson<TenantRegisterPayload>(await fetch("/api/admin/tenants"));
       const failures: string[] = [];
       for (const row of tenants.data) {
         const response = await fetch(`/api/admin/tenants/${encodeURIComponent(row.tenantId)}/roles`, {

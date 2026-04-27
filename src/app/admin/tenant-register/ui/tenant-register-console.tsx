@@ -135,7 +135,7 @@ export function TenantRegisterConsole() {
     setStatus("Loading…");
     try {
       const payload = await parseJson<{ data: TenantRegisterRow[] }>(
-        await fetch("/api/admin/tenants/register")
+        await fetch("/api/admin/tenants")
       );
       setRows(payload.data);
       setStatus(`Loaded ${payload.data.length} tenant(s).`);

@@ -3,12 +3,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import { getDb } from "@/lib/mongodb";
 import { DEFAULT_TENANT_ACCENT_HEX, normalizeXfAccentColor } from "@/lib/tenant-accent-color";
 import { XF_BRAND_PALETTE_IDS } from "@/lib/tenant-branding-palette";
 import { MAX_XF_HERO_ICON_URL_CHARS } from "@/lib/tenant-hero-icon-url";
 import { MAX_XF_TENANT_LOGO_URL_CHARS } from "@/lib/tenant-logo-url";
 import { parseTenantSpecV1Document, sanitizeWorkspaceLimitsPartial } from "@/lib/tenant-spec-v1-parse";
+import { listTenantRegisterForAdmin } from "@/modules/identity/repository";
 import type { PlatformRoleForRoutes } from "@/modules/platform/app-user-route-catalog";
 import { getAppUserRouteCatalog } from "@/modules/platform/app-user-route-catalog";
 import { isPathVisibleForRole, parseTenantRolesByRole } from "@/modules/platform/tenant-route-policy";
@@ -101,6 +103,21 @@ function bodyToSpecV1Doc(
   return { version: 1, tenant };
 }
 
+export async function GET(request: Request) {
+  const proxied = await proxyAdminUsersRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
+  const session = await requireAdminSession();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const data = await listTenantRegisterForAdmin();
+  return NextResponse.json({ data });
+}
+
 /**
  * POST — create/upsert a tenant from the same contract as `generate:tenant-spec` + `seed:tenant`
  * (no YAML file; writes directly to the app MongoDB). **global_admin** only. **Not** BFF-proxied.
@@ -160,7 +177,9 @@ export async function POST(request: Request) {
       }
     }
     const defaultLandingPathByRole = parsedBody.data.defaultLandingPathByRole ?? {};
-    const roleEntries = Object.entries(defaultLandingPathByRole) as Array<[PlatformRoleForRoutes, string]>;
+    const roleEntries = Object.entries(defaultLandingPathByRole) as Array<
+      [PlatformRoleForRoutes, string]
+    >;
     for (const [role, path] of roleEntries) {
       const normalizedPath = path.startsWith("/") ? path : `/${path}`;
       if (!isPathVisibleForRole(normalizedPath, role, routeVisibilityOverrides)) {
@@ -173,7 +192,11 @@ export async function POST(request: Request) {
       }
     }
     const tenantRoles = parseTenantRolesByRole(parsedBody.data.tenantRoles);
-    if (Object.keys(routeVisibilityOverrides).length > 0 || roleEntries.length > 0 || Object.keys(tenantRoles).length > 0) {
+    if (
+      Object.keys(routeVisibilityOverrides).length > 0 ||
+      roleEntries.length > 0 ||
+      Object.keys(tenantRoles).length > 0
+    ) {
       const prefSet: Record<string, unknown> = {};
       for (const [routeId, visible] of Object.entries(routeVisibilityOverrides)) {
         prefSet[`tenantPreferences.app_user_route_visibility_overrides.${routeId}`] = visible;

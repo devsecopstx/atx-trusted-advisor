@@ -4,11 +4,12 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import {
-  createOptionsScanSharedReport,
-  type OptionsScanReportScanData
+    createOptionsScanSharedReport,
+    type OptionsScanReportScanData
 } from "@/modules/xchat/options-scan-share-repository";
 
 const reportRowSchema = z.object({
+  rowId: z.string().trim().min(1).max(160),
   source: z.enum(["holding", "watchlist"]),
   symbol: z.string().trim().min(1).max(32),
   strike: z.number().positive().optional(),
@@ -19,7 +20,13 @@ const reportRowSchema = z.object({
   why: z.string().trim().min(1).max(500),
   urgency: z.enum(["high", "med", "low"]),
   targetWindow: z.string().trim().min(1).max(80),
-  confidence: z.enum(["high", "medium", "low"])
+  confidence: z.enum(["high", "medium", "low"]),
+  applyToWatchlist: z.object({
+    type: z.literal("apply_to_watchlist"),
+    symbol: z.string().trim().min(1).max(32),
+    allowPriceAlert: z.boolean(),
+    defaultPriceAlertSeverity: z.literal("info")
+  })
 });
 
 const createSharedReportSchema = z.object({

@@ -426,7 +426,7 @@ export function shouldProxyAdminUsersToBackend(): boolean {
  * Spring may lack the route (404) or a narrower contract than Next (extra query enums, joins, rate limits).
  */
 const ADMIN_USERS_BFF_NEXT_ONLY_GET_PATHS = new Set([
-  "/api/admin/tenants/register",
+  "/api/admin/tenants",
   "/api/admin/users",
   /** No `AdminLoginAuditController` on Spring — proxied → 404. */
   "/api/admin/login-audit",
@@ -439,7 +439,7 @@ const ADMIN_USERS_BFF_NEXT_ONLY_GET_PATHS = new Set([
 
 /**
  * When BFF is on, some admin **GET**s must stay on Next + Mongo:
- * - **`/api/admin/tenants/register`** — not implemented on Spring (proxied → 404); create-tenant is Next-only.
+ * - **`/api/admin/tenants`** — not implemented on Spring (proxied → 404); tenant create remains Next-only.
  * - **`/api/admin/users`** — Next enriches with **`tenantMemberships`**; Spring `listUsers` does not.
  * - **`/api/admin/login-audit`** — not implemented on Spring.
  * - **`/api/admin/audit`** — Next **`entityType`** / rate-limit contract must match the explorer UI.

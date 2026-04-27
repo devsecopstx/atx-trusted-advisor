@@ -248,7 +248,7 @@ export function CreateTenantConsole() {
         body.defaultLandingPathByRole = parsedLanding as Record<string, string>;
       }
 
-      const res = await fetch("/api/admin/tenants/create", {
+      const res = await fetch("/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)

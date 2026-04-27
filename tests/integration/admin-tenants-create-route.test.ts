@@ -17,9 +17,9 @@ vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/lib/mongodb", () => mongoMocks);
 vi.mock("@/modules/platform/tenant-spec-apply", () => applyMocks);
 
-import { POST as postCreateTenant } from "@/app/api/admin/tenants/create/route";
+import { POST as postCreateTenant } from "@/app/api/admin/tenants/route";
 
-describe("POST /api/admin/tenants/create", () => {
+describe("POST /api/admin/tenants", () => {
   const updateOne = vi.fn();
 
   beforeEach(() => {
@@ -45,7 +45,7 @@ describe("POST /api/admin/tenants/create", () => {
 
   it("creates tenant for global_admin", async () => {
     const response = await postCreateTenant(
-      new Request("http://test/api/admin/tenants/create", {
+      new Request("http://test/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -76,7 +76,7 @@ describe("POST /api/admin/tenants/create", () => {
 
   it("accepts tenant route policy defaults and visibility overrides", async () => {
     const response = await postCreateTenant(
-      new Request("http://test/api/admin/tenants/create", {
+      new Request("http://test/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,7 +92,7 @@ describe("POST /api/admin/tenants/create", () => {
 
   it("rejects disallowed role landing path", async () => {
     const response = await postCreateTenant(
-      new Request("http://test/api/admin/tenants/create", {
+      new Request("http://test/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -110,7 +110,7 @@ describe("POST /api/admin/tenants/create", () => {
 
   it("passes sanitized workspaceLimits into parsed spec", async () => {
     const response = await postCreateTenant(
-      new Request("http://test/api/admin/tenants/create", {
+      new Request("http://test/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -131,7 +131,7 @@ describe("POST /api/admin/tenants/create", () => {
 
   it("returns 400 for invalid workspaceLimits", async () => {
     const response = await postCreateTenant(
-      new Request("http://test/api/admin/tenants/create", {
+      new Request("http://test/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,7 +147,7 @@ describe("POST /api/admin/tenants/create", () => {
 
   it("merges branding fields into parsed spec", async () => {
     const response = await postCreateTenant(
-      new Request("http://test/api/admin/tenants/create", {
+      new Request("http://test/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -176,7 +176,7 @@ describe("POST /api/admin/tenants/create", () => {
 
   it("returns 400 for invalid slug", async () => {
     const response = await postCreateTenant(
-      new Request("http://test/api/admin/tenants/create", {
+      new Request("http://test/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -194,7 +194,7 @@ describe("POST /api/admin/tenants/create", () => {
       NextResponse.json({ error: "Forbidden" }, { status: 403 })
     );
     const response = await postCreateTenant(
-      new Request("http://test/api/admin/tenants/create", {
+      new Request("http://test/api/admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: "ok-slug", name: "Ok" })

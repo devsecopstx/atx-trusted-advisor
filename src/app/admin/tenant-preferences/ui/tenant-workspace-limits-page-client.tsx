@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
-import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { TenantWorkspaceLimitsPanel } from "@/app/admin/tenant-preferences/ui/tenant-workspace-limits-panel";
+import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 
 type Props = {
   /** Server-resolved fallback when query param is missing/invalid. */
@@ -45,7 +45,7 @@ export function TenantWorkspaceLimitsPageClient({ defaultTenantId }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/tenants/register", { cache: "no-store" });
+      const res = await fetch("/api/admin/tenants", { cache: "no-store" });
       if (!res.ok) {
         throw new Error(`Failed to load tenants (${res.status})`);
       }

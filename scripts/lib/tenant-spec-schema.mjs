@@ -2,7 +2,7 @@
  * Shared validation + workspace limit sanitization for tenant YAML specs
  * (`generate-tenant-spec.mjs`, `seed-tenant-from-spec.mjs`).
  *
- * **Mirror:** `src/lib/tenant-spec-v1-parse.ts` (admin `POST /api/admin/tenants/create`) — keep rules in sync.
+ * **Mirror:** `src/lib/tenant-spec-v1-parse.ts` (admin `POST /api/admin/tenants`) — keep rules in sync.
  */
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

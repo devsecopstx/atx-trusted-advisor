@@ -45,9 +45,9 @@ import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
-import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
 import { renderOptionsActionReportMarkdown } from "@/modules/xchat/options-action-scan";
+import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import {
     MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
     resolveXchatPersonaDeclaredCollectionIds,
@@ -104,7 +104,6 @@ const askSchema = z
     imageAttachment: xchatPasteImageAttachmentSchema.optional(),
     threadId: z.string().trim().min(1).max(128).optional(),
     strategyJobOptOut: z.boolean().optional(),
-    confirmMutations: z.boolean().optional(),
     recentMessages: z
       .array(
         z.object({
@@ -193,21 +192,6 @@ function isDirectWatchlistRequest(message: string): boolean {
   );
 }
 
-function isMutationIntentMessage(message: string): boolean {
-  const normalized = message.trim().toLowerCase();
-  if (!normalized) {
-    return false;
-  }
-  const hasMutationVerb =
-    normalized.includes(" add ") ||
-    normalized.startsWith("add ") ||
-    normalized.includes(" remove ") ||
-    normalized.startsWith("remove ") ||
-    normalized.includes(" delete ") ||
-    normalized.startsWith("delete ");
-  return hasMutationVerb && normalized.includes("watchlist");
-}
-
 export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
@@ -263,7 +247,6 @@ export async function POST(request: Request) {
     : messageRaw;
   const threadId = parsed.data.threadId?.trim() || undefined;
   const workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
-  const confirmMutations = parsed.data.confirmMutations === true;
   const isAdminSession = isGlobalAdmin(session.roles);
   let subscriptionPlan: SubscriptionPlan | undefined;
   let limiterRemainingMinute: number | undefined;
@@ -564,31 +547,6 @@ export async function POST(request: Request) {
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
           logId: chatLogId?.toHexString()
-        }
-      },
-      {
-        headers: buildLimiterHeaders({
-          remainingMinute: limiterRemainingMinute,
-          remainingHour: limiterRemainingHour,
-          remainingDay: limiterRemainingDay,
-          hourlyLimit: limiterHourlyLimit,
-          dailyLimit: limiterDailyLimit
-        })
-      }
-    );
-  }
-
-  if (!confirmMutations && isMutationIntentMessage(messageTrimmed)) {
-    const confirmCopy =
-      "This request looks like a watchlist mutation. Please confirm by sending the same ask with confirmMutations=true.";
-    return NextResponse.json(
-      {
-        data: {
-          response: confirmCopy,
-          needsMutationConfirm: true,
-          confirmMutationCode: "confirm_before_mutate",
-          model: "mutation_confirm_gate",
-          personaName: persona.name
         }
       },
       {

@@ -164,6 +164,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "reports"
   },
   {
+    path: "/api/reports/scan/apply-watchlist",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "reports"
+  },
+  {
     path: "/api/reports/wheel",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "reports"
@@ -581,13 +586,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tasks"
   },
   {
-    path: "/api/admin/tenants/register",
-    operations: [{ method: "GET", auth: "admin" }],
-    tag: "admin-tenants"
-  },
-  {
-    path: "/api/admin/tenants/create",
-    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    path: "/api/admin/tenants",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
     tag: "admin-tenants"
   },
   {
