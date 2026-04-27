@@ -200,11 +200,11 @@ export function AccountHoldingsCrudCard({
       </h2>
       <h3 className="portfolio-edit-holdings-card__table-title">Positions</h3>
       <p className="portfolio-edit-holdings-card__table-hint">
-        Consolidated view: <strong>Last</strong> and <strong>Day Δ</strong> use the underlying quote (Yahoo).{" "}
-        <strong>Value</strong> uses live stock marks; options show <strong>book</strong> (contracts × 100 × premium) until
-        option marks ship. Use <strong>Avg cost</strong> vs <strong>Last</strong> for baselines; the{" "}
-        <strong>Desk</strong> column saves a portfolio alert (prefilled body) to <strong>Alerts</strong> + optional desk
-        channels.
+        Consolidated view: <strong>Last</strong> and <strong>Day Δ</strong> use Yahoo quotes (stock rows use the
+        underlying; option rows use the option contract quote when available). <strong>Value</strong> uses live stock
+        marks; options show <strong>book</strong> (contracts × 100 × premium) until option marks ship. Use{" "}
+        <strong>Avg cost</strong> vs <strong>Last</strong> for baselines; the <strong>Desk</strong> column saves a
+        portfolio alert (prefilled body) to <strong>Alerts</strong> + optional desk channels.
       </p>
       {error ? (
         <p className="status-text status-error" role="alert">

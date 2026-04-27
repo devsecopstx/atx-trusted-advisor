@@ -7,7 +7,7 @@ import { ActivityPulseIcon, DeleteIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
-import { underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
+import { parseOccOptionSymbol, underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 function fmtUsd(n: number): string {
@@ -19,11 +19,45 @@ function fmtPct(n: number): string {
 }
 
 /** Equity root for Yahoo batch quotes + equity logos (OCC option lines → underlying). */
-function quoteLookupKey(p: SerializablePosition): string | null {
+function underlyingQuoteLookupKey(p: SerializablePosition): string | null {
   if (p.type === "stock" || p.type === "option") {
     return underlyingForYahooOptionsChain(p.symbol);
   }
   return null;
+}
+
+/** Option contract quote key for Last/Day on option rows. */
+function normalizeOptionContractQuoteKey(raw: string): string | null {
+  const upper = raw.trim().toUpperCase();
+  if (!upper) {
+    return null;
+  }
+  const withoutPrefix = upper.startsWith("O:") ? upper.slice(2) : upper;
+  return parseOccOptionSymbol(withoutPrefix) ? withoutPrefix : null;
+}
+
+/** Option contract quote key for Last/Day on option rows. */
+function optionQuoteLookupKey(p: SerializablePosition): string | null {
+  if (p.type !== "option") {
+    return null;
+  }
+  const explicitYahooRef = normalizeOptionContractQuoteKey(p.yahooRef);
+  if (explicitYahooRef) {
+    return explicitYahooRef;
+  }
+  const occInSymbol = normalizeOptionContractQuoteKey(p.symbol);
+  if (occInSymbol) {
+    return occInSymbol;
+  }
+  const upperSymbol = p.symbol.trim().toUpperCase();
+  const underlying = underlyingForYahooOptionsChain(upperSymbol).trim().toUpperCase();
+  if (!underlying || !/^\d{4}-\d{2}-\d{2}$/.test(p.expiration) || !Number.isFinite(p.strike) || p.strike <= 0) {
+    return null;
+  }
+  const expCompact = p.expiration.replaceAll("-", "").slice(2);
+  const typeChar = p.optionType === "put" ? "P" : "C";
+  const strikeCompact = String(Math.round(p.strike * 1000)).padStart(8, "0");
+  return `${underlying}${expCompact}${typeChar}${strikeCompact}`;
 }
 
 function optionLegLabel(p: SerializablePosition & { type: "option" }): string {
@@ -81,7 +115,7 @@ function rowMarkUsd(p: SerializablePosition, quotes: Record<string, SymbolLookup
     return Math.max(0, p.amount);
   }
   if (p.type === "stock") {
-    const u = quoteLookupKey(p);
+    const u = underlyingQuoteLookupKey(p);
     if (!u) {
       return p.shares * p.purchasePrice;
     }
@@ -118,11 +152,11 @@ function dayChangeSortValue(
   p: SerializablePosition,
   quotes: Record<string, SymbolLookupResult | null>
 ): number | null {
-  const u = quoteLookupKey(p);
-  if (!u) {
+  const key = p.type === "option" ? optionQuoteLookupKey(p) : underlyingQuoteLookupKey(p);
+  if (!key) {
     return null;
   }
-  const q = quotes[u];
+  const q = quotes[key];
   if (!q) {
     return null;
   }
@@ -236,8 +270,10 @@ export function AccountConsolidatedHoldingsTable({
   const quoteSymbols = useMemo(() => {
     const s = new Set<string>();
     for (const p of positions) {
-      const u = quoteLookupKey(p);
+      const u = underlyingQuoteLookupKey(p);
       if (u) s.add(u);
+      const optionQuote = optionQuoteLookupKey(p);
+      if (optionQuote) s.add(optionQuote);
     }
     return [...s];
   }, [positions]);
@@ -362,7 +398,7 @@ export function AccountConsolidatedHoldingsTable({
               <th scope="col">Position</th>
               <th scope="col" className="portfolio-consolidated-holdings__num">
                 Last
-                <span className="portfolio-consolidated-holdings__th-sub">underlying</span>
+                <span className="portfolio-consolidated-holdings__th-sub">quote</span>
               </th>
               <HoldingsSortHeader
                 alignEnd
@@ -392,19 +428,22 @@ export function AccountConsolidatedHoldingsTable({
           </thead>
         <tbody>
           {sortedPositions.map((p) => {
-            const u = quoteLookupKey(p);
+            const u = underlyingQuoteLookupKey(p);
             const q = u ? quotes[u] ?? null : null;
+            const optionQuoteKey = optionQuoteLookupKey(p);
+            const optionQuote = optionQuoteKey ? quotes[optionQuoteKey] ?? null : null;
+            const displayQuote = p.type === "option" ? optionQuote : q;
             const showQuote = p.type === "stock" || p.type === "option";
             const mark = rowMarkUsd(p, quotes);
             const pct = totalMark > 0 ? (mark / totalMark) * 100 : 0;
 
             const lastCell =
               showQuote && u ? (
-                loading && !q ? (
+                loading && !displayQuote ? (
                   <span className="portfolio-consolidated-holdings__muted">…</span>
-                ) : q?.price != null && Number.isFinite(q.price) ? (
+                ) : displayQuote?.price != null && Number.isFinite(displayQuote.price) ? (
                   <span className="portfolio-consolidated-holdings__mono">
-                    {fmtUsd(q.price)}
+                    {fmtUsd(displayQuote.price)}
                   </span>
                 ) : (
                   <span className="portfolio-consolidated-holdings__muted">—</span>
@@ -415,23 +454,23 @@ export function AccountConsolidatedHoldingsTable({
 
             const dayCell =
               showQuote && u ? (
-                loading && !q ? (
+                loading && !displayQuote ? (
                   <span className="portfolio-consolidated-holdings__muted">…</span>
-                ) : q?.change != null && Number.isFinite(q.change) ? (
+                ) : displayQuote?.change != null && Number.isFinite(displayQuote.change) ? (
                   <span
                     className={
-                      q.change > 0
+                      displayQuote.change > 0
                         ? "value-gain portfolio-consolidated-holdings__mono"
-                        : q.change < 0
+                        : displayQuote.change < 0
                           ? "value-loss portfolio-consolidated-holdings__mono"
                           : "value-neutral portfolio-consolidated-holdings__mono"
                     }
                   >
-                    {fmtUsd(q.change)}
-                    {q.changePercent != null && Number.isFinite(q.changePercent) ? (
+                    {fmtUsd(displayQuote.change)}
+                    {displayQuote.changePercent != null && Number.isFinite(displayQuote.changePercent) ? (
                       <span className="portfolio-consolidated-holdings__day-pct">
                         {" "}
-                        ({fmtPct(q.changePercent)})
+                        ({fmtPct(displayQuote.changePercent)})
                       </span>
                     ) : null}
                   </span>
