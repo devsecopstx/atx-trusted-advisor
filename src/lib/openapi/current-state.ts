@@ -169,6 +169,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "reports"
   },
   {
+    path: "/api/reports/options-scan",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "reports"
+  },
+  {
     path: "/api/reports/wheel",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "reports"
@@ -846,6 +851,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     path: "/api/portfolios/{portfolioId}/watchlist",
     operations: [
       { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true },
       { method: "PATCH", auth: "session", hasRequestBody: true }
     ],
     tag: "portfolios"

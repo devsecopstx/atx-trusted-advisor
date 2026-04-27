@@ -16,12 +16,14 @@ import {
     type WatchlistSymbol
 } from "@/modules/core-admin/types";
 import { summarizeNearestExpiryOptionsHighlight } from "@/modules/find-options/options-hot-scan";
+import { computeRsiFromCloses } from "@/modules/find-options/rsi";
 import { underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
 import {
     LOOKUP_ROUTE,
     lookupSymbols,
     type SymbolLookupResult
 } from "@/modules/watchlist/yahoo-symbol-lookup";
+import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 type RouteContext = {
   params: Promise<{
@@ -96,11 +98,75 @@ function toIsoSymbolRows(watchlist: Watchlist) {
 }
 
 const CHAIN_GLANCE_BATCH = 4;
+const TECHNICALS_BATCH = 4;
+const SPARKLINE_POINTS = 7;
+
+type WatchlistTechnicals = {
+  rsi14: number | null;
+  sparkline7d: number[] | null;
+};
+
+function normalizeSparkline(values: number[]): number[] | null {
+  const cleaned = values.filter((value) => Number.isFinite(value) && value > 0);
+  if (cleaned.length < 2) {
+    return null;
+  }
+  return cleaned.slice(-SPARKLINE_POINTS);
+}
+
+async function buildTechnicalsBySymbol(symbols: string[]): Promise<Map<string, WatchlistTechnicals>> {
+  const out = new Map<string, WatchlistTechnicals>();
+  if (symbols.length === 0) {
+    return out;
+  }
+  const yf = getYahooFinance2();
+  const period2 = new Date();
+  const period1 = new Date(period2.getTime() - 120 * 24 * 60 * 60 * 1000);
+  for (let i = 0; i < symbols.length; i += TECHNICALS_BATCH) {
+    const batch = symbols.slice(i, i + TECHNICALS_BATCH);
+    const rows = await Promise.all(
+      batch.map(async (symbol) => {
+        try {
+          const chart = (await yf.chart(symbol, {
+            period1,
+            period2,
+            interval: "1d"
+          })) as { quotes?: Array<{ close?: number | null }> };
+          const closes = (chart.quotes ?? [])
+            .map((quote) => quote.close)
+            .filter(
+              (close): close is number => typeof close === "number" && Number.isFinite(close) && close > 0
+            );
+          return {
+            symbol,
+            technicals: {
+              rsi14: computeRsiFromCloses(closes, 14),
+              sparkline7d: normalizeSparkline(closes)
+            }
+          };
+        } catch {
+          return {
+            symbol,
+            technicals: {
+              rsi14: null,
+              sparkline7d: null
+            }
+          };
+        }
+      })
+    );
+    for (const row of rows) {
+      out.set(row.symbol, row.technicals);
+    }
+  }
+  return out;
+}
 
 async function buildJsonPayload(
   watchlist: Watchlist,
   quotes: boolean,
-  chainGlance: boolean
+  chainGlance: boolean,
+  technicals: boolean
 ): Promise<Record<string, unknown>> {
   const rawSymbols = watchlist.symbols ?? [];
   const symbols = toIsoSymbolRows(watchlist);
@@ -123,7 +189,10 @@ async function buildJsonPayload(
           strike: number;
           impliedVolatilityPercent: number;
           openInterest: number;
+          optionVolume: number;
+          expirationDate: string | null;
         } | null;
+        technicals?: WatchlistTechnicals | null;
       }>
     | undefined;
 
@@ -136,9 +205,14 @@ async function buildJsonPayload(
           strike: number;
           impliedVolatilityPercent: number;
           openInterest: number;
+          optionVolume: number;
+          expirationDate: string | null;
         }
       | null
     >();
+    const technicalsBySymbol = technicals
+      ? await buildTechnicalsBySymbol(rawSymbols.map((s) => s.symbol.trim().toUpperCase()).filter(Boolean))
+      : new Map<string, WatchlistTechnicals>();
     if (chainGlance && rawSymbols.length > 0) {
       const keys = rawSymbols.map((s) => s.symbol.trim().toUpperCase()).filter(Boolean);
       for (let i = 0; i < keys.length; i += CHAIN_GLANCE_BATCH) {
@@ -155,7 +229,9 @@ async function buildJsonPayload(
                   contractType: g.contractType,
                   strike: g.strike,
                   impliedVolatilityPercent: g.impliedVolatilityPercent,
-                  openInterest: g.openInterest
+                  openInterest: g.openInterest,
+                  optionVolume: g.optionVolume,
+                  expirationDate: g.expirationDate
                 }
               : null
           );
@@ -170,9 +246,16 @@ async function buildJsonPayload(
         quote: map.get(key) ?? map.get(s.symbol.trim()) ?? null
       };
       if (chainGlance) {
-        return { ...base, chainGlance: glanceBySymbol.get(key) ?? null };
+        return {
+          ...base,
+          chainGlance: glanceBySymbol.get(key) ?? null,
+          ...(technicals ? { technicals: technicalsBySymbol.get(key) ?? null } : {})
+        };
       }
-      return base;
+      return {
+        ...base,
+        ...(technicals ? { technicals: technicalsBySymbol.get(key) ?? null } : {})
+      };
     });
   }
 
@@ -205,6 +288,7 @@ export async function GET(request: Request, context: RouteContext) {
   const searchParams = new URL(request.url).searchParams;
   const quotes = searchParams.get("quotes") === "1";
   const chainGlance = searchParams.get("chainGlance") === "1";
+  const technicals = searchParams.get("technicals") === "1";
   const selectedWatchlistId = searchParams.get("watchlistId")?.trim() ?? "";
   const fallbackWatchlist = await ensurePortfolioWatchlistForUser({
     userId: session.userId,
@@ -228,7 +312,7 @@ export async function GET(request: Request, context: RouteContext) {
     tenantId: session.tenantId
   });
 
-  const payload = await buildJsonPayload(watchlist, quotes, quotes && chainGlance);
+  const payload = await buildJsonPayload(watchlist, quotes, quotes && chainGlance, quotes && technicals);
   const watchlists = allWatchlists.map((row) => ({
     id: row._id?.toHexString() ?? "",
     name: row.name,
@@ -370,6 +454,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const quotes = new URL(request.url).searchParams.get("quotes") === "1";
   const chainGlance = new URL(request.url).searchParams.get("chainGlance") === "1";
-  const payload = await buildJsonPayload(updated, quotes, quotes && chainGlance);
+  const technicals = new URL(request.url).searchParams.get("technicals") === "1";
+  const payload = await buildJsonPayload(updated, quotes, quotes && chainGlance, quotes && technicals);
   return NextResponse.json(payload);
 }

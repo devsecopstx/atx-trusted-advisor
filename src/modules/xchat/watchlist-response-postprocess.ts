@@ -181,7 +181,7 @@ function renderEnhancedTableMarkdown(input: {
     });
     const distance = formatSignedPercent(distancePct);
     const ctaHref = buildXoptionsSymbolHref(symbol, input.portfolioId);
-    const cta = `[Open xOptions](${ctaHref} "Open xOptions for ${symbol}")`;
+    const cta = `[Open ${symbol} in xOptions](${ctaHref} "Open xOptions for ${symbol}")`;
     tableLines.push(`| ${symbol} | ${spot} | ${delta} | ${distance} | ${cta} |`);
   }
   return [
@@ -189,7 +189,7 @@ function renderEnhancedTableMarkdown(input: {
     "",
     ...tableLines,
     "",
-    "_Accessibility note: action links include the symbol in link text/title for clearer screen-reader narration._"
+    "_Accessibility note: each CTA includes the symbol in visible link text and title for clearer screen-reader narration._"
   ].join("\n");
 }
 

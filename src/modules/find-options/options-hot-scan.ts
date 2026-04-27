@@ -31,6 +31,7 @@ type YahooCallOrPut = {
   strike?: number;
   impliedVolatility?: number;
   openInterest?: number;
+  volume?: number;
 };
 
 type YahooOptionGroup = {
@@ -107,6 +108,8 @@ export type NearestExpiryOptionsGlance = {
   strike: number;
   impliedVolatilityPercent: number;
   openInterest: number;
+  optionVolume: number;
+  expirationDate: string | null;
 };
 
 /**
@@ -127,6 +130,23 @@ export async function summarizeNearestExpiryOptionsHighlight(
     }
     let best: NearestExpiryOptionsGlance | null = null;
     let bestScore = -1;
+    const expirationDate = (() => {
+      const raw = (result as { expirationDates?: Array<number | string | Date> }).expirationDates?.[0];
+      if (raw instanceof Date && Number.isFinite(raw.getTime())) {
+        return raw.toISOString().slice(0, 10);
+      }
+      if (typeof raw === "number" && Number.isFinite(raw)) {
+        const dt = new Date(raw * 1000);
+        return Number.isFinite(dt.getTime()) ? dt.toISOString().slice(0, 10) : null;
+      }
+      if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+          return trimmed;
+        }
+      }
+      return null;
+    })();
     const scoreIvOi = (ivPct: number, oi: number) => ivPct * Math.log1p(Math.max(0, oi));
 
     const consider = (c: YahooCallOrPut, contractType: "call" | "put") => {
@@ -139,6 +159,7 @@ export async function summarizeNearestExpiryOptionsHighlight(
         return;
       }
       const oi = typeof c.openInterest === "number" && Number.isFinite(c.openInterest) ? c.openInterest : 0;
+      const optionVolume = typeof c.volume === "number" && Number.isFinite(c.volume) ? c.volume : 0;
       const s = scoreIvOi(ivPct, oi);
       if (s > bestScore) {
         bestScore = s;
@@ -147,7 +168,9 @@ export async function summarizeNearestExpiryOptionsHighlight(
           contractType,
           strike,
           impliedVolatilityPercent: Math.round(ivPct * 10) / 10,
-          openInterest: oi
+          openInterest: oi,
+          optionVolume,
+          expirationDate
         };
       }
     };

@@ -14,6 +14,7 @@
 - Trigger examples: `"show my watchlist"`, `"list my watchlist"`, `"show watchlist for <portfolio>"`.
 - Route: `atx_function.watchlist_snapshot` as the primary tool call.
 - Enrichment: apply market pulse (live quote/change) before final rendering so response includes live **1D Δ** and **distance-to-target %** in a table.
+- Accessibility contract: use symbol-distinguishable CTA link text in the rendered table (for example, `Open TSLA in xOptions`), not repeated generic link labels.
 
 ### Required slot for `show watchlist for [portfolio]`
 

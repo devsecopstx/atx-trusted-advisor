@@ -12,10 +12,14 @@ const sessionMocks = vi.hoisted(() => ({
 const repositoryMocks = vi.hoisted(() => ({
   adminCreatePortfolioAlert: vi.fn(),
   adminListPortfolioAlerts: vi.fn(),
+  createUserWatchlist: vi.fn(),
   deleteAllPortfolioAlertsForPortfolio: vi.fn(),
+  getUserWatchlistById: vi.fn(),
   getDefaultPortfolio: vi.fn(),
   getPortfolioByIdForSessionUser: vi.fn(),
   listPortfolioAccounts: vi.fn(),
+  listUserWatchlists: vi.fn(),
+  mutatePortfolioWatchlistSymbols: vi.fn(),
   listPortfolioPositionsByAccount: vi.fn(),
   provisionDefaultPortfolioForUser: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
@@ -184,6 +188,26 @@ describe("portfolio API routes", () => {
     repositoryMocks.getPortfolioWatchlist.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439044" },
       name: "Default Watchlist"
+    });
+    repositoryMocks.listUserWatchlists.mockResolvedValue([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439044" },
+        name: "Default Watchlist",
+        isDefault: true,
+        symbols: [{ symbol: "TSLA", addedAt: new Date("2025-01-01T00:00:00.000Z") }],
+        updatedAt: new Date("2025-01-01T00:00:00.000Z")
+      }
+    ]);
+    repositoryMocks.getUserWatchlistById.mockResolvedValue(null);
+    repositoryMocks.createUserWatchlist.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439045" },
+      name: "New Watchlist",
+      symbols: [{ symbol: "TSLA", addedAt: new Date("2025-01-01T00:00:00.000Z") }]
+    });
+    repositoryMocks.mutatePortfolioWatchlistSymbols.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439044" },
+      name: "Default Watchlist",
+      symbols: [{ symbol: "TSLA", addedAt: new Date("2025-01-01T00:00:00.000Z") }]
     });
     repositoryMocks.upsertPositionForAccount.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439055" },

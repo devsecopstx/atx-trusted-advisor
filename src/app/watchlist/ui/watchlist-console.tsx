@@ -79,6 +79,13 @@ type WatchlistChainGlance = {
   strike: number;
   impliedVolatilityPercent: number;
   openInterest: number;
+  optionVolume: number;
+  expirationDate: string | null;
+};
+
+type WatchlistTechnicals = {
+  rsi14: number | null;
+  sparkline7d: number[] | null;
 };
 
 type WatchlistRow = {
@@ -96,6 +103,8 @@ type WatchlistRow = {
   lastUpdatedAt?: string;
   /** Nearest-expiry chain highlight when API is called with chainGlance=1. */
   chainGlance?: WatchlistChainGlance | null;
+  /** Technical overlays when API is called with technicals=1. */
+  technicals?: WatchlistTechnicals | null;
 };
 
 type WatchlistApiData = {
@@ -220,7 +229,15 @@ function buildDirtyAddEntries(baseline: WatchlistRow[], draft: WatchlistRow[]): 
   return out;
 }
 
-type WatchlistSortColumn = "instrument" | "targetEntry" | "iv" | "oi";
+type WatchlistSortColumn =
+  | "instrument"
+  | "targetEntry"
+  | "iv"
+  | "ivRank"
+  | "optionsVolume"
+  | "oi"
+  | "distToTarget"
+  | "quickScore";
 
 /** Whole-dollar notional: round(100× live quote) for sort and display. */
 function getTargetEntryNumeric(row: WatchlistRow): number | null {
@@ -324,8 +341,20 @@ function applyWatchlistSort(
     if (sortColumn === "iv") {
       return compareNumericColumn(mult, getIvSortValue(a), getIvSortValue(b), a, b);
     }
+    if (sortColumn === "ivRank") {
+      return compareNumericColumn(mult, getIvRankSortValue(a), getIvRankSortValue(b), a, b);
+    }
+    if (sortColumn === "optionsVolume") {
+      return compareNumericColumn(mult, getOptionVolumeSortValue(a), getOptionVolumeSortValue(b), a, b);
+    }
     if (sortColumn === "oi") {
       return compareNumericColumn(mult, getOiSortValue(a), getOiSortValue(b), a, b);
+    }
+    if (sortColumn === "distToTarget") {
+      return compareNumericColumn(mult, distToTargetPct(a), distToTargetPct(b), a, b);
+    }
+    if (sortColumn === "quickScore") {
+      return compareNumericColumn(mult, quickScore(a), quickScore(b), a, b);
     }
     return tieSymbol(a, b);
   });
@@ -358,13 +387,122 @@ function formatLegCell(row: WatchlistRow): string {
   return `${g.contractType} ${g.strike.toFixed(2)}`;
 }
 
-function ivBadgeParts(row: WatchlistRow): { label: string; pct: number | null } {
+function formatCatalystCell(row: WatchlistRow): string {
+  const iso = row.chainGlance?.expirationDate;
+  if (!iso) {
+    return "—";
+  }
+  const date = new Date(`${iso}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+  const daysOut = Math.max(0, Math.round((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+  if (daysOut <= 7) {
+    return `Exp ${iso} • ${daysOut}d`;
+  }
+  return `Exp ${iso}`;
+}
+
+function formatRsiCell(row: WatchlistRow): string {
+  const rsi = row.technicals?.rsi14;
+  if (rsi == null || !Number.isFinite(rsi)) {
+    return "—";
+  }
+  if (rsi < 30) {
+    return `${rsi.toFixed(1)} (OS)`;
+  }
+  if (rsi > 70) {
+    return `${rsi.toFixed(1)} (OB)`;
+  }
+  return rsi.toFixed(1);
+}
+
+function distToTargetPct(row: WatchlistRow): number | null {
+  const spot = row.quote?.price;
+  const target = row.entryPrice;
+  if (
+    spot == null ||
+    target == null ||
+    !Number.isFinite(spot) ||
+    !Number.isFinite(target) ||
+    spot <= 0 ||
+    target <= 0
+  ) {
+    return null;
+  }
+  return ((target - spot) / spot) * 100;
+}
+
+function formatDistToTarget(row: WatchlistRow): string {
+  const pct = distToTargetPct(row);
+  if (pct == null) {
+    return "—";
+  }
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct.toFixed(1)}%`;
+}
+
+function getOptionVolumeSortValue(row: WatchlistRow): number | null {
+  const vol = row.chainGlance?.optionVolume;
+  return vol != null && Number.isFinite(vol) ? vol : null;
+}
+
+function getIvRankSortValue(row: WatchlistRow): number | null {
   const iv = row.chainGlance?.impliedVolatilityPercent;
   if (iv == null || !Number.isFinite(iv)) {
-    return { label: "—", pct: null };
+    return null;
   }
-  const pct = heuristicIvPercentile(iv);
-  return { label: `${iv.toFixed(1)}% (${pct}th)`, pct };
+  return heuristicIvPercentile(iv);
+}
+
+function quickScore(row: WatchlistRow): number | null {
+  const ivRank = getIvRankSortValue(row);
+  const oi = row.chainGlance?.openInterest;
+  const volume = row.chainGlance?.optionVolume;
+  if (ivRank == null || oi == null || volume == null || !Number.isFinite(oi) || !Number.isFinite(volume)) {
+    return null;
+  }
+  const dist = distToTargetPct(row);
+  const targetProximity = dist == null ? 0.5 : Math.max(0, 1 - Math.min(Math.abs(dist), 25) / 25);
+  const rsi = row.technicals?.rsi14;
+  const rsiSignal =
+    rsi == null || !Number.isFinite(rsi) ? 0.35 : rsi < 30 || rsi > 70 ? 1 : Math.abs(rsi - 50) / 25;
+  const catalyst = row.chainGlance?.expirationDate;
+  const catalystScore = catalyst ? 1 : 0.35;
+  const liquidity = Math.min(1, Math.log1p(Math.max(0, oi) + Math.max(0, volume)) / Math.log1p(250_000));
+  const score01 =
+    (ivRank / 100) * 0.28 +
+    liquidity * 0.3 +
+    targetProximity * 0.2 +
+    rsiSignal * 0.12 +
+    catalystScore * 0.1;
+  return Math.round(score01 * 100);
+}
+
+function Sparkline7d({ values }: { values: number[] | null | undefined }) {
+  if (!values || values.length < 2) {
+    return <span className="xf-watchlist-sparkline-placeholder">—</span>;
+  }
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const points = values
+    .map((value, index) => {
+      const x = (index / Math.max(values.length - 1, 1)) * 100;
+      const y = 100 - ((value - min) / span) * 100;
+      return `${x},${y}`;
+    })
+    .join(" ");
+  return (
+    <svg
+      aria-label="7-day sparkline"
+      className="xf-watchlist-sparkline"
+      preserveAspectRatio="none"
+      viewBox="0 0 100 100"
+    >
+      <polyline fill="none" points={points} stroke="currentColor" strokeWidth="6" />
+    </svg>
+  );
 }
 
 const WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX = 64;
@@ -413,9 +551,12 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   onAiSuggest,
   onShowQuote
 }: WatchlistRowTrProps) {
-  const ivParts = ivBadgeParts(row);
   const te = getTargetEntryNumeric(row);
   const riskPct = formatPortfolioRiskPct(te, portfolioTotalUsd);
+  const ivRank = getIvRankSortValue(row);
+  const optionsVolume = getOptionVolumeSortValue(row);
+  const distToTargetDisplay = formatDistToTarget(row);
+  const quickScoreValue = quickScore(row);
   const lastPrim = formatLastUpdateCell(row);
   const companyFull = row.quote?.companyName?.trim() ?? "";
   const companyBlurb = companyFull ? truncateCompanyBlurb(companyFull, 52) : "";
@@ -438,20 +579,20 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   const rationaleHasValue = (row.rationale ?? "").trim().length > 0;
   const rationalePreview = useMemo(() => getRationalePreview(row.rationale), [row.rationale]);
 
-  const closeRationaleDialog = useCallback(() => {
+  const closeRationaleDialog = () => {
     setRationaleDialogOpen(false);
     setRationaleDialogEditing(false);
     setRationaleDraft(row.rationale ?? "");
-  }, [row.rationale]);
+  };
 
-  const saveRationaleDialog = useCallback(async () => {
+  const saveRationaleDialog = async () => {
     const prev = (row.rationale ?? "").trim();
     const next = rationaleDraft.trim();
     if (prev !== next) {
       await patchRowMeta(row.symbol, { rationale: next });
     }
     setRationaleDialogOpen(false);
-  }, [patchRowMeta, rationaleDraft, row.rationale, row.symbol]);
+  };
 
   return (
     <tr className={rowClassName} style={rowStyle}>
@@ -471,6 +612,9 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             <div className="xf-watchlist-sym-cell__company xf-watchlist-sym-cell__company--muted">—</div>
           )}
           <div className="xf-watchlist-sym-cell__industry">{getSymbolSectorLabel(row.symbol)}</div>
+          <div className="xf-watchlist-sym-cell__sparkline">
+            <Sparkline7d values={row.technicals?.sparkline7d} />
+          </div>
         </div>
       </td>
       <td className="xf-watchlist-table-mono xf-watchlist-spot-cell">
@@ -484,18 +628,26 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
       </td>
       <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
         <span className="xf-watchlist-iv-wrap">
-          {ivParts.pct != null && ivParts.pct >= 94 ? (
-            <span className="xf-watchlist-iv-rank" title="Heuristic IV rank">
-              🟥
-            </span>
-          ) : null}
-          <span>{ivParts.label}</span>
+          <span>{row.chainGlance?.impliedVolatilityPercent != null ? `${row.chainGlance.impliedVolatilityPercent.toFixed(1)}%` : "—"}</span>
         </span>
+      </td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
+        <span
+          className={`xf-watchlist-iv-rank-badge${ivRank != null && ivRank >= 85 ? " xf-watchlist-iv-rank-badge--hot" : ivRank != null && ivRank >= 70 ? " xf-watchlist-iv-rank-badge--elevated" : ""}`}
+          title="Heuristic IV rank percentile"
+        >
+          {ivRank != null ? `${ivRank}%` : "—"}
+        </span>
+      </td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
+        {optionsVolume != null ? formatOiCell(optionsVolume) : "—"}
       </td>
       <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
         {row.chainGlance != null ? formatOiCell(row.chainGlance.openInterest) : "—"}
       </td>
       <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatLegCell(row)}</td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatCatalystCell(row)}</td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatRsiCell(row)}</td>
       <td className="xf-watchlist-table-mono">
         {editMode ? (
           <div className="xf-watchlist-edit-stack">
@@ -548,6 +700,8 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
         )}
       </td>
       <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{riskPct}</td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{distToTargetDisplay}</td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{quickScoreValue != null ? quickScoreValue : "—"}</td>
       <td className="xf-watchlist-rationale-cell">
         {editMode ? (
           <textarea
@@ -759,6 +913,32 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             }}
           >
             <DownArrowIcon />
+          </button>
+          <button
+            aria-label={`Open ${row.symbol} in xOptions preflight`}
+            className="xf-watchlist-row-action-link"
+            title="Add to xOptions preflight"
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams({
+                symbol: row.symbol,
+                step: "4"
+              });
+              if (row.chainGlance?.expirationDate) {
+                params.set("expiration", row.chainGlance.expirationDate);
+              }
+              if (
+                row.chainGlance?.strike != null &&
+                Number.isFinite(row.chainGlance.strike) &&
+                row.chainGlance.strike > 0
+              ) {
+                params.set("strike", row.chainGlance.strike.toFixed(2));
+                params.set("contractType", row.chainGlance.contractType);
+              }
+              window.location.assign(`/xoptions?${params.toString()}`);
+            }}
+          >
+            <ExternalLinkIcon className="crud-icon" />
           </button>
           <button
             aria-label={`Delete ${row.symbol} from watchlist`}
@@ -1027,6 +1207,7 @@ export function WatchlistConsole({
     const params = new URLSearchParams();
     params.set("quotes", "1");
     params.set("chainGlance", "1");
+    params.set("technicals", "1");
     const selectedId = selectedWatchlistId.trim();
     if (selectedId) {
       params.set("watchlistId", selectedId);
@@ -1968,6 +2149,48 @@ ${bodyRows}
                       </th>
                       <th
                         aria-sort={
+                          sort.column === "ivRank"
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        scope="col"
+                      >
+                        <button
+                          className="xf-watchlist-sort-btn"
+                          type="button"
+                          onClick={() => toggleWatchlistSort("ivRank")}
+                        >
+                          IV Rank
+                          <span aria-hidden className="xf-watchlist-sort-indicator">
+                            {sort.column === "ivRank" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                          </span>
+                        </button>
+                      </th>
+                      <th
+                        aria-sort={
+                          sort.column === "optionsVolume"
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        scope="col"
+                      >
+                        <button
+                          className="xf-watchlist-sort-btn"
+                          type="button"
+                          onClick={() => toggleWatchlistSort("optionsVolume")}
+                        >
+                          Opt Vol
+                          <span aria-hidden className="xf-watchlist-sort-indicator">
+                            {sort.column === "optionsVolume" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                          </span>
+                        </button>
+                      </th>
+                      <th
+                        aria-sort={
                           sort.column === "oi"
                             ? sort.dir === "asc"
                               ? "ascending"
@@ -1988,6 +2211,8 @@ ${bodyRows}
                         </button>
                       </th>
                       <th scope="col">Leg</th>
+                      <th scope="col">Catalyst</th>
+                      <th scope="col">RSI(14)</th>
                       <th
                         aria-sort={
                           sort.column === "targetEntry"
@@ -2010,6 +2235,48 @@ ${bodyRows}
                         </button>
                       </th>
                       <th scope="col">% book risk</th>
+                      <th
+                        aria-sort={
+                          sort.column === "distToTarget"
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        scope="col"
+                      >
+                        <button
+                          className="xf-watchlist-sort-btn"
+                          type="button"
+                          onClick={() => toggleWatchlistSort("distToTarget")}
+                        >
+                          Dist target
+                          <span aria-hidden className="xf-watchlist-sort-indicator">
+                            {sort.column === "distToTarget" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                          </span>
+                        </button>
+                      </th>
+                      <th
+                        aria-sort={
+                          sort.column === "quickScore"
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        scope="col"
+                      >
+                        <button
+                          className="xf-watchlist-sort-btn"
+                          type="button"
+                          onClick={() => toggleWatchlistSort("quickScore")}
+                        >
+                          Quick score
+                          <span aria-hidden className="xf-watchlist-sort-indicator">
+                            {sort.column === "quickScore" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                          </span>
+                        </button>
+                      </th>
                       <th scope="col">Rationale</th>
                       <th scope="col">Status</th>
                       <th scope="col">Last update</th>

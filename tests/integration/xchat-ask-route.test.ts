@@ -1592,10 +1592,10 @@ describe("xchat ask route collection retrieval", () => {
       expect(text).toContain("| TSLA | $245.00 | +$5.25 (+2.19%)");
       expect(text).toContain("| NVDA | $488.00 | -$3.10 (-0.63%)");
       expect(text).toContain(
-        "[Open xOptions](/xoptions?symbol=TSLA&portfolioId=507f1f77bcf86cd799439044"
+        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&portfolioId=507f1f77bcf86cd799439044"
       );
       expect(text).toContain(
-        "[Open xOptions](/xoptions?symbol=NVDA&portfolioId=507f1f77bcf86cd799439044"
+        "[Open NVDA in xOptions](/xoptions?symbol=NVDA&portfolioId=507f1f77bcf86cd799439044"
       );
       expect(text).toContain("Accessibility note:");
       expect(text).not.toMatch(/added /i);
@@ -1638,6 +1638,126 @@ describe("xchat ask route collection retrieval", () => {
       expect(payload.data?.response ?? "").toContain("Please share the `portfolioId`");
       expect(createSpy).not.toHaveBeenCalled();
       expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+    } finally {
+      createSpy.mockRestore();
+    }
+  });
+
+  it("extracts inline portfolioId from show-watchlist ask and runs direct route without slot prompt", async () => {
+    const createSpy = vi.spyOn(toolExecutorModule, "createXfinanceToolExecutor");
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atx_function" }]
+        }
+      })
+    );
+    symbolLookupMocks.lookupSymbols.mockResolvedValueOnce(
+      new Map([
+        [
+          "TSLA",
+          {
+            symbol: "TSLA",
+            price: 245,
+            change: 1.25,
+            changePercent: 0.51,
+            source: "yahoo-finance2"
+          }
+        ]
+      ])
+    );
+    createSpy.mockReturnValueOnce(
+      (async () => ({
+        result: JSON.stringify({
+          name: "Growth Watchlist",
+          symbolCount: 1,
+          symbols: [
+            {
+              symbol: "TSLA",
+              spotPriceDisplay: "$245.00",
+              targetEntryNotional100xUsdDisplay: "$24,500"
+            }
+          ]
+        })
+      })) as never
+    );
+    try {
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: "show watchlist for 507f1f77bcf86cd799439044"
+          })
+        })
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as { data?: { response?: string; model?: string } };
+      expect(payload.data?.model).toBe("watchlist_snapshot_direct");
+      expect(payload.data?.response ?? "").not.toContain("Please share the `portfolioId`");
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspacePortfolioId: "507f1f77bcf86cd799439044"
+        })
+      );
+      expect(payload.data?.response ?? "").toContain(
+        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&portfolioId=507f1f77bcf86cd799439044"
+      );
+    } finally {
+      createSpy.mockRestore();
+    }
+  });
+
+  it("keeps enhanced watchlist table when market pulse data is missing", async () => {
+    const createSpy = vi.spyOn(toolExecutorModule, "createXfinanceToolExecutor");
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atx_function" }]
+        }
+      })
+    );
+    symbolLookupMocks.lookupSymbols.mockResolvedValueOnce(new Map());
+    createSpy.mockReturnValueOnce(
+      (async () => ({
+        result: JSON.stringify({
+          name: "Fallback Watchlist",
+          symbolCount: 1,
+          symbols: [
+            {
+              symbol: "TSLA",
+              spotPriceDisplay: "$245.00",
+              targetEntryNotional100xUsdDisplay: "$24,500"
+            }
+          ]
+        })
+      })) as never
+    );
+    try {
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: "show my watchlist",
+            portfolioId: "507f1f77bcf86cd799439044"
+          })
+        })
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as { data?: { response?: string } };
+      const text = payload.data?.response ?? "";
+      expect(text).toContain("| Symbol | Spot | 1D Delta | Distance to Target | xOptions CTA |");
+      expect(text).toContain("| TSLA | $245.00 | — | — |");
+      expect(text).toContain(
+        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&portfolioId=507f1f77bcf86cd799439044"
+      );
     } finally {
       createSpy.mockRestore();
     }
