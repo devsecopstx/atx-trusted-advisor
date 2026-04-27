@@ -341,7 +341,11 @@ export class PositionValidationError extends Error {
 async function dropLegacyWatchlistIndexesIfPresent(): Promise<void> {
   const db = await getDb();
   const wl = db.collection(collections.watchlists);
-  for (const name of ["uniq_watchlist_per_portfolio", "idx_watchlists_snapshot_portfolio_user"] as const) {
+  for (const name of [
+    "uniq_watchlist_per_portfolio",
+    "idx_watchlists_snapshot_portfolio_user",
+    "uniq_watchlist_per_user"
+  ] as const) {
     try {
       await wl.dropIndex(name);
     } catch {
@@ -386,12 +390,21 @@ async function createPortfolioIndexes(): Promise<void> {
       { portfolioId: 1, userId: 1, isDefault: -1, createdAt: 1 },
       { name: "idx_accounts_snapshot_portfolio_user_default_created" }
     ),
-    /** One watchlist per user per tenant (legacy rows may omit `tenantId`). */
+    /** Exactly one default watchlist per user per tenant (legacy rows may omit `tenantId`). */
     db.collection<Watchlist>(collections.watchlists).createIndex(
-      { tenantId: 1, userId: 1 },
+      { tenantId: 1, userId: 1, isDefault: 1 },
       {
         unique: true,
-        name: "uniq_watchlist_per_user"
+        partialFilterExpression: { isDefault: true },
+        name: "uniq_default_watchlist_per_user"
+      }
+    ),
+    db.collection<Watchlist>(collections.watchlists).createIndex(
+      { tenantId: 1, userId: 1, name: 1 },
+      {
+        unique: true,
+        collation: { locale: "en", strength: 2 },
+        name: "uniq_watchlist_name_per_user"
       }
     ),
     db.collection<Watchlist>(collections.watchlists).createIndex(
@@ -3116,6 +3129,50 @@ export async function getUserWatchlist(input: {
   return { ...doc, symbols };
 }
 
+export async function listUserWatchlists(input: {
+  userId: string;
+  tenantId?: string;
+}): Promise<Watchlist[]> {
+  await ensurePortfolioIndexes();
+  const db = await getDb();
+  const docs = await db
+    .collection<Watchlist>(collections.watchlists)
+    .find(userWatchlistSessionScopeFilter(input.userId, input.tenantId, "allowLegacyUserScope") as Filter<Watchlist>)
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .toArray();
+  return docs.map((doc) => ({
+    ...doc,
+    symbols: normalizeWatchlistDocumentSymbols(doc.symbols, [DEFAULT_WATCHLIST_SYMBOL])
+  }));
+}
+
+export async function getUserWatchlistById(input: {
+  userId: string;
+  tenantId?: string;
+  watchlistId: string;
+}): Promise<Watchlist | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.watchlistId)) {
+    return null;
+  }
+  const db = await getDb();
+  const doc = await db.collection<Watchlist>(collections.watchlists).findOne({
+    ...(userWatchlistSessionScopeFilter(
+      input.userId,
+      input.tenantId,
+      "allowLegacyUserScope"
+    ) as Filter<Watchlist>),
+    _id: new ObjectId(input.watchlistId)
+  });
+  if (!doc) {
+    return null;
+  }
+  return {
+    ...doc,
+    symbols: normalizeWatchlistDocumentSymbols(doc.symbols, [DEFAULT_WATCHLIST_SYMBOL])
+  };
+}
+
 /** Ensures a user-global watchlist exists (via default portfolio provision when needed). */
 export async function ensureUserWatchlistForSessionUser(input: {
   userId: string;
@@ -3206,6 +3263,7 @@ export type MutatePortfolioWatchlistInput = {
   userId: string;
   portfolioId: string;
   tenantId?: string;
+  watchlistId?: string;
   /** When set, updates the watchlist display name (trimmed, non-empty). */
   name?: string;
   addSymbols?: string[];
@@ -3317,7 +3375,13 @@ export async function mutateUserWatchlistSymbols(input: MutateUserWatchlistInput
 
   const db = await getDb();
   const filter = userWatchlistSessionScopeFilter(input.userId, input.tenantId, "allowLegacyUserScope");
-  const doc = await findLatestWatchlistMatchingFilter(db, filter);
+  const doc =
+    typeof input.watchlistId === "string" && ObjectId.isValid(input.watchlistId)
+      ? await db.collection<Watchlist>(collections.watchlists).findOne({
+          ...(filter as Filter<Watchlist>),
+          _id: new ObjectId(input.watchlistId)
+        })
+      : await findLatestWatchlistMatchingFilter(db, filter);
   if (!doc?._id) {
     return null;
   }
@@ -3417,6 +3481,13 @@ export async function mutateUserWatchlistSymbols(input: MutateUserWatchlistInput
     tenantId: input.tenantId
   });
 
+  const updatedDoc = await db.collection<Watchlist>(collections.watchlists).findOne({ _id: doc._id });
+  if (updatedDoc) {
+    return {
+      ...updatedDoc,
+      symbols: normalizeWatchlistDocumentSymbols(updatedDoc.symbols, [DEFAULT_WATCHLIST_SYMBOL])
+    };
+  }
   return getUserWatchlist({ userId: input.userId, tenantId: input.tenantId });
 }
 
@@ -3437,6 +3508,7 @@ export async function mutatePortfolioWatchlistSymbols(
   return mutateUserWatchlistSymbols({
     userId: input.userId,
     tenantId: input.tenantId,
+    watchlistId: input.watchlistId,
     name: input.name,
     addSymbols: input.addSymbols,
     addEntries: input.addEntries,
@@ -3445,6 +3517,55 @@ export async function mutatePortfolioWatchlistSymbols(
     riskProfile: input.riskProfile,
     outlook: input.outlook
   });
+}
+
+export async function createUserWatchlist(input: {
+  userId: string;
+  tenantId?: string;
+  name: string;
+  watchlistSymbols?: string[];
+}): Promise<Watchlist | null> {
+  await ensurePortfolioIndexes();
+  const trimmedName = input.name.trim().slice(0, 128);
+  if (!trimmedName) {
+    return null;
+  }
+  const db = await getDb();
+  const now = new Date();
+  const tenantObjectId = toTenantObjectId(input.tenantId);
+  const symbols = normalizeWatchlistDocumentSymbols([], input.watchlistSymbols ?? [DEFAULT_WATCHLIST_SYMBOL]);
+  const payload: Watchlist = {
+    userId: input.userId,
+    name: trimmedName,
+    symbols,
+    isDefault: false,
+    createdAt: now,
+    updatedAt: now,
+    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+  };
+  try {
+    const result = await db.collection<Watchlist>(collections.watchlists).insertOne(payload);
+    await bumpWorkspaceContentRevForAllUserPortfolios({
+      userId: input.userId,
+      tenantId: input.tenantId
+    });
+    const created = await db.collection<Watchlist>(collections.watchlists).findOne({ _id: result.insertedId });
+    if (!created) {
+      return null;
+    }
+    return {
+      ...created,
+      symbols: normalizeWatchlistDocumentSymbols(created.symbols, [DEFAULT_WATCHLIST_SYMBOL])
+    };
+  } catch (error) {
+    if (
+      error instanceof MongoServerError &&
+      (error.code === 11000 || error.codeName?.toLowerCase() === "duplicatekey")
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 /**

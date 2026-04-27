@@ -151,7 +151,7 @@ export default async function WatchlistPage({
             </div>
           </div>
         ) : (
-          <WatchlistConsole isAdmin={admin} portfolioId={portfolioId} />
+          <WatchlistConsole isAdmin={admin} portfolioId={portfolioId} showLocalSidebar={false} />
         )}
         </AppUserCollapsibleRailLayout>
       </div>

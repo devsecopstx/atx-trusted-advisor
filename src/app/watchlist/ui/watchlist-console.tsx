@@ -83,6 +83,14 @@ type WatchlistRow = {
 };
 
 type WatchlistApiData = {
+  activeWatchlistId?: string | null;
+  watchlists?: Array<{
+    id: string;
+    name: string;
+    symbolCount?: number;
+    isDefault?: boolean;
+    updatedAt?: string | null;
+  }>;
   name?: string;
   symbols?: Array<{
     symbol: string;
@@ -947,6 +955,8 @@ export type WatchlistConsoleProps = {
   onWatchlistMutated?: () => void;
   /** Fired after a stock is added via “Add to holdings” (parent usually `router.refresh()`). */
   onBookMutated?: () => void;
+  /** App-user shell already has a workspace rail; hide local watchlist sidebar to avoid double sidebars. */
+  showLocalSidebar?: boolean;
 };
 
 export function WatchlistConsole({
@@ -958,11 +968,11 @@ export function WatchlistConsole({
   addToHoldingsAccountIdHex = null,
   portfolioStockSymbolsUpper = [],
   onWatchlistMutated,
-  onBookMutated
+  onBookMutated,
+  showLocalSidebar = true
 }: WatchlistConsoleProps) {
   const router = useRouter();
   const watchlistBaseUrl = `${watchlistApiPrefix}/${encodeURIComponent(portfolioId)}/watchlist`;
-  const watchlistFetchQuery = "quotes=1&chainGlance=1";
   const [listName, setListName] = useState("Default");
   const [rows, setRows] = useState<WatchlistRow[]>([]);
   const [editMode, setEditMode] = useState(false);
@@ -982,6 +992,11 @@ export function WatchlistConsole({
   const [symbolSearchOpen, setSymbolSearchOpen] = useState(false);
   const [quotePanelSymbol, setQuotePanelSymbol] = useState<string | null>(null);
   const [aiSuggestSymbol, setAiSuggestSymbol] = useState<string | null>(null);
+  const [selectedWatchlistId, setSelectedWatchlistId] = useState("");
+  const [availableWatchlists, setAvailableWatchlists] = useState<
+    Array<{ id: string; name: string; symbolCount: number; isDefault: boolean }>
+  >([]);
+  const [creatingWatchlist, setCreatingWatchlist] = useState(false);
   const [sort, setSort] = useState<{ column: WatchlistSortColumn; dir: "asc" | "desc" }>({
     column: "instrument",
     dir: "asc"
@@ -998,6 +1013,16 @@ export function WatchlistConsole({
   );
   const enableAddToHoldingsUi =
     variant === "embedded" && Boolean(addToHoldingsAccountIdHex?.trim());
+  const watchlistFetchQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("quotes", "1");
+    params.set("chainGlance", "1");
+    const selectedId = selectedWatchlistId.trim();
+    if (selectedId) {
+      params.set("watchlistId", selectedId);
+    }
+    return params.toString();
+  }, [selectedWatchlistId]);
 
   const toggleWatchlistSort = useCallback((column: WatchlistSortColumn) => {
     setSort((prev) =>
@@ -1050,6 +1075,23 @@ export function WatchlistConsole({
       startTransition(() => {
         setListName(json.data!.name ?? "Default");
         setRows(buildRows(json.data!));
+        const listRows = (json.data?.watchlists ?? [])
+          .filter((row) => typeof row.id === "string" && row.id.trim().length > 0)
+          .map((row) => ({
+            id: row.id,
+            name: row.name?.trim() || "Untitled watchlist",
+            symbolCount:
+              typeof row.symbolCount === "number" && Number.isFinite(row.symbolCount)
+                ? row.symbolCount
+                : 0,
+            isDefault: row.isDefault === true
+          }));
+        setAvailableWatchlists(listRows);
+        if (typeof json.data?.activeWatchlistId === "string" && json.data.activeWatchlistId.trim()) {
+          setSelectedWatchlistId(json.data.activeWatchlistId.trim());
+        } else if (listRows.length > 0 && !selectedWatchlistId.trim()) {
+          setSelectedWatchlistId(listRows[0]!.id);
+        }
         setListLoadedAtLabel(new Date().toLocaleString());
       });
     } catch (e) {
@@ -1058,7 +1100,7 @@ export function WatchlistConsole({
     } finally {
       setLoading(false);
     }
-  }, [watchlistBaseUrl, watchlistFetchQuery, startTransition]);
+  }, [selectedWatchlistId, startTransition, watchlistBaseUrl, watchlistFetchQuery]);
 
   useEffect(() => {
     void load();
@@ -1252,6 +1294,44 @@ ${bodyRows}
       /* ignore */
     }
   }, [portfolioTotalInput]);
+
+  const onCreateWatchlist = useCallback(async () => {
+    const raw = window.prompt("Name this new watchlist:");
+    if (raw == null) {
+      return;
+    }
+    const name = raw.trim();
+    if (!name) {
+      window.alert("Watchlist name cannot be empty.");
+      return;
+    }
+    setCreatingWatchlist(true);
+    setError(null);
+    try {
+      const response = await fetch(watchlistBaseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name })
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        data?: { id?: string };
+      };
+      if (!response.ok) {
+        throw new Error(body.error ?? "Could not create watchlist");
+      }
+      const createdId = body.data?.id?.trim();
+      if (createdId) {
+        setSelectedWatchlistId(createdId);
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Create watchlist failed");
+    } finally {
+      setCreatingWatchlist(false);
+    }
+  }, [load, watchlistBaseUrl]);
 
   const addSymbolToHoldings = useCallback(
     async (row: WatchlistRow) => {
@@ -1628,6 +1708,7 @@ ${bodyRows}
       <div className="xf-watchlist-layout">
         <aside
           className={`xf-watchlist-sidebar${listNavCollapsed ? " xf-watchlist-sidebar--collapsed" : ""}`}
+          hidden={!showLocalSidebar}
         >
           <div className="xf-watchlist-sidebar-head">
             <h2
@@ -1740,6 +1821,32 @@ ${bodyRows}
               onChange={(e) => void onImportFileChange(e)}
             />
             <div className="xf-watchlist-toolbar xf-watchlist-toolbar--wrap">
+              <label className="xf-watchlist-list-picker">
+                <span className="xf-watchlist-list-picker__label">Watchlist</span>
+                <select
+                  aria-label="Select watchlist"
+                  className="xf-watchlist-list-picker__select"
+                  disabled={mutating || creatingWatchlist || editMode || availableWatchlists.length === 0}
+                  value={selectedWatchlistId}
+                  onChange={(event) => setSelectedWatchlistId(event.target.value)}
+                >
+                  {availableWatchlists.length === 0 ? <option value="">Default</option> : null}
+                  {availableWatchlists.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} ({item.symbolCount})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="xf-watchlist-toolbar-btn"
+                disabled={mutating || creatingWatchlist || editMode}
+                type="button"
+                onClick={() => void onCreateWatchlist()}
+              >
+                <AddIcon className="crud-icon" />
+                New watchlist
+              </button>
               <label className="xf-watchlist-portfolio-total">
                 <span className="xf-watchlist-portfolio-total__label">Portfolio total ($)</span>
                 <input

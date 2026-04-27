@@ -4,7 +4,10 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import {
+    createUserWatchlist,
     ensurePortfolioWatchlistForUser,
+    getUserWatchlistById,
+    listUserWatchlists,
     mutatePortfolioWatchlistSymbols
 } from "@/modules/core-admin/repository";
 import {
@@ -65,6 +68,10 @@ const patchBodySchema = z
         "Provide name, addSymbols, addEntries, removeSymbols, dedupe: true, riskProfile, or outlook"
     }
   );
+
+const createBodySchema = z.object({
+  name: z.string().trim().min(1).max(128)
+});
 
 function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
   return {
@@ -195,19 +202,100 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
-  const quotes = new URL(request.url).searchParams.get("quotes") === "1";
-  const chainGlance = new URL(request.url).searchParams.get("chainGlance") === "1";
-  const watchlist = await ensurePortfolioWatchlistForUser({
+  const searchParams = new URL(request.url).searchParams;
+  const quotes = searchParams.get("quotes") === "1";
+  const chainGlance = searchParams.get("chainGlance") === "1";
+  const selectedWatchlistId = searchParams.get("watchlistId")?.trim() ?? "";
+  const fallbackWatchlist = await ensurePortfolioWatchlistForUser({
     userId: session.userId,
     portfolioId,
     tenantId: session.tenantId
   });
-  if (!watchlist) {
+  if (!fallbackWatchlist) {
+    return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
+  }
+  const selectedWatchlist =
+    selectedWatchlistId.length > 0
+      ? await getUserWatchlistById({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          watchlistId: selectedWatchlistId
+        })
+      : null;
+  const watchlist = selectedWatchlist ?? fallbackWatchlist;
+  const allWatchlists = await listUserWatchlists({
+    userId: session.userId,
+    tenantId: session.tenantId
+  });
+
+  const payload = await buildJsonPayload(watchlist, quotes, quotes && chainGlance);
+  const watchlists = allWatchlists.map((row) => ({
+    id: row._id?.toHexString() ?? "",
+    name: row.name,
+    symbolCount: Array.isArray(row.symbols) ? row.symbols.length : 0,
+    isDefault: row.isDefault === true,
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : null
+  }));
+  payload.data = {
+    ...(payload.data as Record<string, unknown>),
+    watchlists,
+    activeWatchlistId: watchlist._id?.toHexString() ?? null
+  };
+  return NextResponse.json(payload);
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  const proxied = await proxyPortfolioRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+  const { portfolioId } = await context.params;
+  const ensured = await ensurePortfolioWatchlistForUser({
+    userId: session.userId,
+    portfolioId,
+    tenantId: session.tenantId
+  });
+  if (!ensured) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  const payload = await buildJsonPayload(watchlist, quotes, quotes && chainGlance);
-  return NextResponse.json(payload);
+  let json: unknown;
+  try {
+    json = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const parsed = createBodySchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const created = await createUserWatchlist({
+    userId: session.userId,
+    tenantId: session.tenantId,
+    name: parsed.data.name,
+    watchlistSymbols: [ensured.symbols?.[0]?.symbol ?? "TSLA"]
+  });
+  if (!created?._id) {
+    return NextResponse.json(
+      { error: "Could not create watchlist (name may already exist)." },
+      { status: 409 }
+    );
+  }
+  return NextResponse.json({
+    data: {
+      id: created._id.toHexString(),
+      name: created.name
+    }
+  });
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
@@ -261,10 +349,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
   }
 
+  const watchlistId = new URL(request.url).searchParams.get("watchlistId")?.trim() ?? undefined;
   const updated = await mutatePortfolioWatchlistSymbols({
     userId: session.userId,
     portfolioId,
     tenantId: session.tenantId,
+    watchlistId,
     name: parsed.data.name,
     addSymbols: parsed.data.addSymbols,
     addEntries: parsed.data.addEntries,
