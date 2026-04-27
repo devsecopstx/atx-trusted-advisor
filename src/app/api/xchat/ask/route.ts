@@ -69,10 +69,12 @@ import {
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
-import { formatWatchlistNotionalPlainDisplayAsUsd } from "@/modules/xchat/watchlist-prompt-format";
+import { postProcessWatchlistMarkdown } from "@/modules/xchat/watchlist-response-postprocess";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
+    collectWatchlistPortfolioIdSlot,
     heavySynthesisIntent,
+    isShowWatchlistIntent,
     shouldOfferStrategyJobPreflight,
     shouldRunOptionsActionScan,
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
@@ -167,30 +169,6 @@ function isStayInChatReply(message: string): boolean {
   );
 }
 
-function isDirectWatchlistRequest(message: string): boolean {
-  const normalized = message.trim().toLowerCase();
-  if (!normalized) {
-    return false;
-  }
-  if (
-    normalized.includes("add ") ||
-    normalized.includes("remove ") ||
-    normalized.includes("delete ") ||
-    normalized.includes("watchlist add") ||
-    normalized.includes("watchlist remove")
-  ) {
-    return false;
-  }
-  return (
-    normalized === "show my watchlist" ||
-    normalized === "my watchlist" ||
-    normalized.includes("show watchlist") ||
-    normalized.includes("show my watchlist") ||
-    normalized.includes("list my watchlist") ||
-    normalized.includes("what is in my watchlist")
-  );
-}
-
 export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
@@ -245,7 +223,15 @@ export async function POST(request: Request) {
     ? `[image:${visionImage.mediaType}] ${messageTrimmed || "(paste)"}`
     : messageRaw;
   const threadId = parsed.data.threadId?.trim() || undefined;
-  const workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
+  let workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
+  const showWatchlistIntent = isShowWatchlistIntent(messageTrimmed);
+  const watchlistPortfolioSlot = collectWatchlistPortfolioIdSlot({
+    message: messageTrimmed,
+    requestPortfolioId: workspacePortfolioId
+  });
+  if (!workspacePortfolioId && watchlistPortfolioSlot.resolvedPortfolioId) {
+    workspacePortfolioId = watchlistPortfolioSlot.resolvedPortfolioId;
+  }
   const isAdminSession = isGlobalAdmin(session.roles);
   let subscriptionPlan: SubscriptionPlan | undefined;
   let limiterRemainingMinute: number | undefined;
@@ -622,6 +608,56 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!visionImage && showWatchlistIntent && watchlistPortfolioSlot.needsPortfolioId) {
+    const responseMarkdown = preprocessXchatMarkdown(
+      "I can show that watchlist once I know which portfolio you mean. Please share the `portfolioId` (24-char id) or open the portfolio first and retry."
+    );
+    const chatLogId = shouldPersistHistory
+      ? await saveXChatLog({
+          threadId,
+          requestId,
+          correlationId,
+          userId,
+          tenantId: tenantId ?? undefined,
+          userEmail: session.email,
+          requestedBy: session.username,
+          personaId: persona?._id,
+          personaName: persona.name,
+          scope,
+          message: messageForPersistence,
+          response: responseMarkdown,
+          contextChunkIds: [],
+          model: "watchlist_portfolio_slot_collection",
+          strategyJobOptOut,
+          retentionExpiresAt
+        })
+      : null;
+    return NextResponse.json(
+      {
+        data: {
+          response: responseMarkdown,
+          model: "watchlist_portfolio_slot_collection",
+          personaName: persona.name,
+          modelSelectionSource,
+          contextCount: 0,
+          contextSource: "none",
+          collectionSearchStatus: "skipped_no_collections",
+          collectionSearchNonReadyFileCount: 0,
+          logId: chatLogId?.toHexString()
+        }
+      },
+      {
+        headers: buildLimiterHeaders({
+          remainingMinute: limiterRemainingMinute,
+          remainingHour: limiterRemainingHour,
+          remainingDay: limiterRemainingDay,
+          hourlyLimit: limiterHourlyLimit,
+          dailyLimit: limiterDailyLimit
+        })
+      }
+    );
+  }
+
   /** RAG / collection tools: persona-declared ids only (no env team KB merge). */
   const linkedCollectionIds = resolveXchatPersonaDeclaredCollectionIds(persona);
   for (const collectionId of linkedCollectionIds) {
@@ -836,7 +872,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!visionImage && hasXfinanceTool && isDirectWatchlistRequest(messageTrimmed)) {
+  if (!visionImage && hasXfinanceTool && showWatchlistIntent) {
     const executor = createXfinanceToolExecutor({
       userId: session.userId,
       tenantId: session.tenantId,
@@ -891,20 +927,31 @@ export async function POST(request: Request) {
               typeof row.spotPriceDisplay === "string" && row.spotPriceDisplay.trim().length > 0
                 ? row.spotPriceDisplay.trim()
                 : "—";
-            let targetUsd: string;
-            if (
+            const targetUsd =
               typeof row.targetEntryNotional100xUsdDisplay === "string" &&
               row.targetEntryNotional100xUsdDisplay !== "—"
-            ) {
-              targetUsd = row.targetEntryNotional100xUsdDisplay;
-            } else if (typeof row.targetEntryNotional100xDisplay === "string") {
-              targetUsd = formatWatchlistNotionalPlainDisplayAsUsd(row.targetEntryNotional100xDisplay);
-            } else {
-              targetUsd = "—";
-            }
+                ? row.targetEntryNotional100xUsdDisplay
+                : "—";
             return `- ${symbol} — Spot: ${spot} · Target entry: ${targetUsd}`;
           });
-          responseMarkdown = `${header}\n${lines.join("\n")}`;
+          const legacyMarkdown = `${header}\n${lines.join("\n")}`;
+          responseMarkdown = await postProcessWatchlistMarkdown({
+            rawMarkdown: legacyMarkdown,
+            watchlistName: parsed.name,
+            structuredRows: cleanRows.map((row) => ({
+              symbol: row.symbol!.trim().toUpperCase(),
+              spotPriceDisplay:
+                typeof row.spotPriceDisplay === "string" ? row.spotPriceDisplay : undefined,
+              entryPrice: typeof row.entryPrice === "number" ? row.entryPrice : undefined,
+              targetEntryPrice:
+                typeof row.targetEntryPrice === "number" ? row.targetEntryPrice : undefined,
+              targetEntryNotional100xUsdDisplay:
+                typeof row.targetEntryNotional100xUsdDisplay === "string"
+                  ? row.targetEntryNotional100xUsdDisplay
+                  : undefined
+            })),
+            portfolioId: workspacePortfolioId
+          });
         }
       }
     } catch {

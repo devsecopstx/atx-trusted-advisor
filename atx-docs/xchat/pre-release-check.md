@@ -50,6 +50,14 @@ No OpenAPI gap for xChat routes.
 - [ ] **Security:** Confirm no secrets in client or logs (already validated).
 - [ ] **Compliance:** Decide if xChat must appear in admin audit trail; if yes, extend audit entity types and document.
 
+## 5. Watchlist Enhanced Format Checklist
+
+- [ ] 13-symbol watchlist renders as a clean markdown table on both mobile and desktop.
+- [ ] `"show my watchlist advisor"` triggers enhanced watchlist table output (not legacy bullet list output).
+- [ ] Every watchlist row CTA opens `/xoptions` with symbol-prefilled query params.
+- [ ] Prices and 1D deltas are tool-backed (no hallucinated or prose-only market numbers).
+- [ ] Persona tone remains calm and professional (no hype language) in watchlist responses.
+
 ---
 
 *Pre-release check; update when contract or security posture changes.*

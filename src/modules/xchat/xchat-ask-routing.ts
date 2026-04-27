@@ -89,6 +89,80 @@ export function shouldRunOptionsActionScan(message: string): boolean {
   return patterns.some((pattern) => pattern.test(m));
 }
 
+function extractMongoObjectIdFromText(message: string): string | undefined {
+  const match = message.match(/\b([a-f\d]{24})\b/i);
+  return match?.[1]?.toLowerCase();
+}
+
+function messageRequestsWatchlistForPortfolio(normalized: string): boolean {
+  if (!normalized.includes("watchlist")) {
+    return false;
+  }
+  return (
+    normalized.includes("watchlist for ") ||
+    normalized.includes("show watchlist for ") ||
+    normalized.includes("show my watchlist for ") ||
+    normalized.includes("list my watchlist for ")
+  );
+}
+
+/**
+ * Direct deterministic watchlist asks should route to atx_function watchlist_snapshot.
+ * Excludes mutating requests (add/remove/delete) that need normal tool-loop intent handling.
+ */
+export function isShowWatchlistIntent(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (
+    normalized.includes("add ") ||
+    normalized.includes("remove ") ||
+    normalized.includes("delete ") ||
+    normalized.includes("watchlist add") ||
+    normalized.includes("watchlist remove")
+  ) {
+    return false;
+  }
+  return (
+    normalized === "show my watchlist" ||
+    normalized === "my watchlist" ||
+    normalized.includes("show watchlist") ||
+    normalized.includes("show my watchlist") ||
+    normalized.includes("list my watchlist") ||
+    normalized.includes("what is in my watchlist")
+  );
+}
+
+export type WatchlistPortfolioSlotCollectionResult = {
+  needsPortfolioId: boolean;
+  resolvedPortfolioId?: string;
+};
+
+/**
+ * NL slot collection for direct watchlist asks:
+ * - If user asks "show watchlist for [portfolio]" and includes a 24-char id, resolve it.
+ * - If user asks "show watchlist for ..." without a resolvable id, require a follow-up slot prompt.
+ */
+export function collectWatchlistPortfolioIdSlot(input: {
+  message: string;
+  requestPortfolioId?: string;
+}): WatchlistPortfolioSlotCollectionResult {
+  const requestPortfolioId = input.requestPortfolioId?.trim();
+  if (requestPortfolioId && /^[a-f\d]{24}$/i.test(requestPortfolioId)) {
+    return { needsPortfolioId: false, resolvedPortfolioId: requestPortfolioId.toLowerCase() };
+  }
+  const normalized = input.message.trim().toLowerCase();
+  if (!messageRequestsWatchlistForPortfolio(normalized)) {
+    return { needsPortfolioId: false };
+  }
+  const extracted = extractMongoObjectIdFromText(input.message);
+  if (extracted) {
+    return { needsPortfolioId: false, resolvedPortfolioId: extracted };
+  }
+  return { needsPortfolioId: true };
+}
+
 /** Stored on the assistant turn for clients that render plain text; the chat UI uses a dedicated card layout instead. */
 export const STRATEGY_JOB_PREFLIGHT_MARKDOWN = `### Structured options planning
 

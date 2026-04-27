@@ -37,6 +37,7 @@ Append a short **Deploy:** clause so ops can scan the log:
 
 ## Entries
 
+- **3.7.25** — **xChat watchlist direct-route uplift:** added `show_watchlist` routing + `portfolioId` NL slot collection for “show watchlist for …”, upgraded direct watchlist replies to table-first output with tool-backed 1D delta and distance-to-target metrics, and added per-row `/xoptions` CTA links with integration coverage for slot-collection and enhanced table rendering. **Deploy:** Next.
 - **3.7.23** — **xChat limit precedence fix:** `POST /api/xchat/ask` now enforces **effective tenant + plan** xChat day/hour caps (base `workspaceLimits` + `planOverrides.<tier>`), so Premium/Premium+ users no longer inherit only the tenant base cap. Updated xChat limit error copy + docs and added integration coverage for plan-override limiter inputs. **Deploy:** Next.
 - **3.7.22** — **xChat ask schema hard cleanup:** Removed deprecated `confirmMutations` from `POST /api/xchat/ask` request schema and dropped the integration test coverage that depended on that legacy flag. Watchlist mutation asks now follow the single tool-loop path with no confirm-flag contract. **Deploy:** Next.
 - **3.7.21** — **Admin tenants API consolidation (single canonical path):** Replaced split tenant endpoints with `GET`/`POST /api/admin/tenants` and removed the older split handlers. Updated admin consoles, BFF skip-path guardrails, OpenAPI inventory/overrides, and integration/unit coverage to enforce one contract before next feature work. **Deploy:** Next.

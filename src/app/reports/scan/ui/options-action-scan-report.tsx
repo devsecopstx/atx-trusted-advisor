@@ -257,6 +257,35 @@ function exportPdf(data: OptionsActionScanDisplayData): void {
   doc.save(`options-action-scan-${new Date(data.generatedAt).toISOString().slice(0, 10)}.pdf`);
 }
 
+async function exportPolishedPdf(data: OptionsActionScanDisplayData, title: string): Promise<void> {
+  const response = await fetch("/api/reports/options-scan", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title,
+      scanData: {
+        generatedAt: data.generatedAt,
+        planTier: data.planTier,
+        truncated: data.truncated,
+        rows: data.rows,
+        disclaimer: data.disclaimer
+      }
+    })
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: string; details?: string };
+    throw new Error(payload.error ?? payload.details ?? `Report request failed (${response.status})`);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `options-action-scan-${new Date(data.generatedAt).toISOString().slice(0, 10)}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function toXoptionsHref(row: OptionsActionReportRow): string {
   const instrument = toRowInstrument(row);
   const params = new URLSearchParams({
@@ -327,6 +356,8 @@ function OptionsActionScanReportInner({
   const [shareBusy, setShareBusy] = useState(false);
   const [share, setShare] = useState<ShareCreateResponse | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const applyCacheKey = useMemo(
     () => ["options_scan_apply_watchlist", data.generatedAt] as const,
     [data.generatedAt]
@@ -460,6 +491,20 @@ function OptionsActionScanReportInner({
     }
   }
 
+  async function downloadPdfReport() {
+    setPdfBusy(true);
+    setPdfError(null);
+    try {
+      await exportPolishedPdf(data, title);
+    } catch (error) {
+      setPdfError(error instanceof Error ? error.message : "Could not generate polished PDF");
+      // Fallback to legacy client-side PDF so export still works if Python service is unavailable.
+      exportPdf(data);
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   function handleApplyToWatchlist(row: OptionsActionReportRow) {
     const createPriceAlert = Boolean(createAlertByRowId[row.rowId]);
     applyToWatchlistMutation.mutate({
@@ -489,9 +534,9 @@ function OptionsActionScanReportInner({
           <button
             className="xchat-scan-action-btn xchat-scan-action-btn--accent"
             type="button"
-            onClick={() => exportPdf(data)}
+            onClick={() => void downloadPdfReport()}
           >
-            Download PDF Report
+            {pdfBusy ? "Generating PDF…" : "Download PDF Report"}
           </button>
           <button
             className="xchat-scan-action-btn xchat-scan-action-btn--neutral"
@@ -527,6 +572,11 @@ function OptionsActionScanReportInner({
         {shareError ? (
           <p className="text-xs text-[var(--xf-danger-400)]" role="alert">
             {shareError}
+          </p>
+        ) : null}
+        {pdfError ? (
+          <p className="text-xs text-[var(--xf-warning-400)]" role="status">
+            Polished report unavailable — downloaded legacy PDF instead. ({pdfError})
           </p>
         ) : null}
       </header>

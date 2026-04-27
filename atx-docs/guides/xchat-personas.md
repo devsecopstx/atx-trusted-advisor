@@ -69,7 +69,7 @@ After `npm run seed:admin`, verify:
 
 1. default admin user and default tenant are present
 2. default persona rows exist and are published as intended (`advisor` from `atx-docs/rag-collection/xpersonas/advisor/advisor.yaml`; `xchat_platform_settings.defaultAppUserPersonaId` is set to **advisor** when previously unset)
-3. default portfolio/account/watchlist records exist
+3. default /watchlist records exist
 4. xAI verification checks pass when keys are present
 
 ## Batch KB workaround
@@ -90,3 +90,17 @@ To use files inside a collection:
 Keep this two-step process in runbooks and ops scripts to avoid partial ingest confusion.
 
 For release/deploy controls around xChat runtime secrets and environment parity, use `atx-docs/guides/deploy-and-ops.md`.
+
+### Advisor Persona — Watchlist Responses (v2 — 2026-04-27)
+
+When user says "show my watchlist", "my DefaultWatchlist", or similar:
+
+1. Fetch session watchlist + live quotes (use `market_quote` / `watchlist-hot` tools if available).
+2. Return **exactly** the Markdown table format above (copy structure, fill real data).
+3. Always include:
+   - Portfolio pulse line (use `GET /api/market/workspace-pulse` if in scope).
+   - One-sentence insight per major name (momentum, catalyst, risk).
+   - Primary CTA to `xOptions` or "run strategy".
+4. Never dump raw bullets. Never omit % distance or explanation of target scaling.
+5. If watchlist > 15 symbols, show top 8 + "… +N more — ask for full table".
+6. End with natural language offer: "Which name should we analyze deeper or hedge?"
