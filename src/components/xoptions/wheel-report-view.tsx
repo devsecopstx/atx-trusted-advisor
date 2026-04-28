@@ -36,6 +36,11 @@ function percent(value: number, digits = 1): string {
   return `${value.toFixed(digits)}%`;
 }
 
+/** Premium income for one full wheel cycle as % of deployed capital (put-side collateral). */
+function yieldPerCyclePctOfCapital(idea: WheelIdea): number {
+  return (idea.premiumIncomePerCycleUsd / Math.max(idea.requiredCapitalUsd, 1e-9)) * 100;
+}
+
 function exportWheelPdf(report: WheelGeneratedPayload, generatedByName: string): void {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
   const generatedLabel = new Date(report.generatedAtIso).toLocaleString();
@@ -73,11 +78,12 @@ function exportWheelPdf(report: WheelGeneratedPayload, generatedByName: string):
 
   autoTable(doc, {
     startY: 186,
-    head: [["Idea", "Capital", "Cycle Income", "Annualized", "Assign %", "Call-away %"]],
+    head: [["Idea", "Capital", "Income / cycle", "Cycle yield", "Annualized", "Assign %", "Call-away %"]],
     body: report.ideas.map((idea) => [
       idea.headline,
       currency(idea.requiredCapitalUsd),
       currency(idea.premiumIncomePerCycleUsd),
+      percent(yieldPerCyclePctOfCapital(idea)),
       percent(idea.annualizedYieldPct),
       percent(idea.assignmentProbabilityPct),
       percent(idea.callAwayProbabilityPct)
@@ -92,7 +98,7 @@ function exportWheelPdf(report: WheelGeneratedPayload, generatedByName: string):
     startY: yAfterIdeas,
     head: [["Detailed Cycle Breakdown + Income Projection"]],
     body: report.ideas.map((idea) => [
-      `${idea.headline}\n${idea.cycleBreakdown.map((line) => `- ${line}`).join("\n")}\nProjected income per cycle: ${currency(idea.premiumIncomePerCycleUsd)}`
+      `${idea.headline}\n${idea.cycleBreakdown.map((line) => `- ${line}`).join("\n")}\nIncome / cycle: ${currency(idea.premiumIncomePerCycleUsd)} | Cycle yield: ${percent(yieldPerCyclePctOfCapital(idea))} | Annualized: ${percent(idea.annualizedYieldPct)}`
     ]),
     theme: "plain",
     headStyles: { fillColor: [22, 101, 52], textColor: [240, 253, 244], fontSize: 10 },
@@ -163,6 +169,20 @@ export function WheelReportView({
     [report.ideas]
   );
 
+  const chartSeriesYield = useMemo(
+    () => [
+      {
+        name: "Annualized yield (proj.)",
+        data: report.ideas.map((idea) => roundPercent(idea.annualizedYieldPct))
+      },
+      {
+        name: "Yield / cycle (% of capital)",
+        data: report.ideas.map((idea) => roundPercent(yieldPerCyclePctOfCapital(idea)))
+      }
+    ],
+    [report.ideas]
+  );
+
   const chartOptions = useMemo<ApexOptions>(
     () => ({
       chart: {
@@ -189,6 +209,57 @@ export function WheelReportView({
       legend: { labels: { colors: "rgb(226,232,240)" } },
       grid: { borderColor: "rgba(148,163,184,0.22)" },
       colors: ["#22c55e", "#e11d48"],
+      tooltip: {
+        y: { formatter: (value: number) => `${value.toFixed(1)}%` }
+      }
+    }),
+    [report.ideas, report.rootSnapshot.ticker]
+  );
+
+  const chartOptionsYield = useMemo<ApexOptions>(
+    () => ({
+      chart: {
+        type: "bar",
+        background: "transparent",
+        toolbar: { show: false },
+        fontFamily: "var(--xf-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)"
+      },
+      plotOptions: {
+        bar: { horizontal: false, columnWidth: "55%" }
+      },
+      dataLabels: { enabled: false },
+      xaxis: {
+        categories: report.ideas.map((idea) => idea.headline.replace(`${report.rootSnapshot.ticker} `, "")),
+        labels: { style: { colors: "rgb(148,163,184)", fontSize: "10px" } }
+      },
+      yaxis: [
+        {
+          seriesName: "Annualized yield (proj.)",
+          labels: {
+            formatter: (value: number) => `${value.toFixed(0)}%`,
+            style: { colors: "rgb(148,163,184)" }
+          },
+          title: {
+            text: "Annualized %",
+            style: { color: "rgb(148,163,184)", fontSize: "10px", fontWeight: 500 }
+          }
+        },
+        {
+          opposite: true,
+          seriesName: "Yield / cycle (% of capital)",
+          labels: {
+            formatter: (value: number) => `${value.toFixed(1)}%`,
+            style: { colors: "rgb(148,163,184)" }
+          },
+          title: {
+            text: "Cycle yield %",
+            style: { color: "rgb(148,163,184)", fontSize: "10px", fontWeight: 500 }
+          }
+        }
+      ],
+      legend: { labels: { colors: "rgb(226,232,240)" } },
+      grid: { borderColor: "rgba(148,163,184,0.22)" },
+      colors: ["#22c55e", "#38bdf8"],
       tooltip: {
         y: { formatter: (value: number) => `${value.toFixed(1)}%` }
       }
@@ -301,12 +372,24 @@ export function WheelReportView({
                 onClick={() => setActiveIdeaId(idea.ideaId)}
               >
                 <p className="text-sm font-semibold text-[var(--xf-text-100)]">{idea.headline}</p>
-                <p className="mt-1 text-xs text-[var(--xf-text-300)]">
-                  Income <strong className="font-semibold text-[var(--xf-gain-green)]">{currency(idea.premiumIncomePerCycleUsd)}</strong> / cycle
-                </p>
-                <p className="text-xs text-[var(--xf-text-300)]">
-                  Capital <strong className="font-semibold text-[var(--xf-text-100)]">{currency(idea.requiredCapitalUsd)}</strong>
-                </p>
+                <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-[0.7rem] leading-snug">
+                  <span className="text-[var(--xf-text-400)]">Income / cycle</span>
+                  <span className="text-right font-semibold text-[var(--xf-gain-green)]">
+                    {currency(idea.premiumIncomePerCycleUsd)}
+                  </span>
+                  <span className="text-[var(--xf-text-400)]">Cycle yield</span>
+                  <span className="text-right font-semibold text-[var(--xf-text-100)]">
+                    {percent(yieldPerCyclePctOfCapital(idea))}
+                  </span>
+                  <span className="text-[var(--xf-text-400)]">Annualized</span>
+                  <span className="text-right font-semibold text-[var(--xf-lightning-yellow)]">
+                    {percent(idea.annualizedYieldPct)}
+                  </span>
+                  <span className="col-span-2 mt-0.5 border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pt-1 text-[var(--xf-text-400)]">
+                    Capital{" "}
+                    <strong className="font-semibold text-[var(--xf-text-100)]">{currency(idea.requiredCapitalUsd)}</strong>
+                  </span>
+                </div>
               </button>
             );
           })}
@@ -328,6 +411,8 @@ export function WheelReportView({
             <StatRow label="Assignment Probability" value={percent(selectedIdea.assignmentProbabilityPct)} />
             <StatRow label="Call-away Probability" value={percent(selectedIdea.callAwayProbabilityPct)} />
             <StatRow label="Max Capital At Risk" value={currency(selectedIdea.maxCapitalAtRiskUsd)} />
+            <StatRow label="Income per Cycle" value={currency(selectedIdea.premiumIncomePerCycleUsd)} />
+            <StatRow label="Yield per Cycle (% of capital)" value={percent(yieldPerCyclePctOfCapital(selectedIdea))} />
             <StatRow label="Projected Annualized Yield" value={percent(selectedIdea.annualizedYieldPct)} />
           </div>
         </article>
@@ -348,6 +433,16 @@ export function WheelReportView({
             </p>
           </div>
         </article>
+      </section>
+
+      <section className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--xf-gain-green)_20%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_35%,transparent)] p-3">
+        <h3 className="text-sm font-semibold text-[var(--xf-text-100)]">Income & yield by scenario</h3>
+        <p className="mt-1 text-[0.65rem] text-[var(--xf-text-400)]">
+          Cycle yield is premium per full wheel cycle versus put collateral; annualized scales by days to expiry.
+        </p>
+        <div className="mt-2 max-w-4xl">
+          <ReactApexChart options={chartOptionsYield} series={chartSeriesYield} type="bar" height={240} />
+        </div>
       </section>
 
       <section className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--xf-gain-green)_24%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_8%,transparent)] p-3">
