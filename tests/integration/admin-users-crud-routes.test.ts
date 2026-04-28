@@ -14,6 +14,7 @@ const identityMocks = vi.hoisted(() => ({
   upsertTenantMembership: vi.fn(),
   getCoreUserById: vi.fn(),
   updateCoreUserById: vi.fn(),
+  updateCoreUserBillingOverride: vi.fn(),
   deleteCoreUserById: vi.fn(),
   revokeCredentialLinksForUsers: vi.fn().mockResolvedValue(1)
 }));
@@ -113,6 +114,24 @@ describe("admin users CRUD routes", () => {
       createdAt: new Date("2026-03-16T00:00:00.000Z"),
       updatedAt: new Date("2026-03-16T00:00:00.000Z")
     });
+    identityMocks.updateCoreUserBillingOverride.mockImplementation(async () => ({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      email: "updated@atxfinance.ai",
+      roles: ["advisor"],
+      subscriptionPlan: "premium",
+      status: "active",
+      billing: {
+        override: {
+          enabled: true,
+          reason: "test",
+          grantedByUserId: "507f1f77bcf86cd799439011",
+          grantedAt: new Date("2026-03-16T12:00:00.000Z"),
+          expiresAt: new Date("2027-01-01T00:00:00.000Z")
+        }
+      },
+      createdAt: new Date("2026-03-16T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-16T00:00:00.000Z")
+    }));
     identityMocks.deleteCoreUserById.mockResolvedValue(true);
     identityMocks.upsertTenantMembership.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439099" }
@@ -132,6 +151,36 @@ describe("admin users CRUD routes", () => {
     expect(payload.data[0]?.tenantMemberships).toEqual([]);
     expect(identityMocks.listCoreUsers).toHaveBeenCalledWith(50);
     expect(identityMocks.listAdminTenantMembershipsByUserIds).toHaveBeenCalled();
+  });
+
+  it("lists billing override fields when present on core user", async () => {
+    identityMocks.listCoreUsers.mockResolvedValueOnce([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+        email: "user@atxfinance.ai",
+        roles: ["viewer"],
+        subscriptionPlan: "basic",
+        status: "active",
+        billing: {
+          override: {
+            enabled: true,
+            reason: "Pilot",
+            grantedByUserId: "507f1f77bcf86cd799439011",
+            grantedAt: new Date("2026-03-16T12:00:00.000Z"),
+            expiresAt: new Date("2027-06-01T00:00:00.000Z")
+          }
+        },
+        createdAt: new Date("2026-03-16T00:00:00.000Z"),
+        updatedAt: new Date("2026-03-16T00:00:00.000Z")
+      }
+    ]);
+    const response = await getUsers(new Request("http://test/api/admin/users?limit=50"));
+    const payload = (await response.json()) as {
+      data: Array<{ billing?: { override?: { enabled: boolean; reason?: string } } }>;
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data[0]?.billing?.override?.enabled).toBe(true);
+    expect(payload.data[0]?.billing?.override?.reason).toBe("Pilot");
   });
 
   it("creates user", async () => {
@@ -197,7 +246,42 @@ describe("admin users CRUD routes", () => {
     );
     expect(response.status).toBe(200);
     expect(identityMocks.updateCoreUserById).toHaveBeenCalledTimes(1);
+    expect(identityMocks.updateCoreUserBillingOverride).not.toHaveBeenCalled();
     expect(clearMeteredUsageMock).toHaveBeenCalledWith("507f1f77bcf86cd799439033");
+  });
+
+  it("updates billing override when billingOverride is sent", async () => {
+    const response = await putUser(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "updated@atxfinance.ai",
+          role: "advisor",
+          subscriptionPlan: "premium",
+          billingOverride: {
+            enabled: true,
+            reason: "Enterprise waiver",
+            expiresAt: "2027-12-31T23:59:59.000Z"
+          }
+        })
+      }),
+      {
+        params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(identityMocks.updateCoreUserBillingOverride).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: expect.any(Object),
+        override: expect.objectContaining({
+          enabled: true,
+          reason: "Enterprise waiver",
+          expiresAt: expect.any(Date)
+        }),
+        actorUserId: "507f1f77bcf86cd799439011"
+      })
+    );
   });
 
   it("does not clear metered usage when subscription plan is unchanged", async () => {

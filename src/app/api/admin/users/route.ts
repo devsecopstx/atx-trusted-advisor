@@ -152,12 +152,31 @@ export async function POST(request: Request) {
 }
 
 function serializeUser(user: CoreUser) {
+  const billingOverride = user.billing?.override;
   return {
     _id: user._id?.toHexString(),
     email: user.email,
     roles: user.roles,
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     status: user.status,
+    billing: user.billing
+      ? {
+          stripeSubscriptionId: user.billing.stripeSubscriptionId,
+          stripeSubscriptionStatus: user.billing.stripeSubscriptionStatus,
+          stripeCurrentPeriodEnd: user.billing.stripeCurrentPeriodEnd?.toISOString(),
+          cancelAtPeriodEnd: user.billing.cancelAtPeriodEnd,
+          canceledAt: user.billing.canceledAt?.toISOString(),
+          override: billingOverride
+            ? {
+                enabled: billingOverride.enabled,
+                reason: billingOverride.reason,
+                grantedByUserId: billingOverride.grantedByUserId,
+                grantedAt: billingOverride.grantedAt?.toISOString(),
+                expiresAt: billingOverride.expiresAt?.toISOString()
+              }
+            : undefined
+        }
+      : undefined,
     xAccount: user.xAccount
       ? {
           ...user.xAccount,

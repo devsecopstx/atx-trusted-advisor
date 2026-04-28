@@ -74,6 +74,23 @@ type UserTenantMembershipRow = {
   isDefaultSessionTenant: boolean;
 };
 
+type ApiUserBillingOverride = {
+  enabled: boolean;
+  reason?: string;
+  grantedByUserId?: string;
+  grantedAt?: string;
+  expiresAt?: string;
+};
+
+type ApiUserBilling = {
+  stripeSubscriptionId?: string;
+  stripeSubscriptionStatus?: string;
+  stripeCurrentPeriodEnd?: string;
+  cancelAtPeriodEnd?: boolean;
+  canceledAt?: string;
+  override?: ApiUserBillingOverride;
+};
+
 type ApprovedUser = {
   userId: string;
   name: string;
@@ -81,6 +98,7 @@ type ApprovedUser = {
   role: "global_admin" | "advisor" | "operator" | "viewer";
   subscriptionPlan: SubscriptionPlan;
   tenantMemberships: UserTenantMembershipRow[];
+  billing?: ApiUserBilling;
   approvedAt?: string;
   latestAuditEvent?: {
     action: string;
@@ -105,6 +123,7 @@ type ApiUser = {
   roles: Array<"global_admin" | "advisor" | "operator" | "viewer">;
   subscriptionPlan: SubscriptionPlan;
   status: "active" | "suspended";
+  billing?: ApiUserBilling;
   tenantMemberships?: UserTenantMembershipRow[];
   xAccount?: {
     username?: string;
@@ -121,6 +140,12 @@ type ApiUser = {
   } | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type BillingOverrideEditState = {
+  enabled: boolean;
+  reason: string;
+  expiresAtLocal: string;
 };
 
 const ROLE_SELECT_OPTIONS: ReadonlyArray<ApprovedUser["role"]> = [
@@ -166,6 +191,9 @@ export function UserSettingsConsole() {
   const [personaByUserId, setPersonaByUserId] = useState<Record<string, string>>({});
   const [linkedCollectionsByUserId, setLinkedCollectionsByUserId] = useState<
     Record<string, LinkedCollection[]>
+  >({});
+  const [billingOverrideEdits, setBillingOverrideEdits] = useState<
+    Record<string, BillingOverrideEditState>
   >({});
 
   const refreshApprovedUsers = useCallback(async () => {
@@ -216,6 +244,18 @@ export function UserSettingsConsole() {
             user.tenantMemberships.find((membership) => membership.isDefaultSessionTenant) ??
             user.tenantMemberships[0];
           next[user.userId] = previous[user.userId] ?? preferredMembership?.tenantRole ?? "member";
+        }
+        return next;
+      });
+      setBillingOverrideEdits((previous) => {
+        const next = { ...previous };
+        for (const user of normalizedUsers) {
+          const o = user.billing?.override;
+          next[user.userId] = {
+            enabled: o?.enabled ?? false,
+            reason: o?.reason ?? "",
+            expiresAtLocal: o?.expiresAt ? isoToDatetimeLocalValue(o.expiresAt) : ""
+          };
         }
         return next;
       });
@@ -351,12 +391,18 @@ export function UserSettingsConsole() {
     );
     const nextPlan = normalizeSubscriptionPlan(subscriptionPlan);
     setStatus(`Saving user changes for ${userId}...`);
+    const billingOverride = buildBillingOverridePayload(billingOverrideEdits[userId]);
     try {
       await parseJson(
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, role, subscriptionPlan })
+          body: JSON.stringify({
+            email,
+            role,
+            subscriptionPlan,
+            ...(billingOverride ? { billingOverride } : {})
+          })
         })
       );
       if (selectedTenantId) {
@@ -533,6 +579,9 @@ export function UserSettingsConsole() {
   const selectedLinkedCollections = selectedUserId
     ? linkedCollectionsByUserId[selectedUserId] ?? []
     : [];
+  const selectedUserRow = selectedUserId
+    ? approvedUsers.find((u) => u.userId === selectedUserId)
+    : undefined;
 
   return (
     <section className="panel stack-gap">
@@ -590,6 +639,9 @@ export function UserSettingsConsole() {
                 </th>
                 <th>Role</th>
                 <th>Plan</th>
+                <th title="Admin billing override (treats subscription as active for product access)">
+                  Override
+                </th>
                 <th>xPersona</th>
                 <th>Audit</th>
                 <th>Actions</th>
@@ -718,6 +770,15 @@ export function UserSettingsConsole() {
                       ))}
                     </select>
                   </td>
+                  <td className="align-top text-sm">
+                    {user.billing?.override?.enabled ? (
+                      <span style={{ color: "var(--xf-gain-green)" }} title="billing.override.enabled">
+                        On
+                      </span>
+                    ) : (
+                      <span className="opacity-70">Off</span>
+                    )}
+                  </td>
                   <td>
                     <select
                       disabled={editingUserId !== user.userId}
@@ -801,6 +862,77 @@ export function UserSettingsConsole() {
             <p className="status-text">Loading settings...</p>
           ) : (
             <form className="stack-form" onSubmit={saveSettings}>
+              <fieldset>
+                <legend>Billing override (override_active)</legend>
+                <p className="status-text">
+                  When enabled, product access follows{" "}
+                  <span className="font-medium">override_active</span> regardless of Stripe status. Saved with{" "}
+                  <strong>Save</strong> on the user row (same request as email, role, and plan).
+                </p>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    checked={billingOverrideEdits[selectedUserId]?.enabled ?? false}
+                    onChange={(event) =>
+                      setBillingOverrideEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: {
+                          enabled: event.target.checked,
+                          reason: previous[selectedUserId]?.reason ?? "",
+                          expiresAtLocal: previous[selectedUserId]?.expiresAtLocal ?? ""
+                        }
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  Override active
+                </label>
+                <label>
+                  Reason (optional, 3–280 chars when provided)
+                  <textarea
+                    className="min-h-[4rem] w-full"
+                    disabled={!(billingOverrideEdits[selectedUserId]?.enabled ?? false)}
+                    onChange={(event) =>
+                      setBillingOverrideEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: {
+                          enabled: previous[selectedUserId]?.enabled ?? false,
+                          reason: event.target.value,
+                          expiresAtLocal: previous[selectedUserId]?.expiresAtLocal ?? ""
+                        }
+                      }))
+                    }
+                    placeholder="e.g. Partner pilot — comped access through launch"
+                    value={billingOverrideEdits[selectedUserId]?.reason ?? ""}
+                  />
+                </label>
+                <label>
+                  Expires at (optional, local time)
+                  <input
+                    disabled={!(billingOverrideEdits[selectedUserId]?.enabled ?? false)}
+                    onChange={(event) =>
+                      setBillingOverrideEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: {
+                          enabled: previous[selectedUserId]?.enabled ?? false,
+                          reason: previous[selectedUserId]?.reason ?? "",
+                          expiresAtLocal: event.target.value
+                        }
+                      }))
+                    }
+                    type="datetime-local"
+                    value={billingOverrideEdits[selectedUserId]?.expiresAtLocal ?? ""}
+                  />
+                </label>
+                {selectedUserRow?.billing?.override?.grantedAt ? (
+                  <p className="status-text text-xs">
+                    Granted {new Date(selectedUserRow.billing.override.grantedAt).toLocaleString()}
+                    {selectedUserRow.billing.override.grantedByUserId
+                      ? ` · by ${selectedUserRow.billing.override.grantedByUserId}`
+                      : null}
+                  </p>
+                ) : null}
+              </fieldset>
+
               <fieldset>
                 <legend>xPersona Assignment</legend>
                 <div className="tool-row">
@@ -1129,7 +1261,50 @@ function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
     role,
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     tenantMemberships: user.tenantMemberships ?? [],
+    billing: user.billing,
     approvedAt: user.updatedAt,
     latestAuditEvent: user.latestAuditEvent ?? null
   };
+}
+
+function isoToDatetimeLocalValue(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function datetimeLocalToIso(local: string): string | undefined {
+  const trimmed = local.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const d = new Date(trimmed);
+  if (Number.isNaN(d.getTime())) {
+    return undefined;
+  }
+  return d.toISOString();
+}
+
+function buildBillingOverridePayload(
+  edits: BillingOverrideEditState | undefined
+): { enabled: boolean; reason?: string; expiresAt?: string } | undefined {
+  if (!edits) {
+    return undefined;
+  }
+  if (!edits.enabled) {
+    return { enabled: false };
+  }
+  const payload: { enabled: boolean; reason?: string; expiresAt?: string } = { enabled: true };
+  const reason = edits.reason.trim();
+  if (reason.length >= 3) {
+    payload.reason = reason.slice(0, 280);
+  }
+  const expiresAt = datetimeLocalToIso(edits.expiresAtLocal);
+  if (expiresAt) {
+    payload.expiresAt = expiresAt;
+  }
+  return payload;
 }
