@@ -80,6 +80,8 @@ export async function completeCredentialInvite(input: {
   const now = new Date();
   const db = await getDb();
   const h = hashAuthLookupToken(input.rawToken.trim());
+  /** Invite token was delivered to this mailbox — treat as verified for login/session (matches login UX expectations post–access approval). */
+  const emailVerifiedAt = user.emailVerifiedAt ?? now;
   const res = await db.collection<CoreUser>(USERS).updateOne(
     {
       _id: user._id,
@@ -91,6 +93,7 @@ export async function completeCredentialInvite(input: {
       $set: {
         passwordHash,
         credentialsVerifiedAt: now,
+        emailVerifiedAt,
         updatedAt: now
       },
       $unset: {

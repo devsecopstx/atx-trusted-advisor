@@ -138,21 +138,19 @@ describe("POST /api/auth/email/complete-invite", () => {
     expect(finalizeMocks.finalizeEmailPasswordSession).toHaveBeenCalledTimes(1);
   });
 
-  it("sends verification email and blocks session when invite user email is unverified", async () => {
+  it("finalizes session after invite when repository set emailVerifiedAt (access-approval users)", async () => {
     credentialsMocks.completeCredentialInvite.mockResolvedValue({
       ok: true,
       userId: new ObjectId("507f1f77bcf86cd799439011")
     });
     repoMocks.getCoreUserById.mockResolvedValue({
       _id: new ObjectId("507f1f77bcf86cd799439011"),
-      email: "needsverify@example.com",
+      email: "approveduser@example.com",
+      emailVerifiedAt: new Date(),
       roles: ["viewer"],
       subscriptionPlan: "basic"
     });
-    credentialsMocks.issueEmailVerificationForUser.mockResolvedValue({
-      rawToken: "verify-token-123"
-    });
-    emailMessageMocks.sendEmailVerificationEmail.mockResolvedValue(true);
+    finalizeMocks.finalizeEmailPasswordSession.mockResolvedValue(undefined);
 
     const res = await postCompleteInvite(
       new Request("http://test", {
@@ -164,12 +162,9 @@ describe("POST /api/auth/email/complete-invite", () => {
         })
       })
     );
-    expect(res.status).toBe(403);
-    const body = (await res.json()) as { error: string; verificationSent: boolean };
-    expect(body.error).toBe("email_unverified");
-    expect(body.verificationSent).toBe(true);
-    expect(credentialsMocks.issueEmailVerificationForUser).toHaveBeenCalledTimes(1);
-    expect(emailMessageMocks.sendEmailVerificationEmail).toHaveBeenCalledTimes(1);
-    expect(finalizeMocks.finalizeEmailPasswordSession).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(credentialsMocks.issueEmailVerificationForUser).not.toHaveBeenCalled();
+    expect(emailMessageMocks.sendEmailVerificationEmail).not.toHaveBeenCalled();
+    expect(finalizeMocks.finalizeEmailPasswordSession).toHaveBeenCalledTimes(1);
   });
 });

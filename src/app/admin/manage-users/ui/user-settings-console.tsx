@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
@@ -95,6 +96,8 @@ type ApprovedUser = {
   userId: string;
   name: string;
   email: string;
+  /** True when core user has no platform roles yet (e.g. onboarding test pending approve). */
+  pendingAccess: boolean;
   role: "global_admin" | "advisor" | "operator" | "viewer";
   subscriptionPlan: SubscriptionPlan;
   tenantMemberships: UserTenantMembershipRow[];
@@ -120,6 +123,7 @@ type TenantOption = {
 type ApiUser = {
   _id?: string;
   email: string;
+  /** Empty before access request approval (onboarding test / email-only request path). */
   roles: Array<"global_admin" | "advisor" | "operator" | "viewer">;
   subscriptionPlan: SubscriptionPlan;
   status: "active" | "suspended";
@@ -180,6 +184,7 @@ export function UserSettingsConsole() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<ApprovedUser["role"]>("operator");
   const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("basic");
+  const [onboardingTestPendingAccess, setOnboardingTestPendingAccess] = useState(false);
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
   const [tenantEdits, setTenantEdits] = useState<Record<string, string>>({});
   const [tenantRoleEdits, setTenantRoleEdits] = useState<Record<string, "tenant_admin" | "member">>({});
@@ -476,6 +481,34 @@ export function UserSettingsConsole() {
       setStatus("Email is required.");
       return;
     }
+    if (onboardingTestPendingAccess) {
+      setStatus("Creating pending access request...");
+      try {
+        await parseJson(
+          await fetch("/api/admin/access-requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              requestedRole: newUserRole,
+              requestedPlan: newUserPlan,
+              reason: "Admin onboarding flow test (Manage Users)"
+            })
+          })
+        );
+        setNewUserEmail("");
+        setNewUserRole("operator");
+        setNewUserPlan("basic");
+        setOnboardingTestPendingAccess(false);
+        await refreshApprovedUsers();
+        setStatus(
+          "Pending access request created — open Access Requests to approve, then the user can sign in."
+        );
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Failed to create access request");
+      }
+      return;
+    }
     setStatus("Creating user...");
     try {
       await parseJson(
@@ -605,7 +638,11 @@ export function UserSettingsConsole() {
           <select
             onChange={(event) => setNewUserRole(event.target.value as ApprovedUser["role"])}
             value={newUserRole}
-            aria-label="Default role for new user"
+            aria-label={
+              onboardingTestPendingAccess
+                ? "Requested role (applied when access request is approved)"
+                : "Default role for new user"
+            }
           >
             {ROLE_SELECT_OPTIONS.map((role) => (
               <option key={role} value={role}>
@@ -616,7 +653,11 @@ export function UserSettingsConsole() {
           <select
             onChange={(event) => setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])}
             value={newUserPlan}
-            aria-label="Subscription plan for new user"
+            aria-label={
+              onboardingTestPendingAccess
+                ? "Requested plan (applied when access request is approved)"
+                : "Subscription plan for new user"
+            }
           >
             {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -624,10 +665,48 @@ export function UserSettingsConsole() {
               </option>
             ))}
           </select>
+          <label className="flex cursor-pointer items-start gap-2 text-sm leading-snug">
+            <input
+              checked={onboardingTestPendingAccess}
+              className="mt-1 shrink-0"
+              onChange={(event) => setOnboardingTestPendingAccess(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              <strong>Onboarding test:</strong> create a{" "}
+              <strong>pending access request</strong> only (no login until approved in{" "}
+              <Link className="underline" href="/admin/access-requests">
+                Access Requests
+              </Link>
+              ). Leave off to provision the user immediately (normal Add user).
+            </span>
+          </label>
           <button className="cta cta-primary" type="submit">
-            <AddIcon className="crud-icon" /> Add user
+            <AddIcon className="crud-icon" />{" "}
+            {onboardingTestPendingAccess ? "Create pending access request" : "Add user"}
           </button>
         </form>
+        <details className="mt-3 text-sm opacity-90">
+          <summary className="cursor-pointer select-none font-medium">Onboarding test loop</summary>
+          <ol className="mt-2 ml-4 list-decimal space-y-1">
+            <li>
+              Check <strong>Onboarding test</strong>, enter email + requested role/plan, submit — user row
+              appears with no login role until approval.
+            </li>
+            <li>
+              Open{" "}
+              <Link className="underline" href="/admin/access-requests">
+                Access Requests
+              </Link>{" "}
+              and approve — user gains roles and can sign in.
+            </li>
+            <li>
+              Use <strong>Delete</strong> on the row to wipe the user and related rows (including access
+              requests).
+            </li>
+            <li>Repeat with the same email — delete clears state so you can re-run the flow.</li>
+          </ol>
+        </details>
         <div className="crud-table-wrap">
           <table className="crud-table">
             <thead>
@@ -733,23 +812,35 @@ export function UserSettingsConsole() {
                     </div>
                   </td>
                   <td>
-                    <select
-                      disabled={editingUserId !== user.userId}
-                      onChange={(event) =>
-                        setRoleEdits((previous) => ({
-                          ...previous,
-                          [user.userId]: event.target.value as ApprovedUser["role"]
-                        }))
-                      }
-                      value={roleEdits[user.userId] ?? user.role}
-                      aria-label={`Role for ${user.email}`}
-                    >
-                      {ROLE_SELECT_OPTIONS.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </select>
+                    {user.pendingAccess ? (
+                      <span
+                        className="text-xs leading-snug opacity-80"
+                        title="Approve the matching row under Admin → Access Requests to grant this role."
+                      >
+                        Pending —{" "}
+                        <Link className="underline" href="/admin/access-requests">
+                          approve in Access Requests
+                        </Link>
+                      </span>
+                    ) : (
+                      <select
+                        disabled={editingUserId !== user.userId}
+                        onChange={(event) =>
+                          setRoleEdits((previous) => ({
+                            ...previous,
+                            [user.userId]: event.target.value as ApprovedUser["role"]
+                          }))
+                        }
+                        value={roleEdits[user.userId] ?? user.role}
+                        aria-label={`Role for ${user.email}`}
+                      >
+                        {ROLE_SELECT_OPTIONS.map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td>
                     <select
@@ -1253,11 +1344,13 @@ export function UserSettingsConsole() {
 }
 
 function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
+  const pendingAccess = user.roles.length === 0;
   const role = user.roles[0] ?? "operator";
   return {
     userId: user._id,
     name: user.xAccount?.displayName ?? user.xAccount?.username ?? user.email,
     email: user.email,
+    pendingAccess,
     role,
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     tenantMemberships: user.tenantMemberships ?? [],

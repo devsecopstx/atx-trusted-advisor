@@ -24,6 +24,11 @@
 #   ATXFINANCE_BACKEND_ORIGIN (backend HTTPS origin; no :8080 on public hosts)
 #
 # Optional (same names as GitHub vars / workflow):
+#   PUBLIC_APP_BASE_URL — public origin for password-invite / reset links in email (no trailing slash).
+#     Defaults to STAGING_BASE_URL or PROD_BASE_URL when unset (after sourcing the env file).
+#   Desk SMTP — when SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM are all set in the env file,
+#     this script passes them (and SMTP_PORT, optional SMTP_SECURE) as literal Cloud Run env vars and
+#     skips GSM secret bindings for those keys. Override GSM-only SMTP by clearing those vars in the file.
 #   ALLOW_ANY_X_USER_LOGIN, XAI_CHAT_MODEL,
 #   AUTH_CALLBACK_USE_SPRING, STRIPE_PRICE_BASIC_MONTHLY, STRIPE_PRICE_PREMIUM_MONTHLY,
 #   STRIPE_PRICE_PREMIUM_PLUS_MONTHLY, STRIPE_PRICE_PREMIUM_PLUS_YEARLY (legacy fallback)
@@ -160,6 +165,10 @@ fi
 
 BASE_URL="${BASE_URL%/}"
 
+# Email link base (resolvePublicAppOrigin / desk templates). Prefer explicit value from .env.stage / .env.prod.
+PUBLIC_APP_BASE_URL="${PUBLIC_APP_BASE_URL:-${BASE_URL}}"
+PUBLIC_APP_BASE_URL="${PUBLIC_APP_BASE_URL%/}"
+
 ALLOW_ANY_X_USER_LOGIN="${ALLOW_ANY_X_USER_LOGIN:-false}"
 XAI_CHAT_MODEL="${XAI_CHAT_MODEL:-grok-4-1-fast-reasoning}"
 ATXFINANCE_BACKEND_ORIGIN="${ATXFINANCE_BACKEND_ORIGIN:-}"
@@ -192,7 +201,7 @@ if [ "$(norm_origin "${ATXFINANCE_BACKEND_ORIGIN}")" = "$(norm_origin "${BASE_UR
 fi
 
 echo "deploy-cloud-run-from-env: target=${TARGET} project=${PROJECT} service=${SVC} region=${REGION}"
-echo "deploy-cloud-run-from-env: base_url=${BASE_URL} env_file=${ENV_ABS}"
+echo "deploy-cloud-run-from-env: base_url=${BASE_URL} public_app_base_url=${PUBLIC_APP_BASE_URL} env_file=${ENV_ABS}"
 
 if [[ "${WITH_CI_GATE}" == "true" ]]; then
   npm run ci:gate
@@ -226,6 +235,12 @@ if [[ "${SKIP_ADMIN_CLEAR}" != "true" ]]; then
   gcloud run services update "${SVC}" --region "${REGION}" --platform managed --remove-env-vars=ADMIN_SEED_EMAIL --quiet 2>/dev/null || true
 fi
 
+# Transactional email (desk SMTP): see src/lib/desk-smtp.ts — full set from sourced env mirrors local .env.prod without GSM SMTP_* secrets.
+DESK_SMTP_FROM_ENV_FILE="false"
+if [[ -n "${SMTP_HOST:-}" && -n "${SMTP_USER:-}" && -n "${SMTP_PASS:-}" && -n "${DESK_EMAIL_FROM:-}" ]]; then
+  DESK_SMTP_FROM_ENV_FILE="true"
+fi
+
 SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest,REDIS_URL=REDIS_URL:latest,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:latest,STRIPE_PUBLIC_KEY=STRIPE_PUBLIC_KEY:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest"
 if gcloud secrets describe GOOGLE_CLIENT_ID --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
   gcloud secrets describe GOOGLE_CLIENT_SECRET --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
@@ -234,19 +249,21 @@ if gcloud secrets describe GOOGLE_CLIENT_ID --project="${PROJECT}" --format='val
 else
   echo "deploy-cloud-run-from-env: Google OAuth secrets not both present — Sign in with Google unavailable until configured"
 fi
-if gcloud secrets describe SMTP_HOST --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+if [[ "${DESK_SMTP_FROM_ENV_FILE}" == "true" ]]; then
+  echo "deploy-cloud-run-from-env: desk SMTP from env file (${ENV_ABS}) — skipping GSM SMTP_* secret bindings"
+elif gcloud secrets describe SMTP_HOST --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
   gcloud secrets describe SMTP_PORT --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
   gcloud secrets describe SMTP_USER --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
   gcloud secrets describe SMTP_PASS --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
   gcloud secrets describe DESK_EMAIL_FROM --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
   SECRETS="${SECRETS},SMTP_HOST=SMTP_HOST:latest,SMTP_PORT=SMTP_PORT:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASS=SMTP_PASS:latest,DESK_EMAIL_FROM=DESK_EMAIL_FROM:latest"
-  echo "deploy-cloud-run-from-env: binding desk SMTP secrets (portfolio email channels)"
+  echo "deploy-cloud-run-from-env: binding desk SMTP secrets (Secret Manager)"
 else
-  echo "deploy-cloud-run-from-env: desk SMTP secrets not all present — portfolio email channels skipped"
+  echo "deploy-cloud-run-from-env: desk SMTP not configured (set SMTP_* + DESK_EMAIL_FROM in env file, or create GSM secrets)"
 fi
 
 # HOSTNAME: bind standalone to all interfaces. PORT is reserved on Cloud Run — injected automatically (8080); Dockerfile also sets PORT=8080.
-ENV_VARS="NODE_ENV=production,HOSTNAME=0.0.0.0,ATX_DEPLOY_TARGET=${DEPLOY_TARGET},X_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/x/callback,GOOGLE_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/google/callback,NEXT_PUBLIC_APP_URL=${BASE_URL},ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
+ENV_VARS="NODE_ENV=production,HOSTNAME=0.0.0.0,ATX_DEPLOY_TARGET=${DEPLOY_TARGET},X_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/x/callback,GOOGLE_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/google/callback,NEXT_PUBLIC_APP_URL=${BASE_URL},PUBLIC_APP_BASE_URL=${PUBLIC_APP_BASE_URL},ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
 if [[ -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
   ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
 fi
@@ -255,11 +272,32 @@ for pair in \
   "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" \
   "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" \
   "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}" \
-  "SMTP_SECURE:${SMTP_SECURE:-}" \
   ; do
   k="${pair%%:*}"
   v="${pair#*:}"
   if [[ -n "${v//[[:space:]]/}" ]]; then
+    ENV_VARS="${ENV_VARS},${k}=${v}"
+  fi
+done
+
+# gcloud --set-env-vars uses comma-separated KEY=value; commas inside values must be escaped as \,
+desk_smtp_escape_commas() {
+  printf '%s' "$1" | sed 's/,/\\,/g'
+}
+
+if [[ "${DESK_SMTP_FROM_ENV_FILE}" == "true" ]]; then
+  _smtp_port="${SMTP_PORT:-587}"
+  ENV_VARS="${ENV_VARS},SMTP_HOST=$(desk_smtp_escape_commas "${SMTP_HOST}"),SMTP_PORT=$(desk_smtp_escape_commas "${_smtp_port}"),SMTP_USER=$(desk_smtp_escape_commas "${SMTP_USER}"),SMTP_PASS=$(desk_smtp_escape_commas "${SMTP_PASS}"),DESK_EMAIL_FROM=$(desk_smtp_escape_commas "${DESK_EMAIL_FROM}")"
+  if [[ -n "${SMTP_SECURE:-}" ]]; then
+    ENV_VARS="${ENV_VARS},SMTP_SECURE=$(desk_smtp_escape_commas "${SMTP_SECURE}")"
+  fi
+  echo "deploy-cloud-run-from-env: SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS DESK_EMAIL_FROM added to env vars"
+fi
+
+for pair in "SMTP_SECURE:${SMTP_SECURE:-}"; do
+  k="${pair%%:*}"
+  v="${pair#*:}"
+  if [[ -n "${v//[[:space:]]/}" && "${DESK_SMTP_FROM_ENV_FILE}" != "true" ]]; then
     ENV_VARS="${ENV_VARS},${k}=${v}"
   fi
 done
