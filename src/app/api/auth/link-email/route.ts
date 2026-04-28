@@ -5,6 +5,7 @@ import { consumePendingXLinkCookie, createSession } from "@/lib/auth";
 import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
+import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
     createAccessRequest,
@@ -12,6 +13,7 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     dedupeDefaultTenantMembershipsForUser,
@@ -188,6 +190,39 @@ export async function POST(request: Request) {
         redirectTo: "/xchat?error=access_request_pending"
       });
     }
+  }
+
+  if (!linkedUser.emailVerifiedAt && linkedUser._id) {
+    let verificationSent = false;
+    try {
+      const issued = await issueEmailVerificationForUser(linkedUser._id);
+      if (issued?.rawToken) {
+        verificationSent = await sendEmailVerificationEmail({
+          request,
+          to: linkedUser.email,
+          rawToken: issued.rawToken
+        });
+      }
+    } catch {
+      verificationSent = false;
+    }
+
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "email_unverified",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      userId: linkedUser._id.toHexString(),
+      xUserId: pending.xUserId,
+      username: pending.username,
+      email: linkedUser.email
+    });
+    return NextResponse.json({
+      ok: true,
+      redirectTo: `/xchat?error=email_unverified&verificationSent=${verificationSent ? "1" : "0"}`
+    });
   }
 
   const tenant = await ensureDefaultTenant();

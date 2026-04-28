@@ -81,12 +81,14 @@ const envMocks = vi.hoisted(() => ({
 }));
 
 const emailCredentialMocks = vi.hoisted(() => ({
-  issueCredentialInviteForUser: vi.fn().mockResolvedValue({ rawToken: "test-invite-token" })
+  issueCredentialInviteForUser: vi.fn().mockResolvedValue({ rawToken: "test-invite-token" }),
+  issueEmailVerificationForUser: vi.fn().mockResolvedValue({ rawToken: "verify-token" })
 }));
 
 const sendCredentialEmailMocks = vi.hoisted(() => ({
   sendAccessApprovedPasswordInviteEmail: vi.fn().mockResolvedValue(true),
-  sendAccessApprovedSignInEmail: vi.fn().mockResolvedValue(true)
+  sendAccessApprovedSignInEmail: vi.fn().mockResolvedValue(true),
+  sendEmailVerificationEmail: vi.fn().mockResolvedValue(true)
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -112,7 +114,8 @@ function makeUser() {
     },
     email: "approved.user@atxfinance.ai",
     roles: [...state.userRoles],
-    status: "active" as const
+    status: "active" as const,
+    emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z")
   };
 }
 
@@ -660,7 +663,7 @@ describe("access request approval login flow", () => {
     });
   });
 
-  it("completes OAuth to xchat when X has no email but admin already approved (placeholder email + viewer)", async () => {
+  it("blocks OAuth when X has no email and account is unverified (placeholder email + viewer)", async () => {
     const approvedPlaceholder = {
       _id: {
         toHexString: () => state.userId
@@ -696,9 +699,9 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(response.headers.get("location")).toContain("/xchat");
-    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
-    expect(authMocks.setPendingXLinkCookie).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("/xchat?error=email_link_required");
+    expect(authMocks.createSession).not.toHaveBeenCalled();
+    expect(authMocks.setPendingXLinkCookie).toHaveBeenCalledTimes(1);
   });
 
   it("returns 500 and does not review when provisioning fails", async () => {

@@ -57,6 +57,14 @@ const bootstrapMocks = vi.hoisted(() => ({
   })
 }));
 
+const emailCredentialMocks = vi.hoisted(() => ({
+  issueEmailVerificationForUser: vi.fn().mockResolvedValue({ rawToken: "verify-token" })
+}));
+
+const sendCredentialEmailMocks = vi.hoisted(() => ({
+  sendEmailVerificationEmail: vi.fn().mockResolvedValue(true)
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
@@ -65,6 +73,8 @@ vi.mock("@/lib/env", () => envMocks);
 vi.mock("@/modules/identity/login-audit", () => ({
   appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
 }));
+vi.mock("@/modules/identity/email-credentials-repository", () => emailCredentialMocks);
+vi.mock("@/lib/send-email-credential-messages", () => sendCredentialEmailMocks);
 
 import { GET as oauthCallback } from "@/app/api/auth/x/callback/route";
 
@@ -74,6 +84,7 @@ function makeProvisionedTenantAdmin() {
     email: "admin@provisioned-tenant.test",
     roles: ["operator"] as const,
     status: "active" as const,
+    emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z"),
     subscriptionPlan: "basic" as const,
     xAccount: {
       xUserId: "x-provisioned-tenant-001",

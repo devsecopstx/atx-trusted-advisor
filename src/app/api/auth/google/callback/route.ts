@@ -20,15 +20,15 @@ import {
 import { googleLinkedId } from "@/lib/google-oauth-identity";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
-import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
+import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
     createAccessRequest,
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
-import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { canUserLogin } from "@/modules/identity/authorization";
+import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     ensureCoreUserByEmail,

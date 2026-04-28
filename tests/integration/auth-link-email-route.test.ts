@@ -37,6 +37,14 @@ const identityMocks = vi.hoisted(() => ({
   recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined)
 }));
 
+const emailCredentialMocks = vi.hoisted(() => ({
+  issueEmailVerificationForUser: vi.fn().mockResolvedValue({ rawToken: "verify-token" })
+}));
+
+const emailMessageMocks = vi.hoisted(() => ({
+  sendEmailVerificationEmail: vi.fn().mockResolvedValue(true)
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/env", () => envMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
@@ -44,6 +52,8 @@ vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/identity/login-audit", () => ({
   appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
 }));
+vi.mock("@/modules/identity/email-credentials-repository", () => emailCredentialMocks);
+vi.mock("@/lib/send-email-credential-messages", () => emailMessageMocks);
 
 import { POST as linkEmailPost } from "@/app/api/auth/link-email/route";
 
@@ -78,7 +88,8 @@ describe("auth link-email route", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
       email: "user@atxfinance.ai",
       roles: state.userRoles,
-      status: "active"
+      status: "active",
+      emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z")
     });
     identityMocks.getCoreUserByXIdentity.mockResolvedValue(null);
     identityMocks.unlinkXAccountFromUser.mockResolvedValue(undefined);
@@ -87,19 +98,22 @@ describe("auth link-email route", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
       email: "user@atxfinance.ai",
       roles: state.userRoles,
-      status: "active"
+      status: "active",
+      emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z")
     });
     identityMocks.linkXAccountToUser.mockImplementation(async () => ({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
       email: "user@atxfinance.ai",
       roles: [...state.userRoles],
-      status: "active"
+      status: "active",
+      emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z")
     }));
     identityMocks.mergePlaceholderXUserIntoEmailUser.mockImplementation(async () => ({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
       email: "user@atxfinance.ai",
       roles: [...state.userRoles],
       status: "active",
+      emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z"),
       xAccount: {
         xUserId: "x-user-1",
         username: "new_user",
@@ -189,11 +203,35 @@ describe("auth link-email route", () => {
     expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
   });
 
+  it("returns email_unverified redirect and does not create session", async () => {
+    identityMocks.linkXAccountToUser.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439011" },
+      email: "user@atxfinance.ai",
+      roles: ["viewer"],
+      status: "active"
+    });
+
+    const response = await linkEmailPost(
+      new Request("http://127.0.0.1:3000/api/auth/link-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "user@atxfinance.ai" })
+      })
+    );
+
+    const payload = (await response.json()) as { redirectTo: string };
+    expect(response.status).toBe(200);
+    expect(payload.redirectTo).toContain("/xchat?error=email_unverified");
+    expect(emailCredentialMocks.issueEmailVerificationForUser).toHaveBeenCalledTimes(1);
+    expect(authMocks.createSession).not.toHaveBeenCalled();
+  });
+
   it("auto-seeds configured admin email and redirects to /admin", async () => {
     identityMocks.linkXAccountToUser.mockResolvedValueOnce({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
       email: "atxbogart@gmail.com",
       roles: ["global_admin"],
+      emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z"),
       xAccount: {
         xUserId: "x-user-1",
         username: "new_user",
@@ -247,6 +285,7 @@ describe("auth link-email route", () => {
       _id: { toHexString: () => approvedAdminId },
       email: "admin@atxfinance.ai",
       roles: ["global_admin"],
+      emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z"),
       xAccount: {
         xUserId: "x-user-1",
         username: "new_user",

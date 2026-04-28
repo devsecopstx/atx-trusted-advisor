@@ -47,6 +47,14 @@ const identityMocks = vi.hoisted(() => ({
   upsertTenantMembership: vi.fn()
 }));
 
+const emailCredentialMocks = vi.hoisted(() => ({
+  issueEmailVerificationForUser: vi.fn().mockResolvedValue({ rawToken: "verify-token" })
+}));
+
+const emailMessageMocks = vi.hoisted(() => ({
+  sendEmailVerificationEmail: vi.fn().mockResolvedValue(true)
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/env", () => envMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
@@ -54,6 +62,8 @@ vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/identity/login-audit", () => ({
   appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
 }));
+vi.mock("@/modules/identity/email-credentials-repository", () => emailCredentialMocks);
+vi.mock("@/lib/send-email-credential-messages", () => emailMessageMocks);
 
 import { GET as googleCallback } from "@/app/api/auth/google/callback/route";
 
@@ -238,5 +248,43 @@ describe("Google OAuth canonical email user", () => {
 
     expect(response.headers.get("location")).toContain("error=google_link_email_mismatch");
     expect(identityMocks.linkGoogleAccountToUser).not.toHaveBeenCalled();
+  });
+
+  it("redirects with email_unverified when OAuth user lacks app email verification", async () => {
+    const registrationUser = {
+      _id: { toHexString: () => regId },
+      email: "reg@example.com",
+      roles: ["viewer"] as string[],
+      status: "active" as const
+    };
+    identityMocks.getCoreUserByEmail.mockResolvedValueOnce(registrationUser);
+    identityMocks.getCoreUserByGoogleSub.mockResolvedValueOnce(null);
+    identityMocks.linkGoogleAccountToUser.mockResolvedValueOnce(registrationUser);
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sub: "google-sub-2",
+          email: "reg@example.com",
+          email_verified: true,
+          name: "Reg User"
+        })
+      }) as typeof fetch;
+
+    const response = await googleCallback(
+      new Request("http://127.0.0.1:3000/api/auth/google/callback?code=abc&state=state-token")
+    );
+
+    expect(response.headers.get("location")).toContain("error=email_unverified");
+    expect(emailCredentialMocks.issueEmailVerificationForUser).toHaveBeenCalledTimes(1);
   });
 });
