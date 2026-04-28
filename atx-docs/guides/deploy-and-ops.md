@@ -191,3 +191,21 @@ For App Store / Play listing text, keep safety wording aligned with in-app metad
 - `gh run list --workflow "Deploy Cloud Run Production" --limit 1`
 
 For incident triage that starts as auth failures or app_user-only errors, use `atx-docs/guides/auth-and-access.md`.
+
+## Cloud Run — “container failed to start and listen on PORT=8080”
+
+Deploy creates a new revision, then Cloud Run waits for the process to **bind to `PORT`** (default **8080**) within the startup period. If deploy fails with this error:
+
+1. **Read revision logs** (replace revision name from the error):  
+   `gcloud logging read 'resource.type=cloud_run_revision AND resource.labels.revision_name=REVISION' --project=YOUR_PROJECT --limit=80 --format='table(timestamp,textPayload)'`
+2. **Logs like “STARTUP TCP probe failed” + “Container called exit(0)” ~1s apart:** The process often **had not opened port 8080 yet** (Next.js cold start), Cloud Run **stopped** the revision, and **exit(0)** is typically **SIGTERM**, not a clean voluntary shutdown. Fix: **`--cpu-boost`** (startup extra CPU), **`--memory=1Gi`** for Next, and explicit **`--port=8080`** — **`deploy-cloud-run-from-env.sh`** and the **Deploy Cloud Run** workflows now pass these by default.
+3. **Other causes:** **OOM**, **`getEnv()` / Zod** throwing because a **mounted secret is missing or empty** (compare Secret Manager + `--set-secrets` bindings to `scripts/ops/gcp-runtime-secrets.inc.sh`).
+4. **App-side guard:** `src/instrumentation.ts` runs Redis startup logging **without blocking** `register()`, so Redis connectivity does not delay binding to `PORT`.
+
+**Already deployed without these flags?** One-shot:
+
+`gcloud run services update SERVICE_NAME --region=REGION --project=PROJECT --cpu-boost --memory=1Gi --port=8080 --quiet`
+
+Then redeploy a new revision or traffic-pinned rollback.
+
+See also **`atx-docs/sre-ops/gcp-prod-two-service-model.md`** (recommended CPU/memory/concurrency and **`--cpu-boost`**).

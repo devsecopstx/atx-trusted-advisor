@@ -62,6 +62,7 @@ const identityMocks = vi.hoisted(() => ({
   getCoreUserOptionsScanPreferences: vi.fn(),
   updateCoreUserOptionsScanPreferences: vi.fn(),
   getTenantByHexId: vi.fn(),
+  resolveTenantIdHexForGlobalAdminConsole: vi.fn(),
   resolvedWorkspaceLimitsForTenant: vi.fn()
 }));
 
@@ -175,7 +176,14 @@ describe("xchat ask route collection retrieval", () => {
     repositoryMocks.saveXChatLog.mockResolvedValue(new ObjectId("507f1f77bcf86cd799439099"));
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
-    identityMocks.getCoreUserById.mockResolvedValue(null);
+    identityMocks.getCoreUserById.mockResolvedValue({
+      subscriptionPlan: "basic",
+      billing: {
+        override: {
+          enabled: true
+        }
+      }
+    } as never);
     identityMocks.getCoreUserOptionsScanPreferences.mockResolvedValue({
       frequency: "off",
       deliveryChannel: "inapp"
@@ -186,6 +194,7 @@ describe("xchat ask route collection retrieval", () => {
       lastRunAt: new Date("2026-04-25T00:00:00.000Z")
     });
     identityMocks.getTenantByHexId.mockResolvedValue(null);
+    identityMocks.resolveTenantIdHexForGlobalAdminConsole.mockResolvedValue(null);
     identityMocks.resolvedWorkspaceLimitsForTenant.mockReturnValue(defaultWorkspaceLimits);
     optionsScanReportMocks.createOptionsScanReport.mockResolvedValue(
       new ObjectId("507f1f77bcf86cd7994390ab")
@@ -902,7 +911,12 @@ describe("xchat ask route collection retrieval", () => {
       roles: ["viewer"]
     });
     identityMocks.getCoreUserById.mockResolvedValueOnce({
-      subscriptionPlan: "premium_plus"
+      subscriptionPlan: "premium_plus",
+      billing: {
+        override: {
+          enabled: true
+        }
+      }
     } as never);
     identityMocks.getTenantByHexId.mockResolvedValueOnce({
       _id: new ObjectId("507f1f77bcf86cd799439022"),
@@ -1361,7 +1375,12 @@ describe("xchat ask route collection retrieval", () => {
 
   it("loads core user for non-admin ask to apply multi-agent plan clamp", async () => {
     identityMocks.getCoreUserById.mockResolvedValueOnce({
-      subscriptionPlan: "premium_plus"
+      subscriptionPlan: "premium_plus",
+      billing: {
+        override: {
+          enabled: true
+        }
+      }
     } as never);
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",

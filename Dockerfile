@@ -27,6 +27,8 @@ RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 EXPOSE 8080
+# Align with Cloud Run’s default listener; standalone uses PORT (see `.next/standalone/server.js`).
+ENV PORT=8080
 ENV HOSTNAME=0.0.0.0
 
 CMD ["node", "server.js"]

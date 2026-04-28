@@ -199,6 +199,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/internal/authz/billing-access",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "admin-system"
+  },
+  {
     path: "/api/integrations/ibkr/status",
     operations: [{ method: "GET", auth: "session" }],
     tag: "integrations"
@@ -645,6 +650,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "GET", auth: "admin" },
       { method: "POST", auth: "admin", hasRequestBody: true }
     ],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/create",
+    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
     tag: "admin-tenants"
   },
   {

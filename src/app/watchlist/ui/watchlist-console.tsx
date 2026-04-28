@@ -1166,10 +1166,7 @@ export function WatchlistConsole({
   watchlistApiPrefix = "/api/portfolios",
   footerMode = "app_user",
   variant = "page",
-  addToHoldingsAccountIdHex = null,
-  portfolioStockSymbolsUpper = [],
   onWatchlistMutated,
-  onBookMutated,
   showLocalSidebar = true
 }: WatchlistConsoleProps) {
   const watchlistBaseUrl = `${watchlistApiPrefix}/${encodeURIComponent(portfolioId)}/watchlist`;

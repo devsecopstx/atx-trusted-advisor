@@ -15,8 +15,23 @@ const consentMocks = vi.hoisted(() => ({
   ensureIbkrConsentIndexes: vi.fn()
 }));
 
+const resolveIbkrCookieMocks = vi.hoisted(() => ({
+  resolveIbkrClientPortalCookieHeader: vi.fn<
+    typeof import("@/modules/ibkr-integration/session-resolve").resolveIbkrClientPortalCookieHeader
+  >((opts) => {
+    if (opts.sealedCookieValue?.trim()) {
+      return { ok: true, cookieHeader: "cp=test", source: "user_cookie" as const };
+    }
+    return { ok: false, error: "no_session" as const };
+  })
+}));
+
 vi.mock("@/lib/api-auth", () => ({
   requireApprovedAppUserSession: authMocks.requireApprovedAppUserSession
+}));
+
+vi.mock("@/modules/ibkr-integration/session-resolve", () => ({
+  resolveIbkrClientPortalCookieHeader: resolveIbkrCookieMocks.resolveIbkrClientPortalCookieHeader
 }));
 
 vi.mock("next/headers", () => ({
@@ -74,6 +89,12 @@ describe("IBKR integration API routes", () => {
   });
 
   beforeEach(() => {
+    resolveIbkrCookieMocks.resolveIbkrClientPortalCookieHeader.mockImplementation((opts) => {
+      if (opts.sealedCookieValue?.trim()) {
+        return { ok: true, cookieHeader: "cp=test", source: "user_cookie" };
+      }
+      return { ok: false, error: "no_session" };
+    });
     authMocks.requireApprovedAppUserSession.mockResolvedValue(sessionUser);
     cookiesGet.mockReset();
     consentMocks.getIbkrConsent.mockReset();

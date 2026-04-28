@@ -245,7 +245,8 @@ else
   echo "deploy-cloud-run-from-env: desk SMTP secrets not all present — portfolio email channels skipped"
 fi
 
-ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=${DEPLOY_TARGET},X_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/x/callback,GOOGLE_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/google/callback,NEXT_PUBLIC_APP_URL=${BASE_URL},ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
+# HOSTNAME: bind standalone to all interfaces. PORT is reserved on Cloud Run — injected automatically (8080); Dockerfile also sets PORT=8080.
+ENV_VARS="NODE_ENV=production,HOSTNAME=0.0.0.0,ATX_DEPLOY_TARGET=${DEPLOY_TARGET},X_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/x/callback,GOOGLE_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/google/callback,NEXT_PUBLIC_APP_URL=${BASE_URL},ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
 if [[ -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
   ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
 fi
@@ -265,11 +266,18 @@ done
 
 # Single line avoids line-continuation edge cases that can split flags (e.g. "nticated: command not found").
 # Production: warm floor (min 1) per atx-docs/sre-ops/gcp-prod-two-service-model.md; staging scales to zero by default.
+# Startup TCP probe: default Cloud Run behavior uses a tight budget (often one failure); Next standalone
+# can take several seconds to accept on cold CPU. Delay first probe, then retry generously (~5 min window).
+# timeout_seconds must be < period_seconds (Cloud Run API validation).
+STARTUP_PROBE='initialDelaySeconds=30,tcpSocket.port=8080,timeoutSeconds=5,periodSeconds=10,failureThreshold=60'
 SCALING_FLAGS=()
 if [[ "${TARGET}" == "production" ]]; then
   SCALING_FLAGS=(--min-instances=1 --max-instances=50)
 fi
-gcloud run deploy "${SVC}" --source . --clear-base-image --region "${REGION}" --platform managed --allow-unauthenticated --set-env-vars "${ENV_VARS}" --set-secrets "${SECRETS}" "${SCALING_FLAGS[@]}" --quiet
+gcloud run deploy "${SVC}" --source . --clear-base-image --region "${REGION}" --platform managed --allow-unauthenticated \
+  --port=8080 --cpu-boost --memory=1Gi \
+  --startup-probe="${STARTUP_PROBE}" \
+  --set-env-vars "${ENV_VARS}" --set-secrets "${SECRETS}" "${SCALING_FLAGS[@]}" --quiet
 
 if [[ "${NO_HEALTH}" != "true" ]]; then
   bash "${ROOT_DIR}/scripts/ops/health-check-with-fallback.sh" \

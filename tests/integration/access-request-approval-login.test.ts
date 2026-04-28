@@ -704,7 +704,49 @@ describe("access request approval login flow", () => {
     expect(authMocks.setPendingXLinkCookie).toHaveBeenCalledTimes(1);
   });
 
-  it("returns 500 and does not review when provisioning fails", async () => {
+  it("blocks OAuth with email_unverified when approved X user has real email and no verification", async () => {
+    state.userRoles = ["viewer"];
+    const unverifiedApprovedUser = {
+      _id: {
+        toHexString: () => state.userId
+      },
+      email: "approved.user@atxfinance.ai",
+      roles: ["viewer"] as string[],
+      status: "active" as const
+    };
+    identityMocks.getCoreUserByXIdentity.mockResolvedValueOnce(unverifiedApprovedUser);
+    identityMocks.linkXAccountToUser.mockResolvedValueOnce(unverifiedApprovedUser);
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "x-user-1",
+            username: "approved_user",
+            email: "approved.user@atxfinance.ai"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+
+    expect(response.headers.get("location")).toContain("/xchat?error=email_unverified");
+    expect(emailCredentialMocks.issueEmailVerificationForUser).toHaveBeenCalledTimes(1);
+    expect(authMocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it("still reviews when default portfolio provisioning fails (best-effort provision)", async () => {
     coreAdminMocks.provisionDefaultPortfolioForUser.mockRejectedValueOnce(
       new Error("provisioning failed")
     );
@@ -729,7 +771,7 @@ describe("access request approval login flow", () => {
       }
     );
 
-    expect(approvalResponse.status).toBe(500);
-    expect(coreAdminMocks.reviewAccessRequestById).not.toHaveBeenCalled();
+    expect(approvalResponse.status).toBe(200);
+    expect(coreAdminMocks.reviewAccessRequestById).toHaveBeenCalled();
   });
 });

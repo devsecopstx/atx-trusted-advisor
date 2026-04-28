@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 import { CURRENT_STATE_ROUTES } from "@/lib/openapi/current-state";
 
 const METHOD_PATTERN = /export\s+async\s+function\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g;
+/** Re-exports like `export { POST } from "..."` (no inline handler body). */
+const REEXPORT_METHOD_PATTERN =
+  /export\s*\{\s*(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b(?:\s+as\s+\w+)?\s*\}/g;
 
 type RouteMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -42,6 +45,9 @@ function collectMethods(routeSource: string): RouteMethod[] {
   const methods = new Set<RouteMethod>();
 
   for (const match of routeSource.matchAll(METHOD_PATTERN)) {
+    methods.add(match[1] as RouteMethod);
+  }
+  for (const match of routeSource.matchAll(REEXPORT_METHOD_PATTERN)) {
     methods.add(match[1] as RouteMethod);
   }
 

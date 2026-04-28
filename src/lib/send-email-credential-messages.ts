@@ -55,13 +55,26 @@ export async function sendAccessApprovedSignInEmail(input: {
     "",
     "Your access request has been approved. Welcome to **ATX Finance Advisory**.",
     "",
+    "We built aTx Finance as your personal command center for sophisticated portfolio management, xAI-powered conversational strategy (xChat), and institutional-grade options analysis (xOptions).",
+    "",
     "You can sign in now:",
     signInLink,
     "",
     "If you need to set or reset your password, use:",
     forgotPasswordLink,
     "",
-    "support@atxtrustedadvisory.com"
+    "Once signed in you will be able to immediately:",
+    "• Connect and monitor multiple portfolios with real-time holdings, alerts, and performance",
+    "• Engage xChat – your xAI co-pilot for market insights and tailored strategy ideas",
+    "• Build, analyze, and stress-test options strategies (conservative income, balanced, or aggressive growth)",
+    "",
+    "If you have any questions or need onboarding assistance, simply reply to this email or use the in-app support.",
+    "",
+    "We look forward to helping you and your team make better, data-driven decisions.",
+    "",
+    "support@atxtrustedadvisory.com",
+    "",
+    "P.S. All communications are secured end-to-end and your data is never shared."
   ].join("\n");
   return sendDeskPlainEmail({ to: input.to, subject, text });
 }
