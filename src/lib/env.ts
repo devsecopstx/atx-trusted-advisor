@@ -169,7 +169,25 @@ const envSchema = z.object({
    * Optional absolute origin for auth invite/reset links in email (`https://app.example.com`, no trailing slash).
    * When unset, handlers use the incoming request origin.
    */
-  PUBLIC_APP_BASE_URL: optionalUrl
+  PUBLIC_APP_BASE_URL: optionalUrl,
+  /**
+   * When true, access-request approval sends only the “sign in at /login” email for users without a password
+   * (OAuth / forgot-password path). Skips credential-invite / set-password email — use for OAuth-first prod or
+   * when invite links must not be sent.
+   */
+  ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null || v === "") {
+        return false;
+      }
+      if (typeof v === "boolean") {
+        return v;
+      }
+      const s = String(v).trim().toLowerCase();
+      return s === "1" || s === "true" || s === "yes";
+    },
+    z.boolean().optional().default(false)
+  )
 });
 
 export const REQUIRED_RUNTIME_ENV_VARS = [

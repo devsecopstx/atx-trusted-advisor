@@ -26,6 +26,7 @@
 # Optional (same names as GitHub vars / workflow):
 #   PUBLIC_APP_BASE_URL — public origin for password-invite / reset links in email (no trailing slash).
 #     Defaults to STAGING_BASE_URL or PROD_BASE_URL when unset (after sourcing the env file).
+#   ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY — optional true/false; forwarded to Cloud Run when set in the env file.
 #   Desk SMTP — when SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM are all set in the env file,
 #     this script passes them (and SMTP_PORT, optional SMTP_SECURE) as literal Cloud Run env vars and
 #     skips GSM secret bindings for those keys. Override GSM-only SMTP by clearing those vars in the file.
@@ -266,6 +267,9 @@ fi
 ENV_VARS="NODE_ENV=production,HOSTNAME=0.0.0.0,ATX_DEPLOY_TARGET=${DEPLOY_TARGET},X_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/x/callback,GOOGLE_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/google/callback,NEXT_PUBLIC_APP_URL=${BASE_URL},PUBLIC_APP_BASE_URL=${PUBLIC_APP_BASE_URL},ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
 if [[ -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
   ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
+fi
+if [[ -n "${ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY:-}" ]]; then
+  ENV_VARS="${ENV_VARS},ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY=${ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY}"
 fi
 for pair in \
   "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" \

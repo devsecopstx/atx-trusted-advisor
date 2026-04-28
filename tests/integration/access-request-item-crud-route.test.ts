@@ -49,6 +49,16 @@ vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/identity/email-credentials-repository", () => emailCredentialMocks);
 vi.mock("@/lib/send-email-credential-messages", () => sendCredentialEmailMocks);
+vi.mock("@/lib/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/env")>();
+  return {
+    ...actual,
+    getEnv: vi.fn(() => ({
+      ...actual.getEnv(),
+      ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY: false
+    }))
+  };
+});
 
 import {
     DELETE as deleteAccessRequest,

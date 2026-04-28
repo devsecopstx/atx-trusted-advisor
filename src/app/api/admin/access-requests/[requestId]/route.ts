@@ -6,6 +6,7 @@ import { resolveAccessApprovalNotifyEmail } from "@/lib/access-request-notify-em
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminAccessRequestsRequestToBackend } from "@/lib/backend-bff";
+import { getEnv } from "@/lib/env";
 import {
     sendAccessApprovedPasswordInviteEmail,
     sendAccessApprovedSignInEmail
@@ -418,8 +419,9 @@ async function handleUpdate(request: Request, context: RouteContext) {
         "";
       const firstName = display ? display.split(/\s+/)[0] : undefined;
       const hasPassword = Boolean(approvedUser.passwordHash && approvedUser.passwordHash.length > 0);
+      const approvalEmailSignInOnly = getEnv().ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY === true;
       // Credential invite first: independent of xAI per-user collection bootstrap (quota errors there must not block password setup).
-      if (approvedUserObjectId && !hasPassword) {
+      if (approvedUserObjectId && !hasPassword && !approvalEmailSignInOnly) {
         const issued = await issueCredentialInviteForUser(approvedUserObjectId);
         if (issued) {
           const sent = await sendAccessApprovedPasswordInviteEmail({
@@ -499,7 +501,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
             });
           }
         }
-      } else if (hasPassword) {
+      } else if (hasPassword || approvalEmailSignInOnly) {
         const sent = await sendAccessApprovedSignInEmail({
           request,
           to: notifyEmail,

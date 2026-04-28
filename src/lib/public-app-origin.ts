@@ -2,12 +2,19 @@ import { getEnv } from "@/lib/env";
 
 const DEFAULT_PUBLIC_APP_ORIGIN = "https://atxtrustedadvisory.com";
 
-function isLocalOrigin(origin: string): boolean {
+/** Hosts that must never appear in user-facing email links (loopback, bind-all, metadata). */
+export function shouldRejectPublicLinkOrigin(origin: string): boolean {
   try {
     const host = new URL(origin).hostname.toLowerCase();
-    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+    return (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host === "0.0.0.0" ||
+      host === "[::]"
+    );
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -15,14 +22,14 @@ function isLocalOrigin(origin: string): boolean {
 export function resolvePublicAppOrigin(request: Request): string {
   try {
     const fromEnv = getEnv().PUBLIC_APP_BASE_URL?.trim().replace(/\/$/, "");
-    if (fromEnv && !isLocalOrigin(fromEnv)) {
+    if (fromEnv && !shouldRejectPublicLinkOrigin(fromEnv)) {
       return fromEnv;
     }
   } catch {
     /* tests or partial env */
   }
   const requestOrigin = new URL(request.url).origin.replace(/\/$/, "");
-  if (!isLocalOrigin(requestOrigin)) {
+  if (!shouldRejectPublicLinkOrigin(requestOrigin)) {
     return requestOrigin;
   }
   return DEFAULT_PUBLIC_APP_ORIGIN;

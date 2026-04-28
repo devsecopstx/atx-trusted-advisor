@@ -100,10 +100,15 @@ class CredentialInviteService(
         return DEFAULT_PUBLIC_APP_BASE_URL
     }
 
+    /** Loopback / bind-all hosts must never appear in user-facing links (matches Next `shouldRejectPublicLinkOrigin`). */
     private fun isLocalHostUrl(value: String): Boolean {
         return try {
             val host = URI(value).host?.lowercase().orEmpty()
-            host == "localhost" || host == "127.0.0.1" || host == "::1"
+            host == "localhost" ||
+                host == "127.0.0.1" ||
+                host == "::1" ||
+                host == "0.0.0.0" ||
+                host == "[::]"
         } catch (_: Exception) {
             false
         }
