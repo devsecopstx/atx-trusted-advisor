@@ -114,6 +114,9 @@ class BackendHealthController(
                     "MONGODB_URI_B64_present" to !System.getenv("MONGODB_URI_B64").isNullOrBlank(),
                     "SPRING_DATA_MONGODB_URI_present" to !System.getenv("SPRING_DATA_MONGODB_URI").isNullOrBlank(),
                     "REDIS_URL_present" to !System.getenv("REDIS_URL").isNullOrBlank(),
+                    "XAI_API_KEY_present" to !System.getenv("XAI_API_KEY").isNullOrBlank(),
+                    "X_OAUTH_CLIENT_ID_present" to !System.getenv("X_OAUTH_CLIENT_ID").isNullOrBlank(),
+                    "X_OAUTH_CLIENT_SECRET_present" to !System.getenv("X_OAUTH_CLIENT_SECRET").isNullOrBlank(),
                     "DEFAULT_TENANT_SLUG" to (System.getenv("DEFAULT_TENANT_SLUG") ?: ""),
                     "TENANT_PORTFOLIO_ORG_KEY" to (System.getenv("TENANT_PORTFOLIO_ORG_KEY") ?: "")
                 )

@@ -10,6 +10,7 @@ import {
 import { notifyScheduledTaskSlackSummary } from "@/modules/core-admin/scheduled-task-slack-notify";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requests-task";
+import { runMarketingPostTask } from "@/modules/marketing/publisher";
 import { runScheduledAppBrokerImportTask } from "@/modules/portfolio-import/app-broker-import-job";
 import {
     appendTenantIdToScheduledTaskOutput,
@@ -153,6 +154,9 @@ async function runScheduledCategory(
   }
   if (task.category === "tax_loss_harvest_scanner") {
     return runTaxLossHarvestScanner(task);
+  }
+  if (task.category === "marketing_post") {
+    return runMarketingPostTask(task);
   }
   if (task.category === "rebalance") {
     return runRebalanceScanner(task);

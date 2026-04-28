@@ -1,3 +1,4 @@
+import type { MarketingTaskConfig } from "@/modules/marketing/types";
 import { ObjectId } from "mongodb";
 
 import type { SubscriptionPlan } from "@/lib/subscription-plan";
@@ -104,7 +105,8 @@ export type ScheduledTask = {
     | "income_cash_flow_projector"
     | "options_expiration_roll_manager"
     | "risk_concentration_scanner"
-    | "tax_loss_harvest_scanner";
+    | "tax_loss_harvest_scanner"
+    | "marketing_post";
   scheduleCron?: string;
   /** RRULE expression for rich recurrence; preferred over cron when present. */
   scheduleRRule?: string;
@@ -115,6 +117,8 @@ export type ScheduledTask = {
   deliveryChannelTarget?: ObjectId;
   runTimeoutSeconds?: number;
   maxRetries?: number;
+  /** Category-specific typed config payload (e.g. `marketing_post`). */
+  config?: MarketingTaskConfig;
   lastRunAt?: Date;
   nextRunAt?: Date;
 };

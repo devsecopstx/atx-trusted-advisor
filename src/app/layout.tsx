@@ -2,6 +2,7 @@ import { PwaBootstrapClient } from "@/app/ui/pwa-bootstrap-client";
 import { TenantBrandingProvider } from "@/app/ui/tenant-branding-context";
 import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
 import { getSessionUser } from "@/lib/auth";
+import { getGa4MeasurementId } from "@/lib/env";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
 import {
@@ -15,6 +16,7 @@ import { Inter } from "next/font/google";
 import type { CSSProperties, ReactNode } from "react";
 import "../../atx-docs/design-system/atxfinance-brand-kit.css";
 import "./globals.css";
+import { Ga4Analytics } from "./ui/ga4-analytics";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,6 +55,7 @@ type RootLayoutProps = {
 
 export default async function RootLayout({ children }: RootLayoutProps) {
   const session = await getSessionUser();
+  const ga4MeasurementId = getGa4MeasurementId();
   let tenantDefaultTheme: XfUiThemePreference | undefined;
   let userUiTheme: XfUiThemePreference | undefined;
   let tenantShellBranding: Awaited<ReturnType<typeof getTenantShellBrandingForHex>> = null;
@@ -85,6 +88,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       </head>
       <body>
         <TenantBrandingProvider value={tenantShellBranding}>
+          {ga4MeasurementId ? <Ga4Analytics measurementId={ga4MeasurementId} /> : null}
           <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} userTheme={userUiTheme} />
           <PwaBootstrapClient />
           {children}

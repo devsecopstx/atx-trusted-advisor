@@ -9,8 +9,10 @@ import { LandingProductScreenshot } from "@/app/ui/landing-product-screenshot";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { PublicLandingXchatDemo } from "@/app/ui/public-landing-xchat-demo";
 import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
+import { withUtmParams } from "@/lib/marketing/utm";
 
 const REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
+const MARKETING_UTM = { utm_source: "x", utm_campaign: "weekly-pulse", utm_medium: "owned-social" } as const;
 
 /** Drop real captures into `public/landing/` (same names, or change paths here). */
 const LANDING_PRODUCT_SHOTS = {
@@ -20,6 +22,9 @@ const LANDING_PRODUCT_SHOTS = {
 } as const;
 
 export function PublicMarketingLanding() {
+  const registerTrialHref = withUtmParams(REGISTER_TRIAL_HREF, MARKETING_UTM);
+  const plansHref = withUtmParams("/account/billing", MARKETING_UTM);
+
   const scrollDemo = () => {
     document.getElementById("xchat-demo")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -41,7 +46,7 @@ export function PublicMarketingLanding() {
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <Link
-              href={REGISTER_TRIAL_HREF}
+              href={registerTrialHref}
               className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95 sm:px-5"
               style={{
                 background: "var(--xf-gain-green)",
@@ -124,7 +129,7 @@ export function PublicMarketingLanding() {
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
-                href={REGISTER_TRIAL_HREF}
+                href={registerTrialHref}
                 className="inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-[var(--xf-bg-900)] sm:text-lg"
                 style={{
                   background: "var(--xf-gain-green)",
@@ -137,7 +142,7 @@ export function PublicMarketingLanding() {
 
               {/* New secondary CTA: See Plans */}
               <Link
-                href="/account/billing"
+                href={plansHref}
                 className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               >
                 See Plans
@@ -245,13 +250,13 @@ export function PublicMarketingLanding() {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href={REGISTER_TRIAL_HREF}
+              href={registerTrialHref}
               className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl bg-[var(--xf-gain-green)] text-[var(--xf-text-100)] hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               Register for Trial
             </Link>
             <Link
-              href="/account/billing"
+              href={plansHref}
               className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               See Plans

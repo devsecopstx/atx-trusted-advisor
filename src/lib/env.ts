@@ -510,6 +510,12 @@ export function getMongoEnvVarDiagnostics(): MongoEnvVarDiagnostics {
   };
 }
 
+/** Optional GA4 measurement id for marketing attribution (`G-XXXXXXXXXX`). */
+export function getGa4MeasurementId(): string | undefined {
+  const raw = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+  return raw && raw.length > 0 ? raw : undefined;
+}
+
 /** Default xAI API base URL when XAI_BASE_URL env is unset. Aligned with tenant_defaults.yaml. */
 export const XAI_BASE_URL_DEFAULT = "https://api.x.ai/v1";
 

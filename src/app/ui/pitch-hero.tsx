@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 
 import { LucideHouseIcon } from "@/app/ui/lucide-product-icons";
+import { withUtmParams } from "@/lib/marketing/utm";
 
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -88,7 +89,11 @@ export const DEFAULT_PITCH_LOGIN_RETURN_PATH = "/xchat";
 
 export function buildPitchLoginHref(returnPath: string): string {
   const path = returnPath.startsWith("/") ? returnPath : `/${returnPath}`;
-  return `/api/auth/x/login?next=${encodeURIComponent(path)}`;
+  return withUtmParams(`/api/auth/x/login?next=${encodeURIComponent(path)}`, {
+    utm_source: "x",
+    utm_campaign: "weekly-pulse",
+    utm_medium: "owned-social"
+  });
 }
 
 /**

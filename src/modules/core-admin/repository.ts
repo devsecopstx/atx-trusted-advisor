@@ -908,7 +908,8 @@ export async function createScheduledTask(
     ...(tenantOid ? { tenantId: tenantOid } : {}),
     ...(portfolioOid ? { portfolioId: portfolioOid } : {}),
     ...(appBrokerImportJobOid ? { appBrokerImportJobId: appBrokerImportJobOid } : {}),
-    ...(payload.deliveryChannelTarget ? { deliveryChannelTarget: payload.deliveryChannelTarget } : {})
+    ...(payload.deliveryChannelTarget ? { deliveryChannelTarget: payload.deliveryChannelTarget } : {}),
+    ...(payload.config ? { config: payload.config } : {})
   };
   const result = await db
     .collection<ScheduledTask>(collections.scheduledTasks)
@@ -928,6 +929,7 @@ export async function updateScheduledTask(input: {
   enabled?: boolean;
   nextRunAt?: Date | null;
   deliveryChannelTarget?: ObjectId | null;
+  config?: ScheduledTask["config"] | null;
 }): Promise<ScheduledTask | null> {
   const existing = await getScheduledTaskById(input.taskId, { tenantId: input.tenantId });
   if (!existing?._id) {
@@ -986,6 +988,13 @@ export async function updateScheduledTask(input: {
       $unset.deliveryChannelTarget = "";
     } else {
       $set.deliveryChannelTarget = input.deliveryChannelTarget;
+    }
+  }
+  if (input.config !== undefined) {
+    if (input.config === null) {
+      $unset.config = "";
+    } else {
+      $set.config = input.config;
     }
   }
   if (Object.keys($set).length === 0 && Object.keys($unset).length === 0) {

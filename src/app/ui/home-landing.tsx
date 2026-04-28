@@ -7,6 +7,7 @@ import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { LucideHouseIcon } from "@/app/ui/lucide-product-icons";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
+import { withUtmParams } from "@/lib/marketing/utm";
 
 export const DEFAULT_POST_LOGIN = "/xchat";
 
@@ -104,7 +105,11 @@ export function HomeLanding({ formspreeEndpoint = "", googleLoginHref = null }: 
   const hasFormspree = hasValidFormspreeEndpoint(raw);
 
   const loginHref = `/login?next=${encodeURIComponent(DEFAULT_POST_LOGIN)}`;
-  const xOAuthHref = `/api/auth/x/login?next=${encodeURIComponent(DEFAULT_POST_LOGIN)}`;
+  const xOAuthHref = withUtmParams(`/api/auth/x/login?next=${encodeURIComponent(DEFAULT_POST_LOGIN)}`, {
+    utm_source: "x",
+    utm_campaign: "weekly-pulse",
+    utm_medium: "owned-social"
+  });
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-slate-950 to-black text-gray-100">
@@ -164,7 +169,7 @@ export function HomeLanding({ formspreeEndpoint = "", googleLoginHref = null }: 
               Explore xChat &amp; request access
             </Link>
             <Link
-              href="/api/auth/x/login?next=%2Fxchat"
+              href={xOAuthHref}
               className="inline-flex items-center justify-center rounded-full border border-gray-600 px-8 py-4 text-center text-base font-semibold text-gray-200 transition hover:border-emerald-500/50 hover:text-white"
             >
               Continue to sign-in

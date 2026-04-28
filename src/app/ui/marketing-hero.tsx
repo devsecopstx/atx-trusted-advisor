@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { LucideHouseIcon } from "@/app/ui/lucide-product-icons";
+import { withUtmParams } from "@/lib/marketing/utm";
 
 import { AtxFinanceLogo } from "./atxfinance-logo";
 import { USER_PRODUCT_DESCRIPTOR_LINE } from "./product-brand-constants";
@@ -70,6 +71,12 @@ type MarketingHeroProps = {
 };
 
 export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: MarketingHeroProps) {
+  const loginHref = withUtmParams("/api/auth/x/login?next=%2Fxchat", {
+    utm_source: "x",
+    utm_campaign: "weekly-pulse",
+    utm_medium: "owned-social"
+  });
+
   return (
     <section className="mh-hero">
       <div className="mh-grid-lines" aria-hidden="true" />
@@ -115,7 +122,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
           ) : (
             <div className="mh-guest-signin" role="group" aria-label="Sign in">
               <div className="cta-row mh-cta-row">
-                <Link className="cta cta-primary" href="/api/auth/x/login?next=%2Fxchat">
+                <Link className="cta cta-primary" href={loginHref}>
                   Sign in with X
                 </Link>
               </div>

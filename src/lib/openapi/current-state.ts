@@ -420,6 +420,42 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/marketing/templates",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/schedules",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/schedules/{scheduleId}",
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/schedules/{scheduleId}/run-now",
+    operations: [{ method: "POST", auth: "admin" }],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/preview",
+    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/history",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-marketing"
+  },
+  {
     path: "/api/admin/import/broker",
     operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
     tag: "admin-system"
@@ -990,6 +1026,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "user-feedback": "Authenticated app_user feedback submission (Slack integration when configured).",
   "admin-audit": "Admin audit and activity timeline endpoints.",
   "admin-system": "Admin system-level diagnostics and scheduled task controls.",
+  "admin-marketing":
+    "Marketing scheduler endpoints: template catalog, recurring social schedules, run-now execution, and posting history.",
   "admin-options-strategy":
     "Global admin CRUD for tenant options-strategy catalog and Mongo-backed `options_strategy_preferences` (markdown seed from `atx-docs/rag-collection/options-strategy` via `npm run seed:options-strategy-prefs`). Next-authoritative — not proxied to Spring.",
   "admin-tasks":

@@ -103,6 +103,12 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     defaultJobName: "tax-loss-harvest-scanner-job",
     description:
       "tax-loss harvest scanner; runs on Next.js task-runner."
+  },
+  marketing_post: {
+    displayName: "Marketing post scheduler (weekdays 13:00 UTC)",
+    defaultJobName: "marketing-post-job",
+    description:
+      "Publishes templated or custom marketing posts with required disclaimer + UTM tagging to enabled social platforms."
   }
 } satisfies Record<ScheduledTaskCategory, ScheduledTaskCategoryCatalogEntry>;
 

@@ -74,6 +74,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         description: "Create scheduled tasks, run jobs manually, and monitor status."
       },
       {
+        href: "/admin/marketing",
+        title: "Marketing",
+        description:
+          "Configure recurring social post schedules, template-driven copy, run-now executions, and delivery history."
+      },
+      {
         href: "/admin/batch",
         title: "Batch ops",
         description: "Track xchat batch progress, failures, and completion metrics."

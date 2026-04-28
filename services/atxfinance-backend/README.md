@@ -19,6 +19,14 @@ Build tool: **Gradle** (`build.gradle.kts`, `gradlew`). There is **no** `pom.xml
 
 Environment: copy **`.env.example`** in this directory to **`.env`**, fill values, then export before `bootRun` (Spring does not load `.env` automatically), e.g. `set -a && source .env && set +a && ./gradlew bootRun`. For **Docker Compose**, the repo-root **`.env`** is loaded for the `atxfinance-backend` service — copy needed keys from this example there. Full key list and comments live in **`.env.example`**.
 
+Required runtime env (backend):
+- `MONGODB_URI` (or `SPRING_DATA_MONGODB_URI` / `MONGODB_URI_B64`)
+- `XAI_API_KEY`
+- `X_OAUTH_CLIENT_ID`
+- `X_OAUTH_CLIENT_SECRET`
+
+The X OAuth keys are required for backend-owned auth flows and for backend marketing execution paths that generate/publish X content.
+
 Run:
 ```
 cd services/atxfinance-backend
