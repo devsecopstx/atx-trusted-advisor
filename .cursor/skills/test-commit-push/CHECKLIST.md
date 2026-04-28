@@ -53,6 +53,8 @@
 - [ ] Push branch and merge PR per team policy; deploy via **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`, `workflow_dispatch` only) with inputs `branch`, `target` (`staging` | `production`), `confirm_manual_approval=yes`, and optional `deployment_notes`.
 - [ ] Verify **staging** before deploying to **production**. Environment **Required reviewers** enforce manual approval gates; post-deploy Slack notification fires when `SLACK_WEBHOOK_URL` is configured. Legacy **Deploy Cloud Run Production** (`deploy-cloud-run-production.yml`) exists for rollback/fallback.
 - [ ] **Manual Cloud Run (optional):** If GitHub Actions cannot run, deploy from a clean checkout with `gcloud`: staging first — **`npm run ops:deploy:cloud-run:staging`** — then prod — **`npm run ops:deploy:cloud-run:production`** after staging sign-off (see **`.cursor/agents/sre.md`**).
+- [ ] **Post-deploy smoke (prod):** **`GET /api/health`** on the public base URL — **`status`: `ok`**, **`version`** matches **`package.json`** for the deployed revision (cheap regression guard).
+- [ ] **If Next Cloud Run env changed:** **`PUBLIC_APP_BASE_URL`** + desk **`SMTP_*` / `DESK_EMAIL_FROM`** stay aligned with **`atx-docs/guides/deploy-and-ops.md`** § *Production checklist — access approval & transactional email* (avoid orphan GSM + literal conflicts on the same keys).
 
 ## Push Readiness
 

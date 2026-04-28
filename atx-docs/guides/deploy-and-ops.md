@@ -99,6 +99,8 @@ Use this before announcing onboarding or approving first external users.
 
 Cross-reference: **`atx-docs/guides/auth-and-access.md`**, **`src/lib/public-app-origin.ts`**, **`src/lib/send-email-credential-messages.ts`**.
 
+**Every production deploy (≤1 minute):** `curl -sS "https://<your-domain>/api/health"` → **`status":"ok"`** and **`version`** matches root **`package.json`** on that revision. If you changed **Next** Cloud Run env vars, confirm **`PUBLIC_APP_BASE_URL`** and desk SMTP (**§ Production checklist** above) — mixing GSM secret bindings with literal **`SMTP_*`** for the same keys still fails until secret refs are removed (see **`deploy-cloud-run-from-env.sh`**).
+
 **Staging** treats both Google secrets as required: `npm run ops:secrets:verify:staging` passes **`--with-google-oauth`**, and the **Deploy Cloud Run** workflow’s preflight for **`target=staging`** checks that both secrets exist. Production verify (`ops:secrets:verify:prod`) does **not** require them; production deploy still binds them when **both** exist in the project.
 
 **Optional (prod until Sign-in with Google is enabled):**

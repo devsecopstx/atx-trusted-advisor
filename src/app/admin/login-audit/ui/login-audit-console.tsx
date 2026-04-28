@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
 
@@ -35,34 +36,83 @@ const DEFAULT_FILTERS: Filters = {
   limit: "200"
 };
 
+function filtersToQueryString(f: Filters): string {
+  const params = new URLSearchParams();
+  if (f.outcome) {
+    params.set("outcome", f.outcome);
+  }
+  if (f.clientIp.trim()) {
+    params.set("clientIp", f.clientIp.trim());
+  }
+  if (f.from.trim()) {
+    params.set("from", new Date(f.from).toISOString());
+  }
+  if (f.to.trim()) {
+    params.set("to", new Date(f.to).toISOString());
+  }
+  if (f.limit.trim()) {
+    params.set("limit", f.limit.trim());
+  }
+  return params.toString();
+}
+
+function isoToDatetimeLocalForInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function mergeFiltersFromSearchParams(sp: URLSearchParams): Filters | null {
+  const hasAny =
+    sp.has("from") || sp.has("to") || sp.has("outcome") || sp.has("limit") || sp.has("clientIp");
+  if (!hasAny) {
+    return null;
+  }
+  const next: Filters = { ...DEFAULT_FILTERS };
+  const outcome = sp.get("outcome");
+  if (outcome === "success" || outcome === "failure") {
+    next.outcome = outcome;
+  }
+  const from = sp.get("from");
+  if (from) {
+    const v = isoToDatetimeLocalForInput(from);
+    if (v) {
+      next.from = v;
+    }
+  }
+  const to = sp.get("to");
+  if (to) {
+    const v = isoToDatetimeLocalForInput(to);
+    if (v) {
+      next.to = v;
+    }
+  }
+  const limit = sp.get("limit");
+  if (limit && /^\d+$/.test(limit)) {
+    next.limit = limit;
+  }
+  const clientIp = sp.get("clientIp");
+  if (clientIp) {
+    next.clientIp = clientIp;
+  }
+  return next;
+}
+
 export function LoginAuditConsole() {
+  const searchParams = useSearchParams();
+  const urlBootstrapFetched = useRef(false);
   const [rows, setRows] = useState<LoginAuditRow[]>([]);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<Filters>(() => mergeFiltersFromSearchParams(searchParams) ?? DEFAULT_FILTERS);
   const [status, setStatus] = useState("Ready — load recent login attempts");
 
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams();
-    if (filters.outcome) {
-      params.set("outcome", filters.outcome);
-    }
-    if (filters.clientIp.trim()) {
-      params.set("clientIp", filters.clientIp.trim());
-    }
-    if (filters.from.trim()) {
-      params.set("from", new Date(filters.from).toISOString());
-    }
-    if (filters.to.trim()) {
-      params.set("to", new Date(filters.to).toISOString());
-    }
-    if (filters.limit.trim()) {
-      params.set("limit", filters.limit.trim());
-    }
-    return params.toString();
-  }, [filters]);
-
   const refreshRows = useCallback(async () => {
+    await Promise.resolve();
     setStatus("Loading login audit…");
     try {
+      const queryString = filtersToQueryString(filters);
       const path = queryString ? `/api/admin/login-audit?${queryString}` : "/api/admin/login-audit";
       const payload = await parseJson<{ data: LoginAuditRow[] }>(await fetch(path));
       setRows(payload.data);
@@ -70,7 +120,31 @@ export function LoginAuditConsole() {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to load login audit");
     }
-  }, [queryString]);
+  }, [filters]);
+
+  useEffect(() => {
+    if (urlBootstrapFetched.current) {
+      return;
+    }
+    const merged = mergeFiltersFromSearchParams(searchParams);
+    urlBootstrapFetched.current = true;
+    if (!merged) {
+      return;
+    }
+    void (async () => {
+      await Promise.resolve();
+      setStatus("Loading login audit…");
+      try {
+        const qs = filtersToQueryString(merged);
+        const path = qs ? `/api/admin/login-audit?${qs}` : "/api/admin/login-audit";
+        const payload = await parseJson<{ data: LoginAuditRow[] }>(await fetch(path));
+        setRows(payload.data);
+        setStatus(`Loaded ${payload.data.length} rows`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Failed to load login audit");
+      }
+    })();
+  }, [searchParams]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

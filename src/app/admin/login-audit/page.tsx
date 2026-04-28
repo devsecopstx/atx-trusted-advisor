@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
@@ -32,7 +33,9 @@ export default async function AdminLoginAuditPage() {
         </p>
       </section>
 
-      <LoginAuditConsole />
+      <Suspense fallback={<p className="mt-8 text-sm text-[var(--xf-text-muted)]">Loading login audit…</p>}>
+        <LoginAuditConsole />
+      </Suspense>
     </div>
   );
 }

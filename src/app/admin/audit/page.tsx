@@ -20,7 +20,8 @@ export default async function AdminAuditPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Audit Trail Explorer</h1>
         <p className="hero-copy">
-          Search audit traces across users, access requests, and xPersonas.
+          Successful logins for the current day load at the top; below, search audit traces across users, access
+          requests, and xPersonas.
         </p>
       </section>
 
