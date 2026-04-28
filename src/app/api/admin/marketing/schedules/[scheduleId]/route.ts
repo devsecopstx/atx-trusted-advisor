@@ -14,6 +14,7 @@ const marketingPlatformSchema = z.enum(MARKETING_PLATFORMS);
 const marketingConfigSchema = z.object({
   templateId: z.string().trim().optional(),
   customContent: z.string().trim().max(5000).optional(),
+  generationPrompt: z.string().trim().max(6000).optional(),
   platforms: z.array(marketingPlatformSchema).min(1),
   destinationUrl: z.string().url(),
   utmParams: z.object({

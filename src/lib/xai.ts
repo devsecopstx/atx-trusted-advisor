@@ -377,10 +377,12 @@ export async function respondWithXai(input: {
     /** xAI `/v1/responses` documents `instructions` for system context (not `system_prompt`). */
     instructions: input.systemPrompt,
     input: input.userPrompt,
-    tools,
-    tool_choice: input.toolChoice ?? "auto",
     max_turns: input.maxTurns ?? 5
   };
+  if (tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = input.toolChoice ?? "auto";
+  }
   if (input.parallelism) {
     body.agent_count = input.parallelism.agentCount;
     body.reasoning = { effort: input.parallelism.reasoningEffort };

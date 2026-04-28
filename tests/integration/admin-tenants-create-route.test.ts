@@ -17,6 +17,7 @@ vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/lib/mongodb", () => mongoMocks);
 vi.mock("@/modules/platform/tenant-spec-apply", () => applyMocks);
 
+import { POST as postCreateTenantCompat } from "@/app/api/admin/tenants/create/route";
 import { POST as postCreateTenant } from "@/app/api/admin/tenants/route";
 
 describe("POST /api/admin/tenants", () => {
@@ -72,6 +73,21 @@ describe("POST /api/admin/tenants", () => {
         })
       })
     );
+  });
+
+  it("supports legacy POST /api/admin/tenants/create compatibility path", async () => {
+    const response = await postCreateTenantCompat(
+      new Request("http://test/api/admin/tenants/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: "acme-test-compat",
+          name: "Acme Test Compat"
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(applyMocks.upsertTenantFromParsedSpecV1).toHaveBeenCalledTimes(1);
   });
 
   it("accepts tenant route policy defaults and visibility overrides", async () => {

@@ -10,11 +10,11 @@ export async function sendAccessApprovedPasswordInviteEmail(input: {
 }): Promise<boolean> {
   const origin = resolvePublicAppOrigin(input.request);
   const setPasswordLink = `${origin}/login/set-password?token=${encodeURIComponent(input.rawToken)}`;
-  const subject = "Welcome to aTx Finance – Your Account is Ready";
+  const subject = "Your ATX Finance Advisory access is approved — set your password";
   const text = [
     `Dear ${input.firstName || "Valued Client"},`,
     "",
-    "Your access request has been approved. Welcome to **aTx Finance**.",
+    "Your access request has been approved. Welcome to **ATX Finance Advisory**.",
     "",
     "We built aTx Finance as your personal command center for sophisticated portfolio management, xAI-powered conversational strategy (xChat), and institutional-grade options analysis (xOptions).",
     "",

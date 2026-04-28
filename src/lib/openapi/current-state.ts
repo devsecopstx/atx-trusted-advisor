@@ -425,6 +425,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-marketing"
   },
   {
+    path: "/api/admin/marketing/templates/{templateId}",
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-marketing"
+  },
+  {
     path: "/api/admin/marketing/schedules",
     operations: [
       { method: "GET", auth: "admin" },
@@ -447,6 +455,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/admin/marketing/preview",
+    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/test-post-x",
     operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
     tag: "admin-marketing"
   },

@@ -27,6 +27,7 @@ export type MarketingPostTemplate = {
 export type MarketingTaskConfig = {
   templateId?: string;
   customContent?: string;
+  generationPrompt?: string;
   platforms: MarketingPlatform[];
   destinationUrl: string;
   utmParams: MarketingUtmParams;

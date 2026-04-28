@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { renderMarketingPost } from "@/modules/marketing/render";
 import { getMarketingTemplateById } from "@/modules/marketing/repository";
@@ -24,9 +26,9 @@ function normalizeConfig(task: ScheduledTask): MarketingTaskConfig {
 }
 
 async function postToX(text: string): Promise<void> {
-  const token = process.env.X_ACCESS_TOKEN?.trim();
+  const token = await getXOAuthAccessTokenForPosting();
   if (!token) {
-    throw new Error("Missing X_ACCESS_TOKEN");
+    throw new Error("Missing X OAuth credentials (set X_OAUTH_REFRESH_TOKEN with X_OAUTH_CLIENT_ID/X_OAUTH_CLIENT_SECRET)");
   }
   const response = await fetch("https://api.x.com/2/tweets", {
     method: "POST",
@@ -40,6 +42,81 @@ async function postToX(text: string): Promise<void> {
     const body = await response.text();
     throw new Error(`X API error (${response.status}): ${body.slice(0, 240)}`);
   }
+}
+
+type XOAuthTokenCache = {
+  accessToken: string;
+  expiresAtMs: number;
+};
+
+let xOAuthTokenCache: XOAuthTokenCache | null = null;
+const X_OAUTH_TOKEN_REFRESH_SAFETY_WINDOW_MS = 60_000;
+
+function getXOAuthTokenUrl(): string {
+  const configured = process.env.X_OAUTH_TOKEN_URL?.trim();
+  return configured && configured.length > 0 ? configured : "https://api.x.com/2/oauth2/token";
+}
+
+async function getXOAuthAccessTokenForPosting(): Promise<string | null> {
+  const now = Date.now();
+  if (
+    xOAuthTokenCache &&
+    xOAuthTokenCache.accessToken &&
+    xOAuthTokenCache.expiresAtMs - X_OAUTH_TOKEN_REFRESH_SAFETY_WINDOW_MS > now
+  ) {
+    return xOAuthTokenCache.accessToken;
+  }
+
+  const clientId = process.env.X_OAUTH_CLIENT_ID?.trim();
+  const clientSecret = process.env.X_OAUTH_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.X_OAUTH_REFRESH_TOKEN?.trim();
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+
+  const tokenUrl = getXOAuthTokenUrl();
+  const form = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken
+  });
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`, "utf8").toString("base64");
+
+  const response = await fetch(tokenUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basicAuth}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: form.toString()
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { access_token?: string; expires_in?: number; error?: string; error_description?: string }
+    | null;
+  if (!response.ok) {
+    const reason = payload?.error_description ?? payload?.error ?? `status ${response.status}`;
+    throw new Error(`X OAuth token refresh failed: ${reason}`);
+  }
+  const accessToken = payload?.access_token?.trim();
+  if (!accessToken) {
+    throw new Error("X OAuth token refresh returned no access_token");
+  }
+  const expiresInSec =
+    typeof payload?.expires_in === "number" && Number.isFinite(payload.expires_in)
+      ? Math.max(60, Math.floor(payload.expires_in))
+      : 3600;
+  xOAuthTokenCache = {
+    accessToken,
+    expiresAtMs: now + expiresInSec * 1000
+  };
+  return accessToken;
+}
+
+export async function publishMarketingTextToX(text: string): Promise<void> {
+  const body = text.trim();
+  if (!body) {
+    throw new Error("Post text is required");
+  }
+  await postToX(body);
 }
 
 async function postToLinkedIn(text: string): Promise<void> {

@@ -16,6 +16,19 @@ type MarketingTemplate = {
   estimatedEngagement?: "low" | "medium" | "high";
 };
 
+type TemplateDraft = {
+  id?: string;
+  name: string;
+  platforms: MarketingPlatform[];
+  contentTemplate: string;
+  utmSource: string;
+  utmCampaign: string;
+  utmMedium: string;
+  utmContent: string;
+  utmTerm: string;
+  estimatedEngagement: "" | "low" | "medium" | "high";
+};
+
 type MarketingSchedule = {
   _id: string;
   name: string;
@@ -57,6 +70,7 @@ type EditDraft = {
   scheduleDescription: string;
   templateId: string;
   customContent: string;
+  generationPrompt: string;
   destinationUrl: string;
   platforms: MarketingPlatform[];
   utmSource: string;
@@ -74,6 +88,19 @@ const DEFAULT_DRAFT: EditDraft = {
   scheduleDescription: "Weekdays at 8:00 AM CT",
   templateId: "",
   customContent: "",
+  generationPrompt: [
+    "Generate post-ready markdown for social publishing.",
+    "Platforms: {{platforms}}.",
+    "Keep it concise and actionable.",
+    "No markdown code fences.",
+    "Focus on options profits: covered calls, protective puts, straddles, scanner workflows.",
+    "",
+    "Draft source content:",
+    "{{source_content}}",
+    "",
+    "Destination URL:",
+    "{{destination_url}}"
+  ].join("\n"),
   destinationUrl: "https://atx.fintech-advisor.ai",
   platforms: ["x"],
   utmSource: "x",
@@ -83,7 +110,8 @@ const DEFAULT_DRAFT: EditDraft = {
   utmTerm: ""
 };
 
-type TabKey = "overview" | "schedules" | "templates" | "history";
+type TabKey = "overview" | "schedules" | "templates" | "history" | "test-x";
+const TEST_POST_X_USER = "atxbogart";
 
 function formatTs(value?: string): string {
   if (!value) return "—";
@@ -96,6 +124,7 @@ function buildConfigFromDraft(draft: EditDraft): MarketingTaskConfig {
   return {
     templateId: draft.templateId || undefined,
     customContent: draft.customContent.trim() || undefined,
+    generationPrompt: draft.generationPrompt.trim() || undefined,
     destinationUrl: draft.destinationUrl.trim(),
     platforms: draft.platforms,
     utmParams: {
@@ -118,6 +147,21 @@ export function MarketingConsole() {
   const [draft, setDraft] = useState<EditDraft>(DEFAULT_DRAFT);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [preview, setPreview] = useState<MarketingPreview | null>(null);
+  const [previewRunning, setPreviewRunning] = useState(false);
+  const [testPostRunning, setTestPostRunning] = useState(false);
+  const [testPostText, setTestPostText] = useState("");
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [templateDraft, setTemplateDraft] = useState<TemplateDraft>({
+    name: "",
+    platforms: ["x"],
+    contentTemplate: "",
+    utmSource: "x",
+    utmCampaign: "weekly-pulse",
+    utmMedium: "owned-social",
+    utmContent: "",
+    utmTerm: "",
+    estimatedEngagement: ""
+  });
 
   const refreshAll = useCallback(async () => {
     setLoading(true);
@@ -212,6 +256,7 @@ export function MarketingConsole() {
   }
 
   async function generatePreview() {
+    setPreviewRunning(true);
     setLoading(true);
     setStatus("Generating xChat markdown preview...");
     setPreview(null);
@@ -223,6 +268,7 @@ export function MarketingConsole() {
       const payload = {
         templateId: draft.templateId.trim() || undefined,
         customContent: draft.customContent.trim() || undefined,
+        generationPrompt: draft.generationPrompt.trim() || undefined,
         destinationUrl: config.destinationUrl,
         platforms: config.platforms,
         utmParams: config.utmParams
@@ -240,6 +286,7 @@ export function MarketingConsole() {
       setStatus(error instanceof Error ? error.message : "Preview failed");
     } finally {
       setLoading(false);
+      setPreviewRunning(false);
     }
   }
 
@@ -256,6 +303,58 @@ export function MarketingConsole() {
       setStatus(error instanceof Error ? error.message : "Run-now failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function testPostToX() {
+    if (!preview?.postText) {
+      setStatus("Generate a preview first");
+      return;
+    }
+    setTestPostRunning(true);
+    setLoading(true);
+    setStatus("Posting preview output to X...");
+    try {
+      await parseJson(
+        await fetch("/api/admin/marketing/test-post-x", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postText: preview.postText, asUser: TEST_POST_X_USER })
+        })
+      );
+      setStatus(`Test post sent to X as @${TEST_POST_X_USER}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Test post to X failed");
+    } finally {
+      setLoading(false);
+      setTestPostRunning(false);
+    }
+  }
+
+  async function testSimplePostToX() {
+    const body = testPostText.trim();
+    if (!body) {
+      setStatus("Enter post text before sending test post");
+      return;
+    }
+    setTestPostRunning(true);
+    setLoading(true);
+    setStatus(`Posting simple test to X as @${TEST_POST_X_USER}...`);
+    try {
+      await parseJson(
+        await fetch("/api/admin/marketing/test-post-x", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postText: body, asUser: TEST_POST_X_USER })
+        })
+      );
+      setStatus(`Simple test post sent to X as @${TEST_POST_X_USER}`);
+      setTestPostText("");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Simple test post to X failed");
+    } finally {
+      setLoading(false);
+      setTestPostRunning(false);
     }
   }
 
@@ -293,6 +392,7 @@ export function MarketingConsole() {
       scheduleDescription: schedule.scheduleDescription ?? "",
       templateId: schedule.config.templateId ?? "",
       customContent: schedule.config.customContent ?? "",
+      generationPrompt: schedule.config.generationPrompt ?? DEFAULT_DRAFT.generationPrompt,
       destinationUrl: schedule.config.destinationUrl ?? "https://atx.fintech-advisor.ai",
       platforms: schedule.config.platforms ?? ["x"],
       utmSource: schedule.config.utmParams.utm_source,
@@ -303,11 +403,106 @@ export function MarketingConsole() {
     });
   }
 
+  function beginTemplateEdit(template: MarketingTemplate) {
+    setEditingTemplateId(template._id);
+    setTemplateDraft({
+      id: template._id,
+      name: template.name,
+      platforms: template.platforms,
+      contentTemplate: template.contentTemplate,
+      utmSource: template.defaultUtm.utm_source,
+      utmCampaign: template.defaultUtm.utm_campaign,
+      utmMedium: template.defaultUtm.utm_medium ?? "",
+      utmContent: template.defaultUtm.utm_content ?? "",
+      utmTerm: template.defaultUtm.utm_term ?? "",
+      estimatedEngagement: template.estimatedEngagement ?? ""
+    });
+  }
+
+  function resetTemplateEdit() {
+    setEditingTemplateId(null);
+    setTemplateDraft({
+      name: "",
+      platforms: ["x"],
+      contentTemplate: "",
+      utmSource: "x",
+      utmCampaign: "weekly-pulse",
+      utmMedium: "owned-social",
+      utmContent: "",
+      utmTerm: "",
+      estimatedEngagement: ""
+    });
+  }
+
+  async function saveTemplateEdit() {
+    if (!editingTemplateId) {
+      return;
+    }
+    setLoading(true);
+    setStatus("Saving template...");
+    try {
+      const payload = {
+        name: templateDraft.name.trim(),
+        platforms: templateDraft.platforms,
+        contentTemplate: templateDraft.contentTemplate.trim(),
+        defaultUtm: {
+          utm_source: templateDraft.utmSource.trim(),
+          utm_campaign: templateDraft.utmCampaign.trim(),
+          utm_medium: templateDraft.utmMedium.trim() || undefined,
+          utm_content: templateDraft.utmContent.trim() || undefined,
+          utm_term: templateDraft.utmTerm.trim() || undefined
+        },
+        estimatedEngagement: templateDraft.estimatedEngagement || null
+      };
+      if (!payload.name || !payload.contentTemplate) {
+        throw new Error("Template name and content are required");
+      }
+      await parseJson(
+        await fetch(`/api/admin/marketing/templates/${encodeURIComponent(editingTemplateId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+      );
+      setStatus("Template updated");
+      resetTemplateEdit();
+      await refreshAll();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Template update failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteTemplate(id: string) {
+    if (!window.confirm("Delete this marketing template?")) {
+      return;
+    }
+    setLoading(true);
+    setStatus("Deleting template...");
+    try {
+      await parseJson(
+        await fetch(`/api/admin/marketing/templates/${encodeURIComponent(id)}`, {
+          method: "DELETE"
+        })
+      );
+      setStatus("Template deleted");
+      if (editingTemplateId === id) {
+        resetTemplateEdit();
+      }
+      await refreshAll();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Template delete failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <section className="panel stack-gap">
       <div className="tool-row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <div className="tool-row" role="tablist" aria-label="Marketing tabs" style={{ gap: "0.4rem" }}>
-          {(["overview", "schedules", "templates", "history"] as TabKey[]).map((tab) => (
+          {(["overview", "schedules", "templates", "history", "test-x"] as TabKey[]).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -365,6 +560,21 @@ export function MarketingConsole() {
               value={draft.customContent}
               onChange={(event) => setDraft((current) => ({ ...current, customContent: event.target.value }))}
             />
+            <p className="status-text">
+              Template variables: {"{{date}}"}, {"{{day_name}}"}, {"{{market_pulse}}"}
+            </p>
+            <textarea
+              className="crud-input"
+              rows={8}
+              placeholder="xChat generation prompt"
+              value={draft.generationPrompt}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, generationPrompt: event.target.value }))
+              }
+            />
+            <p className="status-text">
+              Prompt variables: {"{{source_content}}"}, {"{{destination_url}}"}, {"{{platforms}}"}
+            </p>
             <input
               className="crud-input"
               placeholder="Destination URL"
@@ -432,20 +642,49 @@ export function MarketingConsole() {
               <button type="button" className="cta cta-primary" onClick={() => void upsertSchedule()} disabled={loading}>
                 {editingId ? "Save schedule" : "Create schedule"}
               </button>
-              <button type="button" className="tiny-button" onClick={() => void generatePreview()} disabled={loading}>
-                Preview with xChat
+              <button
+                type="button"
+                className="tiny-button"
+                onClick={() => void generatePreview()}
+                disabled={loading}
+              >
+                {previewRunning ? "Generating preview..." : "Preview with xChat"}
+              </button>
+              <button
+                type="button"
+                className="tiny-button"
+                onClick={() => void testPostToX()}
+                disabled={loading || !preview}
+              >
+                {testPostRunning ? "Posting to X..." : "Test post to X"}
               </button>
               <button type="button" className="tiny-button" onClick={resetDraft} disabled={loading}>
                 Reset
               </button>
             </div>
+            {previewRunning ? (
+              <p className="status-text" role="status" aria-live="polite">
+                xChat preview job running... this can take up to ~20s depending on model/tools.
+              </p>
+            ) : null}
             {preview ? (
               <div className="surface-card xf-widget section-card stack-gap" style={{ marginTop: "0.6rem" }}>
                 <p className="status-text">
                   xChat persona: {preview.personaName} · model: {preview.model}
                 </p>
                 <p className="status-text">Final URL: {preview.finalUrl}</p>
-                <pre className="output-cell" style={{ whiteSpace: "pre-wrap" }}>
+                <pre
+                  style={{
+                    width: "100%",
+                    margin: 0,
+                    padding: "0.75rem",
+                    whiteSpace: "pre-wrap",
+                    overflowX: "auto",
+                    borderRadius: "0.5rem",
+                    border: "1px solid var(--xf-surface-700)",
+                    background: "var(--xf-surface-900)"
+                  }}
+                >
                   {preview.postText}
                 </pre>
               </div>
@@ -509,7 +748,90 @@ export function MarketingConsole() {
       ) : null}
 
       {activeTab === "templates" ? (
-        <div className="crud-table-wrap">
+        <div className="stack-gap">
+          {editingTemplateId ? (
+            <article className="surface-card xf-widget section-card stack-form">
+              <h3>Edit template</h3>
+              <input
+                className="crud-input"
+                placeholder="Template name"
+                value={templateDraft.name}
+                onChange={(event) =>
+                  setTemplateDraft((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+              <textarea
+                className="crud-input"
+                rows={6}
+                placeholder="Template content"
+                value={templateDraft.contentTemplate}
+                onChange={(event) =>
+                  setTemplateDraft((current) => ({ ...current, contentTemplate: event.target.value }))
+                }
+              />
+              <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={templateDraft.platforms.includes("x")}
+                    onChange={(event) =>
+                      setTemplateDraft((current) => ({
+                        ...current,
+                        platforms: event.target.checked
+                          ? (Array.from(new Set<MarketingPlatform>([...current.platforms, "x"])) as MarketingPlatform[])
+                          : (current.platforms.filter((platform) => platform !== "x") as MarketingPlatform[])
+                      }))
+                    }
+                  />{" "}
+                  X
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={templateDraft.platforms.includes("linkedin")}
+                    onChange={(event) =>
+                      setTemplateDraft((current) => ({
+                        ...current,
+                        platforms: event.target.checked
+                          ? (Array.from(new Set<MarketingPlatform>([...current.platforms, "linkedin"])) as MarketingPlatform[])
+                          : (current.platforms.filter((platform) => platform !== "linkedin") as MarketingPlatform[])
+                      }))
+                    }
+                  />{" "}
+                  LinkedIn
+                </label>
+              </div>
+              <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+                <input className="crud-input text-sm" placeholder="utm_source" value={templateDraft.utmSource} onChange={(event) => setTemplateDraft((current) => ({ ...current, utmSource: event.target.value }))} />
+                <input className="crud-input text-sm" placeholder="utm_campaign" value={templateDraft.utmCampaign} onChange={(event) => setTemplateDraft((current) => ({ ...current, utmCampaign: event.target.value }))} />
+                <input className="crud-input text-sm" placeholder="utm_medium" value={templateDraft.utmMedium} onChange={(event) => setTemplateDraft((current) => ({ ...current, utmMedium: event.target.value }))} />
+              </div>
+              <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+                <select
+                  className="crud-input text-sm"
+                  value={templateDraft.estimatedEngagement}
+                  onChange={(event) =>
+                    setTemplateDraft((current) => ({
+                      ...current,
+                      estimatedEngagement: event.target.value as TemplateDraft["estimatedEngagement"]
+                    }))
+                  }
+                >
+                  <option value="">Engagement: unset</option>
+                  <option value="low">Engagement: low</option>
+                  <option value="medium">Engagement: medium</option>
+                  <option value="high">Engagement: high</option>
+                </select>
+                <button type="button" className="cta cta-primary" onClick={() => void saveTemplateEdit()} disabled={loading}>
+                  Save template
+                </button>
+                <button type="button" className="tiny-button" onClick={resetTemplateEdit} disabled={loading}>
+                  Cancel
+                </button>
+              </div>
+            </article>
+          ) : null}
+          <div className="crud-table-wrap">
           <table className="crud-table">
             <thead>
               <tr>
@@ -517,6 +839,7 @@ export function MarketingConsole() {
                 <th>Platforms</th>
                 <th>Estimated engagement</th>
                 <th>Sample</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -526,10 +849,21 @@ export function MarketingConsole() {
                   <td>{template.platforms.join(", ")}</td>
                   <td>{template.estimatedEngagement ?? "—"}</td>
                   <td className="output-cell">{template.contentTemplate}</td>
+                  <td>
+                    <div className="tool-row" style={{ gap: "0.3rem", flexWrap: "wrap" }}>
+                      <button type="button" className="tiny-button" onClick={() => beginTemplateEdit(template)} disabled={loading}>
+                        Edit
+                      </button>
+                      <button type="button" className="tiny-button" onClick={() => void deleteTemplate(template._id)} disabled={loading}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
         </div>
       ) : null}
 
@@ -564,6 +898,40 @@ export function MarketingConsole() {
             </tbody>
           </table>
         </div>
+      ) : null}
+
+      {activeTab === "test-x" ? (
+        <article className="surface-card xf-widget section-card stack-form">
+          <h3>Test post to X</h3>
+          <p className="status-text">
+            Sends a direct test post as <strong>@{TEST_POST_X_USER}</strong> using configured X credentials.
+          </p>
+          <textarea
+            className="crud-input"
+            rows={8}
+            placeholder="Simple test post text"
+            value={testPostText}
+            onChange={(event) => setTestPostText(event.target.value)}
+          />
+          <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="cta cta-primary"
+              onClick={() => void testSimplePostToX()}
+              disabled={loading || !testPostText.trim()}
+            >
+              {testPostRunning ? "Posting to X..." : "Post simple test to X"}
+            </button>
+            <button
+              type="button"
+              className="tiny-button"
+              onClick={() => setTestPostText("")}
+              disabled={loading || !testPostText}
+            >
+              Clear
+            </button>
+          </div>
+        </article>
       ) : null}
     </section>
   );

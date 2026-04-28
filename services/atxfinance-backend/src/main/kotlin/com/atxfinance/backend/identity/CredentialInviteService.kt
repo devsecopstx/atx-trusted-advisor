@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
+import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
@@ -62,19 +63,11 @@ class CredentialInviteService(
             return
         }
 
-        val publicBase =
-            System.getenv("PUBLIC_APP_BASE_URL")?.trim()?.removeSuffix("/").orEmpty()
-        if (publicBase.isEmpty()) {
-            log.warn(
-                "[credential-invite] PUBLIC_APP_BASE_URL unset — invite token stored but email skipped userId={}",
-                userId.toHexString(),
-            )
-            return
-        }
+        val publicBase = resolvePublicAppBaseUrl()
 
         val encoded = URLEncoder.encode(rawToken, StandardCharsets.UTF_8)
         val link = "$publicBase/login/set-password?token=$encoded"
-        val subject = "Your xFinance access is approved — set your password"
+        val subject = "Your ATX Finance Advisory access is approved — set your password"
         val text =
             listOf(
                 "Your access request was approved.",
@@ -96,5 +89,23 @@ class CredentialInviteService(
 
     companion object {
         private const val INVITE_TTL_MS = 7L * 24 * 60 * 60 * 1000
+        private const val DEFAULT_PUBLIC_APP_BASE_URL = "https://atxtrustedadvisory.com"
+    }
+
+    private fun resolvePublicAppBaseUrl(): String {
+        val fromEnv = System.getenv("PUBLIC_APP_BASE_URL")?.trim()?.removeSuffix("/").orEmpty()
+        if (fromEnv.isNotEmpty() && !isLocalHostUrl(fromEnv)) {
+            return fromEnv
+        }
+        return DEFAULT_PUBLIC_APP_BASE_URL
+    }
+
+    private fun isLocalHostUrl(value: String): Boolean {
+        return try {
+            val host = URI(value).host?.lowercase().orEmpty()
+            host == "localhost" || host == "127.0.0.1" || host == "::1"
+        } catch (_: Exception) {
+            false
+        }
     }
 }

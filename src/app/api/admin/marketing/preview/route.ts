@@ -12,6 +12,7 @@ const marketingPlatformSchema = z.enum(MARKETING_PLATFORMS);
 const previewRequestSchema = z.object({
   templateId: z.string().trim().optional(),
   customContent: z.string().trim().max(5000).optional(),
+  generationPrompt: z.string().trim().max(6000).optional(),
   destinationUrl: z.string().url(),
   platforms: z.array(marketingPlatformSchema).min(1),
   utmParams: z.object({
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     ? await getMarketingTemplateById(parsed.data.templateId)
     : null;
   const sourceContent =
-    parsed.data.customContent.trim() || template?.contentTemplate?.trim() || "";
+    parsed.data.customContent?.trim() || template?.contentTemplate?.trim() || "";
   if (!sourceContent) {
     return NextResponse.json({ error: "Template or custom content is required" }, { status: 400 });
   }
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
   const generation = await generateMarketingMarkdownWithXchat({
     roles: session.roles,
     sourceContent,
+    generationPrompt: parsed.data.generationPrompt,
     destinationUrl: parsed.data.destinationUrl,
     platforms: parsed.data.platforms,
     personaId: parsed.data.personaId

@@ -127,6 +127,60 @@ export async function getMarketingTemplateById(id: string): Promise<MarketingPos
     .findOne({ _id: new ObjectId(id) });
 }
 
+export async function updateMarketingTemplate(
+  id: string,
+  patch: {
+    name?: string;
+    platforms?: MarketingPostTemplate["platforms"];
+    contentTemplate?: string;
+    defaultUtm?: MarketingPostTemplate["defaultUtm"];
+    estimatedEngagement?: MarketingPostTemplate["estimatedEngagement"] | null;
+  }
+): Promise<MarketingPostTemplate | null> {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+  await ensureMarketingTemplatesSeeded();
+  const db = await getDb();
+  const updateDoc: Record<string, unknown> = {
+    updatedAt: new Date()
+  };
+  if (patch.name !== undefined) {
+    updateDoc.name = patch.name;
+  }
+  if (patch.platforms !== undefined) {
+    updateDoc.platforms = patch.platforms;
+  }
+  if (patch.contentTemplate !== undefined) {
+    updateDoc.contentTemplate = patch.contentTemplate;
+  }
+  if (patch.defaultUtm !== undefined) {
+    updateDoc.defaultUtm = patch.defaultUtm;
+  }
+  if (patch.estimatedEngagement !== undefined) {
+    updateDoc.estimatedEngagement = patch.estimatedEngagement ?? undefined;
+  }
+  await db.collection<MarketingPostTemplate>(MARKETING_TEMPLATES_COLLECTION).updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updateDoc }
+  );
+  return db
+    .collection<MarketingPostTemplate>(MARKETING_TEMPLATES_COLLECTION)
+    .findOne({ _id: new ObjectId(id) });
+}
+
+export async function deleteMarketingTemplate(id: string): Promise<boolean> {
+  if (!ObjectId.isValid(id)) {
+    return false;
+  }
+  await ensureMarketingTemplatesSeeded();
+  const db = await getDb();
+  const result = await db
+    .collection<MarketingPostTemplate>(MARKETING_TEMPLATES_COLLECTION)
+    .deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
+}
+
 export async function listMarketingSchedules(tenantIdHex: string): Promise<ScheduledTask[]> {
   const all = await listScheduledTasks({ tenantId: tenantIdHex, systemWideOnly: true, limit: 500 });
   return all.filter((task) => task.category === "marketing_post");

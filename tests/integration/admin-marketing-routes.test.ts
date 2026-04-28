@@ -11,7 +11,9 @@ const marketingRepoMocks = vi.hoisted(() => ({
   listMarketingSchedules: vi.fn(),
   createMarketingSchedule: vi.fn(),
   getMarketingScheduleById: vi.fn(),
-  getMarketingTemplateById: vi.fn()
+  getMarketingTemplateById: vi.fn(),
+  updateMarketingTemplate: vi.fn(),
+  deleteMarketingTemplate: vi.fn()
 }));
 
 const taskRunnerMocks = vi.hoisted(() => ({
@@ -20,6 +22,10 @@ const taskRunnerMocks = vi.hoisted(() => ({
 
 const marketingXchatMocks = vi.hoisted(() => ({
   generateMarketingMarkdownWithXchat: vi.fn()
+}));
+
+const marketingPublisherMocks = vi.hoisted(() => ({
+  publishMarketingTextToX: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", async (importOriginal) => {
@@ -34,11 +40,17 @@ vi.mock("@/lib/api-auth", async (importOriginal) => {
 vi.mock("@/modules/marketing/repository", () => marketingRepoMocks);
 vi.mock("@/modules/core-admin/task-runner", () => taskRunnerMocks);
 vi.mock("@/modules/marketing/xchat-markdown", () => marketingXchatMocks);
+vi.mock("@/modules/marketing/publisher", () => marketingPublisherMocks);
 
-import { POST as postMarketingRunNow } from "@/app/api/admin/marketing/schedules/[scheduleId]/run-now/route";
 import { POST as postMarketingPreview } from "@/app/api/admin/marketing/preview/route";
+import { POST as postMarketingRunNow } from "@/app/api/admin/marketing/schedules/[scheduleId]/run-now/route";
 import { POST as postMarketingSchedule } from "@/app/api/admin/marketing/schedules/route";
+import {
+    DELETE as deleteMarketingTemplateById,
+    PATCH as patchMarketingTemplateById
+} from "@/app/api/admin/marketing/templates/[templateId]/route";
 import { GET as getMarketingTemplates } from "@/app/api/admin/marketing/templates/route";
+import { POST as postMarketingTestPostX } from "@/app/api/admin/marketing/test-post-x/route";
 
 describe("admin marketing routes", () => {
   beforeEach(() => {
@@ -85,6 +97,17 @@ describe("admin marketing routes", () => {
       defaultUtm: { utm_source: "x", utm_campaign: "weekly-pulse" },
       disclaimerMode: "required"
     });
+    marketingRepoMocks.updateMarketingTemplate.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439050" },
+      slug: "monday-market-pulse",
+      name: "Monday Market Pulse (Updated)",
+      platforms: ["x", "linkedin"],
+      contentTemplate: "Updated template content",
+      defaultUtm: { utm_source: "x", utm_campaign: "weekly-pulse" },
+      disclaimerMode: "required",
+      estimatedEngagement: "high"
+    });
+    marketingRepoMocks.deleteMarketingTemplate.mockResolvedValue(true);
     taskRunnerMocks.executeScheduledTask.mockResolvedValue({
       runId: { toHexString: () => "507f1f77bcf86cd799439091" },
       status: "success",
@@ -95,6 +118,7 @@ describe("admin marketing routes", () => {
       model: "grok-4-1-fast-reasoning",
       personaName: "advisor"
     });
+    marketingPublisherMocks.publishMarketingTextToX.mockResolvedValue(undefined);
   });
 
   it("blocks templates endpoint for non-admin", async () => {
@@ -160,5 +184,82 @@ describe("admin marketing routes", () => {
     );
     expect(response.status).toBe(200);
     expect(marketingXchatMocks.generateMarketingMarkdownWithXchat).toHaveBeenCalledTimes(1);
+  });
+
+  it("updates a marketing template", async () => {
+    const response = await patchMarketingTemplateById(
+      new Request("http://localhost/api/admin/marketing/templates/507f1f77bcf86cd799439050", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Monday Market Pulse (Updated)",
+          platforms: ["x", "linkedin"],
+          contentTemplate: "Updated template content",
+          defaultUtm: { utm_source: "x", utm_campaign: "weekly-pulse" },
+          estimatedEngagement: "high"
+        })
+      }),
+      { params: Promise.resolve({ templateId: "507f1f77bcf86cd799439050" }) }
+    );
+    expect(response.status).toBe(200);
+    expect(marketingRepoMocks.updateMarketingTemplate).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes a marketing template", async () => {
+    const response = await deleteMarketingTemplateById(
+      new Request("http://localhost/api/admin/marketing/templates/507f1f77bcf86cd799439050", {
+        method: "DELETE"
+      }),
+      { params: Promise.resolve({ templateId: "507f1f77bcf86cd799439050" }) }
+    );
+    expect(response.status).toBe(200);
+    expect(marketingRepoMocks.deleteMarketingTemplate).toHaveBeenCalledTimes(1);
+  });
+
+  it("posts preview output to x for test delivery", async () => {
+    const response = await postMarketingTestPostX(
+      new Request("http://localhost/api/admin/marketing/test-post-x", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postText: "Test post content\n\nhttps://atx.fintech-advisor.ai?utm_source=x&utm_campaign=weekly-pulse",
+          asUser: "atxbogart"
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(marketingPublisherMocks.publishMarketingTextToX).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects test post for unsupported x user", async () => {
+    const response = await postMarketingTestPostX(
+      new Request("http://localhost/api/admin/marketing/test-post-x", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postText: "hello",
+          asUser: "some-other-user"
+        })
+      })
+    );
+    expect(response.status).toBe(400);
+    expect(marketingPublisherMocks.publishMarketingTextToX).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when x oauth posting is not configured", async () => {
+    marketingPublisherMocks.publishMarketingTextToX.mockRejectedValueOnce(
+      new Error("Missing X OAuth credentials (set X_OAUTH_REFRESH_TOKEN with X_OAUTH_CLIENT_ID/X_OAUTH_CLIENT_SECRET)")
+    );
+    const response = await postMarketingTestPostX(
+      new Request("http://localhost/api/admin/marketing/test-post-x", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postText: "hello",
+          asUser: "atxbogart"
+        })
+      })
+    );
+    expect(response.status).toBe(400);
   });
 });
