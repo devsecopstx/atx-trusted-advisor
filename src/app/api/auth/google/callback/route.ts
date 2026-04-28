@@ -27,7 +27,7 @@ import {
     createAccessRequest,
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
-import { canUserLogin } from "@/modules/identity/authorization";
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
@@ -324,7 +324,7 @@ export async function GET(request: Request) {
     });
   }
 
-  if (!user.emailVerifiedAt) {
+  if (!user.emailVerifiedAt && !isGlobalAdmin(user.roles)) {
     let verificationSent = false;
     try {
       const issued = await issueEmailVerificationForUser(user._id);

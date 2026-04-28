@@ -13,8 +13,8 @@ import { EmailPasswordSessionError, finalizeEmailPasswordSession } from "@/lib/f
 import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-  issueEmailVerificationForUser,
-  verifyUserPassword
+    issueEmailVerificationForUser,
+    verifyUserPassword
 } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import { getCoreUserByEmail } from "@/modules/identity/repository";
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_credentials" }, { status: 401 });
   }
 
-  if (!user.emailVerifiedAt) {
+  if (!user.emailVerifiedAt && !isGlobalAdmin(user.roles)) {
     try {
       const issued = await issueEmailVerificationForUser(user._id);
       if (issued?.rawToken) {

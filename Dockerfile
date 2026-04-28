@@ -31,4 +31,7 @@ EXPOSE 8080
 ENV PORT=8080
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "server.js"]
+# Cloud Run/Kubernetes often sets HOSTNAME to the pod/instance name after image env is applied.
+# Next standalone binds `hostname` from process.env.HOSTNAME (`server.js`) — a pod name breaks listen + TCP probes.
+# Force bind-all in the shell right before exec so it wins over platform injection.
+CMD ["sh", "-c", "export HOSTNAME=0.0.0.0; exec node server.js"]

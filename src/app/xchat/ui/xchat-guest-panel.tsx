@@ -51,7 +51,11 @@ const AUTH_ERROR_COPY: Record<string, string> = {
   not_seeded_email: "Your email is not seeded/authorized for this workspace.",
   bootstrap_failed: "Sign-in almost worked, but account bootstrap failed. Retry once and check logs.",
   google_email_required: "Google did not return a verified email. Add one and retry.",
-  google_oauth_not_configured: "Google sign-in is not configured on this server."
+  google_oauth_not_configured: "Google sign-in is not configured on this server.",
+  email_unverified:
+    "Verify your email before signing in — check your inbox for the verification link, or use Sign in with X/Google after verifying.",
+  not_authorized_admin:
+    "This X account is not allowlisted for global admin on this deployment. Use an allowlisted admin identity or contact ops."
 };
 
 function XchatComposerAttachIcon() {

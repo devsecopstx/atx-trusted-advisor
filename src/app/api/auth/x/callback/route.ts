@@ -18,12 +18,12 @@ import {
 } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
-import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
+import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { buildXIdentityPlaceholderEmail, isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { createAccessRequest, getPendingAccessRequestByUserAndRole } from "@/modules/core-admin/repository";
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
-import { canUserLogin } from "@/modules/identity/authorization";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     ensureCoreUserByEmail,
@@ -345,7 +345,7 @@ export async function GET(request: Request) {
     });
   }
 
-  if (!user.emailVerifiedAt) {
+  if (!user.emailVerifiedAt && !isGlobalAdmin(user.roles)) {
     if (isXIdentityPlaceholderEmail(user.email)) {
       await setPendingXLinkCookie(xIdentity);
       return redirectWithLoginAudit("email_link_required", {
