@@ -68,6 +68,10 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     oauthReturnPath != null
       ? `/api/auth/x/login?next=${encodeURIComponent(oauthReturnPath)}`
       : "/api/auth/x/login?next=%2Fxchat";
+  const emailPasswordLoginHref =
+    oauthReturnPath != null
+      ? `/login?next=${encodeURIComponent(oauthReturnPath)}`
+      : "/login?next=%2Fxchat";
 
   const session = await getSessionUser();
 
@@ -80,6 +84,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}
+              emailPasswordLoginHref={emailPasswordLoginHref}
               googleLoginHref={googleLoginHrefGuest}
               pendingXHandle={pendingXHandle}
               xOAuthLoginHref={xOAuthLoginHref}
@@ -150,6 +155,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}
+              emailPasswordLoginHref={emailPasswordLoginHref}
               googleLoginHref={googleLoginHrefGuest}
               pendingApproval
               pendingXHandle={pendingXHandle}

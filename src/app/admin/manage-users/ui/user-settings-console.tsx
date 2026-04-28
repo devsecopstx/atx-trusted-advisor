@@ -93,6 +93,12 @@ type ApprovedUser = {
   } | null;
 };
 
+type TenantOption = {
+  tenantId: string;
+  slug: string;
+  name: string;
+};
+
 type ApiUser = {
   _id?: string;
   email: string;
@@ -149,6 +155,9 @@ export function UserSettingsConsole() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<ApprovedUser["role"]>("operator");
   const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("basic");
+  const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
+  const [tenantEdits, setTenantEdits] = useState<Record<string, string>>({});
+  const [tenantRoleEdits, setTenantRoleEdits] = useState<Record<string, "tenant_admin" | "member">>({});
 
   const [settingsForm, setSettingsForm] = useState<UserAdminSettingsPayload>(DEFAULT_SETTINGS);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -190,6 +199,26 @@ export function UserSettingsConsole() {
         }
         return next;
       });
+      setTenantEdits((previous) => {
+        const next = { ...previous };
+        for (const user of normalizedUsers) {
+          const preferredMembership =
+            user.tenantMemberships.find((membership) => membership.isDefaultSessionTenant) ??
+            user.tenantMemberships[0];
+          next[user.userId] = previous[user.userId] ?? preferredMembership?.tenantId ?? "";
+        }
+        return next;
+      });
+      setTenantRoleEdits((previous) => {
+        const next = { ...previous };
+        for (const user of normalizedUsers) {
+          const preferredMembership =
+            user.tenantMemberships.find((membership) => membership.isDefaultSessionTenant) ??
+            user.tenantMemberships[0];
+          next[user.userId] = previous[user.userId] ?? preferredMembership?.tenantRole ?? "member";
+        }
+        return next;
+      });
       const settingsEntries = await Promise.all(
         normalizedUsers.map(async (user) => {
           try {
@@ -218,6 +247,24 @@ export function UserSettingsConsole() {
       setLinkedCollectionsByUserId(linkedCollectionsRecord);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to load approved users");
+    }
+  }, []);
+
+  const refreshTenants = useCallback(async () => {
+    try {
+      const payload = await parseJson<{
+        data: Array<{ tenantId: string; slug: string; name: string }>;
+      }>(await fetch("/api/admin/tenants"));
+      const options = payload.data
+        .map((tenant) => ({
+          tenantId: tenant.tenantId,
+          slug: tenant.slug,
+          name: tenant.name
+        }))
+        .sort((a, b) => a.slug.localeCompare(b.slug));
+      setTenantOptions(options);
+    } catch {
+      setTenantOptions([]);
     }
   }, []);
 
@@ -297,6 +344,8 @@ export function UserSettingsConsole() {
     }
     const role = roleEdits[userId] ?? "operator";
     const subscriptionPlan = planEdits[userId] ?? "basic";
+    const selectedTenantId = tenantEdits[userId] ?? "";
+    const selectedTenantRole = tenantRoleEdits[userId] ?? "member";
     const priorPlan = normalizeSubscriptionPlan(
       approvedUsers.find((u) => u.userId === userId)?.subscriptionPlan ?? "basic"
     );
@@ -310,6 +359,18 @@ export function UserSettingsConsole() {
           body: JSON.stringify({ email, role, subscriptionPlan })
         })
       );
+      if (selectedTenantId) {
+        await parseJson(
+          await fetch(`/api/admin/tenants/${encodeURIComponent(selectedTenantId)}/memberships`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              tenantRole: selectedTenantRole
+            })
+          })
+        );
+      }
       if (priorPlan !== nextPlan) {
         await parseJson(
           await fetch(`/api/admin/users/${encodeURIComponent(userId)}/metered-usage/reset`, {
@@ -461,12 +522,13 @@ export function UserSettingsConsole() {
   useEffect(() => {
     const refreshTimer = window.setTimeout(() => {
       void refreshApprovedUsers();
+      void refreshTenants();
       void refreshPersonaOptions();
     }, 0);
     return () => {
       window.clearTimeout(refreshTimer);
     };
-  }, [refreshApprovedUsers, refreshPersonaOptions]);
+  }, [refreshApprovedUsers, refreshPersonaOptions, refreshTenants]);
 
   const selectedLinkedCollections = selectedUserId
     ? linkedCollectionsByUserId[selectedUserId] ?? []
@@ -582,6 +644,41 @@ export function UserSettingsConsole() {
                     ) : (
                       <span className="status-text text-xs">No tenant membership</span>
                     )}
+                    <div className="mt-2 flex flex-col gap-1">
+                      <select
+                        disabled={editingUserId !== user.userId}
+                        onChange={(event) =>
+                          setTenantEdits((previous) => ({
+                            ...previous,
+                            [user.userId]: event.target.value
+                          }))
+                        }
+                        value={tenantEdits[user.userId] ?? ""}
+                        aria-label={`Tenant for ${user.email}`}
+                      >
+                        <option value="">(no tenant)</option>
+                        {tenantOptions.map((tenant) => (
+                          <option key={tenant.tenantId} value={tenant.tenantId}>
+                            {tenant.slug}
+                            {tenant.name ? ` - ${tenant.name}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        disabled={editingUserId !== user.userId}
+                        onChange={(event) =>
+                          setTenantRoleEdits((previous) => ({
+                            ...previous,
+                            [user.userId]: event.target.value as "tenant_admin" | "member"
+                          }))
+                        }
+                        value={tenantRoleEdits[user.userId] ?? "member"}
+                        aria-label={`Tenant role for ${user.email}`}
+                      >
+                        <option value="member">member</option>
+                        <option value="tenant_admin">tenant_admin</option>
+                      </select>
+                    </div>
                   </td>
                   <td>
                     <select

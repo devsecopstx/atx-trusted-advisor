@@ -26,11 +26,14 @@ type XchatGuestPanelProps = {
   googleLoginHref?: string | null;
   /** X OAuth start URL including `next` (e.g. deep link back to `/watchlist?portfolioId=…`). */
   xOAuthLoginHref?: string;
+  /** Email + password login URL including `next` return path. */
+  emailPasswordLoginHref?: string;
   registerDefaultPlan?: AccessRequestPlanValue;
   openRegisterByDefault?: boolean;
 };
 
 const DEFAULT_SIGNIN_HREF = "/api/auth/x/login?next=%2Fxchat";
+const DEFAULT_EMAIL_LOGIN_HREF = "/login?next=%2Fxchat";
 const AUTH_ERROR_COPY: Record<string, string> = {
   ...oauthAuthErrorMessages,
   missing_oauth_context: "OAuth context is missing. Retry sign-in from this xChat page.",
@@ -86,6 +89,7 @@ export function XchatGuestPanel({
   content,
   googleLoginHref = null,
   xOAuthLoginHref = DEFAULT_SIGNIN_HREF,
+  emailPasswordLoginHref = DEFAULT_EMAIL_LOGIN_HREF,
   registerDefaultPlan = "basic",
   openRegisterByDefault = false
 }: XchatGuestPanelProps) {
@@ -232,6 +236,9 @@ export function XchatGuestPanel({
               <XLogoIcon size={20} />
               X
             </a>
+            <a className="cta cta-secondary xchat-guest-actions__cta" href={emailPasswordLoginHref}>
+              Email + password
+            </a>
             {!pendingApproval ? (
               <button
                 aria-controls="xchat-guest-register-panel"
@@ -318,9 +325,9 @@ export function XchatGuestPanel({
                 <div className="xchat-guest-register-success" role="status">
                   <p className="status-text">{registerSuccess}</p>
                   <p className="xchat-guest-register-success__hint">
-                    We don&apos;t email a magic link for this step. Sign in with <strong>X</strong> or{" "}
-                    <strong>Google</strong> using <strong>the same email</strong> you submitted so your OAuth
-                    profile matches this request. After an admin approves you, that sign-in unlocks the workspace.
+                    We don&apos;t email a magic link for this step. You can sign in with <strong>X</strong>,{" "}
+                    <strong>Google</strong>, or <strong>email + password</strong> (after setting a password from the
+                    approval email) using <strong>the same email</strong> you submitted.
                   </p>
                   <div className="xchat-guest-register-success__actions">
                     {googleLoginHref ? (
@@ -347,6 +354,12 @@ export function XchatGuestPanel({
                     >
                       <XLogoIcon size={20} />
                       Continue with X
+                    </a>
+                    <a
+                      className="cta cta-secondary xchat-guest-actions__cta xchat-guest-register-success__cta"
+                      href={emailPasswordLoginHref}
+                    >
+                      Continue with email + password
                     </a>
                   </div>
                 </div>
