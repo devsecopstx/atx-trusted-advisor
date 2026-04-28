@@ -63,6 +63,11 @@ const publicRoutes = [
     changeFrequency: "monthly" as const,
     priority: 0.55,
   },
+  {
+    path: "/resources/top-10-hnwi-xchat-prompts",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

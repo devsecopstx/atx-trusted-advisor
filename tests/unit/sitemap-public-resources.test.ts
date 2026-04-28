@@ -22,6 +22,7 @@ describe("sitemap public resources", () => {
       "/resources/multi-portfolio-management-hnwi",
       "/resources/options-risk-management-frameworks",
       "/resources/from-xchat-to-broker-ibkr",
+      "/resources/top-10-hnwi-xchat-prompts",
     ]
       .map((p) => `${BASE}${p}`)
       .sort();

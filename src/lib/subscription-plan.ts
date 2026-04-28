@@ -74,3 +74,17 @@ export const zSubscriptionPlan = z.preprocess(
   (v) => normalizeSubscriptionPlan(v),
   subscriptionPlanEnum
 );
+
+/** Paid retail tiers + global admin — e.g. premium resource links in workspace rail. */
+export function canAccessPaidResourcePromptLibrary(
+  plan: SubscriptionPlan | null | undefined,
+  isGlobalAdmin: boolean
+): boolean {
+  if (isGlobalAdmin) {
+    return true;
+  }
+  if (!plan) {
+    return false;
+  }
+  return plan === "premium" || plan === "premium_plus";
+}

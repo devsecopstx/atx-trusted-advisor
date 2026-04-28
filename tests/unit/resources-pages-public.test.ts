@@ -13,6 +13,7 @@ import * as leapOptionsPlaybook from "@/app/resources/leap-options-playbook/page
 import * as multiPortfolioHnwi from "@/app/resources/multi-portfolio-management-hnwi/page";
 import * as optionsRiskFrameworks from "@/app/resources/options-risk-management-frameworks/page";
 import * as secret from "@/app/resources/secret-sauce/page";
+import * as top10HnwiXchatPrompts from "@/app/resources/top-10-hnwi-xchat-prompts/page";
 
 function expectMetadata(module: unknown) {
   expect(module as Record<string, unknown>).toHaveProperty("metadata");
@@ -38,6 +39,7 @@ describe("Resources pages exports for public/SEO delivery", () => {
       multiPortfolioHnwi,
       optionsRiskFrameworks,
       fromXchatToBrokerIbkr,
+      top10HnwiXchatPrompts,
     ] as const;
     for (const mod of modules) {
       expect(mod).toHaveProperty("revalidate");

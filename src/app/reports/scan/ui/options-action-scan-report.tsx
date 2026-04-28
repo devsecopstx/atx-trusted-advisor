@@ -654,7 +654,7 @@ function ReportTable(props: {
       <div className="hidden overflow-x-auto rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] sm:block">
         <table className="w-full min-w-[44rem] border-collapse text-left text-xs">
           <thead>
-            <tr className="bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)]">
+            <tr className="border-b border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-transparent">
               <SortTh label="Instrument" sortKey="symbol" {...props} />
               <SortTh label="Action" sortKey="action" {...props} />
               <SortTh label="Urgency" sortKey="urgency" {...props} />
