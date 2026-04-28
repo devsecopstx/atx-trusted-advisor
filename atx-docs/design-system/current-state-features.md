@@ -1,7 +1,7 @@
 # xFinance monorepo — technical architecture & current state
 
-Last updated: 2026-04-26  
-App semver (canonical): root **`package.json`** (currently **3.7.20**; runtime label via `src/lib/app-version.ts` → **`APP_VERSION`** reads the same semver).
+Last updated: 2026-04-28  
+App semver (canonical): root **`package.json`** (currently **3.8.10**; runtime label via `src/lib/app-version.ts` → **`APP_VERSION`** reads the same semver).
 
 This file is the **single consolidated technical architecture** reference for the monorepo: runtime topology, responsibilities, shipped product surfaces, CI/test matrix, pre-production gates, and **known gaps**. Topic deep dives stay in linked **`atx-docs/*`** pages; **open backlog only** in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
 

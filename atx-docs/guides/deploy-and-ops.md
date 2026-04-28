@@ -86,6 +86,19 @@ After all five secrets exist, **Deploy Cloud Run** binds them automatically (sam
 
 **Delivery-channel email test (env-only):** Optional **`DESK_DELIVERY_CHANNEL_TEST_TO`** (valid email) makes admin **Send test** for **email** channels send to that address instead of the channel’s stored `emailTo`. Optional **`DESK_DELIVERY_CHANNEL_TEST_SUBJECT`** overrides the test subject (max 200 chars). These are read by **Next** only for the standard UI route. Scheduled/task delivery still uses each channel row as stored.
 
+### Production checklist — access approval & transactional email (Next)
+
+Use this before announcing onboarding or approving first external users.
+
+| Step | Action |
+|------|--------|
+| **`PUBLIC_APP_BASE_URL`** | Set on **Next** Cloud Run to the **browser** HTTPS origin (no trailing slash), e.g. `https://atxtrustedadvisory.com`. **`deploy-cloud-run-from-env.sh`** forwards **`PUBLIC_APP_BASE_URL`** from **`.env.prod`** (defaults to **`PROD_BASE_URL`** when unset). GitHub **Deploy Cloud Run** sets **`PUBLIC_APP_BASE_URL`** from the workflow base URL. |
+| **Desk SMTP** | **`SMTP_HOST`**, **`SMTP_USER`**, **`SMTP_PASS`**, **`DESK_EMAIL_FROM`** (+ optional **`SMTP_PORT`**) must reach **`getDeskSmtpConfig()`** on Next (`src/lib/desk-smtp.ts`). Either sync **Secret Manager** (`ops:secrets:sync-desk-smtp:prod`) **or** pass literals via **`deploy-cloud-run-from-env.sh`** when all four are in **`.env.prod`**. Do **not** leave Cloud Run with **secret-backed** SMTP keys and then deploy **literal** values for the same names — remove GSM bindings first (the script removes SMTP secret refs when switching to env-file literals). |
+| **Runtime (app ≥3.8.10)** | **`resolvePublicAppOrigin`** rejects **`0.0.0.0`**, **`[::]`**, and loopback so server-side request URLs cannot appear in invite/reset bodies. Optional **`ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY`** sends only the “sign in at `/login`” approval mail (OAuth / forgot-password path). If **Spring** sends credential invites, set **`PUBLIC_APP_BASE_URL`** on the JVM service too (**`CredentialInviteService`** rejects invalid bases). |
+| **Smoke** | **`GET /api/health`** → **`version`** matches shipped semver; optional Admin → **Delivery channels** → **Send test** for the SMTP path. |
+
+Cross-reference: **`atx-docs/guides/auth-and-access.md`**, **`src/lib/public-app-origin.ts`**, **`src/lib/send-email-credential-messages.ts`**.
+
 **Staging** treats both Google secrets as required: `npm run ops:secrets:verify:staging` passes **`--with-google-oauth`**, and the **Deploy Cloud Run** workflow’s preflight for **`target=staging`** checks that both secrets exist. Production verify (`ops:secrets:verify:prod`) does **not** require them; production deploy still binds them when **both** exist in the project.
 
 **Optional (prod until Sign-in with Google is enabled):**

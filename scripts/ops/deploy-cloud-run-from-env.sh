@@ -316,6 +316,17 @@ SCALING_FLAGS=()
 if [[ "${TARGET}" == "production" ]]; then
   SCALING_FLAGS=(--min-instances=1 --max-instances=50)
 fi
+
+# Cloud Run forbids changing an env name from secret-backed to plain text (or the reverse) in one step — drop GSM bindings first.
+if [[ "${DESK_SMTP_FROM_ENV_FILE}" == "true" ]]; then
+  echo "deploy-cloud-run-from-env: removing prior SMTP_* DESK_EMAIL_FROM secret bindings (if any) so literals from env file can apply"
+  gcloud run services update "${SVC}" \
+    --region "${REGION}" \
+    --platform managed \
+    --remove-secrets="SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,DESK_EMAIL_FROM" \
+    --quiet 2>/dev/null || true
+fi
+
 gcloud run deploy "${SVC}" --source . --clear-base-image --region "${REGION}" --platform managed --allow-unauthenticated \
   --port=8080 --cpu-boost --memory=1Gi \
   --startup-probe="${STARTUP_PROBE}" \
