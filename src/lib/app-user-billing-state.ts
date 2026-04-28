@@ -67,7 +67,16 @@ export function resolveAppUserBillingAccessState(input: {
   return "approved_unpaid";
 }
 
+/** Stripe-paid or admin override — subscription revenue / “active plan” semantics. */
 export function isBillingEntitledAccessState(state: AppUserBillingAccessState): boolean {
   return state === "active" || state === "override_active";
+}
+
+/**
+ * App surfaces (xChat, xOptions, portfolio APIs behind billing proxy): allow approved users who have
+ * not started Stripe yet, until they subscribe — then state moves to `active` and the unpaid banner goes away.
+ */
+export function isAppUserProductAccessAllowedState(state: AppUserBillingAccessState): boolean {
+  return isBillingEntitledAccessState(state) || state === "approved_unpaid";
 }
 

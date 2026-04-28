@@ -60,16 +60,18 @@ Billing and approval are intentionally separate checks. Runtime derives one stat
 - `canceled` → Stripe status is `canceled` / `incomplete` / `incomplete_expired` / `paused`, or a recorded cancel timestamp has passed.
 - `override_active` → explicit admin billing override is enabled and not expired (`core_users.billing.override.*`).
 
-Entitled states for paid product access are only: **`active`** and **`override_active`**.
+**Stripe subscription active** (for billing UI / “paid” semantics): **`active`** and **`override_active`** (`isBillingEntitledAccessState`).
+
+**Product routes** (xChat, xOptions, portfolio proxy, `POST /api/xchat/ask`): also allow **`approved_unpaid`** — approved platform role but no Stripe subscription yet (`isAppUserProductAccessAllowedState`). Users still see the unpaid banner until Checkout activates **`trialing`/`active`**.
 
 ### Enforcement points (middleware vs route handlers)
 
 - **Middleware (`src/proxy.ts`)**
   - For signed-in app-user product paths (`/xchat`, `/portfolio*`, `/watchlist*`, `/xoptions*`, and mapped app-user APIs), middleware calls `GET /api/internal/authz/billing-access`.
-  - When billing is required, HTML routes redirect to `/account/billing?required=1&state=<state>&next=<path>`.
-  - API routes fail with `402` and `code: billing_subscription_required`.
+  - When **product access** is denied (`requiresBilling`), HTML routes redirect to `/account/billing?required=1&state=<state>&next=<path>`.
+  - Matching API routes fail with `402` and `code: billing_subscription_required`.
 - **Route handlers (fail-closed)**
-  - `POST /api/xchat/ask` repeats billing entitlement server-side and returns `402` with the same code/state when not entitled.
+  - `POST /api/xchat/ask` repeats **`isAppUserProductAccessAllowedState`** server-side and returns `402` with the same code/state when access is denied.
   - Keep this defense even with middleware on, so direct route calls cannot bypass billing.
 - **Billing and auth endpoints**
   - `/account/billing`, `/api/billing/*`, and Stripe webhooks remain reachable without billing entitlement so users can subscribe and webhooks can sync status.

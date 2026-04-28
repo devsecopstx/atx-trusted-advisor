@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import {
+    isAppUserProductAccessAllowedState,
     isBillingEntitledAccessState,
     resolveAppUserBillingAccessState
 } from "@/lib/app-user-billing-state";
@@ -26,13 +27,17 @@ export async function GET() {
     roles: session.roles,
     billing: coreUser?.billing
   });
-  const entitled = isBillingEntitledAccessState(billingState);
-  const requiresBilling = hasAppLoginRole && !adminSession && !entitled;
+  const subscriptionActive = isBillingEntitledAccessState(billingState);
+  const productAccessAllowed = isAppUserProductAccessAllowedState(billingState);
+  const requiresBilling = hasAppLoginRole && !adminSession && !productAccessAllowed;
 
   return NextResponse.json({
     data: {
       billingState,
-      entitled,
+      /** @deprecated prefer productAccessAllowed — kept for older clients */
+      entitled: productAccessAllowed,
+      subscriptionActive,
+      productAccessAllowed,
       requiresBilling,
       redirectPath: "/account/billing"
     }

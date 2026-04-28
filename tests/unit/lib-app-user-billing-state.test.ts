@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    isAppUserProductAccessAllowedState,
     isBillingEntitledAccessState,
     resolveAppUserBillingAccessState
 } from "@/lib/app-user-billing-state";
@@ -22,6 +23,7 @@ describe("app-user billing access state", () => {
     });
     expect(state).toBe("approved_unpaid");
     expect(isBillingEntitledAccessState(state)).toBe(false);
+    expect(isAppUserProductAccessAllowedState(state)).toBe(true);
   });
 
   it("returns active for active subscription status", () => {
@@ -33,6 +35,7 @@ describe("app-user billing access state", () => {
     });
     expect(state).toBe("active");
     expect(isBillingEntitledAccessState(state)).toBe(true);
+    expect(isAppUserProductAccessAllowedState(state)).toBe(true);
   });
 
   it("returns past_due for past due status", () => {
@@ -44,6 +47,7 @@ describe("app-user billing access state", () => {
     });
     expect(state).toBe("past_due");
     expect(isBillingEntitledAccessState(state)).toBe(false);
+    expect(isAppUserProductAccessAllowedState(state)).toBe(false);
   });
 
   it("returns canceled for canceled status", () => {

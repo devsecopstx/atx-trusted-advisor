@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import {
-    isBillingEntitledAccessState,
+    isAppUserProductAccessAllowedState,
     resolveAppUserBillingAccessState
 } from "@/lib/app-user-billing-state";
 import { requireSessionUser } from "@/lib/auth";
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
     roles: session.roles,
     billing: coreUser?.billing
   });
-  if (!isAdminSession && !isBillingEntitledAccessState(billingState)) {
+  if (!isAdminSession && !isAppUserProductAccessAllowedState(billingState)) {
     return NextResponse.json(
       {
         error: "Subscription required",

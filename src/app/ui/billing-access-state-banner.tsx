@@ -6,6 +6,8 @@ type BillingAccessApiResponse = {
   data?: {
     billingState?: string;
     entitled?: boolean;
+    subscriptionActive?: boolean;
+    productAccessAllowed?: boolean;
     requiresBilling?: boolean;
     redirectPath?: string;
   };
@@ -51,7 +53,8 @@ function resolveStateCopy(state: string | null): { tone: BannerTone; detail: str
     case "approved_unpaid":
       return {
         tone: "warn",
-        detail: "Approved account, but no active subscription."
+        detail:
+          "Approved account — full workspace access until you add a subscription. This notice goes away once billing is active."
       };
     case "past_due":
       return {
