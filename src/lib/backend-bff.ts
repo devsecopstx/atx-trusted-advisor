@@ -595,11 +595,30 @@ export function shouldProxyAdminAccessRequestsToBackend(): boolean {
   return shouldProxyAdminUsersToBackend();
 }
 
-/** Admin access-requests BFF → Spring; returns `null` when proxy disabled. */
+/**
+ * Admin **`/api/admin/access-requests*`** — **always Next + Mongo** (do not forward to Spring).
+ *
+ * Spring's HTTP controller historically validated legacy subscription slugs only (`free`/`pro`/`enterprise`) and a
+ * narrower PATCH body than the product UI (`basic`/`premium`/`premium_plus`, **targetTenantId**, review notes, full
+ * approve payload). The canonical workflow lives in `src/app/api/admin/access-requests/**`.
+ */
+export function shouldSkipAdminAccessRequestsBffProxy(request: Request): boolean {
+  try {
+    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    return path === "/api/admin/access-requests" || path.startsWith("/api/admin/access-requests/");
+  } catch {
+    return false;
+  }
+}
+
+/** Admin access-requests — Spring parity is intentionally not proxied; see {@link shouldSkipAdminAccessRequestsBffProxy}. */
 export async function proxyAdminAccessRequestsRequestToBackend(
   request: Request
 ): Promise<Response | null> {
   if (!shouldProxyAdminAccessRequestsToBackend()) {
+    return null;
+  }
+  if (shouldSkipAdminAccessRequestsBffProxy(request)) {
     return null;
   }
   return proxyRequestToBackend(request);

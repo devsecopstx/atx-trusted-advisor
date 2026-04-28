@@ -385,7 +385,7 @@ export function WheelIdeaGenerator() {
         </div>
 
         <button
-          className="mt-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--xf-lightning-yellow)]"
+          className="mt-3 xchat-scan-action-btn xchat-scan-action-btn--accent"
           type="button"
           onClick={() => setShowAdvanced((current) => !current)}
         >

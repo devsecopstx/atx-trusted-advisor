@@ -28,6 +28,21 @@ class AdminAccessRequestsController(
     private val adminAccessRequestService: AdminAccessRequestService,
 ) {
 
+    companion object {
+        /** Align with Next.js `subscription-plan` / Mongo `core_users.subscriptionPlan`. */
+        private val CANONICAL_SUBSCRIPTION_PLANS = setOf("basic", "premium", "premium_plus")
+    }
+
+    private fun normalizeSubscriptionPlanSlug(raw: String): String {
+        val n = raw.trim().lowercase()
+        return when (n) {
+            "free" -> "basic"
+            "pro", "premium_monthly" -> "premium"
+            "enterprise", "premium+", "premium_plus_monthly", "premium_plus_yearly" -> "premium_plus"
+            else -> n
+        }
+    }
+
     @GetMapping("/api/admin/access-requests")
     fun list(
         request: HttpServletRequest,
@@ -63,12 +78,13 @@ class AdminAccessRequestsController(
         val requestedRole = (body["requestedRole"] as? String)?.trim()?.lowercase()
             ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         val reason = (body["reason"] as? String) ?: ""
-        val requestedPlan = (body["requestedPlan"] as? String)?.trim()?.lowercase() ?: "free"
+        val requestedPlanRaw = (body["requestedPlan"] as? String)?.trim()?.lowercase() ?: "basic"
+        val requestedPlan = normalizeSubscriptionPlanSlug(requestedPlanRaw)
         val statusIn = (body["status"] as? String)?.trim()?.lowercase()
         if (requestedRole !in setOf("global_admin", "advisor", "operator", "viewer")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
-        if (requestedPlan !in setOf("free", "pro", "enterprise")) {
+        if (requestedPlan !in CANONICAL_SUBSCRIPTION_PLANS) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
         return try {
@@ -150,17 +166,18 @@ class AdminAccessRequestsController(
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON"))
         }
         val status = (body["status"] as? String)?.trim()?.lowercase()
-        val requestedPlan = (body["requestedPlan"] as? String)?.trim()?.lowercase()
-        if (status == null && requestedPlan == null) {
+        val requestedPlanRaw = (body["requestedPlan"] as? String)?.trim()?.lowercase()
+        val requestedPlanNormalized = requestedPlanRaw?.let { normalizeSubscriptionPlanSlug(it) }
+        if (status == null && requestedPlanRaw == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
-        if (requestedPlan != null && requestedPlan !in setOf("free", "pro", "enterprise")) {
+        if (requestedPlanNormalized != null && requestedPlanNormalized !in CANONICAL_SUBSCRIPTION_PLANS) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
         if (status != null && status !in setOf("approved", "rejected")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
-        return when (val result = adminAccessRequestService.reviewOrUpdatePlan(session, requestId, requestedPlan, status)) {
+        return when (val result = adminAccessRequestService.reviewOrUpdatePlan(session, requestId, requestedPlanNormalized, status)) {
             is AdminAccessRequestService.ReviewResult.Ok -> ResponseEntity.ok(mapOf("data" to result.data))
             is AdminAccessRequestService.ReviewResult.PlanOnly -> ResponseEntity.ok(mapOf("data" to result.data))
             is AdminAccessRequestService.ReviewResult.Error -> ResponseEntity.status(result.status).body(result.body)

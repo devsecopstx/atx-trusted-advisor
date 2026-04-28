@@ -26,6 +26,22 @@ Steps **unlock in order** (horizontal stepper + vertical sections). Clearing the
 
 - **`GET /api/app-user/find-options/context`** — Returns `portfolio`, `accounts[]` (custodian rows with `optionsApproved`, `extAccountId`, desk fields), and `account` (default selection summary, including `optionsApproved`).
 
+## xWheel Studio (`/xoptions/wheel`)
+
+HNWI-oriented **wheel** screener: user enters ticker, capital, risk, delta/yield filters → **`POST /api/xoptions/wheel/generate`** builds several **`WheelIdea`** variants from live Yahoo chains (`src/modules/xoptions/wheel-generator.ts`). UI: **`WheelIdeaGenerator`** → **`WheelReportView`**.
+
+**Per-scenario economics shown in the report and PDF**
+
+| Field | Meaning |
+|-------|--------|
+| **Income / cycle** | `(put premium + call premium) × 100 × contracts` for one full cycle |
+| **Cycle yield (% of capital)** | Income ÷ **`requiredCapitalUsd`** (put collateral); **`yieldPerCyclePctOfCapital`** in **`src/modules/xoptions/wheel-metrics.ts`** |
+| **Annualized yield** | Cycle income ÷ capital × **365 ÷ DTE** (same basis as generator) |
+
+**Sharing:** **`POST /api/reports/wheel`** stores the payload under a time-limited token; **`GET /reports/wheel/[token]`** renders read-only **`WheelReportView`** (PDF button optional on shared page).
+
+See **`atx-docs/guides/api-endpoints.md`** § xWheel Studio for route list.
+
 ## Options eligibility
 
 - Per-account Mongo field **`optionsTradingEnabled`** (`boolean`): when set, overrides the env default for that account.

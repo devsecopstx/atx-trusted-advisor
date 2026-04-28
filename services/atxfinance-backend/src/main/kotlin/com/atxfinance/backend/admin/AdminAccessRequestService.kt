@@ -31,6 +31,19 @@ class AdminAccessRequestService(
     private val actionableStatuses = setOf("new", "triaged", "pending")
     private val allStatuses = setOf("new", "triaged", "pending", "approved", "rejected", "expired")
     private val grantableRoles = setOf("global_admin", "advisor", "operator", "viewer")
+    private val canonicalPlans = setOf("basic", "premium", "premium_plus")
+
+    /** Maps legacy JVM/UI slugs to Mongo / Next canonical `subscriptionPlan` values. */
+    private fun canonicalSubscriptionPlan(raw: String?): String {
+        val n = raw?.trim()?.lowercase() ?: return "basic"
+        val mapped = when (n) {
+            "free" -> "basic"
+            "pro", "premium_monthly" -> "premium"
+            "enterprise", "premium+", "premium_plus_monthly", "premium_plus_yearly" -> "premium_plus"
+            else -> n
+        }
+        return if (mapped in canonicalPlans) mapped else "basic"
+    }
 
     fun list(statusFilter: String): List<Map<String, Any?>> {
         val lim = 50
@@ -186,7 +199,8 @@ class AdminAccessRequestService(
                 mapOf("error" to "Access request already reviewed", "data" to documentToAccessRequestMap(existing)),
             )
         }
-        if (requestedPlan != null && requestedPlan in setOf("free", "pro", "enterprise")) {
+        val planCanonOrNull = requestedPlan?.let { canonicalSubscriptionPlan(it) }
+        if (planCanonOrNull != null) {
             mongoTemplate.updateFirst(
                 Query.query(
                     Criteria().andOperator(
@@ -194,7 +208,7 @@ class AdminAccessRequestService(
                         Criteria.where("status").`in`(actionableStatuses.toList()),
                     ),
                 ),
-                Update().set("requestedPlan", requestedPlan),
+                Update().set("requestedPlan", planCanonOrNull),
                 props.accessRequestsCollection,
             )
         }
@@ -206,7 +220,7 @@ class AdminAccessRequestService(
                 entityId = requestId,
                 action = "updated_plan",
                 session = session,
-                details = mapOf("requestedPlan" to requestedPlan),
+                details = mapOf("requestedPlan" to planCanonOrNull!!),
             )
             return ReviewResult.PlanOnly(documentToAccessRequestMap(updated))
         }
@@ -217,7 +231,7 @@ class AdminAccessRequestService(
             return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid status"))
         }
         val refreshed = mongoTemplate.findById(ObjectId(requestId), Document::class.java, props.accessRequestsCollection)!!
-        val effectivePlan = requestedPlan ?: refreshed.getString("requestedPlan") ?: "free"
+        val effectivePlan = canonicalSubscriptionPlan(requestedPlan ?: refreshed.getString("requestedPlan"))
         val targetUserId = refreshed.getString("userId")?.trim() ?: ""
         if (status == "approved") {
             if (!ObjectId.isValid(targetUserId)) {

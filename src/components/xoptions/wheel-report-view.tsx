@@ -6,6 +6,7 @@ import autoTable from "jspdf-autotable";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
+import { yieldPerCyclePctOfCapital } from "@/modules/xoptions/wheel-metrics";
 import type { WheelGeneratedPayload, WheelIdea } from "@/modules/xoptions/wheel-types";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
@@ -34,11 +35,6 @@ function currency(value: number): string {
 
 function percent(value: number, digits = 1): string {
   return `${value.toFixed(digits)}%`;
-}
-
-/** Premium income for one full wheel cycle as % of deployed capital (put-side collateral). */
-function yieldPerCyclePctOfCapital(idea: WheelIdea): number {
-  return (idea.premiumIncomePerCycleUsd / Math.max(idea.requiredCapitalUsd, 1e-9)) * 100;
 }
 
 function exportWheelPdf(report: WheelGeneratedPayload, generatedByName: string): void {

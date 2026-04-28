@@ -184,6 +184,14 @@ Used by **`/xoptions`** for holdings-aware bootstrap and symbol context (see `at
 - `GET /api/app-user/xoptions/entitlements` — xOptions entitlements / deck usage signals
 - `GET /api/app-user/me/role` — session-scoped effective tenant UX policy (`platformRole`, `allowedRoutes`, `defaultLanding`, `flags`, `tenantRoleOverrides`)
 
+### xWheel Studio (`/xoptions/wheel`)
+
+- `POST /api/xoptions/wheel/generate` — session; JSON body matches **`WheelGeneratorInput`** (`src/modules/xoptions/wheel-types.ts`). Runs Yahoo option-chain selection + **`generateWheelPayload`**; persists optional Mongo row via **`createWheelReport`**. Response wraps **`WheelGeneratedPayload`** (ideas with **`premiumIncomePerCycleUsd`**, **`annualizedYieldPct`**, legs, related-supplier scan).
+- `POST /api/reports/wheel` — session; JSON **`{ report: WheelGeneratedPayload }`** → short-lived share token (**24h** TTL collection); returns public **`shareUrl`** under **`/reports/wheel/{token}`**.
+- `GET /api/reports/wheel/{token}` — unauthenticated read of shared payload (expired token → **404**).
+
+Report surfaces (**`WheelReportView`**) derive **cycle yield %** as premium per cycle ÷ **`requiredCapitalUsd`** (**`yieldPerCyclePctOfCapital`** in **`src/modules/xoptions/wheel-metrics.ts`**), distinct from **annualized** yield (scales by days to expiry).
+
 ## Market (lightweight quotes / pulse)
 
 - `GET /api/market/symbol-quotes` — batch-style symbol quotes for product shells

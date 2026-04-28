@@ -239,6 +239,52 @@ describe("proxyAdminUsersRequestToBackend (Next-first tenants + user list)", () 
   });
 });
 
+describe("proxyAdminAccessRequestsRequestToBackend (Next-first approve contract)", () => {
+  const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+
+  beforeEach(() => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://kotlin-backend.example.run.app");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    delete process.env.ATXFINANCE_BACKEND_ORIGIN;
+  });
+
+  it("does not forward PUT /api/admin/access-requests/{id} (canonical Next + Mongo)", async () => {
+    vi.resetModules();
+    const { proxyAdminAccessRequestsRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminAccessRequestsRequestToBackend(
+        new Request("https://next.local/api/admin/access-requests/507f1f77bcf86cd799439022", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "approved",
+            requestedPlan: "basic",
+            requestedRole: "operator",
+            targetTenantId: "507f1f77bcf86cd799439033"
+          })
+        })
+      )
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not forward GET /api/admin/access-requests", async () => {
+    vi.resetModules();
+    const { proxyAdminAccessRequestsRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminAccessRequestsRequestToBackend(new Request("https://next.local/api/admin/access-requests?status=open"))
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("getStrategyJobsBffUnavailableMessage", () => {
   const savedOrigin = process.env.ATXFINANCE_BACKEND_ORIGIN;
 
