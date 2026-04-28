@@ -11,6 +11,7 @@ import {
     deleteCoreUserById,
     getCoreUserById,
     listAdminTenantMembershipsByUserIds,
+    updateCoreUserBillingOverride,
     updateCoreUserById
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
@@ -20,13 +21,21 @@ const updateUserSchema = z.object({
   email: z.string().trim().email().optional(),
   role: z.enum(["global_admin", "advisor", "operator", "viewer"]).optional(),
   subscriptionPlan: zSubscriptionPlan.optional(),
-  status: z.enum(["active", "suspended"]).optional()
+  status: z.enum(["active", "suspended"]).optional(),
+  billingOverride: z
+    .object({
+      enabled: z.boolean(),
+      reason: z.string().trim().min(3).max(280).optional(),
+      expiresAt: z.string().datetime({ offset: true }).optional()
+    })
+    .optional()
 }).refine(
   (value) =>
     value.email !== undefined ||
     value.role !== undefined ||
     value.subscriptionPlan !== undefined ||
-    value.status !== undefined,
+    value.status !== undefined ||
+    value.billingOverride !== undefined,
   { message: "Provide at least one field to update." }
 );
 
@@ -100,9 +109,15 @@ export async function PUT(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const basePatch = {
+    email: parsed.data.email,
+    role: parsed.data.role,
+    subscriptionPlan: parsed.data.subscriptionPlan,
+    status: parsed.data.status
+  };
   let updated: CoreUser | null;
   try {
-    updated = await updateCoreUserById(new ObjectId(userId), parsed.data);
+    updated = await updateCoreUserById(new ObjectId(userId), basePatch);
   } catch (error) {
     const isDuplicate = error instanceof Error && /E11000/.test(error.message);
     if (isDuplicate) {
@@ -113,6 +128,21 @@ export async function PUT(request: Request, context: RouteContext) {
 
   if (!updated) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (parsed.data.billingOverride) {
+    const expiresAt = parsed.data.billingOverride.expiresAt
+      ? new Date(parsed.data.billingOverride.expiresAt)
+      : undefined;
+    updated = await updateCoreUserBillingOverride({
+      userId: new ObjectId(userId),
+      override: {
+        enabled: parsed.data.billingOverride.enabled,
+        reason: parsed.data.billingOverride.reason,
+        expiresAt
+      },
+      actorUserId: session.userId
+    });
   }
 
   if (parsed.data.subscriptionPlan !== undefined) {
@@ -206,12 +236,31 @@ export async function DELETE(request: Request, context: RouteContext) {
 }
 
 function serializeUser(user: CoreUser) {
+  const billingOverride = user.billing?.override;
   return {
     _id: user._id?.toHexString(),
     email: user.email,
     roles: user.roles,
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     status: user.status,
+    billing: user.billing
+      ? {
+          stripeSubscriptionId: user.billing.stripeSubscriptionId,
+          stripeSubscriptionStatus: user.billing.stripeSubscriptionStatus,
+          stripeCurrentPeriodEnd: user.billing.stripeCurrentPeriodEnd?.toISOString(),
+          cancelAtPeriodEnd: user.billing.cancelAtPeriodEnd,
+          canceledAt: user.billing.canceledAt?.toISOString(),
+          override: billingOverride
+            ? {
+                enabled: billingOverride.enabled,
+                reason: billingOverride.reason,
+                grantedByUserId: billingOverride.grantedByUserId,
+                grantedAt: billingOverride.grantedAt?.toISOString(),
+                expiresAt: billingOverride.expiresAt?.toISOString()
+              }
+            : undefined
+        }
+      : undefined,
     xAccount: user.xAccount
       ? {
           ...user.xAccount,

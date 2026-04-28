@@ -33,6 +33,11 @@ const protectedPathPrefixes = [
 const publicGuestReadablePaths = ["/account/billing"] as const;
 const TENANT_UX_PROXY_POLICY_TTL_MS = 60_000;
 const tenantUxProxyCache = new Map<string, { allowed: boolean; redirectPath: string; expiresAt: number }>();
+const BILLING_PROXY_POLICY_TTL_MS = 30_000;
+const billingProxyCache = new Map<
+  string,
+  { requiresBilling: boolean; state: string; redirectPath: string; expiresAt: number }
+>();
 
 function isPublicGuestReadablePath(pathname: string): boolean {
   return publicGuestReadablePaths.some(
@@ -145,6 +150,95 @@ async function enforceTenantUxV2(request: NextRequest, pathname: string): Promis
   return NextResponse.redirect(redirectUrl);
 }
 
+function shouldEnforceBillingForPath(pathname: string): boolean {
+  if (isPublicGuestReadablePath(pathname)) {
+    return false;
+  }
+  if (pathname.startsWith("/api/billing/") || pathname.startsWith("/api/webhooks/")) {
+    return false;
+  }
+  return resolvePolicyPathForRequest(pathname) !== null;
+}
+
+async function resolveBillingDecision(
+  request: NextRequest
+): Promise<{ requiresBilling: boolean; state: string; redirectPath: string }> {
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? "";
+  const cacheKey = sessionCookie;
+  const hit = billingProxyCache.get(cacheKey);
+  if (hit && hit.expiresAt > Date.now()) {
+    return {
+      requiresBilling: hit.requiresBilling,
+      state: hit.state,
+      redirectPath: hit.redirectPath
+    };
+  }
+  const url = new URL("/api/internal/authz/billing-access", request.url);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        cookie: request.headers.get("cookie") ?? ""
+      },
+      cache: "no-store"
+    });
+    if (!res.ok) {
+      return { requiresBilling: false, state: "approved_unpaid", redirectPath: "/account/billing" };
+    }
+    const json = (await res.json()) as {
+      data?: {
+        requiresBilling?: boolean;
+        billingState?: string;
+        redirectPath?: string;
+      };
+    };
+    const decision = {
+      requiresBilling: json?.data?.requiresBilling === true,
+      state: json?.data?.billingState?.trim() || "approved_unpaid",
+      redirectPath: json?.data?.redirectPath?.trim() || "/account/billing"
+    };
+    billingProxyCache.set(cacheKey, {
+      ...decision,
+      expiresAt: Date.now() + BILLING_PROXY_POLICY_TTL_MS
+    });
+    if (billingProxyCache.size > 500) {
+      const first = billingProxyCache.keys().next();
+      if (!first.done) {
+        billingProxyCache.delete(first.value);
+      }
+    }
+    return decision;
+  } catch {
+    return { requiresBilling: false, state: "approved_unpaid", redirectPath: "/account/billing" };
+  }
+}
+
+async function enforceBillingAccess(request: NextRequest, pathname: string): Promise<NextResponse | null> {
+  if (!shouldEnforceBillingForPath(pathname)) {
+    return null;
+  }
+  const decision = await resolveBillingDecision(request);
+  if (!decision.requiresBilling) {
+    return null;
+  }
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      {
+        error: "Subscription required",
+        code: "billing_subscription_required",
+        state: decision.state,
+        redirectPath: decision.redirectPath
+      },
+      { status: 402 }
+    );
+  }
+  const billingUrl = new URL(decision.redirectPath, request.url);
+  billingUrl.searchParams.set("required", "1");
+  billingUrl.searchParams.set("state", decision.state);
+  billingUrl.searchParams.set("next", pathname);
+  return NextResponse.redirect(billingUrl);
+}
+
 /**
  * App-router pages that render a **guest shell at the same URL** (no session cookie) — do not redirect to /xchat.
  * APIs under these areas stay protected (401) when unauthenticated.
@@ -168,6 +262,10 @@ export async function proxy(request: NextRequest) {
 
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   if (hasSession) {
+    const billingEnforced = await enforceBillingAccess(request, pathname);
+    if (billingEnforced) {
+      return billingEnforced;
+    }
     if (isTenantUxEnforcementV2Enabled()) {
       const enforced = await enforceTenantUxV2(request, pathname);
       if (enforced) {

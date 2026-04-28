@@ -14,6 +14,34 @@ import type { TenantRoleFlags } from "@/modules/platform/tenant-route-policy";
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
 export type { SubscriptionPlan };
 
+export type CoreUserStripeSubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "unpaid"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "paused";
+
+export type CoreUserBillingOverride = {
+  enabled: boolean;
+  reason?: string;
+  grantedByUserId?: string;
+  grantedAt?: Date;
+  expiresAt?: Date;
+};
+
+export type CoreUserBilling = {
+  stripeSubscriptionId?: string;
+  stripeSubscriptionStatus?: CoreUserStripeSubscriptionStatus;
+  stripeCurrentPeriodEnd?: Date;
+  cancelAtPeriodEnd?: boolean;
+  canceledAt?: Date;
+  override?: CoreUserBillingOverride;
+  updatedAt?: Date;
+};
+
 export type CoreUserOptionsScanPreferences = {
   frequency: "weekly" | "monthly" | "off";
   deliveryChannel: "inapp" | "email";
@@ -27,6 +55,8 @@ export type CoreUser = {
   subscriptionPlan?: SubscriptionPlan;
   /** Set when the user completes Stripe Checkout (webhook); used for Billing Portal deep link. */
   stripeCustomerId?: string;
+  /** Billing state machine backing data (Stripe status + explicit admin override). */
+  billing?: CoreUserBilling;
   xaiCollectionId?: string;
   xaiCollectionName?: string;
   status: "active" | "suspended";

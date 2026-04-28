@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const identityMocks = vi.hoisted(() => ({
-  updateCoreUserSubscriptionPlan: vi.fn()
+  updateCoreUserStripeBilling: vi.fn()
 }));
 
 const stripeMocks = vi.hoisted(() => ({
@@ -10,7 +10,7 @@ const stripeMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/modules/identity/repository", () => ({
-  updateCoreUserSubscriptionPlan: identityMocks.updateCoreUserSubscriptionPlan
+  updateCoreUserStripeBilling: identityMocks.updateCoreUserStripeBilling
 }));
 
 vi.mock("stripe", () => ({
@@ -36,8 +36,8 @@ describe("POST /api/webhooks/stripe", () => {
     process.env.STRIPE_PRICE_BASIC_MONTHLY = "price_basic";
     process.env.STRIPE_PRICE_PREMIUM_MONTHLY = "price_premium";
     process.env.STRIPE_PRICE_PREMIUM_PLUS_MONTHLY = "price_premium_plus";
-    identityMocks.updateCoreUserSubscriptionPlan.mockReset();
-    identityMocks.updateCoreUserSubscriptionPlan.mockResolvedValue({
+    identityMocks.updateCoreUserStripeBilling.mockReset();
+    identityMocks.updateCoreUserStripeBilling.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" }
     });
     stripeMocks.constructEvent.mockReset();
@@ -97,10 +97,11 @@ describe("POST /api/webhooks/stripe", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect(identityMocks.updateCoreUserSubscriptionPlan).toHaveBeenCalledWith(
+    expect(identityMocks.updateCoreUserStripeBilling).toHaveBeenCalledWith(
       expect.objectContaining({
         subscriptionPlan: "premium",
-        stripeCustomerId: "cus_test_portal_1"
+        stripeCustomerId: "cus_test_portal_1",
+        stripeSubscriptionStatus: "active"
       })
     );
   });
@@ -125,9 +126,10 @@ describe("POST /api/webhooks/stripe", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect(identityMocks.updateCoreUserSubscriptionPlan).toHaveBeenCalledWith(
+    expect(identityMocks.updateCoreUserStripeBilling).toHaveBeenCalledWith(
       expect.objectContaining({
-        subscriptionPlan: "basic"
+        subscriptionPlan: "basic",
+        stripeSubscriptionStatus: "canceled"
       })
     );
   });

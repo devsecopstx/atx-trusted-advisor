@@ -4,6 +4,10 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
+import {
+    isBillingEntitledAccessState,
+    resolveAppUserBillingAccessState
+} from "@/lib/app-user-billing-state";
 import { requireSessionUser } from "@/lib/auth";
 import { isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
 import {
@@ -31,7 +35,7 @@ import {
 import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     getCoreUserById,
     getCoreUserOptionsScanPreferences,
@@ -175,6 +179,31 @@ export async function POST(request: Request) {
     return session;
   }
 
+  const isAdminSession = isGlobalAdmin(session.roles);
+  if (!isAdminSession && !canUserLogin(session.roles)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const coreUser =
+    !isAdminSession && ObjectId.isValid(session.userId)
+      ? await getCoreUserById(new ObjectId(session.userId))
+      : null;
+  const billingState = resolveAppUserBillingAccessState({
+    roles: session.roles,
+    billing: coreUser?.billing
+  });
+  if (!isAdminSession && !isBillingEntitledAccessState(billingState)) {
+    return NextResponse.json(
+      {
+        error: "Subscription required",
+        code: "billing_subscription_required",
+        state: billingState,
+        redirectPath: "/account/billing"
+      },
+      { status: 402 }
+    );
+  }
+
   const tenantForDebug = ObjectId.isValid(session.tenantId)
     ? await getTenantByHexIdCached(session.tenantId)
     : null;
@@ -232,7 +261,6 @@ export async function POST(request: Request) {
   if (!workspacePortfolioId && watchlistPortfolioSlot.resolvedPortfolioId) {
     workspacePortfolioId = watchlistPortfolioSlot.resolvedPortfolioId;
   }
-  const isAdminSession = isGlobalAdmin(session.roles);
   let subscriptionPlan: SubscriptionPlan | undefined;
   let limiterRemainingMinute: number | undefined;
   let limiterRemainingHour: number | undefined;
@@ -240,7 +268,6 @@ export async function POST(request: Request) {
   let limiterHourlyLimit: number | undefined;
   let limiterDailyLimit: number | undefined;
   if (!isAdminSession && ObjectId.isValid(session.userId)) {
-    const coreUser = await getCoreUserById(new ObjectId(session.userId));
     subscriptionPlan = coreUser?.subscriptionPlan;
   }
   const requestedTopK = parsed.data.topK ?? 4;

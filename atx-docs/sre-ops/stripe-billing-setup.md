@@ -49,6 +49,38 @@ Stripe Checkout charges the **Stripe Price** bound to `STRIPE_PRICE_*`. The **do
 5. **Customer portal:** In Stripe Dashboard → **Settings → Billing → Customer portal**, enable the portal (products, subscription cancel, payment method update). After a user completes Checkout, `checkout.session.completed` persists **`core_users.stripeCustomerId`**; **`/account/billing`** then shows **Manage subscription & payment method**, which calls **`POST /api/billing/portal-session`** (same `STRIPE_SECRET_KEY` as Checkout). Return URL is `/account/billing`.
 6. **Webhooks:** Add endpoint `https://<your-host>/api/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`; verify with `STRIPE_WEBHOOK_SECRET`. Handlers update `core_users.subscriptionPlan` and merge **`stripeCustomerId`** when Stripe sends a customer id on the event object.
 
+## Access state machine (approval + billing)
+
+Billing and approval are intentionally separate checks. Runtime derives one state from `core_users.roles` + `core_users.billing`:
+
+- `pending` → user is authenticated but does not have login-eligible platform role (`viewer` / `operator` / `advisor` / `global_admin`).
+- `approved_unpaid` → role is approved, but there is no active Stripe subscription and no billing override.
+- `active` → Stripe subscription status is `trialing` or `active` (or `global_admin` session).
+- `past_due` → Stripe status is `past_due` or `unpaid`.
+- `canceled` → Stripe status is `canceled` / `incomplete` / `incomplete_expired` / `paused`, or a recorded cancel timestamp has passed.
+- `override_active` → explicit admin billing override is enabled and not expired (`core_users.billing.override.*`).
+
+Entitled states for paid product access are only: **`active`** and **`override_active`**.
+
+### Enforcement points (middleware vs route handlers)
+
+- **Middleware (`src/proxy.ts`)**
+  - For signed-in app-user product paths (`/xchat`, `/portfolio*`, `/watchlist*`, `/xoptions*`, and mapped app-user APIs), middleware calls `GET /api/internal/authz/billing-access`.
+  - When billing is required, HTML routes redirect to `/account/billing?required=1&state=<state>&next=<path>`.
+  - API routes fail with `402` and `code: billing_subscription_required`.
+- **Route handlers (fail-closed)**
+  - `POST /api/xchat/ask` repeats billing entitlement server-side and returns `402` with the same code/state when not entitled.
+  - Keep this defense even with middleware on, so direct route calls cannot bypass billing.
+- **Billing and auth endpoints**
+  - `/account/billing`, `/api/billing/*`, and Stripe webhooks remain reachable without billing entitlement so users can subscribe and webhooks can sync status.
+
+### Admin override workflow (no Stripe required)
+
+- Admins can set `billingOverride` via `PUT /api/admin/users/:userId`:
+  - `enabled` (required), optional `reason`, optional ISO `expiresAt`.
+- This writes `core_users.billing.override` and activates `override_active` state when enabled and unexpired.
+- Use override for comped/manual access paths and keep reason/expiry for auditability.
+
 ## App env summary
 
 ```bash

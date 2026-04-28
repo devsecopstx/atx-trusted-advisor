@@ -27,7 +27,9 @@ import {
 import type {
     AuthContext,
     CoreUser,
+    CoreUserBillingOverride,
     CoreUserOptionsScanPreferences,
+    CoreUserStripeSubscriptionStatus,
     Tenant,
     TenantMembership
 } from "@/modules/identity/types";
@@ -1148,6 +1150,130 @@ export async function updateCoreUserSubscriptionPlan(input: {
   const user = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
   if (!user?._id) {
     throw new Error("Failed to update user subscription plan");
+  }
+  return user;
+}
+
+export async function updateCoreUserStripeBilling(input: {
+  userId: ObjectId;
+  subscriptionPlan: NonNullable<CoreUser["subscriptionPlan"]>;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripeSubscriptionStatus?: CoreUserStripeSubscriptionStatus;
+  stripeCurrentPeriodEnd?: Date;
+  cancelAtPeriodEnd?: boolean;
+  canceledAt?: Date;
+}): Promise<CoreUser> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const $set: Record<string, unknown> = {
+    subscriptionPlan: input.subscriptionPlan,
+    updatedAt: now,
+    "billing.updatedAt": now
+  };
+  const $unset: Record<string, ""> = {};
+
+  const trimmedCustomer = input.stripeCustomerId?.trim();
+  if (trimmedCustomer) {
+    $set.stripeCustomerId = trimmedCustomer;
+  }
+
+  const trimmedSubscriptionId = input.stripeSubscriptionId?.trim();
+  if (trimmedSubscriptionId) {
+    $set["billing.stripeSubscriptionId"] = trimmedSubscriptionId;
+  } else {
+    $unset["billing.stripeSubscriptionId"] = "";
+  }
+
+  if (input.stripeSubscriptionStatus) {
+    $set["billing.stripeSubscriptionStatus"] = input.stripeSubscriptionStatus;
+  } else {
+    $unset["billing.stripeSubscriptionStatus"] = "";
+  }
+
+  if (input.stripeCurrentPeriodEnd instanceof Date && !Number.isNaN(input.stripeCurrentPeriodEnd.getTime())) {
+    $set["billing.stripeCurrentPeriodEnd"] = input.stripeCurrentPeriodEnd;
+  } else {
+    $unset["billing.stripeCurrentPeriodEnd"] = "";
+  }
+
+  if (typeof input.cancelAtPeriodEnd === "boolean") {
+    $set["billing.cancelAtPeriodEnd"] = input.cancelAtPeriodEnd;
+  } else {
+    $unset["billing.cancelAtPeriodEnd"] = "";
+  }
+
+  if (input.canceledAt instanceof Date && !Number.isNaN(input.canceledAt.getTime())) {
+    $set["billing.canceledAt"] = input.canceledAt;
+  } else {
+    $unset["billing.canceledAt"] = "";
+  }
+
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: input.userId },
+    {
+      $set,
+      ...(Object.keys($unset).length > 0 ? { $unset } : {})
+    }
+  );
+  const user = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
+  if (!user?._id) {
+    throw new Error("Failed to update user Stripe billing state");
+  }
+  return user;
+}
+
+export async function updateCoreUserBillingOverride(input: {
+  userId: ObjectId;
+  override: CoreUserBillingOverride;
+  actorUserId?: string;
+}): Promise<CoreUser> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const $set: Record<string, unknown> = {
+    "billing.override.enabled": input.override.enabled,
+    "billing.updatedAt": now,
+    updatedAt: now
+  };
+  const $unset: Record<string, ""> = {};
+  if (input.override.enabled) {
+    $set["billing.override.grantedAt"] = now;
+    const actor = input.actorUserId?.trim();
+    if (actor) {
+      $set["billing.override.grantedByUserId"] = actor;
+    } else {
+      $unset["billing.override.grantedByUserId"] = "";
+    }
+    const reason = input.override.reason?.trim();
+    if (reason) {
+      $set["billing.override.reason"] = reason.slice(0, 280);
+    } else {
+      $unset["billing.override.reason"] = "";
+    }
+    if (input.override.expiresAt instanceof Date && !Number.isNaN(input.override.expiresAt.getTime())) {
+      $set["billing.override.expiresAt"] = input.override.expiresAt;
+    } else {
+      $unset["billing.override.expiresAt"] = "";
+    }
+  } else {
+    $unset["billing.override.reason"] = "";
+    $unset["billing.override.grantedByUserId"] = "";
+    $unset["billing.override.grantedAt"] = "";
+    $unset["billing.override.expiresAt"] = "";
+  }
+
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: input.userId },
+    {
+      $set,
+      ...(Object.keys($unset).length > 0 ? { $unset } : {})
+    }
+  );
+  const user = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
+  if (!user?._id) {
+    throw new Error("Failed to update user billing override");
   }
   return user;
 }

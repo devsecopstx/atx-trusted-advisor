@@ -4,7 +4,8 @@ import Stripe from "stripe";
 
 import { getStripePriceIdForPlan, getStripeSecretKey } from "@/lib/stripe-config";
 import { strictParseSubscriptionPlan, type SubscriptionPlan } from "@/lib/subscription-plan";
-import { updateCoreUserSubscriptionPlan } from "@/modules/identity/repository";
+import { updateCoreUserStripeBilling } from "@/modules/identity/repository";
+import type { CoreUserStripeSubscriptionStatus } from "@/modules/identity/types";
 
 export const dynamic = "force-dynamic";
 
@@ -75,15 +76,27 @@ function stripeCustomerIdFromRef(
 async function applyPlanForUser(
   userIdHex: string,
   subscriptionPlan: SubscriptionPlan,
-  stripeCustomerId?: string
+  options?: {
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    stripeSubscriptionStatus?: CoreUserStripeSubscriptionStatus;
+    stripeCurrentPeriodEnd?: Date;
+    cancelAtPeriodEnd?: boolean;
+    canceledAt?: Date;
+  }
 ): Promise<boolean> {
   if (!ObjectId.isValid(userIdHex)) {
     return false;
   }
-  await updateCoreUserSubscriptionPlan({
+  await updateCoreUserStripeBilling({
     userId: new ObjectId(userIdHex),
     subscriptionPlan,
-    ...(stripeCustomerId ? { stripeCustomerId } : {})
+    stripeCustomerId: options?.stripeCustomerId,
+    stripeSubscriptionId: options?.stripeSubscriptionId,
+    stripeSubscriptionStatus: options?.stripeSubscriptionStatus,
+    stripeCurrentPeriodEnd: options?.stripeCurrentPeriodEnd,
+    cancelAtPeriodEnd: options?.cancelAtPeriodEnd,
+    canceledAt: options?.canceledAt
   });
   return true;
 }
@@ -91,6 +104,13 @@ async function applyPlanForUser(
 function firstSubscriptionPriceId(subscription: Stripe.Subscription): string | null {
   const first = subscription.items.data[0];
   return first?.price?.id?.trim() || null;
+}
+
+function toDateFromUnixSeconds(value: number | null | undefined): Date | undefined {
+  if (!value || !Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+  return new Date(value * 1000);
 }
 
 export async function POST(request: Request) {
@@ -131,6 +151,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ received: true, ignored: "missing_user_id" });
       }
 
+      let stripeSubscription: Stripe.Subscription | null = null;
       let plan =
         resolvePlanFromAtxPlanId(session.metadata?.atx_plan_id) ||
         resolvePlanFromPriceId(
@@ -139,6 +160,7 @@ export async function POST(request: Request) {
 
       if (!plan && typeof session.subscription === "string") {
         const sub = await stripe.subscriptions.retrieve(session.subscription);
+        stripeSubscription = sub;
         plan =
           resolvePlanFromAtxPlanId(sub.metadata?.atx_plan_id) ||
           resolvePlanFromPriceId(firstSubscriptionPriceId(sub));
@@ -153,7 +175,15 @@ export async function POST(request: Request) {
       }
 
       const stripeCustomerId = stripeCustomerIdFromRef(session.customer);
-      const updated = await applyPlanForUser(userId, plan, stripeCustomerId);
+      const updated = await applyPlanForUser(userId, plan, {
+        stripeCustomerId,
+        stripeSubscriptionId:
+          typeof session.subscription === "string" ? session.subscription : undefined,
+        stripeSubscriptionStatus: stripeSubscription?.status ?? "active",
+        stripeCurrentPeriodEnd: toDateFromUnixSeconds(stripeSubscription?.current_period_end),
+        cancelAtPeriodEnd: stripeSubscription?.cancel_at_period_end,
+        canceledAt: toDateFromUnixSeconds(stripeSubscription?.canceled_at)
+      });
       console.info("[webhooks/stripe] handled checkout.session.completed", {
         id: event.id,
         userId: maskUserId(userId),
@@ -188,7 +218,14 @@ export async function POST(request: Request) {
       }
 
       const stripeCustomerId = stripeCustomerIdFromRef(subscription.customer);
-      const updated = await applyPlanForUser(userId, plan, stripeCustomerId);
+      const updated = await applyPlanForUser(userId, plan, {
+        stripeCustomerId,
+        stripeSubscriptionId: subscription.id?.trim() || undefined,
+        stripeSubscriptionStatus: status,
+        stripeCurrentPeriodEnd: toDateFromUnixSeconds(subscription.current_period_end),
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        canceledAt: toDateFromUnixSeconds(subscription.canceled_at)
+      });
       console.info("[webhooks/stripe] handled customer.subscription.updated", {
         id: event.id,
         userId: maskUserId(userId),
@@ -209,7 +246,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ received: true, ignored: "missing_user_id" });
       }
       const stripeCustomerId = stripeCustomerIdFromRef(subscription.customer);
-      const updated = await applyPlanForUser(userId, "basic", stripeCustomerId);
+      const updated = await applyPlanForUser(userId, "basic", {
+        stripeCustomerId,
+        stripeSubscriptionId: subscription.id?.trim() || undefined,
+        stripeSubscriptionStatus: "canceled",
+        stripeCurrentPeriodEnd: toDateFromUnixSeconds(subscription.current_period_end),
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        canceledAt: toDateFromUnixSeconds(subscription.canceled_at) ?? new Date()
+      });
       console.info("[webhooks/stripe] handled customer.subscription.deleted", {
         id: event.id,
         userId: maskUserId(userId),
