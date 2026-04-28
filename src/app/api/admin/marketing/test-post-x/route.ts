@@ -5,11 +5,8 @@ import { requireAdminSession } from "@/lib/api-auth";
 import { publishMarketingTextToX } from "@/modules/marketing/publisher";
 
 const testPostXSchema = z.object({
-  postText: z.string().trim().min(1).max(8000),
-  asUser: z.string().trim().optional()
+  postText: z.string().trim().min(1).max(8000)
 });
-
-const TEST_POST_X_USER = "atxbogart";
 
 export async function POST(request: Request) {
   const session = await requireAdminSession();
@@ -28,29 +25,21 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
   }
-  if (parsed.data.asUser && parsed.data.asUser.toLowerCase() !== TEST_POST_X_USER) {
-    return NextResponse.json(
-      { error: `Test posting is restricted to @${TEST_POST_X_USER}` },
-      { status: 400 }
-    );
-  }
-
   try {
     await publishMarketingTextToX(parsed.data.postText);
     return NextResponse.json({
       data: {
         posted: true,
-        platform: "x",
-        asUser: TEST_POST_X_USER
+        platform: "x"
       }
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to post to X";
-    if (message.includes("Missing X OAuth credentials")) {
+    if (message.includes("Missing X OAuth for posting")) {
       return NextResponse.json(
         {
           error:
-            "X OAuth is not configured for posting. Set X_OAUTH_CLIENT_ID, X_OAUTH_CLIENT_SECRET, and X_OAUTH_REFRESH_TOKEN."
+            "X OAuth is not configured for posting. Use Admin → Marketing → Connect X for posting, or set legacy X_OAUTH_REFRESH_TOKEN with X_OAUTH_CLIENT_ID / X_OAUTH_CLIENT_SECRET."
         },
         { status: 400 }
       );

@@ -16,6 +16,8 @@ const authMocks = vi.hoisted(() => ({
   requireSessionUser: vi.fn(),
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
+  readMarketingPostingOAuthFlowCookies: vi.fn(),
+  clearMarketingPostingOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
   createSession: vi.fn(),
   setPendingXLinkCookie: vi.fn(),
@@ -132,7 +134,12 @@ describe("access request approval login flow", () => {
       state: "state-token",
       verifier: "pkce-verifier"
     });
+    authMocks.readMarketingPostingOAuthFlowCookies.mockResolvedValue({
+      state: null,
+      verifier: null
+    });
     authMocks.clearOAuthFlowCookies.mockResolvedValue(undefined);
+    authMocks.clearMarketingPostingOAuthFlowCookies.mockResolvedValue(undefined);
     authMocks.getSessionUser.mockResolvedValue(null);
     authMocks.createSession.mockResolvedValue(undefined);
     authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);

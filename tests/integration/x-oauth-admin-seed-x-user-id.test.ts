@@ -5,6 +5,8 @@ const adminUserId = "507f1f77bcf86cd799439011";
 const authMocks = vi.hoisted(() => ({
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
+  readMarketingPostingOAuthFlowCookies: vi.fn(),
+  clearMarketingPostingOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
   createSession: vi.fn(),
   setPendingXLinkCookie: vi.fn(),
@@ -85,7 +87,12 @@ describe("X OAuth without email + ADMIN_SEED_X_USER_ID", () => {
       state: "state-token",
       verifier: "pkce-verifier"
     });
+    authMocks.readMarketingPostingOAuthFlowCookies.mockResolvedValue({
+      state: null,
+      verifier: null
+    });
     authMocks.clearOAuthFlowCookies.mockResolvedValue(undefined);
+    authMocks.clearMarketingPostingOAuthFlowCookies.mockResolvedValue(undefined);
     authMocks.getSessionUser.mockResolvedValue(null);
     authMocks.createSession.mockResolvedValue(undefined);
     authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);

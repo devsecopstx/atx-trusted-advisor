@@ -222,8 +222,7 @@ describe("admin marketing routes", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postText: "Test post content\n\nhttps://atx.fintech-advisor.ai?utm_source=x&utm_campaign=weekly-pulse",
-          asUser: "atxbogart"
+          postText: "Test post content\n\nhttps://atx.fintech-advisor.ai?utm_source=x&utm_campaign=weekly-pulse"
         })
       })
     );
@@ -231,32 +230,18 @@ describe("admin marketing routes", () => {
     expect(marketingPublisherMocks.publishMarketingTextToX).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects test post for unsupported x user", async () => {
-    const response = await postMarketingTestPostX(
-      new Request("http://localhost/api/admin/marketing/test-post-x", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          postText: "hello",
-          asUser: "some-other-user"
-        })
-      })
-    );
-    expect(response.status).toBe(400);
-    expect(marketingPublisherMocks.publishMarketingTextToX).not.toHaveBeenCalled();
-  });
-
   it("returns 400 when x oauth posting is not configured", async () => {
     marketingPublisherMocks.publishMarketingTextToX.mockRejectedValueOnce(
-      new Error("Missing X OAuth credentials (set X_OAUTH_REFRESH_TOKEN with X_OAUTH_CLIENT_ID/X_OAUTH_CLIENT_SECRET)")
+      new Error(
+        "Missing X OAuth for posting: use Admin → Marketing → Connect X for posting (OAuth), or set legacy X_OAUTH_REFRESH_TOKEN with X_OAUTH_CLIENT_ID / X_OAUTH_CLIENT_SECRET."
+      )
     );
     const response = await postMarketingTestPostX(
       new Request("http://localhost/api/admin/marketing/test-post-x", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postText: "hello",
-          asUser: "atxbogart"
+          postText: "hello"
         })
       })
     );

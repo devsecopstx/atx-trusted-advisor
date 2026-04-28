@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { parseJson } from "@/app/admin/ui/http";
 import type { MarketingPlatform, MarketingTaskConfig } from "@/modules/marketing/types";
 
+import { MarketingXPostingConnectPanel } from "./marketing-x-posting-connect";
+
 type MarketingTemplate = {
   _id: string;
   slug: string;
@@ -111,7 +113,6 @@ const DEFAULT_DRAFT: EditDraft = {
 };
 
 type TabKey = "overview" | "schedules" | "templates" | "history" | "test-x";
-const TEST_POST_X_USER = "atxbogart";
 
 function formatTs(value?: string): string {
   if (!value) return "—";
@@ -319,10 +320,10 @@ export function MarketingConsole() {
         await fetch("/api/admin/marketing/test-post-x", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postText: preview.postText, asUser: TEST_POST_X_USER })
+          body: JSON.stringify({ postText: preview.postText })
         })
       );
-      setStatus(`Test post sent to X as @${TEST_POST_X_USER}`);
+      setStatus("Test post sent to X (connected OAuth account).");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Test post to X failed");
     } finally {
@@ -339,16 +340,16 @@ export function MarketingConsole() {
     }
     setTestPostRunning(true);
     setLoading(true);
-    setStatus(`Posting simple test to X as @${TEST_POST_X_USER}...`);
+    setStatus("Posting simple test to X...");
     try {
       await parseJson(
         await fetch("/api/admin/marketing/test-post-x", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postText: body, asUser: TEST_POST_X_USER })
+          body: JSON.stringify({ postText: body })
         })
       );
-      setStatus(`Simple test post sent to X as @${TEST_POST_X_USER}`);
+      setStatus("Simple test post sent to X.");
       setTestPostText("");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Simple test post to X failed");
@@ -500,6 +501,8 @@ export function MarketingConsole() {
 
   return (
     <section className="panel stack-gap">
+      <MarketingXPostingConnectPanel returnPath="/admin/marketing" />
+
       <div className="tool-row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <div className="tool-row" role="tablist" aria-label="Marketing tabs" style={{ gap: "0.4rem" }}>
           {(["overview", "schedules", "templates", "history", "test-x"] as TabKey[]).map((tab) => (
@@ -904,7 +907,8 @@ export function MarketingConsole() {
         <article className="surface-card xf-widget section-card stack-form">
           <h3>Test post to X</h3>
           <p className="status-text">
-            Sends a direct test post as <strong>@{TEST_POST_X_USER}</strong> using configured X credentials.
+            Sends a test post using the account from <strong>Connect X for posting</strong> above (or legacy env refresh
+            token).
           </p>
           <textarea
             className="crud-input"

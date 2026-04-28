@@ -12,6 +12,8 @@ const authMocks = vi.hoisted(() => ({
   consumeOAuthReturnPathCookie: vi.fn(),
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
+  readMarketingPostingOAuthFlowCookies: vi.fn(),
+  clearMarketingPostingOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
   createSession: vi.fn(),
   setPendingXLinkCookie: vi.fn()
@@ -59,7 +61,12 @@ describe("oauth host normalization smoke", () => {
       state: "state",
       verifier: "verifier"
     });
+    authMocks.readMarketingPostingOAuthFlowCookies.mockResolvedValue({
+      state: null,
+      verifier: null
+    });
     authMocks.clearOAuthFlowCookies.mockResolvedValue(undefined);
+    authMocks.clearMarketingPostingOAuthFlowCookies.mockResolvedValue(undefined);
     authMocks.getSessionUser.mockResolvedValue(null);
     authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);
     authMocks.createSession.mockResolvedValue(undefined);

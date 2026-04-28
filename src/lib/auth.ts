@@ -302,6 +302,77 @@ export async function clearOAuthFlowCookies(): Promise<void> {
   cookieStore.delete(OAUTH_VERIFIER_COOKIE_NAME);
 }
 
+/** PKCE for marketing X posting OAuth — separate from user login cookies. */
+const MARKETING_POSTING_OAUTH_STATE_COOKIE_NAME = "xf_x_marketing_oauth_state";
+const MARKETING_POSTING_OAUTH_VERIFIER_COOKIE_NAME = "xf_x_marketing_oauth_verifier";
+const MARKETING_POSTING_OAUTH_RETURN_COOKIE_NAME = "xf_x_marketing_oauth_return";
+
+export function applyMarketingPostingOAuthFlowCookiesToRedirect(
+  response: NextResponse,
+  state: string,
+  verifier: string
+): void {
+  const baseCookie = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: OAUTH_FLOW_TTL_SECONDS
+  };
+  response.cookies.set(MARKETING_POSTING_OAUTH_STATE_COOKIE_NAME, state, baseCookie);
+  response.cookies.set(MARKETING_POSTING_OAUTH_VERIFIER_COOKIE_NAME, verifier, baseCookie);
+}
+
+export function applyMarketingPostingReturnPathCookie(response: NextResponse, returnPath: string | null): void {
+  if (!returnPath || !isSafeOAuthReturnPath(returnPath)) {
+    return;
+  }
+  const baseCookie = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: OAUTH_FLOW_TTL_SECONDS
+  };
+  response.cookies.set(MARKETING_POSTING_OAUTH_RETURN_COOKIE_NAME, returnPath, baseCookie);
+}
+
+export async function consumeMarketingPostingOAuthFlowCookies(): Promise<{
+  state: string | null;
+  verifier: string | null;
+}> {
+  const value = await readMarketingPostingOAuthFlowCookies();
+  await clearMarketingPostingOAuthFlowCookies();
+  return value;
+}
+
+export async function readMarketingPostingOAuthFlowCookies(): Promise<{
+  state: string | null;
+  verifier: string | null;
+}> {
+  const cookieStore = await cookies();
+  const state = cookieStore.get(MARKETING_POSTING_OAUTH_STATE_COOKIE_NAME)?.value ?? null;
+  const verifier = cookieStore.get(MARKETING_POSTING_OAUTH_VERIFIER_COOKIE_NAME)?.value ?? null;
+  return { state, verifier };
+}
+
+export async function clearMarketingPostingOAuthFlowCookies(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(MARKETING_POSTING_OAUTH_STATE_COOKIE_NAME);
+  cookieStore.delete(MARKETING_POSTING_OAUTH_VERIFIER_COOKIE_NAME);
+}
+
+export async function consumeMarketingPostingReturnPathCookie(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(MARKETING_POSTING_OAUTH_RETURN_COOKIE_NAME)?.value;
+  cookieStore.delete(MARKETING_POSTING_OAUTH_RETURN_COOKIE_NAME);
+  if (!raw) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  return isSafeOAuthReturnPath(trimmed) ? trimmed : null;
+}
+
 export function createOAuthState(): string {
   return randomBytes(24).toString("base64url");
 }

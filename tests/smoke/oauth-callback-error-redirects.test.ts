@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const authMocks = vi.hoisted(() => ({
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
+  readMarketingPostingOAuthFlowCookies: vi.fn(),
+  clearMarketingPostingOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn()
 }));
 
@@ -25,7 +27,12 @@ describe("oauth callback early error redirects", () => {
       NODE_ENV: "development",
       X_OAUTH_CLIENT_SECRET: "secret"
     });
+    authMocks.readMarketingPostingOAuthFlowCookies.mockResolvedValue({
+      state: null,
+      verifier: null
+    });
     authMocks.clearOAuthFlowCookies.mockResolvedValue(undefined);
+    authMocks.clearMarketingPostingOAuthFlowCookies.mockResolvedValue(undefined);
     authMocks.getSessionUser.mockResolvedValue(null);
   });
 

@@ -5,8 +5,6 @@ import { FormEvent, useCallback, useMemo, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
 
-import { TodayLoginsPanel } from "./today-logins-panel";
-
 type AuditEvent = {
   _id?: string;
   entityType:
@@ -103,8 +101,6 @@ export function AuditConsole() {
 
   return (
     <section className="panel stack-gap">
-      <TodayLoginsPanel />
-
       <div className="tool-row">
         <Link className="cta cta-secondary" href="/admin">
           Back to admin functions

@@ -11,6 +11,8 @@ const provisionedTenantId = "507f1f77bcf86cd7994390bb";
 const authMocks = vi.hoisted(() => ({
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
+  readMarketingPostingOAuthFlowCookies: vi.fn(),
+  clearMarketingPostingOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
   createSession: vi.fn(),
   setPendingXLinkCookie: vi.fn(),
@@ -100,7 +102,12 @@ describe("X OAuth — CLI/YAML provisioned tenant admin (real email + xAccount +
       state: "state-token",
       verifier: "pkce-verifier"
     });
+    authMocks.readMarketingPostingOAuthFlowCookies.mockResolvedValue({
+      state: null,
+      verifier: null
+    });
     authMocks.clearOAuthFlowCookies.mockResolvedValue(undefined);
+    authMocks.clearMarketingPostingOAuthFlowCookies.mockResolvedValue(undefined);
     authMocks.getSessionUser.mockResolvedValue(null);
     authMocks.createSession.mockResolvedValue(undefined);
     authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);

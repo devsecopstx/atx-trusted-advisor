@@ -17,10 +17,12 @@ import {
     isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
+import { tryMarketingPostingOAuthCallback } from "@/lib/marketing-posting-oauth-callback";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { buildXIdentityPlaceholderEmail, isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
+import { resolveXOAuthRedirectUri } from "@/lib/x-oauth-redirect-uri";
 import { createAccessRequest, getPendingAccessRequestByUserAndRole } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
@@ -75,17 +77,6 @@ async function ensurePendingOperatorAccessRequestAfterOAuth(user: CoreUser): Pro
 }
 
 export async function GET(request: Request) {
-  if (
-    getAtxfinanceBackendOrigin() &&
-    process.env.AUTH_CALLBACK_USE_SPRING === "true"
-  ) {
-    const proxied = await proxyRequestToBackend(request);
-    if (proxied) {
-      const headers = new Headers(proxied.headers);
-      return new Response(proxied.body, { status: proxied.status, headers });
-    }
-  }
-
   const env = getEnv();
   const url = new URL(request.url);
   const effectiveHost = getEffectiveHostname(request);
@@ -108,6 +99,22 @@ export async function GET(request: Request) {
       }
     } catch {
       // invalid callback URL is handled later by normal auth failures
+    }
+  }
+
+  const marketingPosting = await tryMarketingPostingOAuthCallback(request);
+  if (marketingPosting) {
+    return marketingPosting;
+  }
+
+  if (
+    getAtxfinanceBackendOrigin() &&
+    process.env.AUTH_CALLBACK_USE_SPRING === "true"
+  ) {
+    const proxied = await proxyRequestToBackend(request);
+    if (proxied) {
+      const headers = new Headers(proxied.headers);
+      return new Response(proxied.body, { status: proxied.status, headers });
     }
   }
 
@@ -145,10 +152,7 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const tokenUrl = env.X_OAUTH_TOKEN_URL ?? "https://api.x.com/2/oauth2/token";
-  const callbackUrl =
-    env.NODE_ENV === "production"
-      ? (env.X_OAUTH_CALLBACK_URL ?? `${origin}/api/auth/x/callback`)
-      : `${origin}/api/auth/x/callback`;
+  const callbackUrl = resolveXOAuthRedirectUri(request);
 
   if (!code || !state) {
     return redirectWithLoginAudit("missing_oauth_callback_params");

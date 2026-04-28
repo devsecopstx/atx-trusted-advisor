@@ -469,6 +469,21 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-marketing"
   },
   {
+    path: "/api/admin/marketing/x-posting/status",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/x-posting/oauth/start",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/x-posting/oauth/disconnect",
+    operations: [{ method: "POST", auth: "admin" }],
+    tag: "admin-marketing"
+  },
+  {
     path: "/api/admin/marketing/history",
     operations: [{ method: "GET", auth: "admin" }],
     tag: "admin-marketing"

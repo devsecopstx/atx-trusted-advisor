@@ -592,16 +592,18 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   font-size: 0.78rem;
 }
 
+/* Labeled actions: show button/link text and optional .crud-icon (legacy icon-only pseudo-icons removed). */
 .admin-layout .cta {
-  width: 2.65rem;
-  height: 2.65rem;
-  min-width: 2.65rem;
-  padding: 0;
+  width: auto;
+  height: auto;
+  min-width: auto;
+  min-height: auto;
+  padding: 0.55rem 0.85rem;
   border-radius: 10px;
-  font-size: 0;
-  line-height: 0;
-  overflow: hidden;
-  gap: 0;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  overflow: visible;
+  gap: 0.35rem;
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -614,20 +616,11 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   flex: 0 0 1.2rem;
 }
 
-.admin-layout .cta:not(:has(.crud-icon))::before {
-  content: "+";
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.admin-layout .cta.cta-secondary:not(:has(.crud-icon))::before {
-  content: "⏻";
-  font-size: 1.2rem;
-}
-
+.admin-layout .cta:not(:has(.crud-icon))::before,
+.admin-layout .cta.cta-secondary:not(:has(.crud-icon))::before,
 .admin-layout .cta.cta-danger:not(:has(.crud-icon))::before {
-  content: "×";
+  content: none;
+  display: none;
 }
 
 .admin-layout-content {

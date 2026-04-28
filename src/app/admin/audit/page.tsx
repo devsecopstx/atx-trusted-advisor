@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
@@ -20,8 +21,11 @@ export default async function AdminAuditPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Audit Trail Explorer</h1>
         <p className="hero-copy">
-          Successful logins for the current day load at the top; below, search audit traces across users, access
-          requests, and xPersonas.
+          Search audit traces across users, access requests, and xPersonas. For same-day sign-in attempts, use{" "}
+          <Link className="text-[var(--xf-gain-green)] underline" href="/admin/logins-today">
+            Logins today
+          </Link>
+          .
         </p>
       </section>
 

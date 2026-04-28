@@ -176,6 +176,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         description: "Browse and filter change trails across users, access requests, and xPersonas."
       },
       {
+        href: "/admin/logins-today",
+        title: "Logins today",
+        description:
+          "Successful and failed sign-in attempts since local midnight (audit_login), quick scan with filters on Login audit."
+      },
+      {
         href: "/admin/login-audit",
         title: "Login audit",
         description: "Success and failed sign-in attempts with IP and time (audit_login) for security review."
@@ -207,6 +213,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         title: "xChat API test",
         description:
           "Run canned POST /api/xchat/ask checks (including code_interpreter prompts) to verify persona tool wiring and response payloads."
+      },
+      {
+        href: "/admin/test-post-x",
+        title: "Test post to X",
+        description:
+          "Send a direct test tweet via POST /api/admin/marketing/test-post-x (OAuth posting credentials; restricted test handle)."
       }
     ]
   }
