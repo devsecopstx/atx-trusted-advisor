@@ -5,7 +5,10 @@ import { z } from "zod";
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminAccessRequestsRequestToBackend } from "@/lib/backend-bff";
-import { sendAccessApprovedPasswordInviteEmail } from "@/lib/send-email-credential-messages";
+import {
+    sendAccessApprovedPasswordInviteEmail,
+    sendAccessApprovedSignInEmail
+} from "@/lib/send-email-credential-messages";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import { enqueueAccessRequestBootstrap } from "@/modules/core-admin/access-request-bootstrap";
@@ -385,25 +388,37 @@ async function handleUpdate(request: Request, context: RouteContext) {
         }
       });
     } else {
+      const display =
+        approvedUser.googleAccount?.displayName?.trim() ||
+        approvedUser.xAccount?.displayName?.trim() ||
+        "";
+      const firstName = display ? display.split(/\s+/)[0] : undefined;
+      const hasPassword = Boolean(approvedUser.passwordHash && approvedUser.passwordHash.length > 0);
       // Credential invite first: independent of xAI per-user collection bootstrap (quota errors there must not block password setup).
-      if (
-        approvedUserObjectId &&
-        (!approvedUser.passwordHash || approvedUser.passwordHash.length === 0)
-      ) {
+      if (approvedUserObjectId && !hasPassword) {
         const issued = await issueCredentialInviteForUser(approvedUserObjectId);
         if (issued) {
-          const display =
-            approvedUser.googleAccount?.displayName?.trim() ||
-            approvedUser.xAccount?.displayName?.trim() ||
-            "";
-          const firstName = display ? display.split(/\s+/)[0] : undefined;
           const sent = await sendAccessApprovedPasswordInviteEmail({
             request,
             to: approvedUser.email,
             rawToken: issued.rawToken,
             ...(firstName ? { firstName } : {})
           });
-          if (!sent) {
+          if (sent) {
+            await createAuditEvent({
+              entityType: "access_request",
+              entityId: requestId,
+              action: "credential_invite_email_sent",
+              actor: {
+                userId: session.userId,
+                email: session.email,
+                username: session.username
+              },
+              details: {
+                userId: existing.userId
+              }
+            });
+          } else {
             console.warn(
               "[access-request/approve] credential invite email not sent (desk SMTP off or failure)",
               { userId: approvedUserObjectId.toHexString() }
@@ -423,6 +438,78 @@ async function handleUpdate(request: Request, context: RouteContext) {
               }
             });
           }
+        } else {
+          await createAuditEvent({
+            entityType: "access_request",
+            entityId: requestId,
+            action: "credential_invite_issue_failed",
+            actor: {
+              userId: session.userId,
+              email: session.email,
+              username: session.username
+            },
+            details: {
+              userId: existing.userId,
+              reason: "invite_issue_returned_null"
+            }
+          });
+          const fallbackSent = await sendAccessApprovedSignInEmail({
+            request,
+            to: approvedUser.email,
+            ...(firstName ? { firstName } : {})
+          });
+          if (!fallbackSent) {
+            await createAuditEvent({
+              entityType: "access_request",
+              entityId: requestId,
+              action: "access_approved_email_failed",
+              actor: {
+                userId: session.userId,
+                email: session.email,
+                username: session.username
+              },
+              details: {
+                userId: existing.userId,
+                reason: "invite_issue_failed_and_fallback_email_failed"
+              }
+            });
+          }
+        }
+      } else if (hasPassword) {
+        const sent = await sendAccessApprovedSignInEmail({
+          request,
+          to: approvedUser.email,
+          ...(firstName ? { firstName } : {})
+        });
+        if (sent) {
+          await createAuditEvent({
+            entityType: "access_request",
+            entityId: requestId,
+            action: "access_approved_email_sent",
+            actor: {
+              userId: session.userId,
+              email: session.email,
+              username: session.username
+            },
+            details: {
+              userId: existing.userId
+            }
+          });
+        } else {
+          await createAuditEvent({
+            entityType: "access_request",
+            entityId: requestId,
+            action: "access_approved_email_failed",
+            actor: {
+              userId: session.userId,
+              email: session.email,
+              username: session.username
+            },
+            details: {
+              userId: existing.userId,
+              reason: "desk_smtp_off_or_send_failed"
+            }
+          });
         }
       }
       try {

@@ -169,6 +169,16 @@ export async function getCoreUserByEmail(email: string): Promise<CoreUser | null
   return db.collection<CoreUser>(collections.users).findOne({ email: normalizeEmail(email) });
 }
 
+/**
+ * Defensive helper for admin hard-delete flows.
+ * In a healthy DB this returns one row because `email` is uniquely indexed.
+ */
+export async function listCoreUsersByEmail(email: string): Promise<CoreUser[]> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  return db.collection<CoreUser>(collections.users).find({ email: normalizeEmail(email) }).toArray();
+}
+
 export async function listCoreUsers(limit = 100): Promise<CoreUser[]> {
   await ensureIdentityIndexes();
   const db = await getDb();
@@ -1500,6 +1510,35 @@ export async function deleteCoreUserById(userId: ObjectId): Promise<boolean> {
   const db = await getDb();
   const result = await db.collection<CoreUser>(collections.users).deleteOne({ _id: userId });
   return result.deletedCount === 1;
+}
+
+/**
+ * Revokes any live credential links/tokens for the provided users.
+ * Used by admin hard-delete paths so invite/reset/verify links are dead before purge/delete.
+ */
+export async function revokeCredentialLinksForUsers(userIds: ObjectId[]): Promise<number> {
+  await ensureIdentityIndexes();
+  const ids = userIds.filter((id) => id instanceof ObjectId);
+  if (ids.length === 0) {
+    return 0;
+  }
+  const db = await getDb();
+  const now = new Date();
+  const result = await db.collection<CoreUser>(collections.users).updateMany(
+    { _id: { $in: ids } },
+    {
+      $set: { updatedAt: now },
+      $unset: {
+        credentialInviteTokenHash: "",
+        credentialInviteExpiresAt: "",
+        passwordResetTokenHash: "",
+        passwordResetExpiresAt: "",
+        emailVerificationTokenHash: "",
+        emailVerificationExpiresAt: ""
+      }
+    }
+  );
+  return result.modifiedCount;
 }
 
 export async function recordUserSuccessfulLogin(input: {

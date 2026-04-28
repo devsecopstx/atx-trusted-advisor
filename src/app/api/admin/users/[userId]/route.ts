@@ -11,6 +11,8 @@ import {
     deleteCoreUserById,
     getCoreUserById,
     listAdminTenantMembershipsByUserIds,
+    listCoreUsersByEmail,
+    revokeCredentialLinksForUsers,
     updateCoreUserBillingOverride,
     updateCoreUserById
 } from "@/modules/identity/repository";
@@ -210,10 +212,38 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   const emailNormalized = user.email.trim().toLowerCase();
-  await purgeAllDataAssociatedWithCoreUser({ userIdHex: userId, emailNormalized });
+  const candidateUsers = await listCoreUsersByEmail(emailNormalized);
+  const candidateUserIds = Array.from(
+    new Set(
+      candidateUsers
+        .map((row) => row._id?.toHexString())
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+        .concat(userId)
+    )
+  );
+  const candidateUserObjectIds = candidateUserIds
+    .filter((id) => ObjectId.isValid(id))
+    .map((id) => new ObjectId(id));
 
-  const deleted = await deleteCoreUserById(new ObjectId(userId));
-  if (!deleted) {
+  await revokeCredentialLinksForUsers(candidateUserObjectIds);
+
+  let deletedTarget = false;
+  let deletedUsersCount = 0;
+  for (const candidateUserId of candidateUserIds) {
+    await purgeAllDataAssociatedWithCoreUser({
+      userIdHex: candidateUserId,
+      emailNormalized
+    });
+    const deleted = await deleteCoreUserById(new ObjectId(candidateUserId));
+    if (deleted) {
+      deletedUsersCount += 1;
+      if (candidateUserId === userId) {
+        deletedTarget = true;
+      }
+    }
+  }
+
+  if (!deletedTarget) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
@@ -228,7 +258,8 @@ export async function DELETE(request: Request, context: RouteContext) {
     },
     details: {
       purgeAssociatedData: true,
-      emailNormalized
+      emailNormalized,
+      deletedUsersCount
     }
   });
 

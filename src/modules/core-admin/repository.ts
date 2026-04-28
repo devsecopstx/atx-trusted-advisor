@@ -3768,9 +3768,7 @@ export async function provisionDefaultPortfolioForUser(
     extAccountId,
     cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE,
     riskProfile: DEFAULT_PROVISION_ACCOUNT_RISK_PROFILE,
-    outlook: DEFAULT_PROVISION_ACCOUNT_OUTLOOK,
-    updatedAt: now,
-    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+    outlook: DEFAULT_PROVISION_ACCOUNT_OUTLOOK
   };
   /**
    * Idempotent re-provision (OAuth, portfolio shell, etc.): keep broker `type` and `extAccountId`

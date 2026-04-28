@@ -40,6 +40,32 @@ export async function sendAccessApprovedPasswordInviteEmail(input: {
   return sendDeskPlainEmail({ to: input.to, subject, text });
 }
 
+export async function sendAccessApprovedSignInEmail(input: {
+  request: Request;
+  to: string;
+  /** Optional greeting; falls back to "Valued Client" in body when omitted. */
+  firstName?: string | null;
+}): Promise<boolean> {
+  const origin = resolvePublicAppOrigin(input.request);
+  const signInLink = `${origin}/login`;
+  const forgotPasswordLink = `${origin}/login/forgot-password`;
+  const subject = "Your ATX Finance Advisory access is approved";
+  const text = [
+    `Dear ${input.firstName || "Valued Client"},`,
+    "",
+    "Your access request has been approved. Welcome to **ATX Finance Advisory**.",
+    "",
+    "You can sign in now:",
+    signInLink,
+    "",
+    "If you need to set or reset your password, use:",
+    forgotPasswordLink,
+    "",
+    "support@atxtrustedadvisory.com"
+  ].join("\n");
+  return sendDeskPlainEmail({ to: input.to, subject, text });
+}
+
 export async function sendPasswordResetEmail(input: {
   request: Request;
   to: string;

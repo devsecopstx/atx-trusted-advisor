@@ -7,6 +7,7 @@ import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { BillingAccessStateBanner } from "@/app/ui/billing-access-state-banner";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
 import {
@@ -122,6 +123,8 @@ export default async function AccountBillingPage({
                   xChat <strong>UTC day</strong> and <strong>UTC hour</strong> caps per user.
                 </p>
               </header>
+
+              <BillingAccessStateBanner />
 
               {checkoutBanner ? (
                 <div className={checkoutBanner.className} role="status">

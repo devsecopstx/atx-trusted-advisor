@@ -137,4 +137,39 @@ describe("POST /api/auth/email/complete-invite", () => {
     expect(body.redirect).toBe("/xchat");
     expect(finalizeMocks.finalizeEmailPasswordSession).toHaveBeenCalledTimes(1);
   });
+
+  it("sends verification email and blocks session when invite user email is unverified", async () => {
+    credentialsMocks.completeCredentialInvite.mockResolvedValue({
+      ok: true,
+      userId: new ObjectId("507f1f77bcf86cd799439011")
+    });
+    repoMocks.getCoreUserById.mockResolvedValue({
+      _id: new ObjectId("507f1f77bcf86cd799439011"),
+      email: "needsverify@example.com",
+      roles: ["viewer"],
+      subscriptionPlan: "basic"
+    });
+    credentialsMocks.issueEmailVerificationForUser.mockResolvedValue({
+      rawToken: "verify-token-123"
+    });
+    emailMessageMocks.sendEmailVerificationEmail.mockResolvedValue(true);
+
+    const res = await postCompleteInvite(
+      new Request("http://test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: "abcdefghijklmnopqrstuvwxyz123456",
+          password: "verysecurepassword"
+        })
+      })
+    );
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: string; verificationSent: boolean };
+    expect(body.error).toBe("email_unverified");
+    expect(body.verificationSent).toBe(true);
+    expect(credentialsMocks.issueEmailVerificationForUser).toHaveBeenCalledTimes(1);
+    expect(emailMessageMocks.sendEmailVerificationEmail).toHaveBeenCalledTimes(1);
+    expect(finalizeMocks.finalizeEmailPasswordSession).not.toHaveBeenCalled();
+  });
 });

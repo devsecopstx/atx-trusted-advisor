@@ -38,7 +38,8 @@ const emailCredentialMocks = vi.hoisted(() => ({
 }));
 
 const sendCredentialEmailMocks = vi.hoisted(() => ({
-  sendAccessApprovedPasswordInviteEmail: vi.fn().mockResolvedValue(true)
+  sendAccessApprovedPasswordInviteEmail: vi.fn().mockResolvedValue(true),
+  sendAccessApprovedSignInEmail: vi.fn().mockResolvedValue(true)
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);

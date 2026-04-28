@@ -7,13 +7,15 @@ const authMocks = vi.hoisted(() => ({
 
 const identityMocks = vi.hoisted(() => ({
   listCoreUsers: vi.fn(),
+  listCoreUsersByEmail: vi.fn(),
   listAdminTenantMembershipsByUserIds: vi.fn().mockResolvedValue(new Map()),
   createCoreUser: vi.fn(),
   assertTenantHasRoomForAnotherUser: vi.fn().mockResolvedValue(undefined),
   upsertTenantMembership: vi.fn(),
   getCoreUserById: vi.fn(),
   updateCoreUserById: vi.fn(),
-  deleteCoreUserById: vi.fn()
+  deleteCoreUserById: vi.fn(),
+  revokeCredentialLinksForUsers: vi.fn().mockResolvedValue(1)
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -91,6 +93,17 @@ describe("admin users CRUD routes", () => {
       createdAt: new Date("2026-03-16T00:00:00.000Z"),
       updatedAt: new Date("2026-03-16T00:00:00.000Z")
     });
+    identityMocks.listCoreUsersByEmail.mockResolvedValue([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+        email: "user@atxfinance.ai",
+        roles: ["viewer"],
+        subscriptionPlan: "basic",
+        status: "active",
+        createdAt: new Date("2026-03-16T00:00:00.000Z"),
+        updatedAt: new Date("2026-03-16T00:00:00.000Z")
+      }
+    ]);
     identityMocks.updateCoreUserById.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       email: "updated@atxfinance.ai",
@@ -239,7 +252,50 @@ describe("admin users CRUD routes", () => {
       userIdHex: "507f1f77bcf86cd799439033",
       emailNormalized: "user@atxfinance.ai"
     });
+    expect(identityMocks.revokeCredentialLinksForUsers).toHaveBeenCalledWith([
+      expect.objectContaining({
+        toHexString: expect.any(Function)
+      })
+    ]);
     expect(identityMocks.deleteCoreUserById).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes same-email sibling rows during hard delete", async () => {
+    identityMocks.listCoreUsersByEmail.mockResolvedValueOnce([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+        email: "user@atxfinance.ai",
+        roles: ["viewer"],
+        subscriptionPlan: "basic",
+        status: "active",
+        createdAt: new Date("2026-03-16T00:00:00.000Z"),
+        updatedAt: new Date("2026-03-16T00:00:00.000Z")
+      },
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+        email: "user@atxfinance.ai",
+        roles: ["viewer"],
+        subscriptionPlan: "basic",
+        status: "active",
+        createdAt: new Date("2026-03-16T00:00:00.000Z"),
+        updatedAt: new Date("2026-03-16T00:00:00.000Z")
+      }
+    ]);
+
+    const response = await deleteUser(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+    });
+    expect(response.status).toBe(200);
+    expect(coreAdminRepoMocks.purgeAllDataAssociatedWithCoreUser).toHaveBeenNthCalledWith(1, {
+      userIdHex: "507f1f77bcf86cd799439033",
+      emailNormalized: "user@atxfinance.ai"
+    });
+    expect(coreAdminRepoMocks.purgeAllDataAssociatedWithCoreUser).toHaveBeenNthCalledWith(2, {
+      userIdHex: "507f1f77bcf86cd799439099",
+      emailNormalized: "user@atxfinance.ai"
+    });
+    expect(identityMocks.revokeCredentialLinksForUsers).toHaveBeenCalledTimes(1);
+    expect(identityMocks.deleteCoreUserById).toHaveBeenCalledTimes(2);
   });
 
   it("rejects delete when target is the signed-in admin (self)", async () => {

@@ -20,12 +20,14 @@ import {
 import { googleLinkedId } from "@/lib/google-oauth-identity";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
+import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
     createAccessRequest,
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
+import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { canUserLogin } from "@/modules/identity/authorization";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
@@ -320,6 +322,33 @@ export async function GET(request: Request) {
       username: identity.username,
       email: user.email
     });
+  }
+
+  if (!user.emailVerifiedAt) {
+    let verificationSent = false;
+    try {
+      const issued = await issueEmailVerificationForUser(user._id);
+      if (issued?.rawToken) {
+        verificationSent = await sendEmailVerificationEmail({
+          request,
+          to: user.email,
+          rawToken: issued.rawToken
+        });
+      }
+    } catch {
+      verificationSent = false;
+    }
+
+    return redirectWithLoginAudit(
+      "email_unverified",
+      {
+        userId: user._id.toHexString(),
+        xUserId: identity.xUserId,
+        username: identity.username,
+        email: user.email
+      },
+      { verificationSent: verificationSent ? "1" : "0" }
+    );
   }
 
   return finalizeOAuthSessionAndRedirect({

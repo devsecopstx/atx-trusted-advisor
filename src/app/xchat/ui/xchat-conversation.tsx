@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
+import { BillingAccessStateBanner } from "@/app/ui/billing-access-state-banner";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import { LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
@@ -1642,6 +1643,8 @@ export function XchatConversation({
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
           <p className="xchat-welcome-sub">Overview of xChat — portfolio, watchlist and advisor options-tools. See Examples on left.</p>
         </header>
+
+        <BillingAccessStateBanner />
 
         <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
           <XchatThreadPanelLazy
