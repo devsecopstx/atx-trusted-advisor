@@ -15,6 +15,8 @@ export type XchatPlatformSettingsDoc = {
   marketingXPostingAccessTokenExpiresAt?: Date;
   /** @username last linked for posting OAuth. */
   marketingXPostingLinkedUsername?: string;
+  /** Space-separated OAuth 2.0 scopes from the last token response (e.g. includes `tweet.write` when posting is allowed). */
+  marketingXPostingOAuthScopes?: string;
   marketingXPostingUpdatedAt?: Date;
   marketingXPostingUpdatedByUserId?: string;
   updatedAt: Date;
@@ -80,6 +82,8 @@ export async function upsertMarketingXPostingOAuth(input: {
   actorUserId: string;
   sealedAccessToken?: string;
   accessTokenExpiresAt?: Date;
+  /** Raw `scope` string from X token endpoint (optional). */
+  oauthScopes?: string | null;
 }): Promise<XchatPlatformSettingsDoc> {
   await ensureIndexes();
   const db = await getDb();
@@ -95,6 +99,10 @@ export async function upsertMarketingXPostingOAuth(input: {
   if (input.sealedAccessToken !== undefined && input.accessTokenExpiresAt !== undefined) {
     set.marketingXPostingAccessTokenSealed = input.sealedAccessToken;
     set.marketingXPostingAccessTokenExpiresAt = input.accessTokenExpiresAt;
+  }
+  if (input.oauthScopes !== undefined && input.oauthScopes !== null) {
+    const s = input.oauthScopes.trim();
+    set.marketingXPostingOAuthScopes = s.length > 0 ? s : undefined;
   }
 
   await db.collection<XchatPlatformSettingsDoc>(COLLECTION).updateOne(
@@ -119,6 +127,7 @@ export async function persistMarketingXPostingOAuthTokens(input: {
   sealedAccessToken: string;
   accessTokenExpiresAt: Date;
   actorUserId?: string;
+  oauthScopes?: string | null;
 }): Promise<void> {
   await ensureIndexes();
   const db = await getDb();
@@ -133,6 +142,10 @@ export async function persistMarketingXPostingOAuthTokens(input: {
   if (input.actorUserId?.trim()) {
     $set.marketingXPostingUpdatedByUserId = input.actorUserId.trim();
     $set.updatedByUserId = input.actorUserId.trim();
+  }
+  if (input.oauthScopes !== undefined && input.oauthScopes !== null) {
+    const s = input.oauthScopes.trim();
+    $set.marketingXPostingOAuthScopes = s.length > 0 ? s : undefined;
   }
 
   await db.collection<XchatPlatformSettingsDoc>(COLLECTION).updateOne(
@@ -154,6 +167,7 @@ export async function clearMarketingXPostingOAuth(actorUserId: string): Promise<
         marketingXPostingAccessTokenSealed: "",
         marketingXPostingAccessTokenExpiresAt: "",
         marketingXPostingLinkedUsername: "",
+        marketingXPostingOAuthScopes: "",
         marketingXPostingUpdatedAt: "",
         marketingXPostingUpdatedByUserId: ""
       },
@@ -175,6 +189,14 @@ export async function clearMarketingXPostingOAuth(actorUserId: string): Promise<
  */
 export function isXchatUserHistoryXaiCollectionEnabled(): boolean {
   return false;
+}
+
+/** Normalize X OAuth `scope` response for checks (e.g. `tweet.write`). */
+export function parseMarketingPostingOAuthScopesList(raw: string | undefined): string[] {
+  if (!raw?.trim()) {
+    return [];
+  }
+  return raw.trim().split(/\s+/u).filter(Boolean);
 }
 
 /**

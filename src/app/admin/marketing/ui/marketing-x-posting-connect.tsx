@@ -9,6 +9,8 @@ type StatusPayload = {
     linked: boolean;
     username: string | null;
     updatedAt: string | null;
+    grantedScopes: string[];
+    postingLikelyBlocked: boolean | null;
   };
 };
 
@@ -27,7 +29,15 @@ export function MarketingXPostingConnectPanel({ returnPath = "/admin/marketing" 
       const payload = await parseJson<StatusPayload>(await fetch("/api/admin/marketing/x-posting/status"));
       setLinked(payload.data.linked);
       if (payload.data.linked && payload.data.username) {
-        setHint(`Connected for posting as @${payload.data.username}. Scheduled and test posts use this account.`);
+        let msg = `Connected for posting as @${payload.data.username}. Scheduled and test posts use this account.`;
+        if (payload.data.postingLikelyBlocked === true) {
+          msg +=
+            " Stored OAuth scopes do not include tweet.write — POST /2/tweets will return 403 until the X app is **Read and write** in the Developer Portal (not Read only), then **Reconnect** here.";
+        } else if (payload.data.postingLikelyBlocked === null && payload.data.grantedScopes.length === 0) {
+          msg +=
+            " OAuth scope list not stored yet — use **Reconnect** after Portal changes so we can verify tweet.write.";
+        }
+        setHint(msg);
       } else {
         setHint(
           "Not connected — connect the X account that should publish marketing and test posts (OAuth approval required)."
@@ -93,7 +103,11 @@ export function MarketingXPostingConnectPanel({ returnPath = "/admin/marketing" 
             …/api/auth/x/callback
           </code>{" "}
           (or your <code className="font-mono">X_OAUTH_CALLBACK_URL</code> in production). No separate posting URL.
-          Posting scopes: <code className="font-mono">tweet.write offline.access users.read</code>.
+          Posting scopes:{" "}
+          <code className="font-mono">tweet.read tweet.write offline.access users.read</code>. Portal App permissions must
+          be <strong>Read and write</strong>. If you still get HTTP 403 with minimal JSON, check developer.x.com{" "}
+          <strong>Products / Billing</strong> — Tweet creation needs an API tier that includes Manage Tweets, not only
+          OAuth settings.
         </p>
       ) : null}
       <div className="tool-row mt-3 flex-wrap">

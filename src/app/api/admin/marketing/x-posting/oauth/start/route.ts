@@ -13,7 +13,8 @@ import { getEnv, getXOauthClientId } from "@/lib/env";
 import { getEffectiveHostname } from "@/lib/http-origin";
 import { resolveXOAuthRedirectUri } from "@/lib/x-oauth-redirect-uri";
 
-const MARKETING_POSTING_SCOPES = "tweet.write offline.access users.read";
+/** tweet.read + tweet.write align with Manage Tweets; offline.access for refresh rotation. */
+const MARKETING_POSTING_SCOPES = "tweet.read tweet.write offline.access users.read";
 
 export async function GET(request: Request) {
   const session = await requireAdminSession();

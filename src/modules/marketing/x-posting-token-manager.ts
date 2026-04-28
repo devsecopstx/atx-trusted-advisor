@@ -42,6 +42,7 @@ type RefreshGrantResult = {
   access_token: string;
   refresh_token?: string;
   expires_in: number;
+  scope?: string;
 };
 
 async function fetchRefreshTokenGrant(refreshTokenPlain: string): Promise<RefreshGrantResult> {
@@ -67,6 +68,7 @@ async function fetchRefreshTokenGrant(refreshTokenPlain: string): Promise<Refres
     access_token?: string;
     refresh_token?: string;
     expires_in?: number;
+    scope?: string;
     error?: string;
     error_description?: string;
   } | null;
@@ -86,10 +88,13 @@ async function fetchRefreshTokenGrant(refreshTokenPlain: string): Promise<Refres
       ? Math.max(60, Math.floor(payload.expires_in))
       : 7200;
 
+  const scopeRaw = payload?.scope?.trim();
+
   return {
     access_token,
     refresh_token: payload?.refresh_token?.trim(),
-    expires_in
+    expires_in,
+    ...(scopeRaw ? { scope: scopeRaw } : {})
   };
 }
 
@@ -138,7 +143,8 @@ async function refreshMongoPostingTokens(): Promise<string | null> {
     await persistMarketingXPostingOAuthTokens({
       sealedRefreshToken: sealMarketingXPostingRefreshToken(nextRt, secret),
       sealedAccessToken: sealMarketingXPostingAccessToken(grant.access_token, secret),
-      accessTokenExpiresAt: expiresAt
+      accessTokenExpiresAt: expiresAt,
+      ...(grant.scope ? { oauthScopes: grant.scope } : {})
     });
 
     return grant.access_token;
@@ -210,6 +216,66 @@ export async function getValidAccessTokenForMarketingPosting(options?: {
   return resolveLegacyEnvAccessToken(envRefresh, options?.forceRefresh === true);
 }
 
+function interpretXTweetPost403(body: string): string | null {
+  const raw = body.trim();
+  if (!raw) {
+    return null;
+  }
+  try {
+    const j = JSON.parse(raw) as {
+      detail?: string;
+      title?: string;
+      errors?: Array<{ code?: number; message?: string }>;
+    };
+    const blob = `${JSON.stringify(j)}`.toLowerCase();
+    if (
+      blob.includes("453") ||
+      blob.includes("subset of") ||
+      blob.includes("access level") ||
+      blob.includes("different access")
+    ) {
+      return (
+        "X explicitly rejected access (often code 453): your **developer project/API subscription** does not include Tweet creation on v2. Open developer.x.com → Products / Billing and enable the tier that lists **Manage Tweets** / Tweet write — portal “Read and write” alone is not enough if the plan is read-only at the API level."
+      );
+    }
+    const first = j.errors?.[0];
+    if (typeof first?.message === "string" && first.message.trim()) {
+      return `X error detail: ${first.message.trim()}`;
+    }
+    if (typeof first?.code === "number") {
+      return `X error code: ${first.code}`;
+    }
+  } catch {
+    /* non-JSON body */
+  }
+  if (/453|subset of.*endpoint|access level|not permitted to perform/i.test(raw)) {
+    return (
+      "Likely **API plan / access tier**: POST /2/tweets is not enabled for this developer project (common on restricted tiers even when App permissions show Read and write)."
+    );
+  }
+  return null;
+}
+
+function formatTweetCreateFailureMessage(status: number, body: string): string {
+  const snippet = body.slice(0, 400).replace(/\s+/gu, " ").trim();
+  const base = `X API error (${status}): ${snippet}`;
+  if (status !== 403) {
+    return base;
+  }
+
+  const parsed = interpretXTweetPost403(body);
+  const tierHint =
+    parsed ??
+    [
+      "403 with a minimal JSON body (`detail: Forbidden`) usually means **Tweet creation is not enabled for your developer subscription**, not bad OAuth scopes.",
+      "Confirm at developer.x.com: **Products / Pricing / Billing** for this Project includes **Tweet write** / Manage Tweets (not only OAuth app settings).",
+      "If you recently upgraded: wait for propagation, then **Reconnect X for posting**.",
+      "Also verify App permissions include Read and write (OAuth 2.0 inherits caps from there) and scopes stored in Admin status include **tweet.write** after reconnect."
+    ].join(" ");
+
+  return `${base} — ${tierHint}`;
+}
+
 /**
  * POST /2/tweets with retries (401/429 exponential backoff). Caller supplies trimmed text.
  */
@@ -239,7 +305,7 @@ export async function postMarketingTweetWithRetries(text: string): Promise<void>
     }
 
     const body = await response.text();
-    lastError = `X API error (${response.status}): ${body.slice(0, 240)}`;
+    lastError = formatTweetCreateFailureMessage(response.status, body);
 
     if (response.status === 401) {
       forceRefresh = true;

@@ -72,6 +72,8 @@ export async function tryMarketingPostingOAuthCallback(request: Request): Promis
     access_token?: string;
     refresh_token?: string;
     expires_in?: number;
+    /** Space-delimited scopes granted for this token (should include `tweet.write` for POST /2/tweets). */
+    scope?: string;
     error?: string;
     error_description?: string;
   } | null;
@@ -106,7 +108,8 @@ export async function tryMarketingPostingOAuthCallback(request: Request): Promis
     sealedAccessToken: sealedAt,
     accessTokenExpiresAt: accessExpiresAt,
     linkedUsername: username,
-    actorUserId: session.userId
+    actorUserId: session.userId,
+    oauthScopes: tokenJson.scope ?? null
   });
   clearMarketingPostingOAuthRuntimeCaches();
 
