@@ -1597,7 +1597,10 @@ export async function assertTenantHasRoomForAnotherUser(tenantId: ObjectId): Pro
   await ensureIdentityIndexes();
   const db = await getDb();
   const tenantDoc = await db.collection<Tenant>(collections.tenants).findOne({ _id: tenantId });
-  const cap = mergeTenantWorkspaceLimits(tenantDoc?.workspaceLimits ?? null).maxUsersPerTenant;
+  const sourceTenant = await resolveWorkspaceLimitsSourceTenant({
+    tenant: tenantDoc ?? null
+  });
+  const cap = mergeTenantWorkspaceLimits(sourceTenant?.workspaceLimits ?? null).maxUsersPerTenant;
   const n = await db.collection(collections.memberships).countDocuments({ tenantId });
   if (n >= cap) {
     throw new TenantMembershipCapExceededError(tenantId.toHexString(), cap, n);
@@ -1836,6 +1839,34 @@ export async function updateTenantXfUiThemePreference(
 /** Matches `DEFAULT_TENANT_SLUG` in `scripts/seed-admin-user.mjs`. */
 const SEED_DEFAULT_TENANT_SLUG = "atxfinance-core";
 
+function tenantWorkspaceLimitsOverrideEnabled(tenant: Tenant | null): boolean {
+  if (!tenant) {
+    return false;
+  }
+  if (tenant.isDefault) {
+    return true;
+  }
+  return tenant.tenantPreferences?.workspace_limits_override_enabled === true;
+}
+
+async function resolveWorkspaceLimitsSourceTenant(input: {
+  tenant: Tenant | null;
+}): Promise<Tenant | null> {
+  const { tenant } = input;
+  if (tenantWorkspaceLimitsOverrideEnabled(tenant)) {
+    return tenant;
+  }
+  const fallbackTenantId = await resolveTenantIdHexForGlobalAdminConsole(undefined);
+  if (!fallbackTenantId) {
+    return tenant;
+  }
+  const fallbackTenant = await getTenantByHexId(fallbackTenantId);
+  if (!fallbackTenant?._id) {
+    return tenant;
+  }
+  return fallbackTenant;
+}
+
 /**
  * Resolves which `core_tenants._id` the admin console should use for tenant-scoped rows.
  *
@@ -2006,8 +2037,11 @@ export async function updateTenantXchatDebugEnabled(
   return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
 }
 
-export function resolvedWorkspaceLimitsForTenant(tenant: Tenant | null): TenantWorkspaceLimits {
-  return mergeTenantWorkspaceLimits(tenant?.workspaceLimits ?? null);
+export async function resolvedWorkspaceLimitsForTenant(
+  tenant: Tenant | null
+): Promise<TenantWorkspaceLimits> {
+  const sourceTenant = await resolveWorkspaceLimitsSourceTenant({ tenant });
+  return mergeTenantWorkspaceLimits(sourceTenant?.workspaceLimits ?? null);
 }
 
 function normalizeEmail(email: string): string {

@@ -18,9 +18,12 @@ import { getSessionUser } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { getStripePublishableKey, isStripeCheckoutConfiguredForTenant } from "@/lib/stripe-config";
+import {
+    resolveEffectivePlanOverridesForTenant,
+    resolveWorkspaceLimitsRuntimeTenant
+} from "@/lib/tenant-workspace-limits";
 import { canUserLogin } from "@/modules/identity/authorization";
 import { getCoreUserById, resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
-import { normalizePlanOverridesFromUnknown } from "@/modules/identity/tenant-workspace-limits";
 
 import "./billing-plans.css";
 
@@ -52,14 +55,17 @@ export default async function AccountBillingPage({
   const guestRegisterDefaultPlan: AccessRequestPlanValue =
     parseAccessRequestPlanInput(selectedGuestPlanRaw) ?? "basic";
 
+  const defaultTenantId = await resolveTenantIdHexForGlobalAdminConsole(undefined);
   let tenant = approved && session?.tenantId ? await getTenantByHexIdCached(session.tenantId) : null;
+  const defaultTenant =
+    defaultTenantId && (!tenant || defaultTenantId !== session?.tenantId)
+      ? await getTenantByHexIdCached(defaultTenantId)
+      : tenant;
   if (!tenant) {
-    const defaultTenantId = await resolveTenantIdHexForGlobalAdminConsole(undefined);
-    if (defaultTenantId) {
-      tenant = await getTenantByHexIdCached(defaultTenantId);
-    }
+    tenant = defaultTenant;
   }
-  const planOverridesForStripe = normalizePlanOverridesFromUnknown(tenant?.workspaceLimits?.planOverrides);
+  const planOverridesForStripe = await resolveEffectivePlanOverridesForTenant(tenant);
+  const tenantForBillingDisplay = await resolveWorkspaceLimitsRuntimeTenant(tenant);
   const checkoutReady =
     !guestReadonly && isStripeCheckoutConfiguredForTenant(planOverridesForStripe);
   const publishableConfigured = Boolean(getStripePublishableKey());
@@ -144,7 +150,11 @@ export default async function AccountBillingPage({
                 </div>
               ) : null}
 
-              <BillingPlanGrid tenant={tenant} approved={approved} checkoutReady={checkoutReady} />
+              <BillingPlanGrid
+                tenant={tenantForBillingDisplay}
+                approved={approved}
+                checkoutReady={checkoutReady}
+              />
 
               <p className="billing-footnote">
                 <span className="xf-disclaimer-emphasis">Not financial advice.</span> Trial access is time-limited;
@@ -173,7 +183,7 @@ export default async function AccountBillingPage({
                   tenant-resolved caps.
                 </p>
               </header>
-              <BillingPlanGrid tenant={tenant} approved={false} checkoutReady={false} />
+              <BillingPlanGrid tenant={tenantForBillingDisplay} approved={false} checkoutReady={false} />
               <p className="billing-footnote">
                 <span className="xf-disclaimer-emphasis">Not financial advice.</span> Guest mode is read-only. Sign in
                 for approved access to checkout and account actions.

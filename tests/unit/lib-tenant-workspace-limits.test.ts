@@ -27,7 +27,7 @@ describe("lib/tenant-workspace-limits", () => {
     expect(base.userChatHourlyLimit).toBe(50);
   });
 
-  it("effectiveWorkspaceLimitsForTenantAndPlan still merges plan row for other product use", () => {
+  it("effectiveWorkspaceLimitsForTenantAndPlan still merges plan row for other product use", async () => {
     const tenant = {
       workspaceLimits: {
         userChatLimit: 100,
@@ -36,8 +36,9 @@ describe("lib/tenant-workspace-limits", () => {
         }
       }
     } as unknown as Tenant;
-    expect(effectiveWorkspaceLimitsForTenantAndPlan(tenant, "basic").userChatLimit).toBe(7);
-    expect(effectiveWorkspaceLimitsForTenantAndPlan(tenant, "basic").tenantPortfolioLimit).toBe(9);
+    const effective = await effectiveWorkspaceLimitsForTenantAndPlan(tenant, "basic");
+    expect(effective.userChatLimit).toBe(7);
+    expect(effective.tenantPortfolioLimit).toBe(9);
   });
 });
 

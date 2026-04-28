@@ -72,7 +72,7 @@ describe("tenant-route-policy", () => {
         }
       }
     });
-    expect(roles.viewer?.allowedRoutes.includes("/xchat")).toBe(false);
+    expect(roles.viewer?.allowedRoutes.includes("/xchat")).toBe(true);
     expect(roles.viewer?.flags.canMutatePortfolios).toBe(false);
     expect(roles.viewer?.flags.canUseXChat).toBe(false);
   });

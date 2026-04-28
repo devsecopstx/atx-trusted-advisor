@@ -7,8 +7,8 @@
   "tenantAssignableRoles": ["advisor", "operator", "viewer"],
   "suggestedDefaultLandingPathByRole": {
     "global_admin": "/admin",
-    "advisor": "/xchat",
-    "operator": "/portfolios",
+    "advisor": "/portfolios",
+    "operator": "/xchat",
     "viewer": "/xchat"
   },
   "groups": [

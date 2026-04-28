@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireGlobalAdminSession } from "@/lib/api-auth";
 import { getDb } from "@/lib/mongodb";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { resolveEffectivePlanOverridesForTenant } from "@/lib/tenant-workspace-limits";
 import { parseXfUiThemePreferenceFromUnknown } from "@/lib/xf-ui-theme";
 import {
     applyTenantShellPreferencesPatch,
@@ -21,7 +22,6 @@ import {
 } from "@/modules/identity/tenant-branding-preferences";
 import {
     coalesceTenantWorkspaceLimitsForPersistence,
-    normalizePlanOverridesFromUnknown,
     parsePlanOverridesPayload,
     parseWorkspaceLimitsPayload,
     tenantWorkspaceLimitsScalarsMissing,
@@ -90,8 +90,8 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
 
-  const effective = resolvedWorkspaceLimitsForTenant(tenant);
-  const planOverrides = normalizePlanOverridesFromUnknown(tenant.workspaceLimits?.planOverrides);
+  const effective = await resolvedWorkspaceLimitsForTenant(tenant);
+  const planOverrides = await resolveEffectivePlanOverridesForTenant(tenant);
   return NextResponse.json({
     data: {
       tenantId: tenant._id.toHexString(),
@@ -233,6 +233,40 @@ export async function PATCH(request: Request, context: RouteContext) {
     tpBody &&
     typeof tpBody === "object" &&
     !Array.isArray(tpBody) &&
+    "workspace_limits_override_enabled" in (tpBody as Record<string, unknown>)
+  ) {
+    const raw = (tpBody as Record<string, unknown>).workspace_limits_override_enabled;
+    if (raw !== null && typeof raw !== "boolean") {
+      return NextResponse.json(
+        { error: "Invalid workspace_limits_override_enabled — use boolean or null" },
+        { status: 400 }
+      );
+    }
+    const db = await getDb();
+    const updateResult = await db.collection<Tenant>("core_tenants").findOneAndUpdate(
+      { _id: updated._id },
+      raw === null
+        ? {
+            $unset: { "tenantPreferences.workspace_limits_override_enabled": "" },
+            $set: { updatedAt: new Date() }
+          }
+        : {
+            $set: {
+              "tenantPreferences.workspace_limits_override_enabled": raw,
+              updatedAt: new Date()
+            }
+          },
+      { returnDocument: "after" }
+    );
+    if (updateResult?._id) {
+      updated = updateResult;
+    }
+  }
+
+  if (
+    tpBody &&
+    typeof tpBody === "object" &&
+    !Array.isArray(tpBody) &&
     "bootstrap_default_portfolio_watchlist" in (tpBody as Record<string, unknown>)
   ) {
     const raw = (tpBody as Record<string, unknown>).bootstrap_default_portfolio_watchlist;
@@ -263,8 +297,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
   }
 
-  const effective = resolvedWorkspaceLimitsForTenant(updated);
-  const planOverridesOut = normalizePlanOverridesFromUnknown(updated.workspaceLimits?.planOverrides);
+  const effective = await resolvedWorkspaceLimitsForTenant(updated);
+  const planOverridesOut = await resolveEffectivePlanOverridesForTenant(updated);
   if (!updated._id) {
     return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
   }

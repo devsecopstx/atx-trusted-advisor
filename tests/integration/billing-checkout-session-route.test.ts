@@ -9,6 +9,11 @@ const tenantCache = vi.hoisted(() => ({
   getTenantByHexIdCached: vi.fn().mockResolvedValue(null)
 }));
 
+const identityRepoMocks = vi.hoisted(() => ({
+  getCoreUserById: vi.fn().mockResolvedValue(null),
+  resolveTenantIdHexForGlobalAdminConsole: vi.fn().mockResolvedValue(null)
+}));
+
 vi.mock("@/lib/auth", () => ({
   requireSessionUser: auth.requireSessionUser
 }));
@@ -16,6 +21,8 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/server-request-cache", () => ({
   getTenantByHexIdCached: tenantCache.getTenantByHexIdCached
 }));
+
+vi.mock("@/modules/identity/repository", () => identityRepoMocks);
 
 import { POST as postCheckoutSession } from "@/app/api/billing/checkout-session/route";
 

@@ -2,7 +2,11 @@ import { ObjectId } from "mongodb";
 
 import { atxBillingPlanIdForSubscriptionPlan } from "@/lib/atx-billing-plan-tier-map";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
-import { getCoreUserById, resolvedWorkspaceLimitsForTenant } from "@/modules/identity/repository";
+import {
+    getCoreUserById,
+    resolvedWorkspaceLimitsForTenant,
+    resolveTenantIdHexForGlobalAdminConsole
+} from "@/modules/identity/repository";
 import {
     applyTenantPlanRowToBase,
     mergeTenantWorkspaceLimits,
@@ -13,18 +17,60 @@ import type { SubscriptionPlan, Tenant } from "@/modules/identity/types";
 
 export type { TenantWorkspaceLimits };
 
-/** Tenant-wide `workspaceLimits` row only (ignores `planOverrides`). */
+/** Tenant-wide `workspaceLimits` row only (ignores `planOverrides`) for an already resolved source tenant. */
 export function tenantBaseWorkspaceLimits(tenant: Tenant | null): TenantWorkspaceLimits {
   return mergeTenantWorkspaceLimits(tenant?.workspaceLimits ?? null);
 }
 
+function tenantWorkspaceLimitsOverrideEnabled(tenant: Tenant | null): boolean {
+  if (!tenant) {
+    return false;
+  }
+  if (tenant.isDefault) {
+    return true;
+  }
+  return tenant.tenantPreferences?.workspace_limits_override_enabled === true;
+}
+
+/** Runtime source tenant for limits and billing overrides (tenant row if allowed, else `atxfinance-core`). */
+async function resolveWorkspaceLimitsSourceTenant(tenant: Tenant | null): Promise<Tenant | null> {
+  if (tenantWorkspaceLimitsOverrideEnabled(tenant)) {
+    return tenant;
+  }
+  // Unit-test convenience: synthetic tenant stubs without `_id` should resolve locally.
+  if (tenant && !tenant._id) {
+    return tenant;
+  }
+  const fallbackTenantId = await resolveTenantIdHexForGlobalAdminConsole(undefined);
+  if (!fallbackTenantId) {
+    return tenant;
+  }
+  const fallbackTenant = await getTenantByHexIdCached(fallbackTenantId);
+  if (!fallbackTenant?._id) {
+    return tenant;
+  }
+  return fallbackTenant;
+}
+
+export async function resolveWorkspaceLimitsRuntimeTenant(tenant: Tenant | null): Promise<Tenant | null> {
+  return await resolveWorkspaceLimitsSourceTenant(tenant);
+}
+
+export async function resolveEffectivePlanOverridesForTenant(
+  tenant: Tenant | null
+): Promise<ReturnType<typeof normalizePlanOverridesFromUnknown>> {
+  const sourceTenant = await resolveWorkspaceLimitsSourceTenant(tenant);
+  return normalizePlanOverridesFromUnknown(sourceTenant?.workspaceLimits?.planOverrides);
+}
+
 /** Same resolution as {@link getEffectiveWorkspaceLimitsForUser} without extra DB reads when tenant + plan are known. */
-export function effectiveWorkspaceLimitsForTenantAndPlan(
+export async function effectiveWorkspaceLimitsForTenantAndPlan(
   tenant: Tenant | null,
   subscriptionPlan: SubscriptionPlan | undefined
-): TenantWorkspaceLimits {
-  const base = tenantBaseWorkspaceLimits(tenant);
-  const planOverrides = normalizePlanOverridesFromUnknown(tenant?.workspaceLimits?.planOverrides);
+): Promise<TenantWorkspaceLimits> {
+  const sourceTenant = await resolveWorkspaceLimitsSourceTenant(tenant);
+  const base = tenantBaseWorkspaceLimits(sourceTenant);
+  const planOverrides = normalizePlanOverridesFromUnknown(sourceTenant?.workspaceLimits?.planOverrides);
   const tier = atxBillingPlanIdForSubscriptionPlan(subscriptionPlan);
   return applyTenantPlanRowToBase(base, planOverrides, tier);
 }
@@ -51,5 +97,5 @@ export async function getEffectiveWorkspaceLimitsForUser(input: {
     const u = await getCoreUserById(new ObjectId(input.userId));
     subscriptionPlan = u?.subscriptionPlan;
   }
-  return effectiveWorkspaceLimitsForTenantAndPlan(tenant, subscriptionPlan);
+  return await effectiveWorkspaceLimitsForTenantAndPlan(tenant, subscriptionPlan);
 }

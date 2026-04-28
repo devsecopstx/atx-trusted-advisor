@@ -6,8 +6,8 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { getStripeSecretKey, resolveAppOrigin, resolveStripePriceIdForCheckout } from "@/lib/stripe-config";
+import { resolveEffectivePlanOverridesForTenant } from "@/lib/tenant-workspace-limits";
 import { getCoreUserById } from "@/modules/identity/repository";
-import { normalizePlanOverridesFromUnknown } from "@/modules/identity/tenant-workspace-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +45,8 @@ export async function POST(request: Request) {
   }
 
   const tenant = await getTenantByHexIdCached(session.tenantId);
-  const planOverrides = normalizePlanOverridesFromUnknown(tenant?.workspaceLimits?.planOverrides);
-  const priceId = resolveStripePriceIdForCheckout(parsed.data.planId, planOverrides);
+  const effectivePlanOverrides = await resolveEffectivePlanOverridesForTenant(tenant);
+  const priceId = resolveStripePriceIdForCheckout(parsed.data.planId, effectivePlanOverrides);
   if (!priceId) {
     return NextResponse.json(
       {

@@ -3769,7 +3769,6 @@ export async function provisionDefaultPortfolioForUser(
     cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE,
     riskProfile: DEFAULT_PROVISION_ACCOUNT_RISK_PROFILE,
     outlook: DEFAULT_PROVISION_ACCOUNT_OUTLOOK,
-    isDefault: true,
     updatedAt: now,
     ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
   };

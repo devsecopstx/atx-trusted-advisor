@@ -203,9 +203,13 @@ function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOv
 function buildTenantPreferencesForSave(
   tenantPreferences: TenantBrandingPreferences,
   xchatDebugEnabled: boolean,
+  workspaceLimitsOverrideEnabled: boolean,
   xfUiTheme: XfUiThemePreference | "inherit"
 ): Record<string, unknown> {
-  const out: Record<string, unknown> = { xchat_debug_enabled: xchatDebugEnabled };
+  const out: Record<string, unknown> = {
+    xchat_debug_enabled: xchatDebugEnabled,
+    workspace_limits_override_enabled: workspaceLimitsOverrideEnabled
+  };
   const xc = tenantPreferences.xchat_brandname?.trim();
   const xsb = tenantPreferences.xstrategybuilder_brandname?.trim();
   if (xc) {
@@ -230,6 +234,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
   });
   const [tenantPreferencesRaw, setTenantPreferencesRaw] = useState<Record<string, unknown>>({});
   const [xchatDebugEnabled, setXchatDebugEnabled] = useState(false);
+  const [workspaceLimitsOverrideEnabled, setWorkspaceLimitsOverrideEnabled] = useState(false);
   const [xfUiTheme, setXfUiTheme] = useState<XfUiThemePreference | "inherit">("inherit");
   const [slug, setSlug] = useState("");
   const [planDrafts, setPlanDrafts] = useState<PlanLimitDrafts>(() => emptyPlanDrafts());
@@ -272,6 +277,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         {}) as Record<string, unknown>;
       setTenantPreferencesRaw(raw);
       setXchatDebugEnabled(raw.xchat_debug_enabled === true);
+      setWorkspaceLimitsOverrideEnabled(raw.workspace_limits_override_enabled === true);
       const th = raw.xf_ui_theme;
       if (th === "light" || th === "dark" || th === "system") {
         setXfUiTheme(th);
@@ -313,7 +319,12 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         body: JSON.stringify({
           workspaceLimits: values,
           planOverrides: planOverridesFromDrafts(planDrafts),
-          tenantPreferences: buildTenantPreferencesForSave(tenantPreferences, xchatDebugEnabled, xfUiTheme)
+          tenantPreferences: buildTenantPreferencesForSave(
+            tenantPreferences,
+            xchatDebugEnabled,
+            workspaceLimitsOverrideEnabled,
+            xfUiTheme
+          )
         })
       });
       const payload = (await res.json().catch(() => ({}))) as {
@@ -346,6 +357,9 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       if (payload.data?.tenantPreferencesRaw) {
         setTenantPreferencesRaw(payload.data.tenantPreferencesRaw);
         setXchatDebugEnabled(payload.data.tenantPreferencesRaw.xchat_debug_enabled === true);
+        setWorkspaceLimitsOverrideEnabled(
+          payload.data.tenantPreferencesRaw.workspace_limits_override_enabled === true
+        );
         const th = payload.data.tenantPreferencesRaw.xf_ui_theme;
         if (th === "light" || th === "dark" || th === "system") {
           setXfUiTheme(th);
@@ -564,6 +578,17 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+          <input
+            checked={workspaceLimitsOverrideEnabled}
+            type="checkbox"
+            onChange={(e) => setWorkspaceLimitsOverrideEnabled(e.target.checked)}
+          />
+          Allow this tenant to override workspace limits and Stripe plan ids
+        </label>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <label className="text-sm text-slate-300" htmlFor="tenant-xf-ui-theme">
           Default shell theme (first visit before user picks in UI)
         </label>

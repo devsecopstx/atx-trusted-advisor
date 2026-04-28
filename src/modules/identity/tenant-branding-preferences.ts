@@ -10,6 +10,12 @@ export type TenantBrandingPreferences = {
 
 /** Stored in `core_tenants.tenantPreferences` alongside branding keys. */
 export type TenantPreferences = TenantBrandingPreferences & {
+  /**
+   * Controls whether this tenant may use its own `workspaceLimits` + `planOverrides`.
+   * When false (default), runtime limit and billing-plan override resolution falls back to the
+   * seeded default tenant (`atxfinance-core`).
+   */
+  workspace_limits_override_enabled?: boolean;
   /** When true, enables `[xchat/debug]` logs for this tenant (global_admin via Admin → Tenant workspace). */
   xchat_debug_enabled?: boolean;
   /**

@@ -248,7 +248,7 @@ export async function POST(request: Request) {
   let dailyPromptCap: number | undefined;
   let hourlyPromptCap: number | undefined;
   if (!isAdminSession) {
-    const xchatAskWorkspaceLimits = effectiveWorkspaceLimitsForTenantAndPlan(
+    const xchatAskWorkspaceLimits = await effectiveWorkspaceLimitsForTenantAndPlan(
       tenantForDebug,
       subscriptionPlan
     );
@@ -339,7 +339,7 @@ export async function POST(request: Request) {
   const hasAppRole = session.roles.some((role) =>
     role === "advisor" || role === "operator" || role === "viewer"
   );
-  const workspaceLimitsForPersona = effectiveWorkspaceLimitsForTenantAndPlan(
+  const workspaceLimitsForPersona = await effectiveWorkspaceLimitsForTenantAndPlan(
     tenantForDebug,
     subscriptionPlan
   );

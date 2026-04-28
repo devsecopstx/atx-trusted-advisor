@@ -91,11 +91,14 @@ export async function completeCredentialInvite(input: {
       $set: {
         passwordHash,
         credentialsVerifiedAt: now,
+        emailVerifiedAt: user.emailVerifiedAt instanceof Date ? user.emailVerifiedAt : now,
         updatedAt: now
       },
       $unset: {
         credentialInviteTokenHash: "",
-        credentialInviteExpiresAt: ""
+        credentialInviteExpiresAt: "",
+        emailVerificationTokenHash: "",
+        emailVerificationExpiresAt: ""
       }
     }
   );

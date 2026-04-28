@@ -276,35 +276,63 @@ async function handleUpdate(request: Request, context: RouteContext) {
       }
       throw e;
     }
-    await addRoleToCoreUser({
-      userId,
-      role: existing.requestedRole
-    });
-    await updateCoreUserSubscriptionPlan({
-      userId,
-      subscriptionPlan: effectivePlan
-    });
-    applicantPortfolioTenantId = existing.tenantId.toHexString();
-    await upsertTenantMembership({
-      userId,
-      tenantId: existing.tenantId,
-      role: "member",
-      isDefaultTenant: true
-    });
     try {
-      /** Default book for new users: one portfolio, default paper account ($25k), watchlist with TSLA (see `provisionDefaultPortfolioForUser`). Runs before review is persisted so approve fails closed if provision errors. */
+      await addRoleToCoreUser({
+        userId,
+        role: existing.requestedRole
+      });
+      await updateCoreUserSubscriptionPlan({
+        userId,
+        subscriptionPlan: effectivePlan
+      });
+      applicantPortfolioTenantId = existing.tenantId.toHexString();
+      await upsertTenantMembership({
+        userId,
+        tenantId: existing.tenantId,
+        role: "member",
+        isDefaultTenant: true
+      });
+    } catch (error) {
+      if (isTenantMembershipCapExceededError(error)) {
+        return NextResponse.json(
+          { error: error.message, code: error.code },
+          { status: 409 }
+        );
+      }
+      return NextResponse.json(
+        {
+          error: "Failed to apply approval grants",
+          details: error instanceof Error ? error.message : "Unknown error"
+        },
+        { status: 500 }
+      );
+    }
+    try {
+      /** Best-effort default book provisioning; approval should still complete if bootstrap fails. */
       await provisionDefaultPortfolioForUser({
         userId: existing.userId,
         tenantId: applicantPortfolioTenantId
       });
     } catch (error) {
-      return NextResponse.json(
-        {
-          error: "Failed to provision default portfolio resources",
-          details: error instanceof Error ? error.message : "Unknown error"
-        },
-        { status: 500 }
-      );
+      console.error("[access-request/approve] default portfolio provision failed", error);
+      try {
+        await createAuditEvent({
+          entityType: "access_request",
+          entityId: requestId,
+          action: "default_portfolio_provision_failed",
+          actor: {
+            userId: session.userId,
+            email: session.email,
+            username: session.username
+          },
+          details: {
+            userId: existing.userId,
+            reason: error instanceof Error ? error.message.slice(0, 500) : "unknown"
+          }
+        });
+      } catch {
+        // Ignore audit-write failures for this non-blocking side effect.
+      }
     }
   }
 

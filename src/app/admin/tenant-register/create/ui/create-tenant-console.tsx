@@ -25,8 +25,9 @@ const ROUTE_OVERRIDES_JSON_PLACEHOLDER = `{
 }`;
 
 const DEFAULT_LANDING_JSON_PLACEHOLDER = `{
-  "advisor": "/xchat",
-  "operator": "/portfolios",
+  "global_admin": "/admin",
+  "advisor": "/portfolios",
+  "operator": "/xchat",
   "viewer": "/xchat"
 }`;
 
@@ -87,6 +88,7 @@ export function CreateTenantConsole() {
   const [setAsDefaultSessionTenant, setSetAsDefaultSessionTenant] = useState(true);
 
   const [workspaceLimitsJson, setWorkspaceLimitsJson] = useState("");
+  const [allowWorkspaceLimitsOverride, setAllowWorkspaceLimitsOverride] = useState(false);
   const [routeOverridesJson, setRouteOverridesJson] = useState("");
   const [defaultLandingJson, setDefaultLandingJson] = useState("");
 
@@ -178,6 +180,7 @@ export function CreateTenantConsole() {
         body.xfBrandPalette = xfBrandPalette;
       }
       body.bootstrapDefaultPortfolioWatchlist = bootstrapDefaultPortfolioWatchlist;
+      body.allowWorkspaceLimitsOverride = allowWorkspaceLimitsOverride;
 
       const email = initialAdminEmail.trim();
       if (email) {
@@ -191,7 +194,7 @@ export function CreateTenantConsole() {
       }
 
       const wlTrim = workspaceLimitsJson.trim();
-      if (wlTrim) {
+      if (wlTrim && allowWorkspaceLimitsOverride) {
         let parsedWl: unknown;
         try {
           parsedWl = JSON.parse(wlTrim) as unknown;
@@ -285,6 +288,7 @@ export function CreateTenantConsole() {
     initialAdminPlatformRole,
     setAsDefaultSessionTenant,
     workspaceLimitsJson,
+    allowWorkspaceLimitsOverride,
     routeOverridesJson,
     defaultLandingJson
   ]);
@@ -507,17 +511,26 @@ export function CreateTenantConsole() {
                 <span className="text-sm font-medium">Partial JSON → core_tenants.workspaceLimits</span>
                 <textarea
                   className={`${fieldClass} min-h-[11rem] font-mono text-xs leading-relaxed`}
+                  disabled={!allowWorkspaceLimitsOverride}
                   spellCheck={false}
                   placeholder={WORKSPACE_LIMITS_JSON_PLACEHOLDER}
                   value={workspaceLimitsJson}
                   onChange={(ev) => setWorkspaceLimitsJson(ev.target.value)}
                 />
               </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  checked={allowWorkspaceLimitsOverride}
+                  type="checkbox"
+                  onChange={(ev) => setAllowWorkspaceLimitsOverride(ev.target.checked)}
+                />
+                Allow this tenant to override workspace limits and billing plan ids
+              </label>
               <p className="status-text text-xs">
                 Same keys as tenant-spec YAML: userChatLimit, userXoptionsLimit, tenantPortfolioLimit,
                 portfolioAccountLimit, chatHistoryMax, maxUsersPerTenant, userChatHourlyLimit (0 = no hourly cap),
-                changePersonaEnabled. Empty = defaults applied on upsert; per-plan overrides use the Workspace limits
-                page after create.
+                changePersonaEnabled. With override disabled, runtime limits and Stripe plan ids inherit from
+                atxfinance-core.
               </p>
             </div>
           </details>

@@ -37,14 +37,14 @@ const DEFAULT_ALLOWED_ROUTES_BY_ROLE: Readonly<Record<PlatformRoleForRoutes, rea
   global_admin: ["/admin"],
   operator: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/import-activity", "/workspace"],
   advisor: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/import-activity", "/workspace"],
-  viewer: ["/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account"]
+  viewer: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account"]
 };
 
 const DEFAULT_LANDING_BY_ROLE: Readonly<Record<PlatformRoleForRoutes, string>> = {
   global_admin: "/admin",
-  advisor: "/xchat",
-  operator: "/portfolios",
-  viewer: "/portfolios"
+  advisor: "/portfolios",
+  operator: "/xchat",
+  viewer: "/xchat"
 };
 
 function normalizePathname(pathname: string): string {
@@ -321,11 +321,7 @@ export function isTenantRolePolicyPathAllowed(pathname: string, policy: TenantRo
 
 export function validateAllowedRoutesForRole(allowedRoutes: string[], role: PlatformRoleForRoutes): string[] {
   const fallback = resolveDefaultAllowedRoutesForRole(role);
-  const normalized = parseTenantAllowedRoutes(allowedRoutes, fallback);
-  if (role === "viewer" && normalized.includes("/xchat")) {
-    return normalized.filter((route) => route !== "/xchat");
-  }
-  return normalized;
+  return parseTenantAllowedRoutes(allowedRoutes, fallback);
 }
 
 export function validateDefaultLandingForRole(
