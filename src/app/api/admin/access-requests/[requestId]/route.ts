@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { resolveAccessApprovalNotifyEmail } from "@/lib/access-request-notify-email";
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminAccessRequestsRequestToBackend } from "@/lib/backend-bff";
@@ -10,6 +11,7 @@ import {
     sendAccessApprovedSignInEmail
 } from "@/lib/send-email-credential-messages";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
+import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import { enqueueAccessRequestBootstrap } from "@/modules/core-admin/access-request-bootstrap";
 import {
@@ -372,7 +374,10 @@ async function handleUpdate(request: Request, context: RouteContext) {
     const approvedUser = approvedUserObjectId
       ? await getCoreUserById(approvedUserObjectId)
       : null;
-    if (!approvedUser?.email) {
+    const notifyEmail =
+      approvedUser != null ? resolveAccessApprovalNotifyEmail(approvedUser, existing) : null;
+
+    if (!approvedUser?._id) {
       await createAuditEvent({
         entityType: "access_request",
         entityId: requestId,
@@ -383,8 +388,27 @@ async function handleUpdate(request: Request, context: RouteContext) {
           username: session.username
         },
         details: {
-          reason: "approved user email missing; skipped xchat bootstrap sync",
+          reason: "approved_user_row_missing",
           userId: existing.userId
+        }
+      });
+    } else if (!notifyEmail) {
+      await createAuditEvent({
+        entityType: "access_request",
+        entityId: requestId,
+        action: "alert-user-not-sync-warning",
+        actor: {
+          userId: session.userId,
+          email: session.email,
+          username: session.username
+        },
+        details: {
+          reason: "no_deliverable_email_skipped_notifications",
+          userId: existing.userId,
+          coreEmailPlaceholder: Boolean(
+            approvedUser.email && isXIdentityPlaceholderEmail(approvedUser.email)
+          ),
+          hadContactEmailOnRequest: Boolean(existing.contactEmail?.trim())
         }
       });
     } else {
@@ -400,7 +424,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
         if (issued) {
           const sent = await sendAccessApprovedPasswordInviteEmail({
             request,
-            to: approvedUser.email,
+            to: notifyEmail,
             rawToken: issued.rawToken,
             ...(firstName ? { firstName } : {})
           });
@@ -455,7 +479,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
           });
           const fallbackSent = await sendAccessApprovedSignInEmail({
             request,
-            to: approvedUser.email,
+            to: notifyEmail,
             ...(firstName ? { firstName } : {})
           });
           if (!fallbackSent) {
@@ -478,7 +502,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
       } else if (hasPassword) {
         const sent = await sendAccessApprovedSignInEmail({
           request,
-          to: approvedUser.email,
+          to: notifyEmail,
           ...(firstName ? { firstName } : {})
         });
         if (sent) {
@@ -516,7 +540,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
         await enqueueAccessRequestBootstrap({
           requestId,
           userId: existing.userId,
-          userEmail: approvedUser.email,
+          userEmail: notifyEmail,
           tenantId: applicantPortfolioTenantId!,
           requestedPlan: effectivePlan,
           actor: {
