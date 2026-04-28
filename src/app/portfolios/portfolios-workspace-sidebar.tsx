@@ -10,6 +10,7 @@ export type PortfoliosWorkspaceSidebarProps = {
   isGlobalAdmin: boolean;
   accountDetails: AppUserRailAccountPanelDetails | null;
   accountFeedbackPageLabel?: string;
+  visiblePathPrefixes?: string[];
 };
 
 /** Same workspace nav as xChat; uses `portfolios-workspace-sidebar` styling. */
@@ -18,7 +19,8 @@ export function PortfoliosWorkspaceSidebar({
   workspaceBook,
   isGlobalAdmin,
   accountDetails,
-  accountFeedbackPageLabel
+  accountFeedbackPageLabel,
+  visiblePathPrefixes
 }: PortfoliosWorkspaceSidebarProps) {
   return (
     <WorkspaceProductSidebar
@@ -27,6 +29,7 @@ export function PortfoliosWorkspaceSidebar({
       defaultPortfolioId={defaultPortfolioId}
       isGlobalAdmin={isGlobalAdmin}
       showReferenceDocs
+      visiblePathPrefixes={visiblePathPrefixes}
       workspaceBook={workspaceBook}
     />
   );

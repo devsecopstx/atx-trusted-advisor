@@ -14,6 +14,7 @@ import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limit
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 type XchatApprovedShellProps = {
@@ -74,6 +75,9 @@ export async function XchatApprovedShell({
     : null;
   const googleLinkHrefForApproved = googleLoginHrefApproved ? googleLoginHrefApproved : null;
 
+  const routePolicy = await getTenantRoutePolicyForSession(session);
+  const visiblePathPrefixes = routePolicy.effectiveRolePolicy.allowedRoutes;
+
   return (
     <XchatConversationMount
       googleLinkHref={googleLinkHrefForApproved}
@@ -100,6 +104,7 @@ export async function XchatApprovedShell({
       workspaceChatHistoryMax={workspaceChatHistoryMax}
       workspacePortfolioId={workspacePortfolioId}
       syncWorkspacePortfolioCookie={syncWorkspacePortfolioCookie}
+      visiblePathPrefixes={visiblePathPrefixes}
     />
   );
 }

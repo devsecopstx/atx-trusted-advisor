@@ -21,6 +21,50 @@ const LANDING_PRODUCT_SHOTS = {
   xoptions: "/landing/xoptions.png"
 } as const;
 
+/** Public resource articles — educational pillars for aTx Trusted Advisory / xFinance. */
+const ADVISORY_RESOURCE_PILLARS: readonly { href: string; label: string; blurb: string }[] = [
+  {
+    href: "/resources/2026-options-income-playbook",
+    label: "2026 options income playbook",
+    blurb: "Income themes and playbook framing for the year ahead."
+  },
+  {
+    href: "/resources/how-xai-spots-better-wheels",
+    label: "Grok wheel edge",
+    blurb: "How xAI evaluates wheel-style setups vs. typical human blind spots."
+  },
+  {
+    href: "/resources/cash-secured-puts-mastery",
+    label: "CSP mastery (HNWI)",
+    blurb: "Cash-secured puts as the conservative foundation for income books."
+  },
+  {
+    href: "/resources/covered-calls-2026-balanced-income",
+    label: "Covered calls 2026",
+    blurb: "Balanced premium on stock you already own — without forced exits."
+  },
+  {
+    href: "/resources/leap-options-playbook",
+    label: "LEAP playbook",
+    blurb: "Long-dated leverage plus short-cycle income overlays."
+  },
+  {
+    href: "/resources/multi-portfolio-management-hnwi",
+    label: "Multi-portfolio HNWI",
+    blurb: "Multiple books, scoped workspace, and tenant-grade data posture."
+  },
+  {
+    href: "/resources/options-risk-management-frameworks",
+    label: "Risk frameworks",
+    blurb: "Conservative, balanced, and aggressive tiers with xAI guardrails."
+  },
+  {
+    href: "/resources/from-xchat-to-broker-ibkr",
+    label: "xChat → IBKR",
+    blurb: "From prompts to structured workflows, snapshots, and audit trails."
+  }
+];
+
 export function PublicMarketingLanding() {
   const registerTrialHref = withUtmParams(REGISTER_TRIAL_HREF, MARKETING_UTM);
   const plansHref = withUtmParams("/account/billing", MARKETING_UTM);
@@ -45,6 +89,12 @@ export function PublicMarketingLanding() {
             </Link>
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <Link
+              href="#resources-pillars"
+              className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-300)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
+            >
+              Eight pillars
+            </Link>
             <Link
               href={registerTrialHref}
               className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95 sm:px-5"
@@ -94,36 +144,43 @@ export function PublicMarketingLanding() {
             </p>
 
             <h1 className="mt-2 text-4xl font-bold leading-[1.08] tracking-tighter text-[var(--xf-text-100)] sm:text-5xl md:text-6xl">
-              Generate Consistent Income. Spend Just 30–60 Minutes a Week.
+              <span className="block">
+                Your AI Co-Pilot for Options Income &amp; Portfolio Defense
+              </span>
+              <span className="mt-3 block text-2xl font-semibold leading-snug tracking-tight text-[var(--xf-text-200)] sm:text-3xl md:text-4xl">
+                Powered by xAI · Built for Real Money
+              </span>
             </h1>
 
             <p className="mt-4 max-w-2xl text-lg font-semibold leading-snug text-[var(--xf-text-200)] sm:text-xl md:text-2xl">
-              Hassle-free options income for busy wealth builders and HNWI portfolios — your personal options engine
-              with AI-curated wheel, covered-call, and LEAP workflows. Powered by xAI with Grok-backed xChat and
-              execution-style tools.{" "}
-              <span className="text-[var(--xf-text-100)]">One hour a week max.</span>
+              Built for experienced options traders and HNWI books (
+              <span className="text-[var(--xf-text-100)]">$1M+ liquid</span>, typically ages 35–65) running covered calls,
+              wheels, and iron condors — and for RIAs and family offices rolling out{" "}
+              <span className="text-[var(--xf-text-100)]">white-label client portals</span> on a tenant-branded workspace.
+            </p>
+
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
+              Grok-backed xChat, execution-style tools, and defined-risk workflows in one place.
             </p>
 
             <ul className="mt-8 max-w-2xl list-none space-y-5 text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
               <li>
-                <span className="font-semibold text-[var(--xf-text-100)]">Ultra-low time commitment</span>
+                <span className="font-semibold text-[var(--xf-text-100)]">Not another paper-trading toy</span>
                 <span className="text-[var(--xf-text-400)]"> — </span>
-                Review AI-curated wheel, covered-call, and LEAP recommendations in plain English once a week (or less).
-                Approve or tweak in minutes — without hours of charting, scanning, or backtesting.
+                Real portfolio integration on approved workspaces — your book, watchlists, and desk workflows — not a
+                simulated leaderboard.
               </li>
               <li>
-                <span className="font-semibold text-[var(--xf-text-100)]">Hassle-free execution flow</span>
+                <span className="font-semibold text-[var(--xf-text-100)]">Operate like a desk</span>
                 <span className="text-[var(--xf-text-400)]"> — </span>
-                Broker-aligned order previews and built-in risk guardrails: the workspace flags conflicts, helps with
-                position sizing from your book, and surfaces tax and liquidity reminders so trades feel structured and
-                reviewable.
+                Alerts, strategy jobs, and vision-paste analysis when your tenant enables them — structured review, not
+                endless chart spam.
               </li>
               <li>
-                <span className="font-semibold text-[var(--xf-text-100)]">Peace of mind for larger portfolios</span>
+                <span className="font-semibold text-[var(--xf-text-100)]">Tenant branding &amp; professionals</span>
                 <span className="text-[var(--xf-text-400)]"> — </span>
-                Tuned for serious wealth ($500K–$10M+ book sizes) with conservative defaults (e.g. cash-secured puts,
-                30–45 DTE, quality underlyings). Disclaimers and audit-friendly flows for RIAs documenting client use —
-                systematic, income-focused workflows — not a casino.
+                Approved access, audit-friendly defaults, and branding options for operators — fit for serious wealth and
+                firms piloting client-facing portals.
               </li>
             </ul>
 
@@ -166,8 +223,8 @@ export function PublicMarketingLanding() {
             <EducationalDisclaimerBanner className="mt-6 max-w-2xl" />
 
             <p className="mt-4 text-sm text-[var(--xf-text-400)] sm:mt-6">
-              <span className="font-medium text-[var(--xf-text-300)]">One workspace:</span> portfolios &amp; watchlist ·
-              xChat (Powered by xAI) · xOptions strategy builder for HNWI workflows
+              <span className="font-medium text-[var(--xf-text-300)]">One workspace:</span> real portfolios &amp;
+              watchlist · desk alerts · strategy jobs · xChat (Powered by xAI) · xOptions · tenant branding when enabled
             </p>
           </div>
 
@@ -191,7 +248,7 @@ export function PublicMarketingLanding() {
               PRODUCT STACK
             </p>
             <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">
-              Books, AI advisor, and options tools — one tenant workspace
+              Real books, Grok advisory, and options tooling — one branded tenant workspace
             </h2>
           </div>
           <div className="grid items-stretch gap-6 md:grid-cols-3 md:gap-8">
@@ -238,6 +295,46 @@ export function PublicMarketingLanding() {
         </div>
       </section>
 
+      <section
+        id="resources-pillars"
+        className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_92%,var(--xf-surface-700))] py-16 sm:py-24"
+      >
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
+          <div className="mb-10 text-center sm:mb-12">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
+              aTx Trusted Advisory
+            </p>
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--xf-text-100)] sm:text-4xl md:text-5xl">
+              Eight pillars — options income, risk &amp; execution
+            </h2>
+            <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
+              Educational articles on wheels, CSPs, covered calls, LEAP overlays, multi-book workflows, risk tiers, and
+              the path from xChat to IBKR-linked snapshots — public reading;{" "}
+              <span className="text-[var(--xf-text-200)]">not individualized advice.</span>
+            </p>
+          </div>
+          <ul className="grid list-none gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ADVISORY_RESOURCE_PILLARS.map((item, i) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="flex h-full flex-col rounded-2xl border border-white/10 bg-[var(--xf-surface-700)]/80 p-5 text-left transition hover:border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] hover:bg-[var(--xf-surface-700)] sm:p-6"
+                >
+                  <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--xf-text-400)]">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="mt-2 text-lg font-semibold leading-snug text-[var(--xf-text-100)]">{item.label}</span>
+                  <span className="mt-2 flex-1 text-sm leading-relaxed text-[var(--xf-text-400)]">{item.blurb}</span>
+                  <span className="mt-4 text-sm font-semibold text-[var(--xf-gain-green)]">
+                    Read article <span aria-hidden>→</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       <section className="border-t border-white/10 py-16 sm:py-24" id="xoptions-teaser">
         <div className="mx-auto max-w-screen-2xl px-4 text-center sm:px-8">
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
@@ -245,8 +342,9 @@ export function PublicMarketingLanding() {
           </p>
           <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">Approved access for professionals</h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-            Log in or register from xChat to request access. Admins assign roles (viewer, operator, advisor). Tenant
-            branding, limits, and audit-friendly defaults apply after sign-in.
+            Log in or register to request access. Admins assign roles (viewer, operator, advisor). RIAs and family
+            offices: ask about tenant branding and pilot scopes for client portals. Limits and audit-friendly defaults
+            apply after sign-in.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link

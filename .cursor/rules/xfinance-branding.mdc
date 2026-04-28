@@ -10,9 +10,9 @@ When the share and this rule disagree, **this rule + repo implementation** win; 
 
 **Core Positioning (use everywhere)**
 - Tagline: **"No Atoms Moved. Just Gains Earned."**
-- Subline: **"Cheapest xFinance at $2/hr • Options Profits Powered by Grok"**
+- Subline: **"Options Profits Powered by Grok"** (pair with tagline; optional secondary line on access / plans per shipped product)
 - Promise: Turn options into daily gains (covered calls, protective puts, straddles, unified scanner). Zero fluff. Institutional tools at retail price.
-- **One-slide discipline:** Lead with outcome (gains / defined-risk options income), then stack (portfolio → xChat → exam/coach), then proof ($2/hr, pay-per-use). Avoid feature dumps before the hook.
+- **One-slide discipline:** Lead with outcome (gains / defined-risk options income), then stack (portfolio → xChat → exam/coach), then proof (access clarity, plans/billing when relevant). Avoid feature dumps before the hook.
 
 **Differentiation (investor + GTM — current state)**
 - **Bundle:** Execution-style portfolio tools + **advisory chat (Grok / xAI)** + **exam prep (xCoach)** in **one workspace** — a rare combination vs point-solution chatbots or read-only dashboards alone.
@@ -26,15 +26,15 @@ When the share and this rule disagree, **this rule + repo implementation** win; 
 - **Near-term goal:** **~1k signups in 30 days** to validate demand before heavy build — frame as **waitlist / early access**, not mass-market scale claims.
 - **Channels:** FinTwit / finance X; HNWI & trusted-family wealth pros; **Series 7 / 65 / 66** candidates on LinkedIn & Reddit.
 - **Partnerships:** Finance influencers for **early-access reviews** — offer clear narrative: bundle + Grok advisory + compliance-forward positioning.
-- **Waitlist landing:** Use the **one-slide / hero** story (differentiation + $2/hr + product stack); single CTA to join waitlist; optional credential step below.
+- **Waitlist landing:** Use the **one-slide / hero** story (differentiation + product stack); single CTA to join waitlist; optional credential step below.
 
 **Compliance narrative (trust, not legal advice)**
 - Emphasize **for approved professionals** and **controlled access** — aligns with dark-launch and Admin → Access flows.
 - **Roadmap:** Waitlist can mention **credential upload (FINRA / SEC)** to filter serious users — **only when productized**; never fake a flow in UI. Copy stays “not financial advice” where disclaimers exist (e.g. xChat footer).
 
-**Monetization: roadmap vs pricing lock-in**
-- **Shipped / canonical customer UI:** **$2/hr** usage + tooltip (Pricing Lock-in below) — do not remove from primary surfaces without an explicit product change.
-- **Investor & deck roadmap:** **Freemium → tiered subscriptions** (illustrative: **~$29/mo** advisor tier, **~$99/mo** full execution + coach) — use in **investor decks**, waitlist **secondary** copy, or `/plans` when implemented. If both appear, lead with **$2/hr** transparency, then tiers as “also available” or “coming”.
+**Monetization: roadmap vs pricing copy**
+- **Customer UI:** Use **shipped** `/account/billing`, plans, and in-product pricing only — do not invent dollar rates or usage-pricing hooks in marketing unless product ships them.
+- **Investor & deck roadmap:** **Freemium → tiered subscriptions** (illustrative: **~$29/mo** advisor tier, **~$99/mo** full execution + coach) — use in **investor decks**, waitlist **secondary** copy, or `/plans` when implemented.
 
 **Visual Identity (lightning + green cyber-finance vibe)**
 - **Logo lockup (mandatory):** **aTx** (gain-green, `--xf-gain-green`) + **⚡** (lightning bolt, **`--xf-lightning-yellow`**) + **Finance** (white) = **aTx⚡Finance**. Do not drop the bolt between **aTx** and **Finance** in the wordmark. Code: `src/app/ui/atxfinance-logo.tsx` (`AtxFinanceMark`, `LightningBolt`, span).
@@ -57,13 +57,10 @@ When the share and this rule disagree, **this rule + repo implementation** win; 
 - xMoney → Coming soon (execution / money movement)
 
 **Scaling narrative (copy-level, not infra)**
-- **Usage-based:** $2/hr, pay only for what you use — say it near every primary CTA.
+- **Billing alignment:** When the product surfaces usage or plan pricing, mirror that language; otherwise lead with outcomes and approved access.
 - **Trust path:** Dark-launch / access workflow is a feature, not an apology; approved users first.
 - **Heavy workloads:** Batch / async flows (e.g. xChat batch) are “scale without pretending everything is real-time.”
 - **Governance:** Personas, plans, and audit trails support scaling teams without diluting the retail story.
-
-**Pricing Lock-in**
-- Every page, every button, every hero must show **"$2/hr"** in emerald-400 with tooltip: "Cheapest xFinance on earth — pay only for what you use."
 
 **When to use this rule**
 - Any new page/component with xFinance, xChat, xCoach, xMoney
@@ -81,4 +78,4 @@ When the share and this rule disagree, **this rule + repo implementation** win; 
 - Accent green: `--xf-gain-green` (#39ff14). Marketing hero may use `emerald-400` (#22c55e) per design review — see `atx-docs/xchat/xfinance-branding-review.md`.
 
 **When user says "xFinance branding", "new hero", or "investor / waitlist slide"**
-- Output a Tailwind component using `--xf-*` tokens, tagline, subline, **$2/hr**, product hierarchy (xFinance, xChat, xCoach, xMoney), **aTx⚡Finance** lockup (bolt between aTx and Finance), and **differentiation** (execution + advisory + exam prep in one place). For waitlist/investor context, add a **secondary** line on early access / professionals / roadmap tiers without inventing metrics or testimonials.
+- Output a Tailwind component using `--xf-*` tokens, tagline, subline, product hierarchy (xFinance, xChat, xCoach, xMoney), **aTx⚡Finance** lockup (bolt between aTx and Finance), and **differentiation** (execution + advisory + exam prep in one place). For waitlist/investor context, add a **secondary** line on early access / professionals / roadmap tiers without inventing metrics or testimonials.

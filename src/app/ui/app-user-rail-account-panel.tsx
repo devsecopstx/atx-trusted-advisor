@@ -192,7 +192,7 @@ export function AppUserRailAccountPanel({
           </span>
         )}
         {googleLinkHref ? (
-          <XfHoverHint hint="Uses the same verified email as your xFinance profile ($2/hr usage unchanged).">
+          <XfHoverHint hint="Uses the same verified email as your xFinance profile.">
             <Link className="app-user-rail-sublink app-user-rail-sublink--oauth" href={googleLinkHref}>
               <GoogleGIcon className="inline-block align-[-0.12em] opacity-90" size={14} />
               <span className="ml-1">Link Google</span>

@@ -24,7 +24,8 @@ export function useTenantUxPolicy() {
         if (!cancelled) {
           const next = payload?.data?.allowedRoutes;
           if (Array.isArray(next)) {
-            setAllowedRoutes(next);
+            // Keep /resources in sync with server merge (tenant policy + education routes).
+            setAllowedRoutes([...new Set([...next, "/resources"])].sort());
           }
         }
       } catch {

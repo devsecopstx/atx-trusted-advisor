@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { WheelReportView } from "@/components/xoptions/wheel-report-view";
 import type {
@@ -69,13 +69,13 @@ const TEMPLATE_IDEAS: WheelStrategyTemplate[] = [
 function defaultForm(): WheelGeneratorInput {
   return {
     ticker: "",
-    availableCapitalUsd: 250_000,
-    riskTolerance: "balanced",
-    expirationCycle: "monthly",
-    targetPutDelta: 0.22,
-    targetCallDelta: 0.27,
-    minimumPremiumYieldPerCyclePct: 8,
-    maxPositionSizePct: 25,
+    availableCapitalUsd: 25_000,
+    riskTolerance: "aggressive",
+    expirationCycle: "weekly",
+    targetPutDelta: 0.28,
+    targetCallDelta: 0.32,
+    minimumPremiumYieldPerCyclePct: 12,
+    maxPositionSizePct: 100,
     reentryRule: "roll_immediately",
     ivPercentileMin: 35,
     avoidEarningsWeek: true,
@@ -91,7 +91,10 @@ function toCurrency(value: number): string {
 }
 
 export function WheelIdeaGenerator() {
-  const [form, setForm] = useState<WheelGeneratorInput>(defaultForm);
+  const initial = defaultForm();
+  const [form, setForm] = useState<WheelGeneratorInput>(() => initial);
+  const [capitalStr, setCapitalStr] = useState(() => String(initial.availableCapitalUsd));
+  const bootstrapTickerSeeded = useRef(false);
   const [bootstrap, setBootstrap] = useState<BootstrapPayload | null>(null);
   const [loadingBootstrap, setLoadingBootstrap] = useState(true);
   const [generateBusy, setGenerateBusy] = useState(false);
@@ -114,10 +117,15 @@ export function WheelIdeaGenerator() {
         };
         if (!cancelled && payload.data) {
           setBootstrap(payload.data);
-          if (!form.ticker) {
-            const top = payload.data.holdings[0]?.symbol ?? payload.data.hot.rows[0]?.symbol ?? "NVDA";
-            setForm((current) => ({ ...current, ticker: top }));
-          }
+          setForm((current) => {
+            if (bootstrapTickerSeeded.current || current.ticker.trim() !== "") {
+              return current;
+            }
+            bootstrapTickerSeeded.current = true;
+            const top =
+              payload.data!.holdings[0]?.symbol ?? payload.data!.hot.rows[0]?.symbol ?? "NVDA";
+            return { ...current, ticker: top };
+          });
         }
       } catch {
         if (!cancelled) {
@@ -132,15 +140,7 @@ export function WheelIdeaGenerator() {
     return () => {
       cancelled = true;
     };
-  }, [form.ticker]);
-
-  const tickerUniverse = useMemo(() => {
-    const all = new Set<string>();
-    for (const row of bootstrap?.holdings ?? []) all.add(row.symbol.toUpperCase());
-    for (const row of bootstrap?.hot.rows ?? []) all.add(row.symbol.toUpperCase());
-    for (const preset of TEMPLATE_IDEAS) all.add(preset.ticker);
-    return Array.from(all).sort();
-  }, [bootstrap]);
+  }, []);
 
   const selectedHoldingValue = useMemo(() => {
     const key = form.ticker.trim().toUpperCase();
@@ -223,22 +223,19 @@ export function WheelIdeaGenerator() {
         <div className="grid gap-3 lg:grid-cols-2">
           <FormField
             label="Root stock ticker"
-            hint="Auto-complete from portfolio/watchlist plus templates."
+            hint="Type any symbol; portfolio/watchlist names are listed as template chips below."
             input={
-              <>
-                <input
-                  className="w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_20%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_44%,transparent)] px-3 py-2 text-sm text-[var(--xf-text-100)]"
-                  list="xwheel-ticker-suggestions"
-                  value={form.ticker}
-                  onChange={(event) => setForm((current) => ({ ...current, ticker: event.target.value.toUpperCase() }))}
-                  placeholder="TSLA"
-                />
-                <datalist id="xwheel-ticker-suggestions">
-                  {tickerUniverse.map((ticker) => (
-                    <option key={ticker} value={ticker} />
-                  ))}
-                </datalist>
-              </>
+              <input
+                autoCapitalize="characters"
+                autoComplete="off"
+                className="w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_20%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_44%,transparent)] px-3 py-2 text-sm text-[var(--xf-text-100)]"
+                spellCheck={false}
+                value={form.ticker}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, ticker: event.target.value.toUpperCase() }))
+                }
+                placeholder="TSLA"
+              />
             }
           />
 
@@ -246,14 +243,17 @@ export function WheelIdeaGenerator() {
             label="Available capital (USD)"
             input={
               <input
+                autoComplete="off"
                 className="w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_20%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_44%,transparent)] px-3 py-2 text-sm text-[var(--xf-text-100)]"
-                type="number"
-                min={1}
-                step={1000}
-                value={form.availableCapitalUsd}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, availableCapitalUsd: Number(event.target.value) || 0 }))
-                }
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={capitalStr}
+                onChange={(event) => {
+                  const digits = event.target.value.replace(/\D/g, "");
+                  setCapitalStr(digits);
+                  const n = digits === "" ? 0 : Number(digits);
+                  setForm((current) => ({ ...current, availableCapitalUsd: n }));
+                }}
               />
             }
           />

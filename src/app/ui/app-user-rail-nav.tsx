@@ -178,6 +178,48 @@ export function AppUserResourcesRailSection({
           <RailNavLink href="/resources/getting-started" title="Guide to investing with options">
             Getting started
           </RailNavLink>
+          <RailNavLink href="/resources/2026-options-income-playbook" title="2026 options income playbook">
+            2026 income playbook
+          </RailNavLink>
+          <RailNavLink href="/resources/how-xai-spots-better-wheels" title="How xAI spots better wheels">
+            Grok wheel edge
+          </RailNavLink>
+          <RailNavLink
+            href="/resources/cash-secured-puts-mastery"
+            title="Cash-Secured Puts Mastery — conservative income for HNWI portfolios"
+          >
+            CSP mastery (HNWI)
+          </RailNavLink>
+          <RailNavLink
+            href="/resources/covered-calls-2026-balanced-income"
+            title="Covered call strategies for 2026 — balanced income without selling your winners"
+          >
+            Covered calls 2026
+          </RailNavLink>
+          <RailNavLink
+            href="/resources/leap-options-playbook"
+            title="LEAP options playbook — aggressive growth with income overlays"
+          >
+            LEAP playbook
+          </RailNavLink>
+          <RailNavLink
+            href="/resources/multi-portfolio-management-hnwi"
+            title="Multi-portfolio management for HNWI — xAI outlooks and workspace integrations"
+          >
+            Multi-portfolio HNWI
+          </RailNavLink>
+          <RailNavLink
+            href="/resources/options-risk-management-frameworks"
+            title="Options risk management frameworks — conservative, balanced, aggressive xAI playbooks"
+          >
+            Risk frameworks
+          </RailNavLink>
+          <RailNavLink
+            href="/resources/from-xchat-to-broker-ibkr"
+            title="From xChat to broker execution — aTx Trusted Advisory + IBKR workflow"
+          >
+            xChat → IBKR
+          </RailNavLink>
           <RailNavLink href="/resources/building-wheel" title="Building a wheel strategy">
             Building a wheel
           </RailNavLink>

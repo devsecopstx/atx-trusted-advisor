@@ -9,8 +9,8 @@ import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "aTx Trusted Advisory — Options Income in 30–60 Minutes a Week",
-  description: `Generate consistent options income with minimal time: AI-curated wheel, covered calls, and LEAP workflows. Portfolios, Grok-backed xChat, and xOptions in one workspace. ${EDUCATIONAL_ONLY_SHORT}`,
+  title: "aTx Trusted Advisory — AI Co-Pilot for Options Income & Portfolio Defense",
+  description: `HNWI-grade workspace for covered calls, wheels, and iron condors — real portfolio integration, desk alerts, strategy jobs, and Grok-backed xChat. RIAs and family offices: tenant branding and white-label-ready portals. ${EDUCATIONAL_ONLY_SHORT}`,
   alternates: {
     canonical: "/"
   }

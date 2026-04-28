@@ -25,7 +25,7 @@ describe("app-user me role endpoint", () => {
     policyCacheMocks.getCachedTenantUxPolicyForSession.mockResolvedValue({
       role: "viewer",
       allowedRoutes: ["/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account"],
-      defaultLanding: "/portfolios",
+      defaultLanding: "/xchat",
       flags: {
         canMutatePortfolios: false,
         canUseXChat: false,
@@ -41,7 +41,7 @@ describe("app-user me role endpoint", () => {
       data: { platformRole: string; defaultLanding: string; flags: { canUseXChat: boolean } };
     };
     expect(body.data.platformRole).toBe("viewer");
-    expect(body.data.defaultLanding).toBe("/portfolios");
+    expect(body.data.defaultLanding).toBe("/xchat");
     expect(body.data.flags.canUseXChat).toBe(false);
   });
 

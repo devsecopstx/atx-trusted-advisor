@@ -39,6 +39,7 @@ type Props = {
   accountDetails: AppUserRailAccountPanelDetails | null;
   accountFeedbackPageLabel?: string;
   workspaceDeskHints?: PortfoliosWorkspaceDeskHints | null;
+  visiblePathPrefixes?: string[];
 };
 
 export function PortfoliosWorkspaceClient({
@@ -54,7 +55,8 @@ export function PortfoliosWorkspaceClient({
   isGlobalAdmin,
   accountDetails,
   accountFeedbackPageLabel,
-  workspaceDeskHints = null
+  workspaceDeskHints = null,
+  visiblePathPrefixes
 }: Props) {
   const holdingsKey = topHoldings
     .slice(0, 2)
@@ -74,6 +76,7 @@ export function PortfoliosWorkspaceClient({
               accountFeedbackPageLabel={accountFeedbackPageLabel}
               defaultPortfolioId={defaultPortfolioId}
               isGlobalAdmin={isGlobalAdmin}
+              visiblePathPrefixes={visiblePathPrefixes}
               workspaceBook={workspaceBook}
             />
           }

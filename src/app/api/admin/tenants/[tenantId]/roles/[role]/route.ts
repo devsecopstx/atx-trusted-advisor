@@ -33,25 +33,56 @@ function defaultPolicyForRole(role: PlatformRoleForRoutes) {
   switch (role) {
     case "global_admin":
       return {
-        allowedRoutes: ["/admin", "/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/workspace", "/import-activity"],
-        defaultLanding: "/admin",
+        allowedRoutes: [
+          "/admin",
+          "/xchat",
+          "/portfolio",
+          "/portfolios",
+          "/watchlist",
+          "/xoptions",
+          "/account",
+          "/workspace",
+          "/import-activity",
+          "/resources"
+        ],
+        defaultLanding: "/xchat",
         flags: { canMutatePortfolios: true, canUseXChat: true, canRunTasks: true }
       };
     case "operator":
       return {
-        allowedRoutes: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/workspace", "/import-activity"],
+        allowedRoutes: [
+          "/xchat",
+          "/portfolio",
+          "/portfolios",
+          "/watchlist",
+          "/xoptions",
+          "/account",
+          "/workspace",
+          "/import-activity",
+          "/resources"
+        ],
         defaultLanding: "/xchat",
         flags: { canMutatePortfolios: true, canUseXChat: true, canRunTasks: true }
       };
     case "advisor":
       return {
-        allowedRoutes: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/workspace", "/import-activity"],
-        defaultLanding: "/portfolios",
+        allowedRoutes: [
+          "/xchat",
+          "/portfolio",
+          "/portfolios",
+          "/watchlist",
+          "/xoptions",
+          "/account",
+          "/workspace",
+          "/import-activity",
+          "/resources"
+        ],
+        defaultLanding: "/xchat",
         flags: { canMutatePortfolios: false, canUseXChat: true, canRunTasks: false }
       };
     case "viewer":
       return {
-        allowedRoutes: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account"],
+        allowedRoutes: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/resources"],
         defaultLanding: "/xchat",
         flags: { canMutatePortfolios: false, canUseXChat: false, canRunTasks: false }
       };

@@ -126,6 +126,8 @@ export type XchatConversationProps = {
   initialXchatItem?: "composer" | "persona" | "examples" | "history" | "attachments" | null;
   /** RSC bootstrap: prefs + recent Mongo turns (60s server cache) to avoid cold client waterfalls. */
   serverBootstrap?: XchatServerShellBootstrap | null;
+  /** Tenant allowlist for workspace rail; pass from server so Resources and routes match policy without client race. */
+  visiblePathPrefixes?: string[];
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
@@ -347,7 +349,8 @@ export function XchatConversation({
   workspaceChangePersonaEnabled = true,
   workspaceChatHistoryMax = 10,
   initialXchatItem = null,
-  serverBootstrap = null
+  serverBootstrap = null,
+  visiblePathPrefixes
 }: XchatConversationProps) {
   const router = useRouter();
   const uiPromptLimit = Math.max(1, Math.min(500, workspaceChatHistoryMax));
@@ -1321,6 +1324,7 @@ export function XchatConversation({
               googleLinkHref={googleLinkHref}
               isGlobalAdmin={isGlobalAdminSession}
               showReferenceDocs
+              visiblePathPrefixes={visiblePathPrefixes}
               workspaceBook={workspaceBook}
               xchatSection={(
             <section className="app-user-rail-section" aria-label="xChat">

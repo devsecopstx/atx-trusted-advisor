@@ -23,6 +23,46 @@ const publicRoutes = [
   { path: "/resources/getting-started", changeFrequency: "monthly" as const, priority: 0.6 },
   { path: "/resources/building-wheel", changeFrequency: "monthly" as const, priority: 0.6 },
   { path: "/resources/building-wheel/wheel-vs-iron-condor", changeFrequency: "monthly" as const, priority: 0.5 },
+  {
+    path: "/resources/2026-options-income-playbook",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
+    path: "/resources/how-xai-spots-better-wheels",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
+    path: "/resources/cash-secured-puts-mastery",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
+    path: "/resources/covered-calls-2026-balanced-income",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
+    path: "/resources/leap-options-playbook",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
+    path: "/resources/multi-portfolio-management-hnwi",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
+    path: "/resources/options-risk-management-frameworks",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
+    path: "/resources/from-xchat-to-broker-ibkr",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

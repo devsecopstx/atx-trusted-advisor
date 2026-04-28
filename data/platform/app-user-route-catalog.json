@@ -6,8 +6,8 @@
   "platformRoles": ["global_admin", "advisor", "operator", "viewer"],
   "tenantAssignableRoles": ["advisor", "operator", "viewer"],
   "suggestedDefaultLandingPathByRole": {
-    "global_admin": "/admin",
-    "advisor": "/portfolios",
+    "global_admin": "/xchat",
+    "advisor": "/xchat",
     "operator": "/xchat",
     "viewer": "/xchat"
   },

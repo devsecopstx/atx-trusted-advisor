@@ -33,16 +33,39 @@ const DEFAULT_FLAGS_BY_ROLE: Readonly<Record<PlatformRoleForRoutes, TenantRoleFl
   viewer: { canMutatePortfolios: false, canUseXChat: false, canRunTasks: false }
 };
 
+/** Education / marketing routes always merged into tenant allowedRoutes (sidebar + policy). */
+const TENANT_POLICY_ALWAYS_ALLOWED_PREFIXES = ["/resources"] as const;
+
 const DEFAULT_ALLOWED_ROUTES_BY_ROLE: Readonly<Record<PlatformRoleForRoutes, readonly string[]>> = {
   global_admin: ["/admin"],
-  operator: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/import-activity", "/workspace"],
-  advisor: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/import-activity", "/workspace"],
-  viewer: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account"]
+  operator: [
+    "/xchat",
+    "/portfolio",
+    "/portfolios",
+    "/watchlist",
+    "/xoptions",
+    "/account",
+    "/import-activity",
+    "/workspace",
+    "/resources"
+  ],
+  advisor: [
+    "/xchat",
+    "/portfolio",
+    "/portfolios",
+    "/watchlist",
+    "/xoptions",
+    "/account",
+    "/import-activity",
+    "/workspace",
+    "/resources"
+  ],
+  viewer: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/resources"]
 };
 
 const DEFAULT_LANDING_BY_ROLE: Readonly<Record<PlatformRoleForRoutes, string>> = {
-  global_admin: "/admin",
-  advisor: "/portfolios",
+  global_admin: "/xchat",
+  advisor: "/xchat",
   operator: "/xchat",
   viewer: "/xchat"
 };
@@ -87,6 +110,17 @@ function routeAllowedByPrefixes(pathname: string, allowedRoutes: readonly string
     const p = normalizePathname(route);
     return normalized === p || normalized.startsWith(`${p}/`);
   });
+}
+
+function mergeAlwaysAllowedEducationRoutes(policy: TenantRolePolicy): TenantRolePolicy {
+  const next = new Set(policy.allowedRoutes);
+  for (const p of TENANT_POLICY_ALWAYS_ALLOWED_PREFIXES) {
+    next.add(p);
+  }
+  return {
+    ...policy,
+    allowedRoutes: [...next].sort()
+  };
 }
 
 function resolveDefaultAllowedRoutesForRole(role: PlatformRoleForRoutes): string[] {
@@ -287,7 +321,7 @@ export async function getTenantRoutePolicyForSession(session: SessionUser): Prom
       routeOverrides,
       defaultLandingPathByRole,
       tenantRoles,
-      effectiveRolePolicy: roleOverride
+      effectiveRolePolicy: mergeAlwaysAllowedEducationRoutes(roleOverride)
     };
   }
 
@@ -302,16 +336,18 @@ export async function getTenantRoutePolicyForSession(session: SessionUser): Prom
     ? normalizePathname(defaultLandingCandidate)
     : normalizePathname(allowedRoutes[0] ?? fallbackLanding);
 
+  const rawPolicy: TenantRolePolicy = {
+    allowedRoutes: allowedRoutes.length > 0 ? allowedRoutes : defaultAllowedRoutes,
+    defaultLanding,
+    flags: DEFAULT_FLAGS_BY_ROLE[role]
+  };
+
   return {
     role,
     routeOverrides,
     defaultLandingPathByRole,
     tenantRoles,
-    effectiveRolePolicy: {
-      allowedRoutes: allowedRoutes.length > 0 ? allowedRoutes : defaultAllowedRoutes,
-      defaultLanding,
-      flags: DEFAULT_FLAGS_BY_ROLE[role]
-    }
+    effectiveRolePolicy: mergeAlwaysAllowedEducationRoutes(rawPolicy)
   };
 }
 

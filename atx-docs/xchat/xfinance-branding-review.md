@@ -6,7 +6,7 @@ Review against `**.cursor/rules/xfinance-branding.mdc**` (expert pass).
 
 **Product decision:** Keep the current **AtxFinanceLogo** + **MarketingHero** for the landing. Do **not** add a separate full-page hero with inline ⚡ + "xF" + "xFinance Coach" + custom CTAs; that treatment was reverted and is not desired.
 
-**Investor / GTM / waitlist:** Differentiation, channel targets, MVP priority (xChat + portfolio first), compliance narrative, and roadmap tiered pricing live in `**.cursor/rules/xfinance-branding.mdc`** — keep **$2/hr** as the canonical hero number in product UI; waitlist/deck may reference roadmap tiers as secondary copy.
+**Investor / GTM / waitlist:** Differentiation, channel targets, MVP priority (xChat + portfolio first), compliance narrative, and roadmap tiered pricing live in `**.cursor/rules/xfinance-branding.mdc`** — mirror **shipped** billing/plans UI for any dollar amounts; waitlist/deck may reference roadmap tiers as secondary copy.
 
 ---
 
@@ -30,14 +30,13 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 | Background / dark | `#050505`, dark-only                                           | Use `--xf-*` / tokens per brand kit where possible        |
 | Lockup            | **aTx⚡Finance** in `**AtxFinanceLogo`**                        | Bolt between aTx and Finance                              |
 | Tagline           | "No Atoms Moved. Just Gains Earned."                           | ✅                                                         |
-| Subline           | "Cheapest xFinance at $2/hr • Options Profits Powered by Grok" | Keep subline when hero is refreshed                       |
-| $2/hr             | emerald-400 + tooltip                                          | Add `title` / `aria-describedby` on $2/hr and primary CTA |
+| Subline           | "Options Profits Powered by Grok" (optional secondary on access/plans) | Align with `xfinance-branding.mdc` when hero is refreshed |
 | Accent green      | Rule `#22c55e` vs `--xf-gain-green`                            | See §3                                                    |
 | Product hierarchy | xFinance, xChat, xCoach, xMoney                                | Footer / descriptor                                       |
 | CTAs              | Real `<Link>` targets                                          | `/xchat`, plans, etc.                                     |
 
 
-**Waitlist / one-slide landings (future):** Follow `**xfinance-branding.mdc`** — differentiation + $2/hr + secondary roadmap copy; no fake metrics or testimonials.
+**Waitlist / one-slide landings (future):** Follow `**xfinance-branding.mdc`** — differentiation + product stack + secondary roadmap copy; no fake metrics or testimonials.
 
 ---
 
@@ -55,7 +54,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 
 | Topic             | Gap                                                   | Where to track                                     |
 | ----------------- | ----------------------------------------------------- | -------------------------------------------------- |
-| Hero refresh      | Subline, $2/hr tooltip, CTA links if drift            | This doc + PR                                      |
+| Hero refresh      | Subline, billing/plans alignment, CTA links if drift   | This doc + PR                                      |
 | Green tokens      | Single table “where which green” if confusion returns | Brand kit or `DEVELOPMENT.md`                      |
 | Waitlist page     | Not in core app yet — copy lives in rule until routed | `xfinance-branding.mdc` + [`../PLAN.md`](../PLAN.md) if needed |
 | Credential upload | Rule = roadmap only; don’t ship fake FINRA/SEC UI     | `xfinance-branding.mdc`                            |

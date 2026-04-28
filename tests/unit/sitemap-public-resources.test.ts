@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import sitemap from "@/app/sitemap";
+import { describe, expect, it } from "vitest";
 
 describe("sitemap public resources", () => {
   it("includes all public /resources routes", () => {
@@ -13,7 +13,15 @@ describe("sitemap public resources", () => {
       "/resources/secret-sauce",
       "/resources/getting-started",
       "/resources/building-wheel",
-      "/resources/building-wheel/wheel-vs-iron-condor"
+      "/resources/building-wheel/wheel-vs-iron-condor",
+      "/resources/2026-options-income-playbook",
+      "/resources/how-xai-spots-better-wheels",
+      "/resources/cash-secured-puts-mastery",
+      "/resources/covered-calls-2026-balanced-income",
+      "/resources/leap-options-playbook",
+      "/resources/multi-portfolio-management-hnwi",
+      "/resources/options-risk-management-frameworks",
+      "/resources/from-xchat-to-broker-ibkr",
     ]
       .map((p) => `${BASE}${p}`)
       .sort();

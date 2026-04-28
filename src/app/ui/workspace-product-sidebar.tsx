@@ -330,7 +330,9 @@ export function WorkspaceProductSidebar({
   const effectiveVisiblePathPrefixes = visiblePathPrefixes ?? allowedRoutes ?? undefined;
   const isPathVisible = useCallback(
     (pathPrefix: string) =>
-      !effectiveVisiblePathPrefixes || effectiveVisiblePathPrefixes.some((allowed) => allowed === pathPrefix),
+      pathPrefix === "/resources" ||
+      !effectiveVisiblePathPrefixes ||
+      effectiveVisiblePathPrefixes.some((allowed) => allowed === pathPrefix),
     [effectiveVisiblePathPrefixes]
   );
   const pathname = usePathname() ?? "";
@@ -681,6 +683,62 @@ export function WorkspaceProductSidebar({
           </SidebarLink>
           <SidebarLink href="/resources/getting-started" nested title="Guide to investing with options">
             Getting started
+          </SidebarLink>
+          <SidebarLink
+            href="/resources/2026-options-income-playbook"
+            nested
+            title="2026 options income playbook"
+          >
+            2026 income playbook
+          </SidebarLink>
+          <SidebarLink
+            href="/resources/how-xai-spots-better-wheels"
+            nested
+            title="How xAI spots better wheels"
+          >
+            Grok wheel edge
+          </SidebarLink>
+          <SidebarLink
+            href="/resources/cash-secured-puts-mastery"
+            nested
+            title="Cash-Secured Puts Mastery — conservative income for HNWI portfolios"
+          >
+            CSP mastery (HNWI)
+          </SidebarLink>
+          <SidebarLink
+            href="/resources/covered-calls-2026-balanced-income"
+            nested
+            title="Covered call strategies for 2026 — balanced income without selling your winners"
+          >
+            Covered calls 2026
+          </SidebarLink>
+          <SidebarLink
+            href="/resources/leap-options-playbook"
+            nested
+            title="LEAP options playbook — aggressive growth with income overlays"
+          >
+            LEAP playbook
+          </SidebarLink>
+          <SidebarLink
+            href="/resources/multi-portfolio-management-hnwi"
+            nested
+            title="Multi-portfolio management for HNWI — xAI outlooks and workspace integrations"
+          >
+            Multi-portfolio HNWI
+          </SidebarLink>
+          <SidebarLink
+            href="/resources/options-risk-management-frameworks"
+            nested
+            title="Options risk management frameworks — conservative, balanced, aggressive xAI playbooks"
+          >
+            Risk frameworks
+          </SidebarLink>
+          <SidebarLink
+            href="/resources/from-xchat-to-broker-ibkr"
+            nested
+            title="From xChat to broker execution — aTx Trusted Advisory + IBKR workflow"
+          >
+            xChat → IBKR
           </SidebarLink>
           <SidebarLink href="/resources/building-wheel" nested title="Building a wheel strategy">
             Building a wheel

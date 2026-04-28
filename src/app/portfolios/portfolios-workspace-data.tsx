@@ -23,6 +23,7 @@ import {
 } from "@/modules/core-admin/repository";
 import { portfolioKindChoiceLabel } from "@/modules/core-admin/types";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 import { tryIbkrLinkedAccountsSnapshotForSession } from "@/lib/portfolio-ibkr-ssr";
@@ -149,6 +150,9 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
     ibkrLinkedAccountCount: ibkrSnap?.accountCount ?? null
   };
 
+  const routePolicy = await getTenantRoutePolicyForSession(session);
+  const visiblePathPrefixes = routePolicy.effectiveRolePolicy.allowedRoutes;
+
   return (
     <div className="xchat-shell">
       <AppUserApprovedHeader
@@ -181,6 +185,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
         totalBookUsd={totalBookUsd}
         workspaceBook={workspaceBook}
         workspaceDeskHints={workspaceDeskHints}
+        visiblePathPrefixes={visiblePathPrefixes}
       />
     </div>
   );
