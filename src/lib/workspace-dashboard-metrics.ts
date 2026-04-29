@@ -5,7 +5,7 @@ import {
     listPortfolioPositionsByAccount,
     listPortfoliosForSessionUser
 } from "@/modules/core-admin/repository";
-import { normalizePositionType } from "@/modules/core-admin/types";
+import { normalizePositionType, parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
 
 export type WorkspaceDashboardAccountSlice = {
   portfolioId: string;
@@ -13,6 +13,10 @@ export type WorkspaceDashboardAccountSlice = {
   accountId: string;
   accountName: string;
   valueUsd: number;
+  /** Per-account desk risk; null when unset. */
+  riskProfile: "conservative" | "balanced" | "growth" | null;
+  /** Per-account market outlook; null when unset. */
+  outlook: AccountOutlook | null;
 };
 
 /**
@@ -48,14 +52,30 @@ export async function listWorkspaceDashboardAccountSlices(input: {
       accountIds
     });
     const metrics = computePortfolioOverviewMetrics(positions, accounts, DEFAULT_ACCOUNT_CASH_BALANCE);
+    const deskByHex = new Map<
+      string,
+      { riskProfile: WorkspaceDashboardAccountSlice["riskProfile"]; outlook: AccountOutlook | null }
+    >();
+    for (const a of accounts) {
+      if (!a._id) {
+        continue;
+      }
+      deskByHex.set(a._id.toHexString(), {
+        riskProfile: a.riskProfile ?? null,
+        outlook: parseAccountOutlook(a.outlook)
+      });
+    }
     for (const row of metrics.byAccount) {
       const valueUsd = row.valueExcludingOptions + row.optionBookValue;
+      const desk = deskByHex.get(row.accountIdHex);
       slices.push({
         portfolioId: pid,
         portfolioName,
         accountId: row.accountIdHex,
         accountName: row.name,
-        valueUsd
+        valueUsd,
+        riskProfile: desk?.riskProfile ?? null,
+        outlook: desk?.outlook ?? null
       });
     }
   }

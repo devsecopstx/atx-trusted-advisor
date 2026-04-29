@@ -1,5 +1,6 @@
 "use client";
 
+import { portfolioDeskNarrativeLine } from "@/lib/portfolio-desk-narrative";
 import { formatUsd2 } from "@/lib/portfolio-overview-metrics";
 import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
 
@@ -16,6 +17,7 @@ type Props = {
 
 export function PortfoliosPortfolioCardItem({ row, accountSlices, opening, onOpen, onAskAdvisor }: Props) {
   const { total, barSlices } = buildPortfolioAllocationBarSlices(row.id, accountSlices);
+  const deskNarrative = portfolioDeskNarrativeLine(accountSlices, row.id);
   const cardClass = [
     "portfolios-portfolio-cards__card",
     "flex min-h-[8.75rem] w-full flex-col rounded-lg border bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-3 text-left transition-[border-color,box-shadow,transform] duration-150",
@@ -70,6 +72,14 @@ export function PortfoliosPortfolioCardItem({ row, accountSlices, opening, onOpe
             {barSlices.length} accounts · book split shown above
           </p>
         ) : null}
+        {deskNarrative ? (
+          <p
+            className="mt-1.5 line-clamp-3 text-[0.65rem] leading-snug text-[var(--xf-text-200)]"
+            title={deskNarrative}
+          >
+            {deskNarrative}
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <button
             className="m-0 border-0 bg-transparent p-0 text-left text-xs font-medium text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60"
@@ -82,10 +92,11 @@ export function PortfoliosPortfolioCardItem({ row, accountSlices, opening, onOpe
           <button
             className="m-0 border-0 bg-transparent p-0 text-left text-xs font-medium text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60"
             disabled={opening}
+            title="Open xChat with this portfolio in scope"
             type="button"
             onClick={() => onAskAdvisor(row)}
           >
-            Ask advisor
+            xChat
           </button>
         </div>
       </div>

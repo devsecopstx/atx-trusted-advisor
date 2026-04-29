@@ -12,21 +12,27 @@ const slices: WorkspaceDashboardAccountSlice[] = [
     portfolioName: "Book A",
     accountId: "a1",
     accountName: "ROTH",
-    valueUsd: 29_000
+    valueUsd: 29_000,
+    riskProfile: null,
+    outlook: null
   },
   {
     portfolioId: "p1",
     portfolioName: "Book A",
     accountId: "a2",
     accountName: "Rollover",
-    valueUsd: 29_000
+    valueUsd: 29_000,
+    riskProfile: null,
+    outlook: null
   },
   {
     portfolioId: "p2",
     portfolioName: "Book B",
     accountId: "a3",
     accountName: "Taxable",
-    valueUsd: 52_000
+    valueUsd: 52_000,
+    riskProfile: null,
+    outlook: null
   }
 ];
 
