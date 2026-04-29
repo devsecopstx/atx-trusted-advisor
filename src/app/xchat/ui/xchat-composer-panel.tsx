@@ -6,12 +6,21 @@ import {
     type KeyboardEvent,
     type MutableRefObject,
     type RefObject,
+    useEffect,
     useId,
+    useRef,
     useState
 } from "react";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+
+import { XchatComposerAttachIcon, XchatComposerMicIcon } from "@/app/xchat/ui/xchat-composer-icons";
+import {
+    getSpeechRecognitionConstructor,
+    startXchatDictationSession,
+    type XchatDictationSessionControls
+} from "@/app/xchat/ui/xchat-dictation-client";
 
 import { XchatComposerNav } from "./xchat-composer-nav";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
@@ -44,6 +53,8 @@ export type XchatComposerPanelProps = {
   promptExamples: string[];
   /** Open Examples on first paint (e.g. `?rail=xchat&item=examples`). */
   examplesInitiallyExpanded?: boolean;
+  /** Premium+ / global_admin: show composer paperclip → tenant attachments API. */
+  tenantFileUploadEnabled?: boolean;
 };
 
 export function XchatComposerPanel({
@@ -64,11 +75,30 @@ export function XchatComposerPanel({
   setSelectedPersonaId,
   userPickedPersonaRef,
   promptExamples,
-  examplesInitiallyExpanded = false
+  examplesInitiallyExpanded = false,
+  tenantFileUploadEnabled = false
 }: XchatComposerPanelProps) {
   const examplesPanelId = useId();
   const examplesTriggerId = useId();
   const [examplesOpen, setExamplesOpen] = useState(examplesInitiallyExpanded);
+  const [dictationActive, setDictationActive] = useState(false);
+  const [dictationSupported, setDictationSupported] = useState(false);
+  const [dictationError, setDictationError] = useState<string | null>(null);
+  const [attachBusy, setAttachBusy] = useState(false);
+  const [attachNote, setAttachNote] = useState<string | null>(null);
+  const dictationSessionRef = useRef<XchatDictationSessionControls | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setDictationSupported(Boolean(getSpeechRecognitionConstructor()));
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      dictationSessionRef.current?.abort();
+    };
+  }, []);
+
   const canSend = Boolean(input.trim()) || Boolean(pendingPasteImage);
 
   async function onComposerPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
@@ -101,6 +131,88 @@ export function XchatComposerPanel({
         previewUrl: result.previewUrl
       });
       return;
+    }
+  }
+
+  async function normalizeVoiceDraft(raw: string) {
+    const t = raw.trim();
+    if (t.length < 2) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/app-user/xchat/voice-transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcriptDraft: t })
+      });
+      const payload = (await res.json().catch(() => ({}))) as { data?: { transcript?: string } };
+      const next = payload.data?.transcript;
+      if (typeof next === "string" && next.trim()) {
+        setInput(next.trim());
+      }
+    } catch {
+      /* keep draft */
+    }
+  }
+
+  function toggleDictation() {
+    if (dictationActive) {
+      dictationSessionRef.current?.stop();
+      dictationSessionRef.current = null;
+      return;
+    }
+    const session = startXchatDictationSession(input, {
+      onUpdate: setInput,
+      onEnded: () => {
+        setDictationActive(false);
+        dictationSessionRef.current = null;
+        const v = composerRef.current?.value ?? "";
+        void normalizeVoiceDraft(v);
+      },
+      onError: (msg) => {
+        setDictationError(msg);
+        setDictationActive(false);
+        dictationSessionRef.current = null;
+      }
+    });
+    if (!session) {
+      setDictationError(
+        dictationSupported ? "Could not start dictation." : "Dictation needs a browser with Web Speech API support."
+      );
+      return;
+    }
+    dictationSessionRef.current = session;
+    setDictationActive(true);
+    setDictationError(null);
+  }
+
+  async function onAttachPicked(file: File | undefined) {
+    if (!file || file.size === 0) {
+      return;
+    }
+    setAttachNote(null);
+    setAttachBusy(true);
+    try {
+      const fd = new FormData();
+      fd.set("file", file);
+      const res = await fetch("/api/app-user/xchat/attachments", { method: "POST", body: fd });
+      const payload = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        data?: { file?: { filename?: string } };
+      };
+      if (!res.ok) {
+        setAttachNote(payload.error ?? `Upload failed (${res.status}).`);
+        return;
+      }
+      const name = payload.data?.file?.filename ?? file.name;
+      setAttachNote(`Uploaded “${name}” to your tenant collection — indexing may take a moment.`);
+    } catch {
+      setAttachNote("Network error during upload.");
+    } finally {
+      setAttachBusy(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   }
 
@@ -152,7 +264,7 @@ export function XchatComposerPanel({
               maxLength={4000}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
-                if (e.key !== "Enter" || e.shiftKey || loading) {
+                if (e.key !== "Enter" || e.shiftKey || loading || dictationActive) {
                   return;
                 }
                 e.preventDefault();
@@ -162,48 +274,109 @@ export function XchatComposerPanel({
               placeholder={
                 loading
                   ? "Wait for reply…"
-                  : pendingPasteImage
-                    ? "Optional caption for your screenshot…"
-                    : "What's on your mind?"
+                  : dictationActive
+                    ? "Listening… speak, then tap the mic to stop"
+                    : pendingPasteImage
+                      ? "Optional caption for your screenshot…"
+                      : "What's on your mind?"
               }
-              readOnly={loading}
+              readOnly={loading || dictationActive}
               rows={1}
               value={input}
             />
           </XfHoverHint>
         </div>
+        {dictationError ? (
+          <p className="status-text status-error xchat-composer-inline-msg">{dictationError}</p>
+        ) : null}
+        {attachNote ? (
+          <p className="status-text xchat-composer-attach-note xchat-composer-inline-msg">{attachNote}</p>
+        ) : null}
         <div className="xchat-composer__row xchat-composer__row--actions">
-          {!personaPickerLocked ? (
-            <div className="xchat-composer__persona-actions">
-              <label className="sr-only" htmlFor="xchat-composer-persona-picker">
-                Persona for this message
-              </label>
-              <XfHoverHint hint="Published persona for this prompt only">
-                <select
-                  aria-label="Persona for this message"
-                  className="xchat-composer__persona-select xchat-composer__persona-select--inline"
-                  disabled={personaSelectRows.length === 0 || Boolean(personaListError)}
-                  id="xchat-composer-persona-picker"
+          <div className="xchat-composer__tools">
+            {tenantFileUploadEnabled ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  accept="*/*"
+                  aria-hidden
+                  className="sr-only"
+                  tabIndex={-1}
+                  type="file"
                   onChange={(e) => {
-                    userPickedPersonaRef.current = true;
-                    setSelectedPersonaId(e.target.value);
+                    void onAttachPicked(e.target.files?.[0]);
                   }}
-                  value={selectedPersonaId}
-                >
-                  <option value="">Default</option>
-                  {personaSelectRows.map((p) => (
-                    <option key={p._id} title={p.name} value={p._id}>
-                      {compactPersonaOptionLabel(p.name)}
-                    </option>
-                  ))}
-                </select>
-              </XfHoverHint>
-            </div>
-          ) : null}
-          <button className="xchat-composer__send" disabled={loading || !canSend} type="submit">
-            <SendIcon className="crud-icon" />
-            Send
-          </button>
+                />
+                <XfHoverHint hint="Upload a file to your tenant knowledge collection (Premium+)">
+                  <button
+                    aria-busy={attachBusy}
+                    aria-label="Upload file to tenant collection"
+                    className="xchat-composer__icon-btn xchat-composer__tool-btn"
+                    disabled={loading || attachBusy || dictationActive}
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <XchatComposerAttachIcon />
+                  </button>
+                </XfHoverHint>
+              </>
+            ) : null}
+            <XfHoverHint
+              hint={
+                dictationSupported
+                  ? dictationActive
+                    ? "Stop dictation"
+                    : "Dictate with your microphone — review text before Send"
+                  : "Dictation requires Web Speech API support (e.g. Chrome, Safari)"
+              }
+            >
+              <button
+                aria-label={dictationActive ? "Stop dictation" : "Start dictation"}
+                aria-pressed={dictationActive}
+                className={`xchat-composer__icon-btn xchat-composer__tool-btn${dictationActive ? " xchat-composer__tool-btn--recording" : ""}`}
+                disabled={loading || attachBusy || !dictationSupported}
+                type="button"
+                onClick={() => {
+                  toggleDictation();
+                }}
+              >
+                <XchatComposerMicIcon />
+              </button>
+            </XfHoverHint>
+          </div>
+          <div className="xchat-composer__actions-trailing">
+            {!personaPickerLocked ? (
+              <div className="xchat-composer__persona-actions">
+                <label className="sr-only" htmlFor="xchat-composer-persona-picker">
+                  Persona for this message
+                </label>
+                <XfHoverHint hint="Published persona for this prompt only">
+                  <select
+                    aria-label="Persona for this message"
+                    className="xchat-composer__persona-select xchat-composer__persona-select--inline"
+                    disabled={personaSelectRows.length === 0 || Boolean(personaListError)}
+                    id="xchat-composer-persona-picker"
+                    onChange={(e) => {
+                      userPickedPersonaRef.current = true;
+                      setSelectedPersonaId(e.target.value);
+                    }}
+                    value={selectedPersonaId}
+                  >
+                    <option value="">Default</option>
+                    {personaSelectRows.map((p) => (
+                      <option key={p._id} title={p.name} value={p._id}>
+                        {compactPersonaOptionLabel(p.name)}
+                      </option>
+                    ))}
+                  </select>
+                </XfHoverHint>
+              </div>
+            ) : null}
+            <button className="xchat-composer__send" disabled={loading || !canSend} type="submit">
+              <SendIcon className="crud-icon" />
+              Send
+            </button>
+          </div>
         </div>
       </form>
       <div className="xchat-composer-shortcuts">
@@ -278,7 +451,8 @@ export function XchatComposerPanel({
       <p className="xchat-composer-hint" role="note">
         <span className="xchat-composer-hint__pill">Beta</span>
         <span className="xchat-composer-hint__text">
-          Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) to analyze with Grok vision
+          Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Mic dictation where supported
+          {tenantFileUploadEnabled ? " · Paperclip uploads to your tenant collection" : ""}
         </span>
       </p>
     </div>

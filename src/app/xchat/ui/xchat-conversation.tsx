@@ -25,6 +25,7 @@ import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-conversation-types";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import {
     XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
@@ -365,6 +366,15 @@ export function XchatConversation({
   /** Monotonic elapsed ms while `/api/xchat/ask` is in flight (100ms ticks for smooth trading-clock UI). */
   const [askElapsedMs, setAskElapsedMs] = useState(0);
   const [strategyJobLaunchBusy, setStrategyJobLaunchBusy] = useState(false);
+
+  const tenantFileUploadEnabled = useMemo(
+    () =>
+      canAccessPremiumTenantAttachments(
+        accountDetails.subscriptionPlan,
+        accountDetails.isGlobalAdmin ? ["global_admin"] : []
+      ),
+    [accountDetails.subscriptionPlan, accountDetails.isGlobalAdmin]
+  );
 
   const threadUiSummary = useMemo(() => {
     const userMsgs = messages.filter((m) => m.role === "user");
@@ -1427,6 +1437,7 @@ export function XchatConversation({
             setPasteImageError={setPasteImageError}
             setPendingPasteImage={setPendingPasteImage}
             setSelectedPersonaId={setSelectedPersonaId}
+            tenantFileUploadEnabled={tenantFileUploadEnabled}
             userPickedPersonaRef={userPickedPersonaRef}
           />
         </Suspense>
