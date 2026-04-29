@@ -12,10 +12,16 @@ import {
     useState
 } from "react";
 
-import { SendIcon } from "@/app/admin/ui/crud-icons";
+import Link from "next/link";
+
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
-import { XchatComposerAttachIcon, XchatComposerMicIcon } from "@/app/xchat/ui/xchat-composer-icons";
+import {
+    XchatComposerArrowUpIcon,
+    XchatComposerAttachIcon,
+    XchatComposerMicIcon,
+    XchatComposerSourcesGridIcon
+} from "@/app/xchat/ui/xchat-composer-icons";
 import {
     getSpeechRecognitionConstructor,
     startXchatDictationSession,
@@ -55,6 +61,8 @@ export type XchatComposerPanelProps = {
   examplesInitiallyExpanded?: boolean;
   /** Premium+ / global_admin: show composer paperclip → tenant attachments API. */
   tenantFileUploadEnabled?: boolean;
+  /** Deep link to workspace rail attachments / User Collections (preserve portfolio when set). */
+  sourcesRailHref: string;
 };
 
 export function XchatComposerPanel({
@@ -76,7 +84,8 @@ export function XchatComposerPanel({
   userPickedPersonaRef,
   promptExamples,
   examplesInitiallyExpanded = false,
-  tenantFileUploadEnabled = false
+  tenantFileUploadEnabled = false,
+  sourcesRailHref
 }: XchatComposerPanelProps) {
   const examplesPanelId = useId();
   const examplesTriggerId = useId();
@@ -218,7 +227,7 @@ export function XchatComposerPanel({
 
   return (
     <div className="xchat-composer-wrap" id="xchat-composer">
-      <form className="xchat-composer" onSubmit={handleSend} ref={composerFormRef}>
+      <form className="xchat-composer xchat-composer--grok" onSubmit={handleSend} ref={composerFormRef}>
         {pendingPasteImage ? (
           <div className="xchat-composer-paste-preview">
             <div className="xchat-composer-paste-preview__thumb">
@@ -252,48 +261,8 @@ export function XchatComposerPanel({
           </div>
         ) : null}
         {pasteImageError ? <p className="xchat-composer-paste-err">{pasteImageError}</p> : null}
-        <div className="xchat-composer__row xchat-composer__row--input">
-          <XfHoverHint
-            className="xchat-composer__input-grow"
-            hint="Enter to send · Shift+Enter newline · Paste image (screenshot) to analyze"
-          >
-            <textarea
-              ref={composerRef}
-              aria-busy={loading}
-              className="xchat-composer__field xchat-composer__textarea"
-              maxLength={4000}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
-                if (e.key !== "Enter" || e.shiftKey || loading || dictationActive) {
-                  return;
-                }
-                e.preventDefault();
-                e.currentTarget.form?.requestSubmit();
-              }}
-              onPaste={onComposerPaste}
-              placeholder={
-                loading
-                  ? "Wait for reply…"
-                  : dictationActive
-                    ? "Listening… speak, then tap the mic to stop"
-                    : pendingPasteImage
-                      ? "Optional caption for your screenshot…"
-                      : "What's on your mind?"
-              }
-              readOnly={loading || dictationActive}
-              rows={1}
-              value={input}
-            />
-          </XfHoverHint>
-        </div>
-        {dictationError ? (
-          <p className="status-text status-error xchat-composer-inline-msg">{dictationError}</p>
-        ) : null}
-        {attachNote ? (
-          <p className="status-text xchat-composer-attach-note xchat-composer-inline-msg">{attachNote}</p>
-        ) : null}
-        <div className="xchat-composer__row xchat-composer__row--actions">
-          <div className="xchat-composer__tools">
+        <div className="xchat-composer__grok-bar">
+          <div className="xchat-composer__grok-left">
             {tenantFileUploadEnabled ? (
               <>
                 <input
@@ -311,7 +280,7 @@ export function XchatComposerPanel({
                   <button
                     aria-busy={attachBusy}
                     aria-label="Upload file to tenant collection"
-                    className="xchat-composer__icon-btn xchat-composer__tool-btn"
+                    className="xchat-composer__grok-tool xchat-composer__grok-tool--attach"
                     disabled={loading || attachBusy || dictationActive}
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -320,20 +289,106 @@ export function XchatComposerPanel({
                   </button>
                 </XfHoverHint>
               </>
+            ) : (
+              <XfHoverHint hint="Premium+ adds tenant file uploads from the paperclip">
+                <button
+                  aria-label="Attach — Premium+ tenant uploads"
+                  className="xchat-composer__grok-tool xchat-composer__grok-tool--attach xchat-composer__grok-tool--muted"
+                  disabled
+                  type="button"
+                >
+                  <XchatComposerAttachIcon />
+                </button>
+              </XfHoverHint>
+            )}
+            <XfHoverHint hint="Open User Collections & attachments in the workspace rail">
+              <Link
+                className="xchat-composer__sources"
+                href={sourcesRailHref}
+                scroll={false}
+              >
+                <XchatComposerSourcesGridIcon />
+                <span className="xchat-composer__sources-label">Sources</span>
+              </Link>
+            </XfHoverHint>
+          </div>
+          <div className="xchat-composer__grok-field">
+            <XfHoverHint
+              className="xchat-composer__input-grow"
+              hint="Enter to send · Shift+Enter newline · Paste image (screenshot) to analyze"
+            >
+              <textarea
+                ref={composerRef}
+                aria-busy={loading}
+                className="xchat-composer__field xchat-composer__textarea xchat-composer__textarea--grok"
+                maxLength={4000}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+                  if (e.key !== "Enter" || e.shiftKey || loading || dictationActive) {
+                    return;
+                  }
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }}
+                onPaste={onComposerPaste}
+                placeholder={
+                  loading
+                    ? "Wait for reply…"
+                    : dictationActive
+                      ? "Listening… tap mic to stop"
+                      : pendingPasteImage
+                        ? "Optional caption for your screenshot…"
+                        : "Ask anything…"
+                }
+                readOnly={loading || dictationActive}
+                rows={1}
+                value={input}
+              />
+            </XfHoverHint>
+          </div>
+          <div className="xchat-composer__grok-right">
+            {!personaPickerLocked ? (
+              <div className="xchat-composer__persona-actions xchat-composer__persona-actions--grok">
+                <label className="sr-only" htmlFor="xchat-composer-persona-picker">
+                  Persona for this message
+                </label>
+                <XfHoverHint hint="Published persona for this prompt (Default = Auto)">
+                  <div className="xchat-composer__auto-pill-wrap">
+                    <select
+                      aria-label="Persona for this message"
+                      className="xchat-composer__auto-pill"
+                      disabled={personaSelectRows.length === 0 || Boolean(personaListError)}
+                      id="xchat-composer-persona-picker"
+                      onChange={(e) => {
+                        userPickedPersonaRef.current = true;
+                        setSelectedPersonaId(e.target.value);
+                      }}
+                      value={selectedPersonaId}
+                    >
+                      <option value="">Auto</option>
+                      {personaSelectRows.map((p) => (
+                        <option key={p._id} title={p.name} value={p._id}>
+                          {compactPersonaOptionLabel(p.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </XfHoverHint>
+              </div>
             ) : null}
             <XfHoverHint
               hint={
                 dictationSupported
                   ? dictationActive
                     ? "Stop dictation"
-                    : "Dictate with your microphone — review text before Send"
-                  : "Dictation requires Web Speech API support (e.g. Chrome, Safari)"
+                    : "Dictate — review text before send"
+                  : "Dictation requires Web Speech API (e.g. Chrome)"
               }
             >
               <button
                 aria-label={dictationActive ? "Stop dictation" : "Start dictation"}
                 aria-pressed={dictationActive}
-                className={`xchat-composer__icon-btn xchat-composer__tool-btn${dictationActive ? " xchat-composer__tool-btn--recording" : ""}`}
+                className={`xchat-composer__grok-tool xchat-composer__grok-tool--mic${dictationActive ? " xchat-composer__grok-tool--recording" : ""}`}
                 disabled={loading || attachBusy || !dictationSupported}
                 type="button"
                 onClick={() => {
@@ -343,41 +398,22 @@ export function XchatComposerPanel({
                 <XchatComposerMicIcon />
               </button>
             </XfHoverHint>
-          </div>
-          <div className="xchat-composer__actions-trailing">
-            {!personaPickerLocked ? (
-              <div className="xchat-composer__persona-actions">
-                <label className="sr-only" htmlFor="xchat-composer-persona-picker">
-                  Persona for this message
-                </label>
-                <XfHoverHint hint="Published persona for this prompt only">
-                  <select
-                    aria-label="Persona for this message"
-                    className="xchat-composer__persona-select xchat-composer__persona-select--inline"
-                    disabled={personaSelectRows.length === 0 || Boolean(personaListError)}
-                    id="xchat-composer-persona-picker"
-                    onChange={(e) => {
-                      userPickedPersonaRef.current = true;
-                      setSelectedPersonaId(e.target.value);
-                    }}
-                    value={selectedPersonaId}
-                  >
-                    <option value="">Default</option>
-                    {personaSelectRows.map((p) => (
-                      <option key={p._id} title={p.name} value={p._id}>
-                        {compactPersonaOptionLabel(p.name)}
-                      </option>
-                    ))}
-                  </select>
-                </XfHoverHint>
-              </div>
-            ) : null}
-            <button className="xchat-composer__send" disabled={loading || !canSend} type="submit">
-              <SendIcon className="crud-icon" />
-              Send
+            <button
+              aria-label="Send message"
+              className="xchat-composer__send-circle"
+              disabled={loading || !canSend}
+              type="submit"
+            >
+              <XchatComposerArrowUpIcon />
             </button>
           </div>
         </div>
+        {dictationError ? (
+          <p className="status-text status-error xchat-composer-inline-msg">{dictationError}</p>
+        ) : null}
+        {attachNote ? (
+          <p className="status-text xchat-composer-attach-note xchat-composer-inline-msg">{attachNote}</p>
+        ) : null}
       </form>
       <div className="xchat-composer-shortcuts">
         <div className="xchat-composer-shortcuts__row">
@@ -449,11 +485,8 @@ export function XchatComposerPanel({
         ) : null}
       </div>
       <p className="xchat-composer-hint" role="note">
-        <span className="xchat-composer-hint__pill">Beta</span>
-        <span className="xchat-composer-hint__text">
-          Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Mic dictation where supported
-          {tenantFileUploadEnabled ? " · Paperclip uploads to your tenant collection" : ""}
-        </span>
+        Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Mic dictation where supported
+        {tenantFileUploadEnabled ? " · Paperclip uploads to your tenant collection" : ""}
       </p>
     </div>
   );

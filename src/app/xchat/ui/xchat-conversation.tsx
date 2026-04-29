@@ -376,6 +376,15 @@ export function XchatConversation({
     [accountDetails.subscriptionPlan, accountDetails.isGlobalAdmin]
   );
 
+  const sourcesRailHref = useMemo(() => {
+    const base = "/xchat?rail=xchat&item=attachments";
+    const pid = workspacePortfolioId?.trim();
+    if (pid) {
+      return `${base}&portfolioId=${encodeURIComponent(pid)}`;
+    }
+    return base;
+  }, [workspacePortfolioId]);
+
   const threadUiSummary = useMemo(() => {
     const userMsgs = messages.filter((m) => m.role === "user");
     const n = userMsgs.length;
@@ -1437,6 +1446,7 @@ export function XchatConversation({
             setPasteImageError={setPasteImageError}
             setPendingPasteImage={setPendingPasteImage}
             setSelectedPersonaId={setSelectedPersonaId}
+            sourcesRailHref={sourcesRailHref}
             tenantFileUploadEnabled={tenantFileUploadEnabled}
             userPickedPersonaRef={userPickedPersonaRef}
           />

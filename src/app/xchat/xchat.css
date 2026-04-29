@@ -2725,6 +2725,276 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   background: rgba(22, 24, 28, 0.98);
 }
 
+/* Approved shell — Grok-like single bar: attach · Sources | field | Auto · mic · send */
+.xchat-composer--grok {
+  gap: 0.35rem;
+  padding: 0.42rem 0.55rem 0.48rem;
+  border-radius: 22px;
+  background: rgba(7, 8, 11, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.xchat-composer__grok-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.35rem 0.45rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .xchat-composer__grok-bar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .xchat-composer__grok-field {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .xchat-composer__grok-left {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .xchat-composer__grok-right {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
+
+.xchat-composer__grok-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.xchat-composer__grok-field {
+  min-width: 0;
+}
+
+.xchat-composer__grok-field > .xf-hover-hint.xchat-composer__input-grow {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.xchat-composer__textarea--grok {
+  min-height: 2.35rem;
+  padding: 0.48rem 0.2rem;
+  font-size: 0.9rem;
+  line-height: 1.42;
+}
+
+.xchat-composer__grok-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  flex-shrink: 0;
+}
+
+.xchat-composer__grok-tool {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--xf-text-200);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    opacity 120ms ease;
+}
+
+.xchat-composer__grok-tool:hover:not(:disabled) {
+  color: var(--xf-text-100);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.xchat-composer__grok-tool:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.xchat-composer__grok-tool--muted {
+  opacity: 0.42;
+}
+
+.xchat-composer__grok-tool--recording {
+  color: var(--xf-gain-green);
+  background: rgba(57, 255, 20, 0.08);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+}
+
+/*
+ * Paperclip + mic — Lucide stroke icons; size matches default `.xchat-composer__grok-tool` (2.2rem).
+ */
+.xchat-composer__grok-tool--attach:not(.xchat-composer__grok-tool--muted),
+.xchat-composer__grok-tool--mic:not(.xchat-composer__grok-tool--recording) {
+  color: var(--xf-text-100);
+}
+
+.xchat-composer__grok-tool--attach svg,
+.xchat-composer__grok-tool--mic svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  opacity: 1;
+  shape-rendering: geometricPrecision;
+}
+
+.xchat-composer__grok-tool--attach:hover:not(:disabled):not(.xchat-composer__grok-tool--muted),
+.xchat-composer__grok-tool--mic:hover:not(:disabled):not(.xchat-composer__grok-tool--recording) {
+  color: var(--xf-text-100);
+}
+
+.xchat-composer__grok-tool--mic.xchat-composer__grok-tool--recording {
+  color: var(--xf-gain-green);
+}
+
+.xchat-composer__sources {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.34rem 0.52rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--xf-text-300);
+  font-size: 0.78rem;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.xchat-composer__sources:hover {
+  color: var(--xf-text-100);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.xchat-composer__sources:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 2px;
+}
+
+.xchat-composer__sources-label {
+  position: relative;
+  top: 0.02em;
+}
+
+.xchat-composer__persona-actions--grok {
+  max-width: min(38vw, 9.5rem);
+}
+
+.xchat-composer__auto-pill-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+.xchat-composer__auto-pill-wrap::after {
+  content: "";
+  position: absolute;
+  right: 0.52rem;
+  top: 50%;
+  width: 0.38rem;
+  height: 0.38rem;
+  margin-top: -0.06rem;
+  border-right: 1.5px solid var(--xf-text-400);
+  border-bottom: 1.5px solid var(--xf-text-400);
+  transform: translateY(-50%) rotate(45deg);
+  pointer-events: none;
+  opacity: 0.88;
+}
+
+.xchat-composer__auto-pill {
+  appearance: none;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.34rem 1.35rem 0.34rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--xf-text-200);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.15;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xchat-composer__auto-pill:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.xchat-composer__auto-pill:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 2px;
+}
+
+.xchat-composer__send-circle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.45rem;
+  height: 2.45rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.55);
+  cursor: not-allowed;
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    color 120ms ease,
+    opacity 120ms ease;
+}
+
+.xchat-composer__send-circle svg {
+  position: relative;
+  top: -1px;
+}
+
+.xchat-composer__send-circle:not(:disabled) {
+  cursor: pointer;
+  background: var(--xf-gain-green);
+  color: var(--xf-bg-900);
+}
+
+.xchat-composer__send-circle:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.xchat-composer__send-circle:disabled {
+  opacity: 0.85;
+}
+
 .xchat-composer__row {
   display: flex;
   align-items: flex-end;
@@ -3207,6 +3477,62 @@ html[data-xf-ui="soft"] .xchat-composer {
   border-color: color-mix(in srgb, var(--xf-text-100) 16%, transparent);
   background: color-mix(in srgb, var(--xf-text-100) 5%, var(--xf-surface-700));
   box-shadow: 0 1px 0 color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+}
+
+html[data-xf-ui="soft"] .xchat-composer--grok {
+  background: color-mix(in srgb, var(--xf-text-100) 6%, var(--xf-bg-900));
+  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 10%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__sources {
+  color: var(--xf-text-400);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__sources:hover {
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__auto-pill {
+  border-color: color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background-color: color-mix(in srgb, var(--xf-text-100) 5%, var(--xf-bg-900));
+  color: var(--xf-text-100);
+  color-scheme: light;
+}
+
+html[data-xf-ui="soft"] .xchat-composer__send-circle:disabled {
+  background: color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  color: color-mix(in srgb, var(--xf-text-100) 48%, transparent);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__send-circle:not(:disabled) {
+  color: var(--xf-bg-900);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__grok-tool {
+  color: var(--xf-text-400);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__grok-tool:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  color: var(--xf-text-100);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__grok-tool--attach:not(:disabled):not(.xchat-composer__grok-tool--muted),
+html[data-xf-ui="soft"] .xchat-composer__grok-tool--mic:not(:disabled):not(.xchat-composer__grok-tool--recording) {
+  color: var(--xf-text-100);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__grok-tool--attach:hover:not(:disabled):not(.xchat-composer__grok-tool--muted),
+html[data-xf-ui="soft"] .xchat-composer__grok-tool--mic:hover:not(:disabled):not(.xchat-composer__grok-tool--recording) {
+  color: var(--xf-text-100);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__grok-tool--mic.xchat-composer__grok-tool--recording {
+  color: var(--xf-gain-green);
 }
 
 html[data-xf-ui="soft"] .xchat-composer__persona-label {
