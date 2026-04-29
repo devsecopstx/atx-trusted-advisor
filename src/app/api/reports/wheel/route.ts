@@ -104,7 +104,7 @@ const createWheelShareSchema = z.object({
           })
         )
         .min(3)
-        .max(3),
+        .max(10),
       selectionRule: z.string()
     }),
     executiveSummary: z.string(),

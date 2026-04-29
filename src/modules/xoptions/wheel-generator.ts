@@ -32,6 +32,9 @@ type LegCandidate = {
   syntheticDelta: number;
 };
 
+/** Shown in detailed report / PDF; capped at related-supplier universe size (10). */
+const RELATED_SUPPLIER_TOP_N = 10;
+
 const WHEEL_DISCLAIMER =
   "Educational analysis only. Options involve risk, assignment uncertainty, liquidity constraints, and tax complexity. Not financial advice.";
 
@@ -412,10 +415,10 @@ async function buildRelatedSuppliers(rootTicker: string): Promise<WheelRelatedSu
   const candidates = evaluated.filter((candidate): candidate is WheelRelatedSupplierCandidate => candidate !== null);
   const ranked = candidates
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
+    .slice(0, RELATED_SUPPLIER_TOP_N);
   const topCandidates = [...ranked];
-  if (topCandidates.length < 3) {
-    const missing = 3 - topCandidates.length;
+  if (topCandidates.length < RELATED_SUPPLIER_TOP_N) {
+    const missing = RELATED_SUPPLIER_TOP_N - topCandidates.length;
     const used = new Set(topCandidates.map((candidate) => candidate.symbol));
     const fallback = supplierUniverse
       .filter((supplier) => !used.has(supplier.symbol))

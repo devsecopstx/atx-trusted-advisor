@@ -169,6 +169,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "reports"
   },
   {
+    path: "/api/reports/wheel/apply-watchlist",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "reports"
+  },
+  {
     path: "/api/reports/options-scan",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "reports"

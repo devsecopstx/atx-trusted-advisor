@@ -104,7 +104,7 @@ function exportWheelPdf(report: WheelGeneratedPayload, generatedByName: string):
   const yAfterBreakdown = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 620) + 12;
   autoTable(doc, {
     startY: yAfterBreakdown,
-    head: [["Top Related Supplier Candidates", "Relationship", "Avg IV", "Est. Wheel Yield"]],
+    head: [["Related Supplier Candidates (ranked)", "Relationship", "Avg IV", "Est. Wheel Yield"]],
     body: report.relatedSuppliers.topCandidates.map((supplier) => [
       `${supplier.symbol} (${supplier.companyName})`,
       supplier.relationship,
@@ -145,6 +145,9 @@ export function WheelReportView({
   const [shareBusy, setShareBusy] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareData, setShareData] = useState<ShareResponse | null>(null);
+  const [relatedWlBusy, setRelatedWlBusy] = useState(false);
+  const [relatedWlMsg, setRelatedWlMsg] = useState<string | null>(null);
+  const [relatedWlErr, setRelatedWlErr] = useState<string | null>(null);
 
   const selectedIdea = useMemo(
     () => report.ideas.find((idea) => idea.ideaId === activeIdeaId) ?? bestIdea(report.ideas),
@@ -286,6 +289,59 @@ export function WheelReportView({
       setShareError(error instanceof Error ? error.message : "Could not create wheel share link");
     } finally {
       setShareBusy(false);
+    }
+  }
+
+  async function addRelatedSuppliersToWatchlist(): Promise<void> {
+    setRelatedWlBusy(true);
+    setRelatedWlErr(null);
+    setRelatedWlMsg(null);
+    try {
+      const root = report.relatedSuppliers.rootTicker.trim().toUpperCase();
+      const symbols = [
+        ...new Set(
+          report.relatedSuppliers.topCandidates
+            .map((c) => c.symbol.trim().toUpperCase())
+            .filter((s) => /^[A-Z0-9.\-]{1,32}$/.test(s))
+            .filter((s) => s !== root)
+        )
+      ];
+      if (symbols.length === 0) {
+        setRelatedWlErr("No symbols to add.");
+        return;
+      }
+      const response = await fetch("/api/reports/wheel/apply-watchlist", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rootTicker: report.relatedSuppliers.rootTicker,
+          symbols,
+          generatedAtIso: report.generatedAtIso
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        data?: {
+          addedNew: number;
+          mergedExisting: number;
+          watchlistSymbolCount: number;
+        };
+      };
+      if (!response.ok || !payload.data) {
+        if (response.status === 401) {
+          throw new Error("Sign in to add related supplier symbols to your watchlist.");
+        }
+        throw new Error(payload.error ?? "Could not update watchlist");
+      }
+      const { addedNew, mergedExisting, watchlistSymbolCount } = payload.data;
+      setRelatedWlMsg(
+        `Added ${addedNew} new watchlist row(s); updated ${mergedExisting} existing row(s). Total symbols: ${watchlistSymbolCount}.`
+      );
+    } catch (error) {
+      setRelatedWlErr(error instanceof Error ? error.message : "Could not update watchlist");
+    } finally {
+      setRelatedWlBusy(false);
     }
   }
 
@@ -442,11 +498,31 @@ export function WheelReportView({
       </section>
 
       <section className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--xf-gain-green)_24%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_8%,transparent)] p-3">
-        <h3 className="text-sm font-semibold text-[var(--xf-text-100)]">
-          Top 3 of {report.relatedSuppliers.universeScanned} Related Supplier Wheel Candidates
-        </h3>
+        <div className="flex flex-wrap items-start justify-between gap-2 gap-y-2">
+          <h3 className="text-sm font-semibold text-[var(--xf-text-100)]">
+            {`Top ${report.relatedSuppliers.topCandidates.length} of ${report.relatedSuppliers.universeScanned} Related Supplier Wheel Candidates`}
+          </h3>
+          <button
+            className="xchat-scan-action-btn xchat-scan-action-btn--gain shrink-0"
+            disabled={relatedWlBusy || report.relatedSuppliers.topCandidates.length === 0}
+            type="button"
+            onClick={() => void addRelatedSuppliersToWatchlist()}
+          >
+            {relatedWlBusy ? "Adding…" : "Add all to watchlist"}
+          </button>
+        </div>
         <p className="mt-1 text-xs text-[var(--xf-text-300)]">{report.relatedSuppliers.selectionRule}</p>
-        <div className="mt-2 grid gap-2 md:grid-cols-3">
+        {relatedWlMsg ? (
+          <p className="mt-2 text-xs text-[var(--xf-gain-green)]" role="status">
+            {relatedWlMsg}
+          </p>
+        ) : null}
+        {relatedWlErr ? (
+          <p className="mt-2 text-xs text-[var(--xf-danger-400)]" role="alert">
+            {relatedWlErr}
+          </p>
+        ) : null}
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
           {report.relatedSuppliers.topCandidates.map((supplier) => (
             <article
               className="rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-2.5"

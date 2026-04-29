@@ -561,6 +561,25 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "404": jsonResponse("Default portfolio or watchlist not found.", "ErrorResponse")
     }
   },
+  "POST /api/reports/wheel/apply-watchlist": {
+    summary: "Add wheel related-supplier symbols to the default portfolio watchlist",
+    description:
+      "Session-scoped bulk upsert from Wheel Strategy report “Related Supplier Wheel Candidates”. Tags rows with a wheel_report_related rationale and review status.",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("WheelRelatedApplyWatchlistRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Related supplier symbols applied to watchlist.", "WheelRelatedApplyWatchlistResponseEnvelope"),
+      "400": jsonResponse("Invalid JSON payload.", "ValidationErrorResponse"),
+      "401": json401Session(),
+      "404": jsonResponse("Default portfolio or watchlist not found.", "ErrorResponse")
+    }
+  },
   "POST /api/internal/scheduler/execute-task": {
     summary: "Execute one Mongo-defined scheduled task on Next (JVM delegate)",
     description:
@@ -1193,6 +1212,37 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
               }
             ]
           }
+        }
+      }
+    }
+  },
+  WheelRelatedApplyWatchlistRequest: {
+    type: "object",
+    required: ["rootTicker", "symbols"],
+    properties: {
+      rootTicker: { type: "string", minLength: 1, maxLength: 16 },
+      symbols: {
+        type: "array",
+        minItems: 1,
+        maxItems: 20,
+        items: { type: "string", minLength: 1, maxLength: 32 }
+      },
+      generatedAtIso: { type: "string", format: "date-time" }
+    }
+  },
+  WheelRelatedApplyWatchlistResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["portfolioId", "requestedSymbols", "addedNew", "mergedExisting", "watchlistSymbolCount"],
+        properties: {
+          portfolioId: { type: "string" },
+          requestedSymbols: { type: "integer", minimum: 0 },
+          addedNew: { type: "integer", minimum: 0 },
+          mergedExisting: { type: "integer", minimum: 0 },
+          watchlistSymbolCount: { type: "integer", minimum: 0 }
         }
       }
     }
