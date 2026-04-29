@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "aTx Finance"
+    title: "aTx Advisor"
   },
   icons: {
     icon: "/pwa/atx-logo-512.png",
@@ -82,7 +82,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       <head>
         <meta content="yes" name="apple-mobile-web-app-capable" />
         <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style" />
-        <meta content="aTx Finance" name="apple-mobile-web-app-title" />
+        <meta content="aTx Advisor" name="apple-mobile-web-app-title" />
         <link href="/manifest.webmanifest" rel="manifest" />
         <link href="/pwa/atx-logo-512.png" rel="apple-touch-icon" />
       </head>

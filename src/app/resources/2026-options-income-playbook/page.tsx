@@ -136,7 +136,7 @@ export default async function Resources2026OptionsIncomePlaybookPage() {
           <p className="resources-doc-section__desc">
             2026 rewards discipline: defined-risk income structures, explicit roll rules, and position sizing that
             survives gaps and vol spikes. The goal is repeatable premium capture and assignment-aware exits—not
-            lottery tickets. xFinance defaults skew conservative on strike distance and book concentration; you stay
+            lottery tickets. aTx Advisor defaults skew conservative on strike distance and book concentration; you stay
             in control while Grok/xChat helps compare scenarios against your live workspace context.
           </p>
           <p className="resources-doc-footnote">

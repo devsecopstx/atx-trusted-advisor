@@ -45,7 +45,7 @@ function exportWheelPdf(report: WheelGeneratedPayload, generatedByName: string):
   doc.setTextColor(189, 255, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(19);
-  doc.text("aTx Finance - Wheel Strategy Professional Report", 42, 42);
+  doc.text("aTx Advisor - Wheel Strategy Professional Report", 42, 42);
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.text(`Prepared for ${generatedByName} | Report ID ${report.generatedAtIso.slice(0, 19)}`, 42, 58);

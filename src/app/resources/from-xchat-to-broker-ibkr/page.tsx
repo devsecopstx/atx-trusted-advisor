@@ -80,7 +80,7 @@ export default async function ResourcesFromXchatToBrokerIbkrPage() {
             From xChat Idea to Broker Execution: Automating Options Workflows with aTx Trusted Advisory + IBKR
           </h1>
           <p className="resources-doc-hero__copy">
-            <strong>aTx Trusted Advisory</strong> ships the <strong>xFinance</strong> workspace: Grok-backed xChat for
+            <strong>aTx Trusted Advisory</strong> ships the <strong>aTx Advisor</strong> workspace: Grok-backed xChat for
             ideas, xOptions for stepped structures, and an optional <strong>Interactive Brokers</strong> Client Portal
             link for read-side validation — tied together with correlation-ID audit trails so support and compliance can
             follow what happened.

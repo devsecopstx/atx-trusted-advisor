@@ -8,7 +8,7 @@ export function LoginPageHeader() {
         <span className="mt-1 inline-flex items-center gap-1 sm:mt-0">
           <AtxFinanceMark size={30} />
           <LightningBolt size={24} />
-          <span className="font-bold text-[var(--xf-text-100)]">Finance</span>
+          <span className="font-bold text-[var(--xf-text-100)]">Advisor</span>
         </span>
       </h1>
       <p className="text-sm leading-relaxed text-[var(--xf-text-muted)]">

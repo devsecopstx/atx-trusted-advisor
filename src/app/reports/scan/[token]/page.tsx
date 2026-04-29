@@ -19,7 +19,7 @@ export default async function PublicOptionsScanReportPage({ params }: PageProps)
     <main className="min-h-screen bg-[var(--xf-bg-900)] px-4 py-6 text-[var(--xf-text-100)] sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <p className="text-[0.7rem] uppercase tracking-[0.1em] text-[var(--xf-text-400)]">
-          Shared xFinance scan report · expires {report.expiresAt.toLocaleString()}
+          Shared aTx Advisor scan report · expires {report.expiresAt.toLocaleString()}
         </p>
         <OptionsActionScanReport
           data={{

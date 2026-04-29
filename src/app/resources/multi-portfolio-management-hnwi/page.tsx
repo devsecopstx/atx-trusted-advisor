@@ -20,7 +20,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Multi-Portfolio Management for HNWI: xAI Outlooks | Resources",
   description:
-    "Manage multiple books, accounts, and investment outlooks in one secure workspace. xAI-guided reviews, IBKR-linked snapshots where available, and Mongo-backed portfolio data in xFinance.",
+    "Manage multiple books, accounts, and investment outlooks in one secure workspace. xAI-guided reviews, IBKR-linked snapshots where available, and Mongo-backed portfolio data in aTx Advisor.",
   keywords: ["multi portfolio management", "HNWI portfolio tools", "options portfolio software"],
   alternates: {
     canonical: "/resources/multi-portfolio-management-hnwi",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Multi-Portfolio Management for HNWI: xAI Outlooks | Resources",
     description:
-      "Manage multiple books, accounts, and investment outlooks in one secure workspace. xAI-guided reviews, IBKR-linked snapshots where available, and Mongo-backed portfolio data in xFinance.",
+      "Manage multiple books, accounts, and investment outlooks in one secure workspace. xAI-guided reviews, IBKR-linked snapshots where available, and Mongo-backed portfolio data in aTx Advisor.",
     type: "article",
   },
 };
@@ -75,7 +75,7 @@ export default async function ResourcesMultiPortfolioManagementHnwiPage() {
             Integrations
           </h1>
           <p className="resources-doc-hero__copy">
-            High-net-worth workflows rarely live in a single account. xFinance is built around a{" "}
+            High-net-worth workflows rarely live in a single account. aTx Advisor is built around a{" "}
             <strong>tenant-scoped, Mongo-backed book of record</strong> for positions and watchlists — with a clear{" "}
             <strong>active portfolio workspace</strong> so Grok-backed prompts and desk tools reference the sleeve you
             intend, not a blended accidental default.

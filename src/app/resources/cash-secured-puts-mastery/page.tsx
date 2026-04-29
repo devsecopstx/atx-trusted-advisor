@@ -20,7 +20,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Cash-Secured Puts Mastery: Conservative Income for HNWI Portfolios | Resources",
   description:
-    "Build a conservative options income engine with cash-secured puts and the wheel. xAI guardrails, position sizing, and multi-portfolio workspace integration in xFinance.",
+    "Build a conservative options income engine with cash-secured puts and the wheel. xAI guardrails, position sizing, and multi-portfolio workspace integration in aTx Advisor.",
   keywords: ["cash secured puts", "conservative options income", "wheel strategy conservative"],
   alternates: {
     canonical: "/resources/cash-secured-puts-mastery",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Cash-Secured Puts Mastery: Conservative Income for HNWI Portfolios | Resources",
     description:
-      "Build a conservative options income engine with cash-secured puts and the wheel. xAI guardrails, position sizing, and multi-portfolio workspace integration in xFinance.",
+      "Build a conservative options income engine with cash-secured puts and the wheel. xAI guardrails, position sizing, and multi-portfolio workspace integration in aTx Advisor.",
     type: "article",
   },
 };
@@ -127,7 +127,7 @@ export default async function ResourcesCashSecuredPutsMasteryPage() {
           <p className="resources-doc-section__desc">
             Conservative programs usually cap each CSP as a fraction of total liquid net worth or per-ticker book,
             enforce minimum distance OTM (delta or % below spot), and document roll/close rules before trade one.
-            xFinance surfaces portfolio and watchlist context in workspace flows so prompts and reviews reference{" "}
+            aTx Advisor surfaces portfolio and watchlist context in workspace flows so prompts and reviews reference{" "}
             <strong>your</strong> scoped book — not a generic chain screenshot.
           </p>
           <ul className="resources-doc-list">
@@ -164,7 +164,7 @@ export default async function ResourcesCashSecuredPutsMasteryPage() {
         <section className="resources-doc-section" id="workspace">
           <h2>Multi-portfolio workspace &amp; flags</h2>
           <p className="resources-doc-section__desc">
-            xFinance ties holdings, watchlist, and xChat preload to the <strong>active portfolio workspace</strong> you
+            aTx Advisor ties holdings, watchlist, and xChat preload to the <strong>active portfolio workspace</strong> you
             select — important when one login spans multiple books (family entities, sleeves, or paper vs. live). Scope
             prompts and imports to the portfolio you mean so CSP sizing language matches that book’s cash and risk
             flags.

@@ -115,7 +115,7 @@ export function XchatAttachmentsPanel() {
       </p>
       {!data?.collectionConfigured ? (
         <p className="status-text text-[var(--xf-text-400)]">
-          Tenant xAI folder not provisioned yet — uploads still store in xFinance; linking runs once the collection exists.
+          Tenant xAI folder not provisioned yet — uploads still store in aTx Advisor; linking runs once the collection exists.
         </p>
       ) : null}
       <label className="inline-flex cursor-pointer flex-col gap-1">

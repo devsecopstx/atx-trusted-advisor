@@ -12,4 +12,4 @@ export const IBKR_CONSENT_VERSION = 1;
 
 export const IBKR_CONSENT_COPY_SUMMARY =
   "Connect IBKR via Client Portal — view balances and (in later phases) place trades and automations. " +
-  "You authorize xFinance to call your IBKR Client Portal gateway using a session you provide; we do not store your IBKR password.";
+  "You authorize aTx Advisor to call your IBKR Client Portal gateway using a session you provide; we do not store your IBKR password.";

@@ -20,7 +20,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Covered Call Strategies for 2026: Balanced Income | Resources",
   description:
-    "Master covered calls for balanced returns in 2026. xAI strike selection, rolling logic, and integration with existing stock holdings in the xFinance workspace.",
+    "Master covered calls for balanced returns in 2026. xAI strike selection, rolling logic, and integration with existing stock holdings in the aTx Advisor workspace.",
   keywords: ["covered calls 2026", "balanced options strategy", "covered call wheel"],
   alternates: {
     canonical: "/resources/covered-calls-2026-balanced-income",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Covered Call Strategies for 2026: Balanced Income | Resources",
     description:
-      "Master covered calls for balanced returns in 2026. xAI strike selection, rolling logic, and integration with existing stock holdings in the xFinance workspace.",
+      "Master covered calls for balanced returns in 2026. xAI strike selection, rolling logic, and integration with existing stock holdings in the aTx Advisor workspace.",
     type: "article",
   },
 };
@@ -153,7 +153,7 @@ export default async function ResourcesCoveredCalls2026BalancedIncomePage() {
         <section className="resources-doc-section" id="holdings">
           <h2>Seamless integration with stock holdings</h2>
           <p className="resources-doc-section__desc">
-            xFinance pulls positions from your <strong>scoped portfolio workspace</strong> so xChat and desk flows can
+            aTx Advisor pulls positions from your <strong>scoped portfolio workspace</strong> so xChat and desk flows can
             speak in terms of shares on hand, not abstract tickers. Sync the active book before asking Grok to compare
             strikes against “my NVDA/META sleeve” — especially when you maintain multiple portfolios under one login.
           </p>

@@ -74,7 +74,7 @@ export default async function ResourcesOptionsRiskManagementFrameworksPage() {
             Options Risk Management Frameworks: Conservative, Balanced &amp; Aggressive Playbooks Powered by xAI
           </h1>
           <p className="resources-doc-hero__copy">
-            Risk management is not a single dashboard — it is <strong>policy + sizing + review rhythm</strong>. In xFinance,
+            Risk management is not a single dashboard — it is <strong>policy + sizing + review rhythm</strong>. In aTx Advisor,
             Grok-backed xChat reads your <strong>scoped workspace</strong> (portfolio and watchlist context when
             available) so discussions align with the book you selected, while personas and tool scope provide guardrails
             against generic off-book suggestions.

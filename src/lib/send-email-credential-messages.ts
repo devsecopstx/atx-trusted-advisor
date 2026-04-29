@@ -10,13 +10,13 @@ export async function sendAccessApprovedPasswordInviteEmail(input: {
 }): Promise<boolean> {
   const origin = resolvePublicAppOrigin(input.request);
   const setPasswordLink = `${origin}/login/set-password?token=${encodeURIComponent(input.rawToken)}`;
-  const subject = "Your ATX Finance Advisory access is approved — set your password";
+  const subject = "Your aTx Trusted Advisory access is approved — set your password";
   const text = [
     `Dear ${input.firstName || "Valued Client"},`,
     "",
-    "Your access request has been approved. Welcome to **ATX Finance Advisory**.",
+    "Your access request has been approved. Welcome to **aTx Trusted Advisory**.",
     "",
-    "We built aTx Finance as your personal command center for sophisticated portfolio management, xAI-powered conversational strategy (xChat), and institutional-grade options analysis (xOptions).",
+    "We built **aTx Advisor** as your personal command center for sophisticated portfolio management, xAI-powered conversational strategy (xChat), and institutional-grade options analysis (xOptions).",
     "",
     "To complete your setup and sign in with email + password, please set your secure password now:",
     "",
@@ -49,13 +49,13 @@ export async function sendAccessApprovedSignInEmail(input: {
   const origin = resolvePublicAppOrigin(input.request);
   const signInLink = `${origin}/login`;
   const forgotPasswordLink = `${origin}/login/forgot-password`;
-  const subject = "Your ATX Finance Advisory access is approved";
+  const subject = "Your aTx Trusted Advisory access is approved";
   const text = [
     `Dear ${input.firstName || "Valued Client"},`,
     "",
-    "Your access request has been approved. Welcome to **ATX Finance Advisory**.",
+    "Your access request has been approved. Welcome to **aTx Trusted Advisory**.",
     "",
-    "We built aTx Finance as your personal command center for sophisticated portfolio management, xAI-powered conversational strategy (xChat), and institutional-grade options analysis (xOptions).",
+    "We built **aTx Advisor** as your personal command center for sophisticated portfolio management, xAI-powered conversational strategy (xChat), and institutional-grade options analysis (xOptions).",
     "",
     "You can sign in now:",
     signInLink,
@@ -86,7 +86,7 @@ export async function sendPasswordResetEmail(input: {
 }): Promise<boolean> {
   const origin = resolvePublicAppOrigin(input.request);
   const link = `${origin}/login/reset-password?token=${encodeURIComponent(input.rawToken)}`;
-  const subject = "Reset your xFinance password";
+  const subject = "Reset your aTx Advisor password";
   const text = [
     "We received a request to reset your password.",
     "",
@@ -105,7 +105,7 @@ export async function sendEmailVerificationEmail(input: {
 }): Promise<boolean> {
   const origin = resolvePublicAppOrigin(input.request);
   const link = `${origin}/login/verify-email?token=${encodeURIComponent(input.rawToken)}`;
-  const subject = "Verify your email for aTx Finance";
+  const subject = "Verify your email for aTx Advisor";
   const text = [
     "Confirm your email to finish account activation.",
     "",

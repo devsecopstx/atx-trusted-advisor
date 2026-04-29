@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const DELIVERY_CHANNEL_TEST_EMAIL_DEFAULT_SUBJECT = "aTx Finance — delivery channel test";
+export const DELIVERY_CHANNEL_TEST_EMAIL_DEFAULT_SUBJECT = "aTx Advisor — delivery channel test";
 
 const MAX_SUBJECT_LEN = 200;
 

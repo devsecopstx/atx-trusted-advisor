@@ -137,7 +137,7 @@ export function HomeLanding({ formspreeEndpoint = "", googleLoginHref = null }: 
               aTx⚡
             </span>
             <span className="text-base font-semibold tracking-tight text-gray-200 sm:text-lg md:text-xl">
-              Finance — Powered by xAI
+              Advisor — Powered by xAI
             </span>
             <span
               className="text-lg font-semibold tracking-tight sm:text-xl md:text-2xl"

@@ -19,8 +19,8 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Top 10 HNWI xChat Prompts | aTx Trusted Advisory | Resources",
   description:
-    "Production-grade xChat prompt patterns for HNWI books: conservative, balanced, and aggressive biases. Portfolio context, xOptions handoff, IBKR snapshots when linked — engineered for the full xFinance stack.",
-  keywords: ["HNWI xChat prompts", "options prompts xFinance", "xChat workspace prompts", "conservative options prompts"],
+    "Production-grade xChat prompt patterns for HNWI books: conservative, balanced, and aggressive biases. Portfolio context, xOptions handoff, IBKR snapshots when linked — engineered for the full aTx Advisor stack.",
+  keywords: ["HNWI xChat prompts", "options prompts aTx Advisor", "xChat workspace prompts", "conservative options prompts"],
   alternates: {
     canonical: "/resources/top-10-hnwi-xchat-prompts",
   },

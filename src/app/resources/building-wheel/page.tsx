@@ -147,7 +147,7 @@ export default async function ResourcesBuildingWheelPage() {
         </section>
 
         <section className="resources-doc-section" id="where-to-run">
-          <h2>Where to run this in xFinance</h2>
+          <h2>Where to run this in aTx Advisor</h2>
           <div className="resources-doc-grid">
             <article className="resources-doc-card">
               <h3>xStrategyBuilder</h3>

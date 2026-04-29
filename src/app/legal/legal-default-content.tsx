@@ -5,8 +5,8 @@
 
 const EFFECTIVE_NOTE = "Effective as of March 22, 2026. This summary is provided for transparency; it is not legal advice.";
 
-/** Operating name used in Imprint (plain text; wordmark may use ⚡ elsewhere). */
-const ATX_FINANCE_OPERATING_NAME = "aTx Finance";
+/** App / product name used in Imprint (plain text; wordmark may use ⚡ elsewhere). */
+const PRODUCT_APP_NAME = "aTx Advisor";
 /** User-facing product name in in-app legal stubs (matches chrome / marketing). */
 const PRODUCT_PUBLIC_NAME = "aTx Trusted Advisory";
 const VULNERABILITY_TIPS =
@@ -22,7 +22,7 @@ export function LegalImprintContent() {
       </p>
       <h2>Service Provider</h2>
       <p>
-        {ATX_FINANCE_OPERATING_NAME} operates the {PRODUCT_PUBLIC_NAME} platform and associated product surfaces,
+        {PRODUCT_APP_NAME} operates the {PRODUCT_PUBLIC_NAME} platform and associated product surfaces,
         including xChat, portfolio workflows, and related admin interfaces.
       </p>
       <h2>Scope of Publication</h2>

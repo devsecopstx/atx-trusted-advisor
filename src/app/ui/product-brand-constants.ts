@@ -1,6 +1,6 @@
 /**
  * User-facing product naming (xChat shell, marketing, footer, legal prose).
- * Visual lockup: aTx mark + ⚡ + “Trusted Advisory”; persona slug “xFinance” remains a separate backend default.
+ * Visual lockup: aTx mark + ⚡ + “Trusted Advisory”; user-facing product name **aTx Advisor**. Legacy persona slug “xFinance” may remain in backend defaults.
  */
 export const USER_PRODUCT_HOME_ARIA_LABEL = "aTx Trusted Advisory — home";
 

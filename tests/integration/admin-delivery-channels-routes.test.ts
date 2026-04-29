@@ -248,7 +248,7 @@ describe("admin delivery-channels routes", () => {
     expect(deskMocks.sendDeskPlainEmailWithRetry).toHaveBeenCalledTimes(1);
     const mailCall = deskMocks.sendDeskPlainEmailWithRetry.mock.calls[0];
     expect(mailCall?.[0]).toBe("ops@example.com");
-    expect(mailCall?.[1]).toBe("aTx Finance — delivery channel test");
+    expect(mailCall?.[1]).toBe("aTx Advisor — delivery channel test");
     expect(mailCall?.[2]).toMatch(/^hello from atx \| tenant=507f1f77bcf86cd799439022 \| at=/);
     expect(slackMocks.postSlackIncomingWebhook).not.toHaveBeenCalled();
   });
@@ -278,7 +278,7 @@ describe("admin delivery-channels routes", () => {
     expect(mailJson.detail).toContain("safe@example.com");
     expect(deskMocks.sendDeskPlainEmailWithRetry).toHaveBeenCalledWith(
       "safe@example.com",
-      "aTx Finance — delivery channel test",
+      "aTx Advisor — delivery channel test",
       expect.stringMatching(/^hello from atx \| tenant=507f1f77bcf86cd799439022 \| at=/)
     );
   });

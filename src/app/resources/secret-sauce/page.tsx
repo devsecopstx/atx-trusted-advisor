@@ -54,7 +54,7 @@ export default async function ResourcesSecretSaucePage() {
     : null;
   const shellContent = (
     <>
-      <article className="resources-doc-shell" aria-label="xFinance secret sauce guide">
+      <article className="resources-doc-shell" aria-label="aTx Advisor secret sauce guide">
         <header className="resources-doc-hero">
           <p className="resources-doc-hero__eyebrow">Resources · Secret Sauce</p>
           <h1 className="resources-doc-hero__title">How xChat gives higher-quality answers</h1>

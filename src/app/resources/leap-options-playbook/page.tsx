@@ -20,7 +20,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "LEAP Options Playbook: Growth + Income | Resources",
   description:
-    "Use LEAPs for leveraged upside while harvesting income. Aggressive outlook frameworks with xAI and the xOptions strategy builder in xFinance.",
+    "Use LEAPs for leveraged upside while harvesting income. Aggressive outlook frameworks with xAI and the xOptions strategy builder in aTx Advisor.",
   keywords: ["LEAP options strategy", "aggressive options trading", "LEAPs income"],
   alternates: {
     canonical: "/resources/leap-options-playbook",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "LEAP Options Playbook: Growth + Income | Resources",
     description:
-      "Use LEAPs for leveraged upside while harvesting income. Aggressive outlook frameworks with xAI and the xOptions strategy builder in xFinance.",
+      "Use LEAPs for leveraged upside while harvesting income. Aggressive outlook frameworks with xAI and the xOptions strategy builder in aTx Advisor.",
     type: "article",
   },
 };

@@ -26,7 +26,7 @@ const DEFAULT_MARKETING_TEMPLATES: Array<
     name: "Monday Market Pulse",
     platforms: ["x", "linkedin"],
     contentTemplate:
-      "Monday Market Pulse ({date}): defined-risk setups > random swing trades. Use xFinance scanners to shortlist covered calls, protective puts, and wheel entries in minutes.",
+      "Monday Market Pulse ({date}): defined-risk setups > random swing trades. Use aTx Advisor scanners to shortlist covered calls, protective puts, and wheel entries in minutes.",
     defaultUtm: { utm_source: "x", utm_campaign: "weekly-pulse", utm_medium: "owned-social" },
     disclaimerMode: "required",
     estimatedEngagement: "high"

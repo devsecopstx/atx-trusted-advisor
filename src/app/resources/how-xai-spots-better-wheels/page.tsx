@@ -135,7 +135,7 @@ export default async function ResourcesHowXaiSpotsBetterWheelsPage() {
           <h2>The human bias problem</h2>
           <p className="resources-doc-section__desc">
             Human traders anchor to recent winners, fight the last war, and skim chains under time pressure. Grok-backed
-            workflows in xFinance combine chain-aware reasoning with portfolio context so you compare strikes,
+            workflows in aTx Advisor combine chain-aware reasoning with portfolio context so you compare strikes,
             expirations, and roll paths against your actual book — not a generic screenshot. The strategy-engine lineage
             behind xOptions encodes decades of desk-style checks; paired with Grok, you get faster iteration across
             scenarios than most solo workflows allow.
