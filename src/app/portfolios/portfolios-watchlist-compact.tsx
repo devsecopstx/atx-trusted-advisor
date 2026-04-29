@@ -44,7 +44,7 @@ type Props = {
   deskHints?: PortfoliosWorkspaceDeskHints | null;
   /** Increment to re-fetch hot IV/OI rows after watchlist mutations elsewhere on the page. */
   refreshKey?: number;
-  /** When set, “View & manage watchlist” stays on the current desk (e.g. portfolio inline tab). */
+  /** When set, “View & manage watchlist” / empty-state actions open inline instead of navigating to `/watchlist`. */
   onOpenFullWatchlist?: () => void;
 };
 
@@ -142,8 +142,12 @@ export function PortfoliosWatchlistCompact({
           </p>
           {deskHints && deskHints.watchlistSymbolCount > 0 ? (
             <p className="mt-1 mb-0 max-w-[22rem] text-[0.58rem] leading-snug text-[var(--xf-text-500)]">
-              Same desk as your Watchlist tab (one list per user). The table below only shows underlyings that clear the
-              liquid IV/OI bar — not a second watchlist.
+              Same tenant watchlist as{" "}
+              <Link className="text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] underline-offset-2 hover:underline" href={watchlistHref}>
+                /watchlist
+              </Link>{" "}
+              (one list per user). The table below only shows underlyings that clear the liquid IV/OI bar — not a second
+              list.
             </p>
           ) : null}
         </div>

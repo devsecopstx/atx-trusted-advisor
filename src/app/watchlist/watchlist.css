@@ -299,8 +299,8 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
     3rem minmax(6rem, 1.3fr) minmax(5rem, 1fr) minmax(4.5rem, 0.7fr) minmax(4.25rem, 0.65fr)
     minmax(4.5rem, 0.65fr) minmax(4.5rem, 0.65fr) minmax(4.5rem, 0.7fr) minmax(6.2rem, 0.9fr)
     minmax(4.3rem, 0.62fr) minmax(6rem, 0.85fr) minmax(4.2rem, 0.6fr) minmax(5rem, 0.72fr)
-    minmax(4.6rem, 0.68fr) minmax(9rem, 1.32fr) minmax(4.25rem, 0.65fr) minmax(6.75rem, 0.92fr)
-    minmax(6.25rem, 0.95fr);
+    minmax(4.6rem, 0.68fr) minmax(9rem, 1.32fr) minmax(4.25rem, 0.65fr) minmax(6.25rem, 0.95fr)
+    minmax(6.75rem, 0.92fr);
   width: 100%;
   box-sizing: border-box;
   align-items: start;
@@ -364,6 +364,30 @@ button.xf-watchlist-sort-btn:hover {
   vertical-align: top;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--xf-text-300);
+}
+
+.xf-watchlist-table-cell--wrap {
+  white-space: normal;
+  word-break: break-word;
+}
+
+@media (max-width: 767px) {
+  .xf-watchlist-table td {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .xf-watchlist-table-mono.xf-watchlist-table-nowrap {
+    white-space: normal;
+  }
+
+  .xf-watchlist-rationale-preview {
+    white-space: normal;
+  }
+
+  .xf-watchlist-spot-cell__52w {
+    white-space: normal;
+  }
 }
 
 .xf-watchlist-table tbody tr:hover td {
@@ -514,25 +538,6 @@ button.xf-watchlist-sort-btn:hover {
   font-size: 0.68rem;
   color: var(--xf-text-500);
   line-height: 1.2;
-}
-
-.xf-watchlist-sym-cell__sparkline {
-  margin-top: 0.28rem;
-  width: min(10rem, 100%);
-  color: color-mix(in srgb, var(--xf-gain-green) 72%, var(--xf-text-300));
-}
-
-.xf-watchlist-sparkline {
-  display: block;
-  width: 100%;
-  height: 1.05rem;
-  opacity: 0.88;
-}
-
-.xf-watchlist-sparkline-placeholder {
-  display: inline-block;
-  font-size: 0.68rem;
-  color: var(--xf-text-500);
 }
 
 a.xf-watchlist-sym-cell__ext {

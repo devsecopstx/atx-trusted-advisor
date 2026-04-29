@@ -1010,23 +1010,6 @@
   color: var(--xf-gain-green);
 }
 
-.portfolio-account-manage-bar__build-strategy {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.875rem;
-  font-weight: 650;
-  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-gain-green)) 92%, var(--xf-text-100));
-  text-decoration: none;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
-}
-
-.portfolio-account-manage-bar__build-strategy:hover {
-  color: var(--xf-tenant-accent, var(--xf-gain-green));
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .portfolio-aside-pack {
   border-radius: var(--xf-radius-md);
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);

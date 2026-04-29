@@ -9,6 +9,7 @@ import {
     useMemo,
     useRef,
     useState,
+    useSyncExternalStore,
     useTransition,
     type ChangeEvent,
     type CSSProperties
@@ -30,6 +31,11 @@ import {
 } from "@/app/admin/ui/crud-icons";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
+import {
+    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
+    XCHAT_PENDING_PROMPT_STORAGE_KEY,
+    XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME
+} from "@/lib/xchat/xchat-pending-prompt";
 import { XF_FONT_SANS_FALLBACK } from "@/lib/xf-font-stacks";
 import type { WatchlistRowStatus } from "@/modules/core-admin/types";
 import {
@@ -479,34 +485,23 @@ function quickScore(row: WatchlistRow): number | null {
   return Math.round(score01 * 100);
 }
 
-function Sparkline7d({ values }: { values: number[] | null | undefined }) {
-  if (!values || values.length < 2) {
-    return <span className="xf-watchlist-sparkline-placeholder">—</span>;
-  }
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const points = values
-    .map((value, index) => {
-      const x = (index / Math.max(values.length - 1, 1)) * 100;
-      const y = 100 - ((value - min) / span) * 100;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  return (
-    <svg
-      aria-label="7-day sparkline"
-      className="xf-watchlist-sparkline"
-      preserveAspectRatio="none"
-      viewBox="0 0 100 100"
-    >
-      <polyline fill="none" points={points} stroke="currentColor" strokeWidth="6" />
-    </svg>
-  );
-}
-
 const WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX = 64;
 const WATCHLIST_VIRTUAL_MIN_ROWS = 10;
+
+function useWatchlistViewportAllowsVirtualize(): boolean {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") {
+        return () => {};
+      }
+      const mq = window.matchMedia("(min-width: 768px)");
+      mq.addEventListener("change", onStoreChange);
+      return () => mq.removeEventListener("change", onStoreChange);
+    },
+    () => (typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : true),
+    () => true
+  );
+}
 
 type WatchlistRowTrProps = {
   row: WatchlistRow;
@@ -532,6 +527,7 @@ type WatchlistRowTrProps = {
   aiSuggestBusy: boolean;
   onAiSuggest: (row: WatchlistRow) => void;
   onShowQuote: (row: WatchlistRow) => void;
+  onXchatPreflight?: (row: WatchlistRow) => void;
 };
 
 const WatchlistRowTr = memo(function WatchlistRowTr({
@@ -549,7 +545,8 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   patchRowEntryPrice,
   aiSuggestBusy,
   onAiSuggest,
-  onShowQuote
+  onShowQuote,
+  onXchatPreflight
 }: WatchlistRowTrProps) {
   const te = getTargetEntryNumeric(row);
   const riskPct = formatPortfolioRiskPct(te, portfolioTotalUsd);
@@ -612,9 +609,6 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             <div className="xf-watchlist-sym-cell__company xf-watchlist-sym-cell__company--muted">—</div>
           )}
           <div className="xf-watchlist-sym-cell__industry">{getSymbolSectorLabel(row.symbol)}</div>
-          <div className="xf-watchlist-sym-cell__sparkline">
-            <Sparkline7d values={row.technicals?.sparkline7d} />
-          </div>
         </div>
       </td>
       <td className="xf-watchlist-table-mono xf-watchlist-spot-cell">
@@ -845,9 +839,6 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
           </select>
         )}
       </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-last-up" title={lastTitle}>
-        {lastPrim}
-      </td>
       <td className="xf-watchlist-actions-cell">
         <div className="xf-watchlist-row-actions-inline">
           <button
@@ -940,6 +931,26 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
           >
             <ExternalLinkIcon className="crud-icon" />
           </button>
+          {onXchatPreflight ? (
+            <button
+              aria-label={`Open xChat preflight for ${row.symbol}`}
+              className="xf-watchlist-row-action-btn"
+              disabled={mutating}
+              title="xChat preflight — symbol and desk rationale in composer"
+              type="button"
+              onClick={() => onXchatPreflight(row)}
+            >
+              <svg aria-hidden className="crud-icon" fill="none" height="16" viewBox="0 0 24 24" width="16">
+                <path
+                  d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                />
+              </svg>
+            </button>
+          ) : null}
           <button
             aria-label={`Delete ${row.symbol} from watchlist`}
             className="xf-watchlist-row-delete-btn"
@@ -951,6 +962,9 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             <DeleteIcon className="crud-icon" />
           </button>
         </div>
+      </td>
+      <td className="xf-watchlist-table-mono xf-watchlist-last-up xf-watchlist-table-cell--wrap" title={lastTitle}>
+        {lastPrim}
       </td>
     </tr>
   );
@@ -1026,8 +1040,8 @@ function toCsv(rows: WatchlistRow[]): string {
     "Quantity",
     "Entry Price",
     "Target entry (100x price)",
-    "Last update",
     "Rationale",
+    "Last update",
     "RowStatus"
   ];
   const lines = rows.map((r) => {
@@ -1056,8 +1070,8 @@ function toCsv(rows: WatchlistRow[]): string {
       r.quantity ?? "",
       r.entryPrice ?? "",
       target100,
-      lastUp,
       `"${rat}"`,
+      lastUp,
       r.rowStatus ?? "draft"
     ].join(",");
   });
@@ -1199,6 +1213,28 @@ export function WatchlistConsole({
   });
   const [, startTransition] = useTransition();
   const tableScrollParentRef = useRef<HTMLDivElement>(null);
+
+  const viewportAllowsVirtualize = useWatchlistViewportAllowsVirtualize();
+
+  const handleXchatPreflightForRow = useCallback(
+    (row: WatchlistRow) => {
+      const rationale = (row.rationale ?? "").trim();
+      const prompt = [
+        `Discuss my watchlist line ${row.symbol}.`,
+        rationale
+          ? `Desk rationale:\n${rationale}`
+          : "Desk rationale: (empty — add context in chat or edit the row.)"
+      ].join("\n\n");
+      try {
+        sessionStorage.setItem(XCHAT_PENDING_PROMPT_STORAGE_KEY, prompt);
+        sessionStorage.setItem(XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY, XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME);
+      } catch {
+        /* quota / private mode */
+      }
+      window.location.assign(`/xchat?portfolioId=${encodeURIComponent(portfolioId)}&rail=xchat&item=composer`);
+    },
+    [portfolioId]
+  );
 
   const watchlistFetchQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -1811,7 +1847,10 @@ ${bodyRows}
     [displayRows]
   );
 
-  const watchlistVirtualize = !editMode && filteredSortedRows.length >= WATCHLIST_VIRTUAL_MIN_ROWS;
+  const watchlistVirtualize =
+    !editMode &&
+    filteredSortedRows.length >= WATCHLIST_VIRTUAL_MIN_ROWS &&
+    viewportAllowsVirtualize;
   const rowVirtualizer = useVirtualizer({
     count: filteredSortedRows.length,
     getScrollElement: () => tableScrollParentRef.current,
@@ -2276,8 +2315,8 @@ ${bodyRows}
                       </th>
                       <th scope="col">Rationale</th>
                       <th scope="col">Status</th>
-                      <th scope="col">Last update</th>
                       <th scope="col">Actions</th>
+                      <th scope="col">Last update</th>
                     </tr>
                   </thead>
                   {watchlistVirtualize ? (
@@ -2317,6 +2356,7 @@ ${bodyRows}
                             onAiSuggest={onAiSuggestRow}
                             onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
                             onRemoveSymbol={onRemoveSymbol}
+                            onXchatPreflight={handleXchatPreflightForRow}
                           />
                         );
                       })}
@@ -2340,6 +2380,7 @@ ${bodyRows}
                             onAiSuggest={onAiSuggestRow}
                             onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
                             onRemoveSymbol={onRemoveSymbol}
+                            onXchatPreflight={handleXchatPreflightForRow}
                           />
                         );
                       })}

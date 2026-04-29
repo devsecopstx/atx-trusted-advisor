@@ -21,12 +21,15 @@ type XchatApprovedShellProps = {
   session: SessionUser;
   initialXchatItem: "composer" | "persona" | "examples" | "history" | "attachments" | null;
   requestedPortfolioId: string;
+  /** Deep-link workspace account (Portfolio desk); optional. */
+  requestedAccountId: string;
 };
 
 export async function XchatApprovedShell({
   session,
   initialXchatItem,
-  requestedPortfolioId
+  requestedPortfolioId,
+  requestedAccountId
 }: XchatApprovedShellProps) {
   const defaultPersona = await loadDefaultXchatPersonaForSessionDeduped(session.roles);
 
@@ -104,6 +107,7 @@ export async function XchatApprovedShell({
       workspaceChatHistoryMax={workspaceChatHistoryMax}
       workspacePortfolioId={workspacePortfolioId}
       syncWorkspacePortfolioCookie={syncWorkspacePortfolioCookie}
+      requestedWorkspaceAccountId={requestedAccountId ? requestedAccountId : null}
       visiblePathPrefixes={visiblePathPrefixes}
     />
   );

@@ -6,6 +6,10 @@ import { useMemo, useState } from "react";
 
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
+import {
+    dispatchWorkspaceAccountChanged,
+    writeStoredWorkspaceAccountId
+} from "@/lib/workspace-account-selection";
 
 export type PortfolioAccountManageOption = {
   id: string;
@@ -60,13 +64,28 @@ export function PortfolioAccountManageBar({
     router.push(`/portfolio/accounts/${encodeURIComponent(effectiveId)}`);
   }
 
-  const buildStrategyHref =
+  let xOptionsHref: string | null = null;
+  let xchatHref: string | null = null;
+  if (
     portfolioIdHex &&
     effectiveId &&
     isLikelyMongoObjectIdHex(portfolioIdHex) &&
     isLikelyMongoObjectIdHex(effectiveId)
-      ? `/xoptions?portfolioId=${encodeURIComponent(portfolioIdHex)}&accountId=${encodeURIComponent(effectiveId)}`
-      : null;
+  ) {
+    xOptionsHref = `/xoptions?portfolioId=${encodeURIComponent(portfolioIdHex)}&accountId=${encodeURIComponent(effectiveId)}`;
+    xchatHref = `/xchat?portfolioId=${encodeURIComponent(portfolioIdHex)}&accountId=${encodeURIComponent(effectiveId)}&rail=xchat&item=composer`;
+  }
+
+  function syncWorkspaceAccountForDesk(): void {
+    if (!portfolioIdHex || !effectiveId) {
+      return;
+    }
+    if (!isLikelyMongoObjectIdHex(portfolioIdHex) || !isLikelyMongoObjectIdHex(effectiveId)) {
+      return;
+    }
+    writeStoredWorkspaceAccountId(portfolioIdHex, effectiveId);
+    dispatchWorkspaceAccountChanged({ portfolioId: portfolioIdHex, accountId: effectiveId });
+  }
 
   return (
     <div
@@ -114,9 +133,19 @@ export function PortfolioAccountManageBar({
           ))}
         </select>
       </label>
-      {buildStrategyHref ? (
-        <Link className="portfolio-account-manage-bar__build-strategy" href={buildStrategyHref}>
-          Build Strategy
+      {xOptionsHref ? (
+        <Link className="cta cta-secondary portfolio-head-action-btn" href={xOptionsHref}>
+          xOptions
+        </Link>
+      ) : null}
+      {xchatHref ? (
+        <Link
+          className="cta cta-secondary portfolio-head-action-btn"
+          href={xchatHref}
+          title="Open xChat with this portfolio and selected account"
+          onClick={syncWorkspaceAccountForDesk}
+        >
+          xChat
         </Link>
       ) : null}
       <IconEditButton

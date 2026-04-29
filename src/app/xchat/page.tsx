@@ -25,6 +25,8 @@ type XchatPageProps = {
     next?: string;
     /** Align xChat workspace + ask payload with `/watchlist?portfolioId=` when present. */
     portfolioId?: string | string[];
+    /** Optional custodian account for workspace rail pickers (Portfolio desk deep link). */
+    accountId?: string | string[];
   }>;
 };
 
@@ -59,6 +61,17 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
         : "";
   const requestedPortfolioId = requestedPortfolioIdRaw
     ? normalizeMongoObjectIdParam(requestedPortfolioIdRaw)
+    : "";
+
+  const rawAccountParam = params.accountId;
+  const requestedAccountIdRaw =
+    typeof rawAccountParam === "string"
+      ? rawAccountParam.trim()
+      : Array.isArray(rawAccountParam)
+        ? rawAccountParam[0]?.trim() ?? ""
+        : "";
+  const requestedAccountId = requestedAccountIdRaw
+    ? normalizeMongoObjectIdParam(requestedAccountIdRaw)
     : "";
 
   const googleLoginHrefGuest = isGoogleOAuthConfigured()
@@ -146,6 +159,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           <Suspense fallback={<XchatRouteSkeleton />}>
             <XchatApprovedShell
               initialXchatItem={initialXchatItem}
+              requestedAccountId={requestedAccountId}
               requestedPortfolioId={requestedPortfolioId}
               session={session}
             />

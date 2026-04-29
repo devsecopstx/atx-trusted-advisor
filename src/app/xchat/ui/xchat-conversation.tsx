@@ -25,6 +25,11 @@ import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-conversation-types";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
+import {
+    dispatchWorkspaceAccountChanged,
+    writeStoredWorkspaceAccountId
+} from "@/lib/workspace-account-selection";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import {
@@ -69,6 +74,8 @@ export type XchatConversationProps = {
   workspacePortfolioId?: string | null;
   /** When true (server resolved `?portfolioId=`), POST once to sync HttpOnly workspace cookie with rail. */
   syncWorkspacePortfolioCookie?: boolean;
+  /** When set with workspacePortfolioId, syncs workspace account pickers (Portfolio desk `?accountId=` deep link). */
+  requestedWorkspaceAccountId?: string | null;
   /** Resolved default persona name for this session’s role (e.g. advisor vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
   /** Active workspace book for shared portfolio/account pickers in sidebar. */
@@ -281,6 +288,7 @@ export function XchatConversation({
   accountFeedbackPageLabel,
   workspacePortfolioId = null,
   syncWorkspacePortfolioCookie = false,
+  requestedWorkspaceAccountId = null,
   defaultPublishedPersonaName,
   workspaceBook = null,
   includeSuperAgentInPersonaPicker = false,
@@ -489,6 +497,19 @@ export function XchatConversation({
       credentials: "include"
     });
   }, [syncWorkspacePortfolioCookie, workspacePortfolioId]);
+
+  useEffect(() => {
+    const pid = workspacePortfolioId?.trim() ?? "";
+    const aid = requestedWorkspaceAccountId?.trim() ?? "";
+    if (!pid || !aid) {
+      return;
+    }
+    if (!isLikelyMongoObjectIdHex(pid) || !isLikelyMongoObjectIdHex(aid)) {
+      return;
+    }
+    writeStoredWorkspaceAccountId(pid, aid);
+    dispatchWorkspaceAccountChanged({ portfolioId: pid, accountId: aid });
+  }, [workspacePortfolioId, requestedWorkspaceAccountId]);
 
   const personaSelectRows = useMemo(() => personaPickerRows, [personaPickerRows]);
 

@@ -182,7 +182,7 @@ export default async function PortfolioAlertsPage({
                   <FolderPortfolioIcon className="crud-icon" />
                   Open Portfolio
                 </Link>
-                <Link className="cta cta-secondary" href="/">
+                <Link className="cta cta-secondary" href="/portfolios">
                   <HomeIcon className="crud-icon" />
                   Home
                 </Link>

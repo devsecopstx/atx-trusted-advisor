@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
 import { EditIcon, ExternalLinkIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
@@ -21,7 +20,6 @@ import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-but
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { PortfoliosWatchlistCompact } from "@/app/portfolios/portfolios-watchlist-compact";
 import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
-import { WatchlistConsole } from "@/app/watchlist/ui/watchlist-console";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { formatUsd2, formatUsdWhole, type PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import {
@@ -42,8 +40,6 @@ export type PortfolioManageShellProps = {
   positionsByAccount: Record<string, SerializablePosition[]>;
   scoringFactors: PortfolioScoringFactorApi[];
   deskPrefetch?: PortfolioDeskPrefetchStrip | null;
-  /** Uppercased equity tickers that already have a stock lot anywhere in this portfolio (for watchlist “Add to holdings”). */
-  portfolioStockSymbolsUpper: readonly string[];
 };
 
 export function PortfolioManageShell({
@@ -57,19 +53,10 @@ export function PortfolioManageShell({
   metrics,
   positionsByAccount,
   scoringFactors,
-  deskPrefetch = null,
-  portfolioStockSymbolsUpper
+  deskPrefetch = null
 }: PortfolioManageShellProps) {
-  const router = useRouter();
   const [selectedAccountHex, setSelectedAccountHex] = useState(defaultAccountHex);
-  const [workspaceTab, setWorkspaceTab] = useState<
-    "portfolios" | "holdings" | "activities" | "watchlist"
-  >("portfolios");
-  const [watchlistAsideRefreshKey, setWatchlistAsideRefreshKey] = useState(0);
-
-  const bumpWatchlistAside = useCallback(() => {
-    setWatchlistAsideRefreshKey((k) => k + 1);
-  }, []);
+  const [workspaceTab, setWorkspaceTab] = useState<"portfolios" | "holdings" | "activities">("portfolios");
 
   const setSelectedAccountHexSynced = useCallback(
     (id: string) => {
@@ -277,7 +264,7 @@ export function PortfolioManageShell({
       />
 
       <nav className="portfolio-footer-nav" aria-label="Shortcuts">
-        <Link className="portfolio-footer-nav__link" href="/">
+        <Link className="portfolio-footer-nav__link" href="/portfolios">
           <HomeIcon className="crud-icon" aria-hidden />
           Home
         </Link>
@@ -315,19 +302,6 @@ export function PortfolioManageShell({
     </div>
   );
 
-  const watchlistPanel = (
-    <WatchlistConsole
-      addToHoldingsAccountIdHex={resolvedSelectedHex}
-      isAdmin={admin}
-      portfolioId={portfolioIdHex}
-      portfolioStockSymbolsUpper={portfolioStockSymbolsUpper}
-      showLocalSidebar={false}
-      variant="embedded"
-      onBookMutated={() => router.refresh()}
-      onWatchlistMutated={bumpWatchlistAside}
-    />
-  );
-
   return (
     <div className="portfolio-overview">
       <div className="portfolio-overview__grid">
@@ -345,16 +319,10 @@ export function PortfolioManageShell({
             holdingsPanel={holdingsPanel}
             onTabChange={setWorkspaceTab}
             portfoliosPanel={overviewPanel}
-            watchlistPanel={watchlistPanel}
           />
         </div>
         <aside className="portfolio-overview__aside">
-          <PortfoliosWatchlistCompact
-            deskHints={deskPrefetch}
-            portfolioId={portfolioIdHex}
-            refreshKey={watchlistAsideRefreshKey}
-            onOpenFullWatchlist={() => setWorkspaceTab("watchlist")}
-          />
+          <PortfoliosWatchlistCompact deskHints={deskPrefetch} portfolioId={portfolioIdHex} />
         </aside>
       </div>
     </div>
