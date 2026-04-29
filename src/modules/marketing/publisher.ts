@@ -1,11 +1,12 @@
 import type { ScheduledTask } from "@/modules/core-admin/types";
-import { renderMarketingPost } from "@/modules/marketing/render";
+import { interpolateMarketingTemplate, renderMarketingPost } from "@/modules/marketing/render";
 import { getMarketingTemplateById } from "@/modules/marketing/repository";
 import type { MarketingPlatform, MarketingTaskConfig } from "@/modules/marketing/types";
 import {
     clearXOAuthPostingMemoryCache,
     postMarketingTweetWithRetries
 } from "@/modules/marketing/x-posting-token-manager";
+import { generateMarketingMarkdownWithXchat } from "@/modules/marketing/xchat-markdown";
 
 export { clearXOAuthPostingMemoryCache };
 
@@ -99,9 +100,30 @@ export async function runMarketingPostTask(task: ScheduledTask): Promise<{ statu
   if (!sourceContent) {
     return { status: "failed", output: "marketing_post failed: no template or custom content configured" };
   }
+
+  const interpolated = interpolateMarketingTemplate(sourceContent, now);
+  let generatedMarkdown: string | undefined;
+  const genPrompt = config.generationPrompt?.trim();
+  if (genPrompt && genPrompt.length > 0) {
+    try {
+      const gen = await generateMarketingMarkdownWithXchat({
+        roles: ["global_admin"],
+        sourceContent: interpolated,
+        generationPrompt: genPrompt,
+        destinationUrl: config.destinationUrl,
+        platforms: config.platforms
+      });
+      generatedMarkdown = gen.markdown;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "xChat generation failed";
+      return { status: "failed", output: `marketing_post failed: ${msg}` };
+    }
+  }
+
   const { postText } = renderMarketingPost({
-    sourceContent,
+    sourceContent: interpolated,
     config,
+    generatedMarkdown,
     now
   });
 

@@ -67,6 +67,7 @@ type EditDraft = {
   id?: string;
   name: string;
   enabled: boolean;
+  schedulePreset: SchedulePreset;
   scheduleCron: string;
   scheduleRRule: string;
   scheduleDescription: string;
@@ -82,12 +83,38 @@ type EditDraft = {
   utmTerm: string;
 };
 
+type SchedulePreset = "daily" | "monday" | "friday" | "custom";
+
+const SCHEDULE_PRESET_OPTIONS: Record<
+  Exclude<SchedulePreset, "custom">,
+  { cron: string; scheduleDescription: string }
+> = {
+  daily: { cron: "0 13 * * *", scheduleDescription: "Daily at 13:00 UTC" },
+  monday: { cron: "0 13 * * 1", scheduleDescription: "Every Monday at 13:00 UTC" },
+  friday: { cron: "0 13 * * 5", scheduleDescription: "Every Friday at 13:00 UTC" }
+};
+
+function detectPresetFromCron(cron: string): SchedulePreset {
+  const c = cron.trim();
+  if (c === SCHEDULE_PRESET_OPTIONS.daily.cron) {
+    return "daily";
+  }
+  if (c === SCHEDULE_PRESET_OPTIONS.monday.cron) {
+    return "monday";
+  }
+  if (c === SCHEDULE_PRESET_OPTIONS.friday.cron) {
+    return "friday";
+  }
+  return "custom";
+}
+
 const DEFAULT_DRAFT: EditDraft = {
   name: "",
   enabled: true,
-  scheduleCron: "0 13 * * 1-5",
+  schedulePreset: "daily",
+  scheduleCron: SCHEDULE_PRESET_OPTIONS.daily.cron,
   scheduleRRule: "",
-  scheduleDescription: "Weekdays at 8:00 AM CT",
+  scheduleDescription: SCHEDULE_PRESET_OPTIONS.daily.scheduleDescription,
   templateId: "",
   customContent: "",
   generationPrompt: [
@@ -103,7 +130,7 @@ const DEFAULT_DRAFT: EditDraft = {
     "Destination URL:",
     "{{destination_url}}"
   ].join("\n"),
-  destinationUrl: "https://atx.fintech-advisor.ai",
+  destinationUrl: "https://atxtrustedadvisory.com",
   platforms: ["x"],
   utmSource: "x",
   utmCampaign: "weekly-pulse",
@@ -152,6 +179,7 @@ export function MarketingConsole() {
   const [testPostRunning, setTestPostRunning] = useState(false);
   const [testPostText, setTestPostText] = useState("");
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
   const [templateDraft, setTemplateDraft] = useState<TemplateDraft>({
     name: "",
     platforms: ["x"],
@@ -382,19 +410,21 @@ export function MarketingConsole() {
   }
 
   function beginEdit(schedule: MarketingSchedule) {
+    const cron = schedule.scheduleCron ?? "";
     setEditingId(schedule._id);
     setActiveTab("overview");
     setDraft({
       id: schedule._id,
       name: schedule.name,
       enabled: schedule.enabled,
-      scheduleCron: schedule.scheduleCron ?? "",
+      schedulePreset: detectPresetFromCron(cron),
+      scheduleCron: cron,
       scheduleRRule: schedule.scheduleRRule ?? "",
       scheduleDescription: schedule.scheduleDescription ?? "",
       templateId: schedule.config.templateId ?? "",
       customContent: schedule.config.customContent ?? "",
       generationPrompt: schedule.config.generationPrompt ?? DEFAULT_DRAFT.generationPrompt,
-      destinationUrl: schedule.config.destinationUrl ?? "https://atx.fintech-advisor.ai",
+      destinationUrl: schedule.config.destinationUrl ?? "https://atxtrustedadvisory.com",
       platforms: schedule.config.platforms ?? ["x"],
       utmSource: schedule.config.utmParams.utm_source,
       utmCampaign: schedule.config.utmParams.utm_campaign,
@@ -405,6 +435,7 @@ export function MarketingConsole() {
   }
 
   function beginTemplateEdit(template: MarketingTemplate) {
+    setCreatingTemplate(false);
     setEditingTemplateId(template._id);
     setTemplateDraft({
       id: template._id,
@@ -422,6 +453,7 @@ export function MarketingConsole() {
 
   function resetTemplateEdit() {
     setEditingTemplateId(null);
+    setCreatingTemplate(false);
     setTemplateDraft({
       name: "",
       platforms: ["x"],
@@ -433,6 +465,63 @@ export function MarketingConsole() {
       utmTerm: "",
       estimatedEngagement: ""
     });
+  }
+
+  function beginTemplateCreate() {
+    setCreatingTemplate(true);
+    setEditingTemplateId(null);
+    setTemplateDraft({
+      name: "",
+      platforms: ["x"],
+      contentTemplate: "",
+      utmSource: "x",
+      utmCampaign: "weekly-pulse",
+      utmMedium: "owned-social",
+      utmContent: "",
+      utmTerm: "",
+      estimatedEngagement: ""
+    });
+    setActiveTab("templates");
+  }
+
+  async function saveNewTemplate() {
+    setLoading(true);
+    setStatus("Creating template...");
+    try {
+      const payload = {
+        name: templateDraft.name.trim(),
+        platforms: templateDraft.platforms,
+        contentTemplate: templateDraft.contentTemplate.trim(),
+        defaultUtm: {
+          utm_source: templateDraft.utmSource.trim(),
+          utm_campaign: templateDraft.utmCampaign.trim(),
+          utm_medium: templateDraft.utmMedium.trim() || undefined,
+          utm_content: templateDraft.utmContent.trim() || undefined,
+          utm_term: templateDraft.utmTerm.trim() || undefined
+        },
+        estimatedEngagement:
+          templateDraft.estimatedEngagement === ""
+            ? undefined
+            : (templateDraft.estimatedEngagement as "low" | "medium" | "high")
+      };
+      if (!payload.name || !payload.contentTemplate) {
+        throw new Error("Template name and content are required");
+      }
+      await parseJson(
+        await fetch("/api/admin/marketing/templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+      );
+      setStatus("Template created");
+      resetTemplateEdit();
+      await refreshAll();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Template create failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function saveTemplateEdit() {
@@ -534,7 +623,13 @@ export function MarketingConsole() {
           </div>
 
           <article className="surface-card xf-widget section-card stack-form">
-            <h3>{editingId ? "Edit scheduled post" : "New scheduled post"}</h3>
+            <h3>{editingId ? "Edit scheduled post" : "Compose & schedule social post"}</h3>
+            <p className="status-text">
+              Pick or author a <strong>template</strong> as source text → optional <strong>xChat generation prompt</strong>{" "}
+              produces <code className="text-xs">post_content</code> → <strong>Preview with xChat</strong> →{" "}
+              <strong>Post to X now</strong> or <strong>Discard preview</strong>, then optionally{" "}
+              <strong>Create schedule</strong> for automated runs (scheduled jobs use the same xChat prompt when configured).
+            </p>
             <input
               className="crud-input"
               placeholder="Name"
@@ -616,12 +711,45 @@ export function MarketingConsole() {
                 LinkedIn
               </label>
             </div>
+            <div className="tool-row" style={{ gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+              <label className="status-text whitespace-nowrap">Frequency</label>
+              <select
+                className="crud-input text-sm max-w-xs"
+                value={draft.schedulePreset}
+                onChange={(event) => {
+                  const next = event.target.value as SchedulePreset;
+                  if (next === "custom") {
+                    setDraft((current) => ({ ...current, schedulePreset: "custom" }));
+                    return;
+                  }
+                  const preset = SCHEDULE_PRESET_OPTIONS[next];
+                  setDraft((current) => ({
+                    ...current,
+                    schedulePreset: next,
+                    scheduleCron: preset.cron,
+                    scheduleDescription: preset.scheduleDescription
+                  }));
+                }}
+              >
+                <option value="daily">Daily (13:00 UTC)</option>
+                <option value="monday">Every Monday (13:00 UTC)</option>
+                <option value="friday">Every Friday (13:00 UTC)</option>
+                <option value="custom">Custom cron…</option>
+              </select>
+            </div>
             <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
               <input
-                className="crud-input text-sm"
-                placeholder="Cron"
+                className="crud-input text-sm font-mono"
+                placeholder="Cron (advanced)"
+                title="Quartz-style cron; editing switches Frequency to Custom"
                 value={draft.scheduleCron}
-                onChange={(event) => setDraft((current) => ({ ...current, scheduleCron: event.target.value }))}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    scheduleCron: event.target.value,
+                    schedulePreset: "custom"
+                  }))
+                }
               />
               <input
                 className="crud-input text-sm"
@@ -656,13 +784,22 @@ export function MarketingConsole() {
               <button
                 type="button"
                 className="tiny-button"
+                style={{ borderColor: "var(--xf-gain-green)", color: "var(--xf-gain-green)" }}
                 onClick={() => void testPostToX()}
                 disabled={loading || !preview}
               >
-                {testPostRunning ? "Posting to X..." : "Test post to X"}
+                {testPostRunning ? "Posting to X..." : "Post to X now"}
+              </button>
+              <button
+                type="button"
+                className="tiny-button"
+                onClick={() => setPreview(null)}
+                disabled={loading || !preview}
+              >
+                Discard preview
               </button>
               <button type="button" className="tiny-button" onClick={resetDraft} disabled={loading}>
-                Reset
+                Reset form
               </button>
             </div>
             {previewRunning ? (
@@ -675,7 +812,25 @@ export function MarketingConsole() {
                 <p className="status-text">
                   xChat persona: {preview.personaName} · model: {preview.model}
                 </p>
-                <p className="status-text">Final URL: {preview.finalUrl}</p>
+                <p className="status-text">Destination (UTM): {preview.finalUrl}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--xf-text-400)]">post_content (generated markdown)</p>
+                <pre
+                  style={{
+                    width: "100%",
+                    margin: 0,
+                    padding: "0.75rem",
+                    whiteSpace: "pre-wrap",
+                    overflowX: "auto",
+                    borderRadius: "0.5rem",
+                    border: "1px solid var(--xf-surface-700)",
+                    background: "var(--xf-surface-900)"
+                  }}
+                >
+                  {preview.markdown}
+                </pre>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--xf-text-400)]">
+                  Final post text (includes URL + disclaimer — sent to X)
+                </p>
                 <pre
                   style={{
                     width: "100%",
@@ -693,7 +848,7 @@ export function MarketingConsole() {
               </div>
             ) : null}
             <p className="status-text">
-              Every published post automatically appends: Educational conversations only. Not personalized investment advice. https://atx.fintech-advisor.ai
+              Final post text appends your destination URL with UTMs, then the compliance disclaimer (no extra link in the disclaimer line).
             </p>
           </article>
         </div>
@@ -752,6 +907,102 @@ export function MarketingConsole() {
 
       {activeTab === "templates" ? (
         <div className="stack-gap">
+          <div className="tool-row" style={{ justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="cta cta-primary"
+              onClick={beginTemplateCreate}
+              disabled={loading || creatingTemplate}
+            >
+              New template
+            </button>
+          </div>
+          {creatingTemplate ? (
+            <article className="surface-card xf-widget section-card stack-form">
+              <h3>New template</h3>
+              <p className="status-text">
+                Source text is merged with the xChat generation prompt on the Marketing overview tab; save here, then
+                select the template when composing a post.
+              </p>
+              <input
+                className="crud-input"
+                placeholder="Template name"
+                value={templateDraft.name}
+                onChange={(event) =>
+                  setTemplateDraft((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+              <textarea
+                className="crud-input"
+                rows={6}
+                placeholder="Template content (source for xChat; supports {{date}}, {{day_name}})"
+                value={templateDraft.contentTemplate}
+                onChange={(event) =>
+                  setTemplateDraft((current) => ({ ...current, contentTemplate: event.target.value }))
+                }
+              />
+              <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={templateDraft.platforms.includes("x")}
+                    onChange={(event) =>
+                      setTemplateDraft((current) => ({
+                        ...current,
+                        platforms: event.target.checked
+                          ? (Array.from(new Set<MarketingPlatform>([...current.platforms, "x"])) as MarketingPlatform[])
+                          : (current.platforms.filter((platform) => platform !== "x") as MarketingPlatform[])
+                      }))
+                    }
+                  />{" "}
+                  X
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={templateDraft.platforms.includes("linkedin")}
+                    onChange={(event) =>
+                      setTemplateDraft((current) => ({
+                        ...current,
+                        platforms: event.target.checked
+                          ? (Array.from(new Set<MarketingPlatform>([...current.platforms, "linkedin"])) as MarketingPlatform[])
+                          : (current.platforms.filter((platform) => platform !== "linkedin") as MarketingPlatform[])
+                      }))
+                    }
+                  />{" "}
+                  LinkedIn
+                </label>
+              </div>
+              <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+                <input className="crud-input text-sm" placeholder="utm_source" value={templateDraft.utmSource} onChange={(event) => setTemplateDraft((current) => ({ ...current, utmSource: event.target.value }))} />
+                <input className="crud-input text-sm" placeholder="utm_campaign" value={templateDraft.utmCampaign} onChange={(event) => setTemplateDraft((current) => ({ ...current, utmCampaign: event.target.value }))} />
+                <input className="crud-input text-sm" placeholder="utm_medium" value={templateDraft.utmMedium} onChange={(event) => setTemplateDraft((current) => ({ ...current, utmMedium: event.target.value }))} />
+              </div>
+              <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+                <select
+                  className="crud-input text-sm"
+                  value={templateDraft.estimatedEngagement}
+                  onChange={(event) =>
+                    setTemplateDraft((current) => ({
+                      ...current,
+                      estimatedEngagement: event.target.value as TemplateDraft["estimatedEngagement"]
+                    }))
+                  }
+                >
+                  <option value="">Engagement: unset</option>
+                  <option value="low">Engagement: low</option>
+                  <option value="medium">Engagement: medium</option>
+                  <option value="high">Engagement: high</option>
+                </select>
+                <button type="button" className="cta cta-primary" onClick={() => void saveNewTemplate()} disabled={loading}>
+                  Save new template
+                </button>
+                <button type="button" className="tiny-button" onClick={resetTemplateEdit} disabled={loading}>
+                  Cancel
+                </button>
+              </div>
+            </article>
+          ) : null}
           {editingTemplateId ? (
             <article className="surface-card xf-widget section-card stack-form">
               <h3>Edit template</h3>

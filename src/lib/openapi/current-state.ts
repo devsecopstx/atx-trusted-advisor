@@ -426,7 +426,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/admin/marketing/templates",
-    operations: [{ method: "GET", auth: "admin" }],
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
     tag: "admin-marketing"
   },
   {

@@ -87,6 +87,16 @@ function toHistoryRow(run: TaskRun): MarketingPostHistoryRow {
   };
 }
 
+function slugifyTemplateName(name: string): string {
+  const base = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return base.length > 0 ? base : "template";
+}
+
 export async function ensureMarketingTemplatesSeeded(): Promise<void> {
   const db = await getDb();
   const now = new Date();
@@ -104,6 +114,41 @@ export async function ensureMarketingTemplatesSeeded(): Promise<void> {
       { upsert: true }
     );
   }
+}
+
+export async function createMarketingTemplate(input: {
+  name: string;
+  platforms: MarketingPostTemplate["platforms"];
+  contentTemplate: string;
+  defaultUtm: MarketingPostTemplate["defaultUtm"];
+  estimatedEngagement?: MarketingPostTemplate["estimatedEngagement"];
+}): Promise<MarketingPostTemplate> {
+  await ensureMarketingTemplatesSeeded();
+  const db = await getDb();
+  const collection = db.collection<MarketingPostTemplate>(MARKETING_TEMPLATES_COLLECTION);
+  const baseSlug = slugifyTemplateName(input.name);
+  let slug = baseSlug;
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const exists = await collection.findOne({ slug });
+    if (!exists) {
+      break;
+    }
+    slug = `${baseSlug}-${attempt + 2}`;
+  }
+  const now = new Date();
+  const doc: Omit<MarketingPostTemplate, "_id"> = {
+    slug,
+    name: input.name.trim(),
+    platforms: input.platforms,
+    contentTemplate: input.contentTemplate.trim(),
+    defaultUtm: input.defaultUtm,
+    disclaimerMode: "required",
+    estimatedEngagement: input.estimatedEngagement,
+    createdAt: now,
+    updatedAt: now
+  };
+  const result = await collection.insertOne(doc as MarketingPostTemplate);
+  return { ...doc, _id: result.insertedId };
 }
 
 export async function listMarketingTemplates(): Promise<MarketingPostTemplate[]> {

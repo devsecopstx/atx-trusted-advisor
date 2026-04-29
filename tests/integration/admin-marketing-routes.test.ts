@@ -10,6 +10,7 @@ const marketingRepoMocks = vi.hoisted(() => ({
   listMarketingTemplates: vi.fn(),
   listMarketingSchedules: vi.fn(),
   createMarketingSchedule: vi.fn(),
+  createMarketingTemplate: vi.fn(),
   getMarketingScheduleById: vi.fn(),
   getMarketingTemplateById: vi.fn(),
   updateMarketingTemplate: vi.fn(),
@@ -49,7 +50,10 @@ import {
     DELETE as deleteMarketingTemplateById,
     PATCH as patchMarketingTemplateById
 } from "@/app/api/admin/marketing/templates/[templateId]/route";
-import { GET as getMarketingTemplates } from "@/app/api/admin/marketing/templates/route";
+import {
+    GET as getMarketingTemplates,
+    POST as postMarketingTemplates
+} from "@/app/api/admin/marketing/templates/route";
 import { POST as postMarketingTestPostX } from "@/app/api/admin/marketing/test-post-x/route";
 
 describe("admin marketing routes", () => {
@@ -72,7 +76,7 @@ describe("admin marketing routes", () => {
       scheduleCron: "0 13 * * 1-5",
       config: {
         platforms: ["x"],
-        destinationUrl: "https://atx.fintech-advisor.ai",
+        destinationUrl: "https://atxtrustedadvisory.com",
         utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
       }
     });
@@ -84,7 +88,7 @@ describe("admin marketing routes", () => {
       scheduleCron: "0 13 * * 1-5",
       config: {
         platforms: ["x"],
-        destinationUrl: "https://atx.fintech-advisor.ai",
+        destinationUrl: "https://atxtrustedadvisory.com",
         utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
       }
     });
@@ -108,6 +112,17 @@ describe("admin marketing routes", () => {
       estimatedEngagement: "high"
     });
     marketingRepoMocks.deleteMarketingTemplate.mockResolvedValue(true);
+    marketingRepoMocks.createMarketingTemplate.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      slug: "custom-template",
+      name: "Custom Template",
+      platforms: ["x"],
+      contentTemplate: "Hello {{date}}",
+      defaultUtm: { utm_source: "x", utm_campaign: "weekly-pulse" },
+      disclaimerMode: "required",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
     taskRunnerMocks.executeScheduledTask.mockResolvedValue({
       runId: { toHexString: () => "507f1f77bcf86cd799439091" },
       status: "success",
@@ -141,7 +156,7 @@ describe("admin marketing routes", () => {
           config: {
             templateId: "507f1f77bcf86cd799439050",
             platforms: ["x"],
-            destinationUrl: "https://atx.fintech-advisor.ai",
+            destinationUrl: "https://atxtrustedadvisory.com",
             utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
           }
         })
@@ -176,7 +191,7 @@ describe("admin marketing routes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           templateId: "507f1f77bcf86cd799439050",
-          destinationUrl: "https://atx.fintech-advisor.ai",
+          destinationUrl: "https://atxtrustedadvisory.com",
           platforms: ["x", "linkedin"],
           utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
         })
@@ -184,6 +199,31 @@ describe("admin marketing routes", () => {
     );
     expect(response.status).toBe(200);
     expect(marketingXchatMocks.generateMarketingMarkdownWithXchat).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates a marketing template", async () => {
+    const response = await postMarketingTemplates(
+      new Request("http://localhost/api/admin/marketing/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Custom Template",
+          platforms: ["x"],
+          contentTemplate: "Hello {{date}}",
+          defaultUtm: { utm_source: "x", utm_campaign: "weekly-pulse", utm_medium: "owned-social" },
+          estimatedEngagement: "medium"
+        })
+      })
+    );
+    expect(response.status).toBe(201);
+    expect(marketingRepoMocks.createMarketingTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Custom Template",
+        platforms: ["x"],
+        contentTemplate: "Hello {{date}}",
+        estimatedEngagement: "medium"
+      })
+    );
   });
 
   it("updates a marketing template", async () => {
@@ -222,7 +262,7 @@ describe("admin marketing routes", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postText: "Test post content\n\nhttps://atx.fintech-advisor.ai?utm_source=x&utm_campaign=weekly-pulse"
+          postText: "Test post content\n\nhttps://atxtrustedadvisory.com?utm_source=x&utm_campaign=weekly-pulse"
         })
       })
     );

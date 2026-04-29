@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { renderMarketingPost } from "@/modules/marketing/render";
+import { interpolateMarketingTemplate, renderMarketingPost } from "@/modules/marketing/render";
 import { getMarketingTemplateById } from "@/modules/marketing/repository";
 import { MARKETING_PLATFORMS } from "@/modules/marketing/types";
 import { generateMarketingMarkdownWithXchat } from "@/modules/marketing/xchat-markdown";
@@ -51,9 +51,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Template or custom content is required" }, { status: 400 });
   }
 
+  // Match scheduled posts (`runMarketingPostTask`): interpolate {{date}} / {{day_name}} / etc. before xChat
+  // so preview matches what will be generated at post time for the same clock moment.
+  const now = new Date();
+  const interpolated = interpolateMarketingTemplate(sourceContent, now);
+
   const generation = await generateMarketingMarkdownWithXchat({
     roles: session.roles,
-    sourceContent,
+    sourceContent: interpolated,
     generationPrompt: parsed.data.generationPrompt,
     destinationUrl: parsed.data.destinationUrl,
     platforms: parsed.data.platforms,
@@ -61,12 +66,13 @@ export async function POST(request: Request) {
   });
 
   const rendered = renderMarketingPost({
-    sourceContent,
+    sourceContent: interpolated,
     config: {
       destinationUrl: parsed.data.destinationUrl,
       utmParams: parsed.data.utmParams
     },
-    generatedMarkdown: generation.markdown
+    generatedMarkdown: generation.markdown,
+    now
   });
 
   return NextResponse.json({
