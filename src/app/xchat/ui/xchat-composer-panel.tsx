@@ -27,6 +27,10 @@ import {
     startXchatDictationSession,
     type XchatDictationSessionControls
 } from "@/app/xchat/ui/xchat-dictation-client";
+import {
+    canUseNativeXaiStt,
+    startNativeXaiSttSession
+} from "@/app/xchat/ui/xchat-native-stt-client";
 
 import { XchatComposerNav } from "./xchat-composer-nav";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
@@ -99,7 +103,9 @@ export function XchatComposerPanel({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    setDictationSupported(Boolean(getSpeechRecognitionConstructor()));
+    setDictationSupported(
+      Boolean(canUseNativeXaiStt() || getSpeechRecognitionConstructor())
+    );
   }, []);
 
   useEffect(() => {
@@ -164,12 +170,34 @@ export function XchatComposerPanel({
     }
   }
 
-  function toggleDictation() {
+  async function toggleDictation() {
     if (dictationActive) {
       dictationSessionRef.current?.stop();
       dictationSessionRef.current = null;
       return;
     }
+    setDictationError(null);
+
+    if (canUseNativeXaiStt()) {
+      const native = await startNativeXaiSttSession(input, {
+        onUpdate: setInput,
+        onEnded: () => {
+          setDictationActive(false);
+          dictationSessionRef.current = null;
+        },
+        onError: (msg) => {
+          setDictationError(msg);
+          setDictationActive(false);
+          dictationSessionRef.current = null;
+        }
+      });
+      if (native) {
+        dictationSessionRef.current = native;
+        setDictationActive(true);
+        return;
+      }
+    }
+
     const session = startXchatDictationSession(input, {
       onUpdate: setInput,
       onEnded: () => {
@@ -186,13 +214,12 @@ export function XchatComposerPanel({
     });
     if (!session) {
       setDictationError(
-        dictationSupported ? "Could not start dictation." : "Dictation needs a browser with Web Speech API support."
+        dictationSupported ? "Could not start dictation." : "Voice input needs microphone access or Web Speech API."
       );
       return;
     }
     dictationSessionRef.current = session;
     setDictationActive(true);
-    setDictationError(null);
   }
 
   async function onAttachPicked(file: File | undefined) {
@@ -381,8 +408,8 @@ export function XchatComposerPanel({
                 dictationSupported
                   ? dictationActive
                     ? "Stop dictation"
-                    : "Dictate — review text before send"
-                  : "Dictation requires Web Speech API (e.g. Chrome)"
+                    : "Dictate — xAI transcription (browser speech if mic unavailable)"
+                  : "Voice needs microphone access or a browser with speech recognition"
               }
             >
               <button
@@ -485,7 +512,7 @@ export function XchatComposerPanel({
         ) : null}
       </div>
       <p className="xchat-composer-hint" role="note">
-        Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Mic dictation where supported
+        Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Mic · xAI voice (browser speech fallback)
         {tenantFileUploadEnabled ? " · Paperclip uploads to your tenant collection" : ""}
       </p>
     </div>
