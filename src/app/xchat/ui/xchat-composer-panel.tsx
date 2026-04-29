@@ -20,7 +20,8 @@ import {
     XchatComposerArrowUpIcon,
     XchatComposerAttachIcon,
     XchatComposerMicIcon,
-    XchatComposerSourcesGridIcon
+    XchatComposerSourcesGridIcon,
+    XchatComposerStopIcon
 } from "@/app/xchat/ui/xchat-composer-icons";
 import {
     getSpeechRecognitionConstructor,
@@ -67,6 +68,8 @@ export type XchatComposerPanelProps = {
   tenantFileUploadEnabled?: boolean;
   /** Deep link to workspace rail attachments / User Collections (preserve portfolio when set). */
   sourcesRailHref: string;
+  /** Abort in-flight ask (same as thread Stop). */
+  onCancelAsk?: () => void;
 };
 
 export function XchatComposerPanel({
@@ -89,7 +92,8 @@ export function XchatComposerPanel({
   promptExamples,
   examplesInitiallyExpanded = false,
   tenantFileUploadEnabled = false,
-  sourcesRailHref
+  sourcesRailHref,
+  onCancelAsk
 }: XchatComposerPanelProps) {
   const examplesPanelId = useId();
   const examplesTriggerId = useId();
@@ -425,14 +429,27 @@ export function XchatComposerPanel({
                 <XchatComposerMicIcon />
               </button>
             </XfHoverHint>
-            <button
-              aria-label="Send message"
-              className="xchat-composer__send-circle"
-              disabled={loading || !canSend}
-              type="submit"
-            >
-              <XchatComposerArrowUpIcon />
-            </button>
+            {loading && onCancelAsk ? (
+              <button
+                aria-label="Stop generating"
+                className="xchat-composer__send-circle xchat-composer__send-circle--stop"
+                type="button"
+                onClick={() => {
+                  onCancelAsk();
+                }}
+              >
+                <XchatComposerStopIcon />
+              </button>
+            ) : (
+              <button
+                aria-label="Send message"
+                className="xchat-composer__send-circle"
+                disabled={loading || !canSend}
+                type="submit"
+              >
+                <XchatComposerArrowUpIcon />
+              </button>
+            )}
           </div>
         </div>
         {dictationError ? (

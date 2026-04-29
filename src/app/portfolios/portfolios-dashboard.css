@@ -226,6 +226,25 @@
 }
 
 /* ── Portfolio workspace landing (/portfolios) ─────────────────── */
+.portfolios-workspace-header.xchat-header {
+  padding: 0;
+}
+
+.portfolios-workspace-header__primary-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  min-width: 0;
+}
+
+.portfolios-workspace-header--tape.xchat-header {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
 .portfolios-workspace-header {
   position: sticky;
   top: 0;
@@ -328,7 +347,7 @@
 }
 
 @media (max-width: 900px) {
-  .portfolios-workspace-header {
+  .portfolios-workspace-header__primary-row {
     flex-wrap: wrap;
     row-gap: 0.5rem;
   }
@@ -341,6 +360,222 @@
 
   .portfolios-workspace-header__total-block {
     text-align: left;
+  }
+
+  .portfolios-macro-tape__inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .portfolios-macro-tape__nav {
+    justify-content: flex-end;
+  }
+}
+
+/* HNWI macro tape — US regular session only (client-gated) */
+.portfolios-macro-tape {
+  width: 100%;
+  min-width: 0;
+}
+
+.portfolios-macro-tape__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  flex-wrap: nowrap;
+  padding: 0.38rem 1rem 0.48rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 18%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--xf-bg-900) 55%, transparent) 0%,
+    color-mix(in srgb, var(--xf-text-100) 4%, var(--xf-bg-800)) 100%
+  );
+}
+
+.portfolios-macro-tape__badge {
+  flex-shrink: 0;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--xf-lightning-yellow) 88%, var(--xf-text-300));
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--xf-lightning-yellow) 35%, transparent);
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 8%, transparent);
+}
+
+.portfolios-macro-tape__scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 6%,
+    #000 94%,
+    transparent 100%
+  );
+}
+
+.portfolios-macro-tape__track {
+  display: flex;
+  width: max-content;
+  animation: portfolios-macro-tape-marquee 42s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portfolios-macro-tape__track {
+    animation: none;
+  }
+}
+
+@keyframes portfolios-macro-tape-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.portfolios-macro-tape__strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  padding-right: 2.25rem;
+}
+
+.portfolios-macro-tape__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.portfolios-macro-tape__sym {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--xf-text-200);
+}
+
+.portfolios-macro-tape__px {
+  font-size: 0.68rem;
+  color: var(--xf-text-100);
+}
+
+.portfolios-macro-tape__chg {
+  font-size: 0.65rem;
+}
+
+.portfolios-macro-tape__chg--up {
+  color: var(--xf-gain-green);
+}
+
+.portfolios-macro-tape__chg--down {
+  color: var(--xf-chart-loss);
+}
+
+.portfolios-macro-tape__chg--flat {
+  color: var(--xf-text-400);
+}
+
+.portfolios-macro-tape__nav {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  margin-left: auto;
+}
+
+.portfolios-macro-tape__nav-cell {
+  display: inline-flex;
+  align-items: center;
+}
+
+.portfolios-macro-tape__nav-sep {
+  width: 1px;
+  height: 0.65rem;
+  margin: 0 0.35rem;
+  background: color-mix(in srgb, var(--xf-text-100) 22%, transparent);
+}
+
+.portfolios-macro-tape__nav-link {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 95%, var(--xf-text-200));
+  padding: 0.12rem 0.08rem;
+  border-radius: 4px;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
+}
+
+.portfolios-macro-tape__nav-link:hover {
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.portfolios-macro-tape__nav-link:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 2px;
+}
+
+/* Off-hours tape — weather + wellness (markets closed / outside regular session) */
+.portfolios-macro-tape--wellness .portfolios-macro-tape__inner--wellness {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.portfolios-macro-tape__badge--wellness {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 38%, transparent);
+  color: color-mix(in srgb, var(--xf-gain-green) 94%, var(--xf-text-200));
+  background: color-mix(in srgb, var(--xf-gain-green) 11%, transparent);
+}
+
+.portfolios-macro-tape__wellness-body {
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 0.55rem 1rem;
+}
+
+.portfolios-macro-tape__wellness-col {
+  min-width: 0;
+}
+
+.portfolios-macro-tape__wellness-kicker {
+  display: block;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.portfolios-macro-tape__wellness-text {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.38;
+  color: var(--xf-text-100);
+}
+
+.portfolios-macro-tape__wellness-micro {
+  margin: 0.22rem 0 0;
+  font-size: 0.56rem;
+  line-height: 1.32;
+  color: var(--xf-text-400);
+}
+
+@media (max-width: 720px) {
+  .portfolios-macro-tape__wellness-body {
+    grid-template-columns: 1fr;
   }
 }
 

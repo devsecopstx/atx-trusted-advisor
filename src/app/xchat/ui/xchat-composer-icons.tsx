@@ -80,3 +80,12 @@ export function XchatComposerArrowUpIcon() {
     </svg>
   );
 }
+
+/** Filled square — in-place of send while a reply is streaming/working (cancel affordance). */
+export function XchatComposerStopIcon() {
+  return (
+    <svg aria-hidden fill="currentColor" height={14} viewBox="0 0 24 24" width={14}>
+      <rect height="16" rx="2.5" width="16" x="4" y="4" />
+    </svg>
+  );
+}

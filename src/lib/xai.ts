@@ -474,6 +474,8 @@ export async function respondWithXaiToolLoop(input: {
   parallelism?: XaiParallelismConfig;
   previousResponseId?: string;
   storeMessages?: boolean;
+  /** When aborted (e.g. client disconnected / user cancelled), in-flight xAI `fetch` calls reject and the loop exits. */
+  signal?: AbortSignal;
 }): Promise<XaiToolLoopResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const model = input.model ?? defaultModel;
@@ -482,6 +484,7 @@ export async function respondWithXaiToolLoop(input: {
   const perRequestMaxTurns = Math.min(Math.max(maxTurns, 1), 16);
   const toolCalls: ToolCallLog[] = [];
   const tools = toXaiRequestTools(input.tools, { forXaiResponsesApi: true });
+  const signal = input.signal;
 
   const trimmedImageUrl = input.userImageDataUrl?.trim();
   let conversationInput: unknown =
@@ -498,6 +501,9 @@ export async function respondWithXaiToolLoop(input: {
   let loopLimit = maxTurns;
 
   for (let turn = 0; turn < loopLimit && turn < syntheticRecoveryCap; turn++) {
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
     turnsUsed = turn + 1;
 
     const requestBody: Record<string, unknown> = {
@@ -527,7 +533,8 @@ export async function respondWithXaiToolLoop(input: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      ...(signal ? { signal } : {})
     });
 
     const payload = await parseXaiResponseJson(response);

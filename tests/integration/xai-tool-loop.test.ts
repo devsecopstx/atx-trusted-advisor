@@ -55,6 +55,22 @@ describe("respondWithXaiToolLoop", () => {
     expect(body0).not.toHaveProperty("system_prompt");
   });
 
+  it("does not call xAI when AbortSignal is already aborted", async () => {
+    const ac = new AbortController();
+    ac.abort();
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    await expect(
+      respondWithXaiToolLoop({
+        systemPrompt: "sys",
+        userPrompt: "hi",
+        tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
+        executor: async () => ({ result: "unused" }),
+        signal: ac.signal
+      })
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("uses instructions only on first /responses turn; continuation sends previous_response_id without instructions", async () => {
     fetchMock
       .mockResolvedValueOnce(

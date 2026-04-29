@@ -445,7 +445,7 @@ export function WorkspaceProductSidebar({
       ? [{
       key: "portfolio",
       href: "/portfolios",
-      label: "myPortfolios",
+      label: "Portfolio desk",
       isActive: portfolioRouteMatch,
       icon: <LucideMonitorIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
     }]
@@ -517,7 +517,7 @@ export function WorkspaceProductSidebar({
             icon={
               <LucideMonitorIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero portfolios-workspace-sidebar__glyph--portfolio-workspace" />
             }
-            label="myPortfolios"
+            label="Portfolio desk"
           />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">

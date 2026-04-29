@@ -171,7 +171,7 @@ export default async function ResourcesCashSecuredPutsMasteryPage() {
           </p>
           <ExpandableResourceScreenshot
             src="/landing/portfolio.png"
-            alt="myPortfolios (illustrative — product UI evolves)"
+            alt="Portfolio desk (illustrative — product UI evolves)"
           >
             <p className="resources-doc-footnote resources-doc-footnote--full">
               Representative workspace chrome; sign in to see your books. Related:{" "}

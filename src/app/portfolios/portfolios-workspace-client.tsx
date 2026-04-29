@@ -65,7 +65,12 @@ export function PortfoliosWorkspaceClient({
 
   return (
     <>
-      <PortfoliosWorkspaceHeader topHoldingsKey={holdingsKey} totalBookUsd={totalBookUsd} />
+      <PortfoliosWorkspaceHeader
+        deskPortfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
+        topHoldingsKey={holdingsKey}
+        totalBookUsd={totalBookUsd}
+        visiblePathPrefixes={visiblePathPrefixes}
+      />
 
       <div className="xchat-body portfolio-page-body">
         <AppUserCollapsibleRailLayout

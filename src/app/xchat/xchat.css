@@ -2254,6 +2254,36 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   opacity: 0.92;
 }
 
+.xchat-await__stop {
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: auto;
+  padding: 0.38rem 0.72rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--xf-lightning-yellow) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 35%, transparent);
+  color: var(--xf-lightning-yellow);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.xchat-await__stop:hover {
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 14%, transparent);
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 78%, transparent);
+}
+
+.xchat-await__stop:focus-visible {
+  outline: 1px solid var(--xf-lightning-yellow);
+  outline-offset: 2px;
+}
+
 .xchat-await__skeleton {
   position: relative;
   z-index: 1;
@@ -2995,6 +3025,17 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   opacity: 0.85;
 }
 
+.xchat-composer__send-circle--stop:not(:disabled) {
+  cursor: pointer;
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 88%, var(--xf-bg-900));
+  color: var(--xf-bg-900);
+}
+
+.xchat-composer__send-circle--stop:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
 .xchat-composer__row {
   display: flex;
   align-items: flex-end;
@@ -3509,6 +3550,10 @@ html[data-xf-ui="soft"] .xchat-composer__send-circle:disabled {
 }
 
 html[data-xf-ui="soft"] .xchat-composer__send-circle:not(:disabled) {
+  color: var(--xf-bg-900);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__send-circle--stop:not(:disabled) {
   color: var(--xf-bg-900);
 }
 

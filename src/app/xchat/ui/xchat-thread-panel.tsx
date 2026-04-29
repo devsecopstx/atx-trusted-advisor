@@ -44,6 +44,8 @@ export type XchatThreadPanelProps = {
   threadScrollRef: RefObject<HTMLDivElement | null>;
   threadUiSummary: { userTurnCount: number; preview: string };
   askElapsedMs: number;
+  /** Stop in-flight prompt (same client abort as composer Stop). */
+  onCancelAsk?: () => void;
 } & XchatThreadPanelCopyProps;
 
 function formatXchatTradingClock(ms: number): string {
@@ -72,7 +74,8 @@ export function XchatThreadPanel({
   threadScrollRef,
   threadUiSummary,
   askElapsedMs,
-  activePersonaName
+  activePersonaName,
+  onCancelAsk
 }: XchatThreadPanelProps) {
   const askWaitSeconds = Math.floor(askElapsedMs / 1000);
   return (
@@ -202,6 +205,18 @@ export function XchatThreadPanel({
                     {formatXchatTradingClock(askElapsedMs)}
                   </span>
                 </div>
+                {onCancelAsk ? (
+                  <button
+                    aria-label="Stop generating"
+                    className="xchat-await__stop"
+                    type="button"
+                    onClick={() => {
+                      onCancelAsk();
+                    }}
+                  >
+                    Stop
+                  </button>
+                ) : null}
               </div>
               <div aria-hidden className="xchat-await__skeleton">
                 <div className="xchat-await__sk-track xchat-await__sk-track--long">

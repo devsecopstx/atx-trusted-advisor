@@ -19,16 +19,31 @@ function parseHoldings(raw: string | null): string[] {
   return [...new Set(parts)].slice(0, MAX_HOLDINGS_GLANCE);
 }
 
-function serializeQuote(sym: string, q: SymbolLookupResult | null | undefined) {
+/** Display symbol (e.g. `VIX`) may differ from Yahoo key (`^VIX`). */
+function serializeQuote(displaySymbol: string, q: SymbolLookupResult | null | undefined) {
   if (!q) {
-    return { symbol: sym, price: undefined as number | undefined, changePercent: undefined as number | undefined };
+    return {
+      symbol: displaySymbol,
+      price: undefined as number | undefined,
+      changePercent: undefined as number | undefined
+    };
   }
   return {
-    symbol: sym,
+    symbol: displaySymbol,
     price: q.price,
     changePercent: q.changePercent
   };
 }
+
+/** HNWI-oriented macro row: vol, core ETFs, small-cap breadth, Dow, rates proxy. */
+const WORKSPACE_MACRO_INDICES: ReadonlyArray<{ yahoo: string; symbol: string }> = [
+  { yahoo: "^VIX", symbol: "VIX" },
+  { yahoo: "SPY", symbol: "SPY" },
+  { yahoo: "QQQ", symbol: "QQQ" },
+  { yahoo: "IWM", symbol: "IWM" },
+  { yahoo: "DIA", symbol: "DIA" },
+  { yahoo: "TLT", symbol: "TLT" }
+];
 
 type SearchNewsRow = {
   title?: string;
@@ -38,7 +53,7 @@ type SearchNewsRow = {
 
 /**
  * GET /api/market/workspace-pulse?holdings=TSLA,AAPL
- * Indices (SPY/QQQ), a few Yahoo search headlines, optional per-holding options IV/OI glance.
+ * Macro indices (VIX, SPY, QQQ, IWM, DIA, TLT), Yahoo search headlines, optional per-holding options IV/OI glance.
  */
 export async function GET(request: Request) {
   const session = await requireSessionUser();
@@ -51,8 +66,9 @@ export async function GET(request: Request) {
 
   const yf = getYahooFinance2();
 
-  const [spyQqq, searchRes, ...optionHighlights] = await Promise.all([
-    lookupSymbols(["SPY", "QQQ"]),
+  const macroYahoo = WORKSPACE_MACRO_INDICES.map((m) => m.yahoo);
+  const [macroQuotes, searchRes, ...optionHighlights] = await Promise.all([
+    lookupSymbols(macroYahoo),
     yf
       .search("US stock market", {
         newsCount: 6,
@@ -81,10 +97,9 @@ export async function GET(request: Request) {
     }
   }
 
-  const indices = [
-    serializeQuote("SPY", spyQqq.get("SPY")),
-    serializeQuote("QQQ", spyQqq.get("QQQ"))
-  ];
+  const indices = WORKSPACE_MACRO_INDICES.map(({ yahoo, symbol }) =>
+    serializeQuote(symbol, macroQuotes.get(yahoo.trim().toUpperCase()))
+  );
 
   const optionsGlance = holdings.map((symbol, i) => ({
     symbol,

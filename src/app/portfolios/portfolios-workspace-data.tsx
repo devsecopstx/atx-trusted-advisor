@@ -157,7 +157,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
     <div className="xchat-shell">
       <AppUserApprovedHeader
         current="portfolio"
-        feedbackPageLabel="myPortfolios"
+        feedbackPageLabel="Portfolio desk"
         session={session}
         workspaceTenant={workspaceTenant}
       />
@@ -175,7 +175,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
           subscriptionPlan: entitlements.subscriptionPlan,
           isGlobalAdmin: admin
         }}
-        accountFeedbackPageLabel="myPortfolios"
+        accountFeedbackPageLabel="Portfolio desk"
         accountSlices={accountSlices}
         defaultPortfolioId={defaultPortfolioIdForImport}
         focusPortfolioId={focusPortfolioId}

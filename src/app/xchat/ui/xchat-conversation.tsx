@@ -366,6 +366,8 @@ export function XchatConversation({
   /** Monotonic elapsed ms while `/api/xchat/ask` is in flight (100ms ticks for smooth trading-clock UI). */
   const [askElapsedMs, setAskElapsedMs] = useState(0);
   const [strategyJobLaunchBusy, setStrategyJobLaunchBusy] = useState(false);
+  /** Aborts in-flight `fetch` to `/api/xchat/ask` or `/api/strategy-jobs` when the user clicks Stop. */
+  const askAbortRef = useRef<AbortController | null>(null);
 
   const tenantFileUploadEnabled = useMemo(
     () =>
@@ -981,6 +983,9 @@ export function XchatConversation({
     });
     setInput("");
     setLoading(true);
+    const askController = new AbortController();
+    askAbortRef.current = askController;
+    const askSignal = askController.signal;
     if (hasPasteImage) {
       setPendingPasteImage(null);
       setPasteImageError(null);
@@ -992,7 +997,8 @@ export function XchatConversation({
         const response = await fetch("/api/strategy-jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
+          body: JSON.stringify({}),
+          signal: askSignal
         });
         const payload = (await response.json().catch(() => ({}))) as {
           data?: { jobId?: string; correlationId?: string };
@@ -1040,7 +1046,10 @@ export function XchatConversation({
         });
         router.push(`/xstrategybuilder?jobId=${encodeURIComponent(jobId)}&from=xchat`);
         return;
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
         setMessages((prev) => {
           const added = [
             ...prev,
@@ -1056,6 +1065,7 @@ export function XchatConversation({
         });
         return;
       } finally {
+        askAbortRef.current = null;
         setStrategyJobLaunchBusy(false);
         setLoading(false);
       }
@@ -1097,7 +1107,8 @@ export function XchatConversation({
       const response = await fetch("/api/xchat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(askBody)
+        body: JSON.stringify(askBody),
+        signal: askSignal
       });
 
       const payload = (await response.json().catch(() => ({}))) as {
@@ -1191,7 +1202,14 @@ export function XchatConversation({
         setInput(strategyStayRestorePromptRef.current);
         strategyStayRestorePromptRef.current = null;
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
+          setInput(strategyStayRestorePromptRef.current);
+          strategyStayRestorePromptRef.current = null;
+        }
+        return;
+      }
       setMessages((prev) => {
         const added = [
           ...prev,
@@ -1210,9 +1228,14 @@ export function XchatConversation({
         strategyStayRestorePromptRef.current = null;
       }
     } finally {
+      askAbortRef.current = null;
       setLoading(false);
     }
   }
+
+  const cancelAskInFlight = useCallback(() => {
+    askAbortRef.current?.abort();
+  }, []);
 
   return (
     <div className="xchat-main-shell">
@@ -1413,6 +1436,7 @@ export function XchatConversation({
             emphasizeStrategyJobPrimary={emphasizeStrategyForMessage}
             loading={loading}
             messages={messages}
+            onCancelAsk={cancelAskInFlight}
             messagesEndRef={messagesEndRef}
             onStrategyJobLaunch={onStrategyJobLaunch}
             onStrategyJobStay={onStrategyJobStay}
@@ -1435,6 +1459,7 @@ export function XchatConversation({
             handleSend={handleSend}
             input={input}
             loading={loading}
+            onCancelAsk={cancelAskInFlight}
             pasteImageError={pasteImageError}
             pendingPasteImage={pendingPasteImage}
             personaListError={personaListError}

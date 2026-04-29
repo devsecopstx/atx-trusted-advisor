@@ -1178,13 +1178,28 @@ export async function POST(request: Request) {
       executor,
       parallelism: parallelAgentConfig,
       previousResponseId,
-      storeMessages: useRemoteConversationHistory
+      storeMessages: useRemoteConversationHistory,
+      signal: request.signal
     });
     xaiUsageSnapshot = extractXaiResponsesUsage(loopResult.raw);
     xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
     toolCallLogs = loopResult.toolCalls;
     previousResponseId = loopResult.responseId;
   } catch (error) {
+    const aborted =
+      request.signal.aborted ||
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError");
+    if (aborted) {
+      console.warn("[xchat/ask] request aborted", {
+        mode: "responses_tool_loop",
+        personaId: persona?._id?.toHexString()
+      });
+      return NextResponse.json(
+        { error: "Request cancelled", code: "request_aborted" },
+        { status: 499 }
+      );
+    }
     const errMsg = error instanceof Error ? error.message : "Unknown provider error";
     console.error("[xchat/ask] xAI provider call failed", {
       mode: "responses_tool_loop",
