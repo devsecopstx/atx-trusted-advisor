@@ -3378,7 +3378,7 @@ html[data-xf-ui="soft"] .xchat-composer-examples__panel {
   background: color-mix(in srgb, var(--xf-text-100) 4%, var(--xf-surface-700));
 }
 
-/* Pill shortcuts (myPortfolios / myWatchlist / xOptions) — sits in .xchat-composer-shortcuts__row */
+/* Pill shortcuts (Books Overview / myWatchlist / xOptions) — sits in .xchat-composer-shortcuts__row */
 .xchat-composer-nav {
   display: flex;
   flex-wrap: wrap;

@@ -162,7 +162,7 @@ export function XchatGuestPanel({
       <div className="xchat-persona-bar">
         <span className="status-badge status-ready">xChat</span>
         <span className="status-text" style={{ fontSize: "0.75rem" }}>
-          Invite-only access
+          Trial &amp; subscriptions
         </span>
       </div>
 
@@ -177,7 +177,7 @@ export function XchatGuestPanel({
             <span style={{ whiteSpace: "pre-wrap" }}>
               {pendingApproval
                 ? `Your account${userEmail ? ` (${userEmail})` : ""} is signed in but not approved yet. Request access and we will review it.`
-                : "Welcome to aTx Trusted Advisory xChat. This is an invite-only app. Sign up to request access."}
+                : "Welcome to aTx Trusted Advisory xChat. Start a trial or subscribe for full access. Sign in or register to continue."}
             </span>
           </div>
         )}
@@ -186,7 +186,7 @@ export function XchatGuestPanel({
       <section className="xchat-guest-actions">
         <h2 className="xchat-guest-actions__title">Access</h2>
         <p className="xchat-guest-actions__hint">
-          Invite-only workspace. Composer is visible for preview, but prompting and portfolio actions are locked.
+          Guest preview: composer is visible; sign in for prompting, portfolio actions, and billing.
         </p>
         {authMessage ? <p className="status-text status-error">{authMessage}</p> : null}
         {authDetails ? <p className="status-text status-error">details: {authDetails}</p> : null}
@@ -248,7 +248,7 @@ export function XchatGuestPanel({
               type="button"
               onClick={() => setRegisterOpen((prev) => !prev)}
             >
-              Submit request for access. invite-only.
+              Close registration
             </button>
             <form className="xchat-guest-register-form" onSubmit={handleRegister}>
               <h3 className="xchat-guest-register-form__title">Register for access</h3>

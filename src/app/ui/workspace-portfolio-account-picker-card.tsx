@@ -14,7 +14,7 @@ export function WorkspacePortfolioAccountPickerCard({ book }: WorkspacePortfolio
   if (!book) {
     return (
       <p className="app-user-rail-workspace-hint">
-        Portfolio workspace isn&apos;t available yet.{" "}
+        myPortfolios isn&apos;t available yet.{" "}
         <Link className="app-user-rail-workspace-hint-link" href="/portfolios">
           Portfolios
         </Link>{" "}

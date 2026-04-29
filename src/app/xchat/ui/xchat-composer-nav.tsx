@@ -15,11 +15,11 @@ export function XchatComposerNav({ variant = "default" }: XchatComposerNavProps)
   return (
     <nav aria-label="Workspace" className="xchat-composer-nav">
       <XfHoverHint
-        hint={guest ? "Open portfolios — sign in may be required" : "Open portfolios — desk, holdings, import"}
+        hint={guest ? "Books overview — sign in may be required" : "Books overview — desk, holdings, import"}
       >
         <Link className="xchat-composer-nav__link" href="/portfolios">
           <LucideMonitorIcon className="xchat-composer-nav__icon" />
-          <span>myPortfolios</span>
+          <span>Books Overview</span>
         </Link>
       </XfHoverHint>
       <XfHoverHint hint={guest ? "Open watchlist — sign in may be required" : "Open watchlist"}>

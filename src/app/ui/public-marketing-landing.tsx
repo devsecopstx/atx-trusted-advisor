@@ -216,7 +216,7 @@ export function PublicMarketingLanding() {
               </p>
               <div className="mt-4 overflow-hidden rounded-2xl shadow-[0_0_30px_-10px_var(--xf-gain-green)]">
                 <LandingProductScreenshot
-                  alt="Portfolio workspace screenshot"
+                  alt="myPortfolios screenshot"
                   fallbackLabel="export from /portfolio or /portfolios."
                   src={LANDING_PRODUCT_SHOTS.portfolio}
                 />

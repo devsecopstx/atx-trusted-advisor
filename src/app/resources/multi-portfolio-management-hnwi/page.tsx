@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 
 const SURFACE_ROWS: { surface: string; hnwiAngle: string }[] = [
   {
-    surface: "Portfolio workspace",
+    surface: "myPortfolios",
     hnwiAngle: "Choose which book xChat, watchlist, and desk flows scope to — avoids cross-talk between sleeves.",
   },
   {
@@ -142,7 +142,7 @@ export default async function ResourcesMultiPortfolioManagementHnwiPage() {
             “integration” here: <strong>one coherent datastore per tenant</strong> with role-gated access — not ad-hoc
             files per analyst.
           </p>
-          <ExpandableResourceScreenshot src="/landing/portfolio.png" alt="Portfolio workspace (illustrative)">
+          <ExpandableResourceScreenshot src="/landing/portfolio.png" alt="myPortfolios (illustrative)">
             <p className="resources-doc-footnote resources-doc-footnote--full">
               UI evolves; sign in to see your portfolios. Flow:{" "}
               <Link href="/resources/decision-workflow">Decision workflow</Link>.

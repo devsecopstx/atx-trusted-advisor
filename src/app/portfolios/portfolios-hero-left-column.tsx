@@ -242,7 +242,7 @@ export function PortfoliosHeroLeftColumn({
         <p className="portfolios-hero-left__muted portfolios-hero-left__row-label mt-2">Watchlist &amp; Alerts</p>
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
           <Link className="portfolios-hero-left__mini-link" href="/portfolio">
-            Portfolio workspace
+            Portfolio desk
           </Link>
           <Link className="portfolios-hero-left__mini-link" href={watchlistHref}>
             Watchlist

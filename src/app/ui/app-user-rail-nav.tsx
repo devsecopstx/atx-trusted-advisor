@@ -298,8 +298,8 @@ export function AppUserManageWorkspaceRailSection({
             </div>
           ) : null}
           <nav className="app-user-rail-sublinks" aria-label="Workspace administration">
-            <RailNavLink href="/portfolios" title="Portfolios — workspace, accounts, allocation">
-              myPortfolios
+            <RailNavLink href="/portfolios" title="Books overview — workspace, accounts, allocation">
+              Books Overview
             </RailNavLink>
             {includeProductLinks ? (
               <RailNavLink href="/xchat" title="Open xChat">

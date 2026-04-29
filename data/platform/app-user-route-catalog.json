@@ -47,7 +47,7 @@
       "id": "portfolios",
       "pathPattern": "/portfolios",
       "pathMatch": "prefix",
-      "label": "myPortfolios (books overview)",
+      "label": "Books Overview",
       "groupId": "core_product",
       "inWorkspaceProductShell": true,
       "guestHtmlShell": true,
