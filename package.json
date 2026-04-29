@@ -149,6 +149,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@tootallnate/once": "^3.0.1",
     "@types/node": "^25.5.0",
     "@types/nodemailer": "^7.0.11",

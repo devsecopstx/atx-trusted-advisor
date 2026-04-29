@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { LightningBolt } from "@/app/ui/atxfinance-logo";
+import { PoweredByXai } from "@/app/ui/xai-brand-mark";
 import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { LandingProductScreenshot } from "@/app/ui/landing-product-screenshot";
@@ -13,6 +14,7 @@ import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pil
 import { withUtmParams } from "@/lib/marketing/utm";
 
 const REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
+const DEFAULT_POST_LOGIN = "/xchat";
 const MARKETING_UTM = { utm_source: "x", utm_campaign: "weekly-pulse", utm_medium: "owned-social" } as const;
 
 /** Drop real captures into `public/landing/` (same names, or change paths here). */
@@ -25,6 +27,10 @@ const LANDING_PRODUCT_SHOTS = {
 export function PublicMarketingLanding() {
   const registerTrialHref = withUtmParams(REGISTER_TRIAL_HREF, MARKETING_UTM);
   const plansHref = withUtmParams("/account/billing", MARKETING_UTM);
+  const loginHref = withUtmParams(
+    `/login?next=${encodeURIComponent(DEFAULT_POST_LOGIN)}`,
+    MARKETING_UTM
+  );
 
   const scrollDemo = () => {
     document.getElementById("xchat-demo")?.scrollIntoView({ behavior: "smooth" });
@@ -53,6 +59,12 @@ export function PublicMarketingLanding() {
               Eight pillars
             </Link>
             <Link
+              href={loginHref}
+              className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-200)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
+            >
+              Log in
+            </Link>
+            <Link
               href={registerTrialHref}
               className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95 sm:px-5"
               style={{
@@ -60,7 +72,7 @@ export function PublicMarketingLanding() {
                 boxShadow: "0 0 24px -4px color-mix(in srgb, var(--xf-gain-green) 45%, transparent)"
               }}
             >
-              Register for Trial
+              Register for trial
             </Link>
           </div>
         </div>
@@ -96,16 +108,16 @@ export function PublicMarketingLanding() {
               aTx Trusted Advisory
             </p>
 
-            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--xf-text-300)] sm:text-sm">
-              Powered by xAI
-            </p>
+            <div className="mt-2">
+              <PoweredByXai logoClassName="h-5 w-auto sm:h-6" />
+            </div>
 
             <h1 className="mt-2 text-4xl font-bold leading-[1.08] tracking-tighter text-[var(--xf-text-100)] sm:text-5xl md:text-6xl">
               <span className="block">
                 Your AI Co-Pilot for Options Income &amp; Portfolio Defense
               </span>
               <span className="mt-3 block text-2xl font-semibold leading-snug tracking-tight text-[var(--xf-text-200)] sm:text-3xl md:text-4xl">
-                Powered by xAI · Built for Real Money
+                Built for Real Money
               </span>
             </h1>
 
@@ -150,16 +162,22 @@ export function PublicMarketingLanding() {
                   boxShadow: "0 0 28px -5px color-mix(in srgb, var(--xf-gain-green) 50%, transparent)"
                 }}
               >
-                Register for Trial
+                Register for trial
                 <span aria-hidden>→</span>
               </Link>
 
-              {/* New secondary CTA: See Plans */}
+              <Link
+                href={loginHref}
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-white/20 bg-white/5 text-[var(--xf-text-100)] transition-all duration-200 hover:border-white/30 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Log in
+              </Link>
+
               <Link
                 href={plansHref}
                 className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               >
-                See Plans
+                See plans
               </Link>
 
               <button
@@ -303,18 +321,24 @@ export function PublicMarketingLanding() {
             offices: ask about tenant branding and pilot scopes for client portals. Limits and audit-friendly defaults
             apply after sign-in.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:flex-wrap">
             <Link
               href={registerTrialHref}
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl bg-[var(--xf-gain-green)] text-[var(--xf-text-100)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl bg-[var(--xf-gain-green)] text-[var(--xf-bg-900)] hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
-              Register for Trial
+              Register for trial
+            </Link>
+            <Link
+              href={loginHref}
+              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-white/20 bg-white/5 text-[var(--xf-text-100)] transition-all duration-200 hover:border-white/30 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Log in
             </Link>
             <Link
               href={plansHref}
               className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
-              See Plans
+              See plans
             </Link>
           </div>
         </div>
