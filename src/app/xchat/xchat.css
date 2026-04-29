@@ -2957,16 +2957,115 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   transform: none;
 }
 
-/* Pill shortcuts below composer (portfolios / watchlist / xOptions) */
-.xchat-composer-nav {
+/* Workspace pills + Examples on one row (composer footer) */
+.xchat-composer-shortcuts {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.xchat-composer-shortcuts__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
   width: 100%;
-  margin: 0;
+  box-sizing: border-box;
   padding: 0.1rem 0 0.15rem;
+}
+
+.xchat-composer-shortcuts__row .xf-hover-hint {
+  display: flex;
+  align-items: center;
+}
+
+.xchat-composer-examples__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.75rem;
+  border-radius: var(--xf-radius-sm, 6px);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  color: var(--xf-text-200);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.xchat-composer-examples__toggle:hover {
+  border-color: color-mix(in srgb, var(--xf-text-100) 22%, transparent);
+  color: var(--xf-text-100);
+}
+
+.xchat-composer-examples__toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-focus, #3b82f6) 80%, transparent);
+  outline-offset: 2px;
+}
+
+.xchat-composer-examples__chevron {
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: transform 0.18s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xchat-composer-examples__chevron {
+    transition: none;
+  }
+}
+
+.xchat-composer-examples__chevron--open {
+  transform: rotate(180deg);
+}
+
+.xchat-composer-examples__panel {
+  border-radius: var(--xf-radius-md, 8px);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 94%, var(--xf-text-100) 6%);
+  padding: 0.5rem 0.65rem;
+}
+
+.xchat-composer-examples__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.xchat-composer-examples__chip {
+  text-align: left;
+  width: 100%;
+}
+
+html[data-xf-ui="soft"] .xchat-composer-examples__toggle {
+  border-color: color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, var(--xf-bg-900));
+  color: var(--xf-text-200);
+}
+
+html[data-xf-ui="soft"] .xchat-composer-examples__panel {
+  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, var(--xf-surface-700));
+}
+
+/* Pill shortcuts (myPortfolios / myWatchlist / xOptions) — sits in .xchat-composer-shortcuts__row */
+.xchat-composer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 

@@ -365,6 +365,37 @@
   padding: 0.15rem 0;
 }
 
+/** Expanded workspace rail: fill scroll area so `__spacer` pushes Resources (incl. User Collections) / Account to the bottom. */
+.portfolios-workspace-sidebar--rail-fill {
+  box-sizing: border-box;
+  min-height: 100%;
+}
+
+.portfolios-workspace-sidebar__bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.portfolios-workspace-sidebar__collections-block {
+  margin-bottom: 0.15rem;
+}
+
+.portfolios-workspace-sidebar__collections-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.portfolios-workspace-sidebar__collections-rule {
+  margin: 0.45rem 0 0.35rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
 .portfolios-workspace-sidebar__link {
   display: flex;
   align-items: center;

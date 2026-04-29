@@ -1,6 +1,14 @@
 "use client";
 
-import type { ClipboardEvent, FormEvent, KeyboardEvent, MutableRefObject, RefObject } from "react";
+import {
+    type ClipboardEvent,
+    type FormEvent,
+    type KeyboardEvent,
+    type MutableRefObject,
+    type RefObject,
+    useId,
+    useState
+} from "react";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
@@ -32,6 +40,10 @@ export type XchatComposerPanelProps = {
   selectedPersonaId: string;
   setSelectedPersonaId: (id: string) => void;
   userPickedPersonaRef: MutableRefObject<boolean>;
+  /** Prompt chips shown when Examples is expanded (under the composer). */
+  promptExamples: string[];
+  /** Open Examples on first paint (e.g. `?rail=xchat&item=examples`). */
+  examplesInitiallyExpanded?: boolean;
 };
 
 export function XchatComposerPanel({
@@ -50,8 +62,13 @@ export function XchatComposerPanel({
   personaPickerLocked,
   selectedPersonaId,
   setSelectedPersonaId,
-  userPickedPersonaRef
+  userPickedPersonaRef,
+  promptExamples,
+  examplesInitiallyExpanded = false
 }: XchatComposerPanelProps) {
+  const examplesPanelId = useId();
+  const examplesTriggerId = useId();
+  const [examplesOpen, setExamplesOpen] = useState(examplesInitiallyExpanded);
   const canSend = Boolean(input.trim()) || Boolean(pendingPasteImage);
 
   async function onComposerPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
@@ -161,7 +178,7 @@ export function XchatComposerPanel({
               <label className="sr-only" htmlFor="xchat-composer-persona-picker">
                 Persona for this message
               </label>
-              <XfHoverHint hint="Published persona for this prompt only — same list as the Persona rail">
+              <XfHoverHint hint="Published persona for this prompt only">
                 <select
                   aria-label="Persona for this message"
                   className="xchat-composer__persona-select xchat-composer__persona-select--inline"
@@ -189,7 +206,75 @@ export function XchatComposerPanel({
           </button>
         </div>
       </form>
-      <XchatComposerNav />
+      <div className="xchat-composer-shortcuts">
+        <div className="xchat-composer-shortcuts__row">
+          <XchatComposerNav />
+          {promptExamples.length > 0 ? (
+            <XfHoverHint hint="Show example prompts you can paste into the composer">
+              <button
+                aria-controls={examplesPanelId}
+                aria-expanded={examplesOpen}
+                className="xchat-composer-examples__toggle"
+                id={examplesTriggerId}
+                type="button"
+                onClick={() => {
+                  setExamplesOpen((o) => !o);
+                }}
+              >
+                <span>Examples</span>
+                <svg
+                  aria-hidden
+                  className={`xchat-composer-examples__chevron${examplesOpen ? " xchat-composer-examples__chevron--open" : ""}`}
+                  fill="none"
+                  height={16}
+                  viewBox="0 0 24 24"
+                  width={16}
+                >
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                  />
+                </svg>
+              </button>
+            </XfHoverHint>
+          ) : null}
+        </div>
+        {promptExamples.length > 0 && examplesOpen ? (
+          <div
+            className="xchat-composer-examples__panel"
+            id={examplesPanelId}
+            role="region"
+            aria-labelledby={examplesTriggerId}
+          >
+            <div className="xchat-composer-examples__list">
+              {promptExamples.map((prompt, i) => (
+                <XfHoverHint key={`composer-example-${i}`} hint={prompt}>
+                  <button
+                    className="app-user-rail-sublink xchat-rail-link xchat-composer-examples__chip"
+                    type="button"
+                    onClick={() => {
+                      setInput(prompt);
+                      queueMicrotask(() => {
+                        const el = composerRef.current;
+                        if (el) {
+                          el.focus();
+                          el.style.height = "auto";
+                          el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+                        }
+                      });
+                    }}
+                  >
+                    <span className="xchat-rail-link__text">{prompt}</span>
+                  </button>
+                </XfHoverHint>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
       <p className="xchat-composer-hint" role="note">
         <span className="xchat-composer-hint__pill">Beta</span>
         <span className="xchat-composer-hint__text">

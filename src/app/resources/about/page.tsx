@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -7,10 +6,13 @@ import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
 import { getSessionUser } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
+import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pillars";
 import { canUserLogin } from "@/modules/identity/authorization";
+import type { Metadata } from "next";
 
 import "../../xchat/xchat.css";
 import "../getting-started/resources-getting-started.css";
+import { AboutPillarCards } from "./about-pillar-cards";
 
 export const revalidate = 3600;
 
@@ -82,6 +84,18 @@ export default async function ResourcesAboutPage() {
         <p className="resources-doc-section__desc resources-doc-section__desc--closing">
           {`We'd love to show you how it works.`}
         </p>
+      </section>
+
+      <section className="resources-doc-section resources-doc-section--pillars" id="eight-pillars">
+        <h2>Eight pillars — options income, risk &amp; execution</h2>
+        <p className="resources-doc-section__desc">
+          Educational articles on wheels, CSPs, covered calls, LEAP overlays, multi-book workflows, risk tiers, and the
+          path from xChat to IBKR-linked snapshots — public reading;{" "}
+          <span className="resources-about-pillars-legal-note">not individualized advice.</span>
+        </p>
+        <nav aria-label="Eight pillars">
+          <AboutPillarCards pillars={ADVISORY_RESOURCE_PILLARS} />
+        </nav>
       </section>
     </article>
   );

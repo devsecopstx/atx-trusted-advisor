@@ -284,57 +284,61 @@ export function XoptionsChainScanner({
           <div className="xoptions-chain-scanner__tables grid gap-4 md:grid-cols-2">
             <div className="min-w-0 overflow-x-auto">
               <p className="xoptions-chain-scanner__table-title mb-1">Calls</p>
-              <table className="xoptions-chain-table w-full min-w-[20rem] border-collapse text-left text-[0.6875rem]">
-                <thead>
-                  <tr className="xoptions-chain-table__head">
-                    <th className="py-1 pr-2 font-semibold">Strike</th>
-                    <th className="py-1 pr-2 font-semibold">Bid</th>
-                    <th className="py-1 pr-2 font-semibold">Ask</th>
-                    <th className="py-1 pr-2 font-semibold">Mid</th>
-                    <th className="py-1 pr-2 font-semibold">Spread</th>
-                    <th className="py-1 pr-2 font-semibold">%</th>
-                    <th className="py-1 pr-2 font-semibold">IV%</th>
-                    <th className="py-1 pl-2 font-semibold text-right">OI</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayRows.map((row) => (
-                    <ChainRowCall
-                      key={`c-${row.strike}`}
-                      row={row}
-                      underlying={chain.stockPrice}
-                      atmStrike={atmStrike}
-                    />
-                  ))}
-                </tbody>
-              </table>
+              <div className="xoptions-chain-table__viewport">
+                <table className="xoptions-chain-table w-full min-w-[20rem] border-collapse text-left text-[0.6875rem]">
+                  <thead>
+                    <tr className="xoptions-chain-table__head">
+                      <th className="py-1 pr-2 font-semibold">Strike</th>
+                      <th className="py-1 pr-2 font-semibold">Bid</th>
+                      <th className="py-1 pr-2 font-semibold">Ask</th>
+                      <th className="py-1 pr-2 font-semibold">Mid</th>
+                      <th className="py-1 pr-2 font-semibold">Spread</th>
+                      <th className="py-1 pr-2 font-semibold">%</th>
+                      <th className="py-1 pr-2 font-semibold">IV%</th>
+                      <th className="py-1 pl-2 font-semibold text-right">OI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayRows.map((row) => (
+                      <ChainRowCall
+                        key={`c-${row.strike}`}
+                        row={row}
+                        underlying={chain.stockPrice}
+                        atmStrike={atmStrike}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div className="min-w-0 overflow-x-auto">
               <p className="xoptions-chain-scanner__table-title mb-1">Puts</p>
-              <table className="xoptions-chain-table w-full min-w-[20rem] border-collapse text-left text-[0.6875rem]">
-                <thead>
-                  <tr className="xoptions-chain-table__head">
-                    <th className="py-1 pr-2 font-semibold">Strike</th>
-                    <th className="py-1 pr-2 font-semibold">Bid</th>
-                    <th className="py-1 pr-2 font-semibold">Ask</th>
-                    <th className="py-1 pr-2 font-semibold">Mid</th>
-                    <th className="py-1 pr-2 font-semibold">Spread</th>
-                    <th className="py-1 pr-2 font-semibold">%</th>
-                    <th className="py-1 pr-2 font-semibold">IV%</th>
-                    <th className="py-1 pl-2 font-semibold text-right">OI</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayRows.map((row) => (
-                    <ChainRowPut
-                      key={`p-${row.strike}`}
-                      row={row}
-                      underlying={chain.stockPrice}
-                      atmStrike={atmStrike}
-                    />
-                  ))}
-                </tbody>
-              </table>
+              <div className="xoptions-chain-table__viewport">
+                <table className="xoptions-chain-table w-full min-w-[20rem] border-collapse text-left text-[0.6875rem]">
+                  <thead>
+                    <tr className="xoptions-chain-table__head">
+                      <th className="py-1 pr-2 font-semibold">Strike</th>
+                      <th className="py-1 pr-2 font-semibold">Bid</th>
+                      <th className="py-1 pr-2 font-semibold">Ask</th>
+                      <th className="py-1 pr-2 font-semibold">Mid</th>
+                      <th className="py-1 pr-2 font-semibold">Spread</th>
+                      <th className="py-1 pr-2 font-semibold">%</th>
+                      <th className="py-1 pr-2 font-semibold">IV%</th>
+                      <th className="py-1 pl-2 font-semibold text-right">OI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayRows.map((row) => (
+                      <ChainRowPut
+                        key={`p-${row.strike}`}
+                        row={row}
+                        underlying={chain.stockPrice}
+                        atmStrike={atmStrike}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

@@ -1489,6 +1489,178 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
   color: var(--xf-text-400);
 }
 
+.xoptions-chain-table__spread-hint--dim {
+  font-size: 0.65rem;
+  line-height: 1.2;
+  color: var(--xf-text-500);
+}
+
+/* ── Option chain viewport (xOptions strategy builder): zebra, groups, hierarchy (tokens) ── */
+.xoptions-chain-table__viewport {
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: var(--xf-xoptions-surface);
+  overflow: hidden;
+}
+
+.xoptions-chain-table__viewport .xoptions-chain-table__head {
+  border-bottom: 2px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 90%, var(--xf-text-100) 10%);
+}
+
+.xoptions-chain-table__viewport .xoptions-chain-table__th-label {
+  color: var(--xf-text-400);
+  font-weight: 800;
+}
+
+.xoptions-chain-table__viewport .xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__th-pad,
+.xoptions-chain-table__viewport .xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__td-pad {
+  padding: 0.75rem 1rem;
+}
+
+.xoptions-chain-table__col-group-start {
+  border-left: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+}
+
+.xoptions-chain-table__viewport tbody tr:nth-child(odd) {
+  background: var(--xf-bg-900) !important;
+}
+
+.xoptions-chain-table__viewport tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--xf-surface-700) 30%, var(--xf-bg-900) 70%) !important;
+}
+
+.xoptions-chain-table__viewport tbody tr.xoptions-chain-table__row--interactive:not(.xoptions-contract-row--selected):hover {
+  background: color-mix(in srgb, var(--xf-surface-600) 46%, var(--xf-bg-900) 54%) !important;
+  box-shadow: none;
+}
+
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected {
+  border-left: 2px solid color-mix(in srgb, var(--xf-xoptions-accent) 82%, var(--xf-text-100)) !important;
+  outline: none !important;
+  background: color-mix(in srgb, var(--xf-xoptions-accent) 22%, var(--xf-bg-900) 78%) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--xf-xoptions-accent) 36%, transparent);
+}
+
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected:hover {
+  background: color-mix(in srgb, var(--xf-xoptions-accent) 26%, var(--xf-bg-900) 74%) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--xf-xoptions-accent) 42%, transparent);
+}
+
+.xoptions-chain-table__viewport .xoptions-chain-table__strike-val--brand {
+  font-weight: 600;
+  color: var(--xf-text-100);
+}
+
+.xoptions-chain-table__viewport .xoptions-chain-table__atm-badge--brand {
+  padding: 0.12rem 0.45rem;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  background: color-mix(in srgb, var(--xf-gain-green) 26%, transparent);
+  color: var(--xf-text-100);
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 48%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 22%, transparent),
+    0 0 14px color-mix(in srgb, var(--xf-gain-green) 28%, transparent);
+}
+
+.xoptions-chain-table__viewport .xoptions-chain-table__price-col .xoptions-chain-table__price-figure,
+.xoptions-chain-table__viewport .xoptions-contract__bid--emphasis {
+  color: color-mix(in srgb, var(--xf-success-400) 90%, var(--xf-text-100));
+  font-weight: 600;
+}
+
+.xoptions-chain-table__viewport .xoptions-contract__ask-cell {
+  color: color-mix(in srgb, var(--xf-success-400) 72%, var(--xf-text-100));
+}
+
+.xoptions-chain-table__viewport .xoptions-chain-table__mid-cell {
+  color: color-mix(in srgb, var(--xf-success-400) 78%, var(--xf-text-100));
+  font-size: inherit;
+}
+
+@media (min-width: 1024px) {
+  .xoptions-chain-table__viewport .xoptions-chain-table__price-col .xoptions-chain-table__price-figure {
+    font-size: 1rem;
+  }
+}
+
+.xoptions-chain-table__viewport .xoptions-chain-table__flow-metric {
+  color: var(--xf-text-300);
+}
+
+.xoptions-chain-table__vol-hot {
+  background: color-mix(in srgb, var(--xf-gain-green) 14%, var(--xf-bg-900)) !important;
+}
+
+.xoptions-chain-table__greek-delta-neg {
+  color: var(--xf-danger-400);
+}
+
+.xoptions-chain-table__greek-delta-pos {
+  color: var(--xf-success-400);
+}
+
+.xoptions-chain-table__greek-neutral {
+  color: var(--xf-text-300);
+}
+
+.xoptions-chain-table__greek-theta {
+  color: var(--xf-warning-400);
+}
+
+.xoptions-chain-table__greek-sky {
+  color: color-mix(in srgb, var(--xf-cyan-400) 78%, var(--xf-text-100));
+}
+
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected td {
+  color: color-mix(in srgb, var(--xf-text-100) 90%, var(--xf-xoptions-accent));
+}
+
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected .xoptions-chain-table__price-col .xoptions-chain-table__price-figure,
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected .xoptions-contract__bid--emphasis {
+  color: color-mix(in srgb, var(--xf-success-400) 94%, var(--xf-text-100));
+}
+
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected .xoptions-chain-table__flow-metric {
+  color: color-mix(in srgb, var(--xf-text-200) 85%, var(--xf-xoptions-accent));
+}
+
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--atm.xoptions-contract-row--selected td,
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--atm.xoptions-contract-row--selected .xoptions-contract__bid {
+  color: color-mix(in srgb, var(--xf-text-100) 88%, var(--xf-xoptions-accent));
+}
+
+html[data-xf-ui="soft"]
+  .xoptions-chain-table__viewport
+  tbody
+  tr.xoptions-contract-row--atm.xoptions-contract-row--selected
+  td,
+html[data-xf-ui="soft"]
+  .xoptions-chain-table__viewport
+  tbody
+  tr.xoptions-contract-row--atm.xoptions-contract-row--selected
+  .xoptions-contract__bid {
+  color: color-mix(in srgb, var(--xf-text-100) 88%, var(--xf-xoptions-accent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xoptions-chain-table__select-btn:hover {
+    transform: none;
+  }
+}
+
+/* Scanner tables use the same viewport chrome (zebra/hover/header); pad cells to match contract chooser */
+.xoptions-chain-scanner__tables .xoptions-chain-table__viewport th,
+.xoptions-chain-scanner__tables .xoptions-chain-table__viewport td {
+  padding: 0.75rem 1rem;
+}
+
+.xoptions-chain-scanner__tables .xoptions-chain-table__viewport .xoptions-chain-table__head {
+  color: var(--xf-text-400);
+}
+
 @media (min-width: 1024px) {
   .xoptions-chain-table--contract-chooser .xoptions-chain-table__col-greek {
     font-size: 0.55rem;
@@ -1551,22 +1723,6 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
   .xoptions-chain-table__select-btn {
     opacity: 0.72;
   }
-}
-
-.xoptions-chain-table--contract-chooser
-  tbody
-  tr.xoptions-chain-table__row--interactive:nth-child(even):not(.xoptions-contract-row--selected):not(
-    .xoptions-contract-row--atm
-  ):not(.xoptions-contract-row--itm):not(.xoptions-contract-row--otm) {
-  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-chain-table__row--interactive:hover {
-  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--xf-text-100) 11%, transparent);
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected:hover {
-  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--xf-text-100) 6%, transparent);
 }
 
 .xoptions-position-review__title {
@@ -2353,56 +2509,6 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid {
 
 .xoptions-contract-row--otm:not(.xoptions-contract-row--atm):not(.xoptions-contract-row--itm) {
   background: color-mix(in srgb, var(--xf-text-100) 4.5%, transparent);
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected {
-  border-left: 4px solid #8b5cf6;
-  outline: 1px solid color-mix(in srgb, #a78bfa 42%, transparent);
-  background: color-mix(in srgb, var(--xf-text-100) 13%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #8b5cf6 28%, transparent);
-}
-
-/* Selected row: lift copy above striping (ATM ITM/OTM tints used dark ink — force light + accent) */
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected td {
-  color: color-mix(in srgb, var(--xf-text-100) 88%, var(--xf-xoptions-accent));
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected .xoptions-chain-table__strike-val {
-  color: color-mix(in srgb, var(--xf-text-100) 92%, var(--xf-xoptions-accent));
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected .xoptions-contract__bid--emphasis {
-  color: var(--xf-gain-green);
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected .xoptions-contract__ask-cell {
-  color: color-mix(in srgb, var(--xf-gain-green) 65%, var(--xf-text-100));
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected .xoptions-chain-table__mid-cell {
-  color: color-mix(in srgb, var(--xf-text-100) 78%, var(--xf-xoptions-accent));
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--selected .xoptions-chain-table__spread-hint {
-  color: color-mix(in srgb, var(--xf-text-200) 72%, var(--xf-xoptions-accent));
-}
-
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--atm.xoptions-contract-row--selected td,
-.xoptions-chain-table--contract-chooser tbody tr.xoptions-contract-row--atm.xoptions-contract-row--selected .xoptions-contract__bid {
-  color: color-mix(in srgb, var(--xf-text-100) 88%, var(--xf-xoptions-accent));
-}
-
-html[data-xf-ui="soft"]
-  .xoptions-chain-table--contract-chooser
-  tbody
-  tr.xoptions-contract-row--atm.xoptions-contract-row--selected
-  td,
-html[data-xf-ui="soft"]
-  .xoptions-chain-table--contract-chooser
-  tbody
-  tr.xoptions-contract-row--atm.xoptions-contract-row--selected
-  .xoptions-contract__bid {
-  color: color-mix(in srgb, var(--xf-text-100) 88%, var(--xf-xoptions-accent));
 }
 
 .xoptions-contract__chain-foot {

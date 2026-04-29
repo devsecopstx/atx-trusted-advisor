@@ -447,7 +447,11 @@ export function XchatGuestPanel({
             </XfHoverHint>
           </div>
         </form>
-        <XchatComposerNav variant="guest" />
+        <div className="xchat-composer-shortcuts">
+          <div className="xchat-composer-shortcuts__row">
+            <XchatComposerNav variant="guest" />
+          </div>
+        </div>
         <p className="xchat-composer-hint">
           <span className="xchat-composer-hint__pill">Locked</span>
           <span className="xchat-composer-hint__text">Sign up or sign in for approved access.</span>

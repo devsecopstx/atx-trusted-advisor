@@ -36,6 +36,16 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `POST /api/reports/create` — session; body `{ scanData }` (generatedAt, planTier, truncated, rows, disclaimer) creates a 24-hour tokenized share record in `options_scan_reports` and returns `{ shareUrl, shareToken, expiresAt, expiresIn }`.
 - `GET /api/reports/scan/:token` — public; reads temporary report payload `{ scanData, createdAt, expiresAt, accessCount }` and increments access counters (`lastAccessedAt`, `accessCount`) for audit/usage telemetry.
 
+## User automation tasks (app_user)
+
+Mongo collections: **`user_tasks`**, **`user_task_runs`**. **`prompt`** tasks execute via the same **`POST /api/xchat/ask`** path as interactive chat (server-side fetch + signed session cookie when invoked by **`POST /api/internal/user-tasks/process-due`**). Conservative caps: **`MAX_USER_TASKS_PER_USER`** (see `src/modules/user-tasks/user-task-constants.ts`).
+
+- `GET /api/tasks` — session (`requireApprovedAppUserSession`); optional query **`portfolioId`** filters rows relevant to that workspace book.
+- `POST /api/tasks` — session; create task (schedule presets or cron/RRULE, optional **`portfolioId`**, **`delivery`** `in_app` / `email`).
+- `GET/PATCH/DELETE /api/tasks/:taskId` — session; tenant + owner scoped.
+- `POST /api/tasks/:taskId/run` — session; **Run now** (records **`user_task_runs`**, updates **`lastResultSnippet`** + schedule **`nextRunAt`**).
+- `POST /api/internal/user-tasks/process-due` — **not** cookie auth; header **`X-Atx-Scheduler-Secret`** === **`ATX_SCHEDULER_INTERNAL_SECRET`** (same as admin scheduler delegate). Intended for cron/Spring ops to drain due tasks.
+
 ## Admin access requests
 
 - `GET /api/admin/access-requests`

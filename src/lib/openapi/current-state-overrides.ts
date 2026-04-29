@@ -580,6 +580,25 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "404": jsonResponse("Default portfolio or watchlist not found.", "ErrorResponse")
     }
   },
+  "POST /api/internal/user-tasks/process-due": {
+    summary: "Process due app_user automation tasks ( Mongo `user_tasks` )",
+    description:
+      "Server-to-server. Polls due `user_tasks` and runs `prompt` types via the same path as interactive xChat (signed session cookie + POST /api/xchat/ask). Guard with `X-Atx-Scheduler-Secret` === `ATX_SCHEDULER_INTERNAL_SECRET` (min 24 chars).",
+    parameters: [
+      {
+        name: "X-Atx-Scheduler-Secret",
+        in: "header",
+        required: true,
+        description: "Shared secret; must match `ATX_SCHEDULER_INTERNAL_SECRET`.",
+        schema: { type: "string", minLength: 24 }
+      }
+    ],
+    responses: {
+      "200": jsonResponse("Batch processed.", "UserTasksProcessDueResponseEnvelope"),
+      "401": jsonResponse("Missing or invalid scheduler secret.", "ErrorResponse"),
+      "503": jsonResponse("Secret not configured on Next.", "ErrorResponse")
+    }
+  },
   "POST /api/internal/scheduler/execute-task": {
     summary: "Execute one Mongo-defined scheduled task on Next (JVM delegate)",
     description:
@@ -1347,6 +1366,33 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["data"],
     properties: {
       data: { $ref: "#/components/schemas/SchedulerInternalExecuteTaskData" }
+    }
+  },
+  UserTasksProcessDueResultRow: {
+    type: "object",
+    required: ["taskId", "ok", "message"],
+    properties: {
+      taskId: { type: "string", description: "Mongo `user_tasks` document id." },
+      ok: { type: "boolean" },
+      message: { type: "string" }
+    }
+  },
+  UserTasksProcessDueData: {
+    type: "object",
+    required: ["processed", "results"],
+    properties: {
+      processed: { type: "integer", minimum: 0 },
+      results: {
+        type: "array",
+        items: { $ref: "#/components/schemas/UserTasksProcessDueResultRow" }
+      }
+    }
+  },
+  UserTasksProcessDueResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: { $ref: "#/components/schemas/UserTasksProcessDueData" }
     }
   },
   ConflictErrorResponse: {

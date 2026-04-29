@@ -6,8 +6,7 @@ import {
     useMemo,
     useRef,
     useState,
-    useSyncExternalStore,
-    type ReactNode
+    useSyncExternalStore
 } from "react";
 
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
@@ -1257,6 +1256,7 @@ export function XoptionsChooseContract({
                       savedLayout={chainLayoutSaved}
                       onSavedLayoutChange={persistChainLayout}
                     />
+                    <div className="xoptions-chain-table__viewport">
                     <table
                       className={`xoptions-chain-table xoptions-chain-table--compact xoptions-chain-table--contract-chooser xoptions-chain-table--hnwi w-full border-collapse text-left ${mobileGreeksOpen ? "xoptions-chain-table--greeks-mobile-open" : ""}`}
                       style={{
@@ -1324,25 +1324,16 @@ export function XoptionsChooseContract({
                               : 0;
                           const oiVal = legOi(leg);
                           const g = leg.greeks;
-                          const volMix = chainHeatMixPercent(vol, heatMaxes.maxVol);
                           const oiMix = chainHeatMixPercent(oiVal, heatMaxes.maxOi);
                           const isAtm = atmStrike != null && Math.abs(row.strike - atmStrike) < 1e-6;
-                          const volCellStyle =
-                            volMix > 0
-                              ? { background: `color-mix(in srgb, var(--xf-gain-green) ${volMix}%, transparent)` }
-                              : undefined;
                           const oiCellStyle =
                             oiMix > 0
                               ? { background: `color-mix(in srgb, var(--xf-gain-green) ${oiMix}%, transparent)` }
                               : undefined;
-                          const greekCell = (cid: XoptionsChainDataColumnId, node: ReactNode) => (
-                            <td
-                              key={cid}
-                              className={`xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle text-right font-semibold`}
-                            >
-                              {node}
-                            </td>
-                          );
+                          const gb = (cid: XoptionsChainDataColumnId) =>
+                            isFirstVisibleColumnInChainGroup(cid, visibleChainDataCols)
+                              ? "xoptions-chain-table__col-group-start"
+                              : "";
                           return (
                             <tr
                               key={row.strike}
@@ -1365,24 +1356,29 @@ export function XoptionsChooseContract({
                                   return (
                                     <td
                                       key={cid}
-                                      className="xoptions-chain-table__td-pad xoptions-chain-table__strike-cell align-middle"
+                                      className={`xoptions-chain-table__td-pad xoptions-chain-table__strike-cell align-middle ${gb("strike")}`}
                                     >
-                                      <span className="xoptions-chain-table__strike-val font-mono tabular-nums">
+                                      <span className="xoptions-chain-table__strike-val xoptions-chain-table__strike-val--brand font-mono tabular-nums tracking-tight">
                                         {row.strike}
                                       </span>
                                       {isAtm ? (
-                                        <span className="xoptions-chain-table__atm-badge">ATM</span>
+                                        <span className="xoptions-chain-table__atm-badge xoptions-chain-table__atm-badge--brand">
+                                          ATM
+                                        </span>
                                       ) : null}
                                     </td>
                                   );
                                 }
                                 if (cid === "bid") {
                                   return (
-                                    <td key={cid} className="xoptions-chain-table__td-pad align-middle text-right">
+                                    <td
+                                      key={cid}
+                                      className={`xoptions-chain-table__td-pad align-middle text-right xoptions-chain-table__price-col ${gb("bid")}`}
+                                    >
                                       <div className="flex flex-col items-end gap-0.5">
                                         <button
                                           type="button"
-                                          className="xoptions-contract__bid xoptions-contract__bid--emphasis xoptions-chain-table__quote-major font-mono tabular-nums text-right"
+                                          className="xoptions-contract__bid xoptions-contract__bid--emphasis xoptions-chain-table__quote-major xoptions-chain-table__price-figure font-mono tabular-nums tracking-tight text-right"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setSelectedStrike(row.strike);
@@ -1391,7 +1387,7 @@ export function XoptionsChooseContract({
                                         >
                                           ${bid.toFixed(2)}
                                         </button>
-                                        <span className="xoptions-chain-table__spread-hint font-mono tabular-nums">
+                                        <span className="xoptions-chain-table__spread-hint xoptions-chain-table__spread-hint--dim font-mono tabular-nums tracking-tight">
                                           {spreadAbs.toFixed(2)} spread
                                         </span>
                                       </div>
@@ -1402,7 +1398,7 @@ export function XoptionsChooseContract({
                                   return (
                                     <td
                                       key={cid}
-                                      className="xoptions-chain-table__td-pad xoptions-contract__ask-cell xoptions-chain-table__quote-major font-mono tabular-nums align-middle text-right font-semibold"
+                                      className={`xoptions-chain-table__td-pad xoptions-contract__ask-cell xoptions-chain-table__quote-major xoptions-chain-table__price-col xoptions-chain-table__price-figure font-mono tabular-nums tracking-tight align-middle text-right font-semibold ${gb("ask")}`}
                                     >
                                       ${ask.toFixed(2)}
                                     </td>
@@ -1412,7 +1408,7 @@ export function XoptionsChooseContract({
                                   return (
                                     <td
                                       key={cid}
-                                      className="xoptions-chain-table__td-pad xoptions-chain-table__mid-cell xoptions-chain-table__quote-major font-mono tabular-nums align-middle text-right font-semibold"
+                                      className={`xoptions-chain-table__td-pad xoptions-chain-table__mid-cell xoptions-chain-table__quote-major xoptions-chain-table__price-col xoptions-chain-table__price-figure font-mono tabular-nums tracking-tight align-middle text-right font-semibold ${gb("mid")}`}
                                     >
                                       ${mid.toFixed(2)}
                                     </td>
@@ -1422,7 +1418,7 @@ export function XoptionsChooseContract({
                                   return (
                                     <td
                                       key={cid}
-                                      className="xoptions-chain-table__td-pad xoptions-chain-table__quote-major font-mono tabular-nums align-middle text-right font-semibold"
+                                      className={`xoptions-chain-table__td-pad xoptions-chain-table__quote-major xoptions-chain-table__price-col xoptions-chain-table__price-figure font-mono tabular-nums tracking-tight align-middle text-right font-semibold ${gb("last")}`}
                                     >
                                       ${lastPx.toFixed(2)}
                                     </td>
@@ -1432,7 +1428,7 @@ export function XoptionsChooseContract({
                                   return (
                                     <td
                                       key={cid}
-                                      className="xoptions-chain-table__td-pad font-mono tabular-nums align-middle text-right font-semibold"
+                                      className={`xoptions-chain-table__td-pad xoptions-chain-table__price-col xoptions-chain-table__price-figure font-mono tabular-nums tracking-tight align-middle text-right font-semibold ${gb("be")}`}
                                     >
                                       ${be.toFixed(2)}
                                     </td>
@@ -1442,7 +1438,7 @@ export function XoptionsChooseContract({
                                   return (
                                     <td
                                       key={cid}
-                                      className="xoptions-chain-table__td-pad font-mono tabular-nums align-middle text-right font-semibold"
+                                      className={`xoptions-chain-table__td-pad xoptions-chain-table__flow-metric font-mono tabular-nums tracking-tight align-middle text-right font-semibold ${gb("iv")}`}
                                     >
                                       {ivDisplay}
                                     </td>
@@ -1452,8 +1448,7 @@ export function XoptionsChooseContract({
                                   return (
                                     <td
                                       key={cid}
-                                      className="xoptions-chain-table__td-pad xoptions-chain-table__heat-cell font-mono tabular-nums text-right align-middle font-semibold"
-                                      style={volCellStyle}
+                                      className={`xoptions-chain-table__td-pad xoptions-chain-table__heat-cell xoptions-chain-table__flow-metric font-mono tabular-nums tracking-tight text-right align-middle font-semibold ${vol > 500 ? "xoptions-chain-table__vol-hot" : ""} ${gb("volume")}`}
                                     >
                                       {vol.toLocaleString()}
                                     </td>
@@ -1463,7 +1458,7 @@ export function XoptionsChooseContract({
                                   return (
                                     <td
                                       key={cid}
-                                      className="xoptions-chain-table__td-pad xoptions-chain-table__heat-cell font-mono tabular-nums text-right align-middle font-semibold"
+                                      className={`xoptions-chain-table__td-pad xoptions-chain-table__heat-cell xoptions-chain-table__flow-metric font-mono tabular-nums tracking-tight text-right align-middle font-semibold ${gb("oi")}`}
                                       style={oiCellStyle}
                                     >
                                       {oiVal.toLocaleString()}
@@ -1471,16 +1466,16 @@ export function XoptionsChooseContract({
                                   );
                                 }
                                 if (cid === "delta") {
-                                  return greekCell(cid, formatGreek(g?.delta, 3));
+                                  return renderGreekTd("delta", "delta", g?.delta, 3);
                                 }
                                 if (cid === "gamma") {
-                                  return greekCell(cid, formatGreek(g?.gamma, 4));
+                                  return renderGreekTd("gamma", "gamma", g?.gamma, 4);
                                 }
                                 if (cid === "theta") {
-                                  return greekCell(cid, formatGreek(g?.theta_per_day, 3));
+                                  return renderGreekTd("theta", "theta", g?.theta_per_day, 3);
                                 }
                                 if (cid === "vega") {
-                                  return greekCell(cid, formatGreek(g?.vega_per_one_percent_iv, 3));
+                                  return renderGreekTd("vega", "vega", g?.vega_per_one_percent_iv, 3);
                                 }
                                 return null;
                               })}
@@ -1501,6 +1496,7 @@ export function XoptionsChooseContract({
                         })}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                   </div>
                   {truncated ? (

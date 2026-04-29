@@ -16,7 +16,7 @@ import {
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
-import { LucideFolderIcon, LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
+import { LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { useTenantUxPolicy } from "@/app/ui/use-tenant-ux-policy";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
@@ -432,15 +432,9 @@ export function WorkspaceProductSidebar({
           <LucideSquarePenIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--composer" />
           <span>Composer</span>
         </SidebarLink>
-        <SidebarLink href="/xchat?rail=xchat&item=persona" nested title="Open xChat persona panel">
-          Persona
-        </SidebarLink>
-        <SidebarLink href="/xchat?rail=xchat&item=examples" nested title="Open xChat examples panel">
-          Examples
-        </SidebarLink>
-        <SidebarLink href="/xchat?rail=xchat&item=history" nested title="Conversations">
+        <SidebarLink href="/xchat?rail=xchat&item=history" nested title="Chat history">
           <ChatHistoryRailIcon className="portfolios-workspace-sidebar__glyph" />
-          <span>Conversations</span>
+          <span>Chat history</span>
         </SidebarLink>
       </div>
     </RouteSyncedDetails>
@@ -470,7 +464,7 @@ export function WorkspaceProductSidebar({
           {
             key: "xchat-history",
             href: "/xchat?rail=xchat&item=history",
-            label: "Conversations",
+            label: "Chat history",
             isActive: xchatHistoryDeepLinkActive,
             icon: (
               <ChatHistoryRailIcon className="h-[1.15rem] w-[1.15rem] shrink-0 text-[var(--xf-text-200)]" />
@@ -487,24 +481,14 @@ export function WorkspaceProductSidebar({
       icon: <XoptionsRocketIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
     }]
       : []),
-    ...(showAttachmentsRail
-      ? ([
-          {
-            key: "attachments",
-            href: "/xchat?rail=xchat&item=attachments",
-            label: "File attachments",
-            isActive: xchatAttachmentsDeepLinkActive,
-            icon: (
-              <LucideFolderIcon className="h-[1.2rem] w-[1.2rem] shrink-0 text-[var(--xf-text-200)]" />
-            )
-          }
-        ] satisfies CollapsedIconItem[])
-      : []),
     {
       key: "resources",
       href: "/resources/about",
       label: "Resources",
-      isActive: pathname.startsWith("/resources"),
+      isActive:
+        pathname.startsWith("/resources") ||
+        pathname.startsWith("/account/tasks") ||
+        xchatAttachmentsDeepLinkActive,
       icon: <ResourcesIcon className="h-[1.35rem] w-[1.35rem] text-[var(--xf-text-200)]" />
     }
   ];
@@ -522,7 +506,7 @@ export function WorkspaceProductSidebar({
   const railWidthPx = narrowViewport ? undefined : showExpandedUi ? 260 : 64;
 
   const expandedNav = (
-    <nav className="portfolios-workspace-sidebar" aria-label="Workspace">
+    <nav className="portfolios-workspace-sidebar portfolios-workspace-sidebar--rail-fill" aria-label="Workspace">
       {isPathVisible("/portfolios") || isPathVisible("/portfolio") || isPathVisible("/watchlist") || isPathVisible("/import-activity") ? (
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion"
@@ -568,8 +552,8 @@ export function WorkspaceProductSidebar({
           />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
-          <SidebarLink href="/xoptions" nested title="xOptions — strategy builder and chains">
-            <span className="portfolios-workspace-sidebar__emph">Open xOptions</span>
+          <SidebarLink href="/xoptions" nested title="Find contracts and strategies — xOptions desk">
+            <span className="portfolios-workspace-sidebar__emph">Find xOptions</span>
           </SidebarLink>
           <SidebarLink href="/xoptions/wheel" nested title="xWheel Studio — wheel ideas and reports">
             xWheel Studio
@@ -646,25 +630,25 @@ export function WorkspaceProductSidebar({
       </RouteSyncedDetails>
       ) : null}
 
-      {showAttachmentsRail ? (
-        <RouteSyncedDetails
-          className="portfolios-workspace-sidebar__accordion"
-          routeMatch={xchatAttachmentsDeepLinkActive}
-        >
-          <summary className="portfolios-workspace-sidebar__accordion-summary">
-            <SidebarAccordionSummary
-              icon={<LucideFolderIcon className="portfolios-workspace-sidebar__glyph" />}
-              label="File attachments"
-            />
-          </summary>
-          <div className="portfolios-workspace-sidebar__accordion-body">
-            <XchatAttachmentsPanel />
-          </div>
-        </RouteSyncedDetails>
+      {isGlobalAdmin ? (
+        <SidebarLink href="/admin" title="Admin Hub">
+          <AdminHubIcon className="portfolios-workspace-sidebar__glyph" />
+          <span>Admin hub</span>
+        </SidebarLink>
       ) : null}
 
-      {isPathVisible("/resources") ? (
-      <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/resources")}>
+      <div className="portfolios-workspace-sidebar__spacer" aria-hidden />
+
+      <div className="portfolios-workspace-sidebar__bottom">
+      {isPathVisible("/resources") || showAttachmentsRail ? (
+      <RouteSyncedDetails
+        className="portfolios-workspace-sidebar__accordion"
+        routeMatch={
+          pathname.startsWith("/resources") ||
+          pathname.startsWith("/account/tasks") ||
+          xchatAttachmentsDeepLinkActive
+        }
+      >
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
             icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--resources" />}
@@ -672,6 +656,17 @@ export function WorkspaceProductSidebar({
           />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
+          {showAttachmentsRail ? (
+            <div className="portfolios-workspace-sidebar__collections-block">
+              <p className="portfolios-workspace-sidebar__collections-label">User Collections</p>
+              <XchatAttachmentsPanel />
+            </div>
+          ) : null}
+          {isPathVisible("/resources") && showAttachmentsRail ? (
+            <div aria-hidden className="portfolios-workspace-sidebar__collections-rule" />
+          ) : null}
+          {isPathVisible("/resources") ? (
+            <>
           <SidebarLink href="/resources/about" nested>
             About
           </SidebarLink>
@@ -718,23 +713,22 @@ export function WorkspaceProductSidebar({
             <UploadGlyph className="portfolios-workspace-sidebar__glyph" />
             Broker import
           </SidebarLink>
+          <SidebarLink href="/account/tasks" nested title="Scheduled and saved user tasks">
+            Tasks
+          </SidebarLink>
+            </>
+          ) : null}
         </div>
       </RouteSyncedDetails>
       ) : null}
 
-      {isGlobalAdmin ? (
-        <SidebarLink href="/admin" title="Admin Hub">
-          <AdminHubIcon className="portfolios-workspace-sidebar__glyph" />
-          <span>Admin hub</span>
-        </SidebarLink>
-      ) : null}
-
-      <div className="portfolios-workspace-sidebar__spacer" />
-
       {accountDetails ? (
         <RouteSyncedDetails
           className="portfolios-workspace-sidebar__accordion"
-          routeMatch={pathname.startsWith("/account") || pathname.startsWith("/legal")}
+          routeMatch={
+            (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
+            pathname.startsWith("/legal")
+          }
         >
           <summary className="portfolios-workspace-sidebar__accordion-summary">
             <SidebarAccordionSummary icon={<PersonIcon className="portfolios-workspace-sidebar__glyph" />} label="Account" />
@@ -748,6 +742,7 @@ export function WorkspaceProductSidebar({
           </div>
         </RouteSyncedDetails>
       ) : null}
+      </div>
     </nav>
   );
 
@@ -760,7 +755,7 @@ export function WorkspaceProductSidebar({
       }}
       suppressHydrationWarning={true}
     >
-      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain py-1">
         {showExpandedUi ? (
           expandedNav
         ) : (

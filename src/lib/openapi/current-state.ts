@@ -199,6 +199,33 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tasks"
   },
   {
+    path: "/api/internal/user-tasks/process-due",
+    operations: [{ method: "POST", auth: "public" }],
+    tag: "user-tasks"
+  },
+  {
+    path: "/api/tasks",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true }
+    ],
+    tag: "user-tasks"
+  },
+  {
+    path: "/api/tasks/{taskId}",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "PATCH", auth: "session", hasRequestBody: true },
+      { method: "DELETE", auth: "session" }
+    ],
+    tag: "user-tasks"
+  },
+  {
+    path: "/api/tasks/{taskId}/run",
+    operations: [{ method: "POST", auth: "session" }],
+    tag: "user-tasks"
+  },
+  {
     path: "/api/internal/tenant-ux/policy",
     operations: [{ method: "GET", auth: "session" }],
     tag: "admin-system"
@@ -1078,6 +1105,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
     "Global admin CRUD for tenant options-strategy catalog and Mongo-backed `options_strategy_preferences` (markdown seed from `atx-docs/rag-collection/options-strategy` via `npm run seed:options-strategy-prefs`). Next-authoritative — not proxied to Spring.",
   "admin-tasks":
     "Admin task catalog and task-run controls; internal `POST /api/internal/scheduler/execute-task` for JVM→Next scheduled execution (shared secret, not session).",
+  "user-tasks":
+    "App_user automation: Mongo `user_tasks` / `user_task_runs`, CRUD + run-now under `/api/tasks/*`, scheduled drain via `POST /api/internal/user-tasks/process-due` (same scheduler secret as admin delegate). Prompt execution delegates to `POST /api/xchat/ask`.",
   "admin-tenants":
     "Global admin tenant surfaces: workspace limits, portfolio scoring defaults on core_tenants, and read-only tenant register (all tenants + tenant_admin directory).",
   "admin-users": "Admin management of user records, roles, plans, and settings.",

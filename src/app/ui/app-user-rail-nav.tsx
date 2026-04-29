@@ -193,6 +193,9 @@ export function AppUserResourcesRailSection({
           <RailNavLink href={importHref} title="Upload broker CSV exports (Merrill, Fidelity, …)">
             Broker import
           </RailNavLink>
+          <RailNavLink href="/account/tasks" title="Scheduled and saved user tasks">
+            Tasks
+          </RailNavLink>
           {showReferenceDocs
             ? isGlobalAdmin ? (
                 <RailNavLink href="/admin/api-docs">Reference docs</RailNavLink>

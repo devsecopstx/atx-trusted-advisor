@@ -295,6 +295,7 @@ export const config = {
     "/api/xchat/:path*",
     "/api/recommendations/:path*",
     "/api/strategy-jobs/:path*",
+    "/api/tasks/:path*",
     "/api/app-user/:path*",
     "/portfolio",
     "/portfolio/:path*",

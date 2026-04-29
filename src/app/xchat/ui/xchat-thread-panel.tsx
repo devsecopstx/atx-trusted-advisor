@@ -122,8 +122,8 @@ export function XchatThreadPanel({
           {messages.length === 0 ? (
             <div className="xchat-messages-empty">
               <p className="status-text">
-                Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona in the
-                sidebar).
+                Start a conversation with <strong>{activePersonaName}</strong> (or choose another published persona in the
+                composer).
               </p>
             </div>
           ) : null}

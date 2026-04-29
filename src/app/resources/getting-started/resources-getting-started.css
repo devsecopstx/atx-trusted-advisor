@@ -111,6 +111,130 @@
   gap: 0.35rem;
 }
 
+.resources-about-pillars-legal-note {
+  color: var(--xf-text-200);
+}
+
+.resources-doc-section--pillars {
+  margin-top: 0.65rem;
+}
+
+.resources-about-pillars-cards {
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 520px) {
+  .resources-about-pillars-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .resources-about-pillars-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.resources-about-pillar-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 10.5rem;
+  padding: 0.85rem 0.88rem 0.92rem;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background:
+    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--xf-gain-green) 14%, transparent), transparent 42%),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--xf-surface-700) 82%, var(--xf-bg-900)),
+      color-mix(in srgb, var(--xf-bg-900) 92%, var(--xf-surface-700))
+    );
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
+}
+
+.resources-about-pillar-card:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 38%, transparent);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--xf-bg-900) 55%, transparent);
+  transform: translateY(-2px);
+}
+
+.resources-about-pillar-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-focus, #3b82f6) 75%, transparent);
+  outline-offset: 2px;
+}
+
+.resources-about-pillar-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.resources-about-pillar-card__num {
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--xf-text-400);
+}
+
+.resources-about-pillar-card__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+  color: color-mix(in srgb, var(--xf-gain-green) 92%, var(--xf-text-100));
+}
+
+.resources-about-pillar-card__svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  display: block;
+}
+
+.resources-about-pillar-card__title {
+  margin: 0.65rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.28;
+  color: var(--xf-text-100);
+}
+
+.resources-about-pillar-card:hover .resources-about-pillar-card__title {
+  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+}
+
+.resources-about-pillar-card__blurb {
+  margin: 0.38rem 0 0;
+  flex: 1;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--xf-text-400);
+}
+
+.resources-about-pillar-card__cta {
+  margin-top: 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+}
+
 .resources-doc-grid {
   margin-top: 0.7rem;
   display: grid;

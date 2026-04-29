@@ -8,8 +8,7 @@ import {
     useEffect,
     useMemo,
     useRef,
-    useState,
-    type SVGProps
+    useState
 } from "react";
 
 import dynamic from "next/dynamic";
@@ -34,8 +33,6 @@ import {
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
-import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
-
 const XchatThreadPanelLazy = dynamic(
   () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),
   { ssr: false, loading: () => <XchatChatSkeleton variant="thread" /> }
@@ -61,43 +58,6 @@ type XchatPrivacyPrefs = {
   keepLastTenMessages: boolean;
   consentedAt: string | null;
 };
-
-function formatLastTurnToolSummary(calls: AskToolCallSummary[] | undefined): string {
-  if (!calls || calls.length === 0) {
-    return "No tools invoked this turn";
-  }
-  const totalMs = calls.reduce((sum, c) => sum + c.durationMs, 0);
-  const uniqNames = [...new Set(calls.map((c) => c.name))];
-  return `${calls.length} call${calls.length === 1 ? "" : "s"} · ${totalMs}ms · ${uniqNames.join(", ")}`;
-}
-
-function ExamplesRailGlyph(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.75}
-      />
-    </svg>
-  );
-}
-
-function PersonaRailGlyph(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.75}
-      />
-    </svg>
-  );
-}
 
 export type XchatConversationProps = {
   accountDetails: AppUserRailAccountPanelDetails;
@@ -314,27 +274,6 @@ function computeEmphasizeStrategyJobPrimary(fullThread: Message[], aiMsgId: stri
   );
 }
 
-type VisibleCollection = {
-  collectionId: string;
-  collectionName?: string;
-  source: "atxfinance_default" | "user_history" | "assigned_persona";
-};
-
-/** Mirrors `GET /api/xchat/collections` default row when the API is missing (404) or unreachable (sync env only on server; client usually empty). */
-const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
-  const cid = getTeamXaiKbCollectionIdSync();
-  if (!cid) {
-    return [];
-  }
-  return [
-    {
-      collectionId: cid,
-      collectionName: "aTxFinance Default",
-      source: "atxfinance_default"
-    }
-  ];
-})();
-
 export function XchatConversation({
   accountDetails,
   googleLinkHref = null,
@@ -378,20 +317,6 @@ export function XchatConversation({
   const [pasteImageError, setPasteImageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
-  const [lastTurnToolSummary, setLastTurnToolSummary] = useState<string | null>(null);
-  const [railXchatUsage, setRailXchatUsage] = useState<{
-    lastModel: string | null;
-    lastTurn: { input: number; output: number; total: number } | null;
-    sessionSum: { input: number; output: number; total: number };
-  }>({
-    lastModel: null,
-    lastTurn: null,
-    sessionSum: { input: 0, output: 0, total: 0 }
-  });
-  const [visibleCollections, setVisibleCollections] = useState<VisibleCollection[]>([]);
-  const [, setAssociatedCollectionCount] = useState(1);
-  const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
-  const [collectionsScopeDegraded, setCollectionsScopeDegraded] = useState(false);
   const [personaPickerRows, setPersonaPickerRows] = useState<Array<{ _id: string; name: string }>>([]);
   const [personaListError, setPersonaListError] = useState<string | null>(null);
   const [personaListFetched, setPersonaListFetched] = useState(false);
@@ -728,7 +653,7 @@ export function XchatConversation({
       try {
         const response = await fetch("/api/xchat/collections");
         const payload = (await response.json().catch(() => ({}))) as {
-          data?: VisibleCollection[];
+          data?: unknown[];
           metadata?: {
             activePersonaName?: string;
             associatedCollectionCount?: number;
@@ -740,38 +665,22 @@ export function XchatConversation({
           if (!active) {
             return;
           }
-          setVisibleCollections(DEFAULT_VISIBLE_COLLECTIONS);
-          setAssociatedCollectionCount(1);
           setActivePersonaName(defaultPublishedPersonaName);
           setSuggestedPersonaId(null);
-          setCollectionsScopeDegraded(true);
-          setCollectionsStatus(null);
           return;
         }
         if (!active) {
           return;
         }
-        setCollectionsScopeDegraded(false);
-        setVisibleCollections(payload.data ?? []);
         setActivePersonaName(payload.metadata?.activePersonaName ?? defaultPublishedPersonaName);
         const suggested = payload.metadata?.assignedPersonaId?.trim() ?? null;
         setSuggestedPersonaId(suggested && suggested.length > 0 ? suggested : null);
-        setAssociatedCollectionCount(
-          Number.isInteger(payload.metadata?.associatedCollectionCount)
-            ? (payload.metadata?.associatedCollectionCount ?? 1)
-            : (payload.data ?? []).length || 1
-        );
-        setCollectionsStatus(null);
       } catch {
         if (!active) {
           return;
         }
-        setVisibleCollections(DEFAULT_VISIBLE_COLLECTIONS);
-        setAssociatedCollectionCount(1);
         setActivePersonaName(defaultPublishedPersonaName);
         setSuggestedPersonaId(null);
-        setCollectionsScopeDegraded(true);
-        setCollectionsStatus(null);
       }
     }
     void loadVisibleCollections();
@@ -943,7 +852,7 @@ export function XchatConversation({
       return;
     }
     expandWorkspaceProductRail();
-    if (initialXchatItem !== "composer") {
+    if (initialXchatItem !== "composer" && initialXchatItem !== "persona") {
       return;
     }
     queueMicrotask(() => {
@@ -1225,33 +1134,6 @@ export function XchatConversation({
 
       const resolvedName = payload.data?.personaName ?? activePersonaName;
       setActivePersonaName(resolvedName);
-      setLastTurnToolSummary(formatLastTurnToolSummary(payload.data?.toolCalls));
-
-      const turnModel = payload.data?.model;
-      const turnUsage = payload.data?.xaiUsage;
-      setRailXchatUsage((prev) => {
-        const nextModel =
-          typeof turnModel === "string" && turnModel.length > 0 ? turnModel : prev.lastModel;
-        if (!turnUsage) {
-          return nextModel === prev.lastModel ? prev : { ...prev, lastModel: nextModel };
-        }
-        const input = Math.max(0, Math.floor(Number(turnUsage.inputTokens) || 0));
-        const output = Math.max(0, Math.floor(Number(turnUsage.outputTokens) || 0));
-        const totalRaw = Number(turnUsage.totalTokens);
-        const total =
-          Number.isFinite(totalRaw) && totalRaw > 0
-            ? Math.floor(totalRaw)
-            : input + output;
-        return {
-          lastModel: nextModel,
-          lastTurn: { input, output, total },
-          sessionSum: {
-            input: prev.sessionSum.input + input,
-            output: prev.sessionSum.output + output,
-            total: prev.sessionSum.total + total
-          }
-        };
-      });
 
       const logId = typeof payload.data?.logId === "string" ? payload.data.logId : undefined;
       const historyItemId = logId || `local-${Date.now()}`;
@@ -1335,123 +1217,7 @@ export function XchatConversation({
               >
                 <div className="xchat-rail-subsection">
                   <RailDisclosure
-                    defaultOpen={initialXchatItem === "persona"}
-                    icon={<PersonaRailGlyph className="app-user-rail-disclosure__glyph" />}
-                    title="Persona"
-                  >
-                    <div className="xchat-rail-persona-panel">
-                      <div className="xchat-rail-persona-block" aria-label="Active persona and last turn tools">
-                        <h3 className="xchat-rail-title xchat-rail-title--caps">Active persona</h3>
-                        <div className="xchat-rail-active-persona">
-                          <p className="status-text xchat-rail-active-persona-name" style={{ margin: "0 0 0.25rem" }}>
-                            <strong>{activePersonaName}</strong>
-                          </p>
-                          <XfHoverHint
-                            hint={
-                              lastTurnToolSummary ?? "Tool names and durations from the last completed ask"
-                            }
-                          >
-                            <p
-                              className="status-text xchat-rail-last-turn-tools"
-                              role="note"
-                              style={{ fontSize: "0.72rem", lineHeight: 1.35, margin: 0 }}
-                              tabIndex={0}
-                            >
-                              {lastTurnToolSummary ? (
-                                lastTurnToolSummary
-                              ) : (
-                                <span style={{ opacity: 0.8 }}>Send a message to see tool stats</span>
-                              )}
-                            </p>
-                          </XfHoverHint>
-                        </div>
-                      </div>
-
-                      <div className="xchat-rail-persona-block" aria-label="Knowledge collections and scope status">
-                        <h3 className="xchat-rail-title xchat-rail-title--caps">Status</h3>
-                        <p
-                          className="status-text"
-                          style={{ fontSize: "0.72rem", margin: "0 0 0.35rem", lineHeight: 1.35 }}
-                        >
-                          Collection list loaded for ask:{" "}
-                          {visibleCollections.length > 0
-                            ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
-                            : "—"}
-                        </p>
-                        {collectionsScopeDegraded ? (
-                          <p
-                            className="status-text status-warn"
-                            style={{ fontSize: "0.72rem", margin: 0, lineHeight: 1.35 }}
-                          >
-                            Default Finance scope only — server collection list unavailable (404 or network).
-                          </p>
-                        ) : null}
-                        {collectionsStatus ? (
-                          <p
-                            className="status-text status-error"
-                            style={{ fontSize: "0.72rem", margin: "0.35rem 0 0" }}
-                          >
-                            {collectionsStatus}
-                          </p>
-                        ) : null}
-                        {railXchatUsage.lastModel ? (
-                          <p
-                            className="status-text"
-                            style={{ fontSize: "0.72rem", margin: "0.35rem 0 0", lineHeight: 1.35 }}
-                          >
-                            <span style={{ color: "var(--xf-text-muted)" }}>Model: </span>
-                            <span className="font-mono" style={{ color: "var(--xf-text-100)" }}>
-                              {railXchatUsage.lastModel}
-                            </span>
-                          </p>
-                        ) : null}
-                        {railXchatUsage.lastTurn ? (
-                          <p
-                            className="status-text font-mono"
-                            style={{
-                              fontSize: "0.68rem",
-                              margin: "0.2rem 0 0",
-                              lineHeight: 1.35,
-                              color: "var(--xf-text-muted)"
-                            }}
-                          >
-                            Last turn: {railXchatUsage.lastTurn.input.toLocaleString("en-US")} in /{" "}
-                            {railXchatUsage.lastTurn.output.toLocaleString("en-US")} out /{" "}
-                            {railXchatUsage.lastTurn.total.toLocaleString("en-US")} total
-                          </p>
-                        ) : railXchatUsage.lastModel ? (
-                          <p
-                            className="status-text"
-                            style={{ fontSize: "0.68rem", margin: "0.2rem 0 0", opacity: 0.8 }}
-                          >
-                            Token counts appear after a model completion with usage.
-                          </p>
-                        ) : null}
-                        {railXchatUsage.sessionSum.total > 0 ||
-                        railXchatUsage.sessionSum.input > 0 ||
-                        railXchatUsage.sessionSum.output > 0 ? (
-                          <p
-                            className="status-text font-mono"
-                            style={{
-                              fontSize: "0.68rem",
-                              margin: "0.2rem 0 0",
-                              lineHeight: 1.35,
-                              color: "var(--xf-text-muted)"
-                            }}
-                          >
-                            Session sum: {railXchatUsage.sessionSum.input.toLocaleString("en-US")} in /{" "}
-                            {railXchatUsage.sessionSum.output.toLocaleString("en-US")} out /{" "}
-                            {railXchatUsage.sessionSum.total.toLocaleString("en-US")} total
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </RailDisclosure>
-                </div>
-
-                <div className="xchat-rail-subsection">
-                  <RailDisclosure
-                    defaultOpen={initialXchatItem === "composer"}
+                    defaultOpen={initialXchatItem === "composer" || initialXchatItem === "persona"}
                     icon={
                       <LucideSquarePenIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--composer" />
                     }
@@ -1479,41 +1245,9 @@ export function XchatConversation({
 
                 <div className="xchat-rail-subsection">
                   <RailDisclosure
-                    defaultOpen={initialXchatItem === "examples"}
-                    icon={<ExamplesRailGlyph className="app-user-rail-disclosure__glyph" />}
-                    title="Examples"
-                  >
-                    <div className="xchat-rail-link-list">
-                      {normalizedExamples.map((prompt, i) => (
-                        <XfHoverHint key={`rail-example-${i}`} hint={prompt}>
-                          <button
-                            className="app-user-rail-sublink xchat-rail-link"
-                            type="button"
-                            onClick={() => {
-                              setInput(prompt);
-                              queueMicrotask(() => {
-                                const el = composerRef.current;
-                                if (el) {
-                                  el.focus();
-                                  el.style.height = "auto";
-                                  el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-                                }
-                              });
-                            }}
-                          >
-                            <span className="xchat-rail-link__text">{prompt}</span>
-                          </button>
-                        </XfHoverHint>
-                      ))}
-                    </div>
-                  </RailDisclosure>
-                </div>
-
-                <div className="xchat-rail-subsection">
-                  <RailDisclosure
                     defaultOpen={initialXchatItem === "history"}
                     icon={<ChatHistoryRailIcon className="app-user-rail-disclosure__glyph" />}
-                    title="Conversations"
+                    title="Chat history"
                   >
                     <div className="xchat-sidebar-privacy-row">
                       <span className="xchat-sidebar-privacy-row__label">Keep your last 10 messages?</span>
@@ -1645,7 +1379,10 @@ export function XchatConversation({
       <div className="xchat-main">
         <header className="xchat-welcome-header">
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
-          <p className="xchat-welcome-sub">Overview of xChat — portfolio, watchlist and advisor options-tools. See Examples on left.</p>
+          <p className="xchat-welcome-sub">
+            Overview of xChat — portfolio, watchlist and advisor options-tools. Use Examples next to xOptions for starter
+            prompts.
+          </p>
         </header>
 
         <BillingAccessStateBanner />
@@ -1675,6 +1412,7 @@ export function XchatConversation({
           <XchatComposerPanelLazy
             composerFormRef={composerFormRef}
             composerRef={composerRef}
+            examplesInitiallyExpanded={initialXchatItem === "examples"}
             handleSend={handleSend}
             input={input}
             loading={loading}
@@ -1683,6 +1421,7 @@ export function XchatConversation({
             personaListError={personaListError}
             personaPickerLocked={personaPickerLocked}
             personaSelectRows={personaSelectRows}
+            promptExamples={normalizedExamples}
             selectedPersonaId={selectedPersonaId}
             setInput={setInput}
             setPasteImageError={setPasteImageError}

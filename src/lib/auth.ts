@@ -105,6 +105,22 @@ function parseSessionCookie(raw: string): SessionPayload | null {
   }
 }
 
+/**
+ * Signs a session cookie value for **trusted server automation only** (e.g. scheduled user-task runs).
+ * Never expose to clients. Uses the same format as {@link createSession}.
+ */
+export function signSessionCookieValueForAutomation(user: SessionUser): string {
+  const normalizedRoles = normalizeCoreRoles(user.roles);
+  const payload: SessionPayload = {
+    ...user,
+    roles: normalizedRoles,
+    exp: Date.now() + SESSION_TTL_SECONDS * 1000
+  };
+  const encodedPayload = toBase64Url(JSON.stringify(payload));
+  const signature = sign(encodedPayload);
+  return `${encodedPayload}.${signature}`;
+}
+
 export async function createSession(user: SessionUser): Promise<void> {
   const cookieStore = await cookies();
   const normalizedRoles = normalizeCoreRoles(user.roles);

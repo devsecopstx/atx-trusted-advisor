@@ -10,6 +10,7 @@ export type AuditEntityType =
   | "admin_portfolio"
   | "xchat_session"
   | "core_scanner"
+  | "user_task"
   | "system";
 
 export type AuditActor = {
