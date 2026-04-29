@@ -19,7 +19,10 @@ describe("dependency overrides (supply chain)", () => {
     const lock = JSON.parse(readFileSync(lockPath, "utf8")) as {
       packages: Record<string, { version?: string }>;
     };
-    const ver = lock.packages["node_modules/@tootallnate/once"]?.version;
+    const entry = Object.entries(lock.packages).find(
+      ([k, meta]) => k.endsWith("node_modules/@tootallnate/once") && Boolean(meta?.version)
+    );
+    const ver = entry?.[1]?.version;
     expect(ver).toBeDefined();
     const [major, minor, patch] = ver!.split(".").map((n) => Number.parseInt(n, 10));
     expect(major >= 3 && (major > 3 || minor > 0 || patch >= 1)).toBe(true);
