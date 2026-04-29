@@ -131,6 +131,13 @@ export function XoptionsPositionReview({
         Position review
       </h3>
 
+      <p
+        className="xoptions-broker-ticket-line mt-2 mb-0 break-words font-mono text-[0.72rem] leading-snug text-[var(--xf-text-200)]"
+        title="Broker-style opening summary — informational only"
+      >
+        {orderReview.brokerTicketLine}
+      </p>
+
       <div
         className="xoptions-position-review__risk mt-2 rounded border border-[color-mix(in_srgb,var(--xf-warning-400)_40%,transparent)] bg-[color-mix(in_srgb,var(--xf-warning-400)_8%,transparent)] p-2 text-[0.68rem] leading-snug text-[var(--xf-text-200)]"
         role="status"

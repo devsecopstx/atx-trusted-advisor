@@ -361,7 +361,7 @@ function ChainRowCall({
   if (!leg || !legHasQuotableLastQuote(leg)) {
     return (
       <tr className="xoptions-chain-table__row">
-        <td className="py-0.5 font-mono">{row.strike}</td>
+        <td className="py-0.5 font-mono xoptions-chain-table__strike">{row.strike}</td>
         <td colSpan={7} className="py-0.5 xoptions-chain-table__empty">
           —
         </td>
@@ -386,7 +386,7 @@ function ChainRowPut({
   if (!leg || !legHasQuotableLastQuote(leg)) {
     return (
       <tr className="xoptions-chain-table__row">
-        <td className="py-0.5 font-mono">{row.strike}</td>
+        <td className="py-0.5 font-mono xoptions-chain-table__strike">{row.strike}</td>
         <td colSpan={7} className="py-0.5 xoptions-chain-table__empty">
           —
         </td>

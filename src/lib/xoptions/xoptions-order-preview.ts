@@ -277,7 +277,28 @@ export type XoptionsOrderReview = {
   dollarDeltaApproxUsd: number | null;
   samplePortfolioDeltaLine: string | null;
   cappedUpsideDisplay: string | null;
+  /** One-line broker-style ticket: side, symbol, strike, right, exp, limit, est premium, max loss. */
+  brokerTicketLine: string;
 };
+
+function buildBrokerTicketLine(input: {
+  openingAction: XoptionsOpeningAction;
+  symbol: string;
+  side: "call" | "put";
+  strike: number;
+  expirationYyyyMmDd: string;
+  limitPerShare: number;
+  contracts: number;
+  grossPremiumUsd: number;
+  maxLossDisplay: string;
+}): string {
+  const verb = input.openingAction === "sell_to_open" ? "SELL TO OPEN" : "BUY TO OPEN";
+  const right = input.side === "call" ? "CALL" : "PUT";
+  const exp = formatExpirationShortLabel(input.expirationYyyyMmDd);
+  const lim = `@ $${input.limitPerShare.toFixed(2)}/sh`;
+  const estPrem = usd(input.grossPremiumUsd);
+  return `${verb} · ${input.contracts}× ${input.symbol} $${input.strike.toFixed(2)} ${right} · ${exp} · ${lim} · Est premium ${estPrem} · Max loss ${input.maxLossDisplay}`;
+}
 
 /** Footnote under Review order narrative in the panel only — not sent to xChat / clipboard handoff. */
 export const XOPTIONS_REVIEW_ORDER_FOOTNOTE =
@@ -291,6 +312,8 @@ export function formatXoptionsOrderReviewPlainText(
   const includeFootnote = options?.includeFootnote ?? true;
   const lines = [
     "xOptions — Position review",
+    "",
+    review.brokerTicketLine,
     "",
     `Limit: ${review.bidPerShareDisplay}`,
     `Breakeven: ${review.breakevenDisplay}`,
@@ -457,6 +480,18 @@ export function buildXoptionsOrderReview(
   const stratTitle = strat && strat.length > 0 ? strat : `${sym} ${optionNoun}`;
   const strategyOneLiner = `${stratTitle}: ${openingAction === "sell_to_open" ? "Collect" : "Pay"} ${usd(premium)}/sh · ${contracts} lot · exp ${exp}.`;
 
+  const brokerTicketLine = buildBrokerTicketLine({
+    openingAction,
+    symbol: sym,
+    side: input.side,
+    strike: input.strike,
+    expirationYyyyMmDd: input.expirationYyyyMmDd,
+    limitPerShare: premium,
+    contracts,
+    grossPremiumUsd: grossValue,
+    maxLossDisplay
+  });
+
   return {
     bidPerShareDisplay,
     breakevenDisplay,
@@ -477,6 +512,7 @@ export function buildXoptionsOrderReview(
     capitalAtRiskDisplay,
     dollarDeltaApproxUsd,
     samplePortfolioDeltaLine,
-    cappedUpsideDisplay
+    cappedUpsideDisplay,
+    brokerTicketLine
   };
 }

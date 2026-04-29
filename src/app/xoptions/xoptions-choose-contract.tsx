@@ -26,6 +26,7 @@ import {
     CHAIN_LAYOUT_STORAGE_KEY,
     deriveStateFromSaved,
     isChainGreekColumnId,
+    isFirstVisibleColumnInChainGroup,
     normalizeColumnOrder,
     parseSavedLayout,
     savedMatchesPreset,
@@ -255,6 +256,13 @@ function formatGreek(n: number | undefined, digits: number): string {
     return "—";
   }
   return n.toFixed(digits);
+}
+
+function deltaGreekClass(delta: number | undefined): string {
+  if (delta == null || !Number.isFinite(delta)) {
+    return "xoptions-chain-table__greek-neutral";
+  }
+  return delta < 0 ? "xoptions-chain-table__greek-delta-neg" : "xoptions-chain-table__greek-delta-pos";
 }
 
 function ChainSortHint() {
@@ -766,10 +774,38 @@ export function XoptionsChooseContract({
     [
       "xoptions-chain-table__th-pad",
       isChainGreekColumnId(cid) ? "xoptions-chain-table__col-greek" : "",
-      cid === "strike" ? "" : "text-right"
+      cid === "strike" ? "" : "text-right",
+      isFirstVisibleColumnInChainGroup(cid, visibleChainDataCols) ? "xoptions-chain-table__col-group-start" : ""
     ]
       .filter(Boolean)
       .join(" ");
+
+  const renderGreekTd = useCallback(
+    (
+      cid: XoptionsChainDataColumnId,
+      kind: "delta" | "gamma" | "theta" | "vega",
+      raw: number | undefined,
+      digits: number
+    ) => {
+      const cls =
+        kind === "delta"
+          ? deltaGreekClass(raw)
+          : kind === "theta"
+            ? "xoptions-chain-table__greek-theta"
+            : "xoptions-chain-table__greek-sky";
+      return (
+        <td
+          key={cid}
+          className={`xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums tracking-tight align-middle text-right font-semibold ${
+            isFirstVisibleColumnInChainGroup(cid, visibleChainDataCols) ? "xoptions-chain-table__col-group-start" : ""
+          } ${cls}`}
+        >
+          {formatGreek(raw, digits)}
+        </td>
+      );
+    },
+    [visibleChainDataCols]
+  );
 
   const truncated = showAllStrikes && baseRows.length > CHAIN_TABLE_MAX;
 

@@ -205,6 +205,28 @@ export function isChainGreekColumnId(id: XoptionsChainDataColumnId): boolean {
   );
 }
 
+/** Visual groups for column separators: Strike | Quotes | IV & flow | Greeks | BE */
+export const CHAIN_COLUMN_GROUPS: XoptionsChainDataColumnId[][] = [
+  ["strike"],
+  ["bid", "ask", "mid", "last"],
+  ["iv", "volume", "oi"],
+  ["delta", "gamma", "theta", "vega"],
+  ["be"]
+];
+
+/** True when `cid` is the first visible column of its logical group (respects reorder/hidden cols). */
+export function isFirstVisibleColumnInChainGroup(
+  cid: XoptionsChainDataColumnId,
+  visibleOrdered: readonly XoptionsChainDataColumnId[]
+): boolean {
+  const group = CHAIN_COLUMN_GROUPS.find((g) => g.includes(cid));
+  if (!group) {
+    return false;
+  }
+  const firstPresent = visibleOrdered.find((c) => group.includes(c));
+  return firstPresent === cid;
+}
+
 export function parseSavedLayout(raw: string | null): XoptionsChainSavedLayout | null {
   if (!raw) {
     return null;

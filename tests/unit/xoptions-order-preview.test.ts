@@ -109,6 +109,10 @@ describe("buildXoptionsOrderReview", () => {
     );
     expect(r.narrative).toContain("buying 10 NVDA calls");
     expect(r.narrative).toContain("$177.50");
+    expect(r.brokerTicketLine).toContain("BUY TO OPEN");
+    expect(r.brokerTicketLine).toContain("NVDA");
+    expect(r.brokerTicketLine).toContain("Est premium");
+    expect(r.brokerTicketLine).toContain("Max loss");
   });
 
   it("formats plain text with metrics, narrative, and footnote by default", () => {
@@ -125,6 +129,7 @@ describe("buildXoptionsOrderReview", () => {
     });
     const plain = formatXoptionsOrderReviewPlainText(r);
     expect(plain).toContain("xOptions — Position review");
+    expect(plain).toContain(r.brokerTicketLine);
     expect(plain).toContain("Limit:");
     expect(plain).toContain("Breakeven:");
     expect(plain).toContain("POP (est.):");
@@ -185,6 +190,8 @@ describe("buildXoptionsOrderReview", () => {
     expect(r.narrative).toContain("Strategy context: Sell covered calls.");
     expect(r.narrative).not.toContain("You are buying");
     expect(r.narrative).not.toContain("maximum debit");
+    expect(r.brokerTicketLine).toContain("SELL TO OPEN");
+    expect(r.brokerTicketLine).toContain("RDW");
   });
 
   it("calculates potential earning percent for covered-call credit example", () => {
