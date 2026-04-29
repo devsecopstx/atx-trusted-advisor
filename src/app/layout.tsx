@@ -36,9 +36,9 @@ export const metadata: Metadata = {
     title: "aTx Finance"
   },
   icons: {
-    icon: "/branding/aTx.png",
-    shortcut: "/branding/aTx.png",
-    apple: "/pwa/icon-192.png"
+    icon: "/pwa/atx-logo-512.png",
+    shortcut: "/pwa/atx-logo-512.png",
+    apple: "/pwa/atx-logo-512.png"
   }
 };
 
@@ -84,7 +84,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style" />
         <meta content="aTx Finance" name="apple-mobile-web-app-title" />
         <link href="/manifest.webmanifest" rel="manifest" />
-        <link href="/pwa/icon-192.png" rel="apple-touch-icon" />
+        <link href="/pwa/atx-logo-512.png" rel="apple-touch-icon" />
       </head>
       <body>
         <TenantBrandingProvider value={tenantShellBranding}>

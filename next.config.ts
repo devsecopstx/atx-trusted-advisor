@@ -39,9 +39,9 @@ const nextConfig: NextConfig = {
       }
     ];
   },
-  /** Browsers request `/favicon.ico` by default; map to the same mark as `metadata.icons` (`/branding/aTx.png`). */
+  /** Browsers request `/favicon.ico` by default; map to the same mark as `metadata.icons` (`/pwa/atx-logo-512.png`). */
   async rewrites() {
-    return [{ source: "/favicon.ico", destination: "/branding/aTx.png" }];
+    return [{ source: "/favicon.ico", destination: "/pwa/atx-logo-512.png" }];
   },
   async redirects() {
     return [

@@ -31,7 +31,7 @@ async function readableStreamToHtml(stream: ReadableStream<Uint8Array>): Promise
 }
 
 describe("RootLayout theme boot", () => {
-  it("uses the same browser icon as the rail swirl mark", () => {
+  it("uses the app PWA hero icon for metadata.icons", () => {
     const icons = metadata.icons;
     expect(icons).toBeTruthy();
     expect(typeof icons).toBe("object");
@@ -41,8 +41,8 @@ describe("RootLayout theme boot", () => {
       throw new Error("Unexpected metadata.icons shape");
     }
 
-    expect(icons.icon).toBe("/branding/aTx.png");
-    expect(icons.shortcut).toBe("/branding/aTx.png");
+    expect(icons.icon).toBe("/pwa/atx-logo-512.png");
+    expect(icons.shortcut).toBe("/pwa/atx-logo-512.png");
   });
 
   it("does not render inline script tags in layout markup", async () => {
