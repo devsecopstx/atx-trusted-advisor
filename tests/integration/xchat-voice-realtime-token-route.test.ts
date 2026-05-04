@@ -10,10 +10,22 @@ const vrMocks = vi.hoisted(() => ({
   buildXaiRealtimeWsUrl: vi.fn()
 }));
 
+const wsSnapMocks = vi.hoisted(() => ({
+  buildWorkspaceServerSnapshotBlock: vi.fn()
+}));
+
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/lib/xai-voice-realtime", () => ({
   createXaiRealtimeClientSecret: vrMocks.createXaiRealtimeClientSecret,
   buildXaiRealtimeWsUrl: vrMocks.buildXaiRealtimeWsUrl
+}));
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({
+    get: () => undefined as { value: string } | undefined
+  }))
+}));
+vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => ({
+  buildWorkspaceServerSnapshotBlock: wsSnapMocks.buildWorkspaceServerSnapshotBlock
 }));
 
 import { POST } from "@/app/api/app-user/xchat/voice-realtime/token/route";
@@ -33,6 +45,9 @@ describe("POST /api/app-user/xchat/voice-realtime/token", () => {
     vrMocks.buildXaiRealtimeWsUrl.mockReturnValue(
       "wss://api.x.ai/v1/realtime?model=grok-voice-think-fast-1.0"
     );
+    wsSnapMocks.buildWorkspaceServerSnapshotBlock.mockResolvedValue(
+      "Workspace block: portfolio + watchlist preview"
+    );
   });
 
   it("returns ephemeral secret + ws url", async () => {
@@ -49,11 +64,14 @@ describe("POST /api/app-user/xchat/voice-realtime/token", () => {
         client_secret: { value: string; expires_at: number };
         realtime_ws_url: string;
         model: string;
+        workspace_voice_context?: string;
       };
     };
     expect(body.data.client_secret.value).toContain("xai-realtime-client-secret");
     expect(body.data.realtime_ws_url).toContain("wss://");
     expect(body.data.model).toBe("grok-voice-think-fast-1.0");
+    expect(body.data.workspace_voice_context).toContain("Workspace block");
+    expect(wsSnapMocks.buildWorkspaceServerSnapshotBlock).toHaveBeenCalled();
     expect(vrMocks.createXaiRealtimeClientSecret).toHaveBeenCalledWith(
       expect.objectContaining({ expiresSeconds: 120, model: "grok-voice-think-fast-1.0" })
     );

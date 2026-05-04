@@ -79,7 +79,8 @@ class PortfolioSubresourcesController(
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
-        val allowedKeys = setOf("name", "cashBalance", "extAccountId", "type", "riskProfile", "outlook")
+        val allowedKeys =
+            setOf("name", "cashBalance", "extAccountId", "type", "riskProfile", "outlook", "hnwiGuardrails")
         if (body.keys.none { it in allowedKeys }) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }

@@ -40,7 +40,8 @@ function serializeAccount(account: Account) {
     isDefault: account.isDefault,
     brokerImportLocked: Boolean(account.brokerImportLocked),
     riskProfile: account.riskProfile ?? null,
-    outlook: parseAccountOutlook(account.outlook) ?? null
+    outlook: parseAccountOutlook(account.outlook) ?? null,
+    hnwiGuardrails: account.hnwiGuardrails ?? null
   };
 }
 

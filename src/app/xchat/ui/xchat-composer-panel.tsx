@@ -1,15 +1,14 @@
 "use client";
 
 import {
+    useEffect,
+    useRef,
+    useState,
     type ClipboardEvent,
     type FormEvent,
     type KeyboardEvent,
     type MutableRefObject,
-    type RefObject,
-    useEffect,
-    useId,
-    useRef,
-    useState
+    type RefObject
 } from "react";
 
 import Link from "next/link";
@@ -25,20 +24,17 @@ import {
     XchatComposerWaveformIcon
 } from "@/app/xchat/ui/xchat-composer-icons";
 import {
-    getSpeechRecognitionConstructor,
-    startXchatDictationSession,
-    type XchatDictationSessionControls
-} from "@/app/xchat/ui/xchat-dictation-client";
-import {
     canUseNativeXaiStt,
-    startNativeXaiSttSession
+    startNativeXaiSttSession,
+    type NativeXaiSttSessionControls
 } from "@/app/xchat/ui/xchat-native-stt-client";
-import { normalizeComposerVoiceDraft } from "@/app/xchat/voice/DictationInput";
 import { VoiceModeSession } from "@/app/xchat/voice/VoiceModeSession";
+
+import { XchatPersonaMenu } from "@/app/xchat/ui/xchat-persona-menu";
+import { XchatTemplatesStrip } from "@/app/xchat/ui/xchat-templates-strip";
 
 import { XchatComposerNav } from "./xchat-composer-nav";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
-import { compactPersonaOptionLabel } from "./xchat-persona-label";
 
 export type XchatPendingPasteImage = {
   mediaType: "image/png" | "image/jpeg";
@@ -57,16 +53,14 @@ export type XchatComposerPanelProps = {
   setPendingPasteImage: (next: XchatPendingPasteImage | null) => void;
   pasteImageError: string | null;
   setPasteImageError: (next: string | null) => void;
-  personaSelectRows: Array<{ _id: string; name: string }>;
+  personaSelectRows: Array<{ _id: string; name: string; previewLine?: string }>;
   personaListError: string | null;
   personaPickerLocked: boolean;
   selectedPersonaId: string;
   setSelectedPersonaId: (id: string) => void;
   userPickedPersonaRef: MutableRefObject<boolean>;
-  /** Prompt chips shown when Examples is expanded (under the composer). */
-  promptExamples: string[];
-  /** Open Examples on first paint (e.g. `?rail=xchat&item=examples`). */
-  examplesInitiallyExpanded?: boolean;
+  /** Open templates gallery + search on first paint (e.g. `?rail=xchat&item=examples`). */
+  templatesGalleryInitiallyExpanded?: boolean;
   /** Premium+ / global_admin: show composer paperclip → tenant attachments API. */
   tenantFileUploadEnabled?: boolean;
   /** Deep link to workspace rail attachments / User Collections (preserve portfolio when set). */
@@ -94,29 +88,23 @@ export function XchatComposerPanel({
   selectedPersonaId,
   setSelectedPersonaId,
   userPickedPersonaRef,
-  promptExamples,
-  examplesInitiallyExpanded = false,
+  templatesGalleryInitiallyExpanded = false,
   tenantFileUploadEnabled = false,
   sourcesRailHref,
   onCancelAsk,
   voiceSessionPersonaLabel
 }: XchatComposerPanelProps) {
-  const examplesPanelId = useId();
-  const examplesTriggerId = useId();
-  const [examplesOpen, setExamplesOpen] = useState(examplesInitiallyExpanded);
   const [dictationActive, setDictationActive] = useState(false);
   const [dictationSupported, setDictationSupported] = useState(false);
   const [dictationError, setDictationError] = useState<string | null>(null);
   const [attachBusy, setAttachBusy] = useState(false);
   const [attachNote, setAttachNote] = useState<string | null>(null);
   const [voiceModeOpen, setVoiceModeOpen] = useState(false);
-  const dictationSessionRef = useRef<XchatDictationSessionControls | null>(null);
+  const dictationSessionRef = useRef<NativeXaiSttSessionControls | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    setDictationSupported(
-      Boolean(canUseNativeXaiStt() || getSpeechRecognitionConstructor())
-    );
+    setDictationSupported(canUseNativeXaiStt());
   }, []);
 
   useEffect(() => {
@@ -160,13 +148,6 @@ export function XchatComposerPanel({
     }
   }
 
-  async function normalizeVoiceDraft(raw: string) {
-    const next = await normalizeComposerVoiceDraft(raw);
-    if (next) {
-      setInput(next);
-    }
-  }
-
   async function toggleDictation() {
     if (dictationActive) {
       dictationSessionRef.current?.stop();
@@ -175,33 +156,16 @@ export function XchatComposerPanel({
     }
     setDictationError(null);
 
-    if (canUseNativeXaiStt()) {
-      const native = await startNativeXaiSttSession(input, {
-        onUpdate: setInput,
-        onEnded: () => {
-          setDictationActive(false);
-          dictationSessionRef.current = null;
-        },
-        onError: (msg) => {
-          setDictationError(msg);
-          setDictationActive(false);
-          dictationSessionRef.current = null;
-        }
-      });
-      if (native) {
-        dictationSessionRef.current = native;
-        setDictationActive(true);
-        return;
-      }
+    if (!canUseNativeXaiStt()) {
+      setDictationError("Dictation needs microphone access and MediaRecorder in this browser.");
+      return;
     }
 
-    const session = startXchatDictationSession(input, {
+    const native = await startNativeXaiSttSession(input, {
       onUpdate: setInput,
       onEnded: () => {
         setDictationActive(false);
         dictationSessionRef.current = null;
-        const v = composerRef.current?.value ?? "";
-        void normalizeVoiceDraft(v);
       },
       onError: (msg) => {
         setDictationError(msg);
@@ -209,13 +173,15 @@ export function XchatComposerPanel({
         dictationSessionRef.current = null;
       }
     });
-    if (!session) {
+    if (!native) {
       setDictationError(
-        dictationSupported ? "Could not start dictation." : "Voice input needs microphone access or Web Speech API."
+        dictationSupported
+          ? "Could not open the microphone for recording."
+          : "Dictation requires MediaRecorder and microphone access."
       );
       return;
     }
-    dictationSessionRef.current = session;
+    dictationSessionRef.current = native;
     setDictationActive(true);
   }
 
@@ -251,6 +217,11 @@ export function XchatComposerPanel({
 
   return (
     <div className="xchat-composer-wrap" id="xchat-composer">
+      <XchatTemplatesStrip
+        composerRef={composerRef}
+        initiallyExpanded={templatesGalleryInitiallyExpanded}
+        setInput={setInput}
+      />
       <form className="xchat-composer xchat-composer--grok" onSubmit={handleSend} ref={composerFormRef}>
         {pendingPasteImage ? (
           <div className="xchat-composer-paste-preview">
@@ -373,29 +344,18 @@ export function XchatComposerPanel({
           <div className="xchat-composer__grok-right">
             {!personaPickerLocked ? (
               <div className="xchat-composer__persona-actions xchat-composer__persona-actions--grok">
-                <label className="sr-only" htmlFor="xchat-composer-persona-picker">
-                  Persona for this message
-                </label>
-                <XfHoverHint hint="Published persona for this prompt (Default = Auto)">
-                  <div className="xchat-composer__auto-pill-wrap">
-                    <select
-                      aria-label="Persona for this message"
-                      className="xchat-composer__auto-pill"
+                <XfHoverHint hint="Published persona for this prompt — Auto uses tenant default">
+                  <div className="xchat-composer__persona-menu-wrap">
+                    <XchatPersonaMenu
                       disabled={personaSelectRows.length === 0 || Boolean(personaListError)}
-                      id="xchat-composer-persona-picker"
-                      onChange={(e) => {
+                      errorMessage={personaListError}
+                      rows={personaSelectRows}
+                      selectedPersonaId={selectedPersonaId}
+                      onSelectPersonaId={(id) => {
                         userPickedPersonaRef.current = true;
-                        setSelectedPersonaId(e.target.value);
+                        setSelectedPersonaId(id);
                       }}
-                      value={selectedPersonaId}
-                    >
-                      <option value="">Auto</option>
-                      {personaSelectRows.map((p) => (
-                        <option key={p._id} title={p.name} value={p._id}>
-                          {compactPersonaOptionLabel(p.name)}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </XfHoverHint>
               </div>
@@ -419,8 +379,8 @@ export function XchatComposerPanel({
                 dictationSupported
                   ? dictationActive
                     ? "Stop dictation"
-                    : "Dictate — xAI transcription (browser speech if mic unavailable)"
-                  : "Voice needs microphone access or a browser with speech recognition"
+                    : "Dictate — xAI speech-to-text (microphone recording)"
+                  : "Dictation needs microphone access and MediaRecorder"
               }
             >
               <button
@@ -469,75 +429,10 @@ export function XchatComposerPanel({
       <div className="xchat-composer-shortcuts">
         <div className="xchat-composer-shortcuts__row">
           <XchatComposerNav />
-          {promptExamples.length > 0 ? (
-            <XfHoverHint hint="Show example prompts you can paste into the composer">
-              <button
-                aria-controls={examplesPanelId}
-                aria-expanded={examplesOpen}
-                className="xchat-composer-examples__toggle"
-                id={examplesTriggerId}
-                type="button"
-                onClick={() => {
-                  setExamplesOpen((o) => !o);
-                }}
-              >
-                <span>Examples</span>
-                <svg
-                  aria-hidden
-                  className={`xchat-composer-examples__chevron${examplesOpen ? " xchat-composer-examples__chevron--open" : ""}`}
-                  fill="none"
-                  height={16}
-                  viewBox="0 0 24 24"
-                  width={16}
-                >
-                  <path
-                    d="M6 9l6 6 6-6"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
-              </button>
-            </XfHoverHint>
-          ) : null}
         </div>
-        {promptExamples.length > 0 && examplesOpen ? (
-          <div
-            className="xchat-composer-examples__panel"
-            id={examplesPanelId}
-            role="region"
-            aria-labelledby={examplesTriggerId}
-          >
-            <div className="xchat-composer-examples__list">
-              {promptExamples.map((prompt, i) => (
-                <XfHoverHint key={`composer-example-${i}`} hint={prompt}>
-                  <button
-                    className="app-user-rail-sublink xchat-rail-link xchat-composer-examples__chip"
-                    type="button"
-                    onClick={() => {
-                      setInput(prompt);
-                      queueMicrotask(() => {
-                        const el = composerRef.current;
-                        if (el) {
-                          el.focus();
-                          el.style.height = "auto";
-                          el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-                        }
-                      });
-                    }}
-                  >
-                    <span className="xchat-rail-link__text">{prompt}</span>
-                  </button>
-                </XfHoverHint>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
       <p className="xchat-composer-hint" role="note">
-        Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Waveform voice chat · Mic dictation (xAI STT +
-        browser fallback)
+        Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Waveform voice chat · Mic dictation (xAI STT)
         {tenantFileUploadEnabled ? " · Paperclip uploads to your tenant collection" : ""}
       </p>
 

@@ -18,21 +18,32 @@ type TokenResponse = {
     client_secret?: { value?: string; expires_at?: number };
     realtime_ws_url?: string;
     model?: string;
+    workspace_voice_context?: string;
   };
 };
 
-function buildInstructions(personaLabel: string): string {
-  return [
+function buildInstructions(personaLabel: string, workspaceVoiceContext?: string | null): string {
+  const lines = [
     `You are the xFinance voice advisor for persona "${personaLabel}".`,
+    "The user is signed in to their real xFinance workspace — not a demo, sandbox, or preview without data.",
+    "When a workspace snapshot is included below, treat it as factual context for portfolio accounts, positions preview, and watchlist symbols while speaking.",
+    "If something is not in the snapshot or needs live tool execution, say they can use typed xChat Send or open Portfolio / Watchlist for refreshed detail — do not invent holdings.",
     "Reply concisely for spoken delivery; spell tickers and numbers clearly.",
     "Educational software only — not personalized investment advice."
-  ].join(" ");
+  ];
+  const snap = workspaceVoiceContext?.trim();
+  if (snap) {
+    lines.push("Workspace snapshot for this voice session:");
+    lines.push(snap);
+  }
+  return lines.join("\n\n");
 }
 
 type ConnOpts = {
   personaLabel: string;
   voice: XchatVoicePresetId;
   turnMode: XchatVoiceTurnMode;
+  workspaceVoiceContext?: string | null;
 };
 
 export type XchatVoiceRealtimeStatus = "idle" | "connecting" | "live" | "error";
@@ -296,7 +307,7 @@ export function useXchatVoiceRealtimeSession() {
       JSON.stringify({
         type: "session.update",
         session: {
-          instructions: buildInstructions(opts.personaLabel),
+          instructions: buildInstructions(opts.personaLabel, opts.workspaceVoiceContext),
           voice: opts.voice,
           audio: {
             input: { format: { type: "audio/pcm", rate } },
@@ -407,6 +418,12 @@ export function useXchatVoiceRealtimeSession() {
           throw new Error("token_payload_invalid");
         }
 
+        const workspaceVoiceContext =
+          typeof payload.data?.workspace_voice_context === "string"
+            ? payload.data.workspace_voice_context.trim() || null
+            : null;
+        const sessionOpts: ConnOpts = { ...opts, workspaceVoiceContext };
+
         const AudioCtx = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!AudioCtx) {
           throw new Error("audio_context_unsupported");
@@ -440,7 +457,7 @@ export function useXchatVoiceRealtimeSession() {
               (t === "conversation.created" || t === "session.created")
             ) {
               sessionUpdateSentRef.current = true;
-              sendSessionUpdate(socket, opts);
+              sendSessionUpdate(socket, sessionOpts);
             }
             if (t === "session.updated") {
               sessionConfiguredRef.current = true;

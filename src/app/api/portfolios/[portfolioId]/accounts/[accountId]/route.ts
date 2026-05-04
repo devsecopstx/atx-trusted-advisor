@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
+import { hnwiGuardrailsPartialSchema } from "@/modules/core-admin/portfolio-account-hnwi-guardrails";
 import {
     deletePortfolioAccountForUser,
     listPortfolioAccounts,
@@ -16,6 +17,8 @@ import {
 } from "@/modules/core-admin/types";
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
+
+const hnwiGuardrailsPatchField = z.union([hnwiGuardrailsPartialSchema, z.null()]);
 
 /** Maps legacy desk slugs (e.g. growth, balanced) to canonical bullish | neutral | bearish before enum parse. */
 const outlookPatchField = z.preprocess(
@@ -35,7 +38,8 @@ const patchAccountSchema = z
     extAccountId: z.string().trim().min(1).max(200).optional(),
     type: z.enum(accountTypeValues).optional(),
     riskProfile: z.union([deskRiskEnum, z.null()]).optional(),
-    outlook: outlookPatchField
+    outlook: outlookPatchField,
+    hnwiGuardrails: hnwiGuardrailsPatchField.optional()
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field is required"

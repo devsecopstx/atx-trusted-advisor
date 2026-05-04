@@ -53,7 +53,7 @@ describe("POST /api/app-user/xchat/voice-transcribe", () => {
     expect(sttMocks.transcribeAudioWithXaiStt).toHaveBeenCalledTimes(1);
   });
 
-  it("normalizes transcript draft (browser STT fallback JSON)", async () => {
+  it("rejects JSON body (multipart + xAI STT only)", async () => {
     const res = await POST(
       new Request("http://test", {
         method: "POST",
@@ -64,10 +64,9 @@ describe("POST /api/app-user/xchat/voice-transcribe", () => {
         })
       })
     );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { transcript: string; source: string } };
-    expect(body.data.transcript).toBe("add NVDA to my watchlist");
-    expect(body.data.source).toBe("browser_stt");
+    expect(res.status).toBe(415);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("voice_transcribe_multipart_only");
   });
 
   it("returns 503 when xAI STT fails", async () => {
@@ -87,13 +86,12 @@ describe("POST /api/app-user/xchat/voice-transcribe", () => {
     authMocks.requireApprovedAppUserSession.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
-    const res = await POST(
-      new Request("http://test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcriptDraft: "hello" })
-      })
+    const form = new FormData();
+    form.set(
+      "audio",
+      new File([Buffer.from("fake-bytes")], "recording.webm", { type: "audio/webm" })
     );
+    const res = await POST(new Request("http://test", { method: "POST", body: form }));
     expect(res.status).toBe(401);
   });
 });

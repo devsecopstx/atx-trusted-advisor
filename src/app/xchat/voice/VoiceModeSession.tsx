@@ -105,7 +105,8 @@ export function VoiceModeSession({
         </div>
 
         <p className="xchat-voice-mode__meta">
-          Persona: <strong>{personaLabel}</strong> · xAI realtime · Not financial advice.
+          Persona: <strong>{personaLabel}</strong> · xAI Voice realtime · Workspace snapshot in session when available · Not financial
+          advice.
         </p>
 
         <div className="xchat-voice-mode__controls">

@@ -31,7 +31,9 @@ describe("xChat composer Grok shell contract", () => {
     expect(composer).toContain("xchat-composer__grok-tool--attach");
     expect(composer).toContain("xchat-composer__grok-tool--mic");
     expect(composer).toContain("tenantFileUploadEnabled");
-    expect(composer).toContain('<option value="">Auto</option>');
+    expect(composer).toContain("XchatTemplatesStrip");
+    expect(composer).toContain("XchatPersonaMenu");
+    expect(composer).toContain("templatesGalleryInitiallyExpanded");
   });
 
   it("does not restore Beta pill in composer footer hint", () => {

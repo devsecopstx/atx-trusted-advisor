@@ -5,6 +5,7 @@ import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
+import { hnwiGuardrailsPartialSchema } from "@/modules/core-admin/portfolio-account-hnwi-guardrails";
 import {
     countPortfolioAccountsForUser,
     insertPortfolioAccountForUser,
@@ -24,7 +25,8 @@ const postAccountSchema = z.object({
   name: z.string().trim().min(1).max(80),
   type: z.enum(accountTypeValues).optional(),
   extAccountId: z.string().trim().min(1).max(200).optional(),
-  cashBalance: z.number().finite().nonnegative().optional()
+  cashBalance: z.number().finite().nonnegative().optional(),
+  hnwiGuardrails: hnwiGuardrailsPartialSchema.optional()
 });
 
 export async function GET(request: Request, context: RouteContext) {
@@ -139,7 +141,8 @@ export async function GET(request: Request, context: RouteContext) {
       extAccountId: account.extAccountId,
       isDefault: account.isDefault,
       createdAt: account.createdAt.toISOString(),
-      updatedAt: account.updatedAt.toISOString()
+      updatedAt: account.updatedAt.toISOString(),
+      hnwiGuardrails: account.hnwiGuardrails ?? null
     };
   });
 
@@ -185,7 +188,8 @@ export async function POST(request: Request, context: RouteContext) {
     name: parsed.data.name,
     type: parsed.data.type,
     extAccountId: parsed.data.extAccountId,
-    cashBalance: parsed.data.cashBalance
+    cashBalance: parsed.data.cashBalance,
+    hnwiGuardrails: parsed.data.hnwiGuardrails
   });
   if (!created?._id) {
     const limits = await getEffectiveWorkspaceLimitsForUser({
@@ -225,7 +229,8 @@ export async function POST(request: Request, context: RouteContext) {
     extAccountId: created.extAccountId,
     isDefault: created.isDefault,
     createdAt: created.createdAt.toISOString(),
-    updatedAt: created.updatedAt.toISOString()
+    updatedAt: created.updatedAt.toISOString(),
+    hnwiGuardrails: created.hnwiGuardrails ?? null
   };
 
   return NextResponse.json({ data: row }, { status: 201 });

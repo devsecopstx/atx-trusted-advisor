@@ -228,6 +228,35 @@ export const accountTypePickerValues = ["fidelity", "merrill", "ibkr", "schwab",
 export const accountOutlookValues = ["bullish", "neutral", "bearish"] as const;
 export type AccountOutlook = (typeof accountOutlookValues)[number];
 
+/** Tax posture for desk / guardrail hints (not tax advice). */
+export type PortfolioAccountTaxTreatment = "taxable" | "tax_advantaged";
+
+/** Margin envelope for this custody account (advisory desk note). */
+export type PortfolioAccountMarginRule = "cash_only" | "limited_margin" | "full_margin";
+
+/** Tax-lot disposal preference (desk note; product does not execute trades). */
+export type PortfolioAccountTaxLotMatching =
+  | "fifo"
+  | "lifo"
+  | "specific_identification"
+  | "highest_cost";
+
+/**
+ * Optional HNWI-style guardrails on a custody account (stored on `portfolio_accounts`).
+ * Advisory / risk framing only — not enforced as hard limits in execution paths yet.
+ */
+export type PortfolioAccountHnwiGuardrails = {
+  taxTreatment?: PortfolioAccountTaxTreatment | null;
+  /** Max single position as a fraction of account equity (e.g. 0.05–0.10). */
+  maxPositionPctOfEquity?: number | null;
+  marginRule?: PortfolioAccountMarginRule | null;
+  taxLotMatching?: PortfolioAccountTaxLotMatching | null;
+  /** Minimum cash / sweep as a fraction of total equity. */
+  minLiquidityCashPctOfEquity?: number | null;
+  /** Liquidity floor as months of expenses (desk note). */
+  minLiquidityMonthsExpenses?: number | null;
+};
+
 /** UI / desk labels for canonical outlook slugs (stored values stay bullish | neutral | bearish). */
 export const accountOutlookChoiceLabels: Record<AccountOutlook, string> = {
   bullish: "Bullish / Up",
@@ -388,6 +417,8 @@ export type Account = {
    * When omitted, server env default applies for that account.
    */
   optionsTradingEnabled?: boolean | null;
+  /** Optional HNWI desk guardrails (tax posture, sizing band, margin, lots, liquidity). */
+  hnwiGuardrails?: PortfolioAccountHnwiGuardrails | null;
   createdAt: Date;
   updatedAt: Date;
 };

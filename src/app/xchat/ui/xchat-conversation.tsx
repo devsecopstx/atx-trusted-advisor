@@ -39,6 +39,7 @@ import {
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
+import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
 const XchatThreadPanelLazy = dynamic(
   () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),
   { ssr: false, loading: () => <XchatChatSkeleton variant="thread" /> }
@@ -90,7 +91,7 @@ export type XchatConversationProps = {
   workspaceChangePersonaEnabled?: boolean;
   /** Tenant workspace limit: max recent prompts in thread + history fetch. */
   workspaceChatHistoryMax?: number;
-  /** Optional deep-link target from non-xChat pages. */
+  /** Optional deep-link target from non-xChat pages (`examples` opens Templates gallery + search). */
   initialXchatItem?: "composer" | "persona" | "examples" | "history" | "attachments" | null;
   /** RSC bootstrap: prefs + recent Mongo turns (60s server cache) to avoid cold client waterfalls. */
   serverBootstrap?: XchatServerShellBootstrap | null;
@@ -99,8 +100,6 @@ export type XchatConversationProps = {
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
-type XchatPromptExample = string | { prompt: string };
-
 const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 const XCHAT_UI_RESPONSE_LIMIT = 3;
@@ -326,7 +325,9 @@ export function XchatConversation({
   const [pasteImageError, setPasteImageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
-  const [personaPickerRows, setPersonaPickerRows] = useState<Array<{ _id: string; name: string }>>([]);
+  const [personaPickerRows, setPersonaPickerRows] = useState<
+    Array<{ _id: string; name: string; previewLine?: string }>
+  >([]);
   const [personaListError, setPersonaListError] = useState<string | null>(null);
   const [personaListFetched, setPersonaListFetched] = useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
@@ -608,22 +609,6 @@ export function XchatConversation({
     return () => cancelAnimationFrame(id);
   }, [input, resizeComposer]);
 
-  const promptExamples: XchatPromptExample[] = [
-    "Show my portfolio allocation",
-    "What are my top movers today",
-    "Add NVDA to my watchlist",
-    "Covered call ideas for my holdings",
-    "Compare SPY vs QQQ trend today",
-    "Stress test portfolio for volatility spike",
-    "How's the weather today in Austin, TX",
-    {
-      prompt:
-        "I want to refresh my wheel around TSLA and SpaceX or related suppliers, what are the top ten companies or related , that have a high IV that may be good candidates to build a wheel with around TSLA?"
-    }
-  ];
-
-  const normalizedExamples = promptExamples.map((item) => (typeof item === "string" ? item : item.prompt));
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
@@ -745,7 +730,7 @@ export function XchatConversation({
       try {
         const res = await fetch("/api/personas");
         const payload = (await res.json().catch(() => ({}))) as {
-          data?: Array<{ _id?: string; name?: string }>;
+          data?: Array<{ _id?: string; name?: string; systemPrompt?: string }>;
         };
         if (!res.ok || !active) {
           if (active && !res.ok) {
@@ -754,10 +739,14 @@ export function XchatConversation({
           return;
         }
         const rows = (Array.isArray(payload.data) ? payload.data : [])
-          .map((r) => ({
-            _id: String(r._id ?? "").trim(),
-            name: String(r.name ?? "").trim()
-          }))
+          .map((r) => {
+            const previewLine = personaPreviewLineFromSystemPrompt(r.systemPrompt);
+            return {
+              _id: String(r._id ?? "").trim(),
+              name: String(r.name ?? "").trim(),
+              ...(previewLine ? { previewLine } : {})
+            };
+          })
           .filter((r) => r._id && r.name);
         const filtered = includeSuperAgentInPersonaPicker
           ? rows
@@ -1476,7 +1465,7 @@ export function XchatConversation({
           <XchatComposerPanelLazy
             composerFormRef={composerFormRef}
             composerRef={composerRef}
-            examplesInitiallyExpanded={initialXchatItem === "examples"}
+            templatesGalleryInitiallyExpanded={initialXchatItem === "examples"}
             handleSend={handleSend}
             input={input}
             loading={loading}
@@ -1486,7 +1475,6 @@ export function XchatConversation({
             personaListError={personaListError}
             personaPickerLocked={personaPickerLocked}
             personaSelectRows={personaSelectRows}
-            promptExamples={normalizedExamples}
             selectedPersonaId={selectedPersonaId}
             setInput={setInput}
             setPasteImageError={setPasteImageError}

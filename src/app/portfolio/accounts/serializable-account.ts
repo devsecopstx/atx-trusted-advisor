@@ -1,4 +1,4 @@
-import type { AccountOutlook } from "@/modules/core-admin/types";
+import type { AccountOutlook, PortfolioAccountHnwiGuardrails } from "@/modules/core-admin/types";
 
 export type SerializableAccount = {
   _id: string;
@@ -14,6 +14,7 @@ export type SerializableAccount = {
   brokerImportLocked: boolean;
   riskProfile: "conservative" | "balanced" | "growth" | null;
   outlook: AccountOutlook | null;
+  hnwiGuardrails: PortfolioAccountHnwiGuardrails | null;
 };
 
 export type SerializableStockPosition = {

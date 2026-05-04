@@ -31,14 +31,16 @@ function pickRecorderMimeType(): string | undefined {
   return undefined;
 }
 
+export type NativeXaiSttSessionControls = XchatDictationSessionControls;
+
 /**
- * Records microphone audio and transcribes via `POST /api/app-user/xchat/voice-transcribe` (xAI STT server-side).
- * Returns null if the microphone cannot be opened (caller may fall back to Web Speech API).
+ * Records microphone audio and transcribes via `POST /api/app-user/xchat/voice-transcribe` (xAI STT only).
+ * Returns null if the microphone or MediaRecorder cannot start.
  */
 export async function startNativeXaiSttSession(
   baseText: string,
   handlers: XchatDictationSessionHandlers
-): Promise<XchatDictationSessionControls | null> {
+): Promise<NativeXaiSttSessionControls | null> {
   let stream: MediaStream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });

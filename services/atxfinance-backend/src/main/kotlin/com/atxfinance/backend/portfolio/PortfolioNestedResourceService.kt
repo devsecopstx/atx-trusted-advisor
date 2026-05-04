@@ -37,6 +37,118 @@ class PortfolioNestedResourceService(
         )
     private val defaultWatchlistSymbol = "TSLA"
 
+    private val hnwiGuardrailKeys =
+        setOf(
+            "taxTreatment",
+            "maxPositionPctOfEquity",
+            "marginRule",
+            "taxLotMatching",
+            "minLiquidityCashPctOfEquity",
+            "minLiquidityMonthsExpenses",
+        )
+
+    private fun coerceHnwiGuardrailField(
+        key: String,
+        value: Any?,
+    ): Any? {
+        when (key) {
+            "taxTreatment" -> {
+                val s =
+                    (value as? String)?.trim()?.lowercase()
+                        ?: throw ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Invalid hnwiGuardrails.taxTreatment",
+                        )
+                if (s != "taxable" && s != "tax_advantaged") {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid hnwiGuardrails.taxTreatment")
+                }
+                return s
+            }
+            "maxPositionPctOfEquity" -> {
+                val d =
+                    (value as? Number)?.toDouble()
+                        ?: throw ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Invalid hnwiGuardrails.maxPositionPctOfEquity",
+                        )
+                if (!d.isFinite() || d < 0.01 || d > 1.0) {
+                    throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid hnwiGuardrails.maxPositionPctOfEquity",
+                    )
+                }
+                return d
+            }
+            "marginRule" -> {
+                val s =
+                    (value as? String)?.trim()?.lowercase()
+                        ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid hnwiGuardrails.marginRule")
+                if (s != "cash_only" && s != "limited_margin" && s != "full_margin") {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid hnwiGuardrails.marginRule")
+                }
+                return s
+            }
+            "taxLotMatching" -> {
+                val s =
+                    (value as? String)?.trim()?.lowercase()
+                        ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid hnwiGuardrails.taxLotMatching")
+                if (s != "fifo" && s != "lifo" && s != "specific_identification" && s != "highest_cost") {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid hnwiGuardrails.taxLotMatching")
+                }
+                return s
+            }
+            "minLiquidityCashPctOfEquity" -> {
+                val d =
+                    (value as? Number)?.toDouble()
+                        ?: throw ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Invalid hnwiGuardrails.minLiquidityCashPctOfEquity",
+                        )
+                if (!d.isFinite() || d < 0 || d > 1.0) {
+                    throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid hnwiGuardrails.minLiquidityCashPctOfEquity",
+                    )
+                }
+                return d
+            }
+            "minLiquidityMonthsExpenses" -> {
+                val d =
+                    (value as? Number)?.toDouble()
+                        ?: throw ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Invalid hnwiGuardrails.minLiquidityMonthsExpenses",
+                        )
+                if (!d.isFinite() || d < 0 || d > 600) {
+                    throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid hnwiGuardrails.minLiquidityMonthsExpenses",
+                    )
+                }
+                return d
+            }
+            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown hnwiGuardrails key")
+        }
+    }
+
+    private fun mergeHnwiGuardrails(
+        existing: Document?,
+        patch: Map<String, Any?>,
+    ): Document? {
+        val out = Document(existing ?: Document())
+        for ((k, v) in patch) {
+            if (k !in hnwiGuardrailKeys) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown hnwiGuardrails key")
+            }
+            if (v == null) {
+                out.remove(k)
+            } else {
+                out[k] = coerceHnwiGuardrailField(k, v)
+            }
+        }
+        return if (out.isEmpty()) null else out
+    }
+
     private fun normalizeDeskOutlook(raw: String): String? {
         val t = raw.trim().lowercase()
         if (t in deskOutlookCanonical) {
@@ -100,6 +212,7 @@ class PortfolioNestedResourceService(
                 "type" to account.getString("type"),
                 "extAccountId" to account.getString("extAccountId"),
                 "isDefault" to (account["isDefault"] as? Boolean ?: false),
+                "hnwiGuardrails" to ((account["hnwiGuardrails"] as? Document)?.let { BsonJson.documentToMap(it) }),
                 "createdAt" to iso(account["createdAt"]),
                 "updatedAt" to iso(account["updatedAt"]),
             )
@@ -257,6 +370,27 @@ class PortfolioNestedResourceService(
                     upd.set("outlook", canon)
                 }
                 else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid outlook")
+            }
+        }
+
+        if (body.containsKey("hnwiGuardrails")) {
+            changed = true
+            when (val raw = body["hnwiGuardrails"]) {
+                null -> {
+                    upd.unset("hnwiGuardrails")
+                }
+                is Map<*, *> -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val patchMap = raw as Map<String, Any?>
+                    val existingDoc = existing["hnwiGuardrails"] as? Document
+                    val merged = mergeHnwiGuardrails(existingDoc, patchMap)
+                    if (merged == null || merged.isEmpty()) {
+                        upd.unset("hnwiGuardrails")
+                    } else {
+                        upd.set("hnwiGuardrails", merged)
+                    }
+                }
+                else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid hnwiGuardrails")
             }
         }
 

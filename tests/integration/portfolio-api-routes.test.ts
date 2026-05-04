@@ -591,6 +591,60 @@ describe("portfolio API routes", () => {
     expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalled();
   });
 
+  it("patches hnwiGuardrails only for an owned account", async () => {
+    repositoryMocks.updatePortfolioAccountForUser.mockClear();
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hnwiGuardrails: {
+            taxTreatment: "tax_advantaged",
+            maxPositionPctOfEquity: 0.08,
+            marginRule: "limited_margin",
+            taxLotMatching: "specific_identification",
+            minLiquidityCashPctOfEquity: 0.05,
+            minLiquidityMonthsExpenses: 18
+          }
+        })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hnwiGuardrails: expect.objectContaining({
+          maxPositionPctOfEquity: 0.08,
+          taxTreatment: "tax_advantaged"
+        })
+      })
+    );
+  });
+
+  it("returns 400 when hnwiGuardrails.maxPositionPctOfEquity is out of band", async () => {
+    repositoryMocks.updatePortfolioAccountForUser.mockClear();
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hnwiGuardrails: { maxPositionPctOfEquity: 1.5 } })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(400);
+    expect(repositoryMocks.updatePortfolioAccountForUser).not.toHaveBeenCalled();
+  });
+
   it("patches broker type for an owned account", async () => {
     const response = await patchPortfolioAccount(
       new Request("http://test", {

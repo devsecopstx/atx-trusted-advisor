@@ -16,11 +16,11 @@ describe("xChat composer + workspace rail contract", () => {
     expect(source).toContain("RailDisclosure");
   });
 
-  it("keeps composer persona picker plus collapsible Examples under the composer", () => {
+  it("keeps composer persona menu plus Templates strip above the composer", () => {
     expect(composerSource).toContain("!personaPickerLocked");
-    expect(composerSource).toContain('id="xchat-composer-persona-picker"');
-    expect(composerSource).toContain("promptExamples");
-    expect(composerSource).toContain("xchat-composer-examples");
-    expect(source).toContain("promptExamples={normalizedExamples}");
+    expect(composerSource).toContain("XchatPersonaMenu");
+    expect(composerSource).toContain("XchatTemplatesStrip");
+    expect(composerSource).toContain("templatesGalleryInitiallyExpanded");
+    expect(source).toContain('templatesGalleryInitiallyExpanded={initialXchatItem === "examples"}');
   });
 });

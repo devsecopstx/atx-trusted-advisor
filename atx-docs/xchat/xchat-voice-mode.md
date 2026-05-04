@@ -6,15 +6,14 @@ Operator and engineer reference for **composer mic dictation** (speech-to-text i
 
 | Piece | Detail |
 |-------|--------|
-| **Primary path** | Browser **`MediaRecorder`** → **`POST /api/app-user/xchat/voice-transcribe`** (multipart **`audio`**, optional **`language`**) → xAI **`POST /v1/stt`** (`format=true`). |
-| **Fallback** | Web Speech API where recording is unavailable; optional JSON **`{ transcriptDraft }`** on the same route for whitespace normalize only. |
-| **Client** | `src/app/xchat/ui/xchat-native-stt-client.ts`, `xchat-dictation-client.ts`; draft normalize helper `src/app/xchat/voice/DictationInput.tsx`. |
+| **Path** | Browser **`MediaRecorder`** → **`POST /api/app-user/xchat/voice-transcribe`** (multipart **`audio`**, optional **`language`**) → xAI **`POST /v1/stt`** (`format=true`). **No** Web Speech API or JSON transcript proxy — xAI STT only. |
+| **Client** | `src/app/xchat/ui/xchat-native-stt-client.ts` (handlers shared with `xchat-dictation-client.ts` types only when needed). |
 
 ## Voice Mode (realtime)
 
 | Piece | Detail |
 |-------|--------|
-| **Token** | **`POST /api/app-user/xchat/voice-realtime/token`** (approved app user session). Body optional: **`model`** (`grok-voice-think-fast-1.0` \| `grok-voice-fast-1.0`), **`expiresAfterSeconds`** (60–3600). Response **`data.client_secret`**, **`data.realtime_ws_url`**, **`data.model`**. Server calls xAI **`POST …/realtime/client_secrets`** with **`XAI_API_KEY`** — key never sent to the browser. |
+| **Token** | **`POST /api/app-user/xchat/voice-realtime/token`** (approved app user session). Body optional: **`model`** (`grok-voice-think-fast-1.0` \| `grok-voice-fast-1.0`), **`expiresAfterSeconds`** (60–3600). Response **`data.client_secret`**, **`data.realtime_ws_url`**, **`data.model`**, optional **`data.workspace_voice_context`** (server-built portfolio/watchlist snapshot text for **`session.update` instructions** — same source shape as typed xChat workspace block, capped). Server calls xAI **`POST …/realtime/client_secrets`** with **`XAI_API_KEY`** — key never sent to the browser. |
 | **WebSocket** | Browser connects to **`data.realtime_ws_url`** with OpenAI-compatible subprotocols (**`realtime`**, **`openai-insecure-api-key.{secret}`**, **`openai-beta.realtime-v1`**) per xAI web voice cookbook. |
 | **Session** | After **`session.created`** / **`conversation.created`**, client sends **`session.update`** (instructions, **`voice`** ∈ ara/eve/leo/rex/sal, PCM rates from **`AudioContext.sampleRate`**, **`turn_detection`**: **`server_vad`** or **`null`** for push-to-talk). |
 | **Audio** | **`input_audio_buffer.append`** with base64 PCM16 chunks (~100 ms). Output: **`response.output_audio.delta`**; captions: **`conversation.item.input_audio_transcription.completed`**, **`response.output_audio_transcript.delta`**. |

@@ -10,8 +10,19 @@ import {
     editAccountFormSchemaWithoutExtRef
 } from "@/app/portfolio/lib/edit-account-schema";
 import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_PICKER_ORDER } from "@/lib/broker-ui";
+import {
+    hnwiGuardrailsPartialSchema,
+    type HnwiGuardrailsPatchPayload
+} from "@/modules/core-admin/portfolio-account-hnwi-guardrails";
 import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
-import { accountTypeValues, type AccountOutlook, type AccountType } from "@/modules/core-admin/types";
+import {
+    accountTypeValues,
+    type AccountOutlook,
+    type AccountType,
+    type PortfolioAccountMarginRule,
+    type PortfolioAccountTaxLotMatching,
+    type PortfolioAccountTaxTreatment
+} from "@/modules/core-admin/types";
 
 import type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { AccountHoldingsCrudCard } from "@/app/portfolio/ui/account-holdings-crud-card";
@@ -45,6 +56,31 @@ function brokerPickerOptions(current: AccountType): AccountType[] {
   }
   return base;
 }
+
+function fractionToPercentInput(f: number | null | undefined): string {
+  if (f == null || !Number.isFinite(f)) {
+    return "";
+  }
+  return String(Math.round(f * 10_000) / 100);
+}
+
+const HNWI_TAX_OPTIONS: ReadonlyArray<{ value: PortfolioAccountTaxTreatment; label: string }> = [
+  { value: "taxable", label: "Taxable" },
+  { value: "tax_advantaged", label: "Tax-advantaged (IRA, 401k, HSA, …)" }
+];
+
+const HNWI_MARGIN_OPTIONS: ReadonlyArray<{ value: PortfolioAccountMarginRule; label: string }> = [
+  { value: "cash_only", label: "Cash only (no margin)" },
+  { value: "limited_margin", label: "Limited margin" },
+  { value: "full_margin", label: "Full margin" }
+];
+
+const HNWI_LOT_OPTIONS: ReadonlyArray<{ value: PortfolioAccountTaxLotMatching; label: string }> = [
+  { value: "fifo", label: "FIFO" },
+  { value: "lifo", label: "LIFO" },
+  { value: "specific_identification", label: "Specific identification" },
+  { value: "highest_cost", label: "Highest cost" }
+];
 
 function AccountWorkspaceTabFallback() {
   return (
@@ -85,6 +121,22 @@ function AccountWorkspaceInner({
   const [outlook, setOutlook] = useState<AccountOutlook>(account.outlook ?? "neutral");
   const [brokerType, setBrokerType] = useState<AccountType>(() => coerceAccountType(account.type));
 
+  const g0 = account.hnwiGuardrails;
+  const [hnwiTaxTreatment, setHnwiTaxTreatment] = useState<string>(g0?.taxTreatment ?? "");
+  const [hnwiMaxPositionPct, setHnwiMaxPositionPct] = useState(() =>
+    fractionToPercentInput(g0?.maxPositionPctOfEquity ?? null)
+  );
+  const [hnwiMarginRule, setHnwiMarginRule] = useState<string>(g0?.marginRule ?? "");
+  const [hnwiTaxLots, setHnwiTaxLots] = useState<string>(g0?.taxLotMatching ?? "");
+  const [hnwiMinLiqCashPct, setHnwiMinLiqCashPct] = useState(() =>
+    fractionToPercentInput(g0?.minLiquidityCashPctOfEquity ?? null)
+  );
+  const [hnwiMinLiqMonths, setHnwiMinLiqMonths] = useState(
+    g0?.minLiquidityMonthsExpenses != null && Number.isFinite(g0.minLiquidityMonthsExpenses)
+      ? String(g0.minLiquidityMonthsExpenses)
+      : ""
+  );
+
   useEffect(() => {
     setAcctName(account.name);
     setCashBalance(String(account.cashBalance));
@@ -93,6 +145,17 @@ function AccountWorkspaceInner({
     setRiskProfile(account.riskProfile ?? "balanced");
     setOutlook(account.outlook ?? "neutral");
     setBrokerType(coerceAccountType(account.type));
+    const g = account.hnwiGuardrails;
+    setHnwiTaxTreatment(g?.taxTreatment ?? "");
+    setHnwiMaxPositionPct(fractionToPercentInput(g?.maxPositionPctOfEquity ?? null));
+    setHnwiMarginRule(g?.marginRule ?? "");
+    setHnwiTaxLots(g?.taxLotMatching ?? "");
+    setHnwiMinLiqCashPct(fractionToPercentInput(g?.minLiquidityCashPctOfEquity ?? null));
+    setHnwiMinLiqMonths(
+      g?.minLiquidityMonthsExpenses != null && Number.isFinite(g.minLiquidityMonthsExpenses)
+        ? String(g.minLiquidityMonthsExpenses)
+        : ""
+    );
   }, [
     account._id,
     account.name,
@@ -102,7 +165,8 @@ function AccountWorkspaceInner({
     account.brokerImportLocked,
     account.riskProfile,
     account.outlook,
-    account.type
+    account.type,
+    account.hnwiGuardrails
   ]);
 
   function setTab(next: EditTab) {
@@ -114,9 +178,38 @@ function AccountWorkspaceInner({
   const refSaved = account.hasExtAccountRef;
   const canEditRefAndBroker = !brokerLocked && !refSaved;
 
+  function hnwiPatchForSave():
+    | { ok: true; value: HnwiGuardrailsPatchPayload }
+    | { ok: false; message: string } {
+    const maxTrim = hnwiMaxPositionPct.trim();
+    const cashTrim = hnwiMinLiqCashPct.trim();
+    const monthsTrim = hnwiMinLiqMonths.trim();
+    const patch: HnwiGuardrailsPatchPayload = {
+      taxTreatment: hnwiTaxTreatment === "" ? null : (hnwiTaxTreatment as PortfolioAccountTaxTreatment),
+      maxPositionPctOfEquity: maxTrim === "" ? null : Number(maxTrim) / 100,
+      marginRule: hnwiMarginRule === "" ? null : (hnwiMarginRule as PortfolioAccountMarginRule),
+      taxLotMatching: hnwiTaxLots === "" ? null : (hnwiTaxLots as PortfolioAccountTaxLotMatching),
+      minLiquidityCashPctOfEquity: cashTrim === "" ? null : Number(cashTrim) / 100,
+      minLiquidityMonthsExpenses: monthsTrim === "" ? null : Number(monthsTrim)
+    };
+    const parsed = hnwiGuardrailsPartialSchema.safeParse(patch);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        message: parsed.error.issues[0]?.message ?? "Check HNWI guardrail fields."
+      };
+    }
+    return { ok: true, value: parsed.data };
+  }
+
   async function saveAccount(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const hnwiParsed = hnwiPatchForSave();
+    if (!hnwiParsed.ok) {
+      setError(hnwiParsed.message);
+      return;
+    }
     const cash = Number(cashBalance);
 
     if (canEditRefAndBroker) {
@@ -140,7 +233,8 @@ function AccountWorkspaceInner({
           riskProfile: parsed.data.riskProfile,
           outlook: parsed.data.outlook,
           extAccountId: parsed.data.extAccountId,
-          type: parsed.data.type
+          type: parsed.data.type,
+          hnwiGuardrails: hnwiParsed.value
         };
         const res = await fetch(
           `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
@@ -187,7 +281,8 @@ function AccountWorkspaceInner({
         name: parsed.data.name,
         cashBalance: parsed.data.cashBalance,
         riskProfile: parsed.data.riskProfile,
-        outlook: parsed.data.outlook
+        outlook: parsed.data.outlook,
+        hnwiGuardrails: hnwiParsed.value
       };
       if (!brokerLocked) {
         body.type = parsed.data.type;
@@ -402,6 +497,144 @@ function AccountWorkspaceInner({
               ))}
             </div>
           </fieldset>
+
+          <div className="portfolio-edit-account-section-divider" role="presentation" />
+
+          <h3 className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section">
+            HNWI guardrails (optional)
+          </h3>
+          <p className="portfolio-edit-field__hint" style={{ marginTop: 0 }}>
+            Desk notes for this custody account only — not trade enforcement. Tax treatment, position-sizing band (often
+            about 5–10% of equity per name), margin posture, tax-lot preference, and liquidity floors.
+          </p>
+
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="hnwi-tax">
+              Tax posture
+            </label>
+            <select
+              id="hnwi-tax"
+              className="crud-input portfolio-edit-account-card__input"
+              value={hnwiTaxTreatment}
+              onChange={(e) => setHnwiTaxTreatment(e.target.value)}
+              aria-describedby="hnwi-tax-hint"
+            >
+              <option value="">Not set</option>
+              {HNWI_TAX_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <p id="hnwi-tax-hint" className="portfolio-edit-field__hint">
+              Taxable vs tax-advantaged registry for this book.
+            </p>
+          </div>
+
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="hnwi-max-pos">
+              Max position (% of equity)
+            </label>
+            <input
+              id="hnwi-max-pos"
+              type="number"
+              min={0.01}
+              max={100}
+              step="0.01"
+              className="crud-input portfolio-edit-account-card__input"
+              value={hnwiMaxPositionPct}
+              onChange={(e) => setHnwiMaxPositionPct(e.target.value)}
+              placeholder="e.g. 8 for 8%"
+              aria-describedby="hnwi-max-pos-hint"
+            />
+            <p id="hnwi-max-pos-hint" className="portfolio-edit-field__hint">
+              Conservative band is often 5–10%. Stored as a fraction server-side (1–100% here).
+            </p>
+          </div>
+
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="hnwi-margin">
+              Margin rule
+            </label>
+            <select
+              id="hnwi-margin"
+              className="crud-input portfolio-edit-account-card__input"
+              value={hnwiMarginRule}
+              onChange={(e) => setHnwiMarginRule(e.target.value)}
+            >
+              <option value="">Not set</option>
+              {HNWI_MARGIN_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="hnwi-lots">
+              Tax-lot matching
+            </label>
+            <select
+              id="hnwi-lots"
+              className="crud-input portfolio-edit-account-card__input"
+              value={hnwiTaxLots}
+              onChange={(e) => setHnwiTaxLots(e.target.value)}
+              aria-describedby="hnwi-lots-hint"
+            >
+              <option value="">Not set</option>
+              {HNWI_LOT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <p id="hnwi-lots-hint" className="portfolio-edit-field__hint">
+              Disposal preference for this account (informational).
+            </p>
+          </div>
+
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="hnwi-liq-cash">
+              Min liquidity — cash (% of equity)
+            </label>
+            <input
+              id="hnwi-liq-cash"
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              className="crud-input portfolio-edit-account-card__input"
+              value={hnwiMinLiqCashPct}
+              onChange={(e) => setHnwiMinLiqCashPct(e.target.value)}
+              placeholder="e.g. 5"
+              aria-describedby="hnwi-liq-cash-hint"
+            />
+            <p id="hnwi-liq-cash-hint" className="portfolio-edit-field__hint">
+              Optional minimum cash / sweep as percent of equity.
+            </p>
+          </div>
+
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="hnwi-liq-months">
+              Min liquidity — months of expenses
+            </label>
+            <input
+              id="hnwi-liq-months"
+              type="number"
+              min={0}
+              max={600}
+              step="1"
+              className="crud-input portfolio-edit-account-card__input"
+              value={hnwiMinLiqMonths}
+              onChange={(e) => setHnwiMinLiqMonths(e.target.value)}
+              placeholder="Optional"
+              aria-describedby="hnwi-liq-months-hint"
+            />
+            <p id="hnwi-liq-months-hint" className="portfolio-edit-field__hint">
+              Advisory liquidity runway note (whole months).
+            </p>
+          </div>
 
           {account.isDefault ? (
             <p className="portfolio-edit-account-card__note">This is your default account for quick actions.</p>

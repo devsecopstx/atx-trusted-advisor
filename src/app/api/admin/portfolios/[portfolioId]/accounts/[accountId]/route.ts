@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
+import { hnwiGuardrailsPartialSchema } from "@/modules/core-admin/portfolio-account-hnwi-guardrails";
 import {
     adminDeleteAccountForPortfolio,
     adminUpdatePortfolioAccount,
@@ -32,10 +33,13 @@ function serializeAccount(a: Account) {
     isDefault: a.isDefault,
     riskProfile: a.riskProfile ?? null,
     outlook: parseAccountOutlook(a.outlook),
+    hnwiGuardrails: a.hnwiGuardrails ?? null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString()
   };
 }
+
+const hnwiGuardrailsPatchField = z.union([hnwiGuardrailsPartialSchema, z.null()]);
 
 const patchSchema = z
   .object({
@@ -59,7 +63,8 @@ const patchSchema = z
     riskProfile: z
       .union([z.enum(["conservative", "balanced", "growth"]), z.null()])
       .optional(),
-    outlook: z.union([z.enum(accountOutlookValues), z.null()]).optional()
+    outlook: z.union([z.enum(accountOutlookValues), z.null()]).optional(),
+    hnwiGuardrails: hnwiGuardrailsPatchField.optional()
   })
   .refine(
     (b) =>
@@ -68,6 +73,7 @@ const patchSchema = z
       b.isDefault === true ||
       b.riskProfile !== undefined ||
       b.outlook !== undefined ||
+      b.hnwiGuardrails !== undefined ||
       (typeof b.name === "string" && b.name.trim().length > 0) ||
       (typeof b.extAccountId === "string" && b.extAccountId.length > 0),
     { message: "At least one field is required" }
@@ -115,7 +121,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     type: parsed.data.type,
     isDefault: parsed.data.isDefault === true ? true : undefined,
     riskProfile: parsed.data.riskProfile,
-    outlook: parsed.data.outlook
+    outlook: parsed.data.outlook,
+    hnwiGuardrails: parsed.data.hnwiGuardrails
   });
   if (!updated?._id) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });

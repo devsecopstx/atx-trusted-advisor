@@ -1,9 +1,15 @@
+import { ObjectId } from "mongodb";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
+import { WORKSPACE_PORTFOLIO_COOKIE_NAME } from "@/lib/workspace-portfolio-cookie";
 import { buildXaiRealtimeWsUrl, createXaiRealtimeClientSecret } from "@/lib/xai-voice-realtime";
 import type { XaiVoiceRealtimeModelId } from "@/modules/xchat/voice/types";
+import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
+
+const MAX_VOICE_WORKSPACE_CONTEXT_CHARS = 12_000;
 
 const bodySchema = z
   .object({
@@ -38,6 +44,30 @@ export async function POST(request: Request) {
   const model = parsedBody?.model ?? DEFAULT_MODEL;
   const expiresAfterSeconds = parsedBody?.expiresAfterSeconds ?? 600;
 
+  let workspace_voice_context: string | null = null;
+  try {
+    const jar = await cookies();
+    const rawPid = jar.get(WORKSPACE_PORTFOLIO_COOKIE_NAME)?.value?.trim();
+    const workspacePortfolioId =
+      rawPid && ObjectId.isValid(rawPid) ? rawPid : undefined;
+    const block = await buildWorkspaceServerSnapshotBlock({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      workspacePortfolioId
+    });
+    const trimmed = block?.trim() ?? "";
+    if (trimmed.length > 0) {
+      workspace_voice_context =
+        trimmed.length > MAX_VOICE_WORKSPACE_CONTEXT_CHARS
+          ? `${trimmed.slice(0, MAX_VOICE_WORKSPACE_CONTEXT_CHARS)}\n\n[truncated for voice session]`
+          : trimmed;
+    }
+  } catch (err) {
+    console.warn("[xchat/voice-realtime/token] workspace_voice_context omitted", {
+      message: err instanceof Error ? err.message : String(err)
+    });
+  }
+
   try {
     const client_secret = await createXaiRealtimeClientSecret({
       expiresSeconds: expiresAfterSeconds,
@@ -48,7 +78,8 @@ export async function POST(request: Request) {
       data: {
         client_secret,
         realtime_ws_url,
-        model
+        model,
+        ...(workspace_voice_context ? { workspace_voice_context } : {})
       }
     });
   } catch (err) {

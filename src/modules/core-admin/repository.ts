@@ -19,6 +19,10 @@ import {
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
+import {
+    type HnwiGuardrailsPatchPayload,
+    mergePortfolioAccountHnwiGuardrails
+} from "@/modules/core-admin/portfolio-account-hnwi-guardrails";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 import {
@@ -4269,6 +4273,8 @@ export type UpdatePortfolioAccountInput = {
   outlook?: AccountOutlook | null;
   /** When true (admin paths), `type` may be updated even if `brokerImportLocked`. `extAccountId` is always patchable for the account owner. */
   bypassBrokerImportLock?: boolean;
+  /** Partial merge; `null` clears stored guardrails. Caller validates shape (API). */
+  hnwiGuardrails?: HnwiGuardrailsPatchPayload | null;
 };
 
 /**
@@ -4329,6 +4335,22 @@ export async function updatePortfolioAccountForUser(
       const slug = parseAccountOutlook(input.outlook);
       if (slug) {
         $set.outlook = slug;
+      }
+    }
+  }
+
+  if (input.hnwiGuardrails !== undefined) {
+    if (input.hnwiGuardrails === null) {
+      $unset.hnwiGuardrails = "";
+    } else {
+      const merged = mergePortfolioAccountHnwiGuardrails(
+        existing.hnwiGuardrails ?? undefined,
+        input.hnwiGuardrails
+      );
+      if (merged === null) {
+        $unset.hnwiGuardrails = "";
+      } else {
+        $set.hnwiGuardrails = merged;
       }
     }
   }
@@ -4446,6 +4468,8 @@ export type InsertPortfolioAccountInput = {
   cashBalance?: number;
   /** When true, sets `isDefault` on this account (e.g. first account when creating a portfolio). */
   markAsPortfolioDefault?: boolean;
+  /** Optional HNWI desk guardrails (validated by API). */
+  hnwiGuardrails?: HnwiGuardrailsPatchPayload | null;
 };
 
 /**
@@ -4499,6 +4523,10 @@ export async function insertPortfolioAccountForUser(
       : DEFAULT_ACCOUNT_CASH_BALANCE;
 
   const markDefault = Boolean(input.markAsPortfolioDefault);
+  let hnwi: Account["hnwiGuardrails"] | undefined;
+  if (input.hnwiGuardrails !== undefined && input.hnwiGuardrails !== null) {
+    hnwi = mergePortfolioAccountHnwiGuardrails({}, input.hnwiGuardrails) ?? undefined;
+  }
   const doc: Account = {
     tenantId: tenantObjectId,
     userId: input.userId,
@@ -4508,6 +4536,7 @@ export async function insertPortfolioAccountForUser(
     extAccountId: ext,
     cashBalance: cash,
     isDefault: markDefault,
+    ...(hnwi ? { hnwiGuardrails: hnwi } : {}),
     createdAt: now,
     updatedAt: now
   };
@@ -4927,6 +4956,7 @@ export async function adminInsertAccountForPortfolio(input: {
   type?: AccountType;
   extAccountId?: string;
   cashBalance?: number;
+  hnwiGuardrails?: HnwiGuardrailsPatchPayload | null;
 }): Promise<Account | null> {
   const portfolio = await adminGetPortfolioById(input.portfolioId);
   if (!portfolio?._id) {
@@ -4943,7 +4973,8 @@ export async function adminInsertAccountForPortfolio(input: {
     name: input.name,
     type: input.type,
     extAccountId: input.extAccountId,
-    cashBalance: input.cashBalance
+    cashBalance: input.cashBalance,
+    hnwiGuardrails: input.hnwiGuardrails
   });
 }
 
@@ -4957,6 +4988,7 @@ export async function adminUpdatePortfolioAccount(input: {
   isDefault?: boolean;
   riskProfile?: "conservative" | "balanced" | "growth" | null;
   outlook?: AccountOutlook | null;
+  hnwiGuardrails?: HnwiGuardrailsPatchPayload | null;
 }): Promise<Account | null> {
   const portfolio = await adminGetPortfolioById(input.portfolioId);
   if (!portfolio?._id) {
@@ -4976,6 +5008,7 @@ export async function adminUpdatePortfolioAccount(input: {
     type: input.type,
     riskProfile: input.riskProfile,
     outlook: input.outlook,
+    hnwiGuardrails: input.hnwiGuardrails,
     bypassBrokerImportLock: true
   });
   if (input.isDefault === undefined) {
