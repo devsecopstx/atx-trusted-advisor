@@ -3,7 +3,6 @@
 import Link from "next/link";
 
 import type { SessionUser } from "@/lib/auth";
-import { tenantIdHexLastFourUserFacing } from "@/lib/mongo-object-id-hex";
 import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 
 import type { AppUserProductNavCurrent } from "./app_user-product-nav";
@@ -26,8 +25,6 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
   void props.current;
   void props.feedbackPageLabel;
 
-  const tenantHex = props.session.tenantId?.trim() ?? "";
-  const tenantFacing = tenantHex ? tenantIdHexLastFourUserFacing(tenantHex) : "";
   const ws = props.workspaceTenant;
   const branding = useTenantShellBranding();
 
@@ -50,23 +47,15 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
             )}
           </Link>
           {ws ? (
-            <span className="xchat-header-tenant-under-brand" title={tenantHex}>
+            <span className="xchat-header-tenant-under-brand" title={props.session.tenantId?.trim() ?? ""}>
               <span className="xchat-header-tenant-under-brand__name">{ws.name}</span>
               {branding?.tagline ? (
                 <span className="xchat-header-tenant-under-brand__tagline">{branding.tagline}</span>
               ) : null}
             </span>
-          ) : tenantFacing ? (
-            <span
-              className="xchat-header-tenant-under-brand xchat-header-tenant-under-brand--chip font-mono"
-              title={`Tenant id ${tenantHex}`}
-            >
-              Tenant {tenantFacing}
-              {branding?.tagline ? (
-                <span className="xchat-header-tenant-under-brand__tagline xchat-header-tenant-under-brand__tagline--chip">
-                  {branding.tagline}
-                </span>
-              ) : null}
+          ) : branding?.tagline ? (
+            <span className="xchat-header-tenant-under-brand">
+              <span className="xchat-header-tenant-under-brand__tagline">{branding.tagline}</span>
             </span>
           ) : null}
         </div>

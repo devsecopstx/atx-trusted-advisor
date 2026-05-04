@@ -11,6 +11,7 @@ import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import {
     getDefaultPortfolio,
     getPortfolioByIdForSessionUser,
@@ -112,10 +113,16 @@ export default async function WatchlistPage({
   }
 
   const admin = isGlobalAdmin(session.roles);
+  const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
 
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="watchlist" feedbackPageLabel="Watchlist" session={session} />
+      <AppUserApprovedHeader
+        current="watchlist"
+        feedbackPageLabel="Watchlist"
+        session={session}
+        workspaceTenant={workspaceTenant}
+      />
 
       <div className="xchat-body" style={{ padding: 0 }}>
         <AppUserCollapsibleRailLayout
