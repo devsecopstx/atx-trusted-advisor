@@ -37,6 +37,10 @@ Append a short **Deploy:** clause so ops can scan the log:
 
 ## Entries
 
+- **3.10.11** — **PLAN priority 703 closed (docs):** xChat voice backlog row removed; **703** moved to **Recently completed** in **`PLAN.md`** (dictation + Voice Mode shipped baseline). **`xchat-voice-mode.md`** backlog section retitled optional future enhancements; **`current-state-features`** / **`README`** voice row references updated. **Deploy:** docs-only.
+
+- **3.10.10** — **PLAN priority 100 closed (docs):** Email validation, verification mail, credential-invite / approval SMTP paths, and desk SMTP operational mail documented as **verified / working as expected**; row removed from active backlog and moved to **Recently completed** in **`PLAN.md`**. **Deploy:** docs-only (no runtime change).
+
 - **3.10.9** — **xChat HNWI polish — Templates + persona menu:** Grok-style **Templates** strip above composer (`xchat-hnwi-templates.ts`, search / See all / custom card); **persona popover** (**Auto** + published personas + truncated **`systemPrompt`** preview). Removed legacy **Examples** collapsible. **Docs:** **`xchat-hnwi-templates-ui.md`**, **`PLAN.md`** **707**. **Tests:** **`xchat-hnwi-templates`**, **`persona-preview-line`**, **`xchat-composer-grok-contract`**. **Deploy:** Next.
 
 - **3.10.8** — **xChat voice — xAI-only dictation + Voice Mode workspace context:** **`POST /api/app-user/xchat/voice-transcribe`** accepts **multipart audio only** (no JSON / browser STT proxy). Composer mic uses **MediaRecorder → xAI STT** exclusively. **Voice Mode** token response may include **`workspace_voice_context`** (server snapshot); client **`session.update`** instructions include signed-in / non-demo guidance plus that snapshot so realtime Grok can speak to portfolio/watchlist without claiming demo limits. Removed **`DictationInput.tsx`**. **Docs:** **`xchat-voice-mode.md`**, **`api-endpoints.md`**, **`current-state-features.md`**. **Tests:** **`xchat-voice-transcribe-route`**, **`xchat-voice-realtime-token-route`**. **Deploy:** Next.

@@ -35,6 +35,6 @@ Uses **`XAI_API_KEY`** and optional **`XAI_BASE_URL`** (default `https://api.x.a
 | **Integration** | `tests/integration/xchat-voice-transcribe-route.test.ts`, `tests/integration/xchat-voice-realtime-token-route.test.ts` |
 | **Unit** | `tests/unit/xai-voice-realtime.test.ts`, `tests/unit/xchat-voice-pcm.test.ts`, `tests/unit/xai-stt.test.ts` |
 
-## Backlog (PLAN **703**)
+## Optional future enhancements
 
-Typed-chat **confirm-before-mutate**, Voice Agent **`session.tools`** parity with persona **`atx_function`**, optional streaming dictation STT, explicit audio retention policy — see **[PLAN.md](../PLAN.md)** product table.
+Not tracked as PLAN **703** (closed): Voice Agent **`session.tools`** parity with typed **`atx_function`**, streaming dictation STT over WebSocket, stricter typed-chat **confirm-before-mutate** for risky tools — prioritize via a **new** backlog row if product revives them.
