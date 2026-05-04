@@ -22,7 +22,8 @@ const auditQuerySchema = z.object({
       "admin_delivery_channel",
       "admin_portfolio",
       "xchat_session",
-      "core_scanner"
+      "core_scanner",
+      "rental_ai"
     ])
     .optional(),
   entityId: z.string().trim().min(1).optional(),

@@ -63,6 +63,10 @@ Mongo collections: **`user_tasks`**, **`user_task_runs`**. **`prompt`** tasks ex
 
 - **`status: "rejected"`:** Optional **`reviewNote`**; no tenant/plan/role requirement beyond the usual payload rule above.
 
+## Rental AI (integration)
+
+- **`POST /api/ai/rent/chat`**, **`POST /api/ai/rent/strategy`**, **`POST /api/ai/rent/analyze`** — **public** routes (no product session): per-tenant **`Authorization: Bearer`** keys (`atxr_<id>_<secret>`), scope **`chat` / `strategy` / `analyze`**, distributed rate limits, token budget vs **`rentalProfile.maxDailyTokens`**, concurrency cap, **`admin_audit_events`** (`entityType` **`rental_ai`**). Phase 1 returns **501** until xChat / OptionsStrategyEngine bridges attach. **`atx-docs/sre-ops/rental-ai-platform.md`**.
+
 ## Admin tenants
 
 - `GET /api/admin/tenants` — platform directory of **`core_tenants`** + tenant admins (**Next**; may BFF-proxy when **`ATXFINANCE_BACKEND_ORIGIN`** is set and proxying is active).

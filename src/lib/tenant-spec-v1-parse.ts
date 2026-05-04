@@ -7,6 +7,8 @@ import { normalizeXfAccentColor } from "@/lib/tenant-accent-color";
 import { isXfBrandPaletteId, XF_BRAND_PALETTE_IDS } from "@/lib/tenant-branding-palette";
 import { assertValidXfHeroIconUrl } from "@/lib/tenant-hero-icon-url";
 import { assertValidXfTenantLogoUrl } from "@/lib/tenant-logo-url";
+import { parseTenantRentalProfile } from "@/modules/platform/tenant-rental-profile";
+import type { TenantRentalProfile } from "@/modules/platform/tenant-rental-types";
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -325,6 +327,7 @@ export type ParsedTenantSpecV1 = {
   initialTenantAdmin: ParsedInitialTenantAdmin | undefined;
   tenantPreferencesBranding: Record<string, string> | undefined;
   tenantXfUiTheme: "light" | "dark" | "system" | undefined;
+  rentalProfile?: TenantRentalProfile;
 };
 
 export function parseTenantSpecV1Document(doc: unknown): ParsedTenantSpecV1 {
@@ -377,12 +380,15 @@ export function parseTenantSpecV1Document(doc: unknown): ParsedTenantSpecV1 {
   }
   const mergedBranding = Object.keys(brandingMerged).length > 0 ? brandingMerged : undefined;
 
+  const rentalProfile = parseTenantRentalProfile(t.rentalProfile);
+
   return {
     slug,
     name,
     workspaceLimits,
     initialTenantAdmin,
     tenantPreferencesBranding: mergedBranding,
-    tenantXfUiTheme
+    tenantXfUiTheme,
+    ...(rentalProfile ? { rentalProfile } : {})
   };
 }

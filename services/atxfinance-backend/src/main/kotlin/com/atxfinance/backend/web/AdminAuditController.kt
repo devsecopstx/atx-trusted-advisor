@@ -29,6 +29,7 @@ class AdminAuditController(
         "admin_portfolio",
         "xchat_session",
         "core_scanner",
+        "rental_ai",
     )
 
     @GetMapping("/api/admin/audit")

@@ -9,6 +9,10 @@ import type {
     TenantWorkspaceLimits
 } from "@/modules/identity/tenant-workspace-limits";
 import type { PlatformRoleForRoutes } from "@/modules/platform/app-user-route-catalog";
+import type {
+    TenantRentalAiKeyStored,
+    TenantRentalProfile
+} from "@/modules/platform/tenant-rental-types";
 import type { TenantRoleFlags } from "@/modules/platform/tenant-route-policy";
 
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
@@ -141,6 +145,12 @@ export type Tenant = {
    * Same shape as portfolio `scoringFactors`; validated in `scoring-factors.ts`.
    */
   defaultPortfolioScoringFactors?: PortfolioScoringFactor[] | null;
+  /** AI rental / white-label API — optional tier profile + API keys (see `atx-docs/sre-ops/rental-ai-platform.md`). */
+  rentalProfile?: TenantRentalProfile | null;
+  /** Mirror of `rentalProfile.expiresAt` for sparse indexing and suspension jobs (set by provisioning). */
+  rentalExpiresAt?: Date | null;
+  /** Hashed rental integration keys; plaintext shown once at issuance (admin path — future). */
+  rentalAiApiKeys?: TenantRentalAiKeyStored[] | null;
 };
 
 export type TenantRole = "tenant_admin" | "member";

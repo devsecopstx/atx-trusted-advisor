@@ -1,8 +1,9 @@
 /**
  * Shared validation + workspace limit sanitization for tenant YAML specs
- * (`generate-tenant-spec.mjs`, `seed-tenant-from-spec.mjs`).
+ * (`generate-tenant-spec.mjs`, `seed-tenant-from-spec.ts`).
  *
  * **Mirror:** `src/lib/tenant-spec-v1-parse.ts` (admin `POST /api/admin/tenants`) — keep rules in sync.
+ * Optional **`tenant.rentalProfile`** is validated only in TS (`src/modules/platform/tenant-rental-profile.ts`); generator does not emit it yet.
  */
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

@@ -8,6 +8,8 @@ import {
     coalesceTenantWorkspaceLimitsForPersistence,
     tenantWorkspaceLimitsScalarsMissing
 } from "@/modules/identity/tenant-workspace-limits";
+import { ensureCoreTenantRentalIndexes } from "@/modules/platform/tenant-rental-indexes";
+import { finalizeTenantRentalProvisioning } from "@/modules/platform/tenant-rental-provision";
 import { ensureTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
 
 export async function ensureTenantProvisionIndexes(db: Db): Promise<void> {
@@ -31,6 +33,7 @@ export async function ensureTenantProvisionIndexes(db: Db): Promise<void> {
       { unique: true, name: "uniq_membership_user_tenant" }
     )
   ]);
+  await ensureCoreTenantRentalIndexes(db);
 }
 
 async function provisionInitialTenantAdmin(
@@ -118,7 +121,7 @@ export type UpsertTenantFromSpecResult = {
 };
 
 /**
- * Same Mongo writes as `scripts/seed-tenant-from-spec.mjs` — upserts `core_tenants` and optional initial admin.
+ * Same Mongo writes as `scripts/seed-tenant-from-spec.ts` — upserts `core_tenants` and optional initial admin.
  */
 export async function upsertTenantFromParsedSpecV1(
   db: Db,
@@ -142,6 +145,9 @@ export async function upsertTenantFromParsedSpecV1(
   }
   if (parsed.tenantXfUiTheme) {
     $set["tenantPreferences.xf_ui_theme"] = parsed.tenantXfUiTheme;
+  }
+  if (parsed.rentalProfile) {
+    $set.rentalProfile = parsed.rentalProfile;
   }
 
   await db.collection("core_tenants").updateOne(
@@ -177,6 +183,14 @@ export async function upsertTenantFromParsedSpecV1(
 
   if (parsed.initialTenantAdmin) {
     await provisionInitialTenantAdmin(db, tenantId, parsed.initialTenantAdmin, now);
+  }
+
+  if (parsed.rentalProfile) {
+    await finalizeTenantRentalProvisioning(db, {
+      tenantId,
+      tenantSlug: parsed.slug,
+      rentalProfile: parsed.rentalProfile
+    });
   }
 
   const refreshed = await db.collection("core_tenants").findOne({ _id: tenantId });

@@ -35,7 +35,8 @@ describe("AuditEvent contract", () => {
       "admin_delivery_channel",
       "admin_portfolio",
       "xchat_session",
-      "core_scanner"
+      "core_scanner",
+      "rental_ai"
     ] as const;
     const satisfiesAuditEntity = (x: string): x is AuditEntityType =>
       (fromRoute as readonly string[]).includes(x);

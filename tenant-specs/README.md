@@ -72,6 +72,7 @@ Idempotent: safe to re-run; **`isDefault`** on the tenant row is always forced *
 - **`slug`**: lowercase letters, digits, single hyphens (no leading/trailing hyphen). Unique in `core_tenants`.
 - **`isDefault`**: must stay **`false`** for specs applied via `seed:tenant`. The single default tenant remains `atxfinance-core` from `seed:admin`.
 - **`workspaceLimits`**: optional partial override (same shape as `core_tenants.workspaceLimits` in app code). Omitting it still yields **persisted defaults** on upsert (`npm run seed:tenant` / **`POST /api/admin/tenants`**) so Admin **Tenant register** is not stuck on `null`. Per-plan overrides and the full form: **`/admin/tenant-register/{tenantId}/workspace-limits`** or session-tenant **`/admin/tenant-preferences/workspace-limits`**.
+- **`rentalProfile`** (optional): AI rental / white-label tier — **`tier`**, **`strategyBias`** (`conservative` \| `balanced` \| `aggressive`), **`maxPortfolios`**, **`maxDailyTokens`**, optional **`xaiModelOverride`**, **`expiresAt`** (ISO-8601), **`apiKeyEnabled`**. When present, **`npm run seed:tenant`** upserts a default **published** rental persona and sets **`rentalProfile.defaultPersonaId`** + **`rentalExpiresAt`**. Validation: `src/modules/platform/tenant-rental-profile.ts`. Ops: **`atx-docs/sre-ops/rental-ai-platform.md`**.
 
 ## Example
 

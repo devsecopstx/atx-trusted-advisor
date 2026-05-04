@@ -96,6 +96,21 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "access-requests"
   },
   {
+    path: "/api/ai/rent/analyze",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "rental-ai"
+  },
+  {
+    path: "/api/ai/rent/chat",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "rental-ai"
+  },
+  {
+    path: "/api/ai/rent/strategy",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "rental-ai"
+  },
+  {
     path: "/api/app-user/find-options/context",
     operations: [{ method: "GET", auth: "session" }],
     tag: "find-options"
@@ -1136,6 +1151,8 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
 ];
 
 const TAG_DESCRIPTIONS: Record<string, string> = {
+  "rental-ai":
+    "White-label rental AI integration (`POST /api/ai/rent/*`): per-tenant API keys + scopes (`chat` / `strategy` / `analyze`), rate limits, token budget gates — execution bridges to xChat / strategy engine ship incrementally.",
   docs: "OpenAPI / documentation meta endpoints.",
   health: "Health and runtime diagnostics endpoints.",
   auth: "Authentication and session management flows.",
