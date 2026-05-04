@@ -21,7 +21,8 @@ import {
     XchatComposerAttachIcon,
     XchatComposerMicIcon,
     XchatComposerSourcesGridIcon,
-    XchatComposerStopIcon
+    XchatComposerStopIcon,
+    XchatComposerWaveformIcon
 } from "@/app/xchat/ui/xchat-composer-icons";
 import {
     getSpeechRecognitionConstructor,
@@ -32,6 +33,8 @@ import {
     canUseNativeXaiStt,
     startNativeXaiSttSession
 } from "@/app/xchat/ui/xchat-native-stt-client";
+import { normalizeComposerVoiceDraft } from "@/app/xchat/voice/DictationInput";
+import { VoiceModeSession } from "@/app/xchat/voice/VoiceModeSession";
 
 import { XchatComposerNav } from "./xchat-composer-nav";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
@@ -70,6 +73,8 @@ export type XchatComposerPanelProps = {
   sourcesRailHref: string;
   /** Abort in-flight ask (same as thread Stop). */
   onCancelAsk?: () => void;
+  /** Active persona display name — Voice Mode instructions + captions context. */
+  voiceSessionPersonaLabel: string;
 };
 
 export function XchatComposerPanel({
@@ -93,7 +98,8 @@ export function XchatComposerPanel({
   examplesInitiallyExpanded = false,
   tenantFileUploadEnabled = false,
   sourcesRailHref,
-  onCancelAsk
+  onCancelAsk,
+  voiceSessionPersonaLabel
 }: XchatComposerPanelProps) {
   const examplesPanelId = useId();
   const examplesTriggerId = useId();
@@ -103,6 +109,7 @@ export function XchatComposerPanel({
   const [dictationError, setDictationError] = useState<string | null>(null);
   const [attachBusy, setAttachBusy] = useState(false);
   const [attachNote, setAttachNote] = useState<string | null>(null);
+  const [voiceModeOpen, setVoiceModeOpen] = useState(false);
   const dictationSessionRef = useRef<XchatDictationSessionControls | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -154,23 +161,9 @@ export function XchatComposerPanel({
   }
 
   async function normalizeVoiceDraft(raw: string) {
-    const t = raw.trim();
-    if (t.length < 2) {
-      return;
-    }
-    try {
-      const res = await fetch("/api/app-user/xchat/voice-transcribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcriptDraft: t })
-      });
-      const payload = (await res.json().catch(() => ({}))) as { data?: { transcript?: string } };
-      const next = payload.data?.transcript;
-      if (typeof next === "string" && next.trim()) {
-        setInput(next.trim());
-      }
-    } catch {
-      /* keep draft */
+    const next = await normalizeComposerVoiceDraft(raw);
+    if (next) {
+      setInput(next);
     }
   }
 
@@ -407,6 +400,20 @@ export function XchatComposerPanel({
                 </XfHoverHint>
               </div>
             ) : null}
+            <XfHoverHint hint="Voice chat — realtime Grok audio (xAI). Separate from dictation.">
+              <button
+                aria-expanded={voiceModeOpen}
+                aria-label="Open voice chat"
+                className={`xchat-composer__grok-tool xchat-composer__grok-tool--wave${voiceModeOpen ? " xchat-composer__grok-tool--voice-open" : ""}`}
+                disabled={loading || attachBusy || dictationActive}
+                type="button"
+                onClick={() => {
+                  setVoiceModeOpen(true);
+                }}
+              >
+                <XchatComposerWaveformIcon />
+              </button>
+            </XfHoverHint>
             <XfHoverHint
               hint={
                 dictationSupported
@@ -529,9 +536,19 @@ export function XchatComposerPanel({
         ) : null}
       </div>
       <p className="xchat-composer-hint" role="note">
-        Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Mic · xAI voice (browser speech fallback)
+        Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Waveform voice chat · Mic dictation (xAI STT +
+        browser fallback)
         {tenantFileUploadEnabled ? " · Paperclip uploads to your tenant collection" : ""}
       </p>
+
+      <VoiceModeSession
+        disabled={loading}
+        open={voiceModeOpen}
+        personaLabel={voiceSessionPersonaLabel}
+        onClose={() => {
+          setVoiceModeOpen(false);
+        }}
+      />
     </div>
   );
 }

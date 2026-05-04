@@ -154,6 +154,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/app-user/xchat/voice-realtime/token",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xchat"
+  },
+  {
     path: "/api/user-feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "user-feedback"

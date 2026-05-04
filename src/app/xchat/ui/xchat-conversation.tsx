@@ -1495,6 +1495,7 @@ export function XchatConversation({
             sourcesRailHref={sourcesRailHref}
             tenantFileUploadEnabled={tenantFileUploadEnabled}
             userPickedPersonaRef={userPickedPersonaRef}
+            voiceSessionPersonaLabel={activePersonaName}
           />
         </Suspense>
       </div>

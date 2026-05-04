@@ -74,6 +74,7 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 | Skill | |
 |-------|---|
+| [ios-version-bump](ios-version-bump/SKILL.md) | Capacitor iOS Version / Build bump (`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`) |
 | [feature-delivery](feature-delivery/SKILL.md) | Scoped PR delivery |
 | [generate-docs](generate-docs/SKILL.md) | Docs & OpenAPI hygiene |
 | [test-commit-push](test-commit-push/SKILL.md) | Pre-commit validation |
