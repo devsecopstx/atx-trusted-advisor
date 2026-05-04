@@ -25,6 +25,21 @@ class AdminUsersController(
     private val adminUsersService: AdminUsersService,
 ) {
 
+    companion object {
+        /** Align with Next.js `subscription-plan` / Mongo `core_users.subscriptionPlan`. */
+        private val CANONICAL_SUBSCRIPTION_PLANS = setOf("basic", "premium", "premium_plus")
+
+        private fun normalizeSubscriptionPlanSlug(raw: String): String {
+            val n = raw.trim().lowercase()
+            return when (n) {
+                "free" -> "basic"
+                "pro", "premium_monthly" -> "premium"
+                "enterprise", "premium+", "premium_plus_monthly", "premium_plus_yearly" -> "premium_plus"
+                else -> n
+            }
+        }
+    }
+
     @GetMapping("/api/admin/users")
     fun list(
         request: HttpServletRequest,
@@ -52,12 +67,13 @@ class AdminUsersController(
         }
         val email = body["email"] as? String ?: return badUserPayload()
         val role = (body["role"] as? String)?.trim()?.lowercase() ?: "viewer"
-        val subscriptionPlan = (body["subscriptionPlan"] as? String)?.trim()?.lowercase() ?: "free"
+        val subscriptionPlanRaw = (body["subscriptionPlan"] as? String)?.trim()?.lowercase() ?: "basic"
+        val subscriptionPlan = normalizeSubscriptionPlanSlug(subscriptionPlanRaw)
         val status = (body["status"] as? String)?.trim()?.lowercase() ?: "active"
         if (role !in setOf("global_admin", "advisor", "operator", "viewer")) {
             return badUserPayload()
         }
-        if (subscriptionPlan !in setOf("free", "pro", "enterprise")) {
+        if (subscriptionPlan !in CANONICAL_SUBSCRIPTION_PLANS) {
             return badUserPayload()
         }
         if (status !in setOf("active", "suspended")) {
@@ -122,7 +138,8 @@ class AdminUsersController(
         }
         val email = body["email"] as? String
         val role = (body["role"] as? String)?.trim()?.lowercase()
-        val subscriptionPlan = (body["subscriptionPlan"] as? String)?.trim()?.lowercase()
+        val subscriptionPlanRaw = (body["subscriptionPlan"] as? String)?.trim()?.lowercase()
+        val subscriptionPlan = subscriptionPlanRaw?.let { normalizeSubscriptionPlanSlug(it) }
         val status = (body["status"] as? String)?.trim()?.lowercase()
         if (email == null && role == null && subscriptionPlan == null && status == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
@@ -132,7 +149,7 @@ class AdminUsersController(
         if (role != null && role !in setOf("global_admin", "advisor", "operator", "viewer")) {
             return badUserPayload()
         }
-        if (subscriptionPlan != null && subscriptionPlan !in setOf("free", "pro", "enterprise")) {
+        if (subscriptionPlan != null && subscriptionPlan !in CANONICAL_SUBSCRIPTION_PLANS) {
             return badUserPayload()
         }
         if (status != null && status !in setOf("active", "suspended")) {
@@ -206,9 +223,10 @@ class AdminUsersController(
         if (!ObjectId.isValid(userId)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid user id"))
         }
-        val plan = (body?.get("subscriptionPlan") as? String)?.trim()?.lowercase()
+        val planRaw = (body?.get("subscriptionPlan") as? String)?.trim()?.lowercase()
             ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
-        if (plan !in setOf("free", "pro", "enterprise")) {
+        val plan = normalizeSubscriptionPlanSlug(planRaw)
+        if (plan !in CANONICAL_SUBSCRIPTION_PLANS) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
         val data = adminUsersService.patchPlan(session, userId, plan)
