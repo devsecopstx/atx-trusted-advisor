@@ -795,6 +795,17 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph--portfolio-workspac
   max-height: 1.5rem;
 }
 
+.portfolios-workspace-sidebar__summary-primary-link {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 8px;
+  outline-offset: 2px;
+}
+
+.portfolios-workspace-sidebar__summary-primary-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 70%, transparent);
+}
+
 .portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__summary-icon,
 .portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__summary-icon {
   color: var(--xf-text-100);

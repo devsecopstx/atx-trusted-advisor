@@ -209,6 +209,14 @@ function RailSectionChevron() {
   );
 }
 
+/** Icon-only hit target uses `data-workspace-sidebar-primary`; summary must skip native toggle so Next Link navigates. */
+function preventDetailsToggleForSidebarPrimaryLink(e: SyntheticEvent<HTMLElement>) {
+  const el = e.target as HTMLElement | null;
+  if (el?.closest("[data-workspace-sidebar-primary]")) {
+    e.preventDefault();
+  }
+}
+
 function RouteSyncedDetails({
   className,
   routeMatch,
@@ -238,15 +246,37 @@ function RouteSyncedDetails({
 
 function SidebarAccordionSummary({
   label,
-  icon
+  icon,
+  primaryHref,
+  primaryNavTitle
 }: {
   label: string;
   icon?: ReactNode;
+  /** When set, the icon navigates here; clicking the label or chevron still expands/collapses the group. */
+  primaryHref?: string;
+  primaryNavTitle?: string;
 }) {
+  const iconNode =
+    icon != null ? (
+      primaryHref ? (
+        <Link
+          className="portfolios-workspace-sidebar__summary-icon portfolios-workspace-sidebar__summary-primary-link"
+          data-workspace-sidebar-primary=""
+          href={primaryHref}
+          title={primaryNavTitle ?? `Open ${label}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {icon}
+        </Link>
+      ) : (
+        <span className="portfolios-workspace-sidebar__summary-icon">{icon}</span>
+      )
+    ) : null;
+
   return (
     <>
       <span className="portfolios-workspace-sidebar__summary-main">
-        {icon ? <span className="portfolios-workspace-sidebar__summary-icon">{icon}</span> : null}
+        {iconNode}
         <span className="portfolios-workspace-sidebar__summary-label">{label}</span>
       </span>
       <RailSectionChevron />
@@ -410,6 +440,16 @@ export function WorkspaceProductSidebar({
       ? `/portfolio/alerts?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
       : "/portfolio/alerts";
 
+  const portfolioDeskPrimaryHref: string | undefined = isPathVisible("/portfolios")
+    ? "/portfolios"
+    : isPathVisible("/watchlist")
+      ? watchlistHref
+      : isPathVisible("/portfolio")
+        ? alertsHref
+        : isPathVisible("/import-activity")
+          ? importHref
+          : undefined;
+
   const portfolioRouteMatch =
     (isPathVisible("/portfolios") && pathname.startsWith("/portfolios")) ||
     (isPathVisible("/portfolio") && pathname.startsWith("/portfolio")) ||
@@ -422,10 +462,15 @@ export function WorkspaceProductSidebar({
       className="portfolios-workspace-sidebar__accordion"
       routeMatch={pathname.startsWith("/xchat")}
     >
-      <summary className="portfolios-workspace-sidebar__accordion-summary">
+      <summary
+        className="portfolios-workspace-sidebar__accordion-summary"
+        onClick={preventDetailsToggleForSidebarPrimaryLink}
+      >
         <SidebarAccordionSummary
           icon={<RailSidebarZapIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--zap" size="disclosure" />}
           label="xChat"
+          primaryHref="/xchat"
+          primaryNavTitle="Open xChat"
         />
       </summary>
       <div className="portfolios-workspace-sidebar__accordion-body">
@@ -513,12 +558,17 @@ export function WorkspaceProductSidebar({
         className="portfolios-workspace-sidebar__accordion"
         routeMatch={portfolioRouteMatch}
       >
-        <summary className="portfolios-workspace-sidebar__accordion-summary">
+        <summary
+          className="portfolios-workspace-sidebar__accordion-summary"
+          onClick={preventDetailsToggleForSidebarPrimaryLink}
+        >
           <SidebarAccordionSummary
             icon={
               <LucideMonitorIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero portfolios-workspace-sidebar__glyph--portfolio-workspace" />
             }
             label="Portfolio desk"
+            primaryHref={portfolioDeskPrimaryHref}
+            primaryNavTitle="Open portfolio desk home"
           />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
@@ -551,10 +601,15 @@ export function WorkspaceProductSidebar({
 
       {isPathVisible("/xoptions") ? (
       <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/xoptions")}>
-        <summary className="portfolios-workspace-sidebar__accordion-summary">
+        <summary
+          className="portfolios-workspace-sidebar__accordion-summary"
+          onClick={preventDetailsToggleForSidebarPrimaryLink}
+        >
           <SidebarAccordionSummary
             icon={<XoptionsRocketIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero" />}
             label="xOptions"
+            primaryHref="/xoptions"
+            primaryNavTitle="Open xOptions"
           />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
@@ -655,10 +710,15 @@ export function WorkspaceProductSidebar({
           xchatAttachmentsDeepLinkActive
         }
       >
-        <summary className="portfolios-workspace-sidebar__accordion-summary">
+        <summary
+          className="portfolios-workspace-sidebar__accordion-summary"
+          onClick={preventDetailsToggleForSidebarPrimaryLink}
+        >
           <SidebarAccordionSummary
             icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--resources" />}
             label="Resources"
+            primaryHref={isPathVisible("/resources") ? "/resources/about" : undefined}
+            primaryNavTitle="Open Resources"
           />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
