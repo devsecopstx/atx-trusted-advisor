@@ -1349,7 +1349,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(identityMocks.getCoreUserById).not.toHaveBeenCalled();
   });
 
-  it("rejects reasoningEffort when model is not multi-agent", async () => {
+  it("escalates non-multi-agent persona to multi-agent when reasoningEffort is set (global_admin)", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         model: "grok-4-1-fast-reasoning"
@@ -1360,17 +1360,119 @@ describe("xchat ask route collection retrieval", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: "invalid effort usage",
+          message: "multi-angle desk review",
           reasoningEffort: "low"
         })
       })
     );
-    const payload = (await response.json()) as { error: string; code: string };
 
-    expect(response.status).toBe(400);
-    expect(payload.code).toBe("invalid_reasoning_effort");
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "grok-4.20-multi-agent",
+        parallelism: {
+          agentCount: 4,
+          reasoningEffort: "low"
+        }
+      })
+    );
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+  });
+
+  it("rejects ask when reasoningMode and reasoningEffort are both sent", async () => {
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "conflicting reasoning controls",
+          reasoningMode: "expert",
+          reasoningEffort: "high"
+        })
+      })
+    );
+    expect(response.status).toBe(400);
     expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+  });
+
+  it("uses premium_plus parallelism when reasoningMode expert escalates a fast persona", async () => {
+    identityMocks.getCoreUserById.mockResolvedValueOnce({
+      subscriptionPlan: "premium_plus",
+      billing: {
+        override: {
+          enabled: true
+        }
+      }
+    } as never);
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({ model: "grok-4-1-fast-reasoning" })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "Compare bull and bear cases for my largest holding.",
+          reasoningMode: "expert"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "grok-4.20-multi-agent",
+        parallelism: { agentCount: 4, reasoningEffort: "medium" }
+      })
+    );
+  });
+
+  it("falls back to escalation model without parallelism when basic tier uses reasoningMode expert", async () => {
+    identityMocks.getCoreUserById.mockResolvedValueOnce({
+      subscriptionPlan: "basic",
+      billing: {
+        override: {
+          enabled: true
+        }
+      }
+    } as never);
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({ model: "grok-4-1-fast-reasoning" })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "Think harder about my book.",
+          reasoningMode: "expert"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "grok-4-1-fast",
+        parallelism: undefined
+      })
+    );
   });
 
   it("loads core user for non-admin ask to apply multi-agent plan clamp", async () => {

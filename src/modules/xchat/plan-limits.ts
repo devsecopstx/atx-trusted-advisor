@@ -53,7 +53,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     maxBatchItemsPerJob: 100,
     monthlyBudgetCents: 5000,
     softLimitPercent: 80,
-    multiAgentParallelMaxAgents: 0
+    multiAgentParallelMaxAgents: 4
   },
   premium_plus: {
     maxPromptsPerDay: 2000,
@@ -67,7 +67,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     maxBatchItemsPerJob: 500,
     monthlyBudgetCents: 50000,
     softLimitPercent: 80,
-    multiAgentParallelMaxAgents: 0
+    multiAgentParallelMaxAgents: 16
   }
 };
 

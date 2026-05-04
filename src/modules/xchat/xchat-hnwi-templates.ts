@@ -10,7 +10,7 @@ export type XchatPromptTemplate = {
 
 /**
  * Curated HNWI / RIA-style prompts for xChat templates strip (Grok-style gallery).
- * User-authored saved templates (DB) remain backlog — see PLAN.md **707**.
+ * User-authored templates persist in Mongo (`xchat_user_prompt_templates`) via **`/api/app-user/xchat/prompt-templates`**.
  */
 export const XCHAT_HNWI_PROMPT_TEMPLATES: readonly XchatPromptTemplate[] = [
   {
@@ -71,10 +71,10 @@ export const XCHAT_HNWI_PROMPT_TEMPLATES: readonly XchatPromptTemplate[] = [
   }
 ];
 
-export function filterXchatPromptTemplates(
-  templates: readonly XchatPromptTemplate[],
+export function filterXchatPromptTemplates<T extends XchatPromptTemplate>(
+  templates: readonly T[],
   query: string
-): XchatPromptTemplate[] {
+): T[] {
   const q = query.trim().toLowerCase();
   if (!q) {
     return [...templates];

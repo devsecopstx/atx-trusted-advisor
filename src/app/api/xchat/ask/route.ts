@@ -46,7 +46,10 @@ import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
-import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
+import {
+    MULTI_AGENT_PERSONA_MODEL_IDS,
+    PRIMARY_MULTI_AGENT_PERSONA_MODEL_ID
+} from "@/modules/xchat/multi-agent-persona-models";
 import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
 import { renderOptionsActionReportMarkdown } from "@/modules/xchat/options-action-scan";
@@ -56,7 +59,11 @@ import {
     resolveXchatPersonaDeclaredCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
-import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
+import {
+    clampMultiAgentParallelismForPlan,
+    clampTopK,
+    getPlanLimits
+} from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getLatestXchatLogByThread,
@@ -93,6 +100,7 @@ import {
     computeXchatRemoteChainInstructionsFingerprint,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
+import { resolveReasoningEffortFromAskPayload } from "@/modules/xchat/xchat-reasoning-mode";
 import {
     buildRecentThreadMessagesPromptBlock,
     type XchatRecentThreadMessage
@@ -121,6 +129,7 @@ const askSchema = z
     portfolioId: z.string().trim().regex(/^[a-f\d]{24}$/i).optional(),
     personaId: z.string().optional(),
     reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
+    reasoningMode: z.enum(["fast", "expert", "heavy"]).optional(),
     scope: z.string().min(1).max(128).optional(),
     topK: z.number().int().min(1).max(10).optional()
   })
@@ -133,6 +142,13 @@ const askSchema = z
         path: ["message"]
       });
     }
+    if (data.reasoningMode !== undefined && data.reasoningEffort !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Use reasoningMode or reasoningEffort, not both.",
+        path: ["reasoningMode"]
+      });
+    }
   });
 const ASK_RATE_MAX = 20;
 const XCHAT_OPT_IN_RETENTION_DAYS = 60;
@@ -142,7 +158,12 @@ const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>(
   XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS.map((k) => normalizeNameKey(k))
 );
 
-type ModelSelectionSource = "default" | "persona" | "vision_env";
+type ModelSelectionSource =
+  | "default"
+  | "persona"
+  | "vision_env"
+  | "reasoning_mode"
+  | "reasoning_mode_fallback";
 type RequestedReasoningEffort = "low" | "medium" | "high" | "xhigh";
 type ParallelReasoningEffort = "low" | "medium" | "high";
 
@@ -429,20 +450,36 @@ export async function POST(request: Request) {
   let modelSelectionSource: ModelSelectionSource =
     personaModelRaw.length > 0 ? "persona" : "default";
 
+  let reasoningEffortForParallel = resolveReasoningEffortFromAskPayload({
+    reasoningMode: parsed.data.reasoningMode,
+    reasoningEffort: parsed.data.reasoningEffort
+  });
+
   let executionModel = effectiveModel;
+  let reasoningModeEscalated = false;
+  if (reasoningEffortForParallel && !MULTI_AGENT_PERSONA_MODEL_IDS.has(effectiveModel)) {
+    executionModel = PRIMARY_MULTI_AGENT_PERSONA_MODEL_ID;
+    modelSelectionSource = "reasoning_mode";
+    reasoningModeEscalated = true;
+  }
+
   let multiAgentDowngraded = false;
-  if (MULTI_AGENT_PERSONA_MODEL_IDS.has(effectiveModel)) {
+  if (MULTI_AGENT_PERSONA_MODEL_IDS.has(executionModel)) {
     const allowParallelism =
-      parsed.data.reasoningEffort != null || heavySynthesisIntent(messageTrimmed);
+      reasoningEffortForParallel != null || heavySynthesisIntent(messageTrimmed);
     if (!allowParallelism) {
       executionModel = getDefaultPersonaChatModelId();
       multiAgentDowngraded = true;
+      if (reasoningModeEscalated) {
+        modelSelectionSource = personaModelRaw.length > 0 ? "persona" : "default";
+        reasoningModeEscalated = false;
+      }
     }
   }
 
   const parallelAgentConfigResult = resolveParallelAgentConfig({
     model: executionModel,
-    reasoningEffort: parsed.data.reasoningEffort
+    reasoningEffort: reasoningEffortForParallel
   });
   if (!parallelAgentConfigResult.ok) {
     return NextResponse.json(
@@ -459,6 +496,31 @@ export async function POST(request: Request) {
       parallelAgentConfig,
       subscriptionPlan
     );
+  }
+
+  if (
+    reasoningModeEscalated &&
+    !parallelAgentConfig &&
+    reasoningEffortForParallel &&
+    !isAdminSession
+  ) {
+    const limits = getPlanLimits(subscriptionPlan);
+    executionModel = limits.escalationModel;
+    reasoningEffortForParallel = undefined;
+    reasoningModeEscalated = false;
+    modelSelectionSource = "reasoning_mode_fallback";
+    multiAgentDowngraded = false;
+    const retryParallel = resolveParallelAgentConfig({
+      model: executionModel,
+      reasoningEffort: undefined
+    });
+    if (!retryParallel.ok) {
+      return NextResponse.json(
+        { error: retryParallel.error, code: retryParallel.code },
+        { status: 400 }
+      );
+    }
+    parallelAgentConfig = retryParallel.config;
   }
 
   if (visionImage) {

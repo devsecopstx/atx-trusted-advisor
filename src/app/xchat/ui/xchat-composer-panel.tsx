@@ -31,7 +31,10 @@ import {
 import { VoiceModeSession } from "@/app/xchat/voice/VoiceModeSession";
 
 import { XchatPersonaMenu } from "@/app/xchat/ui/xchat-persona-menu";
+import { XchatReasoningModeToggle } from "@/app/xchat/ui/xchat-reasoning-mode-toggle";
 import { XchatTemplatesStrip } from "@/app/xchat/ui/xchat-templates-strip";
+
+import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
 
 import { XchatComposerNav } from "./xchat-composer-nav";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
@@ -69,6 +72,8 @@ export type XchatComposerPanelProps = {
   onCancelAsk?: () => void;
   /** Active persona display name — Voice Mode instructions + captions context. */
   voiceSessionPersonaLabel: string;
+  reasoningMode: XchatReasoningMode;
+  setReasoningMode: (mode: XchatReasoningMode) => void;
 };
 
 export function XchatComposerPanel({
@@ -92,7 +97,9 @@ export function XchatComposerPanel({
   tenantFileUploadEnabled = false,
   sourcesRailHref,
   onCancelAsk,
-  voiceSessionPersonaLabel
+  voiceSessionPersonaLabel,
+  reasoningMode,
+  setReasoningMode
 }: XchatComposerPanelProps) {
   const [dictationActive, setDictationActive] = useState(false);
   const [dictationSupported, setDictationSupported] = useState(false);
@@ -218,10 +225,18 @@ export function XchatComposerPanel({
   return (
     <div className="xchat-composer-wrap" id="xchat-composer">
       <XchatTemplatesStrip
+        composerDraft={input}
         composerRef={composerRef}
         initiallyExpanded={templatesGalleryInitiallyExpanded}
         setInput={setInput}
       />
+      <div className="xchat-composer-reasoning-row">
+        <XchatReasoningModeToggle
+          disabled={loading}
+          value={reasoningMode}
+          onChange={setReasoningMode}
+        />
+      </div>
       <form className="xchat-composer xchat-composer--grok" onSubmit={handleSend} ref={composerFormRef}>
         {pendingPasteImage ? (
           <div className="xchat-composer-paste-preview">

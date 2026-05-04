@@ -40,6 +40,10 @@ import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstra
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
+import {
+    XCHAT_REASONING_MODE_STORAGE_KEY,
+    type XchatReasoningMode
+} from "@/modules/xchat/xchat-reasoning-mode";
 const XchatThreadPanelLazy = dynamic(
   () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),
   { ssr: false, loading: () => <XchatChatSkeleton variant="thread" /> }
@@ -321,6 +325,7 @@ export function XchatConversation({
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState("");
+  const [reasoningMode, setReasoningMode] = useState<XchatReasoningMode>("fast");
   const [pendingPasteImage, setPendingPasteImage] = useState<XchatPendingPasteImage | null>(null);
   const [pasteImageError, setPasteImageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -879,6 +884,25 @@ export function XchatConversation({
   }, [historyLoaded, privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, uiPromptLimit, workspaceChatHistoryMax]);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(XCHAT_REASONING_MODE_STORAGE_KEY);
+      if (raw === "fast" || raw === "expert" || raw === "heavy") {
+        setReasoningMode(raw);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(XCHAT_REASONING_MODE_STORAGE_KEY, reasoningMode);
+    } catch {
+      /* ignore */
+    }
+  }, [reasoningMode]);
+
+  useEffect(() => {
     if (!initialXchatItem) {
       return;
     }
@@ -1091,6 +1115,7 @@ export function XchatConversation({
         recentMessages: Array<{ role: "user" | "assistant"; content: string }>;
         portfolioId?: string;
         personaId?: string;
+        reasoningMode?: XchatReasoningMode;
       } = {
         message: prompt,
         scope: "global",
@@ -1112,6 +1137,9 @@ export function XchatConversation({
         !personaPickerLocked && selectedPersonaId.trim() ? selectedPersonaId.trim() : undefined;
       if (personaIdSent) {
         askBody.personaId = personaIdSent;
+      }
+      if (reasoningMode !== "fast") {
+        askBody.reasoningMode = reasoningMode;
       }
 
       const response = await fetch("/api/xchat/ask", {
@@ -1432,8 +1460,8 @@ export function XchatConversation({
         <header className="xchat-welcome-header">
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
           <p className="xchat-welcome-sub">
-            Overview of xChat — portfolio, watchlist and advisor options-tools. Use Examples next to xOptions for starter
-            prompts.
+            Overview of xChat — portfolio, watchlist, and advisor options tools. Use Templates above the composer for
+            starter prompts; Depth (Fast / Expert / Heavy) controls plan-aware reasoning.
           </p>
         </header>
 
@@ -1475,10 +1503,12 @@ export function XchatConversation({
             personaListError={personaListError}
             personaPickerLocked={personaPickerLocked}
             personaSelectRows={personaSelectRows}
+            reasoningMode={reasoningMode}
             selectedPersonaId={selectedPersonaId}
             setInput={setInput}
             setPasteImageError={setPasteImageError}
             setPendingPasteImage={setPendingPasteImage}
+            setReasoningMode={setReasoningMode}
             setSelectedPersonaId={setSelectedPersonaId}
             sourcesRailHref={sourcesRailHref}
             tenantFileUploadEnabled={tenantFileUploadEnabled}

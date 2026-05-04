@@ -33,14 +33,14 @@ Do **not** set **`grok-4.20-multi-agent`** / **`grok-4.20-multi-agent-0309`** as
 
 ## Effective xAI model
 
-`POST /api/xchat/ask` uses the **resolved persona’s** `model` field (Admin → Personas / Mongo). If it is empty, the server uses **`XAI_CHAT_MODEL`** (env / Cloud Run), else **`grok-4-1-fast-reasoning`**. There is **no** client `model` override on the ask payload — multi-agent parallelism follows the same persona model (e.g. `grok-4.20-multi-agent`) plus optional `reasoningEffort` in the body.
+`POST /api/xchat/ask` uses the **resolved persona’s** `model` field (Admin → Personas / Mongo). If it is empty, the server uses **`XAI_CHAT_MODEL`** (env / Cloud Run), else **`grok-4-1-fast-reasoning`**. There is **no** raw client `model` id override — optional **`reasoningMode`** (`fast` \| `expert` \| `heavy`) maps to internal **`reasoningEffort`** and may **escalate** a non–multi-agent persona to **`grok-4.20-multi-agent`** for that turn when plan limits allow; otherwise the server uses the plan **`escalationModel`** without parallelism. Mutually exclusive with body **`reasoningEffort`** (send one or the other).
 
 ## Plan limits (subscription → multi-agent cap)
 
 Defined in [`src/modules/xchat/plan-limits.ts`](../../src/modules/xchat/plan-limits.ts):
 
 - Field **`multiAgentParallelMaxAgents`**: `0` | `4` | `16` — max `agent_count` for non–`global_admin` sessions.
-- **Current default:** all tiers (`free`, `pro`, `enterprise`) use **`0`**: app-facing users do not receive multi-agent parallelism until ops raises caps (cost absorption).
+- **Shipped defaults:** **`basic`**/**`free`** → **`0`** (Expert/Heavy **`reasoningMode`** falls back to plan **`escalationModel`** without parallelism); **`premium`**/**`pro`** → **`4`**; **`premium_plus`**/**`enterprise`** → **`16`**.
 - **`global_admin`** sessions skip this clamp so internal testing and admin overrides stay usable.
 
 Clamp helper: `clampMultiAgentParallelismForPlan` (used from [`src/app/api/xchat/ask/route.ts`](../../src/app/api/xchat/ask/route.ts) after resolving `reasoningEffort` + multi-agent model).

@@ -79,7 +79,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | [xchat-tools-guide.md](./xchat/xchat-tools-guide.md) | Tools & prompts |
 | [xchat-history-storage.md](./xchat/xchat-history-storage.md) | Where xChat history lives (Mongo vs xAI); deprecated `ATXFINANCE_COLLECTION_ID` |
 | [xchat-voice-mode.md](./xchat/xchat-voice-mode.md) | Dictation (STT) vs Voice Mode (realtime); routes, WS, tests |
-| [xchat-hnwi-templates-ui.md](./xchat/xchat-hnwi-templates-ui.md) | HNWI **Templates** gallery + persona popover (PLAN **707**) |
+| [xchat-hnwi-templates-ui.md](./xchat/xchat-hnwi-templates-ui.md) | HNWI **Templates** gallery + saved user prompts + **Depth** presets (**`707`** closed) |
 | [xchat-nl-collect-inputs.md](./xchat/xchat-nl-collect-inputs.md) | **NL** (natural-language) slot collection before options/strategy flows; xChat system copy |
 | [xdesign-review-admin-console-ux.md](./xchat/xdesign-review-admin-console-ux.md) | Admin console UX review |
 | [xdesign-review-legacy-prompts-inventory.md](./xchat/xdesign-review-legacy-prompts-inventory.md) | Legacy prompts inventory |

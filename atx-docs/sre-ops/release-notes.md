@@ -37,6 +37,8 @@ Append a short **Deploy:** clause so ops can scan the log:
 
 ## Entries
 
+- **3.11.0** — **xChat PLAN 707 — saved templates + Depth presets:** Mongo **`xchat_user_prompt_templates`** with **`GET`/`POST /api/app-user/xchat/prompt-templates`** and **`DELETE …/{id}`**; templates strip bookmark save + delete on saved cards. Composer **Fast / Expert / Heavy** (**`reasoningMode`** on **`POST /api/xchat/ask`**, mutually exclusive with **`reasoningEffort`**); non–multi-agent personas escalate to **`grok-4.20-multi-agent`** when **`multiAgentParallelMaxAgents`** allows (**premium** 4, **premium_plus** 16; **basic** falls back to escalation model). OpenAPI + policy docs updated; **`PLAN.md` `707`** closed. **Deploy:** Next.
+
 - **3.10.11** — **PLAN priority 703 closed (docs):** xChat voice backlog row removed; **703** moved to **Recently completed** in **`PLAN.md`** (dictation + Voice Mode shipped baseline). **`xchat-voice-mode.md`** backlog section retitled optional future enhancements; **`current-state-features`** / **`README`** voice row references updated. **Deploy:** docs-only.
 
 - **3.10.10** — **PLAN priority 100 closed (docs):** Email validation, verification mail, credential-invite / approval SMTP paths, and desk SMTP operational mail documented as **verified / working as expected**; row removed from active backlog and moved to **Recently completed** in **`PLAN.md`**. **Deploy:** docs-only (no runtime change).

@@ -4,8 +4,11 @@
  * @see `src/app/api/xchat/ask/route.ts` — downgrade unless `reasoningEffort` or `heavySynthesisIntent`
  * @see `atx-docs/xchat/context-routing-multi-agent-policy.md`
  */
+/** Default multi-agent id used when Expert / Heavy modes escalate a non–multi-agent persona for one turn. */
+export const PRIMARY_MULTI_AGENT_PERSONA_MODEL_ID = "grok-4.20-multi-agent" as const;
+
 export const MULTI_AGENT_PERSONA_MODEL_IDS = new Set<string>([
-  "grok-4.20-multi-agent",
+  PRIMARY_MULTI_AGENT_PERSONA_MODEL_ID,
   "grok-4.20-multi-agent-0309"
 ]);
 

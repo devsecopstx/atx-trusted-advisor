@@ -23,6 +23,11 @@ Approved **app_user** xChat composer polish: curated **Templates** gallery + **p
 
 **`src/app/xchat/xchat.css`** — `.xchat-templates-strip__*`, `.xchat-persona-menu__*`; soft theme overrides under `html[data-xf-ui="soft"]`.
 
-## Backlog
+## User templates & Depth
 
-User-authored templates, Grok-like **mode** presets mapped to multi-agent / plan limits — **PLAN.md** priority **707**.
+| Piece | Detail |
+|-------|--------|
+| **Saved prompts** | **`GET`/`POST /api/app-user/xchat/prompt-templates`**, **`DELETE /api/app-user/xchat/prompt-templates/{id}`** — Mongo **`xchat_user_prompt_templates`** (per user, max 40). Templates strip **bookmark** opens save dialog; saved cards show **×** to delete. |
+| **Depth** | **`XchatReasoningModeToggle`** — **Fast** / **Expert** / **Heavy**; persisted in **`localStorage`** (`xf_xchat_reasoning_mode`). Sent as **`reasoningMode`** on **`POST /api/xchat/ask`** (omit when Fast). Server applies plan **`multiAgentParallelMaxAgents`** ([context-routing-multi-agent-policy.md](./context-routing-multi-agent-policy.md)). |
+
+**PLAN.md** priority **707** — closed.

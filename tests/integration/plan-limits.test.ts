@@ -130,10 +130,10 @@ describe("multi-agent plan clamp", () => {
   const highParallelism = { agentCount: 16 as const, reasoningEffort: "high" as const };
   const lowParallelism = { agentCount: 4 as const, reasoningEffort: "medium" as const };
 
-  it("all tiers default multiAgentParallelMaxAgents to 0", () => {
+  it("multiAgentParallelMaxAgents is 0 on basic, capped parallelism on paid tiers", () => {
     expect(getPlanLimits("basic").multiAgentParallelMaxAgents).toBe(0);
-    expect(getPlanLimits("premium").multiAgentParallelMaxAgents).toBe(0);
-    expect(getPlanLimits("premium_plus").multiAgentParallelMaxAgents).toBe(0);
+    expect(getPlanLimits("premium").multiAgentParallelMaxAgents).toBe(4);
+    expect(getPlanLimits("premium_plus").multiAgentParallelMaxAgents).toBe(16);
   });
 
   it("clampMultiAgentParallelismWithMax returns undefined when max is 0", () => {
@@ -153,8 +153,13 @@ describe("multi-agent plan clamp", () => {
     });
   });
 
-  it("clampMultiAgentParallelismForPlan uses tier max (currently all 0)", () => {
-    expect(clampMultiAgentParallelismForPlan(highParallelism, "premium_plus")).toBeUndefined();
+  it("clampMultiAgentParallelismForPlan uses tier max", () => {
+    expect(clampMultiAgentParallelismForPlan(highParallelism, "premium_plus")).toEqual(highParallelism);
+    expect(clampMultiAgentParallelismForPlan(highParallelism, "premium")).toEqual({
+      agentCount: 4,
+      reasoningEffort: "high"
+    });
+    expect(clampMultiAgentParallelismForPlan(highParallelism, "basic")).toBeUndefined();
     expect(clampMultiAgentParallelismForPlan(highParallelism, undefined)).toBeUndefined();
   });
 });

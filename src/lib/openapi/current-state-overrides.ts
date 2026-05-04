@@ -1436,7 +1436,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     type: "object",
     required: [],
     description:
-      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot, **PNG or JPEG** only) is required. **Text and images** both use the **resolved persona `model`** (or `XAI_CHAT_MODEL` when the persona has no model) on `/v1/responses`. Optional **`XAI_VISION_MODEL`** overrides that **only for image turns**. Multi-agent persona models fall back to the default chat model for image turns (no `agent_count`).",
+      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot, **PNG or JPEG** only) is required. **Text and images** both use the **resolved persona `model`** (or `XAI_CHAT_MODEL` when the persona has no model) on `/v1/responses`, except **`reasoningMode` expert/heavy** may temporarily use **`grok-4.20-multi-agent`** for non–multi-agent personas when plan limits allow. Optional **`XAI_VISION_MODEL`** overrides that **only for image turns**. Multi-agent persona models fall back to the default chat model for image turns (no `agent_count`).",
     properties: {
       message: { type: "string", minLength: 0, maxLength: 8000 },
       imageAttachment: {
@@ -1473,7 +1473,13 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "string",
         enum: ["low", "medium", "high", "xhigh"],
         description:
-          "Only valid when the resolved persona’s `model` is `grok-4.20-multi-agent` or `grok-4.20-multi-agent-0309` (set in Admin → Personas). Non–global_admin sessions may have multi-agent parallelism stripped per subscription plan (`multiAgentParallelMaxAgents` in plan limits; defaults cap app users at 0 until raised)."
+          "Mutually exclusive with **`reasoningMode`**. When the persona model is not multi-agent, the server may escalate to **`grok-4.20-multi-agent`** for this turn when plan **`multiAgentParallelMaxAgents`** allows parallelism; otherwise it falls back to the plan **`escalationModel`** without parallelism."
+      },
+      reasoningMode: {
+        type: "string",
+        enum: ["fast", "expert", "heavy"],
+        description:
+          "Grok-style preset (mutually exclusive with **`reasoningEffort`**): **fast** — default single-pass path (multi-agent personas may downgrade when the message is simple); **expert** — maps to medium reasoning effort + up to **4** parallel agents when the subscription tier allows; **heavy** — high effort + up to **16** agents when allowed (**premium_plus**). **basic** tier falls back to **`escalationModel`** without parallelism."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 }
@@ -1523,9 +1529,15 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       },
       modelSelectionSource: {
         type: "string",
-        enum: ["default", "persona"],
+        enum: [
+          "default",
+          "persona",
+          "vision_env",
+          "reasoning_mode",
+          "reasoning_mode_fallback"
+        ],
         description:
-          "`persona` when the effective xAI model id came from the resolved persona document; `default` when the persona has no model set (server fallback)."
+          "`persona` / `default` — persona vs server chat default; `vision_env` — image turn override; `reasoning_mode` — Expert/Heavy escalated to multi-agent for this turn; `reasoning_mode_fallback` — parallelism unavailable for tier (uses plan escalation model)."
       },
       contextCount: { type: "integer", minimum: 0 },
       contextSource: { type: "string", enum: ["none", "xai_collection"] },
