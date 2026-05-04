@@ -1619,7 +1619,8 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
 }
 
 .xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected .xoptions-chain-table__price-col .xoptions-chain-table__price-figure,
-.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected .xoptions-contract__bid--emphasis {
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected .xoptions-contract__bid--emphasis,
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--selected .xoptions-contract__ask-cell-btn {
   color: color-mix(in srgb, var(--xf-success-400) 94%, var(--xf-text-100));
 }
 
@@ -1628,7 +1629,8 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
 }
 
 .xoptions-chain-table__viewport tbody tr.xoptions-contract-row--atm.xoptions-contract-row--selected td,
-.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--atm.xoptions-contract-row--selected .xoptions-contract__bid {
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--atm.xoptions-contract-row--selected .xoptions-contract__bid,
+.xoptions-chain-table__viewport tbody tr.xoptions-contract-row--atm.xoptions-contract-row--selected .xoptions-contract__ask-cell-btn {
   color: color-mix(in srgb, var(--xf-text-100) 88%, var(--xf-xoptions-accent));
 }
 
@@ -1641,7 +1643,12 @@ html[data-xf-ui="soft"]
   .xoptions-chain-table__viewport
   tbody
   tr.xoptions-contract-row--atm.xoptions-contract-row--selected
-  .xoptions-contract__bid {
+  .xoptions-contract__bid,
+html[data-xf-ui="soft"]
+  .xoptions-chain-table__viewport
+  tbody
+  tr.xoptions-contract-row--atm.xoptions-contract-row--selected
+  .xoptions-contract__ask-cell-btn {
   color: color-mix(in srgb, var(--xf-text-100) 88%, var(--xf-xoptions-accent));
 }
 
@@ -2481,6 +2488,21 @@ html[data-xf-ui="soft"] .xoptions-contract-overlay__card {
   color: var(--xf-gain-green);
 }
 
+.xoptions-contract__ask-cell-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: inherit;
+  font: inherit;
+}
+
+.xoptions-contract__ask-cell-btn:hover {
+  color: var(--xf-gain-green);
+}
+
 /* ATM: elevated band (institutional scan); ITM: green tint; OTM: cool neutral tint */
 .xoptions-contract-row--atm {
   background: linear-gradient(
@@ -2493,12 +2515,14 @@ html[data-xf-ui="soft"] .xoptions-contract-overlay__card {
 }
 
 .xoptions-contract-row--atm td,
-.xoptions-contract-row--atm .xoptions-contract__bid {
+.xoptions-contract-row--atm .xoptions-contract__bid,
+.xoptions-contract-row--atm .xoptions-contract__ask-cell-btn {
   color: var(--xf-bg-900);
 }
 
 html[data-xf-ui="soft"] .xoptions-contract-row--atm td,
-html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid {
+html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid,
+html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__ask-cell-btn {
   color: var(--xf-text-100);
 }
 

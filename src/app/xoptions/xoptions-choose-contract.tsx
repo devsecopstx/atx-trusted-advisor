@@ -154,6 +154,46 @@ function breakevenLong(side: "call" | "put", strike: number, premiumPerShare: nu
   return Math.max(0, strike - premiumPerShare);
 }
 
+/**
+ * Auto limit per share: buying pays the offer (ask); selling collects the bid.
+ * Falls back to mid / single-sided quote when NBBO is incomplete.
+ */
+function defaultLimitPricePerShareForOpening(
+  openingAction: XoptionsOpeningAction,
+  leg: ChainLeg
+): number | null {
+  if (!leg?.last_quote) {
+    return null;
+  }
+  const { bid, ask } = leg.last_quote;
+  const bidOk = typeof bid === "number" && Number.isFinite(bid) && bid >= 0;
+  const askOk = typeof ask === "number" && Number.isFinite(ask) && ask >= 0;
+  const mid =
+    bidOk && askOk ? (bid + ask) / 2 : bidOk ? bid : askOk ? ask : null;
+  if (openingAction === "buy_to_open") {
+    if (askOk && ask > 0) {
+      return ask;
+    }
+    if (mid != null && mid > 0) {
+      return mid;
+    }
+    if (bidOk && bid > 0) {
+      return bid;
+    }
+    return null;
+  }
+  if (bidOk && bid > 0) {
+    return bid;
+  }
+  if (mid != null && mid > 0) {
+    return mid;
+  }
+  if (askOk && ask > 0) {
+    return ask;
+  }
+  return null;
+}
+
 export type XoptionsChooseContractProps = {
   symbol: string;
   weeks: number | null;
@@ -442,6 +482,8 @@ export function XoptionsChooseContract({
     () => strategyDefaults(strategyChoiceId),
     [strategyChoiceId]
   );
+  const openingActionResolved: XoptionsOpeningAction =
+    strategyDefaultsResolved?.openingAction ?? "buy_to_open";
 
   const chainTableScrollRef = useRef<HTMLDivElement>(null);
   const sideRef = useRef(side);
@@ -847,7 +889,7 @@ export function XoptionsChooseContract({
       symbol: u,
       expirationYyyyMmDd: expiration,
       side,
-      openingAction: strategyDefaultsResolved?.openingAction ?? "buy_to_open",
+      openingAction: openingActionResolved,
       strike: selectedStrike,
       limitPrice: limitPrice.trim(),
       quantity: quantity.trim(),
@@ -862,7 +904,7 @@ export function XoptionsChooseContract({
     selectedStrike,
     expiration,
     side,
-    strategyDefaultsResolved,
+    openingActionResolved,
     limitPrice,
     quantity,
     u,
@@ -916,22 +958,28 @@ export function XoptionsChooseContract({
   const payoffPanelLocked =
     !dataReady || (Boolean(expiration) && loadingChain);
 
-  const syncLimitFromBid = useCallback(
+  const syncLimitPriceFromNaturalQuote = useCallback(
     (strike: number) => {
-      if (!chain) return;
+      if (!chain) {
+        return;
+      }
       const row = chain.optionChain.find((r) => r.strike === strike);
       const leg = row ? (side === "call" ? row.call : row.put) : null;
-      if (leg?.last_quote && Number.isFinite(leg.last_quote.bid)) {
-        setLimitPrice(leg.last_quote.bid.toFixed(2));
+      if (!leg) {
+        return;
+      }
+      const px = defaultLimitPricePerShareForOpening(openingActionResolved, leg);
+      if (px != null) {
+        setLimitPrice(px.toFixed(2));
       }
     },
-    [chain, side]
+    [chain, side, openingActionResolved]
   );
 
   useEffect(() => {
     if (!chain || selectedStrike == null) return;
-    syncLimitFromBid(selectedStrike);
-  }, [chain, side, selectedStrike, syncLimitFromBid]);
+    syncLimitPriceFromNaturalQuote(selectedStrike);
+  }, [chain, side, selectedStrike, syncLimitPriceFromNaturalQuote]);
 
   useEffect(() => {
     if (selectedStrike == null) return;
@@ -958,7 +1006,8 @@ export function XoptionsChooseContract({
         Select a strike price
       </li>
       <li className={limitOk ? "xoptions-contract-overlay__li--done" : ""}>
-        Select or enter a limit price (use bid or type)
+        Select or enter a limit price (auto: {openingActionResolved === "buy_to_open" ? "ask to buy" : "bid to sell"}
+        ; tap Bid or Ask or type)
       </li>
       <li className={qtyOk ? "xoptions-contract-overlay__li--done" : ""}>Enter quantity</li>
     </ul>
@@ -1382,7 +1431,7 @@ export function XoptionsChooseContract({
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setSelectedStrike(row.strike);
-                                            syncLimitFromBid(row.strike);
+                                            setLimitPrice(bid.toFixed(2));
                                           }}
                                         >
                                           ${bid.toFixed(2)}
@@ -1400,7 +1449,17 @@ export function XoptionsChooseContract({
                                       key={cid}
                                       className={`xoptions-chain-table__td-pad xoptions-contract__ask-cell xoptions-chain-table__quote-major xoptions-chain-table__price-col xoptions-chain-table__price-figure font-mono tabular-nums tracking-tight align-middle text-right font-semibold ${gb("ask")}`}
                                     >
-                                      ${ask.toFixed(2)}
+                                      <button
+                                        type="button"
+                                        className="xoptions-contract__ask-cell-btn xoptions-chain-table__quote-major xoptions-chain-table__price-figure font-mono tabular-nums tracking-tight text-right font-semibold"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedStrike(row.strike);
+                                          setLimitPrice(ask.toFixed(2));
+                                        }}
+                                      >
+                                        ${ask.toFixed(2)}
+                                      </button>
                                     </td>
                                   );
                                 }

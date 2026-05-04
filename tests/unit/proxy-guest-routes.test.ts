@@ -13,6 +13,12 @@ function request(path: string, cookieValue?: string) {
 }
 
 describe("proxy (middleware) guest HTML routes", () => {
+  it("does not redirect unauthenticated /resources/top-10-hnwi-xchat-prompts (public article)", async () => {
+    const res = await proxy(request("/resources/top-10-hnwi-xchat-prompts"));
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.status).toBeLessThan(400);
+  });
+
   it("does not redirect unauthenticated /xoptions (guest shell at URL)", async () => {
     const res = await proxy(request("/xoptions"));
     expect(res.headers.get("location")).toBeNull();

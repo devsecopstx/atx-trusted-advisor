@@ -3,12 +3,12 @@
 import Link from "next/link";
 
 import { LightningBolt } from "@/app/ui/atxfinance-logo";
-import { PoweredByXai } from "@/app/ui/xai-brand-mark";
 import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { LandingProductScreenshot } from "@/app/ui/landing-product-screenshot";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { PublicLandingXchatDemo } from "@/app/ui/public-landing-xchat-demo";
+import { PoweredByXai } from "@/app/ui/xai-brand-mark";
 import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pillars";
 import { withUtmParams } from "@/lib/marketing/utm";
@@ -57,6 +57,12 @@ export function PublicMarketingLanding() {
               className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-300)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
             >
               Eight pillars
+            </Link>
+            <Link
+              href="/resources/top-10-hnwi-xchat-prompts"
+              className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-300)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
+            >
+              Top 10 HNWI prompts
             </Link>
             <Link
               href={loginHref}

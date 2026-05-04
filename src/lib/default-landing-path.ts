@@ -1,16 +1,15 @@
 import { ObjectId } from "mongodb";
 
 import type { SessionUser } from "@/lib/auth";
-import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
 import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 
 export type SubscriberLandingPath = string;
 
-export function subscriberLandingPathForPlan(planRaw: unknown): SubscriberLandingPath {
-  const plan = normalizeSubscriptionPlan(planRaw);
-  return plan === "basic" ? "/xchat" : "/portfolios";
+/** Post-auth fallback when tenant route policy does not set `defaultLanding`. Always xChat for app roles. */
+export function subscriberLandingPathForPlan(_planRaw: unknown): SubscriberLandingPath {
+  return "/xchat";
 }
 
 export async function resolveSessionLandingPath(session: SessionUser): Promise<string> {

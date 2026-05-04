@@ -247,6 +247,9 @@ function allowsGuestHtmlRender(pathname: string): boolean {
   if (pathname === "/portfolio" || pathname === "/portfolios" || pathname === "/xoptions") {
     return true;
   }
+  if (pathname === "/resources" || pathname.startsWith("/resources/")) {
+    return true;
+  }
   return (
     pathname.startsWith("/portfolio/") ||
     pathname.startsWith("/portfolios/") ||
@@ -288,6 +291,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/resources",
+    "/resources/:path*",
     "/admin/:path*",
     "/api/admin/:path*",
     "/api/personas/:path*",
