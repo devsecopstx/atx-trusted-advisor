@@ -566,6 +566,11 @@
   color: var(--xf-text-100);
 }
 
+.portfolios-macro-tape__wellness-text--weather {
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+}
+
 .portfolios-macro-tape__wellness-micro {
   margin: 0.22rem 0 0;
   font-size: 0.56rem;

@@ -231,6 +231,32 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "user-tasks"
   },
   {
+    path: "/api/tenant-tasks",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true }
+    ],
+    tag: "tenant-automations"
+  },
+  {
+    path: "/api/tenant-tasks/{taskId}",
+    operations: [
+      { method: "PATCH", auth: "session", hasRequestBody: true },
+      { method: "DELETE", auth: "session" }
+    ],
+    tag: "tenant-automations"
+  },
+  {
+    path: "/api/tenant-tasks/{taskId}/run",
+    operations: [{ method: "POST", auth: "session" }],
+    tag: "tenant-automations"
+  },
+  {
+    path: "/api/tenant-tasks/{taskId}/runs",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "tenant-automations"
+  },
+  {
     path: "/api/internal/tenant-ux/policy",
     operations: [{ method: "GET", auth: "session" }],
     tag: "admin-system"
@@ -1132,6 +1158,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
     "Lightweight market reads for product shells (e.g. batch symbol quotes, workspace pulse / options highlight summaries).",
   "strategy-options":
     "Option expirations (`GET` — Next Yahoo handler only, not BFF) and full chain (`GET` — may proxy to Spring when `ATXFINANCE_BACKEND_ORIGIN` is set; sparse or non-JSON Spring responses fall back to Next Yahoo in `strategy-options/route.ts`). Used by `/xoptions` contract grid.",
+  "tenant-automations":
+    "Workspace tenant automations: `admin_scheduled_tasks` with `ownerKind: tenant_user`; `/api/tenant-tasks/*` (operator/global_admin mutate, advisor read-only); `/workspace/tasks`. Executed by the existing Spring poll + Next delegate path.",
   "strategy-jobs":
     "Hardcore multi-slot strategy jobs: Spring `StrategyJobService` (Mongo `strategy_jobs`) behind Next BFF (`src/app/api/strategy-jobs/*`). Slot turns through `slots_complete`, then async LLM artifact (Markdown + fenced JSON v1). Rate limits, idempotency, TTL: see `atxfinance-backend-http-api.md` and `atx-docs/xchat/atx-multi-agent.md`.",
   rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",

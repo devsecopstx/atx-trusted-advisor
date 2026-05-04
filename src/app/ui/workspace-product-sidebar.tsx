@@ -414,7 +414,8 @@ export function WorkspaceProductSidebar({
     (isPathVisible("/portfolios") && pathname.startsWith("/portfolios")) ||
     (isPathVisible("/portfolio") && pathname.startsWith("/portfolio")) ||
     (isPathVisible("/watchlist") && pathname.startsWith("/watchlist")) ||
-    (isPathVisible("/import-activity") && pathname.startsWith("/import-activity"));
+    (isPathVisible("/import-activity") && pathname.startsWith("/import-activity")) ||
+    (isPathVisible("/workspace") && pathname.startsWith("/workspace/tasks"));
 
   const fallbackXchatSection = (
     <RouteSyncedDetails
@@ -536,6 +537,11 @@ export function WorkspaceProductSidebar({
           <SidebarLink href={alertsHref} nested title="Portfolio alerts">
             Alerts
           </SidebarLink>
+          ) : null}
+          {isPathVisible("/workspace") ? (
+            <SidebarLink href="/workspace/tasks" nested title="Tenant automations (scheduled scanners)">
+              Automations
+            </SidebarLink>
           ) : null}
         </div>
       </RouteSyncedDetails>

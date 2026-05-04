@@ -119,6 +119,13 @@ export type ScheduledTask = {
   maxRetries?: number;
   /** Category-specific typed config payload (e.g. `marketing_post`). */
   config?: MarketingTaskConfig;
+  /**
+   * App-user / tenant-operator automations (`/workspace/tasks`). When set, rows are CRUD-only via
+   * `/api/tenant-tasks/*` (not Admin → Tasks). Execution uses the same poller + Next task-runner as tenant jobs.
+   */
+  ownerKind?: "tenant_user";
+  /** Creating app user (`core_users._id`) — audit / attribution; operators may edit any tenant_user task. */
+  ownerUserId?: ObjectId;
   lastRunAt?: Date;
   nextRunAt?: Date;
 };

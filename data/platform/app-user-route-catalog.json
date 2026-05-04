@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "catalogKind": "app_user_route_catalog",
-  "updated": "2026-04-08",
+  "updated": "2026-05-04",
   "description": "Canonical route metadata for platform/compliance: import into Mongo (or your store) to drive per-tenant role visibility and default landing paths. defaultVisibleForRoles are suggested seeds only — runtime policy may override per tenant.",
   "platformRoles": ["global_admin", "advisor", "operator", "viewer"],
   "tenantAssignableRoles": ["advisor", "operator", "viewer"],
@@ -119,6 +119,17 @@
       "guestHtmlShell": false,
       "complianceSummary": "Workspace portfolio picker and related UI.",
       "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "workspace_tasks",
+      "pathPattern": "/workspace/tasks",
+      "pathMatch": "prefix",
+      "label": "Tenant automations",
+      "groupId": "core_product",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": false,
+      "complianceSummary": "Tenant-scoped scheduled tasks (scanners, notifications); operator-managed, advisor view-only by policy.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator"]
     },
     {
       "id": "xcoach",

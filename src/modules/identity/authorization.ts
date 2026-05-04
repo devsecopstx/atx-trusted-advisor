@@ -55,3 +55,21 @@ export function canCreateStrategyJobFromApp(roles: string[]): boolean {
     return normalized === "global_admin" || normalized === "advisor" || normalized === "operator";
   });
 }
+
+/** Tenant workspace automations (`/workspace/tasks`): advisor + operator + global_admin; viewer excluded. */
+export function canAccessTenantUserAutomations(roles: string[]): boolean {
+  return roles.some((role) => {
+    const normalized = normalizeCoreRole(role);
+    return (
+      normalized === GLOBAL_ADMIN_ROLE || normalized === "advisor" || normalized === "operator"
+    );
+  });
+}
+
+/** Create / edit / delete / run-now for tenant user tasks — operator + global_admin only. */
+export function canMutateTenantUserAutomations(roles: string[]): boolean {
+  return roles.some((role) => {
+    const normalized = normalizeCoreRole(role);
+    return normalized === GLOBAL_ADMIN_ROLE || normalized === "operator";
+  });
+}

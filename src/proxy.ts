@@ -22,6 +22,7 @@ const protectedPathPrefixes = [
   "/import-activity",
   "/api/import",
   "/api/integrations",
+  "/api/tenant-tasks",
   "/watchlist",
   "/account",
   "/workspace",
@@ -79,6 +80,7 @@ export function resolvePolicyPathForRequest(pathname: string): string | null {
   if (p.startsWith("/api/positions")) return "/portfolio";
   if (p.startsWith("/api/import")) return "/import-activity";
   if (p.startsWith("/api/integrations")) return "/account";
+  if (p.startsWith("/api/tenant-tasks")) return "/workspace";
   return null;
 }
 
@@ -309,6 +311,7 @@ export const config = {
     "/import-activity",
     "/api/import/:path*",
     "/api/integrations/:path*",
+    "/api/tenant-tasks/:path*",
     "/watchlist",
     "/watchlist/:path*",
     "/account",

@@ -4,10 +4,11 @@ import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
 
 const DESK_WELLNESS_SYSTEM = [
   "You are a concise assistant on the portfolio desk workspace.",
-  "Use the web_search tool at least once to ground answers in current, verifiable web sources.",
-  "Task A — Weather: one short line with approximate conditions and temperature (with unit) for the user's location context and today's date. No hour-by-hour forecast.",
+  "Use the web_search tool at least once to ground answers in current conditions.",
+  "Task A — Weather: one friendly sentence — conditions plus temperature for the user's location and today's date (Imperial primary, optional metric in parentheses). Example tone: \"Mostly sunny, high near 83°F (28°C).\" No hour-by-hour forecast. No city name required unless it reads naturally.",
   "Task B — Wellness: one short line with a practical desk-worker habit (movement, hydration, eyes, posture, stress breaks). Educational only — not medical diagnosis or treatment.",
   "Do not give investment advice. Keep total reasoning tight.",
+  "Neither line may contain URLs, markdown links, footnotes, or citation markers — no [[1]](...), no [text](https://...), no bracketed source lists. Plain readable prose only.",
   "",
   "Output EXACTLY this tagged plain-text shape (no markdown fences, no text outside the tags):",
   "<<<WEATHER>>>",
@@ -22,6 +23,32 @@ export type DeskWellnessBriefResult = {
   /** True when tags parsed cleanly from the model output. */
   parsed: boolean;
 };
+
+const WEATHER_MAX = 320;
+const WELLNESS_MAX = 420;
+
+/**
+ * Removes web_search / model citation tails so desk tape stays readable (no [[1]](url) clusters).
+ * Exported for unit tests.
+ */
+export function sanitizeDeskWellnessLine(line: string, maxLen: number): string {
+  let s = line.trim();
+  s = s.replace(/\s*\[\[\d+\]\]\([^)]*\)/g, "");
+  s = s.replace(/\s*\[\d+\]\([^)]*\)/g, "");
+  s = s.replace(/\s*\[@citation:[^\]]+\]/gi, "");
+  s = s.replace(/\s*\[@tool:[^\]]+\]/gi, "");
+  return s.replace(/\s+/g, " ").trim().slice(0, maxLen);
+}
+
+function normalizeBriefResult(value: DeskWellnessBriefResult): DeskWellnessBriefResult {
+  const weatherLine = sanitizeDeskWellnessLine(value.weatherLine, WEATHER_MAX);
+  const wellnessLine = sanitizeDeskWellnessLine(value.wellnessLine, WELLNESS_MAX);
+  return {
+    weatherLine: weatherLine || "Weather summary unavailable.",
+    wellnessLine: wellnessLine || pickHealthTipForLocalDate(new Date()),
+    parsed: value.parsed
+  };
+}
 
 /** Exported for unit tests — extracts tagged segments from model output. */
 export function parseDeskWellnessTaggedOutput(raw: string): { weatherLine: string; wellnessLine: string } | null {
@@ -38,9 +65,8 @@ export function parseDeskWellnessTaggedOutput(raw: string): { weatherLine: strin
   if (endWeather < 0) {
     return null;
   }
-  const weatherLine = afterW.slice(0, endWeather).trim().replace(/\s+/g, " ").slice(0, 320);
-  const wellnessRest = afterW.slice(endWeather + openH.length).trim();
-  const wellnessLine = wellnessRest.replace(/\s+/g, " ").slice(0, 420);
+  const weatherLine = sanitizeDeskWellnessLine(afterW.slice(0, endWeather), WEATHER_MAX);
+  const wellnessLine = sanitizeDeskWellnessLine(afterW.slice(endWeather + openH.length), WELLNESS_MAX);
   if (!weatherLine || !wellnessLine) {
     return null;
   }
@@ -62,8 +88,8 @@ function softParseLines(raw: string): DeskWellnessBriefResult | null {
     .filter((l) => l.length > 0 && !l.startsWith("#"));
   if (lines.length >= 2) {
     return {
-      weatherLine: lines[0]!.slice(0, 320),
-      wellnessLine: lines[1]!.slice(0, 420),
+      weatherLine: sanitizeDeskWellnessLine(lines[0]!, WEATHER_MAX),
+      wellnessLine: sanitizeDeskWellnessLine(lines[1]!, WELLNESS_MAX),
       parsed: false
     };
   }
@@ -105,14 +131,15 @@ export async function fetchDeskWellnessBriefViaXai(input: {
   pruneMemoryCache();
   const hit = memoryCache.get(key);
   if (hit && hit.exp > now) {
-    return hit.value;
+    return normalizeBriefResult(hit.value);
   }
 
   const userPrompt = [
     `Today's date (ISO): ${input.isoDate}`,
     `Location context for weather search: ${input.locationDescription}`,
     "",
-    "Search the web as needed, then reply using ONLY the <<<WEATHER>>> / <<<WELLNESS>>> tagged format from your instructions."
+    "Search the web as needed, then reply using ONLY the <<<WEATHER>>> / <<<WELLNESS>>> tagged format from your instructions.",
+    "Do not append URLs, footnotes, or [[n]](...) citation tails to either line."
   ].join("\n");
 
   try {
@@ -127,25 +154,26 @@ export async function fetchDeskWellnessBriefViaXai(input: {
 
     const tagged = parseDeskWellnessTaggedOutput(result.outputText);
     if (tagged) {
-      const value: DeskWellnessBriefResult = {
+      const value = normalizeBriefResult({
         weatherLine: tagged.weatherLine,
         wellnessLine: tagged.wellnessLine,
         parsed: true
-      };
+      });
       memoryCache.set(key, { exp: now + MEMORY_TTL_MS, value });
       return value;
     }
 
     const soft = softParseLines(result.outputText);
     if (soft) {
-      memoryCache.set(key, { exp: now + MEMORY_TTL_MS, value: soft });
-      return soft;
+      const normalized = normalizeBriefResult(soft);
+      memoryCache.set(key, { exp: now + MEMORY_TTL_MS, value: normalized });
+      return normalized;
     }
   } catch {
     /* fall through */
   }
 
-  const fb = fallbackBrief();
+  const fb = normalizeBriefResult(fallbackBrief());
   memoryCache.set(key, { exp: now + Math.min(MEMORY_TTL_MS, 5 * 60 * 1000), value: fb });
   return fb;
 }

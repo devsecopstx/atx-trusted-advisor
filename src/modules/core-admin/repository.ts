@@ -1064,6 +1064,120 @@ export async function getScheduledTaskByIdForInternalDelegate(taskId: string): P
   });
 }
 
+const TENANT_USER_SCHEDULED_TASK_OWNER_KIND = "tenant_user" as const;
+
+export async function listTenantUserScheduledTasks(tenantIdHex: string): Promise<ScheduledTask[]> {
+  const db = await getDb();
+  const tenantOid = toTenantObjectId(tenantIdHex);
+  if (!tenantOid) {
+    return [];
+  }
+  return db
+    .collection<ScheduledTask>(collections.scheduledTasks)
+    .find({
+      tenantId: tenantOid,
+      ownerKind: TENANT_USER_SCHEDULED_TASK_OWNER_KIND,
+      $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
+    } as Filter<ScheduledTask>)
+    .sort({ name: 1 })
+    .limit(100)
+    .toArray();
+}
+
+export async function countEnabledTenantUserScheduledTasks(tenantIdHex: string): Promise<number> {
+  const db = await getDb();
+  const tenantOid = toTenantObjectId(tenantIdHex);
+  if (!tenantOid) {
+    return 0;
+  }
+  return db.collection<ScheduledTask>(collections.scheduledTasks).countDocuments({
+    tenantId: tenantOid,
+    ownerKind: TENANT_USER_SCHEDULED_TASK_OWNER_KIND,
+    enabled: true,
+    $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
+  } as Filter<ScheduledTask>);
+}
+
+export async function getTenantUserScheduledTaskById(
+  taskId: string,
+  tenantIdHex: string
+): Promise<ScheduledTask | null> {
+  const task = await getScheduledTaskById(taskId, { tenantId: tenantIdHex });
+  if (!task?._id || task.ownerKind !== TENANT_USER_SCHEDULED_TASK_OWNER_KIND) {
+    return null;
+  }
+  return task;
+}
+
+export async function insertTenantUserScheduledTask(input: {
+  tenantIdHex: string;
+  ownerUserIdHex: string;
+  name: string;
+  category: ScheduledTask["category"];
+  scheduleCron?: string;
+  scheduleRRule?: string;
+  scheduleDescription?: string;
+  enabled: boolean;
+}): Promise<ScheduledTask> {
+  const tenantOid = toTenantObjectId(input.tenantIdHex);
+  if (!tenantOid || !ObjectId.isValid(input.ownerUserIdHex)) {
+    throw new Error("insertTenantUserScheduledTask: invalid tenant or owner id");
+  }
+  const ownerOid = new ObjectId(input.ownerUserIdHex);
+  const db = await getDb();
+  const now = new Date();
+  const scheduleDescription = resolveScheduleDescription({
+    scheduleCron: input.scheduleCron,
+    scheduleRRule: input.scheduleRRule,
+    scheduleDescription: input.scheduleDescription
+  });
+  const resolvedNextRunAt =
+    computeNextRunAtFromSchedule(
+      { scheduleCron: input.scheduleCron, scheduleRRule: input.scheduleRRule },
+      now
+    ) ?? new Date(now.getTime() + 5 * 60 * 1000);
+
+  const document: ScheduledTask = {
+    name: input.name.trim().slice(0, 200),
+    category: input.category,
+    scheduleCron: input.scheduleCron?.trim(),
+    scheduleRRule: input.scheduleRRule?.trim(),
+    scheduleDescription,
+    enabled: input.enabled,
+    tenantId: tenantOid,
+    ownerKind: TENANT_USER_SCHEDULED_TASK_OWNER_KIND,
+    ownerUserId: ownerOid,
+    nextRunAt: resolvedNextRunAt
+  };
+
+  const result = await db.collection<ScheduledTask>(collections.scheduledTasks).insertOne(document);
+  return { ...document, _id: result.insertedId };
+}
+
+export async function listTaskRunsForTaskScoped(options: {
+  taskId: string;
+  tenantId?: string;
+  limit?: number;
+}): Promise<TaskRun[]> {
+  const lim = Math.min(Math.max(options.limit ?? 40, 1), 100);
+  if (!ObjectId.isValid(options.taskId)) {
+    return [];
+  }
+  const db = await getDb();
+  const base: Filter<TaskRun> = { taskId: new ObjectId(options.taskId) };
+  const tenantHex = options.tenantId?.trim();
+  const filter =
+    tenantHex && parseTenantObjectId(tenantHex)
+      ? (withTenantScope(base, tenantHex) as Filter<TaskRun>)
+      : base;
+  return db
+    .collection<TaskRun>(collections.taskRuns)
+    .find(filter)
+    .sort({ startedAt: -1 })
+    .limit(lim)
+    .toArray();
+}
+
 export async function listDueScheduledTasks(
   now: Date,
   options?: TenantScopedOptions

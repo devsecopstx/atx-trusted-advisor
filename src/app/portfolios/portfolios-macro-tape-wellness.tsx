@@ -34,16 +34,18 @@ export function PortfoliosMacroTapeWellness({ visiblePathPrefixes, deskPortfolio
             (pos) => {
               params.set("lat", String(pos.coords.latitude));
               params.set("lon", String(pos.coords.longitude));
-              setGeoHint("Brief uses xAI web_search with your approximate browser location.");
+              setGeoHint("Live web search using your approximate location.");
               resolve();
             },
             () => {
-              setGeoHint("Brief uses xAI web_search — default city when location is denied.");
+              setGeoHint("Live web search — default city when location isn’t shared.");
               resolve();
             },
             { enableHighAccuracy: false, maximumAge: 600_000, timeout: 8_000 }
           );
         });
+      } else if (typeof navigator !== "undefined") {
+        setGeoHint("Live web search — default city when browser location isn’t available.");
       }
 
       if (cancelled) {
@@ -87,7 +89,9 @@ export function PortfoliosMacroTapeWellness({ visiblePathPrefixes, deskPortfolio
         <div className="portfolios-macro-tape__wellness-body">
           <div className="portfolios-macro-tape__wellness-col portfolios-macro-tape__wellness-col--weather">
             <span className="portfolios-macro-tape__wellness-kicker">Today&apos;s weather</span>
-            <p className="portfolios-macro-tape__wellness-text font-mono tabular-nums">{weatherLine}</p>
+            <p className="portfolios-macro-tape__wellness-text portfolios-macro-tape__wellness-text--weather">
+              {weatherLine}
+            </p>
             {geoHint ? (
               <p className="portfolios-macro-tape__wellness-micro">{geoHint}</p>
             ) : null}
@@ -95,9 +99,7 @@ export function PortfoliosMacroTapeWellness({ visiblePathPrefixes, deskPortfolio
           <div className="portfolios-macro-tape__wellness-col portfolios-macro-tape__wellness-col--tip">
             <span className="portfolios-macro-tape__wellness-kicker">Wellness tip</span>
             <p className="portfolios-macro-tape__wellness-text">{wellnessLine}</p>
-            <p className="portfolios-macro-tape__wellness-micro">
-              xAI web_search brief — education only, not medical advice.
-            </p>
+            <p className="portfolios-macro-tape__wellness-micro">Desk tips are educational only — not medical advice.</p>
           </div>
         </div>
         <MacroTapeDeskNav deskPortfolioId={deskPortfolioId} visiblePathPrefixes={visiblePathPrefixes} />

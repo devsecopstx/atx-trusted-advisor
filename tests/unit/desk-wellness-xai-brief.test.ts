@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { parseDeskWellnessTaggedOutput } from "@/modules/portfolio/desk-wellness-xai-brief";
+import {
+    parseDeskWellnessTaggedOutput,
+    sanitizeDeskWellnessLine
+} from "@/modules/portfolio/desk-wellness-xai-brief";
 
 describe("parseDeskWellnessTaggedOutput", () => {
   it("parses minimal tagged shape", () => {
@@ -53,5 +56,15 @@ ok`;
 ok
 <<<WELLNESS>>>`;
     expect(parseDeskWellnessTaggedOutput(raw)).toBeNull();
+  });
+
+  it("strips Grok-style [[n]](url) citation tails from weather prose", () => {
+    const dirty =
+      "Mostly sunny, high near 83°F (28°C).[[1]](https://weather.com/x)[[2]](https://forecast.weather.gov/y)";
+    expect(sanitizeDeskWellnessLine(dirty, 320)).toBe("Mostly sunny, high near 83°F (28°C).");
+  });
+
+  it("strips numbered markdown links and xChat citation chips", () => {
+    expect(sanitizeDeskWellnessLine('Cool [1](https://a) [@citation:web_search]', 120)).toBe("Cool");
   });
 });

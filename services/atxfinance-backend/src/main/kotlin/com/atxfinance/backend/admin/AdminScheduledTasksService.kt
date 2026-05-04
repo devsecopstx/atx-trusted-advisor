@@ -535,6 +535,8 @@ class AdminScheduledTasksService(
         doc.getObjectId("portfolioId")?.let { m["portfolioId"] = it.toHexString() }
         m["name"] = doc.getString("name")
         m["category"] = doc.getString("category")
+        doc.getString("ownerKind")?.takeIf { it.isNotBlank() }?.let { m["ownerKind"] = it }
+        doc.getObjectId("ownerUserId")?.let { m["ownerUserId"] = it.toHexString() }
         m["scheduleCron"] = doc.getString("scheduleCron")
         m["enabled"] = doc.getBoolean("enabled") ?: true
         doc.getObjectId("deliveryChannelTarget")?.let { m["deliveryChannelTarget"] = it.toHexString() }
