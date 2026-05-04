@@ -18,6 +18,8 @@ describe("surface-policy", () => {
     expect(isAppUserProductPath("/portfolios")).toBe(true);
     expect(isAppUserProductPath("/import-activity")).toBe(true);
     expect(isAppUserProductPath("/workspace/portfolios")).toBe(true);
+    expect(isAppUserProductPath("/workspace/tasks")).toBe(true);
+    expect(isAppUserProductPath("/workspace/tasks/abc")).toBe(true);
     expect(isAppUserProductPath("/recommendations")).toBe(false);
     expect(isAppUserProductPath("/admin")).toBe(false);
     expect(isAppUserProductPath("/login")).toBe(false);

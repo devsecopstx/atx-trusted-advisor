@@ -8,7 +8,8 @@ import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-
 export type SubscriberLandingPath = string;
 
 /** Post-auth fallback when tenant route policy does not set `defaultLanding`. Always xChat for app roles. */
-export function subscriberLandingPathForPlan(_planRaw: unknown): SubscriberLandingPath {
+export function subscriberLandingPathForPlan(planRaw: unknown): SubscriberLandingPath {
+  void planRaw;
   return "/xchat";
 }
 

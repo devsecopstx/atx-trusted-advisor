@@ -5,6 +5,8 @@ type XaiLogoIconProps = {
 /** Monochrome xAI mark — `public/branding/xai-logo.svg` (source: Wikimedia Commons, File:XAI-Logo.svg). Pair with `invert` on dark backgrounds. */
 export function XaiLogoIcon({ className }: XaiLogoIconProps) {
   return (
+    // Static SVG from /public — next/image adds little here; keep simple <img>.
+    // eslint-disable-next-line @next/next/no-img-element -- public SVG mark
     <img
       src="/branding/xai-logo.svg"
       alt=""

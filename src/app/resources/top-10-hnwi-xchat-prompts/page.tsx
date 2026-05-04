@@ -35,7 +35,10 @@ export const metadata: Metadata = {
 type PromptItem = {
   n: number;
   prompt: string;
-  note: string;
+  /** Synthetic excerpt — shape of a strong reply; not a logged model trace. */
+  exampleOutput: string;
+  /** How this connects to workspace tools, persona scope, and handoff surfaces. */
+  stackNote: string;
 };
 
 type PromptGroup = {
@@ -55,22 +58,67 @@ const PROMPT_GROUPS: PromptGroup[] = [
         n: 1,
         prompt:
           "Run a full conservative CSP wheel scan on my entire watchlist and current holdings. Use 30–45 DTE, 0.2–0.3 delta, max 5% of portfolio per name. Show probability of profit, capital efficiency, and conflict with existing positions.",
-        note:
-          "Triggers scanner-style reasoning plus portfolio integration when tools succeed. Aim for a ranked table and xOptions handoff links when your tenant enables them."
+        exampleOutput: `CONSERVATIVE CSP / WHEEL — RANKED (illustrative)
+
+Symbol   Role      DTE   Short put Δ   Est. PoP*   Max alloc   Conflict check
+MEGA     CSP leg   38d   0.26          ~71%        4.1% book   OK vs cash / no duplicate short
+ORBIT    CSP leg   44d   0.22          ~76%        3.8% book   Flag: earnings in 12d
+NEXUS    Skip      —     —             —           —           Already short puts @ similar strike
+
+*Model / chain dependent — verify on live quotes before sizing.
+
+Next actions
+• Confirm BP / margin per name at custodian
+• If filled: wheel transition rules (roll at 21 DTE or 50% premium)
+
+Open in xOptions (when enabled): pre-fill short put leg from row #1 for review only.`,
+        stackNote:
+          "Triggers scanner-style reasoning plus holdings/watchlist context when tools succeed; expect a ranked table and optional xOptions handoff when your tenant enables it."
       },
       {
         n: 2,
         prompt:
           "Analyze my portfolio for covered call opportunities this month. Prioritize quality underlyings I already own over 2%. Suggest strikes, premiums, and rolling logic with tax considerations.",
-        note:
-          "Leverages holdings context and balanced-income framing; outputs should tie to symbols you actually hold in the active workspace."
+        exampleOutput: `COVERED CALLS — WORKSPACE HOLDINGS (illustrative)
+
+Name   Shares   Cost basis band   CC strike (Oct expiry)   Est. credit   Yield on shares*
+LYRA   400      $42–44           $48 (≈0.30 Δ call)        $1.10/sh      ~2.5% / 30d window*
+VANT   200      $118–122         $135 (≈0.28 Δ)            $4.20/sh      ~3.4%
+
+*Educational estimate — premiums from chain at scan time.
+
+Rolling / management
+• Roll up/out if short call ≥ 0.65 Δ before expiry
+• Tax: note qualified vs non-qualified lots if mixing accounts
+
+Educational only — not tax advice; confirm lots with your CPA / custodian.`,
+        stackNote:
+          "Uses portfolio positions from the active workspace; names and strikes should map to symbols you actually hold, not generic tickers."
       },
       {
         n: 3,
         prompt:
           "Give me my current portfolio risk summary: max drawdown scenarios, sector concentration, and a defensive options hedge package under conservative outlook for next 90 days.",
-        note:
-          "Strong quarterly-review shape; pulls multi-book context when you scope “across portfolios” or switch workspace."
+        exampleOutput: `90-DAY RISK SNAPSHOT — CONSERVATIVE (illustrative)
+
+Book makeup (example)
+• Equity ~68% · Cash ~12% · Options net ~8% · Other ~12%
+• Top sector sleeves: Tech 22%, Industrials 14%, Healthcare 11%
+
+Scenario lens
+• Spot −10%: est. book impact range −6% to −9% (delta / beta sketch)
+• Spot −15%: stress band widens if single-name >8% of book
+
+Defensive package (draft)
+1) Index / ETF hedge: consider defined-risk put spread on broad benchmark vs book beta
+2) Single-name floors: protective put or collar on top 2 concentration names
+3) Income dampener: lighten short-vol overlap where CSP + CC stack same symbol
+
+Verification checklist
+• Refresh Greeks after any hedge leg
+• Align notionals to IPS max loss / liquidity floors`,
+        stackNote:
+          "Quarterly-review shape; scope “across portfolios” or switch workspace book so concentration math matches your real sleeves."
       }
     ]
   },
@@ -82,22 +130,67 @@ const PROMPT_GROUPS: PromptGroup[] = [
         n: 4,
         prompt:
           "Compare wheel vs covered call vs poor man’s covered call on my top 5 holdings/watchlist names for the next 60 days. Include payoff diagrams, breakeven, and capital requirement under balanced outlook.",
-        note:
-          "Forces multi-strategy synthesis; ask for charts explicitly when you want structured visuals in the reply."
+        exampleOutput: `STRATEGY COMPARE — 60D BALANCED (illustrative, one name)
+
+Underlying: LYRA @ $46 (example)
+
+Structure          Capital @ risk / tie-up   Breakeven sketch      Best when
+Wheel (CSP→CC)     Cash-secured ~$4.6k/sh    Put side ~$41 net     Income + willing to own shares
+Covered call       Own 100 shares           Downside to cost basis  Already long stock; clip calls
+PMCC               LEAP debit + short call    LEAP premium + rolls  Bullish / vol-aware; manage roll risk
+
+Payoff (describe in prose / ASCII sketch)
+Wheel: “truncated downside to assignment, capped upside when shares called away…”
+PMCC: “long-dated call replaces stock; short call finances theta…”
+
+Ask the model to attach a simple payoff diagram or bullet max-profit / max-loss if your UI supports images.`,
+        stackNote:
+          "Forces multi-strategy synthesis; append “include payoff sketch” if you want diagrams or structured max/min tables."
       },
       {
         n: 5,
         prompt:
           "Build me a diversified monthly income ladder using options across my portfolios. Target 0.8–1.2% monthly yield with defined risk. Suggest position sizes and expiration stagger.",
-        note:
-          "Pairs well with calendar-style thinking; structured / job-style exports depend on deployment (strategy jobs path when enabled)."
+        exampleOutput: `MONTHLY INCOME LADDER — DEFINED RISK (illustrative)
+
+Target sleeve yield band: 0.8–1.2% / month on dedicated income tranche (not whole net worth).
+
+Week   Primary structure      Book % of income tranche   Expiry cluster
+T1     Bull put spread        18%                        3rd Friday +7d
+T2     Iron condor (RUT-like) 14%                        3rd Friday +14d
+T3     Covered call rolling   22%                        serial weeklies on 2 names
+T4     Cash buffer / hedge    10%                        long put spread hedge
+
+Risk rails
+• Max loss per structure capped at X% of income tranche
+• No single underlying >25% of ladder notional
+
+Automation (when jobs/tools ship): export legs as watch alerts + review queue — never fire-and-forget.`,
+        stackNote:
+          "Pairs with calendar / staggered expiry discipline; heavy structuring may route through strategy-job flows when your deployment enables them."
       },
       {
         n: 6,
         prompt:
           "Review my IBKR positions (or current snapshot) and suggest tax-efficient options overlays for the next quarter. Flag any wash-sale risks and replacement strategies.",
-        note:
-          "Uses IBKR-linked snapshots when Client Portal session is connected; otherwise falls back to Mongo portfolio positions in workspace."
+        exampleOutput: `IBKR SNAPSHOT OVERLAY PLAN — Q NEXT (illustrative)
+
+Positions flagged from snapshot (examples)
+• Stock LOT A — short-term gain if closed now
+• Option LOT B — expired worthless last month (document for records)
+
+Overlay ideas (draft)
+• Delay closing LOT A until LT bucket if mandate allows; pair with collar if downside risk rises
+• Replace washed symbol with broad ETF exposure only if policy permits — watch 30-day window
+
+Wash-sale watchlist
+• Avoid repurchase of “substantially identical” tickers within window after loss harvest
+• Options on same CUSIP underlying can still trigger complexity — verify with custodian report
+
+Disclaimer block you want in replies
+“Educational overlay ideas — confirm tax lots and wash rules with your CPA / IBKR tax reports.”`,
+        stackNote:
+          "Uses IBKR-linked snapshots when Client Portal OAuth is live; otherwise aligns to Mongo portfolio rows in your workspace."
       }
     ]
   },
@@ -109,29 +202,96 @@ const PROMPT_GROUPS: PromptGroup[] = [
         n: 7,
         prompt:
           "Run aggressive LEAP + CSP collar strategies on my growth names. Target 15–25% upside participation with income. Show Greeks, volatility skew, and assignment scenarios.",
-        note:
-          "Bias aggressive outlook; ensure persona/RAG scope matches your tenant’s published strategy material."
+        exampleOutput: `LEAP + CSP / COLLAR — AGGRESSIVE GROWTH NAME (illustrative)
+
+Structure
+• Long LEAP call 12–18mo, Δ ~0.75
+• Short OTM calls (monthlies) to finance theta
+• Optional CSP tranche if willing to add shares on pullback
+
+Greeks (directional read)
+• Net delta target band +0.35 to +0.55 after overlays
+• Vega: long LEAP carries vega — short calls bleed vega into events
+
+Skew / assignment
+• If put assigned: convert wheel leg or stock replacement plan
+• If short call ITM pre-div: early assignment risk note on calls
+
+Risk cap
+• Define max premium outlay on LEAP as % of speculative sleeve only`,
+        stackNote:
+          "Aggressive persona bias; keep tenant RAG / published playbooks aligned so language matches your compliance-approved strategy library."
       },
       {
         n: 8,
         prompt:
           "Identify 3–5 high-conviction options trades for earnings season from my watchlist. Include strangles, iron condors, or directional debit spreads with full risk/reward and timing.",
-        note:
-          "Event-driven flow; combine with explicit symbols and dates for cleaner tool use."
+        exampleOutput: `EARNINGS TRADE MENU — ILLUSTRATIVE
+
+Symbol   Event date   Structure             Max risk    Max reward   Edge / thesis
+PULSE    Apr 24       Short iron condor     $420/lot    $580/lot     IV crush + range bound
+ARC      May 02       Long strangle         $680/lot    Uncapped*    Vol expansion bet
+VECT     May 09       Put debit spread      $250/lot    $750/lot     Directional miss guide
+
+*Uncapped risk on one leg — define stop.
+
+Timing
+• Enter 3–5 sessions before close unless vol term skew argues earlier
+• Exit rule: 50% winner or day-before if gamma risk spikes
+
+Always pass explicit symbols + earnings dates in your prompt for cleaner tool grounding.`,
+        stackNote:
+          "Event-driven; naming symbols and confirmed earnings dates reduces hallucination and improves quote-aware reasoning."
       },
       {
         n: 9,
         prompt:
           "Stress test my entire book against a 15% market drop and a 20% VIX spike. Recommend options adjustments to maintain <8% portfolio risk while keeping income flow.",
-        note:
-          "Advanced scenario framing; outputs are illustrative until validated against your IPS and broker constraints."
+        exampleOutput: `STRESS MATRIX — BOOK LEVEL (illustrative)
+
+Shock A: Spot −15%
+• Delta-adjusted loss band: −X% to −Y%
+• Largest contributors: [top 3 names]
+
+Shock B: VIX +20 pts (fast)
+• Short-vol sleeves marked-to-loss first
+• Income structures to review: naked ratio spreads, concentrated CSP stacks
+
+Adjustment playbook (draft)
+1) Trim overlapping short puts on same beta bucket
+2) Add cheap tail hedge (put fly / put ladder) sized to ≤0.4% drag / quarter
+3) Convert a portion of naked risk to defined-risk spreads
+
+Target: portfolio risk metric <8% of book per your definition — restate metric (VaR / max DD) in prompt.`,
+        stackNote:
+          "Advanced scenario framing; numbers are illustrative until reconciled to your IPS, custodian risk reports, and actual Greeks."
       },
       {
         n: 10,
         prompt:
           "Create a custom 2026 options income playbook for my [portfolio size] portfolio. Split conservative 60%, balanced 30%, aggressive 10%. Include monthly targets, watchlist additions, and automation rules for xOptions.",
-        note:
-          "Highest leverage synthesis prompt — pair with export/share flows when productized; replace bracket with your actual AUM band."
+        exampleOutput: `2026 OPTIONS PLAYBOOK — THREE-TIER (illustrative template)
+
+Assumed book bands (replace with yours): $2M–$5M liquid investable; income sleeve 35%.
+
+Allocation spine
+• Conservative 60% — CSP / CC ladders, tight single-name caps
+• Balanced 30% — spreads + selective earnings premium
+• Aggressive 10% — LEAP overlays / tactical calls on high-conviction names
+
+Monthly rhythm
+• Week 1: roll / close expiries + refresh ladder
+• Week 2: scan watchlist for new CSP candidates
+• Week 3: review hedges vs macro shock scenarios
+• Week 4: tax-lot + wash-sale hygiene check
+
+Automation hooks (xOptions / jobs when enabled)
+• Alert: short put Δ > 0.45
+• Alert: earnings inside 7d with open short premium
+
+Replace [portfolio size] with your AUM band so sizing math scales.`,
+        stackNote:
+          "Highest-leverage synthesis — pair with export / task flows when productized; bracket placeholder must be your real band for actionable sizing."
       }
     ]
   }
@@ -187,6 +347,11 @@ export default async function ResourcesTop10HnwiXchatPromptsPage() {
             Educational patterns; not individualized advice. Capabilities depend on plan, tenant, and integration flags.{" "}
             <span className="xf-disclaimer-emphasis">Not financial advice.</span>
           </p>
+          <p className="resources-doc-footnote resources-doc-footnote--full">
+            <strong>About the examples below:</strong> each &quot;Expected high-value output&quot; block is a{" "}
+            <strong>synthetic illustration</strong> of structure and sections — not a transcript, quote, or guarantee of
+            model behavior. Live replies vary with workspace data, tools, persona, and market prints.
+          </p>
         </section>
 
         {PROMPT_GROUPS.map((group) => (
@@ -207,9 +372,13 @@ export default async function ResourcesTop10HnwiXchatPromptsPage() {
                   <blockquote className="mt-2 border-l-2 border-[color-mix(in_srgb,var(--xf-gain-green)_45%,transparent)] pl-3 text-sm leading-relaxed text-[var(--xf-text-100)]">
                     {item.prompt}
                   </blockquote>
+                  <div className="mt-3">
+                    <p className="resources-doc-example-output__label">Expected high-value output</p>
+                    <pre className="resources-doc-example-output">{item.exampleOutput}</pre>
+                  </div>
                   <p className="mt-3 text-sm leading-relaxed text-[var(--xf-text-300)]">
-                    <span className="font-semibold text-[var(--xf-text-200)]">Expected high-value output: </span>
-                    {item.note}
+                    <span className="font-semibold text-[var(--xf-text-200)]">Stack note: </span>
+                    {item.stackNote}
                   </p>
                 </div>
               ))}

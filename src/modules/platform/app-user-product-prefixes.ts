@@ -8,6 +8,7 @@ export const APP_USER_PRODUCT_PATH_PREFIXES = [
   "/import-activity",
   "/watchlist",
   "/account",
+  "/workspace/tasks",
   "/workspace",
   "/xoptions"
 ] as const;

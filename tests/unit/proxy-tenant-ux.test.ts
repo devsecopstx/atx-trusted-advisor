@@ -17,6 +17,9 @@ describe("proxy tenant ux helpers", () => {
     expect(resolvePolicyPathForRequest("/api/xchat/ask")).toBe("/xchat");
     expect(resolvePolicyPathForRequest("/api/user/watchlist")).toBe("/watchlist");
     expect(resolvePolicyPathForRequest("/api/portfolios/default")).toBe("/portfolio");
+    expect(resolvePolicyPathForRequest("/workspace/portfolios")).toBe("/workspace");
+    expect(resolvePolicyPathForRequest("/workspace/tasks")).toBe("/workspace/tasks");
+    expect(resolvePolicyPathForRequest("/workspace/tasks/run")).toBe("/workspace/tasks");
     expect(resolvePolicyPathForRequest("/admin")).toBeNull();
   });
 });

@@ -3,14 +3,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
-import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
+import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import {
     getDefaultPortfolio,
@@ -21,6 +22,7 @@ import {
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
+import "@/app/portfolios/portfolios-dashboard.css";
 import "../xchat/xchat.css";
 
 import { WatchlistConsole } from "./ui/watchlist-console";
@@ -113,7 +115,10 @@ export default async function WatchlistPage({
   }
 
   const admin = isGlobalAdmin(session.roles);
-  const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
+  const [workspaceRailProps, workspaceTenant] = await Promise.all([
+    getWorkspaceProductSidebarPropsForSession(session, "Watchlist"),
+    getWorkspaceTenantHeaderContext(session.tenantId)
+  ]);
 
   return (
     <div className="xchat-shell">
@@ -127,8 +132,8 @@ export default async function WatchlistPage({
       <div className="xchat-body" style={{ padding: 0 }}>
         <AppUserCollapsibleRailLayout
           mainClassName="app-user-shell-with-rail--padded w-full max-w-full px-4 md:px-6 lg:px-8"
-          preferCollapsed
-          rail={<AppUserAccountPublicRailForSession session={session} />}
+          rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
+          railChrome="workspace-product"
         >
         {workspaceError || !portfolioId ? (
           <div className="hero-card xf-noise-overlay" style={{ maxWidth: "640px", margin: "1rem auto", padding: "1rem" }}>

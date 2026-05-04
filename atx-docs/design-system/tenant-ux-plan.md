@@ -25,8 +25,8 @@
 | **`GET /api/admin/platform/route-catalog`** | **`global_admin` only** — returns parsed catalog JSON for **DB import** / compliance tooling. OpenAPI: **`CURRENT_STATE_ROUTES`**. |
 | **`GET/PATCH /api/admin/platform/route-catalog/{tenantId}`** | Tenant-scoped route policy persistence in `tenantPreferences`: `app_user_route_visibility_overrides` + `app_user_default_landing_path_by_role` (validated against catalog visibility). |
 | **Runtime guard (key app_user pages)** | `/portfolios`, `/portfolio`, `/watchlist`, `/import-activity`, `/xoptions`, `/account/billing` now redirect approved users to role default landing when tenant policy disallows the current route. |
-| **Workspace rail filtering parity** | `AppUserAccountPublicRailForSession` now passes tenant-aware visible prefixes into `WorkspaceProductSidebar` so links are hidden consistently across product surfaces. |
-| **Tests** | `tests/unit/app-user-route-catalog.test.ts`, `tests/integration/admin-platform-route-catalog.test.ts` |
+| **Workspace rail filtering parity** | Tenant-aware **`visiblePathPrefixes`** reach **`WorkspaceProductSidebar`** via **`getWorkspaceProductSidebarPropsForSession`** (e.g. **`/portfolio`**, **`/watchlist`**, **`/workspace/tasks`**) or **`AppUserAccountPublicRailForSession`** with **`railVariant="workspace-product"`** (e.g. **`/xoptions`**) so nav links respect policy consistently. |
+| **Tests** | `tests/unit/app-user-route-catalog.test.ts`, `tests/integration/admin-platform-route-catalog.test.ts`, `tests/unit/watchlist-page-workspace-rail-contract.test.ts` (watchlist uses workspace-product sidebar + tenant **`visiblePathPrefixes`**) |
 
 **Import workflow:** `curl` the GET with admin session cookie, or copy **`data/platform/app-user-route-catalog.json`** into your ETL.
 

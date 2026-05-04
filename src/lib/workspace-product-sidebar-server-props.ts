@@ -24,8 +24,9 @@ export type WorkspaceProductSidebarServerProps = Pick<
 
 /**
  * Serializable props for {@link WorkspaceProductSidebar} from a session (server).
- * Use when passing the sidebar through `AppUserCollapsibleRailLayout`'s `rail` prop so the slot is a
- * client component + plain props (async Server Components in that slot are unreliable).
+ * Use when passing the sidebar through `AppUserCollapsibleRailLayout`'s `rail` prop (with
+ * **`railChrome="workspace-product"`**) so the slot is a client component + plain props (async Server
+ * Components in that slot are unreliable). Examples: **`/portfolio`**, **`/watchlist`**, **`/workspace/tasks`**.
  */
 export async function getWorkspaceProductSidebarPropsForSession(
   session: SessionUser,

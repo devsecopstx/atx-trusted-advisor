@@ -23,7 +23,7 @@ Session payload distinguishes:
 ## Surface policy
 
 - `admin_console`: `/admin/*` and `/api/admin/*` (`global_admin` only)
-- `app_user`: `/xchat`, `/portfolio`, `/portfolios`, `/import-activity`, `/watchlist`, `/account`, `/workspace`, `/xoptions` (see `APP_USER_PRODUCT_PATH_PREFIXES` in `surface-policy.ts`)
+- `app_user`: `/xchat`, `/portfolio`, `/portfolios`, `/import-activity`, `/watchlist`, `/account`, `/workspace/tasks`, `/workspace`, `/xoptions` (see `APP_USER_PRODUCT_PATH_PREFIXES` in `surface-policy.ts`)
 
 Reference: `src/modules/surface-policy.ts` and `src/proxy.ts`.
 

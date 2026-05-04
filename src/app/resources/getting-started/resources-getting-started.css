@@ -336,6 +336,29 @@
   display: block;
 }
 
+.resources-doc-example-output {
+  margin: 0.65rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 92%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--xf-text-200);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.resources-doc-example-output__label {
+  margin: 0 0 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
 .resources-doc-footnote--legal {
   border-radius: 0.9rem;
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
