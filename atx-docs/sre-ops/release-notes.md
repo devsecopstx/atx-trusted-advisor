@@ -37,6 +37,8 @@ Append a short **Deploy:** clause so ops can scan the log:
 
 ## Entries
 
+- **3.10.4** — **xChat voice docs + tests + PLAN trim:** **`PLAN.md`** priority **703** trimmed to **open** backlog only (shipped voice behavior referenced from **`xchat-voice-mode.md`**). New **`atx-docs/xchat/xchat-voice-mode.md`**; **`api-endpoints.md`** documents **`POST /api/app-user/xchat/voice-realtime/token`**; **`current-state-features.md`** xChat row adds Voice Mode + doc link. **Tests:** **`xai-voice-realtime`**, **`xchat-voice-pcm`**, extended **`xchat-voice-realtime-token-route`**. **Deploy:** Next.
+
 - **3.10.2** — **Product naming + Capacitor:** User-facing **aTx Advisor** copy (resources, shared reports, login/home shells, PWA/legal metadata, credential emails, OAuth/IBKR/marketing strings, wheel PDF title); **Capacitor** `appName` + iOS **CFBundleDisplayName**; **`capacitor.config.ts`** `server.url` resolution (**`CAPACITOR_SERVER_URL`** / **`PUBLIC_APP_BASE_URL`**, `.env` merge) + **`npm run cap:sync:ios`**; Next **16.x** aligns **`eslint-config-next`**. **Deploy:** Next.
 
 - **3.10.1** — **Market polish (1):** **Watchlist** — **Last update** column trailing; mobile-friendly rows (no TanStack virtualization below **768px**, wrapped cells); **xChat preflight** row action (pending composer prompt + **`finance-advisor`** persona handoff); CSV column order aligned; remove symbol **7-day sparkline**. **Portfolio desk** — **xOptions** / **xChat** account-bar CTAs match **Refresh** styling; **Home** → **`/portfolios`**; drop redundant embedded watchlist tab (full list via aside **`/watchlist`**); **xChat** deep links include **`accountId`** + workspace account sync when present. **Deploy:** Next.

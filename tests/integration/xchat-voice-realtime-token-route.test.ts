@@ -67,6 +67,39 @@ describe("POST /api/app-user/xchat/voice-realtime/token", () => {
     expect(body.code).toBe("xai_realtime_token_failed");
   });
 
+  it("returns 400 on invalid JSON body", async () => {
+    const res = await POST(
+      new Request("http://test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "not-json"
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("forwards legacy voice model to client_secret helper", async () => {
+    vrMocks.buildXaiRealtimeWsUrl.mockReturnValueOnce(
+      "wss://api.x.ai/v1/realtime?model=grok-voice-fast-1.0"
+    );
+    const res = await POST(
+      new Request("http://test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "grok-voice-fast-1.0", expiresAfterSeconds: 180 })
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(vrMocks.createXaiRealtimeClientSecret).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "grok-voice-fast-1.0",
+        expiresSeconds: 180
+      })
+    );
+    const body = (await res.json()) as { data?: { model?: string } };
+    expect(body.data?.model).toBe("grok-voice-fast-1.0");
+  });
+
   it("passes through unauthorized", async () => {
     authMocks.requireApprovedAppUserSession.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
