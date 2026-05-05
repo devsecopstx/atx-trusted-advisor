@@ -55,7 +55,7 @@ export async function authenticateRentalAiApiKey(
 
   const db = await getDb();
   const tenant = await db.collection<Tenant>("core_tenants").findOne({
-    rentalAiApiKeys: { $elemMatch: { id: keyId } }
+    apiKeys: { $elemMatch: { id: keyId } }
   });
   if (!tenant?._id || !tenant.slug) {
     return { ok: false, status: 401, code: "unknown_key", message: "Invalid credentials" };
@@ -75,7 +75,7 @@ export async function authenticateRentalAiApiKey(
     return { ok: false, status: 403, code: "rental_expired", message: "Rental subscription expired" };
   }
 
-  const keys = Array.isArray(tenant.rentalAiApiKeys) ? tenant.rentalAiApiKeys : [];
+  const keys = Array.isArray(tenant.apiKeys) ? tenant.apiKeys : [];
   const matched = keys.find((k) => k.id === keyId);
   if (!matched?.keyHash) {
     return { ok: false, status: 401, code: "unknown_key", message: "Invalid credentials" };

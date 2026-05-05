@@ -84,7 +84,7 @@ function assertOptionalModel(raw: unknown): string | undefined {
 
 /**
  * Parses `tenant.rentalProfile` from tenant spec YAML / admin payloads.
- * Defaults: strategyBias conservative, maxPortfolios 3, maxDailyTokens 100_000, apiKeyEnabled true.
+ * Defaults: strategyBias conservative, maxPortfolios 3, maxDailyTokens 200_000, apiKeyEnabled true.
  */
 export function parseTenantRentalProfile(raw: unknown): TenantRentalProfile | undefined {
   if (raw === undefined || raw === null) {
@@ -97,7 +97,7 @@ export function parseTenantRentalProfile(raw: unknown): TenantRentalProfile | un
   const tier = assertTier(o.tier);
   const strategyBias = assertEnumBias(o.strategyBias, "conservative");
   const maxPortfolios = assertPositiveInt(o.maxPortfolios, "maxPortfolios", 3, 10_000);
-  const maxDailyTokens = assertPositiveInt(o.maxDailyTokens, "maxDailyTokens", 100_000, 50_000_000);
+  const maxDailyTokens = assertPositiveInt(o.maxDailyTokens, "maxDailyTokens", 200_000, 50_000_000);
   const xaiModelOverride = assertOptionalModel(o.xaiModelOverride);
   const expiresAt = assertDate(o.expiresAt, "expiresAt");
   const apiKeyEnabled = assertBool(o.apiKeyEnabled, "apiKeyEnabled", true);

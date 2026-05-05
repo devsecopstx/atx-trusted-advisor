@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
+import { getDb } from "@/lib/mongodb";
+import { respondWithXaiToolLoop } from "@/lib/xai";
+import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import { logRentalAiAudit } from "@/modules/platform/rental-ai-audit";
 import { authenticateRentalAiApiKey } from "@/modules/platform/rental-ai-auth";
 import {
@@ -14,6 +18,17 @@ import {
     rentalAiJsonResponse,
     resolveCorrelationId
 } from "@/modules/platform/rental-ai-http";
+import {
+    getRentalAiTokensUsedToday,
+    incrementRentalAiTokensUsed
+} from "@/modules/platform/rental-ai-token-meter";
+import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
+import {
+    ensureSuperAgentDefaultTools,
+    normalizePersonaXapiConfig,
+    type PersonaConfig
+} from "@/modules/xchat/types";
+import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 export const maxDuration = 45;
 
@@ -56,6 +71,9 @@ export async function POST(request: Request) {
   }
 
   const tenantHex = auth.ctx.tenantId.toHexString();
+  const streamRequested =
+    request.headers.get("accept")?.toLowerCase().includes("text/event-stream") ||
+    parsedBody.data.stream === true;
 
   const rl = await enforceRentalAiRateLimit(request, tenantHex, "chat");
   if (rl) {
@@ -79,28 +97,160 @@ export async function POST(request: Request) {
   }
 
   try {
+    const db = await getDb();
+    const rentalProfile = auth.ctx.rentalProfile;
+    const sampleUserId = rentalProfile.sampleUserId ?? `rental-sample:${auth.ctx.tenantSlug}`;
+    const requestedPortfolioId = parsedBody.data.portfolioId?.trim() || undefined;
+    const workspacePortfolioId =
+      requestedPortfolioId ??
+      (rentalProfile.samplePortfolioId ? rentalProfile.samplePortfolioId.toHexString() : undefined);
+    const workspaceSnapshot = await buildWorkspaceServerSnapshotBlock({
+      userId: sampleUserId,
+      tenantId: tenantHex,
+      workspacePortfolioId
+    });
+    let systemPrompt =
+      "You are a white-labeled xFinance rental advisor for a tenant workspace. " +
+      "Keep responses concise, institutional, and options-aware. Not financial advice.";
+    const personaId = rentalProfile.defaultPersonaId;
+    if (personaId) {
+      const persona = (await db.collection("xchat_personas").findOne({
+        _id: personaId
+      })) as PersonaConfig | null;
+      if (persona?.systemPrompt?.trim()) {
+        systemPrompt = persona.systemPrompt.trim();
+      }
+    }
+    const xapiConfig = ensureSuperAgentDefaultTools(
+      normalizePersonaXapiConfig({
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "atx_function" }, { type: "yahoo_finance" }]
+      }),
+      "advisor"
+    );
+    const finalSystemPrompt = [
+      systemPrompt,
+      `Rental strategy bias: ${rentalProfile.strategyBias}.`,
+      workspaceSnapshot ?? "Workspace snapshot is unavailable for this tenant right now."
+    ].join("\n\n");
+    const loopResult = await respondWithXaiToolLoop({
+      model: rentalProfile.xaiModelOverride,
+      systemPrompt: finalSystemPrompt,
+      userPrompt: parsedBody.data.message.trim(),
+      tools: xapiConfig.tools,
+      toolChoice: xapiConfig.toolChoice,
+      maxTurns: xapiConfig.maxTurns,
+      executor: createXfinanceToolExecutor({
+        userId: sampleUserId,
+        tenantId: tenantHex,
+        workspacePortfolioId
+      }),
+      signal: request.signal
+    });
+    const usageSnapshot = extractXaiResponsesUsage(loopResult.raw);
+    const responseMarkdown = preprocessXchatMarkdown(loopResult.outputText);
+    const tokensUsed = Math.max(1, usageSnapshot?.totalTokens ?? 4096);
+    await incrementRentalAiTokensUsed(auth.ctx.tenantId, tokensUsed);
+    const usedNow = await getRentalAiTokensUsedToday(auth.ctx.tenantId);
+    const remaining = Math.max(0, rentalProfile.maxDailyTokens - usedNow);
+    const successHeaders = mergeRentalAiHeaders(base, {
+      "x-rental-tokens-used": String(usedNow),
+      "x-rental-tokens-remaining": String(remaining)
+    });
     await logRentalAiAudit({
       ctx: auth.ctx,
       correlationId,
       action: "rental_ai_chat_request",
       details: {
         portfolioId: parsedBody.data.portfolioId,
-        stream: parsedBody.data.stream ?? false
+        stream: streamRequested,
+        tokensUsed
       }
     });
-
+    if (streamRequested) {
+      const encoder = new TextEncoder();
+      const created = Math.floor(Date.now() / 1000);
+      const chunkId = `chatcmpl-rental-${correlationId}`;
+      const payloadChunks = chunkTextForSse(responseMarkdown, 160);
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                id: chunkId,
+                object: "chat.completion.chunk",
+                created,
+                model: loopResult.model,
+                choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }]
+              })}\n\n`
+            )
+          );
+          for (const piece of payloadChunks) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  id: chunkId,
+                  object: "chat.completion.chunk",
+                  created,
+                  model: loopResult.model,
+                  choices: [{ index: 0, delta: { content: piece }, finish_reason: null }]
+                })}\n\n`
+              )
+            );
+          }
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                id: chunkId,
+                object: "chat.completion.chunk",
+                created,
+                model: loopResult.model,
+                choices: [{ index: 0, delta: {}, finish_reason: "stop" }]
+              })}\n\n`
+            )
+          );
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
+      });
+      successHeaders.set("content-type", "text/event-stream; charset=utf-8");
+      successHeaders.set("cache-control", "no-cache, no-transform");
+      successHeaders.set("connection", "keep-alive");
+      return new Response(stream, { status: 200, headers: successHeaders });
+    }
     return rentalAiJsonResponse(
       {
-        ok: false,
-        code: "rental_ai_not_implemented",
+        ok: true,
         correlationId,
         tenantSlug: auth.ctx.tenantSlug,
-        message:
-          "Rental xChat execution is not wired yet; API key, scopes, rate limits, and token budget were validated."
+        data: {
+          response: responseMarkdown,
+          model: loopResult.model,
+          usage: usageSnapshot ?? {
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: tokensUsed
+          }
+        }
       },
-      501
+      200,
+      successHeaders
     );
   } finally {
     releaseRentalAiConcurrencySafe(tenantHex);
   }
+}
+
+function chunkTextForSse(input: string, maxChars: number): string[] {
+  const text = input.trim();
+  if (!text) {
+    return [""];
+  }
+  const out: string[] = [];
+  for (let i = 0; i < text.length; i += maxChars) {
+    out.push(text.slice(i, i + maxChars));
+  }
+  return out;
 }

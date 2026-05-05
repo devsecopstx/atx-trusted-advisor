@@ -18,10 +18,14 @@ export type TenantRentalProfile = {
   apiKeyEnabled: boolean;
   /** Upserted persona for scoped rental xChat (see `ensureRentalAdvisorPersonaForTenant`). */
   defaultPersonaId?: ObjectId;
+  /** Stable synthetic owner for sample rental workspace assets (portfolio/watchlist). */
+  sampleUserId?: string;
+  /** Default sample portfolio for rental chat context. */
+  samplePortfolioId?: ObjectId;
 };
 
 /**
- * Per-tenant rental integration keys on `core_tenants.rentalAiApiKeys`.
+ * Per-tenant rental integration keys on `core_tenants.apiKeys`.
  * Plaintext is shown once at creation; only `keyHash` (scrypt) is stored for verification.
  */
 export type TenantRentalAiKeyStored = {

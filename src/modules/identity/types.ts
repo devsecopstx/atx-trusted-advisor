@@ -151,7 +151,7 @@ export type Tenant = {
   /** Mirror of `rentalProfile.expiresAt` for sparse indexing and suspension jobs (set by provisioning). */
   rentalExpiresAt?: Date | null;
   /** Hashed rental integration keys; plaintext shown once at issuance (admin path — future). */
-  rentalAiApiKeys?: TenantRentalAiKeyStored[] | null;
+  apiKeys?: TenantRentalAiKeyStored[] | null;
 };
 
 export type TenantRole = "tenant_admin" | "member";

@@ -518,8 +518,8 @@ async function ensureIndexes(db) {
       { sparse: true, name: "idx_core_tenants_rental_expires_at" }
     ),
     db.collection("core_tenants").createIndex(
-      { "rentalAiApiKeys.id": 1 },
-      { sparse: true, name: "idx_core_tenants_rental_ai_key_id" }
+      { "apiKeys.id": 1 },
+      { sparse: true, name: "idx_core_tenants_api_key_id" }
     ),
     db.collection("rental_ai_token_usage").createIndex(
       { tenantId: 1, dayUtc: 1 },

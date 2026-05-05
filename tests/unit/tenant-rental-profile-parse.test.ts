@@ -16,7 +16,7 @@ describe("parseTenantRentalProfile", () => {
     expect(r?.tier).toBe("ai-advisor-pro");
     expect(r?.strategyBias).toBe("conservative");
     expect(r?.maxPortfolios).toBe(3);
-    expect(r?.maxDailyTokens).toBe(100_000);
+    expect(r?.maxDailyTokens).toBe(200_000);
     expect(r?.apiKeyEnabled).toBe(true);
     expect(r?.expiresAt.toISOString()).toBe("2027-01-01T00:00:00.000Z");
   });
