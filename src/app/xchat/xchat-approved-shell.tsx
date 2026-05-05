@@ -13,6 +13,7 @@ import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-c
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getTenantShellBrandingForHex } from "@/modules/identity/repository";
 import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";

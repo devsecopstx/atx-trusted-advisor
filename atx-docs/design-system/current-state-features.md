@@ -75,6 +75,25 @@ flowchart TB
 
 ---
 
+## Tenant UX (`tenant_ux`) — white-label navigation & enforcement
+
+**Purpose:** Per-tenant **platform role** route allowlists + default landing paths for app users; **display-only** branding (names, accent, logo URL, tagline, `xf_ui_theme` default) via `core_tenants.tenantPreferences` — **not** a different regulatory story per tenant.
+
+| Area | Shipped |
+|------|---------|
+| **Catalog + drift tests** | `data/platform/app-user-route-catalog.json`, `getAppUserRouteCatalog()`, `assertCatalogMatchesWorkspaceProductPrefixes()` |
+| **Admin read/write** | `GET /api/admin/platform/route-catalog`, `GET/PATCH /api/admin/platform/route-catalog/{tenantId}` (PATCH emits **`admin_audit_events`** `tenant_ux.route_catalog.patch`); optional overrides in `tenantPreferences` |
+| **Role matrix** | `GET/PUT /api/admin/tenants/{tenantId}/roles`, `PATCH .../roles/{role}`; UI `/admin/tenants/{tenantId}/roles`; **`PUT` writes** `tenant_roles` + audit |
+| **Runtime** | Resolver + `tenant-ux-policy-cache`; page guards; workspace rail / key headers; `GET /api/app-user/me/role`; **`/access-denied`** |
+| **Edge V2** | `src/proxy.ts` — when **`TENANT_UX_ENFORCEMENT_V2`** is true, calls `GET /api/internal/tenant-ux/policy`; denials → **403** `tenant_ux_route_forbidden` (API) or `/access-denied` (HTML); optional **`TENANT_UX_POLICY_FAIL_CLOSED`** → **503** `tenant_ux_policy_unavailable` on resolver fetch failures (default remains fail-open with structured log `tenant_ux_policy_fetch_error`) |
+| **Policy path map** | `src/modules/platform/tenant-ux-proxy-policy-path.ts` — `resolvePolicyPathForRequest` (includes **`/xcoach`** as product prefix); proxy matcher includes **`/xcoach`** |
+| **xChat branding context** | System prompt + approved-shell welcome line include **tenant desk label** (`formatTenantWorkspaceContextBlockForXchat`); fingerprint includes tenant block for remote history |
+| **CSS tokens** | `--xf-tenant-primary` / `--xf-tenant-secondary` in **`atxfinance-brand-kit.css`**; `layout` + **`TenantBrandingProvider`** set accent-derived vars |
+
+**Soak / backlog:** Staging-first V2 rollout; expand API↔policy mapping for any remaining direct **`/api/...`** bypasses; optional Redis-backed policy cache; PWA **per-tenant** `manifest` (today static `manifest.webmanifest`); nav/header parity beyond workspace rail; metrics (`tenant_ux_route_forbidden_total`, policy latency). Runbook: **`atx-docs/sre-ops/tenant-ux-enforcement.md`**.
+
+---
+
 ## Pre-production release gate (production deploy)
 
 Before approving a **production** release, the **reviewer / operator** checklist (see **`reviewer.md` § Pre-production release gate**) is:
@@ -282,7 +301,7 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 | **Admin `PATCH/DELETE …/positions/{id}`** — Next until BFF registry + Kotlin parity | `PLAN.md` |
 | **Pub/Sub consumer** on Spring | This doc §2 · `PLAN.md` / release notes |
 | **IBKR** — no broker OAuth/token refresh in-app; no order placement | `ibkr-automation.md` |
-| **Tenant UX (`tenant_ux`)** — per-tenant per-role route allowlists + default landing; **shipped:** route catalog + tenant override persistence, effective tenant role-policy resolver + Redis/memory cache fallback (`tenant-ux-policy-cache`), **`GET /api/app-user/me/role`**, admin tenant-role APIs (**`GET/PUT /api/admin/tenants/{tenantId}/roles`**, **`PATCH /api/admin/tenants/{tenantId}/roles/{role}`**), admin matrix UI (**`/admin/tenants/{tenantId}/roles`**), `/access-denied` UX, page-level route guards, workspace rail filtering, and edge proxy V2 enforcement path behind **`TENANT_UX_ENFORCEMENT_V2`** (default-off soak; v1 proxy behavior retained). | [tenant-ux-plan.md](./tenant-ux-plan.md) · `PLAN.md` **11** |
+| **Tenant UX (`tenant_ux`)** — soak + hardening | Deep narrative: **§ Tenant UX** above. **Open:** metrics/alerts, Redis policy cache, exhaustive `/api/*`↔policy map, per-tenant PWA manifest, broader product-nav parity. **Env:** **`TENANT_UX_ENFORCEMENT_V2`**, **`TENANT_UX_POLICY_FAIL_CLOSED`** (`.env.example`). | [tenant-ux-plan.md](./tenant-ux-plan.md) · [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md) · `PLAN.md` **11** |
 | **Plan limits UI** — usage meter / soft-limit banner wired to **`getPlanLimits()`** + live workspace counters (429 headers exist; in-chat meter still deferred) | `PLAN.md` (deferred) · branding TODO in `AGENTS.md` |
 | **xChat** — vision paste **shipped** (follow-ups: scan/EXIF/dims/batch — `PLAN.md` deferred); structured **`[xchat/debug]`** gated tenant-only (**app ≥3.6.16**, `xchat-debug-logging.md`); **Grok-style composer + dictation + tenant attach** shipped **3.9.0** (`release-notes.md`); **HNWI Templates + saved user prompts + Depth (Fast/Expert/Heavy)** (`xchat-hnwi-templates-ui.md`, **`707` closed**); voice — **xAI STT only** (**MediaRecorder** → **`/voice-transcribe`**); **Voice Mode** — **`POST /api/app-user/xchat/voice-realtime/token`** (optional **`workspace_voice_context`**) + **`wss://…/v1/realtime`** (`xchat-voice-mode.md`); voice stack **703** documented in **`release-notes`** / **`xchat-voice-mode.md`** (`PLAN.md` tracks open backlog only); **xMoney billing + crypto book (704)** — phased roadmap: [`PLAN.md`](../PLAN.md) § **xMoney & crypto portfolio (704)** | `PLAN.md`; **701** privacy history **shipped** (`xchat-history-storage.md`) |
 | **OptionsStrategyEngine** — extend scoring / desk notification providers | `PLAN.md` · `reviewer.md` §245 |

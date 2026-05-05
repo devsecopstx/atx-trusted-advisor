@@ -12,6 +12,10 @@ const mongoMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/lib/mongodb", () => mongoMocks);
 
+vi.mock("@/modules/audit/repository", () => ({
+  createAuditEvent: vi.fn().mockResolvedValue({ _id: "audit1" })
+}));
+
 import {
     GET as getTenantCatalog,
     PATCH as patchTenantCatalog
