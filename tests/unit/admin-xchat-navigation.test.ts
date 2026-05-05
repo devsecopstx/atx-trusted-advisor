@@ -9,7 +9,7 @@ describe("admin navigation includes xChat", () => {
     const rail = readFileSync(railPath, "utf8");
     expect(rail).toContain('href: "/xchat"');
     expect(rail).toContain('label: "xChat"');
-    expect(rail).toContain('href: "/resources/getting-started"');
+    expect(rail).toContain('href: "/resources/guides"');
   });
 
   it("admin layout renders shell that mounts the left rail", () => {

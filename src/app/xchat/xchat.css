@@ -4411,6 +4411,68 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
   margin: 0;
 }
 
+.app-user-rail-sublinks--after-utilities {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.app-user-rail-utilities-details {
+  margin: 0 0 0.35rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+}
+
+.app-user-rail-utilities-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.38rem 0.45rem 0.38rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.app-user-rail-utilities-summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-user-rail-utilities-summary:hover {
+  background: color-mix(in srgb, var(--xf-gain-green) 6%, transparent);
+  color: var(--xf-text-200);
+}
+
+.app-user-rail-utilities-summary__main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.app-user-rail-utilities-panel {
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.app-user-rail-sublinks--utilities-panel {
+  padding-top: 0.28rem;
+  padding-bottom: 0.22rem;
+}
+
+.app-user-rail-utilities__glyph {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+  color: var(--xf-text-300);
+}
+
 .app-user-rail-sublink {
   display: block;
   padding: 0.38rem 0.5rem;

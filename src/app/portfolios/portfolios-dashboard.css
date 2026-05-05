@@ -631,6 +631,76 @@
   color: var(--xf-text-400);
 }
 
+.portfolios-workspace-sidebar__utilities-details {
+  margin-bottom: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 9%, transparent);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+}
+
+.portfolios-workspace-sidebar__utilities-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.38rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.portfolios-workspace-sidebar__utilities-summary::-webkit-details-marker {
+  display: none;
+}
+
+.portfolios-workspace-sidebar__utilities-summary:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-300);
+}
+
+.portfolios-workspace-sidebar__utilities-summary-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.portfolios-workspace-sidebar__utilities-summary-label {
+  min-width: 0;
+}
+
+.portfolios-workspace-sidebar__utilities-summary .portfolios-workspace-sidebar__glyph {
+  opacity: 0.88;
+}
+
+.portfolios-workspace-sidebar__utilities-details[open] .portfolios-workspace-sidebar__utilities-summary .portfolios-workspace-sidebar__chevron {
+  transform: rotate(0deg);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+}
+
+.portfolios-workspace-sidebar__utilities-details:not([open])
+  .portfolios-workspace-sidebar__utilities-summary
+  .portfolios-workspace-sidebar__chevron {
+  transform: rotate(-90deg);
+}
+
+.portfolios-workspace-sidebar__utilities-summary:hover .portfolios-workspace-sidebar__chevron {
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+}
+
+.portfolios-workspace-sidebar__utilities-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0 0.35rem 0.45rem 0.45rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
 .portfolios-workspace-sidebar__collections-rule {
   margin: 0.45rem 0 0.35rem;
   border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);

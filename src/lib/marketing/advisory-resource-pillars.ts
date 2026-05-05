@@ -4,7 +4,7 @@ export type AdvisoryResourcePillar = {
   readonly blurb: string;
 };
 
-/** Eight educational resource articles — landing `#resources-pillars` and `/resources/about` index. */
+/** Eight educational resource articles — `/resources/about` pillars section and `/resources/guides` hub. */
 export const ADVISORY_RESOURCE_PILLARS: readonly AdvisoryResourcePillar[] = [
   {
     href: "/resources/2026-options-income-playbook",

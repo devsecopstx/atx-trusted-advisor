@@ -28,9 +28,9 @@ const ADMIN_APP_USER_SHORTCUTS: Array<{ href: string; label: string; title: stri
     title: "Open app-user options workspace"
   },
   {
-    href: "/resources/getting-started",
+    href: "/resources/guides",
     label: "Resources",
-    title: "Open resource hub and guides"
+    title: "Open guides and resource articles"
   },
   {
     href: "/account/billing",

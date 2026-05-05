@@ -8,6 +8,7 @@ import * as coveredCalls2026 from "@/app/resources/covered-calls-2026-balanced-i
 import * as decision from "@/app/resources/decision-workflow/page";
 import * as fromXchatToBrokerIbkr from "@/app/resources/from-xchat-to-broker-ibkr/page";
 import * as gettingStarted from "@/app/resources/getting-started/page";
+import * as guidesHub from "@/app/resources/guides/page";
 import * as grokWheelEdge from "@/app/resources/how-xai-spots-better-wheels/page";
 import * as leapOptionsPlaybook from "@/app/resources/leap-options-playbook/page";
 import * as multiPortfolioHnwi from "@/app/resources/multi-portfolio-management-hnwi/page";
@@ -26,6 +27,7 @@ function expectMetadata(module: unknown) {
 describe("Resources pages exports for public/SEO delivery", () => {
   it("export revalidate=3600 and metadata on all resources pages", () => {
     const modules = [
+      guidesHub,
       about,
       decision,
       secret,

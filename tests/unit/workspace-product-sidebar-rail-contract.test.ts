@@ -11,8 +11,11 @@ describe("WorkspaceProductSidebar rail contract", () => {
     expect(src).not.toMatch(/>\s*Open xOptions\s*</);
   });
 
-  it("nests User Collections under the Resources accordion body", () => {
+  it("nests User Collections under Utilities inside the Resources accordion body", () => {
     expect(src).toContain('label="Resources"');
+    expect(src).toContain("portfolios-workspace-sidebar__utilities-details");
+    expect(src).toContain("UtilitiesSubgroupDetails");
+    expect(src).toContain("Utilities");
     expect(src).toContain("portfolios-workspace-sidebar__collections-label");
     expect(src).toContain("User Collections");
     expect(src).toContain("<XchatAttachmentsPanel />");
@@ -22,5 +25,12 @@ describe("WorkspaceProductSidebar rail contract", () => {
   it("expands Resources routeMatch for attachments deep link and tasks paths", () => {
     expect(src).toContain("xchatAttachmentsDeepLinkActive");
     expect(src).toContain('pathname.startsWith("/account/tasks")');
+  });
+
+  it("links consolidated Guides hub under Resources", () => {
+    expect(src).toContain('href="/resources/guides"');
+    expect(src).toMatch(/SidebarLink[^>]*>\s*Guides\s*<\/SidebarLink>/);
+    expect(src).not.toContain('href="/resources/about"');
+    expect(src).not.toContain('href="/resources/decision-workflow"');
   });
 });

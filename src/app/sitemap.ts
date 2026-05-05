@@ -17,6 +17,7 @@ const publicRoutes = [
     priority: 0.8,
   },
   // Resources (public, guest-accessible)
+  { path: "/resources/guides", changeFrequency: "weekly" as const, priority: 0.65 },
   { path: "/resources/about", changeFrequency: "monthly" as const, priority: 0.6 },
   { path: "/resources/decision-workflow", changeFrequency: "monthly" as const, priority: 0.6 },
   { path: "/resources/secret-sauce", changeFrequency: "monthly" as const, priority: 0.6 },

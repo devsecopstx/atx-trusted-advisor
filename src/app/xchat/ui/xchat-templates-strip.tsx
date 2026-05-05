@@ -321,8 +321,8 @@ export function XchatTemplatesStrip({
       <p className="xchat-templates-strip__footnote" role="note">
         Curated + saved prompts — review before Send. Use <strong>Depth</strong> (Fast / Expert / Heavy) for
         plan-aware multi-agent runs (
-        <a className="xchat-templates-strip__doc-link" href="/resources/getting-started">
-          getting started
+        <a className="xchat-templates-strip__doc-link" href="/resources/guides">
+          guides
         </a>
         ).
       </p>

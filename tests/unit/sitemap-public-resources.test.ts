@@ -8,6 +8,7 @@ describe("sitemap public resources", () => {
 
     const BASE = "https://atxtrustedadvisory.com";
     const expected = [
+      "/resources/guides",
       "/resources/about",
       "/resources/decision-workflow",
       "/resources/secret-sauce",

@@ -188,6 +188,20 @@ function UploadGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function UtilitiesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.77 3.77z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.65}
+      />
+    </svg>
+  );
+}
+
 function RailSectionChevron() {
   return (
     <svg
@@ -233,6 +247,32 @@ function RouteSyncedDetails({
   return (
     <details
       className={className}
+      open={open}
+      onToggle={(e: SyntheticEvent<HTMLDetailsElement>) => {
+        setOpen(e.currentTarget.open);
+      }}
+      suppressHydrationWarning={true}
+    >
+      {children}
+    </details>
+  );
+}
+
+/** Resources → Utilities nested subgroup; collapsed by default, opens when a utility route is active. */
+function UtilitiesSubgroupDetails({
+  routeMatch,
+  children
+}: {
+  routeMatch: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(routeMatch);
+  useEffect(() => {
+    setOpen(routeMatch);
+  }, [routeMatch]);
+  return (
+    <details
+      className="portfolios-workspace-sidebar__utilities-details"
       open={open}
       onToggle={(e: SyntheticEvent<HTMLDetailsElement>) => {
         setOpen(e.currentTarget.open);
@@ -372,6 +412,11 @@ export function WorkspaceProductSidebar({
     pathname.startsWith("/xchat") && searchParams.get("item") === "history";
   const xchatAttachmentsDeepLinkActive =
     pathname.startsWith("/xchat") && searchParams.get("item") === "attachments";
+
+  const utilitiesRouteMatch =
+    pathname.startsWith("/import-activity") ||
+    pathname.startsWith("/account/tasks") ||
+    xchatAttachmentsDeepLinkActive;
 
   const showAttachmentsRail =
     accountDetails != null &&
@@ -529,7 +574,7 @@ export function WorkspaceProductSidebar({
       : []),
     {
       key: "resources",
-      href: "/resources/about",
+      href: "/resources/guides",
       label: "Resources",
       isActive:
         pathname.startsWith("/resources") ||
@@ -717,46 +762,48 @@ export function WorkspaceProductSidebar({
           <SidebarAccordionSummary
             icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--resources" />}
             label="Resources"
-            primaryHref={isPathVisible("/resources") ? "/resources/about" : undefined}
+            primaryHref={isPathVisible("/resources") ? "/resources/guides" : undefined}
             primaryNavTitle="Open Resources"
           />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
-          {showAttachmentsRail ? (
-            <div className="portfolios-workspace-sidebar__collections-block">
-              <p className="portfolios-workspace-sidebar__collections-label">User Collections</p>
-              <XchatAttachmentsPanel />
-            </div>
+          {showAttachmentsRail || isPathVisible("/resources") ? (
+            <UtilitiesSubgroupDetails routeMatch={utilitiesRouteMatch}>
+              <summary className="portfolios-workspace-sidebar__utilities-summary">
+                <span className="portfolios-workspace-sidebar__utilities-summary-main">
+                  <UtilitiesIcon className="portfolios-workspace-sidebar__glyph" />
+                  <span className="portfolios-workspace-sidebar__utilities-summary-label">Utilities</span>
+                </span>
+                <RailSectionChevron />
+              </summary>
+              <div className="portfolios-workspace-sidebar__utilities-body">
+                {showAttachmentsRail ? (
+                  <div className="portfolios-workspace-sidebar__collections-block">
+                    <p className="portfolios-workspace-sidebar__collections-label">User Collections</p>
+                    <XchatAttachmentsPanel />
+                  </div>
+                ) : null}
+                {isPathVisible("/resources") ? (
+                  <>
+                    <SidebarLink href={importHref} nested title="Merrill / Fidelity broker import">
+                      <UploadGlyph className="portfolios-workspace-sidebar__glyph" />
+                      Broker import
+                    </SidebarLink>
+                    <SidebarLink href="/account/tasks" nested title="Scheduled and saved user tasks">
+                      Tasks
+                    </SidebarLink>
+                  </>
+                ) : null}
+              </div>
+            </UtilitiesSubgroupDetails>
           ) : null}
-          {isPathVisible("/resources") && showAttachmentsRail ? (
+          {isPathVisible("/resources") ? (
             <div aria-hidden className="portfolios-workspace-sidebar__collections-rule" />
           ) : null}
           {isPathVisible("/resources") ? (
             <>
-          <SidebarLink href="/resources/about" nested>
-            About
-          </SidebarLink>
-          <SidebarLink href="/resources/decision-workflow" nested>
-            Decision workflow
-          </SidebarLink>
-          <SidebarLink href="/resources/secret-sauce" nested>
-            Secret sauce
-          </SidebarLink>
-          <SidebarLink href="/resources/getting-started" nested title="Guide to investing with options">
-            Getting started
-          </SidebarLink>
-          <SidebarLink
-            href="/resources/top-10-hnwi-xchat-prompts"
-            nested
-            title="Top 10 HNWI xChat prompts — conservative, balanced, and aggressive playbooks"
-          >
-            Top 10 HNWI prompts
-          </SidebarLink>
-          <SidebarLink href="/resources/building-wheel" nested title="Building a wheel strategy">
-            Building a wheel
-          </SidebarLink>
-          <SidebarLink href="/resources/building-wheel/wheel-vs-iron-condor" nested title="Wheel vs iron condor">
-            Wheel vs Iron Condor
+          <SidebarLink href="/resources/guides" nested title="Browse guides and resource articles">
+            Guides
           </SidebarLink>
           {showReferenceDocs ? (
             isGlobalAdmin ? (
@@ -775,13 +822,6 @@ export function WorkspaceProductSidebar({
               </XfHoverHint>
             )
           ) : null}
-          <SidebarLink href={importHref} nested title="Merrill / Fidelity broker import">
-            <UploadGlyph className="portfolios-workspace-sidebar__glyph" />
-            Broker import
-          </SidebarLink>
-          <SidebarLink href="/account/tasks" nested title="Scheduled and saved user tasks">
-            Tasks
-          </SidebarLink>
             </>
           ) : null}
         </div>
