@@ -18,6 +18,8 @@ describe("Resources guides hub contract", () => {
     }
     const playbooks = RESOURCE_GUIDE_SECTIONS.find((s) => s.id === "playbooks");
     expect(playbooks?.links.length).toBe(ADVISORY_RESOURCE_PILLARS.length);
+    const platform = RESOURCE_GUIDE_SECTIONS.find((s) => s.id === "platform");
+    expect(platform?.links.some((l) => l.href === "/resources/onboarding-checklist")).toBe(true);
   });
 
   it("guides page wires hub panels, jump chips, and catalog", () => {

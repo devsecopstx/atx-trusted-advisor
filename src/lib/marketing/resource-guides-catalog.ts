@@ -31,6 +31,12 @@ export const RESOURCE_GUIDE_SECTIONS: readonly ResourceGuideSection[] = [
     icon: "platform",
     links: [
       {
+        href: "/resources/onboarding-checklist",
+        title: "Onboarding checklist",
+        description:
+          "HNWI order of operations through validation: portfolio, watchlist, risk, broker parity, xChat/xOptions, StrategyJob test."
+      },
+      {
         href: "/resources/about",
         title: "About aTx Trusted Advisory",
         description: "HNW positioning, dashboard benefits, and what the platform covers."

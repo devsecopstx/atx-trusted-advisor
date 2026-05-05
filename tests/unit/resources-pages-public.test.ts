@@ -12,6 +12,7 @@ import * as guidesHub from "@/app/resources/guides/page";
 import * as grokWheelEdge from "@/app/resources/how-xai-spots-better-wheels/page";
 import * as leapOptionsPlaybook from "@/app/resources/leap-options-playbook/page";
 import * as multiPortfolioHnwi from "@/app/resources/multi-portfolio-management-hnwi/page";
+import * as onboardingChecklist from "@/app/resources/onboarding-checklist/page";
 import * as optionsRiskFrameworks from "@/app/resources/options-risk-management-frameworks/page";
 import * as secret from "@/app/resources/secret-sauce/page";
 import * as top10HnwiXchatPrompts from "@/app/resources/top-10-hnwi-xchat-prompts/page";
@@ -28,6 +29,7 @@ describe("Resources pages exports for public/SEO delivery", () => {
   it("export revalidate=3600 and metadata on all resources pages", () => {
     const modules = [
       guidesHub,
+      onboardingChecklist,
       about,
       decision,
       secret,
