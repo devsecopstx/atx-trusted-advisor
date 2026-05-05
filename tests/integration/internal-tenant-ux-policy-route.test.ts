@@ -26,7 +26,15 @@ describe("internal tenant ux policy route", () => {
       role: "viewer",
       userId: "u1",
       tenantId: "t1",
-      allowedRoutes: ["/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/xchat"],
+      allowedRoutes: [
+        "/portfolio",
+        "/portfolios",
+        "/watchlist",
+        "/xoptions",
+        "/account",
+        "/xchat",
+        "/xcoach"
+      ],
       defaultLanding: "/xchat",
       flags: {
         canMutatePortfolios: false,
@@ -42,6 +50,15 @@ describe("internal tenant ux policy route", () => {
     const body = (await res.json()) as { data: { allowed: boolean; redirectPath: string } };
     expect(body.data.allowed).toBe(false);
     expect(body.data.redirectPath).toBe("/xchat");
+  });
+
+  it("returns allowed true for permitted paths including xcoach", async () => {
+    const chat = await GET(new Request("http://test/api/internal/tenant-ux/policy?pathname=/xchat"));
+    expect(chat.status).toBe(200);
+    expect(((await chat.json()) as { data: { allowed: boolean } }).data.allowed).toBe(true);
+    const coach = await GET(new Request("http://test/api/internal/tenant-ux/policy?pathname=/xcoach"));
+    expect(coach.status).toBe(200);
+    expect(((await coach.json()) as { data: { allowed: boolean } }).data.allowed).toBe(true);
   });
 
   it("passes through unauthorized responses", async () => {

@@ -12,8 +12,12 @@ const mongoMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/lib/mongodb", () => mongoMocks);
 
-vi.mock("@/modules/audit/repository", () => ({
+const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn().mockResolvedValue({ _id: "audit1" })
+}));
+
+vi.mock("@/modules/audit/repository", () => ({
+  createAuditEvent: auditMocks.createAuditEvent
 }));
 
 import {
@@ -110,9 +114,22 @@ describe("admin tenant route catalog overrides", () => {
     expect(body.data.overrides.xoptions).toBe(true);
     expect(body.data.defaultLandingPathByRole.viewer).toBe("/portfolios");
     expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
+    expect(auditMocks.createAuditEvent).toHaveBeenCalledTimes(1);
+    expect(auditMocks.createAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "tenant",
+        entityId: "507f1f77bcf86cd799439022",
+        action: "tenant_ux.route_catalog.patch",
+        actor: expect.objectContaining({ userId: "507f1f77bcf86cd799439011" }),
+        details: expect.objectContaining({
+          overrides: expect.any(Object),
+          defaultLandingPathByRole: expect.any(Object)
+        })
+      })
+    );
   });
 
-  it("rejects default landing path not visible for role", async () => {
+  it("rejects default landing path not visible for role and does not audit", async () => {
     const res = await patchTenantCatalog(
       new Request("http://test", {
         method: "PATCH",
@@ -127,6 +144,7 @@ describe("admin tenant route catalog overrides", () => {
       { params: Promise.resolve({ tenantId: "507f1f77bcf86cd799439022" }) }
     );
     expect(res.status).toBe(400);
+    expect(auditMocks.createAuditEvent).not.toHaveBeenCalled();
   });
 
   it("returns 403 passthrough when session is not global admin", async () => {

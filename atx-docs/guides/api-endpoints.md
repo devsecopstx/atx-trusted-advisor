@@ -101,7 +101,7 @@ Mongo collections: **`user_tasks`**, **`user_task_runs`**. **`prompt`** tasks ex
 - `POST /api/admin/scheduler/tick`
 - `GET /api/admin/task-runs`
 - `POST /api/internal/scheduler/execute-task` — **Server-to-server only** (no session cookie). Requires header `X-Atx-Scheduler-Secret` equal to env **`ATX_SCHEDULER_INTERNAL_SECRET`** (minimum 24 characters; set the same value on the JVM service). JSON body: `{ "taskId": "<admin_scheduled_tasks _id hex>", "triggeredBy"?: string }`. Spring’s scheduler delegate calls this so due **`watchlist_price_scanner`**, **`options_scanner`**, and other Next executors run on the Node task-runner. Returns **503** if the secret is missing/too short, **401** on bad secret, **404** if the task row is missing or portfolio-bound. Hermetic coverage: **`tests/integration/internal-scheduler-execute-task-route.test.ts`**.
-- `GET /api/internal/tenant-ux/policy` — session-scoped resolver used by edge proxy enforcement (`TENANT_UX_ENFORCEMENT_V2`); returns allow/deny + redirect target for a requested pathname.
+- `GET /api/internal/tenant-ux/policy?pathname=/prefix` — **session cookie**; resolves **tenant role matrix** + route visibility vs `pathname` (normalized). **200** JSON `data`: `{ allowed, pathname, role, allowedRoutes, redirectPath, flags }`. Used by **`src/proxy.ts`** when **`TENANT_UX_ENFORCEMENT_V2`**; policy fetch failures log **`tenant_ux_policy_fetch_error`** (default fail-open) or deny with **`tenant_ux_policy_unavailable`** when **`TENANT_UX_POLICY_FAIL_CLOSED`** — see [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md). Hermetic tests: **`tests/integration/internal-tenant-ux-policy-route.test.ts`**.
 
 ## Admin audit/bootstrap
 
@@ -111,7 +111,7 @@ Mongo collections: **`user_tasks`**, **`user_task_runs`**. **`prompt`** tasks ex
 ## Admin platform / compliance
 
 - `GET /api/admin/platform/route-catalog` — **`global_admin`** only; returns the parsed **app-user route catalog** (same shape as **`data/platform/app-user-route-catalog.json`**) for **DB import** / compliance tooling. **Plan:** [tenant-ux-plan.md](../design-system/tenant-ux-plan.md).
-- `GET/PATCH /api/admin/platform/route-catalog/{tenantId}` — tenant-specific route visibility overrides (`tenantPreferences.app_user_route_visibility_overrides`).
+- `GET/PATCH /api/admin/platform/route-catalog/{tenantId}` — tenant-specific route visibility overrides (`tenantPreferences.app_user_route_visibility_overrides`) and optional **`app_user_default_landing_path_by_role`**. **`PATCH`** (success) appends **`admin_audit_events`** with **`action: tenant_ux.route_catalog.patch`**, **`entityType: tenant`**. Tests: **`tests/integration/admin-platform-route-catalog-tenant-overrides.test.ts`**.
 - `GET /api/admin/tenants/{tenantId}/roles` — effective tenant role matrix (`global_admin`, `operator`, `advisor`, `viewer`) with route allowlists, landing paths, and capability flags.
 - `PUT /api/admin/tenants/{tenantId}/roles` — replace full tenant role matrix (`tenantRoles`) in `core_tenants`.
 - `PATCH /api/admin/tenants/{tenantId}/roles/{role}` — partial per-role update (`allowedRoutes`, `defaultLanding`, `flags`) with viewer/global-admin invariants enforced.
