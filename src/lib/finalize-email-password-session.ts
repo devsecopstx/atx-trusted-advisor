@@ -1,7 +1,7 @@
 import { createSession } from "@/lib/auth";
 import type { ClientLoginMeta } from "@/lib/client-request-meta";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
-import { provisionDefaultPortfolioForUser } from "@/modules/core-admin/repository";
+import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
 import { canUserLogin, normalizeCoreRoles } from "@/modules/identity/authorization";
 import {
     recordUserSuccessfulLogin,
@@ -45,12 +45,13 @@ export async function finalizeEmailPasswordSession(input: {
   }
 
   try {
-    await provisionDefaultPortfolioForUser({
+    await ensureTenantBootstrapForUser({
       userId: authContext.userId.toHexString(),
-      tenantId: authContext.tenantId.toHexString()
+      tenantId: authContext.tenantId.toHexString(),
+      trigger: "email_login"
     });
   } catch (provisionError) {
-    console.warn("[auth/email] default portfolio provision non-fatal", {
+    console.warn("[auth/email] tenant bootstrap non-fatal", {
       userId: authContext.userId.toHexString(),
       message: provisionError instanceof Error ? provisionError.message : String(provisionError)
     });

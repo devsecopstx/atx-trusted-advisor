@@ -4,6 +4,18 @@ const state = vi.hoisted(() => ({
   userRoles: [] as string[]
 }));
 
+const tenantUserBootstrapMocks = vi.hoisted(() => ({
+  ensureTenantBootstrapForUser: vi.fn().mockResolvedValue({
+    didProvision: true,
+    result: {
+      portfolio: { _id: { toHexString: () => "507f1f77bcf86cd799439081" } },
+      account: { _id: { toHexString: () => "507f1f77bcf86cd799439082" } },
+      watchlist: { _id: { toHexString: () => "507f1f77bcf86cd799439083" } }
+    },
+    platformRole: "viewer"
+  })
+}));
+
 const authMocks = vi.hoisted(() => ({
   consumePendingXLinkCookie: vi.fn(),
   createSession: vi.fn()
@@ -16,8 +28,7 @@ const envMocks = vi.hoisted(() => ({
 
 const coreAdminMocks = vi.hoisted(() => ({
   createAccessRequest: vi.fn(),
-  getPendingAccessRequestByUserAndRole: vi.fn(),
-  provisionDefaultPortfolioForUser: vi.fn()
+  getPendingAccessRequestByUserAndRole: vi.fn()
 }));
 
 const identityMocks = vi.hoisted(() => ({
@@ -48,6 +59,7 @@ const emailMessageMocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/env", () => envMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
+vi.mock("@/modules/core-admin/tenant-user-bootstrap", () => tenantUserBootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/identity/login-audit", () => ({
   appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
@@ -78,11 +90,6 @@ describe("auth link-email route", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439099" }
     });
     coreAdminMocks.getPendingAccessRequestByUserAndRole.mockResolvedValue(null);
-    coreAdminMocks.provisionDefaultPortfolioForUser.mockResolvedValue({
-      portfolio: { _id: { toHexString: () => "507f1f77bcf86cd799439081" } },
-      account: { _id: { toHexString: () => "507f1f77bcf86cd799439082" } },
-      watchlist: { _id: { toHexString: () => "507f1f77bcf86cd799439083" } }
-    });
 
     identityMocks.getCoreUserByEmail.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
@@ -178,7 +185,7 @@ describe("auth link-email route", () => {
     expect(response.status).toBe(200);
     expect(payload.redirectTo).toBe("/xchat");
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
-    expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
+    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).toHaveBeenCalledTimes(1);
     expect(authMocks.createSession).toHaveBeenCalledWith(
       expect.objectContaining({
         roles: ["viewer"]

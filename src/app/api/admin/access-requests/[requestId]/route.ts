@@ -18,12 +18,12 @@ import { enqueueAccessRequestBootstrap } from "@/modules/core-admin/access-reque
 import {
     deleteAccessRequest,
     getAccessRequestById,
-    provisionDefaultPortfolioForUser,
     reviewAccessRequestById,
     updateAccessRequestPlanById,
     updateAccessRequestRoleById,
     updateAccessRequestTenantById
 } from "@/modules/core-admin/repository";
+import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
 import {
     ACTIONABLE_ACCESS_REQUEST_STATUSES,
     type AccessRequest
@@ -33,10 +33,12 @@ import {
     addRoleToCoreUser,
     assertCanAddUserToTenant,
     getCoreUserById,
+    getTenantByHexId,
     updateCoreUserSubscriptionPlan,
     upsertTenantMembership
 } from "@/modules/identity/repository";
 import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
+import { tenantBootstrapOnApprove } from "@/modules/platform/tenant-bootstrap-policy";
 
 const accessRequestRoleSchema = z.enum(["global_admin", "advisor", "operator", "viewer"]);
 
@@ -314,31 +316,40 @@ async function handleUpdate(request: Request, context: RouteContext) {
       );
     }
     try {
-      /** Best-effort default book provisioning; approval should still complete if bootstrap fails. */
-      await provisionDefaultPortfolioForUser({
-        userId: existing.userId,
-        tenantId: applicantPortfolioTenantId
-      });
-    } catch (error) {
-      console.error("[access-request/approve] default portfolio provision failed", error);
-      try {
-        await createAuditEvent({
-          entityType: "access_request",
-          entityId: requestId,
-          action: "default_portfolio_provision_failed",
-          actor: {
-            userId: session.userId,
-            email: session.email,
-            username: session.username
-          },
-          details: {
+      const tenantRow = await getTenantByHexId(applicantPortfolioTenantId);
+      const eager = tenantBootstrapOnApprove(tenantRow?.tenantPreferences ?? null);
+      if (eager) {
+        /** Best-effort default book provisioning when tenant opts into approve-time bootstrap. */
+        try {
+          await ensureTenantBootstrapForUser({
             userId: existing.userId,
-            reason: error instanceof Error ? error.message.slice(0, 500) : "unknown"
+            tenantId: applicantPortfolioTenantId,
+            trigger: "access_request_approve"
+          });
+        } catch (error) {
+          console.error("[access-request/approve] tenant bootstrap failed", error);
+          try {
+            await createAuditEvent({
+              entityType: "access_request",
+              entityId: requestId,
+              action: "default_portfolio_provision_failed",
+              actor: {
+                userId: session.userId,
+                email: session.email,
+                username: session.username
+              },
+              details: {
+                userId: existing.userId,
+                reason: error instanceof Error ? error.message.slice(0, 500) : "unknown"
+              }
+            });
+          } catch {
+            /* empty */
           }
-        });
-      } catch {
-        // Ignore audit-write failures for this non-blocking side effect.
+        }
       }
+    } catch (error) {
+      console.error("[access-request/approve] tenant policy lookup failed", error);
     }
   }
 

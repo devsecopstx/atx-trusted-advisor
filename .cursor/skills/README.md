@@ -76,6 +76,7 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 |-------|---|
 | [ios-version-bump](ios-version-bump/SKILL.md) | Capacitor iOS Version / Build bump (`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`) |
 | [feature-delivery](feature-delivery/SKILL.md) | Scoped PR delivery |
+| [skill-tenant-roadmap](skill-tenant-roadmap/SKILL.md) | Tenant roadmap: shipped slices (11/705/706), PLAN **10** provisioning/bootstrap Q&A |
 | [skill-tenant-tasks](skill-tenant-tasks/SKILL.md) | Tenant workspace automations (`/workspace/tasks`, `ownerKind: tenant_user`) |
 | [generate-docs](generate-docs/SKILL.md) | Docs & OpenAPI hygiene |
 | [test-commit-push](test-commit-push/SKILL.md) | Pre-commit validation |

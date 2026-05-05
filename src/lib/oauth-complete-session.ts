@@ -9,7 +9,7 @@ import type { ClientLoginMeta } from "@/lib/client-request-meta";
 import { resolveSessionLandingPath } from "@/lib/default-landing-path";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
-import { provisionDefaultPortfolioForUser } from "@/modules/core-admin/repository";
+import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
@@ -137,12 +137,13 @@ export async function finalizeOAuthSessionAndRedirect(options: {
     }
 
     try {
-      await provisionDefaultPortfolioForUser({
+      await ensureTenantBootstrapForUser({
         userId: authContext.userId.toHexString(),
-        tenantId: authContext.tenantId.toHexString()
+        tenantId: authContext.tenantId.toHexString(),
+        trigger: "oauth_login"
       });
     } catch (provisionError) {
-      console.warn("[auth/oauth] default portfolio provision non-fatal; will retry on first /portfolio or API", {
+      console.warn("[auth/oauth] tenant bootstrap non-fatal; will retry on first /portfolio or API", {
         userId: authContext.userId.toHexString(),
         message: provisionError instanceof Error ? provisionError.message : String(provisionError)
       });

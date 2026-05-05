@@ -3310,11 +3310,23 @@ export async function ensureUserWatchlistForSessionUser(input: {
     return existing;
   }
   try {
-    await provisionDefaultPortfolioForUser({
-      userId: input.userId,
-      tenantId: input.tenantId,
-      watchlistSymbols: ["TSLA"]
-    });
+    if (input.tenantId?.trim()) {
+      const { ensureTenantBootstrapForUser } = await import(
+        "@/modules/core-admin/tenant-user-bootstrap"
+      );
+      await ensureTenantBootstrapForUser({
+        userId: input.userId,
+        tenantId: input.tenantId.trim(),
+        trigger: "page_shell",
+        emitAudit: false
+      });
+    } else {
+      await provisionDefaultPortfolioForUser({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        watchlistSymbols: ["TSLA"]
+      });
+    }
   } catch (error) {
     const detail = caughtErrorMessage(error);
     console.error(
@@ -3371,16 +3383,24 @@ export async function ensurePortfolioWatchlistForUser(input: {
     return null;
   }
   try {
-    await provisionDefaultPortfolioForUser({
-      userId: input.userId,
-      tenantId: input.tenantId,
-      watchlistSymbols: ["TSLA"]
-    });
+    if (input.tenantId?.trim()) {
+      const { ensureTenantBootstrapForUser } = await import(
+        "@/modules/core-admin/tenant-user-bootstrap"
+      );
+      await ensureTenantBootstrapForUser({
+        userId: input.userId,
+        tenantId: input.tenantId.trim(),
+        trigger: "page_shell",
+        emitAudit: false
+      });
+    } else {
+      await provisionDefaultPortfolioForUser({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        watchlistSymbols: ["TSLA"]
+      });
+    }
   } catch (error) {
-    const detail = caughtErrorMessage(error);
-    console.error(
-      `[watchlist] ensurePortfolioWatchlistForUser provision failed userId=${input.userId} portfolioId=${input.portfolioId} detail=${detail}`
-    );
     return null;
   }
   return getPortfolioWatchlist(input);

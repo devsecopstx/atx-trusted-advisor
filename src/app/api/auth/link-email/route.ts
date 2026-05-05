@@ -9,9 +9,9 @@ import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
     createAccessRequest,
-    getPendingAccessRequestByUserAndRole,
-    provisionDefaultPortfolioForUser
+    getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
+import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
@@ -269,9 +269,10 @@ export async function POST(request: Request) {
       ? authContext.roles
       : ["viewer"];
 
-  await provisionDefaultPortfolioForUser({
+  await ensureTenantBootstrapForUser({
     userId: authContext.userId.toHexString(),
-    tenantId: authContext.tenantId.toHexString()
+    tenantId: authContext.tenantId.toHexString(),
+    trigger: "link_email"
   });
 
   try {

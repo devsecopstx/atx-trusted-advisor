@@ -7,6 +7,10 @@ import { normalizeXfAccentColor } from "@/lib/tenant-accent-color";
 import { isXfBrandPaletteId, XF_BRAND_PALETTE_IDS } from "@/lib/tenant-branding-palette";
 import { assertValidXfHeroIconUrl } from "@/lib/tenant-hero-icon-url";
 import { assertValidXfTenantLogoUrl } from "@/lib/tenant-logo-url";
+import {
+    parseTenantBootstrapPolicyFromUnknown,
+    type TenantBootstrapPolicyV1
+} from "@/modules/platform/tenant-bootstrap-policy";
 import { parseTenantRentalProfile } from "@/modules/platform/tenant-rental-profile";
 import type { TenantRentalProfile } from "@/modules/platform/tenant-rental-types";
 
@@ -321,6 +325,27 @@ export function parseOptionalXfTenantLogoUrl(tenantPrefs: unknown): string | und
   return assertValidXfTenantLogoUrl(v);
 }
 
+export function parseOptionalWatchlistSeedSymbols(tenantPrefs: unknown): string[] | undefined {
+  if (tenantPrefs === undefined || tenantPrefs === null) {
+    return undefined;
+  }
+  if (typeof tenantPrefs !== "object" || Array.isArray(tenantPrefs)) {
+    return undefined;
+  }
+  const raw = (tenantPrefs as Record<string, unknown>).watchlist_seed_symbols;
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  if (!Array.isArray(raw)) {
+    throw new Error("tenant.tenantPreferences.watchlist_seed_symbols must be an array of strings");
+  }
+  const out = raw.map((s) => String(s).trim().toUpperCase()).filter(Boolean);
+  if (out.length > 48) {
+    throw new Error("tenant.tenantPreferences.watchlist_seed_symbols must have at most 48 symbols");
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 export type ParsedTenantSpecV1 = {
   slug: string;
   name: string;
@@ -329,6 +354,9 @@ export type ParsedTenantSpecV1 = {
   tenantPreferencesBranding: Record<string, string> | undefined;
   tenantXfUiTheme: "light" | "dark" | "system" | undefined;
   rentalProfile?: TenantRentalProfile;
+  bootstrapPolicy?: TenantBootstrapPolicyV1;
+  bootstrapOnApprove?: boolean;
+  watchlistSeedSymbols?: string[];
 };
 
 export function parseTenantSpecV1Document(doc: unknown): ParsedTenantSpecV1 {
@@ -383,6 +411,19 @@ export function parseTenantSpecV1Document(doc: unknown): ParsedTenantSpecV1 {
 
   const rentalProfile = parseTenantRentalProfile(t.rentalProfile);
 
+  let bootstrapPolicy: TenantBootstrapPolicyV1 | undefined;
+  if (t.bootstrapPolicy !== undefined && t.bootstrapPolicy !== null) {
+    bootstrapPolicy = parseTenantBootstrapPolicyFromUnknown(t.bootstrapPolicy);
+  }
+  let bootstrapOnApprove: boolean | undefined;
+  if (t.bootstrapOnApprove !== undefined) {
+    if (typeof t.bootstrapOnApprove !== "boolean") {
+      throw new Error("tenant.bootstrapOnApprove must be a boolean");
+    }
+    bootstrapOnApprove = t.bootstrapOnApprove;
+  }
+  const watchlistSeedSymbols = parseOptionalWatchlistSeedSymbols(tenantPrefs);
+
   return {
     slug,
     name,
@@ -390,6 +431,9 @@ export function parseTenantSpecV1Document(doc: unknown): ParsedTenantSpecV1 {
     initialTenantAdmin,
     tenantPreferencesBranding: mergedBranding,
     tenantXfUiTheme,
-    ...(rentalProfile ? { rentalProfile } : {})
+    ...(rentalProfile ? { rentalProfile } : {}),
+    ...(bootstrapPolicy ? { bootstrapPolicy } : {}),
+    ...(bootstrapOnApprove !== undefined ? { bootstrapOnApprove } : {}),
+    ...(watchlistSeedSymbols ? { watchlistSeedSymbols } : {})
   };
 }

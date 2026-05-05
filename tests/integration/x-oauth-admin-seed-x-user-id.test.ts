@@ -2,6 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const adminUserId = "507f1f77bcf86cd799439011";
 
+const tenantUserBootstrapMocks = vi.hoisted(() => ({
+  ensureTenantBootstrapForUser: vi.fn().mockResolvedValue({
+    didProvision: true,
+    result: {
+      portfolio: { _id: { toHexString: () => "507f1f77bcf86cd799439081" } },
+      account: { _id: { toHexString: () => "507f1f77bcf86cd799439082" } },
+      watchlist: { _id: { toHexString: () => "507f1f77bcf86cd799439083" } }
+    },
+    platformRole: "viewer"
+  })
+}));
+
 const authMocks = vi.hoisted(() => ({
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
@@ -16,8 +28,7 @@ const authMocks = vi.hoisted(() => ({
 
 const coreAdminMocks = vi.hoisted(() => ({
   getPendingAccessRequestByUserAndRole: vi.fn(),
-  createAccessRequest: vi.fn(),
-  provisionDefaultPortfolioForUser: vi.fn()
+  createAccessRequest: vi.fn()
 }));
 
 const identityMocks = vi.hoisted(() => {
@@ -63,6 +74,7 @@ const sendCredentialEmailMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
+vi.mock("@/modules/core-admin/tenant-user-bootstrap", () => tenantUserBootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/lib/env", () => envMocks);
@@ -103,11 +115,6 @@ describe("X OAuth without email + ADMIN_SEED_X_USER_ID", () => {
 
     coreAdminMocks.getPendingAccessRequestByUserAndRole.mockResolvedValue(null);
     coreAdminMocks.createAccessRequest.mockResolvedValue(undefined);
-    coreAdminMocks.provisionDefaultPortfolioForUser.mockResolvedValue({
-      portfolio: { _id: { toHexString: () => "507f1f77bcf86cd799439081" } },
-      account: { _id: { toHexString: () => "507f1f77bcf86cd799439082" } },
-      watchlist: { _id: { toHexString: () => "507f1f77bcf86cd799439083" } }
-    });
 
     identityMocks.getCoreUserByXIdentity.mockResolvedValue(null);
     identityMocks.getCoreUserByEmail.mockResolvedValue(null);

@@ -25,6 +25,18 @@ const authMocks = vi.hoisted(() => ({
   isSafeOAuthReturnPath: vi.fn()
 }));
 
+const tenantUserBootstrapMocks = vi.hoisted(() => ({
+  ensureTenantBootstrapForUser: vi.fn().mockResolvedValue({
+    didProvision: true,
+    result: {
+      portfolio: { _id: { toHexString: () => "507f1f77bcf86cd799439081" } },
+      account: { _id: { toHexString: () => "507f1f77bcf86cd799439082" } },
+      watchlist: { _id: { toHexString: () => "507f1f77bcf86cd799439083" } }
+    },
+    platformRole: "viewer"
+  })
+}));
+
 const coreAdminMocks = vi.hoisted(() => ({
   getAccessRequestById: vi.fn(),
   reviewAccessRequestById: vi.fn(),
@@ -57,6 +69,10 @@ const identityMocks = vi.hoisted(() => {
     resolveAuthContext: vi.fn(),
     ensureCoreUserByEmail: vi.fn(),
     ensureSeededGlobalAdmin: vi.fn(),
+    getTenantByHexId: vi.fn().mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      tenantPreferences: {}
+    }),
     recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined)
   };
 });
@@ -95,6 +111,7 @@ const sendCredentialEmailMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
+vi.mock("@/modules/core-admin/tenant-user-bootstrap", () => tenantUserBootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
@@ -207,6 +224,16 @@ describe("access request approval login flow", () => {
       portfolio: { _id: { toHexString: () => "507f1f77bcf86cd799439081" } },
       account: { _id: { toHexString: () => "507f1f77bcf86cd799439082" } },
       watchlist: { _id: { toHexString: () => "507f1f77bcf86cd799439083" } }
+    });
+    tenantUserBootstrapMocks.ensureTenantBootstrapForUser.mockReset();
+    tenantUserBootstrapMocks.ensureTenantBootstrapForUser.mockResolvedValue({
+      didProvision: true,
+      result: {
+        portfolio: { _id: { toHexString: () => "507f1f77bcf86cd799439081" } },
+        account: { _id: { toHexString: () => "507f1f77bcf86cd799439082" } },
+        watchlist: { _id: { toHexString: () => "507f1f77bcf86cd799439083" } }
+      },
+      platformRole: "viewer"
     });
 
     identityMocks.addRoleToCoreUser.mockImplementation(async ({ role }) => {
@@ -331,7 +358,7 @@ describe("access request approval login flow", () => {
     );
     expect(approvalResponse.status).toBe(200);
     expect(state.userRoles).toContain("viewer");
-    expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
+    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).not.toHaveBeenCalled();
     expect(bootstrapMocks.enqueueAccessRequestBootstrap).toHaveBeenCalledTimes(1);
 
     global.fetch = vi
@@ -359,6 +386,7 @@ describe("access request approval login flow", () => {
     );
     expect(afterApprovalResponse.headers.get("location")).toContain("/xchat");
     expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
   });
 
@@ -399,7 +427,7 @@ describe("access request approval login flow", () => {
 
     expect(response.headers.get("location")).toContain("/xchat");
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
-    expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
+    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).toHaveBeenCalledTimes(1);
     expect(authMocks.createSession).toHaveBeenCalledTimes(1);
   });
 
@@ -753,8 +781,12 @@ describe("access request approval login flow", () => {
     expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("still reviews when default portfolio provisioning fails (best-effort provision)", async () => {
-    coreAdminMocks.provisionDefaultPortfolioForUser.mockRejectedValueOnce(
+  it("still reviews when tenant bootstrap fails on approve (best-effort; bootstrapOnApprove)", async () => {
+    identityMocks.getTenantByHexId.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      tenantPreferences: { bootstrap_on_approve: true }
+    });
+    tenantUserBootstrapMocks.ensureTenantBootstrapForUser.mockRejectedValueOnce(
       new Error("provisioning failed")
     );
 

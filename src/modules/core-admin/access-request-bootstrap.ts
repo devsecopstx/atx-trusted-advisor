@@ -23,6 +23,7 @@ import {
     createScheduledTask,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
+import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
 import { getCoreUserById, updateCoreUserXaiCollection } from "@/modules/identity/repository";
 
 const USER_BOOTSTRAP_COLLECTION = "admin_user_bootstrap_profiles";
@@ -323,10 +324,31 @@ async function runAccessRequestBootstrap(
     await rebindExistingResourcesToUser(existing, input.userId);
   }
 
-  const provisioned = await provisionDefaultPortfolioForUser({
-    userId: input.userId,
-    tenantId: input.tenantId
-  });
+  let portfolioIdHex: string | undefined;
+  let accountIdHex: string | undefined;
+  let watchlistIdHex: string | undefined;
+
+  if (input.tenantId?.trim()) {
+    const bootstrapResult = await ensureTenantBootstrapForUser({
+      userId: input.userId,
+      tenantId: input.tenantId.trim(),
+      trigger: "run_access_request_bootstrap",
+      emitAudit: false
+    });
+    if (bootstrapResult.didProvision) {
+      portfolioIdHex = bootstrapResult.result.portfolio._id!.toHexString();
+      accountIdHex = bootstrapResult.result.account._id!.toHexString();
+      watchlistIdHex = bootstrapResult.result.watchlist._id!.toHexString();
+    }
+  } else {
+    const provisioned = await provisionDefaultPortfolioForUser({
+      userId: input.userId,
+      tenantId: input.tenantId
+    });
+    portfolioIdHex = provisioned.portfolio._id!.toHexString();
+    accountIdHex = provisioned.account._id!.toHexString();
+    watchlistIdHex = provisioned.watchlist._id!.toHexString();
+  }
 
   const collection = await ensureUserCollection({
     userId: input.userId,
@@ -342,9 +364,9 @@ async function runAccessRequestBootstrap(
     collectionId: collection.id,
     email: normalizedEmail,
     userId: input.userId,
-    portfolioId: provisioned.portfolio._id?.toHexString(),
-    accountId: provisioned.account._id?.toHexString(),
-    watchlistId: provisioned.watchlist._id?.toHexString()
+    portfolioId: portfolioIdHex,
+    accountId: accountIdHex,
+    watchlistId: watchlistIdHex
   });
 
   const now = new Date();
@@ -353,9 +375,9 @@ async function runAccessRequestBootstrap(
     emailNormalized: normalizedEmail,
     userId: input.userId,
     tenantId: input.tenantId,
-    portfolioId: provisioned.portfolio._id,
-    accountId: provisioned.account._id,
-    watchlistId: provisioned.watchlist._id,
+    portfolioId: portfolioIdHex ? new ObjectId(portfolioIdHex) : undefined,
+    accountId: accountIdHex ? new ObjectId(accountIdHex) : undefined,
+    watchlistId: watchlistIdHex ? new ObjectId(watchlistIdHex) : undefined,
     xaiCollectionId: collection.id,
     xaiCollectionName: collection.name,
     requestedPlan: input.requestedPlan,

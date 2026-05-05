@@ -2,6 +2,15 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const tenantUserBootstrapMocks = vi.hoisted(() => {
+  const ensureTenantBootstrapForUser = vi.fn().mockResolvedValue({
+    didProvision: true,
+    result: { portfolio: {}, account: {}, watchlist: {} },
+    platformRole: "operator"
+  });
+  return { ensureTenantBootstrapForUser };
+});
+
 const authMocks = vi.hoisted(() => ({
   requireAdminSession: vi.fn()
 }));
@@ -21,7 +30,11 @@ const identityMocks = vi.hoisted(() => ({
   assertCanAddUserToTenant: vi.fn().mockResolvedValue(undefined),
   updateCoreUserSubscriptionPlan: vi.fn(),
   getCoreUserById: vi.fn(),
-  upsertTenantMembership: vi.fn()
+  upsertTenantMembership: vi.fn(),
+  getTenantByHexId: vi.fn().mockResolvedValue({
+    _id: { toHexString: () => "507f1f77bcf86cd7994390aa" },
+    tenantPreferences: { bootstrap_on_approve: true }
+  })
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -44,6 +57,9 @@ const sendCredentialEmailMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
+vi.mock("@/modules/core-admin/tenant-user-bootstrap", () => ({
+  ensureTenantBootstrapForUser: tenantUserBootstrapMocks.ensureTenantBootstrapForUser
+}));
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
@@ -65,6 +81,7 @@ import {
     GET as getAccessRequest,
     PUT as putAccessRequest
 } from "@/app/api/admin/access-requests/[requestId]/route";
+import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
 
 describe("access request item CRUD route", () => {
   beforeEach(() => {
@@ -136,6 +153,15 @@ describe("access request item CRUD route", () => {
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
     bootstrapMocks.enqueueAccessRequestBootstrap.mockResolvedValue(undefined);
     identityMocks.upsertTenantMembership.mockResolvedValue(undefined);
+    identityMocks.getTenantByHexId.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd7994390aa" },
+      tenantPreferences: { bootstrap_on_approve: true }
+    });
+    tenantUserBootstrapMocks.ensureTenantBootstrapForUser.mockResolvedValue({
+      didProvision: true,
+      result: { portfolio: {}, account: {}, watchlist: {} },
+      platformRole: "operator"
+    });
   });
 
   it("gets access request by id", async () => {
@@ -228,16 +254,20 @@ describe("access request item CRUD route", () => {
       }
     );
     expect(response.status).toBe(200);
+    expect(identityMocks.getTenantByHexId).toHaveBeenCalledWith("507f1f77bcf86cd7994390aa");
     expect(identityMocks.upsertTenantMembership).toHaveBeenCalledWith({
       userId: expect.any(ObjectId),
       tenantId: tenantOid,
       role: "member",
       isDefaultTenant: true
     });
-    expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledWith({
-      userId: "507f1f77bcf86cd799439044",
-      tenantId: "507f1f77bcf86cd7994390aa"
-    });
+    expect(vi.mocked(ensureTenantBootstrapForUser)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "507f1f77bcf86cd799439044",
+        tenantId: "507f1f77bcf86cd7994390aa",
+        trigger: "access_request_approve"
+      })
+    );
     expect(identityMocks.addRoleToCoreUser).toHaveBeenCalledWith(
       expect.objectContaining({ role: "operator" })
     );
@@ -276,10 +306,13 @@ describe("access request item CRUD route", () => {
     expect(identityMocks.addRoleToCoreUser).toHaveBeenCalledWith(
       expect.objectContaining({ role: "viewer" })
     );
-    expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledWith({
-      userId: "507f1f77bcf86cd799439044",
-      tenantId: "507f1f77bcf86cd7994390aa"
-    });
+    expect(vi.mocked(ensureTenantBootstrapForUser)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "507f1f77bcf86cd799439044",
+        tenantId: "507f1f77bcf86cd7994390aa",
+        trigger: "access_request_approve"
+      })
+    );
   });
 
   it("returns 400 when approving without targetTenantId in payload", async () => {

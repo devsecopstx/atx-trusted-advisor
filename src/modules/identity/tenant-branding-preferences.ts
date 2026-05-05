@@ -57,6 +57,18 @@ export type TenantPreferences = TenantBrandingPreferences & {
   app_user_default_landing_path_by_role?: Record<string, string>;
   /** Opt-in bootstrap policy for provisioning default portfolio + watchlist for new approved users. */
   bootstrap_default_portfolio_watchlist?: boolean;
+  /**
+   * When true, access-request **approve** runs the same portfolio/watchlist bootstrap as first login.
+   * Default false: lazy bootstrap on first successful OAuth / email session (`ensureTenantBootstrapForUser`).
+   */
+  bootstrap_on_approve?: boolean;
+  /**
+   * Structured per-role bootstrap (replaces legacy boolean when set). Persisted as BSON subdocument.
+   * @see `tenant-bootstrap-policy.ts`
+   */
+  bootstrap_policy?: Record<string, unknown>;
+  /** Optional tenant-wide watchlist seed symbols for operator/advisor when policy enables watchlist. */
+  watchlist_seed_symbols?: string[];
 };
 
 

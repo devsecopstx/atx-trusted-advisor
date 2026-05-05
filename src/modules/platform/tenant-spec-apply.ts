@@ -2,12 +2,14 @@ import type { Db } from "mongodb";
 import { ObjectId } from "mongodb";
 
 import type { ParsedInitialTenantAdmin, ParsedTenantSpecV1 } from "@/lib/tenant-spec-v1-parse";
+import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
 import { upsertTenantMembership } from "@/modules/identity/repository";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
     coalesceTenantWorkspaceLimitsForPersistence,
     tenantWorkspaceLimitsScalarsMissing
 } from "@/modules/identity/tenant-workspace-limits";
+import { bootstrapPolicyToMongoShape } from "@/modules/platform/tenant-bootstrap-policy";
 import { ensureCoreTenantRentalIndexes } from "@/modules/platform/tenant-rental-indexes";
 import { finalizeTenantRentalProvisioning } from "@/modules/platform/tenant-rental-provision";
 import { ensureTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
@@ -149,6 +151,15 @@ export async function upsertTenantFromParsedSpecV1(
   if (parsed.rentalProfile) {
     $set.rentalProfile = parsed.rentalProfile;
   }
+  if (parsed.bootstrapPolicy) {
+    $set["tenantPreferences.bootstrap_policy"] = bootstrapPolicyToMongoShape(parsed.bootstrapPolicy);
+  }
+  if (parsed.bootstrapOnApprove !== undefined) {
+    $set["tenantPreferences.bootstrap_on_approve"] = parsed.bootstrapOnApprove;
+  }
+  if (parsed.watchlistSeedSymbols) {
+    $set["tenantPreferences.watchlist_seed_symbols"] = parsed.watchlistSeedSymbols;
+  }
 
   await db.collection("core_tenants").updateOne(
     { slug: parsed.slug },
@@ -183,6 +194,21 @@ export async function upsertTenantFromParsedSpecV1(
 
   if (parsed.initialTenantAdmin) {
     await provisionInitialTenantAdmin(db, tenantId, parsed.initialTenantAdmin, now);
+    const userRow = await db.collection("core_users").findOne({ email: parsed.initialTenantAdmin.email });
+    if (userRow?._id) {
+      try {
+        await ensureTenantBootstrapForUser({
+          userId: userRow._id.toHexString(),
+          tenantId: tenantId.toHexString(),
+          trigger: "seed_tenant"
+        });
+      } catch (e) {
+        console.warn(
+          "[tenant-spec] initialTenantAdmin bootstrap non-fatal:",
+          e instanceof Error ? e.message : e
+        );
+      }
+    }
   }
 
   if (parsed.rentalProfile) {
