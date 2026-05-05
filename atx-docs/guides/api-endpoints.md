@@ -65,7 +65,11 @@ Mongo collections: **`user_tasks`**, **`user_task_runs`**. **`prompt`** tasks ex
 
 ## Rental AI (integration)
 
-- **`POST /api/ai/rent/chat`**, **`POST /api/ai/rent/strategy`**, **`POST /api/ai/rent/analyze`** — **public** routes (no product session): per-tenant **`Authorization: Bearer`** keys (`atxr_<id>_<secret>`), scope **`chat` / `strategy` / `analyze`**, distributed rate limits, token budget vs **`rentalProfile.maxDailyTokens`**, concurrency cap, **`admin_audit_events`** (`entityType` **`rental_ai`**). Phase 1 returns **501** until xChat / OptionsStrategyEngine bridges attach. **`atx-docs/sre-ops/rental-ai-platform.md`**.
+- **`POST /api/ai/rent/chat`** — **public**; scope **`chat`**. xChat **`respondWithXaiToolLoop`** + tenant workspace snapshot (sample portfolio from rental provision or optional **`portfolioId`**). **JSON** `200` or **SSE** (`Accept: text/event-stream` or body **`stream: true`**) OpenAI-style chunks. Headers **`x-rental-tokens-used`**, **`x-rental-tokens-remaining`** on success.
+- **`POST /api/ai/rent/strategy`**, **`GET /api/ai/rent/strategy?jobId=`** — scope **`strategy`**. **`POST`** **`202`** accepted + **`jobId`** / **`pollUrl`**; **`GET`** returns job payload from **`rental_ai_jobs`**.
+- **`POST /api/ai/rent/analyze`**, **`GET /api/ai/rent/analyze?jobId=`** — scope **`analyze`**; same **`202`** + poll pattern as strategy.
+
+**Guardrails (all rental routes):** Bearer **`atxr_*`** keys stored hashed on **`core_tenants.apiKeys`**, distributed rate limits, UTC-day token budget vs **`rentalProfile.maxDailyTokens`**, in-process concurrency cap, **`admin_audit_events`** (`entityType` **`rental_ai`**). **`atx-docs/sre-ops/rental-ai-platform.md`**.
 
 ## Admin tenants
 

@@ -35,7 +35,7 @@ xoptions deck usage, or `/api/admin/tenants/.../workspace-limits`), verify OpenA
 `atx-docs/sre-ops/tenant-workspace-limits.md` is accurate, and tests cover merge/parse or critical API paths where
 feasible.
 
-**Rental AI (`/api/ai/rent/*`, `rentalProfile`, `rentalAiApiKeys`):** Keep **`atx-docs/sre-ops/rental-ai-platform.md`** accurate; Next + Spring admin audit allowlists include **`rental_ai`** when entity filters change; OpenAPI inventory lists rental routes; **`npm run seed:tenant`** + **`tenant-spec-v1-parse`** stay aligned on **`tenant.rentalProfile`** validation.
+**Rental AI (`/api/ai/rent/*`, `rentalProfile`, `core_tenants.apiKeys`):** Keep **`atx-docs/sre-ops/rental-ai-platform.md`** accurate; Next + Spring admin audit allowlists include **`rental_ai`** when entity filters change; OpenAPI inventory lists rental routes (including **`GET`** poll handlers); **`npm run seed:tenant`** + **`tenant-spec-v1-parse`** stay aligned on **`tenant.rentalProfile`** validation.
 
 Output: (1) scope (2) Pass / Block / Conditional (3) issues with file:line (4) merge recommendation.
 

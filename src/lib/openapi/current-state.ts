@@ -97,7 +97,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/ai/rent/analyze",
-    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    operations: [
+      { method: "GET", auth: "public" },
+      { method: "POST", auth: "public", hasRequestBody: true }
+    ],
     tag: "rental-ai"
   },
   {
@@ -107,7 +110,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/ai/rent/strategy",
-    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    operations: [
+      { method: "GET", auth: "public" },
+      { method: "POST", auth: "public", hasRequestBody: true }
+    ],
     tag: "rental-ai"
   },
   {
@@ -1157,7 +1163,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
 
 const TAG_DESCRIPTIONS: Record<string, string> = {
   "rental-ai":
-    "White-label rental AI integration (`POST /api/ai/rent/*`): per-tenant API keys + scopes (`chat` / `strategy` / `analyze`), rate limits, token budget gates — execution bridges to xChat / strategy engine ship incrementally.",
+    "White-label rental AI (`/api/ai/rent/*`): Bearer keys on `core_tenants.apiKeys`, scopes (`chat` / `strategy` / `analyze`), rate limits, daily token budget. Chat uses xChat tool-loop (JSON + SSE); strategy/analyze POST→202 + GET poll (`rental_ai_jobs`).",
   docs: "OpenAPI / documentation meta endpoints.",
   health: "Health and runtime diagnostics endpoints.",
   auth: "Authentication and session management flows.",
