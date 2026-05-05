@@ -15,9 +15,17 @@ tenant:
   #   platformRole: operator # advisor | operator | viewer (default operator)
   #   setAsDefaultSessionTenant: true # default true; clears other defaults for this user
 
-  # Optional — branding + default shell theme (see src/lib/xf-ui-theme.ts — light=soft, dark=deep, system=OS)
+  # Optional — role-aware default portfolio + watchlist bootstrap (README / PLAN 10)
+  # bootstrapOnApprove: false   # default: lazy book on first login; true = also on access-request approve
+  # bootstrapPolicy:
+  #   defaultPortfolio: { viewer: false, operator: true, advisor: true }
+  #   defaultWatchlist: { viewer: false, operator: true, advisor: true }
+  #   overrides: []
+
+  # Optional — branding, watchlist seeds, default shell theme (see README; xf_ui_theme: light=soft, dark=deep, system=OS)
   # tenantPreferences:
   #   xf_ui_theme: light # light | dark | system
+  #   watchlist_seed_symbols: ["SPY", "QQQ", "IWM"]
   #   xchat_brandname: "Example xChat"
   #   xstrategybuilder_brandname: "Example Builder"
 

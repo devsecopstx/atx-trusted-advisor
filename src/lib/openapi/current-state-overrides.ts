@@ -57,6 +57,31 @@ function json401Session(): OpenApiResponse {
   };
 }
 
+function json401RentalBearer(): OpenApiResponse {
+  return {
+    description:
+      "Missing or invalid rental API key. Send `Authorization: Bearer atxr_<16-hex key id>_<64-hex secret>`. Keys live on `core_tenants.apiKeys` (hashed); each key lists allowed scopes (`chat`, `strategy`, `analyze`).",
+    content: {
+      "application/json": {
+        schema: refSchema("ErrorResponse")
+      }
+    }
+  };
+}
+
+function rentalChatSuccessHeaders(): NonNullable<OpenApiResponse["headers"]> {
+  return {
+    "x-rental-tokens-used": {
+      description: "Rental tokens consumed for the tenant in the current UTC calendar day **after** this completion.",
+      schema: { type: "string" }
+    },
+    "x-rental-tokens-remaining": {
+      description: "Tokens remaining in `rentalProfile.maxDailyTokens` for the UTC day **after** this completion.",
+      schema: { type: "string" }
+    }
+  };
+}
+
 function json403Admin(description: string, examples: NonNullable<OpenApiMediaType["examples"]> = ADMIN_403_EXAMPLES): OpenApiResponse {
   return {
     description,
@@ -381,6 +406,118 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       },
       "502": jsonResponse("xAI provider request failed.", "XaiProviderErrorResponse"),
       "503": jsonResponse("Default admin persona (advisor) missing from database.", "ErrorResponse")
+    }
+  },
+  "POST /api/ai/rent/chat": {
+    summary: "Rental AI chat (tenant-scoped xChat tool-loop)",
+    description:
+      "White-label partner chat. Authenticate with `Authorization: Bearer atxr_*` and **`chat`** scope. Injects tenant `strategyBias` and workspace snapshot (owned `portfolioId` or sample portfolio from `rentalProfile`). **Non-streaming:** `200` JSON envelope below. **Streaming:** set `Accept: text/event-stream` **or** `stream: true` for SSE (`chat.completion.chunk` deltas + terminal `data: [DONE]`). Token metering updates `rental_ai_token_usage` / `xchat_usage_limits`; successful JSON responses include **`x-rental-tokens-*`** headers.",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("RentalAiChatRequest")
+        }
+      }
+    },
+    responses: {
+      "200": {
+        description:
+          "Assistant markdown reply (`data.response`) and xAI usage snapshot, **unless** `Accept: text/event-stream` or `stream: true` — then the body is **text/event-stream** (not documented as alternate media here).",
+        headers: rentalChatSuccessHeaders(),
+        content: {
+          "application/json": {
+            schema: refSchema("RentalAiChatJsonResponse")
+          }
+        }
+      },
+      "400": jsonResponse("Invalid JSON or validation error.", "ValidationErrorResponse"),
+      "401": json401RentalBearer(),
+      "403": jsonResponse("Rental inactive, expired, scope mismatch, or API keys disabled.", "ErrorResponse"),
+      "429": jsonResponse("Rate limit, concurrency, or token budget exhausted.", "RateLimitErrorResponse"),
+      "502": jsonResponse("xAI provider error.", "XaiProviderErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
+  "POST /api/ai/rent/strategy": {
+    summary: "Rental AI strategy job (accept + poll)",
+    description:
+      "**`strategy`** scope. **`202`** returns `jobId` + relative `pollUrl`. **`GET /api/ai/rent/strategy?jobId=`** with the same Bearer returns materialized job row (MVP completes synchronously in persistence — see `rental-ai-platform.md`).",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("RentalAiStrategyPostRequest")
+        }
+      }
+    },
+    responses: {
+      "202": jsonResponse("Job accepted.", "RentalAiJobAcceptedResponse"),
+      "400": jsonResponse("Invalid JSON or validation error.", "ValidationErrorResponse"),
+      "401": json401RentalBearer(),
+      "403": jsonResponse("Rental inactive, expired, scope mismatch, or API keys disabled.", "ErrorResponse"),
+      "429": jsonResponse("Rate limit, concurrency, or token budget exhausted.", "RateLimitErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
+  "GET /api/ai/rent/strategy": {
+    summary: "Poll rental AI strategy job",
+    parameters: [
+      {
+        name: "jobId",
+        in: "query",
+        required: true,
+        description: "ObjectId hex returned from `POST /api/ai/rent/strategy`.",
+        schema: { type: "string", minLength: 8, maxLength: 32 }
+      }
+    ],
+    responses: {
+      "200": jsonResponse("Job status and payload.", "RentalAiJobPollResponse"),
+      "400": jsonResponse("Missing jobId.", "ErrorResponse"),
+      "401": json401RentalBearer(),
+      "403": jsonResponse("Rental inactive, expired, scope mismatch, or API keys disabled.", "ErrorResponse"),
+      "404": jsonResponse("Job not found for tenant.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
+  "POST /api/ai/rent/analyze": {
+    summary: "Rental AI portfolio analyze job (accept + poll)",
+    description: "**`analyze`** scope. Same **`202` + GET poll** pattern as strategy.",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("RentalAiAnalyzePostRequest")
+        }
+      }
+    },
+    responses: {
+      "202": jsonResponse("Job accepted.", "RentalAiJobAcceptedResponse"),
+      "400": jsonResponse("Invalid JSON or validation error.", "ValidationErrorResponse"),
+      "401": json401RentalBearer(),
+      "403": jsonResponse("Rental inactive, expired, scope mismatch, or API keys disabled.", "ErrorResponse"),
+      "429": jsonResponse("Rate limit, concurrency, or token budget exhausted.", "RateLimitErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
+  "GET /api/ai/rent/analyze": {
+    summary: "Poll rental AI analyze job",
+    parameters: [
+      {
+        name: "jobId",
+        in: "query",
+        required: true,
+        description: "ObjectId hex returned from `POST /api/ai/rent/analyze`.",
+        schema: { type: "string", minLength: 8, maxLength: 32 }
+      }
+    ],
+    responses: {
+      "200": jsonResponse("Job status and payload.", "RentalAiJobPollResponse"),
+      "400": jsonResponse("Missing jobId.", "ErrorResponse"),
+      "401": json401RentalBearer(),
+      "403": jsonResponse("Rental inactive, expired, scope mismatch, or API keys disabled.", "ErrorResponse"),
+      "404": jsonResponse("Job not found for tenant.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
   "GET /api/xchat/history": {
@@ -2612,6 +2749,109 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["data"],
     properties: {
       data: refSchema("UserAdminSettings")
+    }
+  },
+  RentalAiChatRequest: {
+    type: "object",
+    required: ["message"],
+    properties: {
+      message: { type: "string", minLength: 1, maxLength: 32000 },
+      portfolioId: {
+        type: "string",
+        minLength: 24,
+        maxLength: 24,
+        description: "Mongo ObjectId hex for an owned portfolio; when omitted, server uses `rentalProfile.samplePortfolioId` when set."
+      },
+      stream: {
+        type: "boolean",
+        description: "When true (or when `Accept: text/event-stream`), response is SSE instead of JSON."
+      }
+    }
+  },
+  RentalAiChatJsonResponse: {
+    type: "object",
+    required: ["ok", "correlationId", "tenantSlug", "data"],
+    properties: {
+      ok: { type: "boolean", enum: [true] },
+      correlationId: { type: "string" },
+      tenantSlug: { type: "string" },
+      data: {
+        type: "object",
+        required: ["response", "model", "usage"],
+        properties: {
+          response: { type: "string", description: "Assistant markdown." },
+          model: { type: "string" },
+          usage: {
+            type: "object",
+            description: "xAI Responses usage fields when present.",
+            additionalProperties: true
+          }
+        }
+      }
+    }
+  },
+  RentalAiStrategyPostRequest: {
+    type: "object",
+    required: ["symbols"],
+    properties: {
+      symbols: {
+        type: "array",
+        minItems: 1,
+        maxItems: 64,
+        items: { type: "string", minLength: 1, maxLength: 32 }
+      },
+      portfolioId: {
+        type: "string",
+        minLength: 24,
+        maxLength: 24,
+        description: "Optional Mongo ObjectId hex."
+      },
+      notes: { type: "string", maxLength: 8000 }
+    }
+  },
+  RentalAiAnalyzePostRequest: {
+    type: "object",
+    properties: {
+      jobId: { type: "string", minLength: 8, maxLength: 128 },
+      deepRun: { type: "boolean" }
+    }
+  },
+  RentalAiJobAcceptedResponse: {
+    type: "object",
+    required: ["ok", "correlationId", "code", "data"],
+    properties: {
+      ok: { type: "boolean", enum: [true] },
+      correlationId: { type: "string" },
+      code: { type: "string", enum: ["accepted"] },
+      data: {
+        type: "object",
+        required: ["jobId", "status", "pollUrl"],
+        properties: {
+          jobId: { type: "string" },
+          status: { type: "string", enum: ["accepted"] },
+          pollUrl: { type: "string", description: "Relative URL — prefix with deployment origin." }
+        }
+      }
+    }
+  },
+  RentalAiJobPollResponse: {
+    type: "object",
+    required: ["ok", "correlationId", "data"],
+    properties: {
+      ok: { type: "boolean", enum: [true] },
+      correlationId: { type: "string" },
+      data: {
+        type: "object",
+        required: ["jobId", "status", "scope", "result", "createdAt", "updatedAt"],
+        properties: {
+          jobId: { type: "string" },
+          status: { type: "string" },
+          scope: { type: "string", enum: ["strategy", "analyze"] },
+          result: { nullable: true, description: "Opaque job payload (object or null).", additionalProperties: true },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" }
+        }
+      }
     }
   }
 };

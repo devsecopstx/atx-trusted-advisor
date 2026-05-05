@@ -5,6 +5,8 @@ import {
     normalizeProvisionEmail,
     parseInitialTenantAdmin,
     parseOptionalTenantXfUiTheme,
+    parseOptionalWatchlistSeedSymbols,
+    parseTenantBootstrapPolicyFromUnknown,
     parseTenantSpecV1Document,
     sanitizeTenantPreferencesBrandingPartial,
     sanitizeWorkspaceLimitsPartial
@@ -136,16 +138,47 @@ describe("tenant-spec-schema", () => {
     expect(r.tenantPreferencesBranding?.xf_hero_icon_url).toBe("https://cdn.example.com/logo.png");
   });
 
-  it("parseTenantSpecV1Document rejects invalid xf_brand_palette", () => {
+  it("parseTenantSpecV1Document reads bootstrapPolicy + bootstrapOnApprove + watchlist_seed_symbols", () => {
+    const r = parseTenantSpecV1Document({
+      version: 1,
+      tenant: {
+        slug: "boot",
+        name: "Boot",
+        bootstrapOnApprove: true,
+        bootstrapPolicy: {
+          defaultPortfolio: { viewer: false, operator: true, advisor: true },
+          defaultWatchlist: { viewer: false, operator: true, advisor: true },
+          overrides: []
+        },
+        tenantPreferences: {
+          watchlist_seed_symbols: ["spy", "qqq"]
+        }
+      }
+    });
+    expect(r.slug).toBe("boot");
+    expect(r.bootstrapOnApprove).toBe(true);
+    expect(r.bootstrapPolicy?.defaultPortfolio?.viewer).toBe(false);
+    expect(r.watchlistSeedSymbols).toEqual(["SPY", "QQQ"]);
+  });
+
+  it("parseTenantSpecV1Document rejects invalid bootstrapOnApprove", () => {
     expect(() =>
       parseTenantSpecV1Document({
         version: 1,
-        tenant: {
-          slug: "t-bad",
-          name: "X",
-          tenantPreferences: { xf_brand_palette: "neon" }
-        }
+        tenant: { slug: "x", name: "X", bootstrapOnApprove: "yes" }
       })
-    ).toThrow(/xf_brand_palette/);
+    ).toThrow(/bootstrapOnApprove/);
+  });
+
+  it("parseOptionalWatchlistSeedSymbols rejects non-array", () => {
+    expect(() => parseOptionalWatchlistSeedSymbols({ watchlist_seed_symbols: "SPY" })).toThrow(
+      /watchlist_seed_symbols/
+    );
+  });
+
+  it("parseTenantBootstrapPolicyFromUnknown returns defaults for null", () => {
+    const d = parseTenantBootstrapPolicyFromUnknown(null);
+    expect(d.defaultPortfolio.viewer).toBe(false);
+    expect(d.defaultPortfolio.operator).toBe(true);
   });
 });

@@ -53,10 +53,16 @@ Optional **`tenant.tenantPreferences`**:
 - **`xchat_brandname`**, **`xstrategybuilder_brandname`**: strings, trimmed, max 80 chars.
 - **`xf_brand_palette`**: **`default`** | **`violet`** | **`cyan`** | **`amber`** | **`rose`** | **`emerald`** — accent preset for tenant shells (see `src/lib/tenant-branding-palette.ts`).
 - **`xf_hero_icon_url`**: hero / marketing icon — **`https://…`**, **`http://localhost`** / **`127.0.0.1`** only for dev, or **`data:image/png|jpeg|webp|gif|svg+xml;base64,…`** (length cap ~450k chars; prefer hosting for large assets).
+- **`watchlist_seed_symbols`**: optional string array (max **48** tickers, uppercased on persist) for tenant-level watchlist templates when auto-watchlist is on — see bootstrap policy below.
 
-**Runtime:** `getTenantShellBrandingForHex` loads **`core_tenants.name`** + the fields above; **`TenantBrandingProvider`** (root layout) feeds **`WorkspaceProductSidebar`** and the app-user header.
+**Bootstrap policy (PLAN 10, YAML under `tenant`):**
 
-Merged with dotted Mongo paths so other keys (e.g. admin-set flags) are not wiped.
+- **`bootstrapPolicy`** (object) — maps to Mongo **`tenantPreferences.bootstrap_policy`**: **`defaultPortfolio`** and **`defaultWatchlist`**, each an object with **`viewer`**, **`operator`**, **`advisor`** booleans. Optional **`overrides`**: **`role`**, optional **`defaultPortfolio`** / **`defaultWatchlist`**, optional **`symbols`** (tickers). Omit for defaults (viewers: no auto-book; operators/advisors: book + desk list from `src/data/default-watchlist-desk-symbols.json`).
+- **`bootstrapOnApprove`** (boolean) — maps to **`tenantPreferences.bootstrap_on_approve`**. **Default false:** book provisioning runs on **first successful login** (idempotent). **True:** also runs **best-effort** during access-request approve (failures do not block approval).
+
+**Validation / generator parity:** `src/lib/tenant-spec-v1-parse.ts` (**`npm run seed:tenant`**, admin tenant create); `scripts/lib/tenant-spec-schema.mjs` (**`npm run generate:tenant-spec`**).
+
+**Runtime / merge:** `getTenantShellBrandingForHex` reads branding keys above; bootstrap prefs are consumed by **`ensureTenantBootstrapForUser`** (`src/modules/core-admin/tenant-user-bootstrap.ts`). Merged with dotted Mongo paths so other keys are not wiped.
 
 Idempotent: safe to re-run; **`isDefault`** on the tenant row is always forced **`false`** (never steals platform default tenant from **`seed:admin`**).
 

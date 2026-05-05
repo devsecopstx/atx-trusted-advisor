@@ -1,0 +1,40 @@
+# aTx AI Advisor — White-label Rental API (xFinance)
+
+Version: 1.0 (Phase 1 API)
+Provider: aTx Finance — xfinance monorepo (Next.js core app)
+Type: Isolated, tenant-scoped Grok-powered options-aware advisor API for partners (RIAs, family offices, HNWI desks, independent advisors).
+Canonical detail: atx-docs/MCP-AI-ADVISOR.md
+
+## Endpoints (Next origin)
+
+Auth (all routes): Authorization: Bearer atxr_<16-hex key id>_<64-hex secret>
+Keys are hashed on core_tenants.apiKeys; scopes: chat | strategy | analyze.
+
+- POST /api/ai/rent/chat — scope chat. Body: { message, portfolioId?, stream? }. JSON 200 or SSE (Accept: text/event-stream or stream: true). Headers on success: x-rental-tokens-used, x-rental-tokens-remaining.
+- POST /api/ai/rent/strategy — scope strategy. Body: { symbols[], portfolioId?, notes? }. 202 { jobId, pollUrl }; GET /api/ai/rent/strategy?jobId= poll.
+- POST /api/ai/rent/analyze — scope analyze. Body: { jobId?, deepRun? }. 202 + GET /api/ai/rent/analyze?jobId= poll.
+
+## Tenant model
+
+- rentalProfile: tier, strategyBias (conservative | balanced | aggressive), maxDailyTokens (default 200000 UTC day), expiresAt, optional xaiModelOverride, sample portfolio for chat context.
+- Provisioning: tenant-specs + npm run seed:tenant; publishes rental persona, sample book (e.g. TSLA/SPY/AAPL watchlist pattern per runbook).
+
+## Guardrails
+
+Rate limits (Redis when configured), per-tenant concurrency cap (8 in-process MVP), token budget enforcement, strict tenant isolation. Audit: admin_audit_events entityType rental_ai; actor userId rental_key:<key id>.
+
+## OpenAPI
+
+GET /api/openapi — filter in Swagger UI by tag "rental-ai". Inventory: src/lib/openapi/current-state.ts + current-state-overrides.ts.
+
+## Pricing / billing (documented)
+
+Base ~$99/mo + overage metering documented as ~$0.0008 per 1k tokens internally; Stripe product wiring and ENABLE_RENTAL_AI_BILLING-style gates are backlog — see atx-docs/sre-ops/rental-ai-platform.md.
+
+## Compliance
+
+Educational / not personalized investment advice; outputs should carry standard disclaimers. No trade execution or order routing via this API.
+
+## System prompt handoff (summary)
+
+White-labeled xFinance rental advisor; concise, institutional, options-aware; strategy bias injected from tenant; not financial advice; no claims of private order flow. Full persona text is upserted per tenant (see tenant-rental-persona-seed.ts).

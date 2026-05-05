@@ -2,7 +2,7 @@
  * Shared validation + workspace limit sanitization for tenant YAML specs
  * (`generate-tenant-spec.mjs`, `seed-tenant-from-spec.ts`).
  *
- * **Mirror:** `src/lib/tenant-spec-v1-parse.ts` (admin `POST /api/admin/tenants`) — keep rules in sync.
+ * **Mirror:** `src/lib/tenant-spec-v1-parse.ts` (admin `POST /api/admin/tenants`, `seed:tenant`) — keep bootstrap + branding rules in sync.
  * Optional **`tenant.rentalProfile`** is validated only in TS (`src/modules/platform/tenant-rental-profile.ts`); generator does not emit it yet.
  */
 
@@ -252,6 +252,119 @@ export function parseOptionalTenantXfUiTheme(tenantPrefs) {
 }
 
 const XF_BRAND_PALETTE_IDS = new Set(["default", "violet", "cyan", "amber", "rose", "emerald"]);
+
+/** @type {readonly string[]} */
+const BOOTSTRAP_PLATFORM_ROLES = ["viewer", "operator", "advisor"];
+
+const DEFAULT_TENANT_BOOTSTRAP_POLICY_V1 = {
+  defaultPortfolio: { viewer: false, operator: true, advisor: true },
+  defaultWatchlist: { viewer: false, operator: true, advisor: true },
+  overrides: []
+};
+
+/**
+ * @param {unknown} raw
+ * @param {string} label
+ */
+function readBootstrapRoleBoolMap(raw, label) {
+  if (raw === undefined || raw === null) {
+    throw new Error(`bootstrapPolicy.${label} is required`);
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(`bootstrapPolicy.${label} must be an object`);
+  }
+  const o = /** @type {Record<string, unknown>} */ (raw);
+  /** @type {Record<string, boolean>} */
+  const out = {};
+  for (const role of BOOTSTRAP_PLATFORM_ROLES) {
+    const v = o[role];
+    if (typeof v !== "boolean") {
+      throw new Error(`bootstrapPolicy.${label}.${role} must be a boolean`);
+    }
+    out[role] = v;
+  }
+  return out;
+}
+
+/**
+ * @param {unknown} raw
+ */
+export function parseTenantBootstrapPolicyFromUnknown(raw) {
+  if (raw === undefined || raw === null) {
+    return DEFAULT_TENANT_BOOTSTRAP_POLICY_V1;
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("bootstrapPolicy must be an object");
+  }
+  const o = /** @type {Record<string, unknown>} */ (raw);
+  const defaultPortfolio = readBootstrapRoleBoolMap(o.defaultPortfolio, "defaultPortfolio");
+  const defaultWatchlist = readBootstrapRoleBoolMap(o.defaultWatchlist, "defaultWatchlist");
+  const overridesRaw = o.overrides;
+  /** @type {Array<{ role: string, defaultPortfolio?: boolean, defaultWatchlist?: boolean, symbols?: string[] }>} */
+  const overrides = [];
+  if (overridesRaw !== undefined && overridesRaw !== null) {
+    if (!Array.isArray(overridesRaw)) {
+      throw new Error("bootstrapPolicy.overrides must be an array");
+    }
+    for (const entry of overridesRaw) {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+        throw new Error("bootstrapPolicy.overrides entries must be objects");
+      }
+      const e = /** @type {Record<string, unknown>} */ (entry);
+      const role = typeof e.role === "string" ? e.role.trim() : "";
+      if (!role) {
+        throw new Error("bootstrapPolicy.overrides.role is required");
+      }
+      /** @type {{ role: string, defaultPortfolio?: boolean, defaultWatchlist?: boolean, symbols?: string[] }} */
+      const patch = { role };
+      if (e.defaultPortfolio !== undefined) {
+        if (typeof e.defaultPortfolio !== "boolean") {
+          throw new Error(`bootstrapPolicy.overrides.defaultPortfolio for ${role} must be boolean`);
+        }
+        patch.defaultPortfolio = e.defaultPortfolio;
+      }
+      if (e.defaultWatchlist !== undefined) {
+        if (typeof e.defaultWatchlist !== "boolean") {
+          throw new Error(`bootstrapPolicy.overrides.defaultWatchlist for ${role} must be boolean`);
+        }
+        patch.defaultWatchlist = e.defaultWatchlist;
+      }
+      if (e.symbols !== undefined) {
+        if (!Array.isArray(e.symbols)) {
+          throw new Error(`bootstrapPolicy.overrides.symbols for ${role} must be an array`);
+        }
+        patch.symbols = e.symbols.map((s) => String(s).trim().toUpperCase()).filter(Boolean);
+      }
+      overrides.push(patch);
+    }
+  }
+  return { defaultPortfolio, defaultWatchlist, overrides };
+}
+
+/**
+ * @param {unknown} tenantPrefs `tenant.tenantPreferences` node (optional)
+ * @returns {string[] | undefined}
+ */
+export function parseOptionalWatchlistSeedSymbols(tenantPrefs) {
+  if (tenantPrefs === undefined || tenantPrefs === null) {
+    return undefined;
+  }
+  if (typeof tenantPrefs !== "object" || Array.isArray(tenantPrefs)) {
+    return undefined;
+  }
+  const raw = /** @type {Record<string, unknown>} */ (tenantPrefs).watchlist_seed_symbols;
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  if (!Array.isArray(raw)) {
+    throw new Error("tenant.tenantPreferences.watchlist_seed_symbols must be an array of strings");
+  }
+  const out = raw.map((s) => String(s).trim().toUpperCase()).filter(Boolean);
+  if (out.length > 48) {
+    throw new Error("tenant.tenantPreferences.watchlist_seed_symbols must have at most 48 symbols");
+  }
+  return out.length > 0 ? out : undefined;
+}
 
 const MAX_XF_HERO_ICON_URL_CHARS = 450_000;
 
@@ -547,6 +660,19 @@ export function parseTenantSpecV1Document(doc) {
   const xfAccentColor = parseOptionalXfAccentColor(tp);
   const xfTenantLogoUrl = parseOptionalXfTenantLogoUrl(tp);
   const xfTenantTagline = parseOptionalXfTenantTagline(tp);
+  const watchlistSeedSymbols = parseOptionalWatchlistSeedSymbols(tp);
+
+  let bootstrapPolicy;
+  if (t.bootstrapPolicy !== undefined && t.bootstrapPolicy !== null) {
+    bootstrapPolicy = parseTenantBootstrapPolicyFromUnknown(t.bootstrapPolicy);
+  }
+  let bootstrapOnApprove;
+  if (t.bootstrapOnApprove !== undefined) {
+    if (typeof t.bootstrapOnApprove !== "boolean") {
+      throw new Error("tenant.bootstrapOnApprove must be a boolean");
+    }
+    bootstrapOnApprove = t.bootstrapOnApprove;
+  }
 
   const brandingMerged = { ...(tenantPreferencesBranding ?? {}) };
   if (xfBrandPalette) {
@@ -572,6 +698,9 @@ export function parseTenantSpecV1Document(doc) {
     workspaceLimits,
     initialTenantAdmin,
     tenantPreferencesBranding: mergedBranding,
-    tenantXfUiTheme
+    tenantXfUiTheme,
+    ...(bootstrapPolicy ? { bootstrapPolicy } : {}),
+    ...(bootstrapOnApprove !== undefined ? { bootstrapOnApprove } : {}),
+    ...(watchlistSeedSymbols ? { watchlistSeedSymbols } : {})
   };
 }

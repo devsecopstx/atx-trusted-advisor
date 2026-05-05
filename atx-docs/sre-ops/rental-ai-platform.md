@@ -55,6 +55,23 @@ Wire recurring price id when enabling Checkout for rentals (Secret Manager in pr
 
 Webhook handlers should extend subscription lifecycle to **`rentalExpiresAt`** when the rental SKU is integrated (**backlog**).
 
+### Deployment checklist (operator)
+
+1. **Tenant:** `tenant.rentalProfile` present with valid **`tier`**, **`expiresAt`**; optional keys pre-hashed on `core_tenants.apiKeys` with scopes. Run **`npm run seed:tenant`** for persona + sample book, or apply via admin/ops.
+2. **Secrets:** `XAI_API_KEY` (chat path), **`MONGODB_URI`**, optional **`REDIS_URL`** for distributed rental rate limits. Never log plaintext **`atxr_*`** keys.
+3. **Stripe (when SKUs go live):** mount **`STRIPE_PRICE_RENTAL_AI_MONTHLY`** (see **`.env.example`**) in Secret Manager; extend webhook handlers to refresh **`rentalExpiresAt`** / subscription state.
+4. **Observability:** `[rental-ai]` logs on guardrail failures; **`admin_audit_events`** **`rental_ai`** for successful chat/strategy/analyze; token headers on chat **`200`**.
+5. **Verification:** `tests/integration/rental-ai-routes.test.ts` + manual **`GET /api/openapi`** filter tag **`rental-ai`**.
+
+### Feature flags (planned / naming)
+
+| Flag / env | Intent | Status |
+|------------|--------|--------|
+| **`ENABLE_RENTAL_AI_BILLING`** | Gate Stripe Checkout + meter reporting for rental SKUs; no-op until wired. | **Not in `src/lib/env.ts` yet** — reserve name for billing phase. |
+| **`STRIPE_PRICE_RENTAL_AI_MONTHLY`** | Recurring price id for rental base fee. | Optional string; document-only until Checkout references it. |
+
+**Partner / agent docs:** [`atx-docs/MCP-AI-ADVISOR.md`](../MCP-AI-ADVISOR.md) and repo root [`llm.txt`](../../llm.txt).
+
 ## Audit
 
 Rows use **`entityType: rental_ai`**, **`entityId`**: tenant ObjectId hex, **`actor.userId`**: `rental_key:<key id>`, **`details`**: `correlationId`, optional `tokensUsed`, route-specific metadata (`jobId`, etc.).

@@ -1,6 +1,6 @@
 ---
 name: skill-tenant-roadmap
-description: Tenant UX, multi-tenant provisioning (PLAN 10–11), app_user tasks (705), tenant automations (706). Summarizes shipped slices moved out of atx-docs/PLAN.md and lists design locks + open questions for provisioning/branding/bootstrap.
+description: Tenant UX, multi-tenant provisioning (PLAN 10–11), app_user tasks (705), tenant workspace automations (706). Summarizes shipped slices moved out of atx-docs/PLAN.md; PLAN 10 v1 bootstrap/policy is documented under § Shipped — Multi-tenant provisioning.
 ---
 
 # Tenant roadmap context (skill)
@@ -49,31 +49,25 @@ This skill holds **short shipped summaries** that were trimmed from `PLAN.md` so
 
 ---
 
-## PLAN **10** — Multi-tenant provisioning + per-tenant branding
+## Shipped — Multi-tenant provisioning + bootstrap (PLAN **10** v1)
 
-**Goal:** provisioning workflow hardening and **role-aware** default portfolio/watchlist bootstrap beyond the single boolean **`tenantPreferences.bootstrap_default_portfolio_watchlist`**.
+- **`ensureTenantBootstrapForUser`** — idempotent portfolio/watchlist provisioning from **`core_users.roles`** + **`bootstrap_policy`** on **`core_tenant_memberships`** / tenant prefs; runs on **first successful login** (OAuth, Google, email-password) and on **access-request approve** only when **`tenantPreferences.bootstrap_on_approve`** is **true** (default **lazy**).
+- **Structured policy** — YAML **`tenant.bootstrapPolicy`** / Mongo **`tenantPreferences.bootstrap_policy`**: per-role **`defaultPortfolio`** / **`defaultWatchlist`** for **`viewer`**, **`operator`**, **`advisor`**; optional **`overrides`** (**`role`**, **`symbols`**, booleans). Legacy boolean **`bootstrap_default_portfolio_watchlist`** still maps via **`effectiveTenantBootstrapPolicy`**.
+- **Watchlist seeds** — **`tenantPreferences.watchlist_seed_symbols`**; policy override **`symbols`**; else **`src/data/default-watchlist-desk-symbols.json`** when watchlist auto-create is on for that role.
+- **Source of truth** — **Next** persists prefs via **`seed:tenant`** / **`tenant-spec-apply`** / admin tenant routes; module **`src/modules/platform/tenant-bootstrap-policy.ts`** + **`src/modules/core-admin/tenant-user-bootstrap.ts`**.
+- **Branding v1** — logo remains **URL-only** on **`xf_tenant_logo_url`** (see `tenant-logo-url` validation); no tenant file upload in this slice.
+- **Tests:** **`tenant-bootstrap-policy`** unit; **`access-request-item-crud-route`** (approve + **`bootstrap_on_approve`**); **`tenant-spec-schema`** (YAML mirror).
 
-### Locked decisions (pre–Phase 2)
+**Backlog (stay in `PLAN.md` row 10):** Admin **Bootstrap log** / replay button; Spring **`DefaultPortfolioProvisionService`** parity for new fields; optional Admin **YAML preview** on tenant edit.
 
-- **Tenant admins:** platform role **`operator`** (recommended) or **`advisor`**, plus **`tenant_admin`** on **`core_tenant_memberships`**. Avoid **`global_admin`** unless they need **`/admin`**.
-- **Identity:** provision canonical **`core_users.email`**, **`xAccount`**, login-eligible **`roles`** so X OAuth resolves via **`getCoreUserByXOAuthIdentity`** without placeholder / **`email_link_required`** when X omits email. Coverage: **`tests/integration/x-oauth-provisioned-tenant-admin.test.ts`**.
-- **Branding:** white-label **display names** only; internal product ids stay xChat / xStrategyBuilder.
-- **Naming:** **`tenant.slug`** + **`tenant.name`** required in specs; branding keys **`xchat_brandname`**, **`xstrategybuilder_brandname`** (v1).
-- **Provisioning surface:** **CLI + YAML** supported for v1 (**`npm run seed:tenant`** / **`tenant-specs/`**).
-- **Google vs X (v1):** **`initialTenantAdmin.email` required**; **`xUserId` optional** (when set, X resolves by id). Google OAuth with **verified email matching** links **`googleAccount`** to the same **`core_users`** row. Do not require **`xUserId`** for Google-only admins.
+---
 
-### Open questions — implementation (answer before coding)
+## PLAN **10** — Multi-tenant provisioning + per-tenant branding (historical note)
 
-1. **Bootstrap matrix:** For each platform role (**`viewer`** / **`operator`** / **`advisor`**), should default portfolio+watchlist run **always**, **never**, or **tenant-default with per-role overrides**? Is **`bootstrap_default_portfolio_watchlist`** global-with-overrides or replaced by a structured policy object?
-2. **Approval path parity:** Should access-request **approve** and **OAuth first-login** use the **same** role-aware policy, or can approve eagerly provision while login is lazy?
-3. **Next vs Spring:** Any new bootstrap rules must **`provisionDefaultPortfolioForUser`** (Next) and **`DefaultPortfolioProvisionService`** (Spring) stay in sync — which service is source of truth for **new** fields, and is BFF in scope for the first slice?
-4. **Watchlist seed:** Beyond empty watchlist, do tenants need **default symbols**, **desk columns**, or **import templates** on first bootstrap?
-5. **UI vs CLI:** Is **Admin → create tenant** expected to replace YAML for **production** provisioning, or is hardened CLI + audit enough for Phase 2?
-6. **Branding depth:** Are **logo upload + validation** (size/type) in scope, or URLs-only until a later phase?
-7. **Failure semantics:** If bootstrap fails for one role/user, is partial success acceptable (current **best-effort** on approve), or should operators get a **replay** / visible **dead-letter** row?
+The v1 slice above supersedes the pre-implementation question list. Remaining work is **follow-ups** in **`PLAN.md`** row **10** only.
 
 ---
 
 ## When to update
 
-- After changing tenant provisioning, **`bootstrap_default_portfolio_watchlist`**, or tenant-create APIs — sync **`atx-docs/guides/auth-and-access.md`**, **`tenant-specs/README.md`**, `PLAN.md` row **10**, and **`current-state-features.md`** if behavior is user-visible.
+- After changing tenant provisioning, **`bootstrap_policy`**, **`bootstrap_on_approve`**, or tenant-create APIs — sync **`atx-docs/guides/auth-and-access.md`**, **`tenant-specs/README.md`**, `PLAN.md` row **10**, **`current-state-features.md`**, and **`scripts/lib/tenant-spec-schema.mjs`** + **`src/lib/tenant-spec-v1-parse.ts`** if YAML validation diverges.

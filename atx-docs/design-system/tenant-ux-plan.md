@@ -2,7 +2,7 @@
 
 **Status:** **Shipped** in repo for core flows; **soak** for edge V2 (`TENANT_UX_ENFORCEMENT_V2`). **Compliance:** Branding is **display-only** — do not imply different regulatory posture per tenant (`AGENTS.md`, multi-tenant roadmap **10**).
 
-**Related:** [PLAN.md](../PLAN.md) priority **11**; consolidated architecture: [current-state-features.md](./current-state-features.md) § Tenant UX; ops runbook: [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md).
+**Related:** [PLAN.md](../PLAN.md) priorities **10** (provisioning / bootstrap v1) **11** (tenant_ux soak); consolidated architecture: [current-state-features.md](./current-state-features.md) § Tenant UX; ops runbook: [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md).
 
 ---
 
