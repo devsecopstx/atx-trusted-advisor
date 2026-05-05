@@ -1,2 +1,2 @@
-/** Per-user cap for saved automation tasks (tenant-scoped). */
-export const MAX_USER_TASKS_PER_USER = 25;
+/** Fallback per-user cap when tenant workspace limits are unavailable. */
+export const DEFAULT_USER_TASKS_MAX_PER_USER = 5;

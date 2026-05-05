@@ -124,6 +124,7 @@ export type Tenant = {
   /**
    * Optional per-tenant quotas; omitted keys use product defaults (see `mergeTenantWorkspaceLimits`).
    * xChat ask caps: top-level `userChatLimit` / `userChatHourlyLimit` only (`POST /api/xchat/ask`); `planOverrides.*.userChatLimit` does **not** change ask enforcement.
+   * App_user task cap: top-level `userTasksMax` only (`POST /api/tasks`).
    * Optional `planOverrides` — per retail tier: portfolio/xOptions/persona/history partials plus optional `price` (USD list price for admin).
    */
   workspaceLimits?: (Partial<TenantWorkspaceLimits> & { planOverrides?: TenantPlanWorkspaceOverrides }) | null;

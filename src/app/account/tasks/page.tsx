@@ -72,7 +72,7 @@ export default async function AccountTasksPage({ searchParams }: PageProps) {
           railChrome="workspace-product"
         >
           <div className="billing-page max-w-5xl">
-            <UserTasksClient initialPortfolioId={portfolioIdRaw ?? null} />
+            <UserTasksClient initialPortfolioId={portfolioIdRaw ?? null} mode="account" />
           </div>
         </AppUserCollapsibleRailLayout>
       </div>

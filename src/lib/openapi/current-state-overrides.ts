@@ -2255,7 +2255,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "object",
         additionalProperties: true,
         description:
-          "Optional partial `core_tenants.workspaceLimits` — same validation as tenant-spec YAML (`userXoptionsLimit`, `userChatLimit`, `userChatHourlyLimit` 0–1e6, `tenantPortfolioLimit`, `portfolioAccountLimit`, `chatHistoryMax`, `maxUsersPerTenant`, `changePersonaEnabled`). Unknown keys ignored. Per-plan overrides are not set here; use `PATCH /api/admin/tenants/{tenantId}/workspace-limits` after create."
+          "Optional partial `core_tenants.workspaceLimits` — same validation as tenant-spec YAML (`userXoptionsLimit`, `userChatLimit`, `userChatHourlyLimit` 0–1e6, `tenantPortfolioLimit`, `portfolioAccountLimit`, `chatHistoryMax`, `maxUsersPerTenant`, `userTasksMax`, `changePersonaEnabled`). Unknown keys ignored. Per-plan overrides are not set here; use `PATCH /api/admin/tenants/{tenantId}/workspace-limits` after create."
       }
     }
   },

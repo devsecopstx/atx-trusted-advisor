@@ -225,6 +225,30 @@ export async function finalizeUserTaskRun(
   );
 }
 
+export async function listUserTaskRunsForTask(input: {
+  tenantId: ObjectId;
+  userId: ObjectId;
+  taskId: string;
+  limit?: number;
+}): Promise<UserTaskRun[]> {
+  if (!ObjectId.isValid(input.taskId)) {
+    return [];
+  }
+  await ensureUserTaskIndexes();
+  const db = await getDb();
+  const lim = Math.min(input.limit ?? 25, 100);
+  return db
+    .collection<UserTaskRun>(RUNS_COLLECTION)
+    .find({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      taskId: new ObjectId(input.taskId)
+    })
+    .sort({ startedAt: -1 })
+    .limit(lim)
+    .toArray();
+}
+
 export async function listDueUserTasks(now: Date, limit = 40): Promise<UserTask[]> {
   await ensureUserTaskIndexes();
   const db = await getDb();

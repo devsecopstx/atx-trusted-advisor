@@ -17,12 +17,19 @@ import {
 } from "@/modules/user-tasks/repository";
 import { resolveSessionUserForUserTask } from "@/modules/user-tasks/resolve-session-for-task";
 import type { UserTask } from "@/modules/user-tasks/types";
+import { getPersonaById, getPersonaByNormalizedName } from "@/modules/xchat/repository";
 
 export type RunUserTaskResult = {
   status: "success" | "failed" | "skipped";
   outputSnippet: string;
   errorCode?: string;
   linkHint?: string;
+};
+
+type EffectiveTaskPersona = {
+  personaId: string | null;
+  source: "task_override" | "advisor_default" | "advisor_fallback";
+  fallbackNotice?: string;
 };
 
 function resolveAutomationOrigin(request?: Request): string {
@@ -107,6 +114,77 @@ async function deliverEmailIfNeeded(task: UserTask, subject: string, body: strin
   await sendDeskPlainEmailWithRetry(email, subject, body);
 }
 
+async function resolveEffectiveTaskPersona(task: UserTask): Promise<EffectiveTaskPersona> {
+  const advisorPersona = await getPersonaByNormalizedName("advisor");
+  const advisorPersonaId = advisorPersona?._id?.toHexString() ?? null;
+
+  const requestedPersonaId = task.personaId?.trim() || null;
+  if (!requestedPersonaId) {
+    return {
+      personaId: advisorPersonaId,
+      source: "advisor_default"
+    };
+  }
+
+  const requestedPersona = await getPersonaById(requestedPersonaId);
+  if (requestedPersona?.status === "published") {
+    return {
+      personaId: requestedPersonaId,
+      source: "task_override"
+    };
+  }
+
+  if (advisorPersonaId) {
+    return {
+      personaId: advisorPersonaId,
+      source: "advisor_fallback",
+      fallbackNotice: "Your selected persona is no longer available. Running this job with advisor."
+    };
+  }
+
+  return {
+    personaId: null,
+    source: "advisor_fallback",
+    fallbackNotice:
+      "Your selected persona is no longer available, and advisor is unavailable. Running with the platform default persona."
+  };
+}
+
+async function auditTaskExecution(params: {
+  task: UserTask;
+  session: SessionUser;
+  triggeredBy: string;
+  status: RunUserTaskResult["status"];
+  askStatus?: number;
+  outputSnippet: string;
+  errorCode?: string;
+  personaSelectionSource: EffectiveTaskPersona["source"];
+  effectivePersonaId: string | null;
+  fallbackNotice?: string;
+}): Promise<void> {
+  await createAuditEvent({
+    entityType: "user_task",
+    entityId: params.task._id!.toHexString(),
+    action: "user_task_run",
+    actor: {
+      userId: params.session.userId,
+      email: params.session.email,
+      username: params.session.username
+    },
+    details: {
+      triggeredBy: params.triggeredBy,
+      taskName: params.task.name,
+      status: params.status,
+      askStatus: params.askStatus,
+      errorCode: params.errorCode,
+      personaSelectionSource: params.personaSelectionSource,
+      effectivePersonaId: params.effectivePersonaId,
+      fallbackNotice: params.fallbackNotice,
+      outputSnippet: params.outputSnippet
+    }
+  });
+}
+
 export async function executeUserTaskBody(params: {
   task: UserTask;
   triggeredBy: string;
@@ -124,13 +202,27 @@ export async function executeUserTaskBody(params: {
     };
   }
 
+  const effectivePersona = await resolveEffectiveTaskPersona(task);
+
   if (task.type === "strategy" || task.type === "scan" || task.type === "report") {
-    return {
+    const result: RunUserTaskResult = {
       status: "skipped",
       outputSnippet:
         "This task type is not automated yet. Use xOptions or ask xChat interactively for strategy scans.",
       errorCode: "type_not_automated"
     };
+    await auditTaskExecution({
+      task,
+      session,
+      triggeredBy,
+      status: result.status,
+      outputSnippet: result.outputSnippet,
+      errorCode: result.errorCode,
+      personaSelectionSource: effectivePersona.source,
+      effectivePersonaId: effectivePersona.personaId,
+      fallbackNotice: effectivePersona.fallbackNotice
+    });
+    return result;
   }
 
   const portfolioHex = task.portfolioId ? task.portfolioId.toHexString() : undefined;
@@ -146,7 +238,7 @@ export async function executeUserTaskBody(params: {
     session,
     message: prompt,
     portfolioIdHex: portfolioHex,
-    personaId: task.personaId,
+    personaId: effectivePersona.personaId,
     request
   });
 
@@ -154,44 +246,56 @@ export async function executeUserTaskBody(params: {
     ask.logId && ask.ok ? `/xchat?highlightLog=${encodeURIComponent(ask.logId)}` : "/xchat";
 
   if (!ask.ok) {
-    return {
+    const result: RunUserTaskResult = {
       status: "failed",
-      outputSnippet: ask.snippet,
+      outputSnippet: effectivePersona.fallbackNotice ? `${effectivePersona.fallbackNotice}\n\n${ask.snippet}` : ask.snippet,
       errorCode: ask.code ?? `http_${ask.status}`,
       linkHint
     };
+    await auditTaskExecution({
+      task,
+      session,
+      triggeredBy,
+      status: result.status,
+      askStatus: ask.status,
+      outputSnippet: result.outputSnippet,
+      errorCode: result.errorCode,
+      personaSelectionSource: effectivePersona.source,
+      effectivePersonaId: effectivePersona.personaId,
+      fallbackNotice: effectivePersona.fallbackNotice
+    });
+    return result;
   }
+
+  const outputSnippet = effectivePersona.fallbackNotice
+    ? `${effectivePersona.fallbackNotice}\n\n${ask.snippet}`
+    : ask.snippet;
 
   if (params.sendEmail !== false && task.delivery.includes("email")) {
     await deliverEmailIfNeeded(
       task,
       `aTx Finance — task: ${task.name}`,
-      `${ask.snippet}\n\nOpen xChat: ${resolveAutomationOrigin(request)}/xchat`
+      `${outputSnippet}\n\nOpen xChat: ${resolveAutomationOrigin(request)}/xchat`
     );
   }
 
-  await createAuditEvent({
-    entityType: "user_task",
-    entityId: task._id!.toHexString(),
-    action: "user_task_run",
-    actor: {
-      userId: session.userId,
-      email: session.email,
-      username: session.username
-    },
-    details: {
-      triggeredBy,
-      taskName: task.name,
-      status: "success",
-      askStatus: ask.status
-    }
-  });
-
-  return {
+  const result: RunUserTaskResult = {
     status: "success",
-    outputSnippet: ask.snippet,
+    outputSnippet,
     linkHint
   };
+  await auditTaskExecution({
+    task,
+    session,
+    triggeredBy,
+    status: result.status,
+    askStatus: ask.status,
+    outputSnippet: result.outputSnippet,
+    personaSelectionSource: effectivePersona.source,
+    effectivePersonaId: effectivePersona.personaId,
+    fallbackNotice: effectivePersona.fallbackNotice
+  });
+  return result;
 }
 
 export async function runUserTaskNow(params: {

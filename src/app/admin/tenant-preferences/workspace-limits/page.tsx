@@ -29,8 +29,9 @@ export default async function AdminTenantWorkspaceLimitsPage() {
         <p className="admin-muted" style={{ maxWidth: 720 }}>
           Per-tenant quotas on <code className="font-mono text-xs">core_tenants.workspaceLimits</code>. Enforcement:
           xChat ask (per-user <strong>UTC day</strong> and optional <strong>UTC hour</strong> caps), portfolio/account
-          APIs, signed-in xoptions. One row = this session tenant; use <strong>Reload</strong> to discard unsaved
-          edits, <strong>Reset draft</strong> for default numbers, then <strong>Save</strong>.
+          APIs, signed-in xoptions, and app-user scheduled jobs (<code className="font-mono text-xs">userTasksMax</code>
+          ). One row = this session tenant; use <strong>Reload</strong> to discard unsaved edits,{" "}
+          <strong>Reset draft</strong> for default numbers, then <strong>Save</strong>.
         </p>
       </header>
       <TenantWorkspaceLimitsPageClient defaultTenantId={resolvedTenantId} />

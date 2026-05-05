@@ -4,7 +4,9 @@ import { z } from "zod";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
 import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
+import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { getPortfolioByIdForSessionUser } from "@/modules/core-admin/repository";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { deleteUserTask, getUserTaskById, updateUserTask } from "@/modules/user-tasks/repository";
 import { serializeUserTask } from "@/modules/user-tasks/serialize";
 import type { UserTask } from "@/modules/user-tasks/types";
@@ -84,6 +86,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ taskI
   };
 
   const data = parsed.data;
+  if (data.personaId !== undefined) {
+    const requestedPersonaId = data.personaId?.trim();
+    if (requestedPersonaId) {
+      const workspaceLimits = await getEffectiveWorkspaceLimitsForUser({
+        tenantId: session.tenantId,
+        userId: session.userId
+      });
+      if (!isGlobalAdmin(session.roles) && workspaceLimits.changePersonaEnabled !== true) {
+        return NextResponse.json(
+          {
+            error: "Persona override is disabled for this tenant. Using advisor default is required.",
+            code: "persona_override_disabled"
+          },
+          { status: 403 }
+        );
+      }
+    }
+  }
   if (data.name !== undefined) {
     patch.name = data.name.trim();
   }
@@ -94,7 +114,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ taskI
     patch.prompt = data.prompt.trim();
   }
   if (data.personaId !== undefined) {
-    patch.personaId = data.personaId;
+    patch.personaId = data.personaId?.trim() || null;
   }
   if (data.enabled !== undefined) {
     patch.enabled = data.enabled;

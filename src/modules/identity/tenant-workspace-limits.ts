@@ -31,6 +31,8 @@ export type TenantWorkspaceLimits = {
   chatHistoryMax: number;
   /** Max distinct users that may hold a `core_tenant_memberships` row for this tenant (enforced on assign). Default **5**. */
   maxUsersPerTenant: number;
+  /** Max saved app_user jobs (`user_tasks`) per user in this tenant workspace. Default **5**. */
+  userTasksMax: number;
 };
 
 /** Fallback list price (USD, whole units) when plan defaults are unavailable. */
@@ -88,7 +90,8 @@ export const DEFAULT_TENANT_WORKSPACE_LIMITS: TenantWorkspaceLimits = {
   portfolioAccountLimit: 1,
   changePersonaEnabled: true,
   chatHistoryMax: 10,
-  maxUsersPerTenant: 5
+  maxUsersPerTenant: 5,
+  userTasksMax: 5
 };
 
 /** Numeric quota keys (positive integers), including chat history depth. */
@@ -98,7 +101,8 @@ const LIMIT_KEYS = [
   "tenantPortfolioLimit",
   "portfolioAccountLimit",
   "chatHistoryMax",
-  "maxUsersPerTenant"
+  "maxUsersPerTenant",
+  "userTasksMax"
 ] as const satisfies readonly (keyof TenantWorkspaceLimits)[];
 
 function isPositiveInt(n: unknown): n is number {
@@ -376,7 +380,8 @@ export function applyTenantPlanRowToBase(
     portfolioAccountLimit: row.portfolioAccountLimit ?? base.portfolioAccountLimit,
     changePersonaEnabled: row.changePersonaEnabled ?? base.changePersonaEnabled,
     chatHistoryMax: row.chatHistoryMax ?? base.chatHistoryMax,
-    maxUsersPerTenant: row.maxUsersPerTenant ?? base.maxUsersPerTenant
+    maxUsersPerTenant: row.maxUsersPerTenant ?? base.maxUsersPerTenant,
+    userTasksMax: row.userTasksMax ?? base.userTasksMax
   };
 }
 

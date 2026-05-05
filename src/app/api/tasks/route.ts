@@ -4,7 +4,10 @@ import { z } from "zod";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
 import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
+import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
+import { createAuditEvent } from "@/modules/audit/repository";
 import { getPortfolioByIdForSessionUser } from "@/modules/core-admin/repository";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     countUserTasksForUser,
     insertUserTask,
@@ -12,7 +15,6 @@ import {
 } from "@/modules/user-tasks/repository";
 import { serializeUserTask } from "@/modules/user-tasks/serialize";
 import type { UserTask, UserTaskDeliveryChannel } from "@/modules/user-tasks/types";
-import { MAX_USER_TASKS_PER_USER } from "@/modules/user-tasks/user-task-constants";
 import { cronFromPreset, describeUserTaskSchedule, resolveInitialNextRunAt } from "@/modules/user-tasks/user-task-schedule";
 
 const deliverySchema = z.array(z.enum(["in_app", "email"])).min(1);
@@ -108,7 +110,20 @@ export async function GET(request: Request) {
     userId,
     portfolioIdHex: portfolioId && /^[a-f\d]{24}$/i.test(portfolioId) ? portfolioId : undefined
   });
-  return NextResponse.json({ data: rows.map(serializeUserTask) });
+  const [totalCount, workspaceLimits] = await Promise.all([
+    countUserTasksForUser({ tenantId, userId }),
+    getEffectiveWorkspaceLimitsForUser({
+      tenantId: session.tenantId,
+      userId: session.userId
+    })
+  ]);
+  return NextResponse.json({
+    data: rows.map(serializeUserTask),
+    meta: {
+      totalCount,
+      userTasksMax: workspaceLimits.userTasksMax
+    }
+  });
 }
 
 export async function POST(request: Request) {
@@ -135,10 +150,30 @@ export async function POST(request: Request) {
   }
 
   const existingCount = await countUserTasksForUser({ tenantId, userId });
-  if (existingCount >= MAX_USER_TASKS_PER_USER) {
+  const workspaceLimits = await getEffectiveWorkspaceLimitsForUser({
+    tenantId: session.tenantId,
+    userId: session.userId
+  });
+  const userTaskCap = workspaceLimits.userTasksMax;
+  if (existingCount >= userTaskCap) {
     return NextResponse.json(
-      { error: `Task limit reached (${MAX_USER_TASKS_PER_USER} tasks per user).`, code: "user_task_cap" },
+      { error: `Task limit reached (${userTaskCap} tasks per user).`, code: "user_task_cap" },
       { status: 409 }
+    );
+  }
+
+  const requestedPersonaId = parsed.data.personaId?.trim();
+  if (
+    requestedPersonaId &&
+    !isGlobalAdmin(session.roles) &&
+    workspaceLimits.changePersonaEnabled !== true
+  ) {
+    return NextResponse.json(
+      {
+        error: "Persona override is disabled for this tenant. Using advisor default is required.",
+        code: "persona_override_disabled"
+      },
+      { status: 403 }
     );
   }
 
@@ -175,7 +210,7 @@ export async function POST(request: Request) {
     ...(parsed.data.description?.trim() ? { description: parsed.data.description.trim() } : {}),
     type: parsed.data.type,
     prompt: parsed.data.prompt.trim(),
-    personaId: parsed.data.personaId?.trim() || null,
+    personaId: requestedPersonaId || null,
     ...scheduleFields,
     timeZone: parsed.data.timeZone?.trim(),
     enabled: parsed.data.enabled !== false,
@@ -192,5 +227,25 @@ export async function POST(request: Request) {
   };
 
   const created = await insertUserTask(taskDoc);
+  if (created._id) {
+    await createAuditEvent({
+      entityType: "user_task",
+      entityId: created._id.toHexString(),
+      action: "user_task_create",
+      actor: {
+        userId: session.userId,
+        email: session.email,
+        username: session.username
+      },
+      details: {
+        name: created.name,
+        type: created.type,
+        schedulePreset: created.schedulePreset ?? null,
+        scheduleDescription: created.scheduleDescription ?? null,
+        delivery: created.delivery,
+        personaId: created.personaId ?? null
+      }
+    });
+  }
   return NextResponse.json({ data: serializeUserTask(created) }, { status: 201 });
 }

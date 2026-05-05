@@ -21,7 +21,9 @@ const WORKSPACE_LIMIT_NUM_KEYS = [
   "userChatLimit",
   "tenantPortfolioLimit",
   "portfolioAccountLimit",
-  "chatHistoryMax"
+  "chatHistoryMax",
+  "maxUsersPerTenant",
+  "userTasksMax"
 ];
 
 const WORKSPACE_LIMIT_CHAT_HOURLY_KEY = "userChatHourlyLimit";

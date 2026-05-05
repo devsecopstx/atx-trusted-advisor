@@ -65,8 +65,15 @@ const MAX_USERS_PER_TENANT_FIELD = {
   hint: "Maximum distinct users allowed a membership on this tenant (enforced on OAuth, access approval, and admin user create)."
 };
 
+const USER_TASKS_MAX_FIELD = {
+  key: "userTasksMax" as const,
+  label: "User jobs per user",
+  abbr: "Jobs/user",
+  hint: "Maximum saved app_user jobs per user in this tenant (`/api/tasks`, `/account/tasks`, `/workspace/tasks`)."
+};
+
 /** Base tenant row includes per-tenant user cap; billing-plan override table uses QUOTA_FIELDS only. */
-const TENANT_BASE_QUOTA_FIELDS = [...QUOTA_FIELDS, MAX_USERS_PER_TENANT_FIELD];
+const TENANT_BASE_QUOTA_FIELDS = [...QUOTA_FIELDS, MAX_USERS_PER_TENANT_FIELD, USER_TASKS_MAX_FIELD];
 
 const PREF_FIELDS: (
   | {

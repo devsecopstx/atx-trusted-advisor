@@ -54,8 +54,15 @@ Future: raise cap via **`workspaceLimits.planOverrides`** (not wired in v1).
 
 ## UI
 
-- **`/workspace/tasks`** — list, cap banner, create form (name, type, cron), toggle, Run now, history drawer, delete.
+- **`/workspace/tasks`** — list, cap banner, create form (name, type, cron), toggle, Run now, history drawer, delete. Also hosts app_user task parity (`/api/tasks`) with hardcoded templates (Daily Portfolio Monitor / Weekly Portfolio Summary).
 - **Workspace rail:** **Portfolio desk → Automations** (visible when **`/workspace`** is allowed for the role).
+
+## App_user job parity (`/api/tasks`)
+
+- **Surfaces:** `/workspace/tasks` (primary/power-user) + `/account/tasks` (limited create + read feed).
+- **Per-user cap:** `core_tenants.workspaceLimits.userTasksMax` (default 5; admin-editable in Workspace limits).
+- **Persona behavior:** advisor default when omitted; app_user override only when `workspaceLimits.changePersonaEnabled=true`; invalid/archived saved persona falls back to advisor with in-app run notice and audit metadata.
+- **In-app notifications:** run history feed via `GET /api/tasks/{taskId}/runs` (snippets + optional xChat deep link).
 
 **Route catalog:** **`data/platform/app-user-route-catalog.json`** entry **`workspace_tasks`** — **`viewer`** excluded by default catalog visibility.
 

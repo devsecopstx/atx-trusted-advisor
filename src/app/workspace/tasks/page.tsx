@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { UserTasksClient } from "@/app/account/tasks/user-tasks-client";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
@@ -63,7 +64,8 @@ export default async function WorkspaceTenantAutomationsPage() {
           rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
           railChrome="workspace-product"
         >
-          <div className="billing-page max-w-5xl">
+          <div className="billing-page max-w-5xl space-y-8">
+            <UserTasksClient mode="workspace" />
             <TenantAutomationsClient allowMutations={allowMutations} />
           </div>
         </AppUserCollapsibleRailLayout>

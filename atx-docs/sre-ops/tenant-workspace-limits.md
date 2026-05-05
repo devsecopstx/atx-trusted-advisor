@@ -11,6 +11,7 @@ Per-tenant quotas for the Next.js BFF. Defaults are code-defined; overrides live
 | `userChatHourlyLimit` | — (omit or `0` = off) | Optional **UTC clock-hour** cap; when &gt; 0, enforced in `ask-usage-limits` before the day bucket. Plan overrides use `0` to clear an inherited hourly cap. |
 | `tenantPortfolioLimit` | 1 | New portfolio rows in tenant for that user (admin + app flows). |
 | `portfolioAccountLimit` | 1 | New `portfolio_accounts` per portfolio. |
+| `userTasksMax` | 5 | Max saved app_user jobs per user (`POST /api/tasks`), surfaced on `/account/tasks` and `/workspace/tasks`. |
 | `changePersonaEnabled` | **true** | App users: xChat persona picker enabled. When **false**, picker is disabled ( **`global_admin`** sessions ignore). Per-plan override in `planOverrides.<tier>`. |
 | `chatHistoryMax` | **10** | Recent prompts loaded in xChat thread + `/api/xchat/history?limit=` (clamped 1–500 in UI). Per-plan override. |
 
@@ -44,7 +45,7 @@ Indexes are created best-effort on first use (same pattern as other identity usa
 - `/account/billing` (see `src/app/account/billing/page.tsx`, `billing-plan-grid.tsx`) resolves each retail tier with **`billingCardWorkspaceDisplay`** in `src/lib/billing-plan-workspace-display.ts`:
   - **Signed-in:** loads `core_tenants` by session `tenantId`. **List price** uses `planOverrides.<tier>.price` when set. **Workspace quota rows** use **plan-effective** values (`applyTenantPlanRowToBase`) for all displayed metrics (xOptions/hr, xChat day/hr UTC, portfolios, accounts). **Change persona** / **Chat history** also use plan-effective merges.
   - **Guests:** `/account/billing` resolves the platform default tenant when no session tenant is available, then renders read-only plan cards from that tenant’s `workspaceLimits` + `planOverrides` values (same defaults managed in Admin workspace limits).
-  - **Workspace limits** block on each card: **five** quota rows (xOptions/hr, xChat day UTC, xChat hr UTC, portfolios, accounts) plus **Change persona** (Yes/No) and **Chat history max (turns)**; **price is not duplicated** in that list (only in the card header).
+  - **Workspace limits** block on each card: **five** quota rows (xOptions/hr, xChat day UTC, xChat hr UTC, portfolios, accounts) plus **Change persona** (Yes/No) and **Chat history max (turns)**; **price is not duplicated** in that list (only in the card header). App-user task cap (`userTasksMax`) is enforced at task APIs/pages and managed in Admin Workspace limits.
 
 ## Parsing / Mongo quirks
 
