@@ -13,7 +13,7 @@ type TenantBrandingProviderProps = {
 
 /**
  * Provides tenant shell branding from `core_tenants.tenantPreferences` (server-fetched in root layout).
- * Also sets `--xf-tenant-accent` on `document.documentElement` for CSS hooks.
+ * Also sets tenant CSS variables on `document.documentElement` for hooks (`--xf-tenant-accent`, primary/secondary).
  */
 export function TenantBrandingProvider({ value, children }: TenantBrandingProviderProps) {
   const stable = useMemo(() => value, [value]);
@@ -23,11 +23,20 @@ export function TenantBrandingProvider({ value, children }: TenantBrandingProvid
     const accent = stable?.accentColor?.trim();
     if (accent) {
       root.style.setProperty("--xf-tenant-accent", accent);
+      root.style.setProperty("--xf-tenant-primary", accent);
+      root.style.setProperty(
+        "--xf-tenant-secondary",
+        `color-mix(in srgb, ${accent} 58%, var(--xf-text-300))`
+      );
     } else {
       root.style.removeProperty("--xf-tenant-accent");
+      root.style.removeProperty("--xf-tenant-primary");
+      root.style.removeProperty("--xf-tenant-secondary");
     }
     return () => {
       root.style.removeProperty("--xf-tenant-accent");
+      root.style.removeProperty("--xf-tenant-primary");
+      root.style.removeProperty("--xf-tenant-secondary");
     };
   }, [stable?.accentColor]);
 

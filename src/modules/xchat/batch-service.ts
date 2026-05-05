@@ -53,6 +53,8 @@ export type BatchSubmitInput = {
   userId: string;
   tenantId?: string;
   submittedBy: string;
+  /** Same tenant display block as xChat ask when tenant is known. */
+  tenantWorkspaceContextBlock?: string | null;
 };
 
 export type BatchJobRecord = {
@@ -181,6 +183,7 @@ export async function submitBatchJob(
     }
 
     const systemPrompt = buildXchatSystemPrompt({
+      tenantWorkspaceContextBlock: input.tenantWorkspaceContextBlock ?? null,
       personaSystem: input.persona.systemPrompt?.trim() ?? "",
       fallbackPersonaSystem: "You are a helpful assistant.",
       ragContext,

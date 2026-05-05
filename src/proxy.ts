@@ -2,11 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
-import {
-    APP_USER_PRODUCT_PATH_PREFIXES,
-    isAppUserProductPath,
-    normalizePathnameForPolicy
-} from "@/modules/platform/app-user-product-prefixes";
+import { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
 
 const protectedPathPrefixes = [
   "/admin",
@@ -61,30 +57,36 @@ export function isTenantUxEnforcementV2Enabled(raw = process.env.TENANT_UX_ENFOR
   return normalized === "1" || normalized === "true" || normalized === "yes";
 }
 
-export function resolvePolicyPathForRequest(pathname: string): string | null {
-  const p = normalizePathnameForPolicy(pathname);
-  if (isAppUserProductPath(p)) {
-    const match = (APP_USER_PRODUCT_PATH_PREFIXES as readonly string[]).find(
-      (prefix) => p === prefix || p.startsWith(`${prefix}/`)
-    );
-    return match ?? null;
+export function isTenantUxPolicyFailClosedEnabled(raw = process.env.TENANT_UX_POLICY_FAIL_CLOSED): boolean {
+  if (!raw) {
+    return false;
   }
-  if (p.startsWith("/api/xchat")) return "/xchat";
-  if (p.startsWith("/api/app-user/xchat")) return "/xchat";
-  if (p.startsWith("/api/app-user/find-options")) return "/xoptions";
-  if (p.startsWith("/api/app-user/symbol-chart")) return "/xoptions";
-  if (p.startsWith("/api/app-user/xoptions")) return "/xoptions";
-  if (p.startsWith("/api/user/watchlist")) return "/watchlist";
-  if (p.startsWith("/api/user/workspace-portfolio")) return "/workspace";
-  if (p.startsWith("/api/portfolios")) return "/portfolio";
-  if (p.startsWith("/api/positions")) return "/portfolio";
-  if (p.startsWith("/api/import")) return "/import-activity";
-  if (p.startsWith("/api/integrations")) return "/account";
-  if (p.startsWith("/api/tenant-tasks")) return "/workspace";
-  return null;
+  const normalized = raw.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
 }
 
-async function resolveTenantUxPolicyDecision(request: NextRequest, policyPath: string): Promise<{ allowed: boolean; redirectPath: string }> {
+/** @deprecated Import from `@/modules/platform/tenant-ux-proxy-policy-path` instead. */
+export { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
+
+type TenantUxPolicyDecision = {
+  allowed: boolean;
+  redirectPath: string;
+  policyUnavailable?: boolean;
+};
+
+function logTenantUxPolicyFetchError(payload: Record<string, unknown>): void {
+  console.warn(
+    JSON.stringify({
+      type: "tenant_ux_policy_fetch_error",
+      ...payload
+    })
+  );
+}
+
+async function resolveTenantUxPolicyDecision(
+  request: NextRequest,
+  policyPath: string
+): Promise<TenantUxPolicyDecision> {
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? "";
   const cacheKey = `${sessionCookie}:${policyPath}`;
   const hit = tenantUxProxyCache.get(cacheKey);
@@ -102,17 +104,30 @@ async function resolveTenantUxPolicyDecision(request: NextRequest, policyPath: s
       cache: "no-store"
     });
     if (!res.ok) {
+      logTenantUxPolicyFetchError({
+        policyPath,
+        httpStatus: res.status,
+        ok: false
+      });
+      if (isTenantUxPolicyFailClosedEnabled()) {
+        return {
+          allowed: false,
+          redirectPath: "/xchat",
+          policyUnavailable: true
+        };
+      }
       return { allowed: true, redirectPath: "/xchat" };
     }
     const json = (await res.json()) as {
       data?: { allowed?: boolean; redirectPath?: string };
     };
-    const decision = {
+    const decision: TenantUxPolicyDecision = {
       allowed: json?.data?.allowed !== false,
       redirectPath: json?.data?.redirectPath?.trim() || "/xchat"
     };
     tenantUxProxyCache.set(cacheKey, {
-      ...decision,
+      allowed: decision.allowed,
+      redirectPath: decision.redirectPath,
       expiresAt: Date.now() + TENANT_UX_PROXY_POLICY_TTL_MS
     });
     if (tenantUxProxyCache.size > 500) {
@@ -122,7 +137,19 @@ async function resolveTenantUxPolicyDecision(request: NextRequest, policyPath: s
       }
     }
     return decision;
-  } catch {
+  } catch (err) {
+    logTenantUxPolicyFetchError({
+      policyPath,
+      ok: false,
+      error: err instanceof Error ? err.message : String(err)
+    });
+    if (isTenantUxPolicyFailClosedEnabled()) {
+      return {
+        allowed: false,
+        redirectPath: "/xchat",
+        policyUnavailable: true
+      };
+    }
     return { allowed: true, redirectPath: "/xchat" };
   }
 }
@@ -137,6 +164,16 @@ async function enforceTenantUxV2(request: NextRequest, pathname: string): Promis
     return null;
   }
   if (pathname.startsWith("/api/")) {
+    if (decision.policyUnavailable) {
+      return NextResponse.json(
+        {
+          error: "Tenant policy temporarily unavailable",
+          code: "tenant_ux_policy_unavailable",
+          redirectPath: decision.redirectPath
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       {
         error: "Forbidden",
@@ -149,6 +186,9 @@ async function enforceTenantUxV2(request: NextRequest, pathname: string): Promis
   const redirectUrl = new URL("/access-denied", request.url);
   redirectUrl.searchParams.set("route", pathname);
   redirectUrl.searchParams.set("redirect", decision.redirectPath);
+  if (decision.policyUnavailable) {
+    redirectUrl.searchParams.set("code", "tenant_ux_policy_unavailable");
+  }
   return NextResponse.redirect(redirectUrl);
 }
 
@@ -318,6 +358,8 @@ export const config = {
     "/account/:path*",
     "/workspace/:path*",
     "/xfinance/:path*",
+    "/xcoach",
+    "/xcoach/:path*",
     "/xoptions",
     "/xoptions/:path*"
   ]

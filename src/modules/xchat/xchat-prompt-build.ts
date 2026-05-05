@@ -81,23 +81,32 @@ export type XchatRemoteChainFingerprintInput = {
   hostedSearch: boolean;
   atxFunction: boolean;
   citationsEnabled: boolean;
+  /** Tenant workspace context block (trimmed); empty string when absent. */
+  tenantWorkspaceContextBlock?: string;
 };
 
 export function computeXchatRemoteChainInstructionsFingerprint(
   input: XchatRemoteChainFingerprintInput
 ): string {
+  const tenantCtx =
+    typeof input.tenantWorkspaceContextBlock === "string"
+      ? input.tenantWorkspaceContextBlock.trim()
+      : "";
   const raw = [
     typeof input.personaSystem === "string" ? input.personaSystem : "",
     String(Number.isFinite(input.personaUpdatedAtMs) ? input.personaUpdatedAtMs : 0),
     input.strategyJobOptOut ? "1" : "0",
     input.hostedSearch ? "1" : "0",
     input.atxFunction ? "1" : "0",
-    input.citationsEnabled ? "1" : "0"
+    input.citationsEnabled ? "1" : "0",
+    tenantCtx
   ].join("\0");
   return createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 24);
 }
 
 export type BuildXchatSystemPromptInput = {
+  /** Optional first block: tenant workspace display context (white-label; not regulatory claims). */
+  tenantWorkspaceContextBlock?: string | null;
   /** Trimmed or raw persona `systemPrompt`; empty uses `fallbackPersonaSystem`. */
   personaSystem: string;
   fallbackPersonaSystem: string;
@@ -117,10 +126,32 @@ export type BuildXchatSystemPromptInput = {
 };
 
 /**
- * Locked order: **persona → RAG → recent history → snapshot → session tool instructions → citation policy → beta client UI note** (double-newline separated).
+ * One-line tenant display context for xChat system prompts (ask + batch).
+ * Does not change compliance posture — instructs the model not to invent regulatory claims.
+ */
+export function formatTenantWorkspaceContextBlockForXchat(input: {
+  tenantName: string;
+  xchatBrandName?: string | null;
+}): string | null {
+  const name = typeof input.tenantName === "string" ? input.tenantName.trim() : "";
+  if (!name) {
+    return null;
+  }
+  const brandRaw = typeof input.xchatBrandName === "string" ? input.xchatBrandName.trim() : "";
+  const desk =
+    brandRaw && brandRaw.toLowerCase() !== name.toLowerCase() ? `${brandRaw} (${name})` : name;
+  return `Tenant workspace (display only): ${desk}. Address the user in a professional advisor tone when helpful (e.g., strategy session for this desk). Do not state or imply a different regulatory posture than the product standard disclosures.`;
+}
+
+/**
+ * Locked order: **tenant display (optional) → persona → RAG → recent history → snapshot → session tool instructions → routing policy → citation policy → beta client UI note** (double-newline separated).
  */
 export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): string {
   const citationsEnabled = input.citationsEnabled !== false;
+  const tenantCtx =
+    typeof input.tenantWorkspaceContextBlock === "string"
+      ? input.tenantWorkspaceContextBlock.trim()
+      : "";
   const base =
     typeof input.personaSystem === "string" && input.personaSystem.trim().length > 0
       ? input.personaSystem.trim()
@@ -129,7 +160,11 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
     typeof input.ragContext === "string" && input.ragContext.trim().length > 0
       ? `Use the following RAG context if relevant:\n${input.ragContext.trim()}`
       : "No RAG context available.";
-  const parts: string[] = [base, rag];
+  const parts: string[] = [];
+  if (tenantCtx) {
+    parts.push(tenantCtx);
+  }
+  parts.push(base, rag);
   const hist =
     typeof input.recentHistoryBlock === "string" && input.recentHistoryBlock.trim().length > 0
       ? input.recentHistoryBlock.trim()

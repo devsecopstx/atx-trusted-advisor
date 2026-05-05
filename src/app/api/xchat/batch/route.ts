@@ -16,6 +16,7 @@ import {
     listBatchJobs,
     submitBatchJob
 } from "@/modules/xchat/batch-service";
+import { formatTenantWorkspaceContextBlockForXchat } from "@/modules/xchat/xchat-prompt-build";
 
 const submitBatchSchema = z.object({
   personaId: z.string().min(1),
@@ -88,13 +89,18 @@ export async function POST(request: Request) {
 
   try {
     return await runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
+    const tenantWorkspaceContextBlock = formatTenantWorkspaceContextBlockForXchat({
+      tenantName: typeof tenantForDebug?.name === "string" ? tenantForDebug.name : "",
+      xchatBrandName: tenantForDebug?.tenantPreferences?.xchat_brandname
+    });
     const job = await submitBatchJob({
       personaId: parsed.data.personaId,
       persona,
       items: parsed.data.items,
       userId: session.userId,
       tenantId: session.tenantId,
-      submittedBy: session.username
+      submittedBy: session.username,
+      tenantWorkspaceContextBlock
     });
 
     return NextResponse.json(

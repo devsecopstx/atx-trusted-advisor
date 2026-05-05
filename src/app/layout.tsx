@@ -69,7 +69,11 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 
   const tenantAccentTrimmed = tenantShellBranding?.accentColor?.trim();
   const tenantAccentCssVar: CSSProperties | undefined = tenantAccentTrimmed
-    ? { ["--xf-tenant-accent" as string]: tenantAccentTrimmed }
+    ? {
+        ["--xf-tenant-accent" as string]: tenantAccentTrimmed,
+        ["--xf-tenant-primary" as string]: tenantAccentTrimmed,
+        ["--xf-tenant-secondary" as string]: `color-mix(in srgb, ${tenantAccentTrimmed} 58%, var(--xf-text-300))`
+      }
     : undefined;
 
   return (

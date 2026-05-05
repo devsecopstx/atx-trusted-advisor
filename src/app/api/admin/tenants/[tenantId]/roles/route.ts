@@ -54,6 +54,7 @@ function defaultPolicyForRole(role: PlatformRoleForRoutes): {
         allowedRoutes: [
           "/admin",
           "/xchat",
+          "/xcoach",
           "/portfolio",
           "/portfolios",
           "/watchlist",
@@ -70,6 +71,7 @@ function defaultPolicyForRole(role: PlatformRoleForRoutes): {
       return {
         allowedRoutes: [
           "/xchat",
+          "/xcoach",
           "/portfolio",
           "/portfolios",
           "/watchlist",
@@ -86,6 +88,7 @@ function defaultPolicyForRole(role: PlatformRoleForRoutes): {
       return {
         allowedRoutes: [
           "/xchat",
+          "/xcoach",
           "/portfolio",
           "/portfolios",
           "/watchlist",
@@ -100,7 +103,7 @@ function defaultPolicyForRole(role: PlatformRoleForRoutes): {
       };
     case "viewer":
       return {
-        allowedRoutes: ["/xchat", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/resources"],
+        allowedRoutes: ["/xchat", "/xcoach", "/portfolio", "/portfolios", "/watchlist", "/xoptions", "/account", "/resources"],
         defaultLanding: "/xchat",
         flags: { canMutatePortfolios: false, canUseXChat: false, canRunTasks: false }
       };

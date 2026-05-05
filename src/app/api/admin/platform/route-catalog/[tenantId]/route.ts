@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireGlobalAdminSession } from "@/lib/api-auth";
 import { getDb } from "@/lib/mongodb";
+import { createAuditEvent } from "@/modules/audit/repository";
 import type { PlatformRoleForRoutes } from "@/modules/platform/app-user-route-catalog";
 import { getAppUserRouteCatalog } from "@/modules/platform/app-user-route-catalog";
 import {
@@ -188,6 +189,20 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (!result) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
+  await createAuditEvent({
+    entityType: "tenant",
+    entityId: tenantId,
+    action: "tenant_ux.route_catalog.patch",
+    actor: {
+      userId: session.userId,
+      email: session.email,
+      username: session.username
+    },
+    details: {
+      overrides: parsed.data.overrides ?? null,
+      defaultLandingPathByRole: parsed.data.defaultLandingPathByRole ?? null
+    }
+  });
   const raw = (result.tenantPreferences as Record<string, unknown> | undefined)
     ?.app_user_route_visibility_overrides;
   const overrides: Record<string, boolean> = {};

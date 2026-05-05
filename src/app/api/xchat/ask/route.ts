@@ -98,6 +98,7 @@ import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
     computeXchatRemoteChainInstructionsFingerprint,
+    formatTenantWorkspaceContextBlockForXchat,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
 import { resolveReasoningEffortFromAskPayload } from "@/modules/xchat/xchat-reasoning-mode";
@@ -229,6 +230,12 @@ export async function POST(request: Request) {
     ? await getTenantByHexIdCached(session.tenantId)
     : null;
   const tenantDebugFlag = isTenantXchatDebugPreferenceEnabled(tenantForDebug);
+
+  const tenantWorkspaceContextBlock = formatTenantWorkspaceContextBlockForXchat({
+    tenantName: typeof tenantForDebug?.name === "string" ? tenantForDebug.name : "",
+    xchatBrandName: tenantForDebug?.tenantPreferences?.xchat_brandname
+  });
+  const tenantWorkspaceContextFingerprint = tenantWorkspaceContextBlock?.trim() ?? "";
 
   return runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
   const contentLength = Number(request.headers.get("content-length") ?? "0");
@@ -1125,7 +1132,8 @@ export async function POST(request: Request) {
     strategyJobOptOut,
     hostedSearch: hasHostedSearchTool,
     atxFunction: hasXfinanceTool,
-    citationsEnabled: persona?.citationsEnabled !== false
+    citationsEnabled: persona?.citationsEnabled !== false,
+    tenantWorkspaceContextBlock: tenantWorkspaceContextFingerprint
   });
 
   let previousResponseId: string | undefined;
@@ -1167,6 +1175,7 @@ export async function POST(request: Request) {
         });
 
   const builtSystemPrompt = buildXchatSystemPrompt({
+    tenantWorkspaceContextBlock,
     personaSystem: persona?.systemPrompt ?? "",
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,

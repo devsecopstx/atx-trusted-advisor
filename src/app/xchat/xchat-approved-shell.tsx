@@ -13,7 +13,7 @@ import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-c
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { getTenantShellBrandingForHex } from "@/modules/identity/repository";
 import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
@@ -81,6 +81,12 @@ export async function XchatApprovedShell({
   const routePolicy = await getTenantRoutePolicyForSession(session);
   const visiblePathPrefixes = routePolicy.effectiveRolePolicy.allowedRoutes;
 
+  const tenantShell =
+    session.tenantId && ObjectId.isValid(session.tenantId)
+      ? await getTenantShellBrandingForHex(session.tenantId)
+      : null;
+  const tenantWorkspaceSessionLabel = tenantShell?.displayName?.trim() || null;
+
   return (
     <XchatConversationMount
       googleLinkHref={googleLinkHrefForApproved}
@@ -108,6 +114,7 @@ export async function XchatApprovedShell({
       workspacePortfolioId={workspacePortfolioId}
       syncWorkspacePortfolioCookie={syncWorkspacePortfolioCookie}
       requestedWorkspaceAccountId={requestedAccountId ? requestedAccountId : null}
+      tenantWorkspaceSessionLabel={tenantWorkspaceSessionLabel}
       visiblePathPrefixes={visiblePathPrefixes}
     />
   );

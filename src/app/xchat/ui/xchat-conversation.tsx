@@ -99,6 +99,8 @@ export type XchatConversationProps = {
   initialXchatItem?: "composer" | "persona" | "examples" | "history" | "attachments" | null;
   /** RSC bootstrap: prefs + recent Mongo turns (60s server cache) to avoid cold client waterfalls. */
   serverBootstrap?: XchatServerShellBootstrap | null;
+  /** Tenant display name for welcome copy (server: `core_tenants.name` via branding resolver). */
+  tenantWorkspaceSessionLabel?: string | null;
   /** Tenant allowlist for workspace rail; pass from server so Resources and routes match policy without client race. */
   visiblePathPrefixes?: string[];
 };
@@ -301,7 +303,8 @@ export function XchatConversation({
   workspaceChatHistoryMax = 10,
   initialXchatItem = null,
   serverBootstrap = null,
-  visiblePathPrefixes
+  visiblePathPrefixes,
+  tenantWorkspaceSessionLabel = null
 }: XchatConversationProps) {
   const router = useRouter();
   const uiPromptLimit = Math.max(1, Math.min(500, workspaceChatHistoryMax));
@@ -1460,6 +1463,13 @@ export function XchatConversation({
         <header className="xchat-welcome-header">
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
           <p className="xchat-welcome-sub">
+            {tenantWorkspaceSessionLabel ? (
+              <>
+                <span className="block font-medium text-[var(--xf-text-200)]">
+                  Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
+                </span>
+              </>
+            ) : null}
             Overview of xChat — portfolio, watchlist, and advisor options tools. Use Templates above the composer for
             starter prompts; Depth (Fast / Expert / Heavy) controls plan-aware reasoning.
           </p>

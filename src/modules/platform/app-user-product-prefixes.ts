@@ -3,6 +3,7 @@
  */
 export const APP_USER_PRODUCT_PATH_PREFIXES = [
   "/xchat",
+  "/xcoach",
   "/portfolio",
   "/portfolios",
   "/import-activity",

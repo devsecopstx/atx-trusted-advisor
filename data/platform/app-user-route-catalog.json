@@ -137,10 +137,9 @@
       "pathMatch": "prefix",
       "label": "xCoach",
       "groupId": "extended_product",
-      "inWorkspaceProductShell": false,
+      "inWorkspaceProductShell": true,
       "guestHtmlShell": false,
       "complianceSummary": "Exam / learning surfaces; align disclaimers with education-only use.",
-      "implementationNote": "Verify src/proxy.ts matcher includes /xcoach if session gating is required for HTML.",
       "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
     },
     {

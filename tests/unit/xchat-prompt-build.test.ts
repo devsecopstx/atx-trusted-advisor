@@ -4,6 +4,7 @@ import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
     computeXchatRemoteChainInstructionsFingerprint,
+    formatTenantWorkspaceContextBlockForXchat,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
 
@@ -87,17 +88,46 @@ describe("computeXchatRemoteChainInstructionsFingerprint", () => {
     expect(a).not.toBe(b);
   });
 
-  it("changes when persona updatedAt changes", () => {
+  it("changes when tenant workspace context block changes", () => {
     const a = computeXchatRemoteChainInstructionsFingerprint(base);
     const b = computeXchatRemoteChainInstructionsFingerprint({
       ...base,
-      personaUpdatedAtMs: base.personaUpdatedAtMs + 1
+      tenantWorkspaceContextBlock: "Tenant workspace (display only): Desk."
     });
     expect(a).not.toBe(b);
   });
 });
 
+describe("formatTenantWorkspaceContextBlockForXchat", () => {
+  it("returns null for empty tenant name", () => {
+    expect(formatTenantWorkspaceContextBlockForXchat({ tenantName: "  " })).toBeNull();
+  });
+
+  it("merges brand + tenant name when both differ", () => {
+    const s = formatTenantWorkspaceContextBlockForXchat({
+      tenantName: "Acme RIA",
+      xchatBrandName: "Acme Advisor Chat"
+    });
+    expect(s).toContain("Acme Advisor Chat (Acme RIA)");
+    expect(s).toContain("display only");
+  });
+});
+
 describe("buildXchatSystemPrompt", () => {
+  it("prefixes optional tenant workspace block before persona", () => {
+    const out = buildXchatSystemPrompt({
+      tenantWorkspaceContextBlock: "TEN",
+      personaSystem: "P",
+      fallbackPersonaSystem: "F",
+      ragContext: "rag",
+      recentHistoryBlock: null,
+      workspaceSnapshot: null,
+      sessionToolInstructions: ""
+    });
+    expect(out.indexOf("TEN")).toBe(0);
+    expect(out.indexOf("P")).toBeGreaterThan(0);
+  });
+
   it("locks order: persona, RAG, recent history, snapshot, session", () => {
     const out = buildXchatSystemPrompt({
       personaSystem: "P",
