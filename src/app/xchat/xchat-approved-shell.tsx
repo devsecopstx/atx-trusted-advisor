@@ -20,7 +20,14 @@ import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 type XchatApprovedShellProps = {
   session: SessionUser;
-  initialXchatItem: "composer" | "persona" | "examples" | "history" | "attachments" | null;
+  initialXchatItem:
+    | "composer"
+    | "persona"
+    | "examples"
+    | "example-prompts"
+    | "history"
+    | "attachments"
+    | null;
   requestedPortfolioId: string;
   /** Deep-link workspace account (Portfolio desk); optional. */
   requestedAccountId: string;

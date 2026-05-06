@@ -86,7 +86,6 @@ export function XchatGuestPanel({
   const [registerOpen, setRegisterOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
   const [registerPlan, setRegisterPlan] = useState<AccessRequestPlanValue>(registerDefaultPlan);
-
   useEffect(() => {
     setRegisterPlan(registerDefaultPlan);
   }, [registerDefaultPlan]);

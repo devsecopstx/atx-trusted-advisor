@@ -16,7 +16,12 @@ import {
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
-import { LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
+import {
+    LucideListBulletsIcon,
+    LucideMonitorIcon,
+    LucideSquarePenIcon,
+    XoptionsRocketIcon
+} from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { useTenantUxPolicy } from "@/app/ui/use-tenant-ux-policy";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
@@ -445,6 +450,8 @@ export function WorkspaceProductSidebar({
       isPortfolioAlertsRoute ||
       isAccountOrLegalAppRoute);
   const xchatHistoryDeepLinkActive = isXchatRoute && searchParams.get("item") === "history";
+  const xchatExamplePromptsDeepLinkActive =
+    isXchatRoute && searchParams.get("item") === "example-prompts";
   const xchatAttachmentsDeepLinkActive = isXchatRoute && searchParams.get("item") === "attachments";
 
   const utilitiesRouteMatch =
@@ -585,6 +592,10 @@ export function WorkspaceProductSidebar({
           <ChatHistoryRailIcon className="portfolios-workspace-sidebar__glyph" />
           <span>Chat history</span>
         </SidebarLink>
+        <SidebarLink href="/xchat?rail=xchat&item=example-prompts" nested title="Example prompts">
+          <LucideListBulletsIcon className="portfolios-workspace-sidebar__glyph h-[1.1rem] w-[1.1rem]" />
+          <span>Example prompts</span>
+        </SidebarLink>
       </div>
     </RouteSyncedDetails>
   );
@@ -617,6 +628,15 @@ export function WorkspaceProductSidebar({
             isActive: xchatHistoryDeepLinkActive,
             icon: (
               <ChatHistoryRailIcon className="h-[1.15rem] w-[1.15rem] shrink-0 text-[var(--xf-text-200)]" />
+            )
+          },
+          {
+            key: "xchat-example-prompts",
+            href: "/xchat?rail=xchat&item=example-prompts",
+            label: "Example prompts",
+            isActive: xchatExamplePromptsDeepLinkActive,
+            icon: (
+              <LucideListBulletsIcon className="h-[1.15rem] w-[1.15rem] shrink-0 text-[var(--xf-text-200)]" />
             )
           }
         ] satisfies CollapsedIconItem[])

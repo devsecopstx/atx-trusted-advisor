@@ -18,12 +18,13 @@ import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-acco
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
 import { BillingAccessStateBanner } from "@/app/ui/billing-access-state-banner";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
-import { LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
+import { LucideListBulletsIcon, LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { expandWorkspaceProductRail, WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-conversation-types";
+import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import {
@@ -96,7 +97,14 @@ export type XchatConversationProps = {
   /** Tenant workspace limit: max recent prompts in thread + history fetch. */
   workspaceChatHistoryMax?: number;
   /** Optional deep-link target from non-xChat pages (`examples` opens Templates gallery + search). */
-  initialXchatItem?: "composer" | "persona" | "examples" | "history" | "attachments" | null;
+  initialXchatItem?:
+    | "composer"
+    | "persona"
+    | "examples"
+    | "example-prompts"
+    | "history"
+    | "attachments"
+    | null;
   /** RSC bootstrap: prefs + recent Mongo turns (60s server cache) to avoid cold client waterfalls. */
   serverBootstrap?: XchatServerShellBootstrap | null;
   /** Tenant display name for welcome copy (server: `core_tenants.name` via branding resolver). */
@@ -1450,6 +1458,23 @@ export function XchatConversation({
                         {historyStats.totalPrompts} prompts · {historyStats.activeDays} active days
                       </p>
                     ) : null}
+                  </RailDisclosure>
+                </div>
+
+                <div className="xchat-rail-subsection">
+                  <RailDisclosure
+                    defaultOpen={initialXchatItem === "example-prompts"}
+                    icon={<LucideListBulletsIcon className="app-user-rail-disclosure__glyph" />}
+                    title="Example prompts"
+                  >
+                    <p className="status-text">
+                      Tap a line to fill the composer — edit or send when ready.
+                    </p>
+                    <XchatRailExamplePromptsList
+                      askInFlight={loading}
+                      composerRef={composerRef}
+                      setInput={setInput}
+                    />
                   </RailDisclosure>
                 </div>
               </RailDisclosure>

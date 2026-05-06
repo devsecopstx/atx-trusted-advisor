@@ -106,6 +106,20 @@ export function LucideFolderIcon({ className, ...props }: SVGProps<SVGSVGElement
   );
 }
 
+/** Bulleted list — Example prompts rail / workspace shortcuts. https://lucide.dev/icons/list */
+export function LucideListBulletsIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
+      <path d="M8 6h13" stroke="currentColor" strokeLinecap="round" strokeWidth={1.75} />
+      <path d="M8 12h13" stroke="currentColor" strokeLinecap="round" strokeWidth={1.75} />
+      <path d="M8 18h13" stroke="currentColor" strokeLinecap="round" strokeWidth={1.75} />
+      <path d="M3 6h.01" stroke="currentColor" strokeLinecap="round" strokeWidth={2.25} />
+      <path d="M3 12h.01" stroke="currentColor" strokeLinecap="round" strokeWidth={2.25} />
+      <path d="M3 18h.01" stroke="currentColor" strokeLinecap="round" strokeWidth={2.25} />
+    </svg>
+  );
+}
+
 export function LucideSquarePenIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>

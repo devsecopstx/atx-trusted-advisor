@@ -43,6 +43,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     (item === "composer" ||
       item === "persona" ||
       item === "examples" ||
+      item === "example-prompts" ||
       item === "history" ||
       item === "attachments")
       ? item

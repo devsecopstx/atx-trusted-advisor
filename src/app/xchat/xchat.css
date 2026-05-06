@@ -1179,6 +1179,11 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   list-style: none;
 }
 
+.xchat-rail-example-prompts {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
 .xchat-rail-subsection {
   margin-top: 0.45rem;
   padding-top: 0.45rem;

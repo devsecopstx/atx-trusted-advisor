@@ -576,13 +576,6 @@
   letter-spacing: 0.01em;
 }
 
-.portfolios-macro-tape__wellness-micro {
-  margin: 0.22rem 0 0;
-  font-size: 0.56rem;
-  line-height: 1.32;
-  color: var(--xf-text-400);
-}
-
 @media (max-width: 720px) {
   .portfolios-macro-tape__wellness-body {
     grid-template-columns: 1fr;

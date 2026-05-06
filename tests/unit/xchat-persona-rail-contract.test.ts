@@ -9,11 +9,12 @@ describe("xChat composer + workspace rail contract", () => {
   const source = readFileSync(viewPath, "utf8");
   const composerSource = readFileSync(composerPath, "utf8");
 
-  it("keeps xChat section grouped under the workspace rail (Composer + Chat history, no Persona rail)", () => {
+  it("keeps xChat section grouped under the workspace rail (Composer + Chat history + Example prompts, no Persona rail)", () => {
     expect(source).toContain(
       'section className="app-user-rail-section app-user-rail-section--workspace-core" aria-label="xChat"'
     );
     expect(source).toContain('title="Chat history"');
+    expect(source).toContain('title="Example prompts"');
     expect(source).not.toContain('title="Persona"');
     expect(source).toContain("RailDisclosure");
   });

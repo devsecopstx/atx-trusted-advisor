@@ -39,7 +39,10 @@ import { XchatTemplatesStrip } from "@/app/xchat/ui/xchat-templates-strip";
 import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
 
 import { XchatComposerNav } from "./xchat-composer-nav";
+import { hnwiComposerSuggestions } from "./xchat-example-prompts";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
+
+const EXAMPLE_PLACEHOLDER_INTERVAL_MS = 10_000;
 
 export type XchatPendingPasteImage = {
   mediaType: "image/png" | "image/jpeg";
@@ -105,6 +108,9 @@ export function XchatComposerPanel({
 }: XchatComposerPanelProps) {
   const reduceMotion = useReducedMotion();
   const [composerFocused, setComposerFocused] = useState(false);
+  /** Rotating example placeholders stop while the textarea itself is focused (user can type freely). */
+  const [textareaFocused, setTextareaFocused] = useState(false);
+  const [examplePlaceholderIx, setExamplePlaceholderIx] = useState(0);
   const [dictationActive, setDictationActive] = useState(false);
   const [dictationSupported, setDictationSupported] = useState(false);
   const [dictationError, setDictationError] = useState<string | null>(null);
@@ -123,6 +129,37 @@ export function XchatComposerPanel({
       dictationSessionRef.current?.abort();
     };
   }, []);
+
+  const allowExamplePlaceholderCycle =
+    !loading &&
+    !dictationActive &&
+    !pendingPasteImage &&
+    !input.trim() &&
+    !textareaFocused &&
+    reduceMotion !== true;
+
+  useEffect(() => {
+    if (!allowExamplePlaceholderCycle) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      setExamplePlaceholderIx((i) => (i + 1) % hnwiComposerSuggestions.length);
+    }, EXAMPLE_PLACEHOLDER_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [allowExamplePlaceholderCycle]);
+
+  const composerPlaceholder =
+    loading
+      ? "Wait for reply…"
+      : dictationActive
+        ? "Listening… tap mic to stop"
+        : pendingPasteImage
+          ? "Optional caption for your screenshot…"
+          : textareaFocused
+            ? ""
+            : !input.trim() && reduceMotion !== true
+              ? hnwiComposerSuggestions[examplePlaceholderIx] ?? "Ask anything…"
+              : "Ask anything…";
 
   const canSend = Boolean(input.trim()) || Boolean(pendingPasteImage);
 
@@ -360,7 +397,13 @@ export function XchatComposerPanel({
                 aria-label="xChat message composer"
                 className="xchat-composer__field xchat-composer__textarea xchat-composer__textarea--grok"
                 maxLength={4000}
+                onBlur={() => {
+                  setTextareaFocused(false);
+                }}
                 onChange={(e) => setInput(e.target.value)}
+                onFocus={() => {
+                  setTextareaFocused(true);
+                }}
                 onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
                   if (e.key !== "Enter" || e.shiftKey || loading || dictationActive) {
                     return;
@@ -369,15 +412,7 @@ export function XchatComposerPanel({
                   e.currentTarget.form?.requestSubmit();
                 }}
                 onPaste={onComposerPaste}
-                placeholder={
-                  loading
-                    ? "Wait for reply…"
-                    : dictationActive
-                      ? "Listening… tap mic to stop"
-                      : pendingPasteImage
-                        ? "Optional caption for your screenshot…"
-                        : "Ask anything…"
-                }
+                placeholder={composerPlaceholder}
                 readOnly={loading || dictationActive}
                 rows={1}
                 value={input}
