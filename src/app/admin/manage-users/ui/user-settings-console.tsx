@@ -263,12 +263,7 @@ export function UserSettingsConsole() {
       setBillingOverrideEdits((previous) => {
         const next = { ...previous };
         for (const user of normalizedUsers) {
-          const o = user.billing?.override;
-          next[user.userId] = {
-            enabled: o?.enabled ?? false,
-            reason: o?.reason ?? "",
-            expiresAtLocal: o?.expiresAt ? isoToDatetimeLocalValue(o.expiresAt) : ""
-          };
+          next[user.userId] = billingOverrideStateFromApiBilling(user.billing?.override);
         }
         return next;
       });
@@ -611,6 +606,10 @@ export function UserSettingsConsole() {
       setStatus("Select a user first");
       return;
     }
+    const row = approvedUsers.find((u) => u.userId === selectedUserId);
+    const billingEdits =
+      billingOverrideEdits[selectedUserId] ?? billingOverrideStateFromApiBilling(row?.billing?.override);
+    const billingOverride = buildBillingOverridePayload(billingEdits)!;
     setStatus(`Saving settings for ${selectedUserId}...`);
     try {
       const payload = await parseJson<{ data: { updatedAt: string } }>(
@@ -621,7 +620,17 @@ export function UserSettingsConsole() {
         })
       );
       setSettingsLastSaved(payload.data.updatedAt);
-      setStatus("Settings saved");
+
+      await parseJson(
+        await fetch(`/api/admin/users/${encodeURIComponent(selectedUserId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ billingOverride })
+        })
+      );
+
+      await refreshApprovedUsers();
+      setStatus("Settings and billing override saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to save settings");
     }
@@ -895,13 +904,45 @@ export function UserSettingsConsole() {
                       ))}
                     </select>
                   </td>
-                  <td className="align-top text-sm">
-                    {user.billing?.override?.enabled ? (
-                      <span style={{ color: "var(--xf-gain-green)" }} title="billing.override.enabled">
-                        On
+                  <td className="align-top">
+                    {user.pendingAccess ? (
+                      <span
+                        className="status-text text-xs opacity-70"
+                        title="Approve access before editing billing override."
+                      >
+                        —
                       </span>
                     ) : (
-                      <span className="opacity-70">Off</span>
+                      <select
+                        disabled={editingUserId !== user.userId}
+                        aria-label={`Billing override for ${user.email}`}
+                        value={
+                          (billingOverrideEdits[user.userId]?.enabled ??
+                            user.billing?.override?.enabled ??
+                            false)
+                            ? "on"
+                            : "off"
+                        }
+                        onChange={(event) => {
+                          const enabled = event.target.value === "on";
+                          setBillingOverrideEdits((previous) => ({
+                            ...previous,
+                            [user.userId]: {
+                              enabled,
+                              reason:
+                                previous[user.userId]?.reason ?? user.billing?.override?.reason ?? "",
+                              expiresAtLocal:
+                                previous[user.userId]?.expiresAtLocal ??
+                                (user.billing?.override?.expiresAt
+                                  ? isoToDatetimeLocalValue(user.billing.override.expiresAt)
+                                  : "")
+                            }
+                          }));
+                        }}
+                      >
+                        <option value="off">Off</option>
+                        <option value="on">On</option>
+                      </select>
                     )}
                   </td>
                   <td>
@@ -1005,8 +1046,10 @@ export function UserSettingsConsole() {
                 <legend>Billing override (override_active)</legend>
                 <p className="status-text">
                   When enabled, product access follows{" "}
-                  <span className="font-medium">override_active</span> regardless of Stripe status. Saved with{" "}
-                  <strong>Save</strong> on the user row (same request as email, role, and plan).
+                  <span className="font-medium">override_active</span> regardless of Stripe status. Use{" "}
+                  <strong>Save settings</strong> below. You can also include override changes when you click{" "}
+                  <strong>Save</strong> on the user row (with Edit user active), together with email, role, and
+                  plan.
                 </p>
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
@@ -1409,6 +1452,16 @@ function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
     resendPasswordInviteBlockedReason: user.resendPasswordInviteBlockedReason ?? null,
     approvedAt: user.updatedAt,
     latestAuditEvent: user.latestAuditEvent ?? null
+  };
+}
+
+function billingOverrideStateFromApiBilling(
+  override: ApiUserBillingOverride | undefined
+): BillingOverrideEditState {
+  return {
+    enabled: override?.enabled ?? false,
+    reason: override?.reason ?? "",
+    expiresAtLocal: override?.expiresAt ? isoToDatetimeLocalValue(override.expiresAt) : ""
   };
 }
 

@@ -1,9 +1,7 @@
 import cronstrue from "cronstrue";
-import rruleModule from "rrule";
+import { RRule, rrulestr } from "rrule";
 
 import { computeNextRunAtFromCron } from "@/lib/scheduled-task-cron";
-
-const { RRule, rrulestr } = rruleModule;
 
 export type ScheduledTaskScheduleInput = {
   scheduleCron?: string | null;

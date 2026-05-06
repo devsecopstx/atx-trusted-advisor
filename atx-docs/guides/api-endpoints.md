@@ -92,6 +92,7 @@ Mongo collections: **`user_tasks`**, **`user_task_runs`**. **`prompt`** tasks ex
 - `PATCH /api/admin/users/:userId/role`
 - `GET /api/admin/users/:userId/settings`
 - `PUT /api/admin/users/:userId/settings`
+- `POST /api/admin/users/:userId/resend-credential-invite` — global admin; reissues password-setup invite + desk email when user has a login role, no `passwordHash`, deliverable email, active, and `ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY` is off (**409** `credential_invite_resend_blocked` otherwise; **502** if token issued but SMTP send fails). **Next-only** (not BFF-proxied to Spring).
 
 ## Admin tasks and scheduler
 

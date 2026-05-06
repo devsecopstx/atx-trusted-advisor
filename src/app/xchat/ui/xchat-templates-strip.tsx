@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useState, type RefObject } from "react";
 
+import { XchatTemplatesWorkspaceBar } from "@/app/xchat/ui/xchat-templates-workspace-bar";
 import {
     filterXchatPromptTemplates,
     XCHAT_HNWI_PROMPT_TEMPLATES,
@@ -23,13 +24,16 @@ export type XchatTemplatesStripProps = {
   /** Current composer text — for “Save template” prefill. */
   composerDraft: string;
   initiallyExpanded?: boolean;
+  /** xChat ask in flight — status line + disabled scan CTA. */
+  askInFlight?: boolean;
 };
 
 export function XchatTemplatesStrip({
   composerRef,
   setInput,
   composerDraft,
-  initiallyExpanded = false
+  initiallyExpanded = false,
+  askInFlight = false
 }: XchatTemplatesStripProps) {
   const searchId = useId();
   const saveHeadingId = useId();
@@ -160,6 +164,12 @@ export function XchatTemplatesStrip({
 
   return (
     <section aria-label="Prompt templates" className="xchat-templates-strip">
+      <XchatTemplatesWorkspaceBar
+        askInFlight={askInFlight}
+        composerRef={composerRef}
+        promptLibraryCount={mergedTemplates.length}
+        setInput={setInput}
+      />
       <div className="xchat-templates-strip__header">
         <span className="xchat-templates-strip__title">Templates</span>
         <div className="xchat-templates-strip__header-actions">

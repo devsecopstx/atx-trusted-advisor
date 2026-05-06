@@ -65,6 +65,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** `
 | [bff-admin-backlog.md](./sre-ops/bff-admin-backlog.md)                                     | Admin/BFF backlog notes                                         |
 | [bff-enable-staging-runbook.md](./sre-ops/bff-enable-staging-runbook.md)                   | Enable BFF proxy on staging                                     |
 | [junie-guidelines-atxfinance-backend.md](./sre-ops/junie-guidelines-atxfinance-backend.md) | Kotlin backend guidelines                                       |
+| [release-notes.md](./sre-ops/release-notes.md)                                             | Semver changelog (newest first), deploy-target tags             |
 | [secret-rotation.md](./sre-ops/secret-rotation.md)                                         | Secret rotation                                                 |
 | [x-oauth-atx-callbacks.md](./sre-ops/x-oauth-atx-callbacks.md)                             | X OAuth callbacks                                               |
 

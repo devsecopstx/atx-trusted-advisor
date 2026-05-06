@@ -57,6 +57,10 @@ When a global admin **approves** an access request (`PATCH`/`PUT` `/api/admin/ac
 
 If X does not expose an email, the UI uses the **link email** step so the user can tie their X identity to the same email they registered with.
 
+## Admin — Manage users (credential invite resend)
+
+**≥3.12.7:** For approved users who still need email/password setup, **Manage users** exposes **Resend invite** when **`resendPasswordInviteAvailable`** is true on **`GET /api/admin/users`** (same rules as approve-time invite: login role, no **`passwordHash`**, non-placeholder email, active, not **`ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY`**). **`POST /api/admin/users/{userId}/resend-credential-invite`** rotates **`credentialInviteTokenHash`** / **`credentialInviteExpiresAt`** and sends **`sendAccessApprovedPasswordInviteEmail`**; audit **`credential_invite_resent`** or **`credential_invite_resend_email_failed`**. Does **not** replace Access Requests approve flow — use when the original mail was missed or the 7-day link expired.
+
 ## Admin — Manage users (destructive delete)
 
 **Global admin** → **Admin → Manage users** → **Delete** runs **`DELETE /api/admin/users/{userId}`** after a prompt that requires typing **`DELETE`**. The server **removes all product data** scoped to that user id **and** normalized email before deleting the **`core_users`** row: portfolios (and nested accounts, positions, watchlists, portfolio-scoped recommendations/alerts/channels), **`core_tenant_memberships`**, **`admin_user_settings`**, **`admin_access_requests`**, **`options_strategy_preferences`**, **`app_user_recommendations`**, **`xchat_logs`**, **`app_feature_daily_usage`**, **`strategy_jobs`**, **`audit_login`** (by user id and by email when purging a full user), **`admin_user_bootstrap_profiles`**, and disabled **`admin_scheduled_tasks`** rows named **`access-request-bootstrap:{email}`**. Admins **cannot** delete their **own** user id from this route (**400**).

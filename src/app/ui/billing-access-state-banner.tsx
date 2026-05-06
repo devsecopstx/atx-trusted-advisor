@@ -1,6 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
+
+const MOBILE_DISMISS_MQ = "(max-width: 767px)";
+const MOBILE_DISMISS_STORAGE_PREFIX = "xf_xchat_billing_banner_dismissed:";
+
+function subscribeMobileDismissMq(cb: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const mq = window.matchMedia(MOBILE_DISMISS_MQ);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+
+function getMobileDismissMqSnapshot(): boolean {
+  return typeof window !== "undefined" && window.matchMedia(MOBILE_DISMISS_MQ).matches;
+}
 
 type BillingAccessApiResponse = {
   data?: {
@@ -79,10 +95,44 @@ function resolveStateCopy(state: string | null): { tone: BannerTone; detail: str
   }
 }
 
-export function BillingAccessStateBanner({ className }: { className?: string }) {
+export type BillingAccessStateBannerProps = {
+  className?: string;
+  /**
+   * When set, session-wide dismiss (sessionStorage) is offered on small viewports only.
+   * Avoids pushing primary workspace chrome (e.g. xChat composer) below the fold on phones.
+   */
+  dismissSessionKey?: string;
+};
+
+export function BillingAccessStateBanner({ className, dismissSessionKey }: BillingAccessStateBannerProps) {
   const [state, setState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clientDismissed, setClientDismissed] = useState(false);
+
+  const dismissStorageKey =
+    dismissSessionKey != null && dismissSessionKey.trim().length > 0
+      ? `${MOBILE_DISMISS_STORAGE_PREFIX}${dismissSessionKey.trim()}`
+      : null;
+
+  const mobileDismissLayout = useSyncExternalStore(
+    subscribeMobileDismissMq,
+    getMobileDismissMqSnapshot,
+    () => false
+  );
+
+  useEffect(() => {
+    if (!dismissStorageKey) {
+      return;
+    }
+    try {
+      if (sessionStorage.getItem(dismissStorageKey) === "1") {
+        setClientDismissed(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [dismissStorageKey]);
 
   useEffect(() => {
     let active = true;
@@ -130,24 +180,50 @@ export function BillingAccessStateBanner({ className }: { className?: string }) 
       ? error
       : copy.detail;
 
+  const showDismiss =
+    Boolean(dismissStorageKey) && mobileDismissLayout && !loading && !clientDismissed;
+
+  if (clientDismissed) {
+    return null;
+  }
+
   return (
     <div
-      className={className}
-      style={{
-        marginBottom: "0.9rem",
-        borderRadius: "0.5rem",
-        padding: "0.6rem 0.8rem",
-        border: `1px solid ${tone.border}`,
-        background: tone.bg,
-        color: tone.text
-      }}
+      className={["billing-access-state-banner", showDismiss ? "billing-access-state-banner--dismissible" : "", className]
+        .filter(Boolean)
+        .join(" ")}
+      data-billing-tone={error ? "muted" : copy.tone}
       role="status"
       aria-live="polite"
+      style={
+        {
+          ["--billing-banner-bg" as string]: tone.bg,
+          ["--billing-banner-border" as string]: tone.border,
+          ["--billing-banner-text" as string]: tone.text
+        } as CSSProperties
+      }
     >
-      <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 700, lineHeight: 1.3 }}>{content}</p>
-      <p style={{ margin: "0.2rem 0 0", fontSize: "0.74rem", lineHeight: 1.35, opacity: 0.95 }}>
-        {detail}
-      </p>
+      {showDismiss ? (
+        <button
+          aria-label="Dismiss billing notice for this session"
+          className="billing-access-state-banner__dismiss"
+          type="button"
+          onClick={() => {
+            try {
+              if (dismissStorageKey) {
+                sessionStorage.setItem(dismissStorageKey, "1");
+              }
+            } catch {
+              /* ignore */
+            }
+            setClientDismissed(true);
+          }}
+        >
+          ×
+        </button>
+      ) : null}
+      <p className="billing-access-state-banner__title">{content}</p>
+      <p className="billing-access-state-banner__detail">{detail}</p>
     </div>
   );
 }

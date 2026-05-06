@@ -5,12 +5,14 @@ import {
     useRef,
     useState,
     type ClipboardEvent,
+    type FocusEvent,
     type FormEvent,
     type KeyboardEvent,
     type MutableRefObject,
     type RefObject
 } from "react";
 
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
@@ -101,6 +103,8 @@ export function XchatComposerPanel({
   reasoningMode,
   setReasoningMode
 }: XchatComposerPanelProps) {
+  const reduceMotion = useReducedMotion();
+  const [composerFocused, setComposerFocused] = useState(false);
   const [dictationActive, setDictationActive] = useState(false);
   const [dictationSupported, setDictationSupported] = useState(false);
   const [dictationError, setDictationError] = useState<string | null>(null);
@@ -225,6 +229,7 @@ export function XchatComposerPanel({
   return (
     <div className="xchat-composer-wrap" id="xchat-composer">
       <XchatTemplatesStrip
+        askInFlight={loading}
         composerDraft={input}
         composerRef={composerRef}
         initiallyExpanded={templatesGalleryInitiallyExpanded}
@@ -237,7 +242,29 @@ export function XchatComposerPanel({
           onChange={setReasoningMode}
         />
       </div>
-      <form className="xchat-composer xchat-composer--grok" onSubmit={handleSend} ref={composerFormRef}>
+      <motion.form
+        animate={
+          reduceMotion
+            ? undefined
+            : {
+                boxShadow: composerFocused
+                  ? "inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 8%, transparent), 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 42%, transparent), 0 4px 22px color-mix(in srgb, var(--xf-gain-green) 12%, transparent)"
+                  : "inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.35)"
+              }
+        }
+        className="xchat-composer xchat-composer--grok"
+        onBlurCapture={(e: FocusEvent<HTMLFormElement>) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) {
+            setComposerFocused(false);
+          }
+        }}
+        onFocusCapture={() => {
+          setComposerFocused(true);
+        }}
+        onSubmit={handleSend}
+        ref={composerFormRef}
+        transition={{ type: "spring", stiffness: 520, damping: 38 }}
+      >
         {pendingPasteImage ? (
           <div className="xchat-composer-paste-preview">
             <div className="xchat-composer-paste-preview__thumb">
@@ -330,6 +357,7 @@ export function XchatComposerPanel({
               <textarea
                 ref={composerRef}
                 aria-busy={loading}
+                aria-label="xChat message composer"
                 className="xchat-composer__field xchat-composer__textarea xchat-composer__textarea--grok"
                 maxLength={4000}
                 onChange={(e) => setInput(e.target.value)}
@@ -440,13 +468,13 @@ export function XchatComposerPanel({
         {attachNote ? (
           <p className="status-text xchat-composer-attach-note xchat-composer-inline-msg">{attachNote}</p>
         ) : null}
-      </form>
+      </motion.form>
       <div className="xchat-composer-shortcuts">
         <div className="xchat-composer-shortcuts__row">
           <XchatComposerNav />
         </div>
       </div>
-      <p className="xchat-composer-hint" role="note">
+      <p className="xchat-composer-hint xchat-composer-hint--collapse-narrow" role="note">
         Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Waveform voice chat · Mic dictation (xAI STT)
         {tenantFileUploadEnabled ? " · Paperclip uploads to your tenant collection" : ""}
       </p>

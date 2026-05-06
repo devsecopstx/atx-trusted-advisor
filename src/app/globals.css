@@ -868,6 +868,108 @@ html[data-xf-ui="soft"]
   }
 }
 
+/* ── Educational disclaimer (marketing, xChat, xOptions shells) ── */
+
+.xf-educational-disclaimer-banner {
+  margin: 0.5rem 0 0.35rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--xf-radius-sm, 8px);
+  border: 1px solid var(--xf-border-subtle);
+  background: var(--xf-surface-800);
+  color: var(--xf-text-300);
+  font-size: 0.66rem;
+  line-height: 1.42;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 390px) {
+  .xf-educational-disclaimer-banner {
+    font-size: 0.69rem;
+    padding: 0.48rem 0.72rem;
+  }
+}
+
+.xf-educational-disclaimer-banner--xchat-shell {
+  margin-top: max(0.35rem, env(safe-area-inset-top));
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* ── Billing access banner (xChat, billing page) ── */
+
+.billing-access-state-banner {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 0.85rem;
+  border-radius: var(--xf-radius-sm, 10px);
+  padding: 0.62rem 0.82rem;
+  border: 1px solid var(--billing-banner-border, var(--xf-border-subtle));
+  background: var(--billing-banner-bg, var(--xf-surface-800));
+  overflow-wrap: anywhere;
+}
+
+.billing-access-state-banner__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--xf-text-100);
+}
+
+.billing-access-state-banner__detail {
+  margin: 0.28rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--xf-text-200);
+}
+
+.billing-access-state-banner[data-billing-tone="muted"] .billing-access-state-banner__detail {
+  color: var(--xf-text-300);
+}
+
+.billing-access-state-banner--dismissible {
+  position: relative;
+  padding-right: 2.75rem;
+}
+
+.billing-access-state-banner__dismiss {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--xf-radius-sm, 10px);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--xf-text-300);
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
+}
+
+.billing-access-state-banner__dismiss:hover {
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+}
+
+.billing-access-state-banner__dismiss:focus-visible {
+  outline: 2px solid var(--xf-gain-green);
+  outline-offset: 2px;
+}
+
 /* ── Shared app footer (thin legal bar, n8n-style) ── */
 
 .app-footer {

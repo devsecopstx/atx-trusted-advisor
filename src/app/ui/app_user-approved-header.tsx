@@ -32,20 +32,25 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
     <header className="xchat-header">
       <div className="xchat-header-leading">
         <div className="xchat-header-brand-stack">
-          <Link aria-label={USER_PRODUCT_HOME_ARIA_LABEL} className="xchat-header-brand" href="/xchat">
-            {branding?.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- data URLs + arbitrary tenant CDNs
-              <img
-                alt=""
-                className="xchat-header-tenant-logo"
-                height={36}
-                src={branding.logoUrl}
-                width={36}
-              />
-            ) : (
-              <XchatHeaderBrand />
-            )}
-          </Link>
+          <div className="xchat-header-brand-row">
+            <Link aria-label={USER_PRODUCT_HOME_ARIA_LABEL} className="xchat-header-brand" href="/xchat">
+              {branding?.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data URLs + arbitrary tenant CDNs
+                <img
+                  alt=""
+                  className="xchat-header-tenant-logo"
+                  height={36}
+                  src={branding.logoUrl}
+                  width={36}
+                />
+              ) : (
+                <XchatHeaderBrand />
+              )}
+            </Link>
+            <span className="xchat-header-xai-badge" title="Advisory models powered by xAI">
+              xAI Powered
+            </span>
+          </div>
           {ws ? (
             <span className="xchat-header-tenant-under-brand" title={props.session.tenantId?.trim() ?? ""}>
               <span className="xchat-header-tenant-under-brand__name">{ws.name}</span>

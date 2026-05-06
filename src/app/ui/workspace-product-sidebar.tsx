@@ -408,10 +408,14 @@ export function WorkspaceProductSidebar({
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const narrowViewport = useSyncExternalStore(subscribeMaxWidth980, getMaxWidth980Snapshot, () => false);
-  const xchatHistoryDeepLinkActive =
-    pathname.startsWith("/xchat") && searchParams.get("item") === "history";
-  const xchatAttachmentsDeepLinkActive =
-    pathname.startsWith("/xchat") && searchParams.get("item") === "attachments";
+  const isXchatRoute = pathname.startsWith("/xchat");
+  /**
+   * Narrow non-xChat routes keep a full-width stacked rail (legacy). Narrow xChat uses the same
+   * persisted expand/collapse as desktop so the composer stays visible after login (iOS / phones).
+   */
+  const narrowXchatUsesPersistedRailWidth = narrowViewport && isXchatRoute;
+  const xchatHistoryDeepLinkActive = isXchatRoute && searchParams.get("item") === "history";
+  const xchatAttachmentsDeepLinkActive = isXchatRoute && searchParams.get("item") === "attachments";
 
   const utilitiesRouteMatch =
     pathname.startsWith("/import-activity") ||
@@ -442,9 +446,9 @@ export function WorkspaceProductSidebar({
     }
   }, []);
 
-  /** Full labels + accordions; on narrow viewports the stacked layout stays expanded (toggle hidden). */
-  const showExpandedUi = narrowViewport || expanded;
-  const showCollapseToggle = !narrowViewport;
+  /** Full labels + accordions; narrow non-xChat stays expanded full-width without toggle. */
+  const showExpandedUi = narrowXchatUsesPersistedRailWidth ? expanded : narrowViewport || expanded;
+  const showCollapseToggle = narrowXchatUsesPersistedRailWidth ? true : !narrowViewport;
 
   const showXoptionsToggle = pathname.startsWith("/xoptions");
   const xoptionsStrategyBuilderVisible = useSyncExternalStore(
@@ -504,8 +508,8 @@ export function WorkspaceProductSidebar({
 
   const fallbackXchatSection = (
     <RouteSyncedDetails
-      className="portfolios-workspace-sidebar__accordion"
-      routeMatch={pathname.startsWith("/xchat")}
+      className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--core-action"
+      routeMatch={isXchatRoute}
     >
       <summary
         className="portfolios-workspace-sidebar__accordion-summary"
@@ -546,11 +550,11 @@ export function WorkspaceProductSidebar({
       key: "xchat",
       href: "/xchat",
       label: "xChat",
-      isActive: pathname.startsWith("/xchat"),
+      isActive: isXchatRoute,
       icon: <RailSidebarZapIcon className="text-[var(--xf-lightning-yellow)]" size="disclosure" />
     }]
       : []),
-    ...(pathname.startsWith("/xchat")
+    ...(isXchatRoute
       ? ([
           {
             key: "xchat-history",
@@ -594,13 +598,14 @@ export function WorkspaceProductSidebar({
     });
   }
 
-  const railWidthPx = narrowViewport ? undefined : showExpandedUi ? 260 : 64;
+  const railWidthPx =
+    narrowViewport && !narrowXchatUsesPersistedRailWidth ? undefined : showExpandedUi ? 260 : 64;
 
   const expandedNav = (
     <nav className="portfolios-workspace-sidebar portfolios-workspace-sidebar--rail-fill" aria-label="Workspace">
       {isPathVisible("/portfolios") || isPathVisible("/portfolio") || isPathVisible("/watchlist") || isPathVisible("/import-activity") ? (
       <RouteSyncedDetails
-        className="portfolios-workspace-sidebar__accordion"
+        className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--core-action"
         routeMatch={portfolioRouteMatch}
       >
         <summary
@@ -645,7 +650,10 @@ export function WorkspaceProductSidebar({
       {xchatSection ?? fallbackXchatSection}
 
       {isPathVisible("/xoptions") ? (
-      <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/xoptions")}>
+      <RouteSyncedDetails
+        className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--core-action"
+        routeMatch={pathname.startsWith("/xoptions")}
+      >
         <summary
           className="portfolios-workspace-sidebar__accordion-summary"
           onClick={preventDetailsToggleForSidebarPrimaryLink}
@@ -748,7 +756,7 @@ export function WorkspaceProductSidebar({
       <div className="portfolios-workspace-sidebar__bottom">
       {isPathVisible("/resources") || showAttachmentsRail ? (
       <RouteSyncedDetails
-        className="portfolios-workspace-sidebar__accordion"
+        className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--secondary-nav"
         routeMatch={
           pathname.startsWith("/resources") ||
           pathname.startsWith("/account/tasks") ||
@@ -830,7 +838,7 @@ export function WorkspaceProductSidebar({
 
       {accountDetails ? (
         <RouteSyncedDetails
-          className="portfolios-workspace-sidebar__accordion"
+          className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--secondary-nav"
           routeMatch={
             (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
             pathname.startsWith("/legal")
@@ -869,7 +877,7 @@ export function WorkspaceProductSidebar({
             {collapsedIcons.map((item) => (
               <XfHoverHint hint={item.label} key={item.key}>
                 <Link
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] ${
+                  className={`flex h-11 w-11 min-h-[44px] min-w-[44px] max-[980px]:h-12 max-[980px]:w-12 max-[980px]:min-h-[48px] max-[980px]:min-w-[48px] shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] ${
                     item.isActive
                       ? "bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_14%,transparent)] text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
                       : "text-[var(--xf-text-200)]"

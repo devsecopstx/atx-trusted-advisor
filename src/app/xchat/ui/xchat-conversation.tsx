@@ -1292,7 +1292,7 @@ export function XchatConversation({
               visiblePathPrefixes={visiblePathPrefixes}
               workspaceBook={workspaceBook}
               xchatSection={(
-            <section className="app-user-rail-section" aria-label="xChat">
+            <section className="app-user-rail-section app-user-rail-section--workspace-core" aria-label="xChat">
               <RailDisclosure
                 defaultOpen={initialXchatItem !== null}
                 icon={<RailSidebarZapIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--zap" size="disclosure" />}
@@ -1462,20 +1462,29 @@ export function XchatConversation({
       <div className="xchat-main">
         <header className="xchat-welcome-header">
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
-          <p className="xchat-welcome-sub">
-            {tenantWorkspaceSessionLabel ? (
-              <>
-                <span className="block font-medium text-[var(--xf-text-200)]">
-                  Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
-                </span>
-              </>
-            ) : null}
+          {tenantWorkspaceSessionLabel ? (
+            <p className="xchat-welcome-tenant">
+              <span className="xchat-welcome-tenant__full hidden md:inline font-medium text-[var(--xf-text-200)]">
+                Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
+              </span>
+              <span className="xchat-welcome-tenant__short md:hidden font-medium text-[var(--xf-text-200)]">
+                {tenantWorkspaceSessionLabel}
+              </span>
+            </p>
+          ) : null}
+          <p className="xchat-welcome-sub hidden md:block">
             Overview of xChat — portfolio, watchlist, and advisor options tools. Use Templates above the composer for
             starter prompts; Depth (Fast / Expert / Heavy) controls plan-aware reasoning.
           </p>
+          <p className="xchat-welcome-sub xchat-welcome-sub--mobile-compact md:hidden">
+            Portfolio, watchlist, and options tools — Templates sit above the composer; Depth sets reasoning.
+          </p>
         </header>
 
-        <BillingAccessStateBanner />
+        <BillingAccessStateBanner
+          className="billing-access-state-banner--xchat-shell"
+          dismissSessionKey="workspace_v1"
+        />
 
         <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
           <XchatThreadPanelLazy
