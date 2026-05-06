@@ -12,6 +12,7 @@ import autoTable from "jspdf-autotable";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { formatExpirationShortLabel } from "@/lib/xoptions/xoptions-order-preview";
 import { parseOccOptionSymbol } from "@/modules/watchlist/option-expiration";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
@@ -300,26 +301,216 @@ function toXoptionsHref(row: OptionsActionReportRow): string {
   return `/xoptions?${params.toString()}`;
 }
 
-function badgeTone(
-  kind: "urgency" | "confidence",
-  value: OptionsActionReportRow["urgency"] | OptionsActionReportRow["confidence"]
-): string {
-  if (kind === "urgency") {
-    if (value === "high") {
-      return "bg-[color-mix(in_srgb,var(--xf-danger-400)_22%,transparent)] text-[var(--xf-danger-400)]";
-    }
-    if (value === "med") {
-      return "bg-[color-mix(in_srgb,var(--xf-warning-400)_22%,transparent)] text-[var(--xf-warning-400)]";
-    }
-    return "bg-[color-mix(in_srgb,var(--xf-text-400)_22%,transparent)] text-[var(--xf-text-300)]";
+function scanDteDays(yyyyMmDd: string | undefined): number | null {
+  if (!yyyyMmDd || yyyyMmDd.length < 10) {
+    return null;
   }
-  if (value === "high") {
-    return "bg-[color-mix(in_srgb,var(--xf-gain-green)_22%,transparent)] text-[var(--xf-gain-green)]";
+  const exp = new Date(`${yyyyMmDd.slice(0, 10)}T00:00:00.000Z`);
+  if (Number.isNaN(exp.getTime())) {
+    return null;
   }
-  if (value === "medium") {
-    return "bg-[color-mix(in_srgb,var(--xf-warning-400)_20%,transparent)] text-[var(--xf-warning-400)]";
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const expUtc = Date.UTC(exp.getUTCFullYear(), exp.getUTCMonth(), exp.getUTCDate());
+  return Math.max(0, Math.ceil((expUtc - todayUtc) / 86400000));
+}
+
+function UrgencyAlertIcon() {
+  return (
+    <svg aria-hidden className="h-3 w-3 shrink-0 opacity-95" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M8 2 14 13H2L8 2Zm0 9.25a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7ZM7.25 7h1.5v3h-1.5V7Z" />
+    </svg>
+  );
+}
+
+function UrgencyBadge({ urgency }: { urgency: OptionsActionReportRow["urgency"] }) {
+  const base =
+    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.06em]";
+  if (urgency === "high") {
+    return (
+      <span
+        className={`${base} bg-[color-mix(in_srgb,var(--xf-danger-400)_58%,var(--xf-bg-900))] text-[var(--xf-text-100)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--xf-danger-400)_55%,transparent)]`}
+      >
+        <UrgencyAlertIcon />
+        high
+      </span>
+    );
   }
-  return "bg-[color-mix(in_srgb,var(--xf-danger-400)_20%,transparent)] text-[var(--xf-danger-400)]";
+  if (urgency === "med") {
+    return (
+      <span
+        className={`${base} bg-[color-mix(in_srgb,var(--xf-warning-400)_48%,var(--xf-bg-900))] text-[var(--xf-text-100)] ring-1 ring-[color-mix(in_srgb,var(--xf-warning-400)_42%,transparent)]`}
+      >
+        med
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`${base} bg-[color-mix(in_srgb,var(--xf-text-400)_22%,var(--xf-surface-600))] text-[var(--xf-text-200)] ring-1 ring-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)]`}
+    >
+      low
+    </span>
+  );
+}
+
+function ConfidenceBadge({ confidence }: { confidence: OptionsActionReportRow["confidence"] }) {
+  const filled = confidence === "high" ? 3 : confidence === "medium" ? 2 : 1;
+  const label = confidence.toUpperCase();
+  const accent =
+    confidence === "high"
+      ? "var(--xf-gain-green)"
+      : confidence === "medium"
+        ? "var(--xf-warning-400)"
+        : "var(--xf-text-400)";
+  const emptySeg =
+    "h-1 flex-1 rounded-[2px] bg-[color-mix(in_srgb,var(--xf-bg-900)_55%,transparent)]";
+  return (
+    <span
+      className="inline-flex min-w-[5.75rem] flex-col gap-1 rounded-full border px-2.5 py-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)]"
+      style={{
+        borderColor: `color-mix(in srgb, ${accent} 34%, transparent)`,
+        background: `color-mix(in srgb, ${accent} 12%, var(--xf-bg-900))`
+      }}
+    >
+      <span
+        className="flex items-center justify-between gap-2 text-[0.62rem] font-extrabold uppercase tracking-[0.07em]"
+        style={{ color: accent }}
+      >
+        <span>{label}</span>
+        <span className="font-mono text-[0.58rem] opacity-90">{confidenceDots(confidence)}</span>
+      </span>
+      <span className="flex gap-0.5">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={emptySeg}
+            style={
+              i < filled
+                ? {
+                    background: accent,
+                    boxShadow: `0 0 8px color-mix(in srgb, ${accent} 38%, transparent)`
+                  }
+                : undefined
+            }
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function InstrumentStack({ row }: { row: OptionsActionReportRow }) {
+  const instrument = toRowInstrument(row);
+  if (instrument.strike == null || !instrument.exp || !instrument.type) {
+    return (
+      <div className="flex flex-col gap-0.5 py-0.5">
+        <span className="text-[0.9375rem] font-bold leading-tight tracking-tight text-[var(--xf-text-100)]">
+          {instrument.symbol}
+        </span>
+        <span className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[var(--xf-text-500)]">
+          Chain
+        </span>
+      </div>
+    );
+  }
+  const typeHue =
+    instrument.type === "call"
+      ? "text-[color-mix(in_srgb,var(--xf-gain-green)_78%,var(--xf-text-100)_22%)]"
+      : "text-[color-mix(in_srgb,var(--xf-danger-400)_82%,var(--xf-text-100)_18%)]";
+  const shortExp = formatExpirationShortLabel(instrument.exp);
+  return (
+    <div className="flex flex-col gap-0.5 py-0.5">
+      <span className="text-[0.9375rem] font-bold leading-tight tracking-tight text-[var(--xf-text-100)]">
+        {instrument.symbol}
+      </span>
+      <span className={`font-mono text-[0.72rem] font-semibold tabular-nums ${typeHue}`}>
+        {instrument.strike.toFixed(2)} {instrument.type.toUpperCase()}
+      </span>
+      <span className="font-mono text-[0.64rem] tabular-nums text-[var(--xf-text-400)]">{shortExp}</span>
+    </div>
+  );
+}
+
+function ExpiryCell({ exp }: { exp: string | undefined }) {
+  const dte = scanDteDays(exp);
+  return (
+    <div className="flex flex-col items-end gap-1 text-right">
+      {exp ? (
+        <span className="font-mono text-[0.65rem] tabular-nums text-[var(--xf-text-400)]">{exp}</span>
+      ) : (
+        <span className="text-[0.65rem] text-[var(--xf-text-500)]">—</span>
+      )}
+      {dte != null ? (
+        <span className="inline-flex rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_16%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_92%,transparent)] px-1.5 py-0.5 font-mono text-[0.58rem] font-semibold uppercase tracking-wide text-[var(--xf-text-300)]">
+          DTE {dte}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function WhyCell(props: {
+  text: string;
+  expanded: boolean;
+  onToggle: () => void;
+  showGenericHelper: boolean;
+  generic: boolean;
+  isSpecialLunr: boolean;
+}) {
+  const firstBreak = props.text.search(/[.!?]\s/);
+  const head = firstBreak > 0 ? props.text.slice(0, firstBreak + 1) : props.text;
+  const tail = firstBreak > 0 ? props.text.slice(firstBreak + 1).trim() : "";
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      title={props.expanded ? undefined : props.text}
+      className="group/why max-w-full cursor-pointer rounded-md px-1 py-0.5 text-left outline-none transition hover:bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--xf-tenant-primary)_45%,transparent)] sm:max-w-[min(22rem,42vw)]"
+      onClick={(event) => {
+        event.stopPropagation();
+        props.onToggle();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          props.onToggle();
+        }
+      }}
+    >
+      <div
+        className={
+          props.expanded ? "text-[0.72rem] leading-snug" : "line-clamp-2 text-[0.72rem] leading-snug"
+        }
+      >
+        <span className="text-[var(--xf-text-200)]">{head}</span>
+        {tail ? <span className="text-[var(--xf-text-400)] italic"> {tail}</span> : null}
+      </div>
+      <span className="mt-0.5 block text-[0.58rem] font-medium text-[var(--xf-text-400)] opacity-0 transition group-hover/why:opacity-100">
+        {props.expanded ? "Click to collapse" : "Click for full rationale"}
+      </span>
+      {props.showGenericHelper && props.generic ? (
+        <span className="mt-1 block text-[0.64rem] text-[var(--xf-text-500)]">
+          Define entry criteria in xStrategyBuilder
+        </span>
+      ) : null}
+      {props.isSpecialLunr ? (
+        <span className="mt-1 block text-[0.64rem] text-[var(--xf-lightning-yellow)]">
+          Special setup: LUNR 27.50 PUT (May 1)
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function actionLabelClasses(action: OptionsActionReportRow["recommendedAction"]): string {
+  if (action === "STC" || action === "BTC") {
+    return "inline-flex rounded-md bg-[color-mix(in_srgb,var(--xf-danger-400)_24%,transparent)] px-2 py-0.5 text-[0.72rem] font-extrabold tracking-wide text-[var(--xf-danger-400)] ring-1 ring-[color-mix(in_srgb,var(--xf-danger-400)_42%,transparent)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_10%,transparent)]";
+  }
+  if (action === "LET_EXPIRE") {
+    return "inline-flex rounded-md bg-[color-mix(in_srgb,var(--xf-warning-400)_18%,transparent)] px-2 py-0.5 text-[0.72rem] font-bold tracking-wide text-[var(--xf-warning-400)] ring-1 ring-[color-mix(in_srgb,var(--xf-warning-400)_35%,transparent)]";
+  }
+  return "text-[0.72rem] font-bold tracking-wide text-[var(--xf-text-200)]";
 }
 
 function closeRecommendationCount(rows: OptionsActionReportRow[]): number {
@@ -447,7 +638,6 @@ function OptionsActionScanReportInner({
       )?.symbol ?? holdings.find((row) => row.confidence === "high")?.symbol,
     [holdings]
   );
-  const summaryLine = `${closeCount} holdings recommended to close • ${watchlist.length} watchlist symbols monitoring • ${highConfidenceStc ? `HIGH confidence on ${highConfidenceStc}` : "No HIGH confidence signal"}`;
   const genericWatchlistCount = useMemo(
     () =>
       watchlist.filter((row) => {
@@ -514,21 +704,60 @@ function OptionsActionScanReportInner({
   }
 
   return (
-    <section className="rounded-xl border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[var(--xf-surface-700)] p-4 sm:p-5">
-      <header className="flex flex-col gap-3 border-b border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] pb-3">
+    <section className="options-action-scan-root rounded-[var(--xf-radius-md)] border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[var(--xf-surface-700)] p-5 sm:p-6 md:p-7">
+      <header className="flex flex-col gap-4 border-b border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] pb-5">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-base font-semibold tracking-tight text-[var(--xf-text-100)]">{title}</h2>
-          <span className="rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[var(--xf-text-300)]">
+          <h2 className="text-lg font-bold tracking-tight text-[var(--xf-text-100)] sm:text-xl">{title}</h2>
+          <span className="rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[var(--xf-text-300)]">
             {generatedAtLabel}
           </span>
-          <span className="rounded-full border border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)] px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-gain-green)]">
+          <span className="rounded-full border border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)] px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-gain-green)]">
             Advisor
           </span>
         </div>
         {showHeaderSummary ? (
-          <p className="rounded-md border border-[color-mix(in_srgb,var(--xf-lightning-yellow)_24%,transparent)] bg-[color-mix(in_srgb,var(--xf-lightning-yellow)_10%,transparent)] px-2.5 py-1.5 text-xs text-[var(--xf-text-200)]">
-            {summaryLine}
-          </p>
+          <div className="flex flex-col gap-2 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-tenant-primary)_26%,transparent)] bg-gradient-to-br from-[color-mix(in_srgb,var(--xf-bg-800)_55%,var(--xf-surface-700))] via-[color-mix(in_srgb,var(--xf-tenant-primary)_9%,var(--xf-surface-700))] to-[color-mix(in_srgb,var(--xf-bg-900)_40%,var(--xf-surface-700))] p-3 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] sm:flex-row sm:flex-wrap">
+            <div className="flex min-w-[11rem] flex-1 items-start gap-2.5 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_55%,transparent)] px-3 py-2.5">
+              <span aria-hidden className="select-none text-lg leading-none">
+                📉
+              </span>
+              <div className="min-w-0">
+                <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--xf-text-400)]">
+                  Close candidates
+                </p>
+                <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--xf-text-100)]">{closeCount}</p>
+                <p className="text-[0.68rem] leading-snug text-[var(--xf-text-400)]">Holdings recommended to close</p>
+              </div>
+            </div>
+            <div className="flex min-w-[11rem] flex-1 items-start gap-2.5 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_55%,transparent)] px-3 py-2.5">
+              <span aria-hidden className="select-none text-lg leading-none">
+                👀
+              </span>
+              <div className="min-w-0">
+                <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--xf-text-400)]">
+                  Watchlist
+                </p>
+                <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--xf-text-100)]">{watchlist.length}</p>
+                <p className="text-[0.68rem] leading-snug text-[var(--xf-text-400)]">Symbols on monitor queue</p>
+              </div>
+            </div>
+            <div className="flex min-w-[11rem] flex-1 items-start gap-2.5 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-gain-green)_28%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_8%,var(--xf-surface-600))] px-3 py-2.5">
+              <span aria-hidden className="select-none text-lg leading-none">
+                🟢
+              </span>
+              <div className="min-w-0">
+                <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--xf-text-400)]">
+                  Conviction
+                </p>
+                <p className="mt-0.5 break-words text-sm font-bold text-[var(--xf-gain-green)]">
+                  {highConfidenceStc ? highConfidenceStc : "—"}
+                </p>
+                <p className="text-[0.68rem] leading-snug text-[var(--xf-text-400)]">
+                  {highConfidenceStc ? "Highest-confidence lane (STC bias)" : "No HIGH confidence signal yet"}
+                </p>
+              </div>
+            </div>
+          </div>
         ) : null}
         <div className="flex flex-wrap gap-2">
           <button
@@ -581,10 +810,13 @@ function OptionsActionScanReportInner({
         ) : null}
       </header>
 
-      <div className="mt-4 space-y-5">
+      <div className="mt-6 space-y-8">
         <section>
-          <h3 className="mb-2 text-sm font-semibold text-[var(--xf-text-100)]">
-            📈 Holdings — Recommended Close (STC)
+          <h3 className="mb-4 flex items-center gap-2 border-b border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pb-2 text-[0.8125rem] font-bold uppercase tracking-[0.1em] text-[var(--xf-text-100)]">
+            <span aria-hidden className="text-base opacity-90">
+              📈
+            </span>
+            Holdings — Recommended Close (STC)
           </h3>
           <ReportTable
             rows={holdings}
@@ -602,8 +834,11 @@ function OptionsActionScanReportInner({
         </section>
 
         <section>
-          <h3 className="mb-2 text-sm font-semibold text-[var(--xf-text-100)]">
-            👁️ Watchlist — Monitoring Queue
+          <h3 className="mb-4 flex items-center gap-2 border-b border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pb-2 text-[0.8125rem] font-bold uppercase tracking-[0.1em] text-[var(--xf-text-100)]">
+            <span aria-hidden className="text-base opacity-90">
+              👁️
+            </span>
+            Watchlist — Monitoring Queue
           </h3>
           <ReportTable
             rows={watchlist}
@@ -625,7 +860,7 @@ function OptionsActionScanReportInner({
           ) : null}
         </section>
 
-        <aside className="rounded-md border border-[color-mix(in_srgb,var(--xf-lightning-yellow)_25%,transparent)] bg-[color-mix(in_srgb,var(--xf-lightning-yellow)_10%,transparent)] px-3 py-2">
+        <aside className="rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-lightning-yellow)_25%,transparent)] bg-[color-mix(in_srgb,var(--xf-lightning-yellow)_10%,transparent)] px-4 py-3">
           <h4 className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--xf-text-100)]">Key Insights</h4>
           <p className="mt-1 text-xs text-[var(--xf-text-200)]">
             {closeCount} close candidates across active holdings, {watchlist.length} watchlist symbols still monitoring,
@@ -649,26 +884,37 @@ function ReportTable(props: {
   onCreateAlertChange: (rowId: string, checked: boolean) => void;
   onApplyToWatchlist: (row: OptionsActionReportRow) => void;
 }) {
+  const [expandedWhyId, setExpandedWhyId] = useState<string | null>(null);
+  const toggleWhy = (rowId: string) => {
+    setExpandedWhyId((previous) => (previous === rowId ? null : rowId));
+  };
+
   return (
     <>
-      <div className="hidden overflow-x-auto rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] sm:block">
-        <table className="w-full min-w-[44rem] border-collapse text-left text-xs">
+      <div className="hidden overflow-x-auto rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_28%,var(--xf-surface-700))] sm:block">
+        <table className="w-full min-w-[52rem] border-collapse text-left text-xs">
           <thead>
-            <tr className="border-b border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-transparent">
+            <tr className="border-b border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_72%,transparent)]">
               <SortTh label="Instrument" sortKey="symbol" {...props} />
               <SortTh label="Action" sortKey="action" {...props} />
               <SortTh label="Urgency" sortKey="urgency" {...props} />
               <SortTh label="Confidence" sortKey="confidence" {...props} />
-              <SortTh label="Exp" sortKey="expiry" {...props} />
-              <th className="px-2 py-2 font-semibold uppercase tracking-[0.07em] text-[var(--xf-text-400)]">Why</th>
-              <th className="px-2 py-2 font-semibold uppercase tracking-[0.07em] text-[var(--xf-text-400)]">Open</th>
-              <th className="px-2 py-2 font-semibold uppercase tracking-[0.07em] text-[var(--xf-text-400)]">Apply</th>
+              <SortTh align="right" label="Exp" sortKey="expiry" {...props} />
+              <th className="px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]">
+                Why
+              </th>
+              <th className="px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]">
+                Open
+              </th>
+              <th className="px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]">
+                Apply
+              </th>
             </tr>
           </thead>
           <tbody>
             {props.rows.length === 0 ? (
               <tr>
-                <td className="px-2 py-3 text-[var(--xf-text-400)]" colSpan={8}>
+                <td className="px-3 py-4 text-[var(--xf-text-400)]" colSpan={8}>
                   No rows.
                 </td>
               </tr>
@@ -676,68 +922,60 @@ function ReportTable(props: {
               props.rows.map((row, idx) => {
                 const instrument = toRowInstrument(row);
                 const generic = !(instrument.strike != null && instrument.exp && instrument.type);
-                const isSpecialLunr =
+                const isSpecialLunr = Boolean(
                   instrument.symbol === "LUNR" &&
-                  instrument.type === "put" &&
-                  instrument.exp?.endsWith("-05-01") &&
-                  Math.abs((instrument.strike ?? 0) - 27.5) < 0.001;
+                    instrument.type === "put" &&
+                    instrument.exp?.endsWith("-05-01") &&
+                    Math.abs((instrument.strike ?? 0) - 27.5) < 0.001
+                );
                 const rowApplyState = props.applyCache[row.rowId];
                 const rowCreateAlert = Boolean(props.createAlertByRowId[row.rowId]);
                 const applyPending = rowApplyState?.status === "pending";
+                const rowKey = row.rowId || `${row.source}-${row.symbol}-${idx}`;
+                const whyExpanded = expandedWhyId === row.rowId;
                 return (
                   <tr
-                    className="border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] transition hover:bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)]"
-                    key={row.rowId || `${row.source}-${row.symbol}-${idx}`}
+                    className="border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--xf-tenant-primary)_8%,var(--xf-surface-700))]"
+                    key={rowKey}
                   >
-                    <td className="px-2 py-2 text-[var(--xf-text-100)]">{instrumentLabel(row)}</td>
-                    <td className="px-2 py-2">
-                      <span
-                        className={
-                          row.recommendedAction === "STC"
-                            ? "font-bold text-[var(--xf-danger-400)]"
-                            : "font-semibold text-[var(--xf-text-200)]"
-                        }
-                      >
-                        {row.recommendedAction}
-                      </span>
+                    <td className="align-top px-3 py-2.5">
+                      <InstrumentStack row={row} />
                     </td>
-                    <td className="px-2 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-bold uppercase ${badgeTone("urgency", row.urgency)}`}>
-                        {row.urgency}
-                      </span>
+                    <td className="align-top px-3 py-2.5">
+                      <span className={actionLabelClasses(row.recommendedAction)}>{row.recommendedAction}</span>
                     </td>
-                    <td className="px-2 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-bold uppercase ${badgeTone("confidence", row.confidence)}`}>
-                        {row.confidence} {confidenceDots(row.confidence)}
-                      </span>
+                    <td className="align-top px-3 py-2.5">
+                      <UrgencyBadge urgency={row.urgency} />
                     </td>
-                    <td className="px-2 py-2 text-[var(--xf-text-300)]">{instrument.exp ?? "—"}</td>
-                    <td className="px-2 py-2">
-                      <span className="block max-w-[30ch] truncate text-[var(--xf-text-300)]" title={row.why}>
-                        {row.why}
-                      </span>
-                      {props.showGenericHelper && generic ? (
-                        <span className="block text-[0.64rem] text-[var(--xf-text-500)]">
-                          Define entry criteria in xStrategyBuilder
-                        </span>
-                      ) : null}
-                      {isSpecialLunr ? (
-                        <span className="block text-[0.64rem] text-[var(--xf-lightning-yellow)]">Special setup: LUNR 27.50 PUT (May 1)</span>
-                      ) : null}
+                    <td className="align-top px-3 py-2.5">
+                      <ConfidenceBadge confidence={row.confidence} />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="align-top px-3 py-2.5">
+                      <ExpiryCell exp={instrument.exp} />
+                    </td>
+                    <td className="align-top px-3 py-2.5">
+                      <WhyCell
+                        expanded={whyExpanded}
+                        generic={generic}
+                        isSpecialLunr={isSpecialLunr}
+                        showGenericHelper={props.showGenericHelper}
+                        text={row.why}
+                        onToggle={() => toggleWhy(row.rowId)}
+                      />
+                    </td>
+                    <td className="align-top px-3 py-2.5">
                       <Link
-                        className="inline-flex items-center rounded border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_35%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-xoptions-accent)] hover:bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_12%,transparent)]"
+                        className="inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_38%,transparent)] bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_8%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-xoptions-accent)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] hover:bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_16%,transparent)]"
                         href={toXoptionsHref(row)}
                       >
                         Open in xOptions
                       </Link>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="align-top px-3 py-2.5">
                       {props.applyEnabled ? (
                         <div className="flex flex-col gap-1">
                           <button
-                            className="inline-flex items-center justify-center rounded border border-[color-mix(in_srgb,var(--xf-gain-green)_45%,transparent)] px-2 py-1 text-[0.65rem] font-semibold text-[var(--xf-gain-green)] hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_48%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.65rem] font-bold text-[var(--xf-gain-green)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={applyPending}
                             type="button"
                             onClick={() => props.onApplyToWatchlist(row)}
@@ -785,48 +1023,57 @@ function ReportTable(props: {
         </table>
       </div>
 
-      <div className="grid gap-2 sm:hidden">
+      <div className="grid gap-3 sm:hidden">
         {props.rows.length === 0 ? (
           <p className="text-xs text-[var(--xf-text-400)]">No rows.</p>
         ) : (
           props.rows.map((row, idx) => {
+            const instrument = toRowInstrument(row);
+            const generic = !(instrument.strike != null && instrument.exp && instrument.type);
+            const isSpecialLunr = Boolean(
+              instrument.symbol === "LUNR" &&
+                instrument.type === "put" &&
+                instrument.exp?.endsWith("-05-01") &&
+                Math.abs((instrument.strike ?? 0) - 27.5) < 0.001
+            );
             const rowApplyState = props.applyCache[row.rowId];
             const rowCreateAlert = Boolean(props.createAlertByRowId[row.rowId]);
             const applyPending = rowApplyState?.status === "pending";
+            const whyExpanded = expandedWhyId === row.rowId;
             return (
               <article
-                className="rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-2.5"
+                className="rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_5%,var(--xf-surface-700))] p-3 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_6%,transparent)]"
                 key={row.rowId || `${row.source}-${row.symbol}-mobile-${idx}`}
               >
-                <p className="text-sm font-semibold text-[var(--xf-text-100)]">{instrumentLabel(row)}</p>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  <span className={`rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold uppercase ${badgeTone("urgency", row.urgency)}`}>
-                    {row.urgency}
-                  </span>
-                  <span className={`rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold uppercase ${badgeTone("confidence", row.confidence)}`}>
-                    {row.confidence} {confidenceDots(row.confidence)}
-                  </span>
-                  <span
-                    className={
-                      row.recommendedAction === "STC"
-                        ? "text-[0.7rem] font-bold text-[var(--xf-danger-400)]"
-                        : "text-[0.7rem] font-semibold text-[var(--xf-text-200)]"
-                    }
-                  >
-                    {row.recommendedAction}
-                  </span>
+                <InstrumentStack row={row} />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className={actionLabelClasses(row.recommendedAction)}>{row.recommendedAction}</span>
+                  <UrgencyBadge urgency={row.urgency} />
+                  <ConfidenceBadge confidence={row.confidence} />
                 </div>
-                <p className="mt-1 text-[0.72rem] text-[var(--xf-text-300)]">{row.why}</p>
+                <div className="mt-2 flex justify-end">
+                  <ExpiryCell exp={instrument.exp} />
+                </div>
+                <div className="mt-2">
+                  <WhyCell
+                    expanded={whyExpanded}
+                    generic={generic}
+                    isSpecialLunr={isSpecialLunr}
+                    showGenericHelper={props.showGenericHelper}
+                    text={row.why}
+                    onToggle={() => toggleWhy(row.rowId)}
+                  />
+                </div>
                 <Link
-                  className="mt-2 inline-flex items-center rounded border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_35%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-xoptions-accent)]"
+                  className="mt-3 inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_38%,transparent)] bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_8%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-xoptions-accent)]"
                   href={toXoptionsHref(row)}
                 >
                   Open in xOptions
                 </Link>
                 {props.applyEnabled ? (
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-3 space-y-1">
                     <button
-                      className="inline-flex w-full items-center justify-center rounded border border-[color-mix(in_srgb,var(--xf-gain-green)_45%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-gain-green)] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex w-full items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_48%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1.5 text-[0.68rem] font-bold text-[var(--xf-gain-green)] disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={applyPending}
                       type="button"
                       onClick={() => props.onApplyToWatchlist(row)}
@@ -894,21 +1141,23 @@ export function OptionsActionScanReport(props: OptionsActionScanReportProps) {
 function SortTh(props: {
   label: string;
   sortKey: SortKey;
+  align?: "left" | "right";
   rows: OptionsActionReportRow[];
   sort: SortState;
   onSortChange: (sort: SortState) => void;
   showGenericHelper: boolean;
 }) {
   const isActive = props.sort.key === props.sortKey;
+  const align = props.align ?? "left";
   return (
-    <th className="px-2 py-2">
+    <th className={`px-3 py-2.5 ${align === "right" ? "text-right" : "text-left"}`}>
       <button
-        className="inline-flex items-center gap-1 font-semibold uppercase tracking-[0.07em] text-[var(--xf-text-400)]"
+        className={`inline-flex items-center gap-1 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)] ${align === "right" ? "ml-auto" : ""}`}
         type="button"
         onClick={() => props.onSortChange(sortToggle(props.sort, props.sortKey))}
       >
         {props.label}
-        <span className="text-[0.6rem]">{isActive ? (props.sort.dir === "asc" ? "↑" : "↓") : "↕"}</span>
+        <span className="text-[0.58rem] opacity-80">{isActive ? (props.sort.dir === "asc" ? "↑" : "↓") : "↕"}</span>
       </button>
     </th>
   );

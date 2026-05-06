@@ -2522,6 +2522,13 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   }
 }
 
+/** Elevated shell for Options Action Scan (xChat + shared report viewer). */
+.options-action-scan-root {
+  box-shadow:
+    var(--xf-shadow-card),
+    inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
 .xchat-scan-action-btn {
   appearance: none;
   border-radius: 0.625rem;
