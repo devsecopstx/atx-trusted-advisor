@@ -1056,6 +1056,21 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
+  "POST /api/admin/users/{userId}/resend-credential-invite": {
+    summary:
+      "Reissue password-setup invite token and resend approval email (Mongo + desk SMTP). For users without a password who already have a login role.",
+    responses: {
+      "200": jsonResponse("Invite emailed.", "AdminCredentialInviteResendResponseEnvelope"),
+      "400": jsonResponse("Invalid user id.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("User not found.", "ErrorResponse"),
+      "409": jsonResponse("User cannot receive a password invite in current state.", "ErrorResponse"),
+      "502": jsonResponse("Token reissued but outbound email failed.", "AdminCredentialInviteResendPartialFailureEnvelope"),
+      "503": jsonResponse("Failed to issue invite token.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
   "GET /api/admin/users/{userId}/settings": {
     summary: "Get user admin settings",
     responses: {
@@ -2468,6 +2483,25 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "array",
         items: refSchema("CoreUserTenantMembership"),
         description: "Tenant links from core_tenant_memberships (admin list/detail)."
+      },
+      hasPassword: {
+        type: "boolean",
+        description: "True when core_users.passwordHash is set (email/password login configured)."
+      },
+      credentialInviteExpiresAt: {
+        type: "string",
+        format: "date-time",
+        nullable: true,
+        description: "Expiry of the current password-invite token, if any."
+      },
+      resendPasswordInviteAvailable: {
+        type: "boolean",
+        description: "Whether POST …/resend-credential-invite is expected to succeed for this user."
+      },
+      resendPasswordInviteBlockedReason: {
+        type: "string",
+        nullable: true,
+        description: "When resend is unavailable, a short admin-facing reason."
       }
     }
   },
@@ -2567,6 +2601,38 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           userId: { type: "string" },
           xchatUsageDeleted: { type: "integer", minimum: 0 },
           featureDailyDeleted: { type: "integer", minimum: 0 }
+        }
+      }
+    }
+  },
+  AdminCredentialInviteResendResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["userId", "emailedTo", "credentialInviteExpiresAt"],
+        properties: {
+          userId: { type: "string" },
+          emailedTo: { type: "string", format: "email" },
+          credentialInviteExpiresAt: { type: "string", format: "date-time", nullable: true }
+        }
+      }
+    }
+  },
+  AdminCredentialInviteResendPartialFailureEnvelope: {
+    type: "object",
+    required: ["error", "code", "data"],
+    properties: {
+      error: { type: "string" },
+      code: { type: "string", enum: ["credential_invite_email_failed"] },
+      data: {
+        type: "object",
+        required: ["userId", "emailedTo", "credentialInviteExpiresAt"],
+        properties: {
+          userId: { type: "string" },
+          emailedTo: { type: "string", format: "email" },
+          credentialInviteExpiresAt: { type: "string", format: "date-time", nullable: true }
         }
       }
     }

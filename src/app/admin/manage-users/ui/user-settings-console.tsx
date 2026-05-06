@@ -102,6 +102,10 @@ type ApprovedUser = {
   subscriptionPlan: SubscriptionPlan;
   tenantMemberships: UserTenantMembershipRow[];
   billing?: ApiUserBilling;
+  hasPassword?: boolean;
+  credentialInviteExpiresAt?: string | null;
+  resendPasswordInviteAvailable?: boolean;
+  resendPasswordInviteBlockedReason?: string | null;
   approvedAt?: string;
   latestAuditEvent?: {
     action: string;
@@ -128,6 +132,10 @@ type ApiUser = {
   subscriptionPlan: SubscriptionPlan;
   status: "active" | "suspended";
   billing?: ApiUserBilling;
+  hasPassword?: boolean;
+  credentialInviteExpiresAt?: string | null;
+  resendPasswordInviteAvailable?: boolean;
+  resendPasswordInviteBlockedReason?: string | null;
   tenantMemberships?: UserTenantMembershipRow[];
   xAccount?: {
     username?: string;
@@ -471,6 +479,32 @@ export function UserSettingsConsole() {
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to reset usage");
+    }
+  }
+
+  async function resendCredentialInvite(userId: string, emailLabel: string) {
+    const ok = window.confirm(
+      `Send a new password-setup email to ${emailLabel}? Previous invite links stop working once a new token is issued.`
+    );
+    if (!ok) {
+      return;
+    }
+    setStatus(`Resending password invite to ${emailLabel}…`);
+    try {
+      const payload = await parseJson<{
+        data: { emailedTo: string; credentialInviteExpiresAt: string | null };
+      }>(
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/resend-credential-invite`, {
+          method: "POST"
+        })
+      );
+      const exp = payload.data.credentialInviteExpiresAt
+        ? new Date(payload.data.credentialInviteExpiresAt).toLocaleString()
+        : "unknown";
+      setStatus(`Password invite sent to ${payload.data.emailedTo} (link expires ${exp}).`);
+      await refreshApprovedUsers();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to resend invite");
     }
   }
 
@@ -929,6 +963,20 @@ export function UserSettingsConsole() {
                       >
                         Reset usage
                       </button>
+                      <button
+                        className="tiny-button"
+                        disabled={!user.resendPasswordInviteAvailable}
+                        onClick={() => void resendCredentialInvite(user.userId, user.email)}
+                        title={
+                          user.resendPasswordInviteAvailable
+                            ? "Reissue a fresh password-setup link (7-day expiry) and email it"
+                            : (user.resendPasswordInviteBlockedReason ??
+                              "Password invite resend is not available for this user")
+                        }
+                        type="button"
+                      >
+                        Resend invite
+                      </button>
                       <button className="tiny-button" onClick={() => void deleteUser(user.userId)} type="button">
                         <DeleteIcon className="crud-icon" /> Delete
                       </button>
@@ -1355,6 +1403,10 @@ function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     tenantMemberships: user.tenantMemberships ?? [],
     billing: user.billing,
+    hasPassword: user.hasPassword,
+    credentialInviteExpiresAt: user.credentialInviteExpiresAt ?? null,
+    resendPasswordInviteAvailable: user.resendPasswordInviteAvailable ?? false,
+    resendPasswordInviteBlockedReason: user.resendPasswordInviteBlockedReason ?? null,
     approvedAt: user.updatedAt,
     latestAuditEvent: user.latestAuditEvent ?? null
   };

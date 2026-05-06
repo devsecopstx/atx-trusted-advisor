@@ -859,6 +859,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-users"
   },
   {
+    path: "/api/admin/users/{userId}/resend-credential-invite",
+    operations: [{ method: "POST", auth: "admin" }],
+    tag: "admin-users"
+  },
+  {
     path: "/api/admin/users/{userId}/role",
     operations: [{ method: "PATCH", auth: "admin", hasRequestBody: true }],
     tag: "admin-users"

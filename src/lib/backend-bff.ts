@@ -151,6 +151,10 @@ export const nextBffApi = {
       pathTemplate: "/api/admin/users/{userId}/metered-usage/reset",
       methods: ["POST"]
     },
+    userResendCredentialInvite: {
+      pathTemplate: "/api/admin/users/{userId}/resend-credential-invite",
+      methods: ["POST"]
+    },
     tasksIndex: {
       pathTemplate: "/api/admin/tasks",
       methods: ["GET", "POST"]
@@ -456,14 +460,18 @@ export function shouldSkipAdminUsersBffProxyForRequest(request: Request): boolea
   }
 }
 
-/** Metered usage lives in Mongo (`xchat_usage_limits`, `app_feature_daily_usage`); Spring has no parity delete. */
-export function shouldSkipAdminUsersBffProxyForMeteredUsageReset(request: Request): boolean {
+/**
+ * Mongo-only admin user subresource POSTs (Spring BFF must not absorb these).
+ * - Metered usage reset
+ * - Credential invite resend (desk SMTP + Mongo token)
+ */
+export function shouldSkipAdminUsersBffProxyForMongoOnlyUserSubresourcePosts(request: Request): boolean {
   try {
     const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
     if (request.method.toUpperCase() !== "POST") {
       return false;
     }
-    return /^\/api\/admin\/users\/[^/]+\/metered-usage\/reset$/.test(path);
+    return /^\/api\/admin\/users\/[^/]+\/(?:metered-usage\/reset|resend-credential-invite)$/.test(path);
   } catch {
     return false;
   }
@@ -493,7 +501,7 @@ export async function proxyAdminUsersRequestToBackend(request: Request): Promise
   if (shouldSkipAdminUsersBffProxyForRequest(request)) {
     return null;
   }
-  if (shouldSkipAdminUsersBffProxyForMeteredUsageReset(request)) {
+  if (shouldSkipAdminUsersBffProxyForMongoOnlyUserSubresourcePosts(request)) {
     return null;
   }
   return proxyRequestToBackend(request);

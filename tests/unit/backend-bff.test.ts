@@ -212,6 +212,19 @@ describe("proxyAdminUsersRequestToBackend (Next-first tenants + user list)", () 
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("does not forward POST /api/admin/users/{userId}/resend-credential-invite (Mongo + desk SMTP)", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminUsersRequestToBackend(
+        new Request("https://next.local/api/admin/users/507f1f77bcf86cd799439033/resend-credential-invite", {
+          method: "POST"
+        })
+      )
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("does not forward GET /api/admin/portfolios/{id}/watchlist (desk fields stay on Next Mongo)", async () => {
     vi.resetModules();
     const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
