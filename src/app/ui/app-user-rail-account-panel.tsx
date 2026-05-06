@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { SendIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
+import { BillingAccessAccountRailStatus } from "@/app/ui/billing-access-account-rail-status";
 import { GoogleGIcon } from "@/app/ui/oauth-provider-icons";
 import { XfThemePreferenceMenu } from "@/app/ui/public-theme-picker";
 import { PwaInstallAccountPrompt } from "@/app/ui/pwa-install-account-prompt";
@@ -155,6 +156,9 @@ export function AppUserRailAccountPanel({
         <span className="app-user-rail-account-panel__meta-k">Plan</span>
         <span className="app-user-rail-account-panel__meta-v">{SUBSCRIPTION_PLAN_LABELS[subscriptionPlan]}</span>
       </p>
+
+      <BillingAccessAccountRailStatus />
+
       {showDatabaseDisclosure ? (
         <details className="app-user-rail-account-panel__db">
           <summary className="app-user-rail-account-panel__db-summary">

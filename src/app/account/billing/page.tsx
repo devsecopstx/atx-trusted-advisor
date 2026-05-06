@@ -124,7 +124,7 @@ export default async function AccountBillingPage({
                 </p>
               </header>
 
-              <BillingAccessStateBanner />
+              <BillingAccessStateBanner persistentDismissIdentity={session.email} />
 
               {checkoutBanner ? (
                 <div className={checkoutBanner.className} role="status">

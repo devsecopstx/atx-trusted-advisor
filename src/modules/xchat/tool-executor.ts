@@ -62,6 +62,12 @@ const MAX_POSITIONS_RETURNED = 200;
 const CACHEABLE_OPERATIONS = new Set(["watchlist_snapshot", "account_health"]);
 
 /**
+ * Skip byte-cap truncation — it can slice UTF-8 mid-sequence and yields invalid JSON.
+ * `options_action_scan` is parsed by `/api/xchat/ask` (direct “scan my options” path); rows are already capped in `buildOptionsActionReport`.
+ */
+const NO_TRUNCATE_JSON_OPERATIONS = new Set(["options_action_scan"]);
+
+/**
  * Creates a horizontal bar chart showing percentage allocation per position
  * Uses Unicode blocks (█) for bars, professional and rounded
  */
@@ -1080,7 +1086,9 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
 
     const data = await handler(args, ctx);
     const serialized = JSON.stringify(data);
-    const output = truncateOutput(serialized);
+    const output = NO_TRUNCATE_JSON_OPERATIONS.has(operation)
+      ? serialized
+      : truncateOutput(serialized);
 
     if (CACHEABLE_OPERATIONS.has(operation)) {
       setCachedToolResult(ctx.userId, operation, output, undefined, toolCacheScopeKey);

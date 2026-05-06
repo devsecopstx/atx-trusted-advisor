@@ -1460,53 +1460,82 @@ export function XchatConversation({
       </aside>
 
       <div className="xchat-main">
-        <header className="xchat-welcome-header">
-          <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
-          {tenantWorkspaceSessionLabel ? (
-            <p className="xchat-welcome-tenant">
-              <span className="xchat-welcome-tenant__full hidden md:inline font-medium text-[var(--xf-text-200)]">
-                Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
-              </span>
-              <span className="xchat-welcome-tenant__short md:hidden font-medium text-[var(--xf-text-200)]">
-                {tenantWorkspaceSessionLabel}
-              </span>
-            </p>
-          ) : null}
-          <p className="xchat-welcome-sub hidden md:block">
-            Overview of xChat — portfolio, watchlist, and advisor options tools. Use Templates above the composer for
-            starter prompts; Depth (Fast / Expert / Heavy) controls plan-aware reasoning.
-          </p>
-          <p className="xchat-welcome-sub xchat-welcome-sub--mobile-compact md:hidden">
-            Portfolio, watchlist, and options tools — Templates sit above the composer; Depth sets reasoning.
-          </p>
-        </header>
+        <div className="xchat-main__chat-scroll">
+          <details className="xchat-mobile-workspace-info md:hidden">
+            <summary className="xchat-mobile-workspace-info__summary">Workspace info · billing</summary>
+            <div className="xchat-mobile-workspace-info__body">
+              <header className="xchat-welcome-header xchat-welcome-header--in-details">
+                <h2 className="xchat-welcome-title">Welcome, {welcomeName}!</h2>
+                {tenantWorkspaceSessionLabel ? (
+                  <p className="xchat-welcome-tenant">
+                    <span className="font-medium text-[var(--xf-text-200)]">
+                      Advisor workspace · {tenantWorkspaceSessionLabel}
+                    </span>
+                  </p>
+                ) : null}
+                <p className="xchat-welcome-sub xchat-welcome-sub--mobile-compact">
+                  Portfolio, watchlist, and options tools — Templates above the composer; Depth sets reasoning.
+                </p>
+              </header>
+              <BillingAccessStateBanner
+                className="billing-access-state-banner--xchat-shell"
+                dismissSessionKey="workspace_v1"
+                persistentDismissIdentity={accountDetails.email}
+              />
+            </div>
+          </details>
 
-        <BillingAccessStateBanner
-          className="billing-access-state-banner--xchat-shell"
-          dismissSessionKey="workspace_v1"
-        />
+          <div className="hidden md:contents">
+            <header className="xchat-welcome-header">
+              <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
+              {tenantWorkspaceSessionLabel ? (
+                <p className="xchat-welcome-tenant">
+                  <span className="xchat-welcome-tenant__full hidden md:inline font-medium text-[var(--xf-text-200)]">
+                    Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
+                  </span>
+                  <span className="xchat-welcome-tenant__short md:hidden font-medium text-[var(--xf-text-200)]">
+                    {tenantWorkspaceSessionLabel}
+                  </span>
+                </p>
+              ) : null}
+              <p className="xchat-welcome-sub hidden md:block">
+                Overview of xChat — portfolio, watchlist, and advisor options tools. Use Templates above the composer for
+                starter prompts; Depth (Fast / Expert / Heavy) controls plan-aware reasoning.
+              </p>
+              <p className="xchat-welcome-sub xchat-welcome-sub--mobile-compact md:hidden">
+                Portfolio, watchlist, and options tools — Templates sit above the composer; Depth sets reasoning.
+              </p>
+            </header>
 
-        <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
-          <XchatThreadPanelLazy
-            activePersonaName={activePersonaName}
-            askElapsedMs={askElapsedMs}
-            emphasizeStrategyJobPrimary={emphasizeStrategyForMessage}
-            loading={loading}
-            messages={messages}
-            onCancelAsk={cancelAskInFlight}
-            messagesEndRef={messagesEndRef}
-            onStrategyJobLaunch={onStrategyJobLaunch}
-            onStrategyJobStay={onStrategyJobStay}
-            setThreadUiCollapsed={setThreadUiCollapsed}
-            strategyJobLaunchBusy={strategyJobLaunchBusy}
-            threadMainVirtualize={threadMainVirtualize}
-            threadScrollRef={threadScrollRef}
-            threadUiCollapsed={threadUiCollapsed}
-            threadUiSummary={threadUiSummary}
-            threadVirtualizer={threadVirtualizer}
-            visibleThreadMessages={visibleThreadMessages}
-          />
-        </Suspense>
+            <BillingAccessStateBanner
+              className="billing-access-state-banner--xchat-shell"
+              dismissSessionKey="workspace_v1"
+              persistentDismissIdentity={accountDetails.email}
+            />
+          </div>
+
+          <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
+            <XchatThreadPanelLazy
+              activePersonaName={activePersonaName}
+              askElapsedMs={askElapsedMs}
+              emphasizeStrategyJobPrimary={emphasizeStrategyForMessage}
+              loading={loading}
+              messages={messages}
+              onCancelAsk={cancelAskInFlight}
+              messagesEndRef={messagesEndRef}
+              onStrategyJobLaunch={onStrategyJobLaunch}
+              onStrategyJobStay={onStrategyJobStay}
+              setThreadUiCollapsed={setThreadUiCollapsed}
+              strategyJobLaunchBusy={strategyJobLaunchBusy}
+              threadMainVirtualize={threadMainVirtualize}
+              threadScrollRef={threadScrollRef}
+              threadUiCollapsed={threadUiCollapsed}
+              threadUiSummary={threadUiSummary}
+              threadVirtualizer={threadVirtualizer}
+              visibleThreadMessages={visibleThreadMessages}
+            />
+          </Suspense>
+        </div>
 
         <Suspense fallback={<XchatChatSkeleton variant="composer" />}>
           <XchatComposerPanelLazy

@@ -2,6 +2,13 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 
+import { billingAccessStateDetail, type BillingAccessTone } from "@/lib/billing-access-copy";
+import {
+    clearOverrideActiveDismissMarkers,
+    readOverrideActiveDismissed,
+    writeOverrideActiveDismissed
+} from "@/lib/billing-access-dismiss";
+
 const MOBILE_DISMISS_MQ = "(max-width: 767px)";
 const MOBILE_DISMISS_STORAGE_PREFIX = "xf_xchat_billing_banner_dismissed:";
 
@@ -29,9 +36,7 @@ type BillingAccessApiResponse = {
   };
 };
 
-type BannerTone = "ok" | "warn" | "bad" | "muted";
-
-const toneStyles: Record<BannerTone, { bg: string; border: string; text: string }> = {
+const toneStyles: Record<BillingAccessTone, { bg: string; border: string; text: string }> = {
   ok: {
     bg: "color-mix(in srgb, var(--xf-gain-green) 10%, transparent)",
     border: "color-mix(in srgb, var(--xf-gain-green) 28%, transparent)",
@@ -54,61 +59,28 @@ const toneStyles: Record<BannerTone, { bg: string; border: string; text: string 
   }
 };
 
-function resolveStateCopy(state: string | null): { tone: BannerTone; detail: string } {
-  switch (state) {
-    case "active":
-      return {
-        tone: "ok",
-        detail: "Subscription is active."
-      };
-    case "override_active":
-      return {
-        tone: "warn",
-        detail: "Admin billing override is active."
-      };
-    case "approved_unpaid":
-      return {
-        tone: "warn",
-        detail:
-          "Approved account — full workspace access until you add a subscription. This notice goes away once billing is active."
-      };
-    case "past_due":
-      return {
-        tone: "bad",
-        detail: "Subscription is past due."
-      };
-    case "canceled":
-      return {
-        tone: "bad",
-        detail: "Subscription is canceled."
-      };
-    case "pending":
-      return {
-        tone: "muted",
-        detail: "Access is pending approval."
-      };
-    default:
-      return {
-        tone: "muted",
-        detail: "Billing status is unavailable."
-      };
-  }
-}
-
 export type BillingAccessStateBannerProps = {
   className?: string;
   /**
-   * When set, session-wide dismiss (sessionStorage) is offered on small viewports only.
-   * Avoids pushing primary workspace chrome (e.g. xChat composer) below the fold on phones.
+   * Signed-in email (or stable account id) so override-banner dismiss survives logouts/logins per user.
+   */
+  persistentDismissIdentity?: string | null;
+  /**
+   * Session-wide dismiss (sessionStorage) on small viewports only — primary chrome clearance.
    */
   dismissSessionKey?: string;
 };
 
-export function BillingAccessStateBanner({ className, dismissSessionKey }: BillingAccessStateBannerProps) {
+export function BillingAccessStateBanner({
+  className,
+  dismissSessionKey,
+  persistentDismissIdentity = null
+}: BillingAccessStateBannerProps) {
   const [state, setState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [clientDismissed, setClientDismissed] = useState(false);
+  const [overrideActiveDismissed, setOverrideActiveDismissed] = useState(false);
 
   const dismissStorageKey =
     dismissSessionKey != null && dismissSessionKey.trim().length > 0
@@ -133,6 +105,18 @@ export function BillingAccessStateBanner({ className, dismissSessionKey }: Billi
       /* ignore */
     }
   }, [dismissStorageKey]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+    if (state !== "override_active") {
+      clearOverrideActiveDismissMarkers(persistentDismissIdentity);
+      setOverrideActiveDismissed(false);
+      return;
+    }
+    setOverrideActiveDismissed(readOverrideActiveDismissed(persistentDismissIdentity));
+  }, [state, persistentDismissIdentity, loading]);
 
   useEffect(() => {
     let active = true;
@@ -167,7 +151,7 @@ export function BillingAccessStateBanner({ className, dismissSessionKey }: Billi
     };
   }, []);
 
-  const copy = useMemo(() => resolveStateCopy(state), [state]);
+  const copy = useMemo(() => billingAccessStateDetail(state), [state]);
   const tone = error ? toneStyles.muted : toneStyles[copy.tone];
   const content = loading
     ? "Billing state: loading..."
@@ -180,16 +164,29 @@ export function BillingAccessStateBanner({ className, dismissSessionKey }: Billi
       ? error
       : copy.detail;
 
-  const showDismiss =
+  const showDismissOverrideActive =
+    state === "override_active" && !loading && !error && !overrideActiveDismissed;
+
+  const showDismissMobileSession =
     Boolean(dismissStorageKey) && mobileDismissLayout && !loading && !clientDismissed;
+
+  const showDismissButton = showDismissOverrideActive || showDismissMobileSession;
 
   if (clientDismissed) {
     return null;
   }
 
+  if (state === "override_active" && overrideActiveDismissed) {
+    return null;
+  }
+
   return (
     <div
-      className={["billing-access-state-banner", showDismiss ? "billing-access-state-banner--dismissible" : "", className]
+      className={[
+        "billing-access-state-banner",
+        showDismissButton ? "billing-access-state-banner--dismissible" : "",
+        className
+      ]
         .filter(Boolean)
         .join(" ")}
       data-billing-tone={error ? "muted" : copy.tone}
@@ -203,12 +200,21 @@ export function BillingAccessStateBanner({ className, dismissSessionKey }: Billi
         } as CSSProperties
       }
     >
-      {showDismiss ? (
+      {showDismissButton ? (
         <button
-          aria-label="Dismiss billing notice for this session"
+          aria-label={
+            state === "override_active"
+              ? "Dismiss admin billing override notice — stays hidden on future visits until this access mode ends"
+              : "Dismiss billing notice for this session"
+          }
           className="billing-access-state-banner__dismiss"
           type="button"
           onClick={() => {
+            if (state === "override_active") {
+              writeOverrideActiveDismissed(persistentDismissIdentity);
+              setOverrideActiveDismissed(true);
+              return;
+            }
             try {
               if (dismissStorageKey) {
                 sessionStorage.setItem(dismissStorageKey, "1");
@@ -227,4 +233,3 @@ export function BillingAccessStateBanner({ className, dismissSessionKey }: Billi
     </div>
   );
 }
-

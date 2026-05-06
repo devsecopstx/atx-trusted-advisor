@@ -837,8 +837,58 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   overflow: hidden;
 }
 
-.xchat-main > .xchat-welcome-header,
-.xchat-main > .billing-access-state-banner,
+.xchat-main__chat-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.xchat-main__chat-scroll .xchat-welcome-header,
+.xchat-main__chat-scroll .billing-access-state-banner,
+.xchat-main__chat-scroll > details {
+  flex-shrink: 0;
+}
+
+.xchat-mobile-workspace-info {
+  flex-shrink: 0;
+  border-radius: var(--xf-radius-sm, 10px);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-xchat-rail-bg) 88%, transparent);
+  margin-bottom: 0.45rem;
+}
+
+.xchat-mobile-workspace-info__summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--xf-text-300);
+  padding: 0.4rem 0.55rem;
+}
+
+.xchat-mobile-workspace-info__summary::-webkit-details-marker {
+  display: none;
+}
+
+.xchat-mobile-workspace-info__body {
+  padding: 0 0.55rem 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.xchat-welcome-header--in-details {
+  padding: 0.35rem 0 0.25rem;
+  border-bottom: none;
+}
+
+.xchat-welcome-header--in-details .xchat-welcome-title {
+  font-size: 1.08rem;
+}
+
 .xchat-main > .xchat-persona-bar,
 .xchat-main > .status-text,
 .xchat-main > .xchat-guest-actions,
@@ -4415,6 +4465,55 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
 }
 
 @media (max-width: 767px) {
+  /**
+   * Phones: horizontal shell — icon rail capped (~15–18vw) + chat column flex-1 so composer stays in view.
+   * Expanded sidebar becomes a fixed drawer (see WorkspaceProductSidebar), not an in-flow 260px column.
+   */
+  .xchat-main-shell {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0.35rem;
+    overflow-x: hidden;
+  }
+
+  .xchat-left-rail.xchat-left-rail--workspace-product {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: clamp(2.75rem, 18vw, 4rem);
+    min-width: 0;
+    align-self: stretch;
+  }
+
+  .xchat-main {
+    flex: 1 1 0%;
+    min-width: 0;
+    min-height: 0;
+    padding-inline: 0.28rem;
+  }
+
+  .xchat-shell > .xchat-header {
+    padding: 0.42rem 0.55rem;
+    gap: 0.35rem;
+  }
+
+  .workspace-product-sidebar--xchat-mobile-compact nav[aria-label="Workspace"] {
+    gap: 0.15rem;
+    padding-left: 0.12rem;
+    padding-right: 0.12rem;
+    padding-top: 0.2rem;
+  }
+
+  .workspace-product-sidebar--xchat-mobile-compact nav[aria-label="Workspace"] a {
+    border-radius: 10px;
+  }
+
+  .workspace-product-sidebar--xchat-mobile-compact > footer.flex {
+    gap: 0.28rem;
+    padding-top: 0.32rem;
+    padding-bottom: 0.32rem;
+  }
+
   .xchat-welcome-header {
     padding-top: 0;
     padding-bottom: 0.5rem;
@@ -5034,6 +5133,40 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
 
 .app-user-rail-account-panel__meta-v {
   color: var(--xf-text-200);
+  word-break: break-word;
+}
+
+.app-user-rail-account-panel__billing {
+  margin: 0.35rem 0 0.45rem;
+  padding: 0.38rem 0.48rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-800) 72%, transparent);
+}
+
+.app-user-rail-account-panel__billing[data-billing-tone="ok"] {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 26%, transparent);
+}
+
+.app-user-rail-account-panel__billing[data-billing-tone="warn"] {
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 28%, transparent);
+}
+
+.app-user-rail-account-panel__billing[data-billing-tone="bad"] {
+  border-color: color-mix(in srgb, var(--xf-loss-red, #f87171) 28%, transparent);
+}
+
+.app-user-rail-account-panel__billing-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.app-user-rail-account-panel__billing-value {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--xf-text-200);
+  line-height: 1.38;
   word-break: break-word;
 }
 

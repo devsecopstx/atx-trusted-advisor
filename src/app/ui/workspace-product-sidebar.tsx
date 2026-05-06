@@ -365,6 +365,20 @@ function getMaxWidth980Snapshot(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 980px)").matches;
 }
 
+/** Phones: icon rail stays ≤ ~15–18% vw; expanded nav uses a fixed drawer so chat keeps full width. */
+function subscribeMaxWidth767(cb: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const mq = window.matchMedia("(max-width: 767px)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+
+function getMaxWidth767Snapshot(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+}
+
 export type WorkspaceProductSidebarProps = {
   defaultPortfolioId: string | null;
   isGlobalAdmin: boolean;
@@ -408,6 +422,7 @@ export function WorkspaceProductSidebar({
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const narrowViewport = useSyncExternalStore(subscribeMaxWidth980, getMaxWidth980Snapshot, () => false);
+  const narrowMobile767 = useSyncExternalStore(subscribeMaxWidth767, getMaxWidth767Snapshot, () => false);
   const isXchatRoute = pathname.startsWith("/xchat");
   /**
    * Narrow non-xChat routes keep a full-width stacked rail (legacy). Narrow xChat uses the same
@@ -600,6 +615,9 @@ export function WorkspaceProductSidebar({
 
   const railWidthPx =
     narrowViewport && !narrowXchatUsesPersistedRailWidth ? undefined : showExpandedUi ? 260 : 64;
+
+  const mobileXchatExpandedDrawer =
+    narrowXchatUsesPersistedRailWidth && expanded && narrowMobile767;
 
   const expandedNav = (
     <nav className="portfolios-workspace-sidebar portfolios-workspace-sidebar--rail-fill" aria-label="Workspace">
@@ -860,11 +878,85 @@ export function WorkspaceProductSidebar({
     </nav>
   );
 
+  const railFooter = (
+    <footer
+      className={`flex shrink-0 border-t border-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_92%,transparent)] ${
+        showExpandedUi
+          ? showCollapseToggle
+            ? "flex-row items-center justify-between gap-2 px-2.5 py-2"
+            : "flex-row items-center justify-end gap-2 px-2.5 py-2"
+          : "flex-col items-center gap-2 py-2.5"
+      }`}
+    >
+      {showCollapseToggle ? (
+        <XfHoverHint hint={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}>
+          <button
+            aria-expanded={showExpandedUi}
+            aria-label={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-toggle-bg)] text-[var(--xf-xchat-rail-toggle-color)] transition-[border-color,background-color,color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_35%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
+            type="button"
+            onClick={() => persistExpanded(!expanded)}
+          >
+            {showExpandedUi ? (
+              <ChevronsCollapseIcon className="h-5 w-5" />
+            ) : (
+              <ChevronsExpandIcon className="h-5 w-5" />
+            )}
+          </button>
+        </XfHoverHint>
+      ) : null}
+
+      <XfHoverHint hint="Account">
+        <Link
+          aria-label="Account"
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_40%,transparent)]"
+          href="/account"
+          title="Account"
+        >
+          {accountDetails?.avatarUrl?.trim() ? (
+            <Image alt="" aria-hidden className="h-full w-full object-cover" height={40} src={accountDetails.avatarUrl} unoptimized width={40} />
+          ) : (
+            <PersonIcon className="h-5 w-5 text-[var(--xf-text-300)]" />
+          )}
+        </Link>
+      </XfHoverHint>
+    </footer>
+  );
+
+  if (mobileXchatExpandedDrawer) {
+    return (
+      <>
+        <button
+          aria-label="Close workspace sidebar"
+          className="workspace-product-sidebar__mobile-drawer-backdrop fixed inset-0 z-[44] border-0 bg-[color-mix(in_srgb,var(--xf-bg-900)_58%,transparent)] p-0 backdrop-blur-[2px]"
+          type="button"
+          onClick={() => persistExpanded(false)}
+        />
+        <div
+          aria-label="Workspace navigation"
+          aria-modal="true"
+          className="workspace-product-sidebar__mobile-drawer-panel fixed bottom-0 left-0 top-0 z-[45] flex min-h-0 w-[min(17.5rem,calc(100vw-1rem-env(safe-area-inset-left)-env(safe-area-inset-right)))] flex-col border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] shadow-xl backdrop-blur-md max-[767px]:rounded-r-xl"
+          role="dialog"
+        >
+          <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain py-1">
+            {expandedNav}
+          </div>
+          {railFooter}
+        </div>
+      </>
+    );
+  }
+
   return (
     <div
-      className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-[width] duration-200 ease-out dark:shadow-md"
+      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-[width] duration-200 ease-out dark:shadow-md${narrowXchatUsesPersistedRailWidth && narrowMobile767 ? " workspace-product-sidebar--xchat-mobile-compact" : ""}`}
       style={{
-        width: railWidthPx === undefined ? "100%" : `${railWidthPx}px`,
+        width:
+          railWidthPx === undefined
+            ? "100%"
+            : narrowXchatUsesPersistedRailWidth && narrowMobile767 && !expanded
+              ? "clamp(2.75rem, 18vw, 4rem)"
+              : `${railWidthPx}px`,
         boxSizing: "border-box"
       }}
       suppressHydrationWarning={true}
@@ -893,48 +985,7 @@ export function WorkspaceProductSidebar({
         )}
       </div>
 
-      <footer
-        className={`flex shrink-0 border-t border-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_92%,transparent)] ${
-          showExpandedUi
-            ? showCollapseToggle
-              ? "flex-row items-center justify-between gap-2 px-2.5 py-2"
-              : "flex-row items-center justify-end gap-2 px-2.5 py-2"
-            : "flex-col items-center gap-2 py-2.5"
-        }`}
-      >
-        {showCollapseToggle ? (
-          <XfHoverHint hint={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}>
-            <button
-              aria-expanded={showExpandedUi}
-              aria-label={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-toggle-bg)] text-[var(--xf-xchat-rail-toggle-color)] transition-[border-color,background-color,color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_35%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
-              type="button"
-              onClick={() => persistExpanded(!expanded)}
-            >
-              {showExpandedUi ? (
-                <ChevronsCollapseIcon className="h-5 w-5" />
-              ) : (
-                <ChevronsExpandIcon className="h-5 w-5" />
-              )}
-            </button>
-          </XfHoverHint>
-        ) : null}
-
-        <XfHoverHint hint="Account">
-          <Link
-            aria-label="Account"
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_40%,transparent)]"
-            href="/account"
-            title="Account"
-          >
-            {accountDetails?.avatarUrl?.trim() ? (
-              <Image alt="" aria-hidden className="h-full w-full object-cover" height={40} src={accountDetails.avatarUrl} unoptimized width={40} />
-            ) : (
-              <PersonIcon className="h-5 w-5 text-[var(--xf-text-300)]" />
-            )}
-          </Link>
-        </XfHoverHint>
-      </footer>
+      {railFooter}
     </div>
   );
 }
