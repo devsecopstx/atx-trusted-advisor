@@ -1,0 +1,24 @@
+# Apply rental white-label profile to existing tenant `rentalai` (or create row on first run).
+# npm run seed:tenant -- --file tenant-specs/rentalai.yaml
+# If xAI management API hangs: SKIP_SEED_TENANT_XCHAT_TEAM_COLLECTION=1 npm run seed:tenant -- --file tenant-specs/rentalai.yaml
+#
+# Then: node --env-file=.env.prod --import tsx scripts/ops/mint-rental-api-key.ts --tenant=rentalai
+
+version: 1
+
+tenant:
+  slug: rentalai
+  name: Rental AI Demo
+  isDefault: false
+
+  rentalProfile:
+    tier: demo
+    strategyBias: conservative # conservative | balanced | aggressive
+    maxPortfolios: 3
+    maxDailyTokens: 200000
+    apiKeyEnabled: true
+    # Required — ISO-8601; must be in the future for keys + rental API
+    expiresAt: "2027-12-31T23:59:59.000Z"
+    # optional: xaiModelOverride: "grok-4-1-fast-reasoning"
+  initialTenantAdmin:
+    email: support@atxtrustedadvisory.com

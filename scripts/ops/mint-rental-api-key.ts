@@ -12,15 +12,19 @@
  *   --label=<string>       Optional label on the key row
  *
  * Requires: valid `rentalProfile` with `expiresAt` in the future and `apiKeyEnabled` !== false.
+ *
+ * Uses a dedicated MongoClient (closed in `finally`). Do not use `getDb()` here — the app singleton never
+ * closes and would leave the process hanging after success.
  */
 
-import { ObjectId } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import { randomBytes } from "node:crypto";
 
-import { getDb } from "@/lib/mongodb";
 import { hashPassword } from "@/lib/password-crypto";
 import type { Tenant } from "@/modules/identity/types";
 import type { TenantRentalApiKeyScope } from "@/modules/platform/tenant-rental-types";
+
+import { resolveMongoUri, resolveSeedDbName } from "../lib/resolve-mongo-uri.mjs";
 
 function parseArgs(argv: string[]): {
   tenantSlug?: string;
@@ -74,64 +78,73 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const db = await getDb();
-  const query =
-    tenantId !== undefined
-      ? { _id: new ObjectId(tenantId) }
-      : { slug: tenantSlug!.trim().toLowerCase() };
+  const mongoUri = resolveMongoUri();
+  const dbName = resolveSeedDbName();
+  const client = new MongoClient(mongoUri);
 
-  const tenant = await db.collection<Tenant>("core_tenants").findOne(query);
-  if (!tenant?._id) {
-    console.error("Tenant not found for query:", query);
-    process.exit(1);
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+
+    const query =
+      tenantId !== undefined
+        ? { _id: new ObjectId(tenantId) }
+        : { slug: tenantSlug!.trim().toLowerCase() };
+
+    const tenant = await db.collection<Tenant>("core_tenants").findOne(query);
+    if (!tenant?._id) {
+      throw new Error(`Tenant not found for query: ${JSON.stringify(query)}`);
+    }
+
+    const rp = tenant.rentalProfile;
+    if (!rp || !(rp.expiresAt instanceof Date)) {
+      throw new Error(
+        "Tenant has no rentalProfile / expiresAt. Add rentalProfile (e.g. seed:tenant with YAML) first."
+      );
+    }
+    if (rp.apiKeyEnabled === false) {
+      throw new Error("rentalProfile.apiKeyEnabled is false; enable keys before minting.");
+    }
+    if (rp.expiresAt.getTime() < Date.now()) {
+      throw new Error("rentalProfile.expiresAt is in the past; renew before minting keys.");
+    }
+
+    const keyId = randomBytes(8).toString("hex");
+    const secret = randomBytes(32).toString("hex");
+    const fullKey = `atxr_${keyId}_${secret}`;
+    const keyHash = await hashPassword(fullKey);
+    const now = new Date();
+
+    const newKey = {
+      id: keyId,
+      keyHash,
+      scopes,
+      createdAt: now,
+      ...(label?.trim() ? { label: label.trim() } : {})
+    };
+
+    const res = await db.collection("core_tenants").updateOne(
+      { _id: tenant._id },
+      { $push: { apiKeys: newKey as never } }
+    );
+
+    if (!res.matchedCount) {
+      throw new Error("Update failed (tenant vanished)");
+    }
+
+    console.log("");
+    console.log("=== Rental API key minted (save now; cannot be retrieved later) ===");
+    console.log(`tenant: ${tenant.slug} (${tenant._id.toHexString()})`);
+    console.log(`scopes: ${scopes.join(", ")}`);
+    console.log(`key id: ${keyId}`);
+    console.log("");
+    console.log(`export KEY='${fullKey}'`);
+    console.log("");
+  } finally {
+    await client.close().catch(() => {
+      /* ignore */
+    });
   }
-
-  const rp = tenant.rentalProfile;
-  if (!rp || !(rp.expiresAt instanceof Date)) {
-    console.error("Tenant has no rentalProfile / expiresAt. Add rentalProfile (e.g. seed:tenant with YAML) first.");
-    process.exit(1);
-  }
-  if (rp.apiKeyEnabled === false) {
-    console.error("rentalProfile.apiKeyEnabled is false; enable keys before minting.");
-    process.exit(1);
-  }
-  if (rp.expiresAt.getTime() < Date.now()) {
-    console.error("rentalProfile.expiresAt is in the past; renew before minting keys.");
-    process.exit(1);
-  }
-
-  const keyId = randomBytes(8).toString("hex");
-  const secret = randomBytes(32).toString("hex");
-  const fullKey = `atxr_${keyId}_${secret}`;
-  const keyHash = await hashPassword(fullKey);
-  const now = new Date();
-
-  const newKey = {
-    id: keyId,
-    keyHash,
-    scopes,
-    createdAt: now,
-    ...(label?.trim() ? { label: label.trim() } : {})
-  };
-
-  const res = await db.collection("core_tenants").updateOne(
-    { _id: tenant._id },
-    { $push: { apiKeys: newKey as never } }
-  );
-
-  if (!res.matchedCount) {
-    console.error("Update failed (tenant vanished)");
-    process.exit(1);
-  }
-
-  console.log("");
-  console.log("=== Rental API key minted (save now; cannot be retrieved later) ===");
-  console.log(`tenant: ${tenant.slug} (${tenant._id.toHexString()})`);
-  console.log(`scopes: ${scopes.join(", ")}`);
-  console.log(`key id: ${keyId}`);
-  console.log("");
-  console.log(`export KEY='${fullKey}'`);
-  console.log("");
 }
 
 main().catch((e) => {
