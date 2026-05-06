@@ -226,6 +226,11 @@
 }
 
 /* ── Portfolio workspace landing (/portfolios) ─────────────────── */
+/*
+ * `/portfolios` hub: workspace rail collapses via `WorkspaceProductSidebar` (`persistExpanded(false)`),
+ * and the in-rail "Portfolio desk" accordion stays closed on load (`portfolioDeskAccordionSyncedOpen`).
+ * This file styles chrome only; those behaviors live in TS, not here.
+ */
 .portfolios-workspace-header.xchat-header {
   padding: 0;
 }

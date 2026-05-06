@@ -424,11 +424,26 @@ export function WorkspaceProductSidebar({
   const narrowViewport = useSyncExternalStore(subscribeMaxWidth980, getMaxWidth980Snapshot, () => false);
   const narrowMobile767 = useSyncExternalStore(subscribeMaxWidth767, getMaxWidth767Snapshot, () => false);
   const isXchatRoute = pathname.startsWith("/xchat");
+  const isXoptionsRoute = pathname.startsWith("/xoptions");
+  const isWatchlistRoute = pathname.startsWith("/watchlist");
+  const isPortfolioAlertsRoute = pathname.startsWith("/portfolio/alerts");
+  const isPortfoliosDeskRoute = pathname.startsWith("/portfolios");
+  /** Same scope as the Account accordion’s `routeMatch` (excludes `/account/tasks` — that lives under Resources). */
+  const isAccountOrLegalAppRoute =
+    (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
+    pathname.startsWith("/legal");
   /**
-   * Narrow non-xChat routes keep a full-width stacked rail (legacy). Narrow xChat uses the same
-   * persisted expand/collapse as desktop so the composer stays visible after login (iOS / phones).
+   * Narrow viewports: xChat, xOptions, desks, and account/legal use persisted expand/collapse so the
+   * main column stays usable on phones. Landing on those routes (incl. xOptions from xChat) collapses the rail (see effect).
    */
-  const narrowXchatUsesPersistedRailWidth = narrowViewport && isXchatRoute;
+  const narrowPersistedWorkspaceRail =
+    narrowViewport &&
+    (isXchatRoute ||
+      isXoptionsRoute ||
+      isPortfoliosDeskRoute ||
+      isWatchlistRoute ||
+      isPortfolioAlertsRoute ||
+      isAccountOrLegalAppRoute);
   const xchatHistoryDeepLinkActive = isXchatRoute && searchParams.get("item") === "history";
   const xchatAttachmentsDeepLinkActive = isXchatRoute && searchParams.get("item") === "attachments";
 
@@ -461,11 +476,32 @@ export function WorkspaceProductSidebar({
     }
   }, []);
 
-  /** Full labels + accordions; narrow non-xChat stays expanded full-width without toggle. */
-  const showExpandedUi = narrowXchatUsesPersistedRailWidth ? expanded : narrowViewport || expanded;
-  const showCollapseToggle = narrowXchatUsesPersistedRailWidth ? true : !narrowViewport;
+  useEffect(() => {
+    if (
+      !isPortfoliosDeskRoute &&
+      !isWatchlistRoute &&
+      !isPortfolioAlertsRoute &&
+      !isAccountOrLegalAppRoute &&
+      !isXoptionsRoute
+    ) {
+      return;
+    }
+    persistExpanded(false);
+  }, [
+    isAccountOrLegalAppRoute,
+    isPortfolioAlertsRoute,
+    isPortfoliosDeskRoute,
+    isWatchlistRoute,
+    isXoptionsRoute,
+    pathname,
+    persistExpanded
+  ]);
 
-  const showXoptionsToggle = pathname.startsWith("/xoptions");
+  /** Full labels + accordions; narrow routes without persisted rail stay expanded full-width without toggle. */
+  const showExpandedUi = narrowPersistedWorkspaceRail ? expanded : narrowViewport || expanded;
+  const showCollapseToggle = narrowPersistedWorkspaceRail ? true : !narrowViewport;
+
+  const showXoptionsToggle = isXoptionsRoute;
   const xoptionsStrategyBuilderVisible = useSyncExternalStore(
     subscribeXoptionsStrategyBuilderVisibility,
     isXoptionsStrategyBuilderVisible,
@@ -520,6 +556,9 @@ export function WorkspaceProductSidebar({
     (isPathVisible("/watchlist") && pathname.startsWith("/watchlist")) ||
     (isPathVisible("/import-activity") && pathname.startsWith("/import-activity")) ||
     (isPathVisible("/workspace") && pathname.startsWith("/workspace/tasks"));
+
+  /** Books hub: keep "Portfolio desk" accordion closed on first paint; other desk routes still expand it. */
+  const portfolioDeskAccordionSyncedOpen = portfolioRouteMatch && pathname !== "/portfolios";
 
   const fallbackXchatSection = (
     <RouteSyncedDetails
@@ -614,17 +653,17 @@ export function WorkspaceProductSidebar({
   }
 
   const railWidthPx =
-    narrowViewport && !narrowXchatUsesPersistedRailWidth ? undefined : showExpandedUi ? 260 : 64;
+    narrowViewport && !narrowPersistedWorkspaceRail ? undefined : showExpandedUi ? 260 : 64;
 
-  const mobileXchatExpandedDrawer =
-    narrowXchatUsesPersistedRailWidth && expanded && narrowMobile767;
+  const mobilePersistedRailExpandedDrawer =
+    narrowPersistedWorkspaceRail && expanded && narrowMobile767;
 
   const expandedNav = (
     <nav className="portfolios-workspace-sidebar portfolios-workspace-sidebar--rail-fill" aria-label="Workspace">
       {isPathVisible("/portfolios") || isPathVisible("/portfolio") || isPathVisible("/watchlist") || isPathVisible("/import-activity") ? (
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--core-action"
-        routeMatch={portfolioRouteMatch}
+        routeMatch={portfolioDeskAccordionSyncedOpen}
       >
         <summary
           className="portfolios-workspace-sidebar__accordion-summary"
@@ -923,7 +962,7 @@ export function WorkspaceProductSidebar({
     </footer>
   );
 
-  if (mobileXchatExpandedDrawer) {
+  if (mobilePersistedRailExpandedDrawer) {
     return (
       <>
         <button
@@ -949,19 +988,19 @@ export function WorkspaceProductSidebar({
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-[width] duration-200 ease-out dark:shadow-md${narrowXchatUsesPersistedRailWidth && narrowMobile767 ? " workspace-product-sidebar--xchat-mobile-compact" : ""}`}
+      className={`flex h-auto max-[767px]:self-start md:h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-[width] duration-200 ease-out dark:shadow-md${narrowPersistedWorkspaceRail && narrowMobile767 ? " workspace-product-sidebar--xchat-mobile-compact" : ""}`}
       style={{
         width:
           railWidthPx === undefined
             ? "100%"
-            : narrowXchatUsesPersistedRailWidth && narrowMobile767 && !expanded
-              ? "clamp(2.75rem, 18vw, 4rem)"
+            : narrowPersistedWorkspaceRail && narrowMobile767 && !expanded
+              ? "clamp(2.65rem, 12vw, 3.75rem)"
               : `${railWidthPx}px`,
         boxSizing: "border-box"
       }}
       suppressHydrationWarning={true}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain py-1">
+      <div className="flex min-h-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain py-1 max-[767px]:flex-none md:flex-1">
         {showExpandedUi ? (
           expandedNav
         ) : (
@@ -969,7 +1008,7 @@ export function WorkspaceProductSidebar({
             {collapsedIcons.map((item) => (
               <XfHoverHint hint={item.label} key={item.key}>
                 <Link
-                  className={`flex h-11 w-11 min-h-[44px] min-w-[44px] max-[980px]:h-12 max-[980px]:w-12 max-[980px]:min-h-[48px] max-[980px]:min-w-[48px] shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] ${
+                  className={`flex h-11 w-11 min-h-[44px] min-w-[44px] min-[768px]:max-[980px]:h-12 min-[768px]:max-[980px]:w-12 min-[768px]:max-[980px]:min-h-[48px] min-[768px]:max-[980px]:min-w-[48px] shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] ${
                     item.isActive
                       ? "bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_14%,transparent)] text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
                       : "text-[var(--xf-text-200)]"

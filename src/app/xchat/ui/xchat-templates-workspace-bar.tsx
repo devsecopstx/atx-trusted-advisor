@@ -5,7 +5,7 @@ import type { RefObject } from "react";
 
 /** Matches `shouldRunOptionsActionScan` routing — natural language trigger for options scan. */
 export const XCHAT_SCAN_OPTIONS_PROMPT =
-  "Scan my options for actionable ideas based on my holdings and watchlist. Educational framing only — not a recommendation to trade.";
+  "Scan my options from holdings + watchlist.";
 
 type XchatTemplatesWorkspaceBarProps = {
   promptLibraryCount: number;

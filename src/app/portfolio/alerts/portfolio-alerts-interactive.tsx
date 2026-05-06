@@ -169,7 +169,7 @@ export function PortfolioAlertsInteractive(props: {
     <>
       <section className="portfolio-alerts-summary" aria-label="Portfolio alert impact">
         <div className="portfolio-alerts-summary__grid">
-          <div className="portfolio-alerts-summary__tile">
+          <div className="portfolio-alerts-summary__tile portfolio-alerts-summary__tile--open">
             <span className="portfolio-alerts-summary__value">{summary.total}</span>
             <span className="portfolio-alerts-summary__label">Open alerts</span>
           </div>

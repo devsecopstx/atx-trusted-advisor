@@ -897,7 +897,10 @@ export function XoptionsStrategyBuilderWorkspace() {
   return (
     <>
       <XoptionsDisclaimerModal />
-      <div className="xoptions-workspace xoptions-print-root space-y-4 max-w-[min(100%,88rem)] px-0" id="xoptions-print-root">
+      <div
+        className="xoptions-workspace xoptions-print-root w-full min-w-0 max-w-[min(100%,88rem)] space-y-3 px-0 md:space-y-4"
+        id="xoptions-print-root"
+      >
       <div>
         <p className="xoptions-page-kicker">Options analysis &amp; research</p>
         <h1 className="xoptions-workspace__h1 mt-1 text-xl font-semibold tracking-tight md:text-2xl">
@@ -978,7 +981,7 @@ export function XoptionsStrategyBuilderWorkspace() {
               <div className="relative min-w-0 flex-1">
                 <input
                   id="xo-symbol"
-                  className="crud-input w-full pr-10 font-mono text-base uppercase md:text-lg"
+                  className="crud-input min-h-11 w-full min-w-0 touch-manipulation py-2.5 pr-10 font-mono text-base uppercase md:text-lg"
                   placeholder="e.g. AAPL"
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value.toUpperCase())}
@@ -1020,7 +1023,7 @@ export function XoptionsStrategyBuilderWorkspace() {
               ) : (
                 <div className="xoptions-quote-block min-w-0 flex-1">
                   <div
-                    className="xoptions-price-ladder"
+                    className={`xoptions-price-ladder${activeStep === 4 ? " xoptions-price-ladder--contract-step-compact" : ""}`}
                     role="status"
                     aria-label={`Price levels vs last ${quoteLastPrice.toFixed(2)}`}
                   >
@@ -1438,7 +1441,7 @@ export function XoptionsStrategyBuilderWorkspace() {
             <span className="xoptions-step__title">{STEPS[3]?.title}</span>
           </button>
           {activeStep === 4 && canGoStep2 ? (
-            <div className="xoptions-step__body space-y-4">
+            <div className="xoptions-step__body space-y-6 md:space-y-4">
               <XoptionsErrorBoundary>
               <XoptionsChooseContract
                 symbol={symbol}
@@ -1456,20 +1459,20 @@ export function XoptionsStrategyBuilderWorkspace() {
                 initialContractPrefill={initialContractPrefill}
               />
               </XoptionsErrorBoundary>
-              <div className="max-w-xl">
+              <div className="max-w-xl min-w-0">
                 <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--xf-text-400)]" htmlFor="xo-watchlist-notes">
                   Watchlist notes (optional)
                 </label>
                 <textarea
                   id="xo-watchlist-notes"
-                  className="crud-input min-h-[4rem] w-full font-mono text-sm"
+                  className="crud-input min-h-[4.5rem] w-full min-w-0 touch-manipulation font-mono text-sm md:min-h-[4rem]"
                   placeholder="Limit context, catalyst, roll plan"
                   value={watchlistNotes}
                   onChange={(e) => setWatchlistNotes(e.target.value)}
                   aria-label="Notes appended when adding contract to watchlist"
                 />
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3 md:gap-2">
                 <button
                   type="button"
                   className="cta cta-secondary xoptions-chain-cta"

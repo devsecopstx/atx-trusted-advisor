@@ -13,13 +13,13 @@ describe("filterXchatPromptTemplates", () => {
   });
 
   it("filters by title substring", () => {
-    const out = filterXchatPromptTemplates(XCHAT_HNWI_PROMPT_TEMPLATES, "priority pass");
+    const out = filterXchatPromptTemplates(XCHAT_HNWI_PROMPT_TEMPLATES, "watchlist pass");
     expect(out).toHaveLength(1);
     expect(out[0]!.id).toBe("watchlist-update");
   });
 
   it("filters by prompt body", () => {
-    const out = filterXchatPromptTemplates(XCHAT_HNWI_PROMPT_TEMPLATES, "vol spike");
+    const out = filterXchatPromptTemplates(XCHAT_HNWI_PROMPT_TEMPLATES, "hedge");
     expect(out.length).toBeGreaterThanOrEqual(1);
   });
 });

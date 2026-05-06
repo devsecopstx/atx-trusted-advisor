@@ -58,8 +58,9 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
         session={session}
         workspaceTenant={workspaceTenant}
       />
-      <div className="xchat-body px-4 py-6 md:px-8">
+      <div className="xchat-body min-w-0 px-3 py-4 md:px-8 md:py-6">
         <AppUserCollapsibleRailLayout
+          mainClassName="min-w-0 w-full max-w-full"
           rail={<AppUserAccountPublicRailForSession railVariant="workspace-product" session={session} />}
           railChrome="workspace-product"
         >

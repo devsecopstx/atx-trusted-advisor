@@ -1014,10 +1014,10 @@ export function XoptionsChooseContract({
   );
 
   return (
-    <section className="xoptions-contract" aria-label="Choose contract">
-      <div className="xoptions-contract__horizon mb-3 pb-3">
+    <section className="xoptions-contract min-w-0" aria-label="Choose contract">
+      <div className="xoptions-contract__horizon mb-4 pb-4 md:mb-3 md:pb-3">
         <p className="xoptions-top-option-header__label">Target expiration</p>
-        <div className="mt-1 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-3 md:mt-1 md:gap-2">
           {WEEK_CHIPS.map((w) => (
             <button
               key={w.days}
@@ -1032,7 +1032,7 @@ export function XoptionsChooseContract({
             </button>
           ))}
         </div>
-        <p className="xoptions-hint mt-1 text-xs">
+        <p className="xoptions-hint mt-2 text-xs md:mt-1">
           {weeks == null
             ? "Choose a horizon chip or an expiration below — the chain loads only after you pick one."
             : `~${weeks}d horizon — adjust expiration below if needed.`}
@@ -1058,7 +1058,7 @@ export function XoptionsChooseContract({
               {expirations.length > 0 && !loadingExp ? (
                 <button
                   type="button"
-                  className="m-0 border-0 bg-transparent p-0 text-xs font-medium text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] underline-offset-2 hover:underline"
+                  className="m-0 min-h-11 shrink-0 rounded-md border border-transparent px-2 py-2 text-left text-xs font-medium text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] underline-offset-2 hover:border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] hover:underline md:min-h-0 md:border-0 md:bg-transparent md:p-0"
                   onClick={() => setExpirationListMode((m) => (m === "all" ? "strike_dates" : "all"))}
                 >
                   {expirationListMode === "all" ? "Choose strike dates" : "Show all expirations"}
@@ -1067,7 +1067,7 @@ export function XoptionsChooseContract({
             </div>
             <select
               id="xo-contract-exp"
-              className="crud-input xoptions-contract__input mt-0.5 w-full font-mono text-sm"
+              className="crud-input xoptions-contract__input mt-1 w-full min-w-0 touch-manipulation font-mono text-sm md:mt-0.5"
               value={expiration}
               disabled={
                 loadingExp ||
@@ -1133,7 +1133,7 @@ export function XoptionsChooseContract({
             </label>
             <select
               id="xo-contract-strike"
-              className="crud-input xoptions-contract__input mt-0.5 w-full font-mono text-sm"
+              className="crud-input xoptions-contract__input mt-1 w-full min-w-0 touch-manipulation font-mono text-sm md:mt-0.5"
               value={selectedStrike ?? ""}
               disabled={loadingExp || loadingChain || strikeOptions.length === 0}
               onChange={(e) => {
@@ -1170,7 +1170,7 @@ export function XoptionsChooseContract({
               id="xo-contract-limit"
               type="text"
               inputMode="decimal"
-              className="crud-input xoptions-contract__input mt-0.5 w-full font-mono text-sm"
+              className="crud-input xoptions-contract__input mt-1 w-full min-w-0 touch-manipulation font-mono text-sm md:mt-0.5"
               placeholder="Limit $"
               value={limitPrice}
               onChange={(e) => setLimitPrice(e.target.value)}
@@ -1190,7 +1190,7 @@ export function XoptionsChooseContract({
               id="xo-contract-qty"
               type="text"
               inputMode="numeric"
-              className="crud-input xoptions-contract__input mt-0.5 w-full font-mono text-sm"
+              className="crud-input xoptions-contract__input mt-1 w-full min-w-0 touch-manipulation font-mono text-sm md:mt-0.5"
               placeholder="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ""))}

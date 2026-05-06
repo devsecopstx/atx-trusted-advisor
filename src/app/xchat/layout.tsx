@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import "@/app/portfolios/portfolios-dashboard.css";
-import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
 import { GlobalFooter } from "../ui/global-footer";
@@ -28,7 +27,6 @@ type XchatLayoutProps = {
 export default function XchatLayout({ children }: XchatLayoutProps) {
   return (
     <div className="xchat-layout-root xchat-layout-root--safe">
-      <EducationalDisclaimerBanner className="xf-educational-disclaimer-banner--xchat-shell" />
       {children}
       <XchatFooterWorkspaceTeasers />
       <GlobalFooter />
