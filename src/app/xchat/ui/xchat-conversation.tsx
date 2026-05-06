@@ -27,6 +27,7 @@ import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-co
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
+import { isRetailPaidSubscriptionPlan } from "@/lib/subscription-plan";
 import {
     dispatchWorkspaceAccountChanged,
     writeStoredWorkspaceAccountId
@@ -1502,11 +1503,13 @@ export function XchatConversation({
                   Portfolio, watchlist, and options tools — Templates above the composer; Depth sets reasoning.
                 </p>
               </header>
-              <BillingAccessStateBanner
-                className="billing-access-state-banner--xchat-shell"
-                dismissSessionKey="workspace_v1"
-                persistentDismissIdentity={accountDetails.email}
-              />
+              {!isRetailPaidSubscriptionPlan(accountDetails.subscriptionPlan) ? (
+                <BillingAccessStateBanner
+                  className="billing-access-state-banner--xchat-shell"
+                  dismissSessionKey="workspace_v1"
+                  persistentDismissIdentity={accountDetails.email}
+                />
+              ) : null}
             </div>
           </details>
 
@@ -1532,11 +1535,13 @@ export function XchatConversation({
               </p>
             </header>
 
-            <BillingAccessStateBanner
-              className="billing-access-state-banner--xchat-shell"
-              dismissSessionKey="workspace_v1"
-              persistentDismissIdentity={accountDetails.email}
-            />
+            {!isRetailPaidSubscriptionPlan(accountDetails.subscriptionPlan) ? (
+              <BillingAccessStateBanner
+                className="billing-access-state-banner--xchat-shell"
+                dismissSessionKey="workspace_v1"
+                persistentDismissIdentity={accountDetails.email}
+              />
+            ) : null}
           </div>
 
           <Suspense fallback={<XchatChatSkeleton variant="thread" />}>

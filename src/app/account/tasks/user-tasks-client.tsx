@@ -74,7 +74,6 @@ export function UserTasksClient({ initialPortfolioId, mode = "account" }: Props)
 
   const [templateId, setTemplateId] = useState<UserTaskTemplate["id"]>("daily_monitor");
   const [name, setName] = useState(USER_TASK_TEMPLATES[0].name);
-  const [description, setDescription] = useState("");
   const [prompt, setPrompt] = useState(USER_TASK_TEMPLATES[0].prompt);
   const [preset, setPreset] = useState<"daily" | "weekly" | "monthly">(USER_TASK_TEMPLATES[0].preset);
   const [sendEmail, setSendEmail] = useState(USER_TASK_TEMPLATES[0].defaultEmail);
@@ -149,7 +148,6 @@ export function UserTasksClient({ initialPortfolioId, mode = "account" }: Props)
       const delivery = sendEmail ? ["in_app", "email"] : ["in_app"];
       const payload: Record<string, unknown> = {
         name: name.trim(),
-        description: description.trim() || undefined,
         type: "prompt",
         prompt: prompt.trim(),
         schedule: { preset },
@@ -293,7 +291,7 @@ export function UserTasksClient({ initialPortfolioId, mode = "account" }: Props)
           <label className="space-y-1">
             <span className="text-xs uppercase tracking-wide text-[var(--xf-text-400)]">Name</span>
             <input
-              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[var(--xf-bg-950,_#020617)] px-3 py-2 text-sm text-[var(--xf-text-100)]"
+              className="crud-input text-sm"
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
@@ -301,7 +299,7 @@ export function UserTasksClient({ initialPortfolioId, mode = "account" }: Props)
           <label className="space-y-1">
             <span className="text-xs uppercase tracking-wide text-[var(--xf-text-400)]">Frequency</span>
             <select
-              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[var(--xf-bg-950,_#020617)] px-3 py-2 text-sm text-[var(--xf-text-100)]"
+              className="crud-input text-sm"
               value={preset}
               onChange={(event) => setPreset(event.target.value as "daily" | "weekly" | "monthly")}
             >
@@ -314,7 +312,7 @@ export function UserTasksClient({ initialPortfolioId, mode = "account" }: Props)
         <label className="space-y-1">
           <span className="text-xs uppercase tracking-wide text-[var(--xf-text-400)]">Instructions</span>
           <textarea
-            className="min-h-[110px] w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[var(--xf-bg-950,_#020617)] px-3 py-2 text-sm text-[var(--xf-text-100)]"
+            className="crud-input min-h-[110px] text-sm"
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
           />
@@ -323,7 +321,7 @@ export function UserTasksClient({ initialPortfolioId, mode = "account" }: Props)
           <label className="space-y-1">
             <span className="text-xs uppercase tracking-wide text-[var(--xf-text-400)]">Persona override (optional)</span>
             <input
-              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[var(--xf-bg-950,_#020617)] px-3 py-2 font-mono text-sm text-[var(--xf-text-100)]"
+              className="crud-input font-mono text-sm"
               placeholder="persona ObjectId (optional)"
               value={personaOverride}
               onChange={(event) => setPersonaOverride(event.target.value)}

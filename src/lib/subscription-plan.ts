@@ -75,6 +75,11 @@ export const zSubscriptionPlan = z.preprocess(
   subscriptionPlanEnum
 );
 
+/** Premium retail tiers (Basic is unpaid retail default). */
+export function isRetailPaidSubscriptionPlan(plan: SubscriptionPlan | null | undefined): boolean {
+  return plan === "premium" || plan === "premium_plus";
+}
+
 /** Paid retail tiers + global admin — e.g. premium resource links in workspace rail. */
 export function canAccessPaidResourcePromptLibrary(
   plan: SubscriptionPlan | null | undefined,
@@ -83,8 +88,5 @@ export function canAccessPaidResourcePromptLibrary(
   if (isGlobalAdmin) {
     return true;
   }
-  if (!plan) {
-    return false;
-  }
-  return plan === "premium" || plan === "premium_plus";
+  return isRetailPaidSubscriptionPlan(plan);
 }

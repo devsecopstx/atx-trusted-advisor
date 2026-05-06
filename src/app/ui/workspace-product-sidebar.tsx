@@ -17,9 +17,12 @@ import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-acco
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import {
+    LucideBookOpenIcon,
+    LucideClipboardListIcon,
     LucideListBulletsIcon,
     LucideMonitorIcon,
     LucideSquarePenIcon,
+    LucideUploadIcon,
     XoptionsRocketIcon
 } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
@@ -172,20 +175,6 @@ function AdminHubIcon(props: SVGProps<SVGSVGElement>) {
       <path
         d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 14h7v6H4v-6zm9 0h7v6h-7v-6z"
         stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-    </svg>
-  );
-}
-
-function UploadGlyph(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M12 5v10m0 0l-3.5-3.5M12 15l3.5-3.5M5 19h14"
-        stroke="currentColor"
-        strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.5}
       />
@@ -454,10 +443,8 @@ export function WorkspaceProductSidebar({
     isXchatRoute && searchParams.get("item") === "example-prompts";
   const xchatAttachmentsDeepLinkActive = isXchatRoute && searchParams.get("item") === "attachments";
 
-  const utilitiesRouteMatch =
-    pathname.startsWith("/import-activity") ||
-    pathname.startsWith("/account/tasks") ||
-    xchatAttachmentsDeepLinkActive;
+  /** User Collections utilities subgroup — only attachments deep link toggles it open. */
+  const utilitiesAttachmentsRouteMatch = xchatAttachmentsDeepLinkActive;
 
   const showAttachmentsRail =
     accountDetails != null &&
@@ -657,6 +644,7 @@ export function WorkspaceProductSidebar({
       isActive:
         pathname.startsWith("/resources") ||
         pathname.startsWith("/account/tasks") ||
+        pathname.startsWith("/import-activity") ||
         xchatAttachmentsDeepLinkActive,
       icon: <ResourcesIcon className="h-[1.35rem] w-[1.35rem] text-[var(--xf-text-200)]" />
     }
@@ -837,6 +825,7 @@ export function WorkspaceProductSidebar({
         routeMatch={
           pathname.startsWith("/resources") ||
           pathname.startsWith("/account/tasks") ||
+          pathname.startsWith("/import-activity") ||
           xchatAttachmentsDeepLinkActive
         }
       >
@@ -852,8 +841,8 @@ export function WorkspaceProductSidebar({
           />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
-          {showAttachmentsRail || isPathVisible("/resources") ? (
-            <UtilitiesSubgroupDetails routeMatch={utilitiesRouteMatch}>
+          {showAttachmentsRail ? (
+            <UtilitiesSubgroupDetails routeMatch={utilitiesAttachmentsRouteMatch}>
               <summary className="portfolios-workspace-sidebar__utilities-summary">
                 <span className="portfolios-workspace-sidebar__utilities-summary-main">
                   <UtilitiesIcon className="portfolios-workspace-sidebar__glyph" />
@@ -862,25 +851,24 @@ export function WorkspaceProductSidebar({
                 <RailSectionChevron />
               </summary>
               <div className="portfolios-workspace-sidebar__utilities-body">
-                {showAttachmentsRail ? (
-                  <div className="portfolios-workspace-sidebar__collections-block">
-                    <p className="portfolios-workspace-sidebar__collections-label">User Collections</p>
-                    <XchatAttachmentsPanel />
-                  </div>
-                ) : null}
-                {isPathVisible("/resources") ? (
-                  <>
-                    <SidebarLink href={importHref} nested title="Merrill / Fidelity broker import">
-                      <UploadGlyph className="portfolios-workspace-sidebar__glyph" />
-                      Broker import
-                    </SidebarLink>
-                    <SidebarLink href="/account/tasks" nested title="Scheduled and saved user tasks">
-                      Tasks
-                    </SidebarLink>
-                  </>
-                ) : null}
+                <div className="portfolios-workspace-sidebar__collections-block">
+                  <p className="portfolios-workspace-sidebar__collections-label">User Collections</p>
+                  <XchatAttachmentsPanel />
+                </div>
               </div>
             </UtilitiesSubgroupDetails>
+          ) : null}
+          {isPathVisible("/resources") ? (
+            <>
+              <SidebarLink href={importHref} nested title="Merrill / Fidelity broker import">
+                <LucideUploadIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
+                Broker import
+              </SidebarLink>
+              <SidebarLink href="/account/tasks" nested title="Scheduled and saved user tasks">
+                <LucideClipboardListIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
+                Tasks
+              </SidebarLink>
+            </>
           ) : null}
           {isPathVisible("/resources") ? (
             <div aria-hidden className="portfolios-workspace-sidebar__collections-rule" />
@@ -888,6 +876,7 @@ export function WorkspaceProductSidebar({
           {isPathVisible("/resources") ? (
             <>
           <SidebarLink href="/resources/guides" nested title="Browse guides and resource articles">
+            <LucideBookOpenIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
             Guides
           </SidebarLink>
           {showReferenceDocs ? (

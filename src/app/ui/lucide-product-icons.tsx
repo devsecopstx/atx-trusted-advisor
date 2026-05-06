@@ -106,6 +106,44 @@ export function LucideFolderIcon({ className, ...props }: SVGProps<SVGSVGElement
   );
 }
 
+/** Broker CSV upload rail — matches workspace upload cue. https://lucide.dev/icons/upload */
+export function LucideUploadIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
+      <path
+        d="M12 5v10m0 0l-3.5-3.5M12 15l3.5-3.5M5 19h14"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
+/** Scheduled tasks / automation rail. https://lucide.dev/icons/clipboard-list */
+export function LucideClipboardListIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
+      <path
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+      <path
+        d="M9 5a2 2 0 012-2h2a2 2 0 012 2v0a2 2 0 01-2 2h-2a2 2 0 01-2-2v0z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+      <path d="M9 12h6M9 16h6M9 8h2" stroke="currentColor" strokeLinecap="round" strokeWidth={1.75} />
+    </svg>
+  );
+}
+
 /** Bulleted list — Example prompts rail / workspace shortcuts. https://lucide.dev/icons/list */
 export function LucideListBulletsIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (

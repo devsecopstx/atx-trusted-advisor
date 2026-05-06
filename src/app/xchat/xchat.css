@@ -4724,6 +4724,27 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
   margin: 0;
 }
 
+.app-user-rail-sublinks--resource-links {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0 0 0 1.55rem;
+  margin: 0;
+}
+
+.app-user-rail-sublink__row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.app-user-rail-sublink__glyph {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--xf-text-300);
+}
+
 .app-user-rail-sublinks--after-utilities {
   margin-top: 0.45rem;
   padding-top: 0.45rem;

@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useId, useState, type ReactNode, type SVGProps, type SyntheticEvent } from "react";
+import { usePathname } from "next/navigation";
+import { useId, useState, type ReactNode, type SVGProps } from "react";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserWorkspaceAccountPicker } from "@/app/ui/app-user-workspace-account-picker";
 import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
+import {
+    LucideBookOpenIcon,
+    LucideClipboardListIcon,
+    LucideUploadIcon
+} from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
@@ -56,20 +61,6 @@ function BookIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.75}
-      />
-    </svg>
-  );
-}
-
-function UtilitiesIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.77 3.77z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.65}
       />
     </svg>
   );
@@ -167,48 +158,6 @@ export type AppUserAccountPublicRailProps = AppUserRailNavProps & {
   railContext: AppUserPublicRailContext;
 };
 
-function AppUserUtilitiesSubgroup({ importHref }: { importHref: string }) {
-  const pathname = usePathname() ?? "";
-  const searchParams = useSearchParams();
-  const utilitiesRouteMatch =
-    pathname.startsWith("/import-activity") ||
-    pathname.startsWith("/account/tasks") ||
-    (pathname.startsWith("/xchat") && searchParams.get("item") === "attachments");
-  const [open, setOpen] = useState(utilitiesRouteMatch);
-  useEffect(() => {
-    setOpen(utilitiesRouteMatch);
-  }, [utilitiesRouteMatch]);
-
-  return (
-    <details
-      className="app-user-rail-utilities-details"
-      open={open}
-      onToggle={(e: SyntheticEvent<HTMLDetailsElement>) => {
-        setOpen(e.currentTarget.open);
-      }}
-      suppressHydrationWarning={true}
-    >
-      <summary className="app-user-rail-utilities-summary">
-        <span className="app-user-rail-utilities-summary__main">
-          <UtilitiesIcon className="app-user-rail-utilities__glyph" />
-          <span>Utilities</span>
-        </span>
-        <RailSectionChevron open={open} />
-      </summary>
-      <div className="app-user-rail-utilities-panel">
-        <nav className="app-user-rail-sublinks app-user-rail-sublinks--utilities-panel" aria-label="Utility links">
-          <RailNavLink href={importHref} title="Upload broker CSV exports (Merrill, Fidelity, …)">
-            Broker import
-          </RailNavLink>
-          <RailNavLink href="/account/tasks" title="Scheduled and saved user tasks">
-            Tasks
-          </RailNavLink>
-        </nav>
-      </div>
-    </details>
-  );
-}
-
 export function AppUserResourcesRailSection({
   isGlobalAdmin,
   railDisclosureDefaultOpen = false,
@@ -227,10 +176,26 @@ export function AppUserResourcesRailSection({
         iconWrapClassName="app-user-rail-disclosure__icon--resources"
         title="Resources"
       >
-        <AppUserUtilitiesSubgroup importHref={importHref} />
+        <nav className="app-user-rail-sublinks app-user-rail-sublinks--resource-links" aria-label="Broker import and tasks">
+          <RailNavLink href={importHref} title="Upload broker CSV exports (Merrill, Fidelity, …)">
+            <span className="app-user-rail-sublink__row">
+              <LucideUploadIcon className="app-user-rail-sublink__glyph" />
+              <span>Broker import</span>
+            </span>
+          </RailNavLink>
+          <RailNavLink href="/account/tasks" title="Scheduled and saved user tasks">
+            <span className="app-user-rail-sublink__row">
+              <LucideClipboardListIcon className="app-user-rail-sublink__glyph" />
+              <span>Tasks</span>
+            </span>
+          </RailNavLink>
+        </nav>
         <nav className="app-user-rail-sublinks app-user-rail-sublinks--after-utilities" aria-label="Resource guides">
           <RailNavLink href="/resources/guides" title="Browse guides and resource articles">
-            Guides
+            <span className="app-user-rail-sublink__row">
+              <LucideBookOpenIcon className="app-user-rail-sublink__glyph" />
+              <span>Guides</span>
+            </span>
           </RailNavLink>
           {showReferenceDocs
             ? isGlobalAdmin ? (
