@@ -6,7 +6,6 @@ import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
 import { GlobalFooter } from "../ui/global-footer";
 
-import { XchatFooterWorkspaceTeasers } from "./ui/xchat-footer-workspace-teasers";
 import "./xchat.css";
 
 /** Avoid stale RSC/HTML at CDN/LB after deploys; footer embeds APP_VERSION. */
@@ -28,7 +27,6 @@ export default function XchatLayout({ children }: XchatLayoutProps) {
   return (
     <div className="xchat-layout-root xchat-layout-root--safe">
       {children}
-      <XchatFooterWorkspaceTeasers />
       <GlobalFooter />
     </div>
   );

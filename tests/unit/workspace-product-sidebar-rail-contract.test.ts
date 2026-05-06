@@ -29,7 +29,9 @@ describe("WorkspaceProductSidebar rail contract", () => {
 
   it("links consolidated Guides hub under Resources", () => {
     expect(src).toContain('href="/resources/guides"');
-    expect(src).toMatch(/SidebarLink[^>]*>\s*Guides\s*<\/SidebarLink>/);
+    expect(src).toMatch(
+      /<SidebarLink href="\/resources\/guides"[^>]*>[\s\S]*?Guides\s*<\/SidebarLink>/
+    );
     expect(src).not.toContain('href="/resources/about"');
     expect(src).not.toContain('href="/resources/decision-workflow"');
   });
