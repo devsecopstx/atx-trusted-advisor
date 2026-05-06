@@ -2,7 +2,9 @@
 
 import cronstrue from "cronstrue";
 import { useMemo, useState } from "react";
-import { RRule, rrulestr } from "rrule";
+import rruleModule from "rrule";
+
+const { RRule, rrulestr } = rruleModule;
 
 type ScheduleDraft = {
   scheduleRRule?: string;

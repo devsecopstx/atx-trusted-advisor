@@ -98,7 +98,8 @@
     "ops:deploy:atxfinance-backend:production": "bash scripts/ops/deploy-atxfinance-backend-production.sh",
     "ops:validate:prod-stack-health": "bash scripts/ops/validate-prod-stack-health.sh .env.prod",
     "ops:users:reset-basic-super-agent": "node scripts/ops/reset-all-users-basic-super-agent.mjs",
-    "ops:scheduled-tasks:sync": "node --env-file=.env --import tsx scripts/ops/sync-scheduled-tasks-from-spec.ts"
+    "ops:scheduled-tasks:sync": "node --env-file=.env --import tsx scripts/ops/sync-scheduled-tasks-from-spec.ts",
+    "ops:rental:mint-key": "node --env-file=.env --import tsx scripts/ops/mint-rental-api-key.ts"
   },
   "keywords": [],
   "author": "",

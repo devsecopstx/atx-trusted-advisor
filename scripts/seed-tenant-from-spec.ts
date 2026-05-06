@@ -6,6 +6,9 @@
  *   npm run seed:tenant -- --file tenant-specs/acme.yaml
  *
  * Env: MONGODB_URI + DB name (same resolution as seed:admin via resolve-mongo-uri / resolveSeedDbName).
+ *
+ * If the run appears **stuck after Mongo lines**, it is usually **xAI Management API** (team attachments collection).
+ * Abort with Ctrl+C and re-run with **`SKIP_SEED_TENANT_XCHAT_TEAM_COLLECTION=1`** — tenant + optional rental profile still complete.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -88,11 +91,13 @@ async function main() {
     console.log(`[seed:tenant] Rental tier: ${parsed.rentalProfile.tier} (bias=${parsed.rentalProfile.strategyBias})`);
   }
 
+  console.log(`[seed:tenant] Connecting Mongo…`);
   const client = new MongoClient(mongoUri);
   await client.connect();
   const db = client.db(dbName);
 
   try {
+    console.log(`[seed:tenant] Applying spec (tenant row, admin, rental, xAI attach)…`);
     const result = await upsertTenantFromParsedSpecV1(db, parsed);
     console.log(`[seed:tenant] OK — tenantId=${result.tenantId}`);
 

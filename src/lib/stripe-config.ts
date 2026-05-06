@@ -69,6 +69,31 @@ export function isStripeBillingFullyConfigured(): boolean {
   return isStripeCheckoutConfiguredForTenant(undefined);
 }
 
+/** When true and IDs are set, rental Checkout / webhooks may use the Stripe rental SKU (see `RentalAiBilling` wiring). */
+export function isRentalAiBillingFlagEnabled(): boolean {
+  const v = process.env.ENABLE_RENTAL_AI_BILLING?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/** Stripe Product id for rental AI base subscription (`prod_…`). */
+export function getRentalAiStripeProductId(): string | undefined {
+  const s = process.env.RENTAL_AI_PRODUCT_ID?.trim();
+  return s && s.length > 0 ? s : undefined;
+}
+
+/**
+ * Stripe Price id for rental AI base recurring charge (`price_…`).
+ * Falls back to `STRIPE_PRICE_RENTAL_AI_MONTHLY` when `RENTAL_BASE_PRICE_ID` is unset.
+ */
+export function getRentalAiStripeBasePriceId(): string | undefined {
+  const primary = process.env.RENTAL_BASE_PRICE_ID?.trim();
+  if (primary && primary.length > 0) {
+    return primary;
+  }
+  const legacy = process.env.STRIPE_PRICE_RENTAL_AI_MONTHLY?.trim();
+  return legacy && legacy.length > 0 ? legacy : undefined;
+}
+
 export function resolveAppOrigin(): string {
   const explicit =
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||

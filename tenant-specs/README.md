@@ -32,6 +32,14 @@ Uses `MONGODB_URI` / DB name from `.env` (same as `seed:admin`).
 npm run seed:tenant -- --file tenant-specs/acme-advisors.yaml
 ```
 
+**Stuck / slow:** The last step may call the **xAI Management API** (`list` / `create` collection). There is no request timeout; a bad network can hang. Use:
+
+```bash
+SKIP_SEED_TENANT_XCHAT_TEAM_COLLECTION=1 npm run seed:tenant -- --file tenant-specs/acme-advisors.yaml
+```
+
+The tenant document (including **`rentalProfile`** provisioning when present) still completes; only the optional **`xchat_team_attachments_collection_id`** on `tenantPreferences` is skipped — you can retry later when the API is reachable.
+
 Prints the new/updated tenant **ObjectId** (hex). With **`tenant.initialTenantAdmin`**, the script also upserts **`core_users`** and **`core_tenant_memberships`** (see below).
 
 ## Phase 1 provisioning contract

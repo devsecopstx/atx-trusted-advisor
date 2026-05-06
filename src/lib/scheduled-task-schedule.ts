@@ -1,7 +1,9 @@
 import cronstrue from "cronstrue";
-import { RRule, rrulestr } from "rrule";
+import rruleModule from "rrule";
 
 import { computeNextRunAtFromCron } from "@/lib/scheduled-task-cron";
+
+const { RRule, rrulestr } = rruleModule;
 
 export type ScheduledTaskScheduleInput = {
   scheduleCron?: string | null;
@@ -25,7 +27,7 @@ export function normalizeScheduleRRule(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-export function parseRRuleOrNull(value?: string | null): RRule | null {
+export function parseRRuleOrNull(value?: string | null): InstanceType<typeof RRule> | null {
   if (!value) {
     return null;
   }

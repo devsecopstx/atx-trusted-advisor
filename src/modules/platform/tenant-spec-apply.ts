@@ -124,6 +124,10 @@ export type UpsertTenantFromSpecResult = {
 
 /**
  * Same Mongo writes as `scripts/seed-tenant-from-spec.ts` — upserts `core_tenants` and optional initial admin.
+ *
+ * **Hang during `seed:tenant`:** the final step may call the **xAI Management API** (list/create collection).
+ * Slow or broken network can stall indefinitely (`fetch` has no timeout). Set
+ * **`SKIP_SEED_TENANT_XCHAT_TEAM_COLLECTION=1`** to skip that step (tenant row + rental persona still apply).
  */
 export async function upsertTenantFromParsedSpecV1(
   db: Db,
@@ -212,6 +216,7 @@ export async function upsertTenantFromParsedSpecV1(
   }
 
   if (parsed.rentalProfile) {
+    console.info("[tenant-spec] Finalize rental persona + sample portfolio (Mongo)…");
     await finalizeTenantRentalProvisioning(db, {
       tenantId,
       tenantSlug: parsed.slug,
@@ -221,12 +226,28 @@ export async function upsertTenantFromParsedSpecV1(
 
   const refreshed = await db.collection("core_tenants").findOne({ _id: tenantId });
   const prefs = refreshed?.tenantPreferences as TenantPreferences | null | undefined;
-  const xchatEnsured = await ensureTenantTeamXchatAttachmentsCollection({
-    db,
-    tenantSlug: parsed.slug,
-    tenantObjectId: tenantId,
-    tenantPreferences: prefs ?? null
-  });
+
+  const skipXchatTeamCollection = String(
+    process.env.SKIP_SEED_TENANT_XCHAT_TEAM_COLLECTION ?? ""
+  ).match(/^(1|true|yes)$/i);
+
+  let xchatEnsured: Awaited<ReturnType<typeof ensureTenantTeamXchatAttachmentsCollection>> = null;
+
+  if (skipXchatTeamCollection) {
+    console.warn(
+      "[tenant-spec] SKIP_SEED_TENANT_XCHAT_TEAM_COLLECTION set — skipping xAI management API (team attachments collection). Re-run without it when network/API is healthy, or provision from Admin later."
+    );
+  } else {
+    console.info(
+      "[tenant-spec] xAI team attachments collection (calls management API; can be slow — SKIP_SEED_TENANT_XCHAT_TEAM_COLLECTION=1 to skip)…"
+    );
+    xchatEnsured = await ensureTenantTeamXchatAttachmentsCollection({
+      db,
+      tenantSlug: parsed.slug,
+      tenantObjectId: tenantId,
+      tenantPreferences: prefs ?? null
+    });
+  }
 
   return {
     tenantId: tenantId.toHexString(),

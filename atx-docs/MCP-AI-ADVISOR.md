@@ -92,7 +92,7 @@ You are a white-labeled **xFinance rental advisor** for one tenant workspace. Ke
 
 1. Define **`tenant.rentalProfile`** in YAML (tier, `expiresAt`, bias, limits) — see **`tenant-specs/README.md`**.
 2. `npm run seed:tenant -- --file tenant-specs/<slug>.yaml` — provisions rental persona + sample portfolio/watchlist.
-3. Mint API keys on `core_tenants.apiKeys` (ops path today; **admin console UX** in backlog **`PLAN.md` #41`).
+3. Mint keys: **`npm run ops:rental:mint-key -- --tenant=<slug>`** (or `node --env-file=.env.prod --import tsx scripts/ops/mint-rental-api-key.ts --tenantId=…`) — prints **`atxr_*` once**; only **`keyHash`** is stored in Mongo. See **`atx-docs/sre-ops/rental-ai-platform.md`** § Minting API keys. **Admin console UX** for list/revoke is backlog **`PLAN.md` #41**.
 4. Integrate via **raw HTTPS** to the Next deployment origin (`POST`/`GET` above).
 
 ---
