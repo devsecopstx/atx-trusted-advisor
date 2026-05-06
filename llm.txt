@@ -4,6 +4,8 @@ Version: 1.0 (Phase 1 API)
 Provider: aTx Finance — xfinance monorepo (Next.js core app)
 Type: Isolated, tenant-scoped Grok-powered options-aware advisor API for partners (RIAs, family offices, HNWI desks, independent advisors).
 Canonical detail: atx-docs/MCP-AI-ADVISOR.md
+System prompt (seed + bias + defaultPersonaId precedence): atx-docs/guides/rental-ai-system-prompt.md
+Partner landing spec (/ai-rent, implement later): atx-docs/design-system/ai-rent-landing-spec.md
 
 ## Endpoints (Next origin)
 

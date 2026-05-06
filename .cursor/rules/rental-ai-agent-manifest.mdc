@@ -1,0 +1,29 @@
+---
+description: Rental AI API, partner manifests, and agent handoff docs — load when touching rental routes or MCP/A2A distribution.
+globs:
+  - llm.txt
+  - atx-docs/MCP-AI-ADVISOR.md
+  - atx-docs/guides/rental-ai-system-prompt.md
+  - src/app/api/ai/rent/**/*.ts
+  - src/modules/platform/rental-ai*.ts
+  - src/modules/platform/tenant-rental*.ts
+alwaysApply: false
+---
+
+# Rental AI — agent manifest & implementation context
+
+When editing **white-label rental API** code, keys, OpenAPI **`rental-ai`**, or partner-facing docs:
+
+1. **Read first (order):**
+   - Repo root **`llm.txt`** — short LLM/crawler index (endpoints, Bearer `atxr_*`, scopes).
+   - **`atx-docs/MCP-AI-ADVISOR.md`** — full HTTP contract + MCP/A2A handoff.
+   - **`atx-docs/guides/rental-ai-system-prompt.md`** — canonical system prompt blocks + chat-route precedence vs `defaultPersonaId`.
+   - **`atx-docs/sre-ops/rental-ai-platform.md`** — ops: metering, audit `rental_ai`, Stripe placeholders, concurrency.
+
+2. **Auth:** `Authorization: Bearer atxr_<16-hex id>_<64-hex secret>`; scopes `chat` | `strategy` | `analyze` on `core_tenants.apiKeys`. Do not document `x-rental-api-key` / `rk_` prefixes — not implemented.
+
+3. **OpenAPI:** Paths under `/api/ai/rent/*`; tag **`rental-ai`**; enrich via **`src/lib/openapi/current-state-overrides.ts`** when contract changes.
+
+4. **Branding / marketing:** A partner landing spec lives at **`atx-docs/design-system/ai-rent-landing-spec.md`**; follow **`.cursor/rules/xfinance-branding.mdc`** (aTx⚡Finance lockup, `--xf-*` tokens, no fake metrics or self-serve $ unless shipped).
+
+5. **Persona:** Seed/system prompt logic in **`src/modules/platform/tenant-rental-persona-seed.ts`**; runtime override behavior in **`src/app/api/ai/rent/chat/route.ts`**.

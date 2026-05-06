@@ -29,6 +29,7 @@ test -f .cursor/agents/marketing.md && npm install
 ## Suggested context
 
 - `atx-docs/branding/**`
+- `atx-docs/design-system/ai-rent-landing-spec.md` (partner `/ai-rent` page — spec)
 - `.cursor/rules/xfinance-branding.mdc`
 
 ## Exclude

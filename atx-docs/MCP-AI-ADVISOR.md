@@ -8,6 +8,10 @@
 
 **Target users:** RIAs, family offices, HNWI desks, independent advisors (via their own product or agent mesh).
 
+**Canonical system prompt (seed + bias blocks + chat precedence):** [`atx-docs/guides/rental-ai-system-prompt.md`](./guides/rental-ai-system-prompt.md)
+
+**Partner marketing page (spec, `/ai-rent`):** [`atx-docs/design-system/ai-rent-landing-spec.md`](./design-system/ai-rent-landing-spec.md)
+
 ---
 
 ## Overview
