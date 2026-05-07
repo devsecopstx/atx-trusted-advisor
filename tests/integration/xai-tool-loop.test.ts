@@ -859,4 +859,58 @@ describe("respondWithXaiToolLoop", () => {
       })
     ).rejects.toThrow("xAI responses failed");
   });
+
+  it("invokes multiple local tools in parallel within one provider turn", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        xaiResponsesOk({
+          id: "r_parallel",
+          model: "grok-test",
+          output: [
+            {
+              type: "function_call",
+              call_id: "c_a",
+              name: "yahoo_finance",
+              arguments: "{}"
+            },
+            {
+              type: "function_call",
+              call_id: "c_b",
+              name: "atx_function",
+              arguments: JSON.stringify({ operation: "market_quote", symbol: "QQQ" })
+            }
+          ]
+        })
+      )
+      .mockResolvedValueOnce(
+        xaiResponsesOk({
+          model: "grok-test",
+          output_text: "Combined."
+        })
+      );
+
+    let active = 0;
+    let peakConcurrent = 0;
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    const result = await respondWithXaiToolLoop({
+      systemPrompt: "sys",
+      userPrompt: "hi",
+      tools: [
+        { type: "function", function: { name: "yahoo_finance", parameters: {} } },
+        { type: "function", function: { name: "atx_function", parameters: {} } }
+      ],
+      maxTurns: 4,
+      executor: async () => {
+        active += 1;
+        peakConcurrent = Math.max(peakConcurrent, active);
+        await new Promise((r) => setTimeout(r, 25));
+        active -= 1;
+        return { result: "{}" };
+      }
+    });
+
+    expect(result.outputText).toBe("Combined.");
+    expect(result.toolCalls).toHaveLength(2);
+    expect(peakConcurrent).toBe(2);
+  });
 });

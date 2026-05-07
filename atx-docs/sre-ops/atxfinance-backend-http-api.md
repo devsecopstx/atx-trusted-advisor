@@ -29,6 +29,7 @@ Same contracts as the matching Next.js App Router handlers when the core app **B
 | PATCH | `/api/portfolios/{portfolioId}/accounts/{accountId}` | Patch any of: `name`, `cashBalance`, `extAccountId`, `type`, `riskProfile`, `outlook` (at least one key). `riskProfile`: `conservative` \| `balanced` \| `growth` or JSON `null` to clear. `outlook`: `bullish` \| `neutral` \| `bearish` or aliases (`growth`→bullish, `balanced`→neutral, …) or `null` to clear. **`409`** if `brokerImportLocked` and body includes **`type`** only (`extAccountId` remains patchable). **200** `{ "data": ... }` updated account document as JSON map. |
 | GET | `/api/portfolios/{portfolioId}/watchlist` | **200** `{ "data": { ...watchlist, symbols, symbolsDetailed }, "metadata" }`. Query `quotes=1` adds `symbolsWithQuotes` with `quote: null` per row (live Yahoo quotes not implemented on JVM yet — `metadata.symbolLookupEnabled` is **false** until a quote provider is wired). |
 | PATCH | `/api/portfolios/{portfolioId}/watchlist` | Body: `addSymbols` / `addEntries` / `removeSymbols` / `dedupe` (same rules as Next; caps per patch from `app.atxfinance.max-watchlist-symbols-per-patch`, default 20). **400** `Invalid payload` if no mutation. |
+| GET | `/api/portfolios/{portfolioId}/workspace-snapshot` | Query `workspaceContentRev` (int, default **0**). **200** `{ "data": { preload, workspaceContentRev, materializedAt, source } }` from Mongo `portfolio_workspace_snapshots` for an **owned** portfolio. **404** `snapshot_not_found` when no row matches. **401** without session. |
 
 ## Positions (session cookie, Mongo CRUD)
 
@@ -85,6 +86,12 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `/api/user-feedback` | **201** `{ "ok": true }`. Body `{ "message", "page"? }`. Posts to **`SLACK_WEBHOOK_URL`** when set (same as Next). |
+
+## xChat streaming (stub, `text/event-stream`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/xchat/ask/stream` | **401** without session cookie. **200** `Content-Type: text/event-stream` — emits a single SSE **`meta`** event (`phase: stub`) until the xAI tool-loop stream is implemented. BFF-proxied from Next when **`ATXFINANCE_BACKEND_ORIGIN`** is set. |
 
 ## Admin (global_admin session)
 

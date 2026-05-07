@@ -19,7 +19,8 @@
  * **`GET /api/strategy-options/expirations`:** Next-only Yahoo (`expirations/route.ts`) — not listed below; Spring still
  * exposes the route for direct JVM clients, but the app does not proxy so prod matches local latency and avoids hangs.
  *
- * Deferred vertical slice: xChat streaming routes — see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
+ * Deferred vertical slice: full xChat tool-loop SSE on Spring — `POST /api/xchat/ask/stream` is registered for BFF
+ * and ships a JVM **stub** stream until the tool loop is wired; see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
  */
 export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -43,6 +44,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "DELETE", path: "/api/portfolios/{portfolioId}/accounts/{accountId}" },
   { method: "GET", path: "/api/portfolios/{portfolioId}/watchlist" },
   { method: "PATCH", path: "/api/portfolios/{portfolioId}/watchlist" },
+  { method: "GET", path: "/api/portfolios/{portfolioId}/workspace-snapshot" },
   { method: "GET", path: "/api/positions" },
   { method: "POST", path: "/api/positions" },
   { method: "DELETE", path: "/api/positions/{positionId}" },
@@ -58,6 +60,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "POST", path: "/api/strategy-jobs/{jobId}/turns" },
   { method: "GET", path: "/api/strategy-jobs/{jobId}/artifact" },
   { method: "POST", path: "/api/user-feedback" },
+  { method: "POST", path: "/api/xchat/ask/stream" },
   { method: "GET", path: "/api/admin/bootstrap-status" },
   { method: "GET", path: "/api/admin/audit" },
   { method: "GET", path: "/api/admin/access-requests" },

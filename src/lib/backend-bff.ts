@@ -40,6 +40,10 @@ export const nextBffApi = {
     watchlist: {
       pathTemplate: "/api/portfolios/{portfolioId}/watchlist",
       methods: ["GET", "PATCH"]
+    },
+    workspaceSnapshot: {
+      pathTemplate: "/api/portfolios/{portfolioId}/workspace-snapshot",
+      methods: ["GET"]
     }
   },
   positions: {
@@ -95,6 +99,12 @@ export const nextBffApi = {
   userFeedback: {
     post: {
       pathTemplate: "/api/user-feedback",
+      methods: ["POST"]
+    }
+  },
+  xchat: {
+    askStream: {
+      pathTemplate: "/api/xchat/ask/stream",
       methods: ["POST"]
     }
   },
@@ -375,6 +385,9 @@ const defaultBff = createAtxfinanceBackendBff();
 /**
  * When `ATXFINANCE_BACKEND_ORIGIN` is set, forward the incoming request to Spring (same path + query).
  * Browser stays same-origin on Next; session cookie is forwarded. No CORS on the backend for this path.
+ *
+ * **Streaming:** For `text/event-stream` or other chunked bodies, return this `Response` directly from the Route Handler
+ * without reading `response.text()` / `response.json()` so the client receives chunks as the backend emits them.
  */
 export async function proxyRequestToBackend(request: Request): Promise<Response | null> {
   return defaultBff.proxyRequest(request);

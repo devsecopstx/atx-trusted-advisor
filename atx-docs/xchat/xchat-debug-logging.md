@@ -33,12 +33,15 @@ Exported as `XCHAT_DEBUG_LOG_TYPES` in `src/lib/xchat-debug.ts`.
 | `xchat_ask_full` | Full `systemPrompt`, `userPrompt`, `ragContext`, `responseText` — **high sensitivity**; only with tenant debug on. |
 | `xchat_ask_pre_request` | **Before** the xAI `/v1/responses` call: `wireTools` (final JSON array sent), `model`, `toolChoice`, `maxTurns`. Use when tracing 422/502 without a successful turn. |
 | `xchat_ask_provider_error` | On provider failure (same request as above): `error` message plus `wireTools` again for correlation. |
+| `xchat_ask_tool_batch` | After each `/v1/responses` turn that runs **local** tools in parallel: `turnIndex`, `parallelLocalCount`, per-call `name` + `durationMs`, `slowestMs`, plus `correlationId` / `requestId` for join with Mongo audit. |
 | `xchat_batch` | Batch flows: includes `batchPhase` — `item_prepare` (per JSONL line while building upload) or `job_created` (xAI batch id known). |
 | `xchat_history_list` | `GET /api/xchat/history` list response metadata (limit, counts, cursor). |
 
 **Workspace snapshot (optional, same prefix):** when tenant xChat debug is on, `[workspace-snapshot-for-prompt.ts](../../src/modules/xchat/workspace-snapshot-for-prompt.ts)` logs `console.info("[xchat/debug]", { type: "workspace_snapshot_load", … })` (cache vs mongo, `elapsedMs`, masked portfolio id) and `{ type: "workspace_snapshot_build", … }` after a Mongo build. These `type` strings are **not** in `XCHAT_DEBUG_LOG_TYPES` yet; filter on `workspace_snapshot_` in JSON if needed.
 
 **Monitoring / SLO hints:** After index or Redis changes, compare `workspace_snapshot_load.elapsedMs` before vs after on the same portfolio. Aim **&lt;50 ms** when `source === "cache"`; use **`mongo`** rows to validate cold paths. See **`atx-docs/sre-ops/mongo-indexing-guide.md`** §8.
+
+**Tool-loop latency:** With tenant debug on, `xchat_ask_tool_batch` surfaces **per-tool `durationMs`** after each turn. The host runs **independent local tools concurrently** (same xAI `function_call` batch), so wall time for that batch approaches **`slowestMs`**, not the sum of calls. Correlate with `correlationId` / `requestId` from the same ask request.
 
 ## Enabling
 

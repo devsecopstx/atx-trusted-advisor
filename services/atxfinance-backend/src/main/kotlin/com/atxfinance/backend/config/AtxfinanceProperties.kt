@@ -64,6 +64,14 @@ data class AtxfinanceProperties(
     val strategyFinalizerMultiAgentForGlobalAdmin: Boolean = true,
     /** Optional explicit team KB `collection_*` id when `XAI_TEAM_ID` is a team UUID (env `STRATEGY_TEAM_KB_COLLECTION_ID`). */
     val strategyTeamKbCollectionId: String = "",
+    /** Mongo collection for materialized xChat workspace preload rows (Next + JVM read/purge). */
+    val portfolioWorkspaceSnapshotsCollection: String = "portfolio_workspace_snapshots",
+    /** When true, [com.atxfinance.backend.scheduling.PortfolioWorkspaceSnapshotPurgeJob] removes old snapshot rows. */
+    val portfolioWorkspaceSnapshotPurgeEnabled: Boolean = true,
+    /** Delete `portfolio_workspace_snapshots` rows with `materializedAt` older than this many days. */
+    val portfolioWorkspaceSnapshotPurgeRetentionDays: Int = 14,
+    /** Fixed-rate interval (ms) for purge job. */
+    val portfolioWorkspaceSnapshotPurgeIntervalMs: Long = 21_600_000L,
     @NestedConfigurationProperty
     val redis: RedisProps = RedisProps(),
     @NestedConfigurationProperty

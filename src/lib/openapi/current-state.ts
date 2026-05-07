@@ -1046,6 +1046,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "portfolios"
   },
   {
+    path: "/api/portfolios/{portfolioId}/workspace-snapshot",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "portfolios"
+  },
+  {
     path: "/api/portfolios/{portfolioId}/accounts/{accountId}",
     operations: [
       { method: "PATCH", auth: "session", hasRequestBody: true },
@@ -1114,6 +1119,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/xchat/ask",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xchat"
+  },
+  {
+    path: "/api/xchat/ask/stream",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "xchat"
   },

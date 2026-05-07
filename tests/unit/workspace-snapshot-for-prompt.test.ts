@@ -44,6 +44,12 @@ vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
   LOOKUP_ROUTE: "yahoo-finance2"
 }));
 
+vi.mock("@/modules/xchat/portfolio-workspace-snapshot-repository", () => ({
+  findPortfolioWorkspaceSnapshot: vi.fn(() => Promise.resolve(null)),
+  upsertPortfolioWorkspaceSnapshot: vi.fn(() => Promise.resolve(undefined)),
+  ensurePortfolioWorkspaceSnapshotIndexes: vi.fn(() => Promise.resolve(undefined))
+}));
+
 import { buildWorkspaceServerSnapshotBlock, loadWorkspaceSnapshotPreload } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 describe("buildWorkspaceServerSnapshotBlock", () => {

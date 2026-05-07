@@ -70,6 +70,19 @@ export function getRedisQuoteCacheTtlSeconds(): number {
   return Math.min(3600, Math.max(5, Math.floor(n)));
 }
 
+/** TTL for Yahoo quote cache when US regular session is likely closed (seconds). Clamped 60–86400; default 300. */
+export function getRedisQuoteCacheTtlClosedSeconds(): number {
+  const raw = process.env.REDIS_QUOTE_CACHE_TTL_CLOSED_SECONDS?.trim();
+  if (!raw) {
+    return 300;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    return 300;
+  }
+  return Math.min(86_400, Math.max(60, Math.floor(n)));
+}
+
 /**
  * Redis connect timeout (ms). Keeps route-level rate-limit calls from stalling request handlers
  * when Redis is saturated/unreachable. Clamped 100–10000; default 750.

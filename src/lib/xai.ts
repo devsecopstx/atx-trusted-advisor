@@ -31,7 +31,7 @@ type XaiResponsesResult = {
   raw: unknown;
 };
 
-type XaiCollectionSearchSnippet = {
+export type XaiCollectionSearchSnippet = {
   text: string;
   documentId?: string;
   documentName?: string;
@@ -434,6 +434,13 @@ export type ToolExecutor = (
   args: Record<string, unknown>
 ) => Promise<{ result: string; error?: string }>;
 
+/** Emitted after each xAI turn’s **local** tool batch (when tenant xChat debug is on). */
+export type XaiLocalToolBatchDebugPayload = {
+  turnIndex: number;
+  parallelLocalCount: number;
+  calls: Array<{ name: string; durationMs: number; error?: string }>;
+};
+
 export type ToolCallLog = {
   name: string;
   args: Record<string, unknown>;
@@ -450,6 +457,137 @@ export type XaiToolLoopResult = {
   turnsUsed: number;
   raw: unknown;
 };
+
+type ParsedToolCall = {
+  callId: string;
+  name: string;
+  args: Record<string, unknown>;
+};
+
+/**
+ * xAI executes these on the server; the local executor must not treat them as
+ * app-level tools. `collections_search` is normalized to `file_search` on wire
+ * for `/v1/responses`, but we keep both for defensive handling.
+ */
+const XAI_HOSTED_FUNCTION_NAMES = new Set([
+  "web_search",
+  "x_search",
+  "file_search",
+  "collections_search",
+  "code_interpreter"
+]);
+
+async function executePendingToolCallsWithParallelLocal(input: {
+  pendingToolCalls: ParsedToolCall[];
+  executor: ToolExecutor;
+  turnIndex: number;
+  toolCalls: ToolCallLog[];
+  onLocalToolBatchComplete?: (payload: XaiLocalToolBatchDebugPayload) => void;
+}): Promise<Array<{ type: "function_call_output"; call_id: string; output: string }>> {
+  const { pendingToolCalls, executor, turnIndex, toolCalls: toolCallsAcc, onLocalToolBatchComplete } =
+    input;
+  const n = pendingToolCalls.length;
+  const localJobs: Array<{ index: number; tc: ParsedToolCall }> = [];
+  for (let i = 0; i < n; i++) {
+    const tc = pendingToolCalls[i];
+    if (!XAI_HOSTED_FUNCTION_NAMES.has(tc.name)) {
+      localJobs.push({ index: i, tc });
+    }
+  }
+
+  const localByIndex = new Map<
+    number,
+    { log: ToolCallLog; output: { type: "function_call_output"; call_id: string; output: string } }
+  >();
+
+  if (localJobs.length > 0) {
+    const settled = await Promise.all(
+      localJobs.map(async ({ index, tc }) => {
+        const start = Date.now();
+        let executorResult: { result: string; error?: string };
+        try {
+          executorResult = await executor(tc.name, tc.args);
+        } catch (error) {
+          executorResult = {
+            result: "",
+            error: error instanceof Error ? error.message : "executor_error"
+          };
+        }
+        const durationMs = Date.now() - start;
+        const log: ToolCallLog = {
+          name: tc.name,
+          args: tc.args,
+          result: executorResult.result,
+          error: executorResult.error,
+          durationMs
+        };
+        const out = executorResult.error
+          ? JSON.stringify({ error: executorResult.error })
+          : executorResult.result;
+        const output = {
+          type: "function_call_output" as const,
+          call_id: tc.callId,
+          output: out
+        };
+        return { index, tc, executorResult, durationMs, log, output };
+      })
+    );
+
+    for (const row of settled) {
+      localByIndex.set(row.index, { log: row.log, output: row.output });
+    }
+
+    settled.sort((a, b) => a.index - b.index);
+    onLocalToolBatchComplete?.({
+      turnIndex,
+      parallelLocalCount: localJobs.length,
+      calls: settled.map((r) => ({
+        name: r.tc.name,
+        durationMs: r.durationMs,
+        error: r.executorResult.error
+      }))
+    });
+  }
+
+  const toolResults: Array<{ type: "function_call_output"; call_id: string; output: string }> = [];
+  for (let i = 0; i < n; i++) {
+    const tc = pendingToolCalls[i];
+    if (XAI_HOSTED_FUNCTION_NAMES.has(tc.name)) {
+      toolCallsAcc.push({
+        name: tc.name,
+        args: tc.args,
+        result: "{}",
+        durationMs: 0
+      });
+      toolResults.push({
+        type: "function_call_output",
+        call_id: tc.callId,
+        output: "{}"
+      });
+    } else {
+      const row = localByIndex.get(i);
+      if (!row) {
+        toolCallsAcc.push({
+          name: tc.name,
+          args: tc.args,
+          result: "",
+          error: "missing_parallel_result",
+          durationMs: 0
+        });
+        toolResults.push({
+          type: "function_call_output",
+          call_id: tc.callId,
+          output: JSON.stringify({ error: "missing_parallel_result" })
+        });
+      } else {
+        toolCallsAcc.push(row.log);
+        toolResults.push(row.output);
+      }
+    }
+  }
+
+  return toolResults;
+}
 
 /** First-turn multimodal user input for `/v1/responses` (vision), aligned with xAI docs. */
 function buildXaiResponsesVisionUserTurn(userPrompt: string, imageDataUrl: string): unknown {
@@ -490,6 +628,8 @@ export async function respondWithXaiToolLoop(input: {
   storeMessages?: boolean;
   /** When aborted (e.g. client disconnected / user cancelled), in-flight xAI `fetch` calls reject and the loop exits. */
   signal?: AbortSignal;
+  /** Optional: parallel local tool timings (tenant xChat debug hooks in the route). */
+  onLocalToolBatchComplete?: (payload: XaiLocalToolBatchDebugPayload) => void;
 }): Promise<XaiToolLoopResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const model = input.model ?? defaultModel;
@@ -577,34 +717,50 @@ export async function respondWithXaiToolLoop(input: {
           loopLimit = Math.min(loopLimit + 1, syntheticRecoveryCap);
         }
         const toolResults: Array<{ type: "function_call_output"; call_id: string; output: string }> = [];
-        for (let i = 0; i < syntheticArgsList.length; i++) {
-          const syntheticArgs = syntheticArgsList[i];
-          const syntheticCallId = `synthetic_${ATX_FUNCTION_PRIMARY_NAME}_${turn}_${i}`;
-          const start = Date.now();
-          let executorResult: { result: string; error?: string };
-          try {
-            executorResult = await input.executor(ATX_FUNCTION_PRIMARY_NAME, syntheticArgs);
-          } catch (error) {
-            executorResult = {
-              result: "",
-              error: error instanceof Error ? error.message : "executor_error"
-            };
-          }
-          const durationMs = Date.now() - start;
+        const syntheticSettled = await Promise.all(
+          syntheticArgsList.map(async (syntheticArgs, i) => {
+            const syntheticCallId = `synthetic_${ATX_FUNCTION_PRIMARY_NAME}_${turn}_${i}`;
+            const start = Date.now();
+            let executorResult: { result: string; error?: string };
+            try {
+              executorResult = await input.executor(ATX_FUNCTION_PRIMARY_NAME, syntheticArgs);
+            } catch (error) {
+              executorResult = {
+                result: "",
+                error: error instanceof Error ? error.message : "executor_error"
+              };
+            }
+            const durationMs = Date.now() - start;
+            return { syntheticArgs, syntheticCallId, executorResult, durationMs, i };
+          })
+        );
+        syntheticSettled.sort((a, b) => a.i - b.i);
+        for (const row of syntheticSettled) {
           toolCalls.push({
             name: ATX_FUNCTION_PRIMARY_NAME,
-            args: syntheticArgs,
-            result: executorResult.result,
-            error: executorResult.error,
-            durationMs
+            args: row.syntheticArgs,
+            result: row.executorResult.result,
+            error: row.executorResult.error,
+            durationMs: row.durationMs
           });
-          const toolOutput = executorResult.error
-            ? JSON.stringify({ error: executorResult.error })
-            : executorResult.result;
+          const toolOutput = row.executorResult.error
+            ? JSON.stringify({ error: row.executorResult.error })
+            : row.executorResult.result;
           toolResults.push({
             type: "function_call_output",
-            call_id: syntheticCallId,
+            call_id: row.syntheticCallId,
             output: toolOutput
+          });
+        }
+        if (syntheticSettled.length > 0) {
+          input.onLocalToolBatchComplete?.({
+            turnIndex: turn,
+            parallelLocalCount: syntheticSettled.length,
+            calls: syntheticSettled.map((r) => ({
+              name: ATX_FUNCTION_PRIMARY_NAME,
+              durationMs: r.durationMs,
+              error: r.executorResult.error
+            }))
           });
         }
         conversationInput = toolResults;
@@ -642,55 +798,13 @@ export async function respondWithXaiToolLoop(input: {
       };
     }
 
-    const toolResults: Array<{ type: "function_call_output"; call_id: string; output: string }> = [];
-    for (const toolCall of pendingToolCalls) {
-      if (XAI_HOSTED_FUNCTION_NAMES.has(toolCall.name)) {
-        toolResults.push({
-          type: "function_call_output",
-          call_id: toolCall.callId,
-          output: "{}"
-        });
-        toolCalls.push({
-          name: toolCall.name,
-          args: toolCall.args,
-          result: "{}",
-          durationMs: 0
-        });
-        continue;
-      }
-
-      const start = Date.now();
-      let executorResult: { result: string; error?: string };
-      try {
-        executorResult = await input.executor(toolCall.name, toolCall.args);
-      } catch (error) {
-        executorResult = {
-          result: "",
-          error: error instanceof Error ? error.message : "executor_error"
-        };
-      }
-      const durationMs = Date.now() - start;
-
-      toolCalls.push({
-        name: toolCall.name,
-        args: toolCall.args,
-        result: executorResult.result,
-        error: executorResult.error,
-        durationMs
-      });
-
-      const output = executorResult.error
-        ? JSON.stringify({ error: executorResult.error })
-        : executorResult.result;
-
-      toolResults.push({
-        type: "function_call_output",
-        call_id: toolCall.callId,
-        output
-      });
-    }
-
-    conversationInput = toolResults;
+    conversationInput = await executePendingToolCallsWithParallelLocal({
+      pendingToolCalls,
+      executor: input.executor,
+      turnIndex: turn,
+      toolCalls,
+      onLocalToolBatchComplete: input.onLocalToolBatchComplete
+    });
   }
 
   const outputText = extractResponseOutputText(lastPayload);
@@ -704,27 +818,8 @@ export async function respondWithXaiToolLoop(input: {
   };
 }
 
-type ParsedToolCall = {
-  callId: string;
-  name: string;
-  args: Record<string, unknown>;
-};
-
 const ATX_FUNCTION_PRIMARY_NAME = "atx_function";
 const ATX_FUNCTION_ALIASES = new Set([ATX_FUNCTION_PRIMARY_NAME]);
-
-/**
- * xAI executes these on the server; the local executor must not treat them as
- * app-level tools. `collections_search` is normalized to `file_search` on wire
- * for `/v1/responses`, but we keep both for defensive handling.
- */
-const XAI_HOSTED_FUNCTION_NAMES = new Set([
-  "web_search",
-  "x_search",
-  "file_search",
-  "collections_search",
-  "code_interpreter"
-]);
 
 /** Matches `ATXFINANCE_TOOL_DEFINITION.function.parameters.properties.operation.enum` — recover when the model prints JSON instead of using API function_call. */
 const ATXFINANCE_SYNTHETIC_OPERATIONS = new Set([

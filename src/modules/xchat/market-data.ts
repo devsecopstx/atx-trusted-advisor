@@ -1,32 +1,17 @@
+import {
+    setRedisMarketQuote,
+    tryGetRedisMarketQuote
+} from "@/modules/xchat/market-quote-redis-cache";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
+
+import type { MarketQuoteSnapshot } from "@/modules/xchat/market-quote-types";
+
+export type { MarketQuoteSnapshot } from "@/modules/xchat/market-quote-types";
 
 export const MARKET_DATA_DISCLAIMER =
   "Market data is sourced from Yahoo Finance and may be delayed, incomplete, or inaccurate. " +
   "Use an exchange-grade feed for trading decisions.";
-
-export type MarketQuoteSnapshot = {
-  symbol: string;
-  currency?: string;
-  /** Yahoo `shortName` / `longName` when present on quote payload. */
-  shortName?: string;
-  longName?: string;
-  price?: number;
-  open?: number;
-  dayHigh?: number;
-  dayLow?: number;
-  previousClose?: number;
-  change?: number;
-  changePercent?: number;
-  volume?: number;
-  /** Trailing 52-week range from Yahoo quote when available. */
-  fiftyTwoWeekHigh?: number;
-  fiftyTwoWeekLow?: number;
-  marketState?: string;
-  asOf?: string;
-  source: "yahoo-finance2";
-  disclaimer: string;
-};
 
 function normalizeSymbol(raw: unknown): string {
   const fallback = "TSLA";
@@ -47,10 +32,23 @@ export async function getYahooMarketQuote(input: {
   symbol?: string;
 }): Promise<MarketQuoteSnapshot> {
   const symbol = normalizeSymbol(input.symbol);
+  const cached = await tryGetRedisMarketQuote(symbol);
+  if (cached) {
+    return cached;
+  }
   const quote = (await yahooQuoteWithValidationFallback(getYahooFinance2(), symbol, "single quote")) as Record<
     string,
     unknown
   >;
+  const snapshot = buildSnapshotFromYahooQuote(symbol, quote);
+  void setRedisMarketQuote(symbol, snapshot);
+  return snapshot;
+}
+
+function buildSnapshotFromYahooQuote(
+  symbol: string,
+  quote: Record<string, unknown>
+): MarketQuoteSnapshot {
   const regularMarketTime = quote.regularMarketTime;
   const toNumber = (value: unknown): number | undefined =>
     typeof value === "number" ? value : undefined;

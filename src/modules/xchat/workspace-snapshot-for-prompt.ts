@@ -76,6 +76,10 @@ import type { Portfolio, PositionType, WatchlistSymbol } from "@/modules/core-ad
 import { normalizePositionType } from "@/modules/core-admin/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import {
+    findPortfolioWorkspaceSnapshot,
+    upsertPortfolioWorkspaceSnapshot
+} from "@/modules/xchat/portfolio-workspace-snapshot-repository";
+import {
     formatWatchlistAddedAtUtc,
     formatWatchlistSpotPriceUsd,
     formatWatchlistTargetEntryNotional100xFromQuotePrice,
@@ -194,6 +198,24 @@ export function normalizeWorkspaceContentRev(portfolio: { workspaceContentRev?: 
   return typeof r === "number" && Number.isFinite(r) && r >= 0 ? Math.floor(r) : 0;
 }
 
+function isValidWorkspacePreloadPayload(
+  parsed: unknown,
+  portfolioId: string,
+  rev: number
+): parsed is WorkspaceSnapshotPreload {
+  if (!parsed || typeof parsed !== "object") {
+    return false;
+  }
+  const p = parsed as WorkspaceSnapshotPreload;
+  return Boolean(
+    p.promptJson &&
+      typeof p.promptJson.loadedAt === "string" &&
+      p.promptJson.workspaceContentRev === rev &&
+      p.promptJson.portfolio?.id === portfolioId &&
+      Array.isArray(p.positionsFull)
+  );
+}
+
 async function resolveDefaultPortfolio(ctx: WorkspaceSnapshotContext) {
   const requestedPortfolioId = ctx.workspacePortfolioId?.trim();
   if (requestedPortfolioId) {
@@ -222,7 +244,7 @@ async function resolveDefaultPortfolio(ctx: WorkspaceSnapshotContext) {
   }
 }
 
-async function buildPreloadFromPortfolio(
+export async function buildWorkspaceSnapshotPreloadFromPortfolio(
   ctx: WorkspaceSnapshotContext,
   portfolio: Portfolio & { _id: NonNullable<Portfolio["_id"]> },
   quoteAllowNetwork: boolean
@@ -369,14 +391,8 @@ export async function loadWorkspaceSnapshotPreload(
   const cached = await readWorkspaceSnapshotCache(cacheKey);
   if (cached) {
     try {
-      const parsed = JSON.parse(cached) as WorkspaceSnapshotPreload;
-      if (
-        parsed?.promptJson &&
-        typeof parsed.promptJson.loadedAt === "string" &&
-        parsed.promptJson.workspaceContentRev === rev &&
-        parsed.promptJson.portfolio?.id === portfolioId &&
-        Array.isArray(parsed.positionsFull)
-      ) {
+      const parsed = JSON.parse(cached) as unknown;
+      if (isValidWorkspacePreloadPayload(parsed, portfolioId, rev)) {
         const elapsedMs = Math.round(performance.now() - tStart);
         if (isXchatStructuredDebugEnabled()) {
           console.info("[xchat/debug]", {
@@ -394,7 +410,31 @@ export async function loadWorkspaceSnapshotPreload(
     }
   }
 
-  const built = await buildPreloadFromPortfolio(
+  const materialized = await findPortfolioWorkspaceSnapshot({
+    portfolioIdHex: portfolioId,
+    workspaceContentRev: rev
+  });
+  if (materialized != null && isValidWorkspacePreloadPayload(materialized, portfolioId, rev)) {
+    const ttl = getWorkspaceSnapshotCacheTtlSeconds();
+    try {
+      await writeWorkspaceSnapshotCache(cacheKey, JSON.stringify(materialized), ttl);
+    } catch {
+      /* ignore */
+    }
+    const elapsedMs = Math.round(performance.now() - tStart);
+    if (isXchatStructuredDebugEnabled()) {
+      console.info("[xchat/debug]", {
+        type: "workspace_snapshot_load",
+        source: "materialized",
+        elapsedMs,
+        portfolioId,
+        workspaceContentRev: rev
+      });
+    }
+    return materialized;
+  }
+
+  const built = await buildWorkspaceSnapshotPreloadFromPortfolio(
     ctx,
     portfolio as Portfolio & { _id: ObjectId },
     quoteAllowNetwork
@@ -406,6 +446,16 @@ export async function loadWorkspaceSnapshotPreload(
     } catch {
       /* ignore */
     }
+    void upsertPortfolioWorkspaceSnapshot({
+      portfolioIdHex: portfolioId,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      workspaceContentRev: rev,
+      preload: built,
+      source: "xchat_ask"
+    }).catch(() => {
+      /* ignore */
+    });
   }
   const elapsedMs = Math.round(performance.now() - tStart);
   if (isXchatStructuredDebugEnabled()) {

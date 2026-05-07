@@ -152,12 +152,13 @@ Track these before **PR 3** prod cutover and during BFF rollout; **PR 4** code p
 
 ### Prerequisites
 
-- **Streaming:** SSE or chunked HTTP from Spring Web MVC / WebFlux; Next BFF must forward streams without buffering the full body (today `proxyRequestToBackend` uses `fetch` — may need a streaming-capable proxy path for `POST /api/xchat/ask`).
+- **Streaming:** SSE or chunked HTTP from Spring Web MVC / WebFlux; Next BFF forwards **`POST /api/xchat/ask/stream`** by returning the upstream `Response` body stream without buffering (see `proxyRequestToBackend` JSDoc). JVM ships a **stub** `SseEmitter` (`meta` event) until the xAI tool loop streams.
 - **Secrets:** xAI keys and management keys already in env/Secret Manager; Kotlin must mirror redaction and never log raw payloads beyond existing patterns.
 - **Persona resolution:** Partially overlaps personas collection; Spring should reuse the same Mongo collections and session cookie as portfolio BFF.
 
 ### Suggested sub-order
 
+0. **Heavy read offload (optional):** Next materializes **`portfolio_workspace_snapshots`** (Mongo, keyed by portfolio + `workspaceContentRev`); scanners warm rows after success. A Spring **`GET`** (internal or BFF) can serve the same JSON for JVM-side batch/aggregation without duplicating the build logic long term.
 1. **Read-only / low-risk:** `GET` history/stats routes if any are easy wins (still need session + Mongo parity).
 2. **Batch / async jobs:** Non-streaming paths that enqueue work (align with existing Pub/Sub worker if applicable).
 3. **`POST /api/xchat/ask` (streaming):** Last — highest coupling to Next’s tool loop, xAI client, and RAG orchestration.

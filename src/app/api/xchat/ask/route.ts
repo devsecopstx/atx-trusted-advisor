@@ -5,41 +5,43 @@ import { z } from "zod";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import {
-    isAppUserProductAccessAllowedState,
-    resolveAppUserBillingAccessState
+  isAppUserProductAccessAllowedState,
+  resolveAppUserBillingAccessState
 } from "@/lib/app-user-billing-state";
 import { requireSessionUser } from "@/lib/auth";
 import { isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
 import {
-    getPersonaByIdCached,
-    getTenantByHexIdCached,
-    loadDefaultXchatPersonaForSessionDeduped
+  getPersonaByIdCached,
+  getTenantByHexIdCached,
+  loadDefaultXchatPersonaForSessionDeduped
 } from "@/lib/server-request-cache";
 import {
-    effectiveWorkspaceLimitsForTenantAndPlan,
+  effectiveWorkspaceLimitsForTenantAndPlan,
 } from "@/lib/tenant-workspace-limits";
 import {
-    respondWithXaiToolLoop,
-    searchDocumentsInCollections,
-    type ToolCallLog
+  respondWithXaiToolLoop,
+  searchDocumentsInCollections,
+  type ToolCallLog,
+  type XaiCollectionSearchSnippet
 } from "@/lib/xai";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import {
-    logXchatAskDebug,
-    logXchatAskFullPayload,
-    logXchatAskPreRequestDebug,
-    logXchatAskProviderErrorDebug
+  logXchatAskDebug,
+  logXchatAskFullPayload,
+  logXchatAskPreRequestDebug,
+  logXchatAskProviderErrorDebug,
+  logXchatAskToolBatchDebug
 } from "@/lib/xchat-debug";
 import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-    getCoreUserById,
-    getCoreUserOptionsScanPreferences,
-    updateCoreUserOptionsScanPreferences
+  getCoreUserById,
+  getCoreUserOptionsScanPreferences,
+  updateCoreUserOptionsScanPreferences
 } from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
@@ -52,60 +54,65 @@ import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan
 import { renderOptionsActionReportMarkdown } from "@/modules/xchat/options-action-scan";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import {
-    MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
-    resolveXchatPersonaDeclaredCollectionIds,
-    withLinkedCollectionTools
+  MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
+  resolveXchatPersonaDeclaredCollectionIds,
+  withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
-    getLatestXchatLogByThread,
-    saveXChatLog
+  buildRagLexicalCacheKey,
+  getRagLexicalCacheTtlSeconds,
+  setRagLexicalCache,
+  tryGetRagLexicalCache
+} from "@/modules/xchat/rag-lexical-cache";
+import {
+  getLatestXchatLogByThread,
+  saveXChatLog
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import type { XChatXaiUsageSnapshot } from "@/modules/xchat/types";
 import {
-    ensureSuperAgentDefaultTools,
-    isAtxFunctionToolType,
-    mergeXchatHostedToolBaseline,
-    normalizePersonaXapiConfig,
-    type PersonaXapiConfig
+  ensureSuperAgentDefaultTools,
+  isAtxFunctionToolType,
+  mergeXchatHostedToolBaseline,
+  normalizePersonaXapiConfig,
+  type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 import { postProcessWatchlistMarkdown } from "@/modules/xchat/watchlist-response-postprocess";
 import {
-    loadWorkspaceSnapshotPreload,
-    type WorkspaceSnapshotPreload
+  loadWorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
-    collectWatchlistPortfolioIdSlot,
-    heavySynthesisIntent,
-    isShowWatchlistIntent,
-    shouldOfferStrategyJobPreflight,
-    shouldRunOptionsActionScan,
-    STRATEGY_JOB_PREFLIGHT_MARKDOWN
+  collectWatchlistPortfolioIdSlot,
+  heavySynthesisIntent,
+  isShowWatchlistIntent,
+  shouldOfferStrategyJobPreflight,
+  shouldRunOptionsActionScan,
+  STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
 import {
-    MAX_XCHAT_ASK_JSON_BYTES,
-    parseAndValidateXchatPasteImage
+  MAX_XCHAT_ASK_JSON_BYTES,
+  parseAndValidateXchatPasteImage
 } from "@/modules/xchat/xchat-image-attachment";
 import {
-    buildSessionToolInstructions,
-    buildXchatSystemPrompt,
-    computeXchatRemoteChainInstructionsFingerprint,
-    formatTenantWorkspaceContextBlockForXchat,
-    XCHAT_SERVER_ROUTING_POLICY_BLOCK
+  buildSessionToolInstructions,
+  buildXchatSystemPrompt,
+  computeXchatRemoteChainInstructionsFingerprint,
+  formatTenantWorkspaceContextBlockForXchat,
+  XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
 import {
-    resolveReasoningEffortFromAskPayload,
-    XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID,
-    XCHAT_DEPTH_FAST_MODEL_ID
+  resolveReasoningEffortFromAskPayload,
+  XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID,
+  XCHAT_DEPTH_FAST_MODEL_ID
 } from "@/modules/xchat/xchat-reasoning-mode";
 import {
-    buildRecentThreadMessagesPromptBlock,
-    type XchatRecentThreadMessage
+  buildRecentThreadMessagesPromptBlock,
+  type XchatRecentThreadMessage
 } from "@/modules/xchat/xchat-recent-history-prompt";
 import { resolveWorkspaceSnapshotQuoteNetwork } from "@/modules/xchat/xchat-workspace-quote-policy";
 
@@ -879,64 +886,6 @@ export async function POST(request: Request) {
     withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds, "replace")
   );
 
-  let contextSource: "none" | "xai_collection" = "none";
-  let collectionContextReferences: Array<{
-    documentId?: string;
-    documentName?: string;
-    snippetFingerprint: string;
-  }> = [];
-  let ragContext = "";
-  let contextCount = 0;
-  let collectionSearchStatus: "ready" | "blocked_non_ready_files" | "skipped_no_collections" = "ready";
-  let collectionSearchNonReadyFileCount = 0;
-
-  if (persona?.enableRag !== false) {
-    if (linkedCollectionIds.length > 0) {
-      const readinessSummary = await getScopeReadinessSummary({
-        scope,
-        tenantId: tenantId ?? undefined,
-        linkedCollectionIds
-      });
-      collectionSearchNonReadyFileCount = readinessSummary.nonReadyFiles.length;
-      if (readinessSummary.blocked) {
-        collectionSearchStatus = "blocked_non_ready_files";
-      }
-    } else {
-      collectionSearchStatus = "skipped_no_collections";
-    }
-
-    if (linkedCollectionIds.length > 0 && collectionSearchStatus === "ready") {
-      try {
-        const collectionSnippets = await searchDocumentsInCollections({
-          query: messageTrimmed || "User attached an image for analysis.",
-          collectionIds: linkedCollectionIds,
-          limit: topK
-        });
-        if (collectionSnippets.length > 0) {
-          contextSource = "xai_collection";
-          contextCount = collectionSnippets.length;
-          collectionContextReferences = collectionSnippets.map((snippet) => ({
-            documentId: snippet.documentId,
-            documentName: snippet.documentName,
-            snippetFingerprint: createSnippetFingerprint(snippet.text)
-          }));
-          ragContext = collectionSnippets
-            .map((snippet, index) => {
-              const source = snippet.documentName ?? snippet.documentId ?? "collection_doc";
-              return `[#${index + 1}] (${source}) ${snippet.text}`;
-            })
-            .join("\n\n");
-        }
-      } catch (error) {
-        console.error(
-          `[xchat/ask] xAI collection search failed for ${linkedCollectionIds.join(",")}:`,
-          error instanceof Error ? error.message : error
-        );
-      }
-    }
-
-  }
-
   const hasXfinanceTool = xapiConfig.tools.some((t) => isAtxFunctionToolType(t.type));
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
 
@@ -952,12 +901,125 @@ export async function POST(request: Request) {
     clientQuoteFreshness: parsed.data.quoteFreshness
   });
 
-  let eagerWorkspacePreload: WorkspaceSnapshotPreload | null = null;
-  if (hasXfinanceTool) {
-    eagerWorkspacePreload = await loadWorkspaceSnapshotPreload(workspaceSnapshotCtx, {
-      snapshotQuoteNetwork: workspaceSnapshotQuoteNetwork
-    });
-  }
+  const [ragBundle, eagerWorkspacePreload] = await Promise.all([
+    (async (): Promise<{
+      contextSource: "none" | "xai_collection";
+      collectionContextReferences: Array<{
+        documentId?: string;
+        documentName?: string;
+        snippetFingerprint: string;
+      }>;
+      ragContext: string;
+      contextCount: number;
+      collectionSearchStatus: "ready" | "blocked_non_ready_files" | "skipped_no_collections";
+      collectionSearchNonReadyFileCount: number;
+    }> => {
+      let contextSource: "none" | "xai_collection" = "none";
+      let collectionContextReferences: Array<{
+        documentId?: string;
+        documentName?: string;
+        snippetFingerprint: string;
+      }> = [];
+      let ragContext = "";
+      let contextCount = 0;
+      let collectionSearchStatus: "ready" | "blocked_non_ready_files" | "skipped_no_collections" =
+        "ready";
+      let collectionSearchNonReadyFileCount = 0;
+
+      if (persona?.enableRag !== false) {
+        if (linkedCollectionIds.length > 0) {
+          const readinessSummary = await getScopeReadinessSummary({
+            scope,
+            tenantId: tenantId ?? undefined,
+            linkedCollectionIds
+          });
+          collectionSearchNonReadyFileCount = readinessSummary.nonReadyFiles.length;
+          if (readinessSummary.blocked) {
+            collectionSearchStatus = "blocked_non_ready_files";
+          }
+        } else {
+          collectionSearchStatus = "skipped_no_collections";
+        }
+
+        if (linkedCollectionIds.length > 0 && collectionSearchStatus === "ready") {
+          try {
+            const ragTtl = getRagLexicalCacheTtlSeconds();
+            const ragQuery = messageTrimmed || "User attached an image for analysis.";
+            const ragKey =
+              ragTtl > 0
+                ? buildRagLexicalCacheKey({
+                    collectionIds: linkedCollectionIds,
+                    query: ragQuery,
+                    limit: topK
+                  })
+                : null;
+            let collectionSnippets: XaiCollectionSearchSnippet[] = [];
+            if (ragKey) {
+              const hit = await tryGetRagLexicalCache(ragKey);
+              if (hit && hit.length > 0) {
+                collectionSnippets = hit;
+              }
+            }
+            if (collectionSnippets.length === 0) {
+              collectionSnippets = await searchDocumentsInCollections({
+                query: ragQuery,
+                collectionIds: linkedCollectionIds,
+                limit: topK
+              });
+              if (ragKey && ragTtl > 0 && collectionSnippets.length > 0) {
+                void setRagLexicalCache(ragKey, collectionSnippets, ragTtl).catch(() => {
+                  /* ignore */
+                });
+              }
+            }
+            if (collectionSnippets.length > 0) {
+              contextSource = "xai_collection";
+              contextCount = collectionSnippets.length;
+              collectionContextReferences = collectionSnippets.map((snippet) => ({
+                documentId: snippet.documentId,
+                documentName: snippet.documentName,
+                snippetFingerprint: createSnippetFingerprint(snippet.text)
+              }));
+              ragContext = collectionSnippets
+                .map((snippet, index) => {
+                  const source = snippet.documentName ?? snippet.documentId ?? "collection_doc";
+                  return `[#${index + 1}] (${source}) ${snippet.text}`;
+                })
+                .join("\n\n");
+            }
+          } catch (error) {
+            console.error(
+              `[xchat/ask] xAI collection search failed for ${linkedCollectionIds.join(",")}:`,
+              error instanceof Error ? error.message : error
+            );
+          }
+        }
+      }
+
+      return {
+        contextSource,
+        collectionContextReferences,
+        ragContext,
+        contextCount,
+        collectionSearchStatus,
+        collectionSearchNonReadyFileCount
+      };
+    })(),
+    hasXfinanceTool
+      ? loadWorkspaceSnapshotPreload(workspaceSnapshotCtx, {
+          snapshotQuoteNetwork: workspaceSnapshotQuoteNetwork
+        })
+      : Promise.resolve(null)
+  ]);
+
+  const {
+    contextSource,
+    collectionContextReferences,
+    ragContext,
+    contextCount,
+    collectionSearchStatus,
+    collectionSearchNonReadyFileCount
+  } = ragBundle;
 
   const atxWorkspaceExecutorOpts = !hasXfinanceTool
     ? {}
@@ -1397,7 +1459,14 @@ export async function POST(request: Request) {
       responsesReasoning,
       previousResponseId,
       storeMessages: useRemoteConversationHistory,
-      signal: request.signal
+      signal: request.signal,
+      onLocalToolBatchComplete: (payload) => {
+        logXchatAskToolBatchDebug({
+          correlationId,
+          requestId,
+          ...payload
+        });
+      }
     });
     xaiUsageSnapshot = extractXaiResponsesUsage(loopResult.raw);
     xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };

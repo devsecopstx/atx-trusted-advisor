@@ -6,7 +6,7 @@
  * **Taxonomy (for Cloud Logging filters):**
  * - **`[xchat/debug]`** — opt-in JSON lines when request ALS has tenant debug on; never from browser runtimes. Fields
  *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_ask_pre_request` |
- *   `xchat_ask_provider_error` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats`.
+ *   `xchat_ask_provider_error` | `xchat_ask_tool_batch` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats`.
  *   Workspace snapshot (same prefix, not in `XCHAT_DEBUG_LOG_TYPES`): `workspace_snapshot_load` | `workspace_snapshot_build`.
  *   See `atx-docs/xchat/xchat-debug-logging.md` and `atx-docs/sre-ops/mongo-indexing-guide.md` §8.
  * - **`[xchat/ask]`** — operational `console.warn` / `console.error` on RAG or
@@ -42,6 +42,7 @@ export const XCHAT_DEBUG_LOG_TYPES = [
   "xchat_ask_full",
   "xchat_ask_pre_request",
   "xchat_ask_provider_error",
+  "xchat_ask_tool_batch",
   "xchat_batch",
   "xchat_history_list",
   "xchat_history_stats"
@@ -115,6 +116,36 @@ export function logXchatAskProviderErrorDebug(payload: {
     error: payload.error,
     toolCount: payload.wireTools.length,
     wireTools: payload.wireTools
+  };
+
+  console.info(LOG_PREFIX, JSON.stringify(safe));
+}
+
+/** Per xAI turn: parallel local tool timings (see `respondWithXaiToolLoop` `onLocalToolBatchComplete`). */
+export function logXchatAskToolBatchDebug(payload: {
+  correlationId?: string;
+  requestId?: string;
+  turnIndex: number;
+  parallelLocalCount: number;
+  calls: Array<{ name: string; durationMs: number; error?: string }>;
+}): void {
+  if (!isXchatDebugEnabled()) return;
+
+  const safe = {
+    ts: new Date().toISOString(),
+    type: "xchat_ask_tool_batch" satisfies XchatDebugLogType,
+    correlationId: payload.correlationId,
+    requestId: payload.requestId,
+    turnIndex: payload.turnIndex,
+    parallelLocalCount: payload.parallelLocalCount,
+    calls: payload.calls.map((c) => ({
+      name: c.name,
+      durationMs: c.durationMs,
+      ...(c.error ? { error: c.error.slice(0, 200) } : {})
+    })),
+    slowestMs: payload.calls.length
+      ? Math.max(...payload.calls.map((c) => c.durationMs))
+      : 0
   };
 
   console.info(LOG_PREFIX, JSON.stringify(safe));

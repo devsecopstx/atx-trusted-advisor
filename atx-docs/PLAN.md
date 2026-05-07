@@ -206,6 +206,7 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 
 ### BFF / consolidation (intentionally Next-only for now)
 
+- **Portfolio workspace snapshots:** Next materializes `portfolio_workspace_snapshots` in Mongo (read order: Redis → materialized row by `portfolioId` + `workspaceContentRev` → live build). Scanner tasks warm rows after success. A future Spring BFF can serve the same payload for JVM-heavy consolidation without changing the document shape.
 - xChat `/api/xchat/`* — deferred per [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md).
 - Persona governance extensions (publish, archive, rollback, versions, xAI collection helpers) — Next until moved to Spring.
 - Admin `PATCH/DELETE …/positions/{positionId}` — Next until registry + Kotlin parity.
@@ -217,5 +218,5 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 
 ## Deferred (larger lifts)
 
-- xChat streaming on Spring + BFF (`api-consolidation-spring-backend.md`).
+- xChat **SSE streaming** (partial tokens + tool-loop progress) on Spring + BFF (`api-consolidation-spring-backend.md`); optional Next-native SSE interim if BFF lags.
 - Strict JSON Schema for strategy artifacts v2 (`atx-multi-agent.md`).

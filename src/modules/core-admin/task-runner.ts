@@ -30,6 +30,36 @@ import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-st
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
 import { runOptionsActionScheduledDigest } from "@/modules/xchat/options-action-scheduled-task";
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
+import { warmPortfolioWorkspaceSnapshotsForTenant } from "@/modules/xchat/warm-portfolio-workspace-snapshots";
+
+const PORTFOLIO_SNAPSHOT_WARM_AFTER_SCAN_CATEGORIES = new Set([
+  "price_scanner",
+  "options_scanner",
+  "watchlist_price_scanner",
+  "corporate_events_scanner",
+  "income_cash_flow_projector",
+  "options_expiration_roll_manager",
+  "risk_concentration_scanner",
+  "tax_loss_harvest_scanner",
+  "rebalance"
+]);
+
+function portfolioSnapshotWarmAfterScanEnabled(): boolean {
+  const v = process.env.PORTFOLIO_SNAPSHOT_WARM_AFTER_SCANNERS?.trim().toLowerCase();
+  return v !== "0" && v !== "false" && v !== "no";
+}
+
+function firePortfolioSnapshotWarmForTenant(input: { tenantId: ObjectId; category: string }): void {
+  if (!portfolioSnapshotWarmAfterScanEnabled()) {
+    return;
+  }
+  if (!PORTFOLIO_SNAPSHOT_WARM_AFTER_SCAN_CATEGORIES.has(input.category)) {
+    return;
+  }
+  void warmPortfolioWorkspaceSnapshotsForTenant({ tenantId: input.tenantId }).catch(() => {
+    /* best-effort */
+  });
+}
 
 /** Options for {@link executeScheduledTask} — e.g. admin **Run** on `/admin/tasks` vs cron/tick. */
 export type ScheduledTaskExecutionOptions = {
@@ -112,6 +142,10 @@ export async function executeScheduledTask(
     result: executionForAudit,
     taskRunIdHex: run._id.toHexString()
   });
+
+  if (execution.status === "success" && task.tenantId) {
+    firePortfolioSnapshotWarmForTenant({ tenantId: task.tenantId, category: task.category });
+  }
 
   return {
     runId: run._id,
@@ -300,6 +334,9 @@ async function executeSystemWideScheduledTask(
       result: executionForAudit,
       taskRunIdHex: run._id.toHexString()
     });
+    if (execution.status === "success") {
+      firePortfolioSnapshotWarmForTenant({ tenantId: tid, category: templateTask.category });
+    }
   }
 
   const wallMs = Math.max(1, Date.now() - fanWallStart);

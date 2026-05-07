@@ -8,3 +8,4 @@ app:
     scheduler:
       enabled: false
       driver: simple
+    portfolio-workspace-snapshot-purge-enabled: false
