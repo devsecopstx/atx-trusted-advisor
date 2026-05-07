@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser, type SessionUser } from "@/lib/auth";
-import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import {
+    canCreateStrategyJobFromApp,
+    canUserLogin,
+    isGlobalAdmin
+} from "@/modules/identity/authorization";
 import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
 
 /**
@@ -24,6 +28,20 @@ export async function requireGlobalAdminSession(): Promise<SessionUser | NextRes
 /** Same as {@link requireGlobalAdminSession} — kept for existing imports. */
 export async function requireAdminSession(): Promise<SessionUser | NextResponse> {
   return requireGlobalAdminSession();
+}
+
+/**
+ * Platform ops summary / batch ops dashboard: `global_admin`, `advisor`, or `operator` (viewer excluded).
+ */
+export async function requirePlatformOpsSession(): Promise<SessionUser | NextResponse> {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+  if (!canCreateStrategyJobFromApp(session.roles)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return session;
 }
 
 /**

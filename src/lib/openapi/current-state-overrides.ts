@@ -846,13 +846,13 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     }
   },
   "GET /api/admin/system/ops-summary": {
-    summary: "Admin ops summary: Next Mongo/Redis + optional Spring backend health",
+    summary: "Admin ops summary: Next Mongo/Redis + optional Spring backend health + platform KPIs",
     description:
-      "global_admin only. Returns session tenant id, Next.js app version, Mongo ping + DB name, Next Redis health (`checkRedisHealth`), and when `ATXFINANCE_BACKEND_ORIGIN` is set a probe of Spring `GET /api/backend/health` (mongo/redis slices). Audited as `ops_summary_viewed`.",
+      "`global_admin`, `advisor`, or `operator` (viewer excluded). Returns session tenant id, Next.js app version, Mongo ping + DB name, Next Redis health (`checkRedisHealth`), optional Spring `GET /api/backend/health`, and **`platformOps`**: tenant/user counts, `audit_login` success totals (platform-wide only), xChat usage aggregates (`xchat_usage_limits`), merged **last 5 jobs** (batch + `admin_task_runs` + `strategy_jobs`), and conservative **`costEstimate`** (tunable via `OPS_SUMMARY_*` env vars). Audited as `ops_summary_viewed`.",
     responses: {
       "200": jsonResponse("Ops summary JSON (no Mongo credentials).", "ErrorResponse"),
       "401": json401Session(),
-      "403": json403Admin("Session is valid, but admin role is required."),
+      "403": json403Admin("Session is valid, but operator/advisor/global_admin role is required."),
       "500": jsonResponse("Failed to build ops summary.", "ErrorResponse")
     }
   },

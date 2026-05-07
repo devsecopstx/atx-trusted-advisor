@@ -299,6 +299,18 @@ function allowsGuestHtmlRender(pathname: string): boolean {
   );
 }
 
+/** Lets `admin/layout.tsx` read `headers().get("x-pathname")` for `/admin/batch` subtree policy (no separate middleware file). */
+function nextResponseContinuing(request: NextRequest, pathname: string): NextResponse {
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-pathname", pathname);
+    return NextResponse.next({
+      request: { headers: requestHeaders }
+    });
+  }
+  return NextResponse.next();
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (!isProtectedPath(pathname)) {
@@ -317,7 +329,7 @@ export async function proxy(request: NextRequest) {
         return enforced;
       }
     }
-    return NextResponse.next();
+    return nextResponseContinuing(request, pathname);
   }
 
   if (pathname.startsWith("/api/")) {

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { proxy } from "@/proxy";
@@ -44,7 +44,24 @@ describe("proxy (middleware) guest HTML routes", () => {
   });
 
   it("allows /xoptions when session cookie present", async () => {
-    const res = await proxy(request("/xoptions", "signed"));
-    expect(res.headers.get("location")).toBeNull();
+    const origFetch = globalThis.fetch.bind(globalThis);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : (input as Request).url;
+      if (url.includes("/api/internal/authz/billing-access")) {
+        return new Response(JSON.stringify({ data: { requiresBilling: false } }), { status: 200 });
+      }
+      return origFetch(input as RequestInfo, init as RequestInit);
+    });
+    try {
+      const res = await proxy(request("/xoptions", "signed"));
+      expect(res.headers.get("location")).toBeNull();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel } from "@/lib/env";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { canCreateStrategyJobFromApp, isGlobalAdmin } from "@/modules/identity/authorization";
 import { GlobalFooter } from "../ui/global-footer";
 import { XchatHeaderBrand } from "../ui/xchat-header-brand";
 import { AdminLayoutShell } from "./ui/admin-layout-shell";
@@ -25,7 +26,13 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   if (!session) {
     redirect("/xchat");
   }
-  if (!isGlobalAdmin(session.roles)) {
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const batchSubtree =
+    pathname === "/admin/batch" || pathname.startsWith("/admin/batch/");
+  const allowedShell =
+    isGlobalAdmin(session.roles) ||
+    (batchSubtree && canCreateStrategyJobFromApp(session.roles));
+  if (!allowedShell) {
     redirect("/xchat");
   }
 

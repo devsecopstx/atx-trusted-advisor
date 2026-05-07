@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
 import type { AdminOpsSummaryBackend, AdminOpsSummaryResponse } from "@/lib/admin-ops-summary-contract";
-import { requireAdminSession } from "@/lib/api-auth";
+import { requirePlatformOpsSession } from "@/lib/api-auth";
 import { APP_VERSION } from "@/lib/app-version";
 import { getAtxfinanceBackendOrigin } from "@/lib/env";
 import { getDb } from "@/lib/mongodb";
 import { checkRedisHealth } from "@/lib/redis-client";
+import { collectPlatformOpsMetrics } from "@/modules/admin/platform-ops-metrics";
 import { createAuditEvent } from "@/modules/audit/repository";
 
 const BACKEND_HEALTH_TIMEOUT_MS = 6000;
@@ -93,7 +94,7 @@ async function fetchBackendOps(origin: string): Promise<BackendOpsSlice> {
 }
 
 export async function GET() {
-  const session = await requireAdminSession();
+  const session = await requirePlatformOpsSession();
   if (session instanceof NextResponse) {
     return session;
   }
@@ -113,6 +114,10 @@ export async function GET() {
 
   const redis = await checkRedisHealth();
   const backendOrigin = getAtxfinanceBackendOrigin();
+
+  const platformOps = await collectPlatformOpsMetrics({
+    session: { tenantId: session.tenantId, roles: session.roles }
+  });
 
   const backend: BackendOpsSlice = !backendOrigin
     ? {
@@ -157,7 +162,8 @@ export async function GET() {
       },
       redis
     },
-    backend
+    backend,
+    platformOps
   };
 
   return NextResponse.json(body);

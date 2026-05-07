@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { BatchDetailPolling } from "./batch-detail-polling";
 import { toBatchDashboardJob } from "@/modules/xchat/batch-dashboard";
 import {
-  getBatchJobRecord,
-  listBatchItemResults
+    getBatchJobRecord,
+    listBatchItemResults
 } from "@/modules/xchat/batch-service";
+import { BatchDetailPolling } from "./batch-detail-polling";
 
 type AdminBatchDetailPageProps = {
   params: Promise<{ batchId: string }>;
@@ -19,9 +19,6 @@ export default async function AdminBatchDetailPage({
 }: AdminBatchDetailPageProps) {
   const session = await getSessionUser();
   if (!session) {
-    redirect("/login");
-  }
-  if (!isGlobalAdmin(session.roles)) {
     redirect("/xchat");
   }
 
@@ -42,6 +39,10 @@ export default async function AdminBatchDetailPage({
         </section>
       </div>
     );
+  }
+
+  if (!isGlobalAdmin(session.roles) && job.tenantId && job.tenantId !== session.tenantId) {
+    redirect("/admin/batch");
   }
 
   const items = await listBatchItemResults(batchId);

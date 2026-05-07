@@ -2,12 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     buildBatchDashboardSummary,
     toBatchDashboardJob
 } from "@/modules/xchat/batch-dashboard";
 import { listBatchJobs } from "@/modules/xchat/batch-service";
+
+import { PlatformOpsBatchDashboard } from "./ui/platform-ops-batch-dashboard";
 
 type AdminBatchPageProps = {
   searchParams: Promise<{
@@ -21,9 +22,6 @@ export default async function AdminBatchPage({
 }: AdminBatchPageProps) {
   const session = await getSessionUser();
   if (!session) {
-    redirect("/login");
-  }
-  if (!isGlobalAdmin(session.roles)) {
     redirect("/xchat");
   }
   const params = await searchParams;
@@ -62,10 +60,12 @@ export default async function AdminBatchPage({
         </p>
       </section>
 
+      <PlatformOpsBatchDashboard />
+
       <section className="panel stack-gap">
         <div className="panel-header">
-          <h2>Overview</h2>
-          <p>Read-model summary from batch jobs in this tenant.</p>
+          <h2>xChat batch overview</h2>
+          <p>Read-model summary from xChat batch jobs in this tenant.</p>
         </div>
         <div className="admin-function-grid">
           <article className="admin-function-card">
@@ -97,8 +97,8 @@ export default async function AdminBatchPage({
 
       <section className="panel stack-gap">
         <div className="panel-header">
-          <h2>Recent Jobs</h2>
-          <p>Filter by status/query and open per-batch detail drilldowns.</p>
+          <h2>xChat batch jobs</h2>
+          <p>Filter by status/query and open per-batch detail drilldowns (xChat batch only).</p>
         </div>
         <form className="admin-function-grid" method="GET">
           <label className="admin-function-copy">

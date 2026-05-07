@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
-  requireAdminSession: vi.fn()
+  requirePlatformOpsSession: vi.fn()
+}));
+
+const platformOpsMocks = vi.hoisted(() => ({
+  collectPlatformOpsMetrics: vi.fn()
 }));
 
 const mongoMocks = vi.hoisted(() => ({
@@ -20,7 +24,9 @@ const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
 
-vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/lib/api-auth", () => ({
+  requirePlatformOpsSession: authMocks.requirePlatformOpsSession
+}));
 vi.mock("@/lib/mongodb", () => mongoMocks);
 vi.mock("@/lib/redis-client", () => redisMocks);
 vi.mock("@/lib/env", async (importOriginal) => {
@@ -28,21 +34,57 @@ vi.mock("@/lib/env", async (importOriginal) => {
   return { ...actual, getAtxfinanceBackendOrigin: envMocks.getAtxfinanceBackendOrigin };
 });
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/admin/platform-ops-metrics", () => ({
+  collectPlatformOpsMetrics: platformOpsMocks.collectPlatformOpsMetrics
+}));
 
 import { GET as getOpsSummary } from "@/app/api/admin/system/ops-summary/route";
 import { APP_VERSION } from "@/lib/app-version";
 import { NextResponse } from "next/server";
 
 describe("GET /api/admin/system/ops-summary", () => {
+  const stubPlatformOps = {
+    scope: "platform" as const,
+    tenantsActive: 0,
+    usersRegistered: 0,
+    logins24h: 0,
+    logins7d: 0,
+    xchat: { promptsToday: 0, hourlyPeakToday: 0 },
+    lastFiveJobs: [],
+    costEstimate: {
+      currency: "USD" as const,
+      todayTotalUsd: 0,
+      monthToDateTotalUsd: 0,
+      breakdownToday: { xchatUsd: 0, strategyJobsUsd: 0, cloudRunUsd: 0 },
+      breakdownMonthToDate: { xchatUsd: 0, strategyJobsUsd: 0, cloudRunUsd: 0 },
+      rates: {
+        xaiCostPerPromptUsd: 0.0008,
+        strategyJobPerRunUsd: 0.002,
+        gcpRunCostPerVcpuHourUsd: 0.0005
+      },
+      notes: []
+    }
+  };
+
   it("returns 401-shaped response when admin session missing", async () => {
-    authMocks.requireAdminSession.mockResolvedValueOnce(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
+    authMocks.requirePlatformOpsSession.mockResolvedValueOnce(
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    );
 
     const res = await getOpsSummary();
     expect(res.status).toBe(401);
   });
 
+  it("returns 403 when viewer session", async () => {
+    authMocks.requirePlatformOpsSession.mockResolvedValueOnce(
+      NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    );
+    const res = await getOpsSummary();
+    expect(res.status).toBe(403);
+  });
+
   it("returns next app + skipped backend when origin unset", async () => {
-    authMocks.requireAdminSession.mockResolvedValue({
+    authMocks.requirePlatformOpsSession.mockResolvedValue({
       userId: "u1",
       email: "a@b.c",
       username: "ab",
@@ -62,6 +104,7 @@ describe("GET /api/admin/system/ops-summary", () => {
     });
     envMocks.getAtxfinanceBackendOrigin.mockReturnValue(undefined);
     auditMocks.createAuditEvent.mockResolvedValue({});
+    platformOpsMocks.collectPlatformOpsMetrics.mockResolvedValue(stubPlatformOps);
 
     const res = await getOpsSummary();
     expect(res.status).toBe(200);
@@ -69,6 +112,7 @@ describe("GET /api/admin/system/ops-summary", () => {
       sessionTenantId: string;
       nextApp: { version: string; database: { ok: boolean; name: string }; redis: { status: string } };
       backend: { configured: boolean; skippedReason?: string };
+      platformOps: { scope: string; tenantsActive: number };
     };
     expect(body.sessionTenantId).toBe("507f1f77bcf86cd799439011");
     expect(body.nextApp.version).toBe(APP_VERSION);
@@ -77,6 +121,7 @@ describe("GET /api/admin/system/ops-summary", () => {
     expect(body.nextApp.redis.status).toBe("skipped");
     expect(body.backend.configured).toBe(false);
     expect(body.backend.skippedReason).toMatch(/ATXFINANCE_BACKEND_ORIGIN unset/);
+    expect(body.platformOps.scope).toBe("platform");
     expect(auditMocks.createAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         entityId: "ops-summary",
@@ -86,7 +131,7 @@ describe("GET /api/admin/system/ops-summary", () => {
   });
 
   it("merges Spring /api/backend/health when origin set", async () => {
-    authMocks.requireAdminSession.mockResolvedValue({
+    authMocks.requirePlatformOpsSession.mockResolvedValue({
       userId: "u1",
       email: "a@b.c",
       username: "ab",
@@ -103,6 +148,7 @@ describe("GET /api/admin/system/ops-summary", () => {
     redisMocks.checkRedisHealth.mockResolvedValue({ status: "ok", latencyMs: 3 });
     envMocks.getAtxfinanceBackendOrigin.mockReturnValue("https://backend.example");
     auditMocks.createAuditEvent.mockResolvedValue({});
+    platformOpsMocks.collectPlatformOpsMetrics.mockResolvedValue(stubPlatformOps);
 
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
