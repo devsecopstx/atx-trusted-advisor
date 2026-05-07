@@ -81,13 +81,21 @@ function snapshotToLookupBase(symbol: string, snap: MarketQuoteSnapshot): Symbol
   };
 }
 
+export type LookupSymbolsOptions = {
+  allowNetwork?: boolean;
+};
+
 /**
  * Resolves live quote fields using **one** Yahoo batch call (+ Redis cache in `getYahooBatchQuotes`)
  * instead of 2×N parallel `quote`+`quoteSummary` calls — reduces server-side Yahoo rate limiting.
  * Rich fields (`companyOverview`) are omitted unless served from the in-memory cache.
  * `logoUrl` is filled via {@link resolveCachedEquityLogoUrl} (Fool CDN, Redis + memory keyed by equity root).
  */
-export async function lookupSymbols(symbols: string[]): Promise<Map<string, SymbolLookupResult>> {
+export async function lookupSymbols(
+  symbols: string[],
+  opts?: LookupSymbolsOptions
+): Promise<Map<string, SymbolLookupResult>> {
+  const allowNetwork = opts?.allowNetwork !== false;
   const normalizedSymbols = Array.from(
     new Set(
       symbols
@@ -116,7 +124,7 @@ export async function lookupSymbols(symbols: string[]): Promise<Map<string, Symb
   }
 
   if (needBatch.length > 0) {
-    const snapshots = await getYahooBatchQuotes(needBatch);
+    const snapshots = await getYahooBatchQuotes(needBatch, { allowNetwork });
     const bySymbol = new Map(snapshots.map((s) => [s.symbol.toUpperCase(), s]));
     for (const symbol of needBatch) {
       const snap = bySymbol.get(symbol);

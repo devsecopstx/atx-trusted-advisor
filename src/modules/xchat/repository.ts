@@ -661,7 +661,11 @@ export async function listXChatHistoryByUser(input: {
     createdAt: log.createdAt,
     personaId: log.personaId?.toHexString(),
     contextReferenceCount: log.collectionContextReferences?.length ?? 0,
-    toolCallCount: log.xapiToolCalls?.length ?? 0
+    toolCallCount: log.xapiToolCalls?.length ?? 0,
+    interactionGenerationMs:
+      typeof log.interactionGenerationMs === "number" && Number.isFinite(log.interactionGenerationMs)
+        ? log.interactionGenerationMs
+        : undefined
   }));
 }
 

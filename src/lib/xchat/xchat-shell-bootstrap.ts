@@ -17,6 +17,7 @@ export type XchatShellHistoryRow = {
   personaId?: string;
   contextReferenceCount: number;
   toolCallCount: number;
+  interactionGenerationMs?: number;
 };
 
 export type XchatServerShellBootstrap = {
@@ -34,7 +35,8 @@ function serializeRow(row: XChatHistoryItem): XchatShellHistoryRow {
     createdAt: row.createdAt.toISOString(),
     personaId: row.personaId,
     contextReferenceCount: row.contextReferenceCount,
-    toolCallCount: row.toolCallCount
+    toolCallCount: row.toolCallCount,
+    interactionGenerationMs: row.interactionGenerationMs
   };
 }
 

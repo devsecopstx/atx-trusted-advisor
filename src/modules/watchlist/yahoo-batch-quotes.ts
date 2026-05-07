@@ -17,8 +17,17 @@ function batchQuoteCacheKey(sortedUpperSymbols: string[]): string {
   return `xf:yahoo:batch:v1:${h}`;
 }
 
-export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuoteSnapshot[]> {
+export type YahooBatchQuotesOptions = {
+  /** When false, only Redis (if configured) is read — no live Yahoo call on cache miss. */
+  allowNetwork?: boolean;
+};
+
+export async function getYahooBatchQuotes(
+  symbols: string[],
+  opts?: YahooBatchQuotesOptions
+): Promise<MarketQuoteSnapshot[]> {
   if (symbols.length === 0) return [];
+  const allowNetwork = opts?.allowNetwork !== false;
 
   try {
     const uniqueSymbols = [...new Set(symbols.map((s) => s.trim().toUpperCase()))].sort();
@@ -36,6 +45,10 @@ export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuot
       } catch {
         /* miss or corrupt cache — fetch fresh */
       }
+    }
+
+    if (!allowNetwork) {
+      return [];
     }
 
     const quotes: unknown = await yahooQuoteWithValidationFallback(
@@ -67,6 +80,9 @@ export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuot
 
     return results;
   } catch (error) {
+    if (!allowNetwork) {
+      return [];
+    }
     console.warn("[watchlist/scanner] Yahoo batch quote failed", { symbols, error: String(error) });
     return symbols.map((symbol) => ({
       symbol,

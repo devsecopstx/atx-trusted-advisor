@@ -122,6 +122,8 @@ export type XchatConversationProps = {
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
 const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+const XCHAT_QUOTE_FRESHNESS_STORAGE_KEY = "xchat_quote_freshness_v1";
+
 const XCHAT_UI_RESPONSE_LIMIT = 3;
 
 const THREAD_MAIN_VIRTUAL_MIN = 18;
@@ -211,13 +213,28 @@ function historyItemsToTranscriptMessages(items: HistoryItem[]): Message[] {
       content: it.message,
       timestamp: t
     });
+    const rag = it.contextReferenceCount;
+    const tools = it.toolCallCount;
+    const persistedMs = it.interactionGenerationMs;
     out.push({
       id: `hydrate-ai-${it.id}`,
       role: "ai",
       content: it.response,
       persona: undefined,
       timestamp: t,
-      serverLogId: it.id
+      serverLogId: it.id,
+      interactionMeta: {
+        generationMs:
+          typeof persistedMs === "number" && Number.isFinite(persistedMs) && persistedMs > 0
+            ? Math.round(persistedMs)
+            : 0,
+        sources: {
+          ragChunks: rag,
+          toolInvocations: tools,
+          personaCollections: 0,
+          total: rag + tools
+        }
+      }
     });
   }
   return out;
@@ -343,6 +360,7 @@ export function XchatConversation({
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [reasoningMode, setReasoningMode] = useState<XchatReasoningMode>("fast");
+  const [quoteFreshness, setQuoteFreshness] = useState<"cached_first" | "live">("cached_first");
   const [pendingPasteImage, setPendingPasteImage] = useState<XchatPendingPasteImage | null>(null);
   const [pasteImageError, setPasteImageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -670,6 +688,25 @@ export function XchatConversation({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  const askProgressPhaseIndex = useMemo(() => {
+    if (!loading) {
+      return -1;
+    }
+    return Math.min(3, Math.floor(askElapsedMs / 950));
+  }, [loading, askElapsedMs]);
+
+  const persistQuoteFreshness = useCallback((next: "cached_first" | "live") => {
+    setQuoteFreshness(next);
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.localStorage.setItem(XCHAT_QUOTE_FRESHNESS_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     if (!loading) {
       setAskElapsedMs(0);
@@ -682,6 +719,40 @@ export function XchatConversation({
     }, 100);
     return () => window.clearInterval(id);
   }, [loading]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      const v = window.localStorage.getItem(XCHAT_QUOTE_FRESHNESS_STORAGE_KEY);
+      if (v === "cached_first" || v === "live") {
+        setQuoteFreshness(v);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    const pid = workspacePortfolioId?.trim();
+    if (!pid || typeof window === "undefined") {
+      return;
+    }
+    const ac = new AbortController();
+    const warmUrl = new URL("/api/xchat/workspace-warm", window.location.origin);
+    warmUrl.searchParams.set("portfolioId", pid);
+    void fetch(warmUrl.toString(), { credentials: "include", signal: ac.signal }).catch(() => {});
+    const bootstrapUrl = new URL("/api/app-user/find-options/bootstrap", window.location.origin);
+    bootstrapUrl.searchParams.set("holdingsLimit", "10");
+    bootstrapUrl.searchParams.set("hotLimit", "3");
+    const aid = requestedWorkspaceAccountId?.trim();
+    if (aid) {
+      bootstrapUrl.searchParams.set("accountId", aid);
+    }
+    void fetch(bootstrapUrl.toString(), { credentials: "include", signal: ac.signal }).catch(() => {});
+    return () => ac.abort();
+  }, [workspacePortfolioId, requestedWorkspaceAccountId]);
 
   useEffect(() => {
     resizeComposer();
@@ -1170,12 +1241,14 @@ export function XchatConversation({
         portfolioId?: string;
         personaId?: string;
         reasoningMode?: XchatReasoningMode;
+        quoteFreshness: "cached_first" | "live";
       } = {
         message: prompt,
         scope: "global",
         threadId,
         strategyJobOptOut: nextStrategyOptOut,
-        recentMessages: buildAskRecentMessages(messages, 10)
+        recentMessages: buildAskRecentMessages(messages, 10),
+        quoteFreshness
       };
       if (hasPasteImage && pastedImage) {
         askBody.imageAttachment = {
@@ -1619,6 +1692,7 @@ export function XchatConversation({
 
         <Suspense fallback={<XchatChatSkeleton variant="composer" />}>
           <XchatComposerPanelLazy
+            askProgressPhaseIndex={askProgressPhaseIndex}
             composerFormRef={composerFormRef}
             composerRef={composerRef}
             templatesGalleryInitiallyExpanded={initialXchatItem === "examples"}
@@ -1626,11 +1700,13 @@ export function XchatConversation({
             input={input}
             loading={loading}
             onCancelAsk={cancelAskInFlight}
+            onQuoteFreshnessChange={persistQuoteFreshness}
             pasteImageError={pasteImageError}
             pendingPasteImage={pendingPasteImage}
             personaListError={personaListError}
             personaPickerLocked={personaPickerLocked}
             personaSelectRows={personaSelectRows}
+            quoteFreshness={quoteFreshness}
             reasoningMode={reasoningMode}
             selectedPersonaId={selectedPersonaId}
             setInput={setInput}

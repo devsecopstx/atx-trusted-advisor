@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useId, useMemo, useState, type RefObject } from "react";
 
-import { XchatTemplatesWorkspaceBar } from "@/app/xchat/ui/xchat-templates-workspace-bar";
+import {
+    applyXchatScanOptionsPrompt,
+    XchatTemplatesWorkspaceBar
+} from "@/app/xchat/ui/xchat-templates-workspace-bar";
 import {
     filterXchatPromptTemplates,
     XCHAT_HNWI_PROMPT_TEMPLATES,
@@ -96,7 +99,7 @@ export function XchatTemplatesStrip({
     [mergedTemplates, query]
   );
 
-  const topRow = filtered.slice(0, 5);
+  const scrollerTemplates = filtered.slice(0, 4);
 
   function applyTemplate(t: StripTemplate) {
     setInput(t.prompt);
@@ -164,12 +167,7 @@ export function XchatTemplatesStrip({
 
   return (
     <section aria-label="Prompt templates" className="xchat-templates-strip">
-      <XchatTemplatesWorkspaceBar
-        askInFlight={askInFlight}
-        composerRef={composerRef}
-        promptLibraryCount={mergedTemplates.length}
-        setInput={setInput}
-      />
+      <XchatTemplatesWorkspaceBar askInFlight={askInFlight} promptLibraryCount={mergedTemplates.length} />
       <div className="xchat-templates-strip__header">
         <span className="xchat-templates-strip__title">Templates</span>
         <div className="xchat-templates-strip__header-actions">
@@ -244,6 +242,17 @@ export function XchatTemplatesStrip({
 
       {seeAllOpen ? (
         <div className="xchat-templates-strip__grid-full">
+          <button
+            aria-busy={askInFlight}
+            aria-label="Insert scan my options prompt into composer, then review and send"
+            className="xchat-templates-strip__grid-card xchat-templates-strip__grid-card--scan"
+            disabled={askInFlight}
+            type="button"
+            onClick={() => applyXchatScanOptionsPrompt(setInput, composerRef)}
+          >
+            <span className="xchat-templates-strip__grid-card-title">Scan my options</span>
+            <span className="xchat-templates-strip__grid-card-meta">Holdings + watchlist</span>
+          </button>
           {filtered.map((t) => (
             <div key={t.id} className="xchat-templates-strip__card-wrap">
               <button
@@ -286,7 +295,20 @@ export function XchatTemplatesStrip({
         </div>
       ) : (
         <div className="xchat-templates-strip__scroller">
-          {topRow.map((t) => (
+          <div className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
+            <button
+              aria-busy={askInFlight}
+              aria-label="Insert scan my options prompt into composer, then review and send"
+              className="xchat-templates-strip__card xchat-templates-strip__card--scan"
+              disabled={askInFlight}
+              type="button"
+              onClick={() => applyXchatScanOptionsPrompt(setInput, composerRef)}
+            >
+              <span className="xchat-templates-strip__card-title">Scan my options</span>
+              <span className="xchat-templates-strip__card-meta">Holdings + watchlist</span>
+            </button>
+          </div>
+          {scrollerTemplates.map((t) => (
             <div key={t.id} className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
               <button
                 className="xchat-templates-strip__card"

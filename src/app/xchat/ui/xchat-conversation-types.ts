@@ -40,6 +40,7 @@ export type HistoryItem = {
   personaId?: string;
   contextReferenceCount: number;
   toolCallCount: number;
+  interactionGenerationMs?: number;
 };
 
 export type HistoryStats = {

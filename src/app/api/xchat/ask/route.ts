@@ -74,6 +74,10 @@ import {
 } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 import { postProcessWatchlistMarkdown } from "@/modules/xchat/watchlist-response-postprocess";
+import {
+    loadWorkspaceSnapshotPreload,
+    type WorkspaceSnapshotPreload
+} from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
     collectWatchlistPortfolioIdSlot,
@@ -103,6 +107,7 @@ import {
     buildRecentThreadMessagesPromptBlock,
     type XchatRecentThreadMessage
 } from "@/modules/xchat/xchat-recent-history-prompt";
+import { resolveWorkspaceSnapshotQuoteNetwork } from "@/modules/xchat/xchat-workspace-quote-policy";
 
 const xchatPasteImageAttachmentSchema = z.object({
   mediaType: z.enum(["image/png", "image/jpeg"]),
@@ -129,7 +134,8 @@ const askSchema = z
     reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
     reasoningMode: z.enum(["fast", "expert", "heavy"]).optional(),
     scope: z.string().min(1).max(128).optional(),
-    topK: z.number().int().min(1).max(10).optional()
+    topK: z.number().int().min(1).max(10).optional(),
+    quoteFreshness: z.enum(["cached_first", "live"]).optional()
   })
   .superRefine((data, ctx) => {
     const t = data.message.trim();
@@ -676,6 +682,11 @@ export async function POST(request: Request) {
     const responseMarkdown = preprocessXchatMarkdown(
       "Understood, staying in chat. I will continue in normal chat mode for this conversation."
     );
+    const stayMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+      ragChunks: 0,
+      toolInvocations: 0,
+      personaCollections: personaDeclaredCollectionCount
+    });
     const chatLogId = shouldPersistHistory
       ? await saveXChatLog({
           threadId,
@@ -693,7 +704,8 @@ export async function POST(request: Request) {
           contextChunkIds: [],
           model: "strategy_job_opt_out",
           strategyJobOptOut: true,
-          retentionExpiresAt
+          retentionExpiresAt,
+          interactionGenerationMs: stayMeta.generationMs
         })
       : null;
     return NextResponse.json(
@@ -710,11 +722,7 @@ export async function POST(request: Request) {
             collectionSearchStatus: "skipped_no_collections",
             collectionSearchNonReadyFileCount: 0,
             logId: chatLogId?.toHexString(),
-            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-              ragChunks: 0,
-              toolInvocations: 0,
-              personaCollections: personaDeclaredCollectionCount
-            })
+            interactionMeta: stayMeta
           },
           { persona, threadId }
         )
@@ -745,6 +753,11 @@ export async function POST(request: Request) {
       session.userId,
       session.tenantId ?? "tenant:none"
     );
+    const preflightMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+      ragChunks: 0,
+      toolInvocations: 0,
+      personaCollections: personaDeclaredCollectionCount
+    });
     const chatLogId = shouldPersistHistory
       ? await saveXChatLog({
           threadId,
@@ -762,7 +775,8 @@ export async function POST(request: Request) {
           contextChunkIds: [],
           model: "strategy_job_preflight",
           strategyJobOptOut,
-          retentionExpiresAt
+          retentionExpiresAt,
+          interactionGenerationMs: preflightMeta.generationMs
         })
       : null;
     return NextResponse.json(
@@ -779,11 +793,7 @@ export async function POST(request: Request) {
             collectionSearchStatus: "skipped_no_collections",
             collectionSearchNonReadyFileCount: 0,
             logId: chatLogId?.toHexString(),
-            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-              ragChunks: 0,
-              toolInvocations: 0,
-              personaCollections: personaDeclaredCollectionCount
-            })
+            interactionMeta: preflightMeta
           },
           { persona, threadId }
         )
@@ -804,6 +814,11 @@ export async function POST(request: Request) {
     const responseMarkdown = preprocessXchatMarkdown(
       "I can show that watchlist once I know which portfolio you mean. Please share the `portfolioId` (24-char id) or open the portfolio first and retry."
     );
+    const slotMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+      ragChunks: 0,
+      toolInvocations: 0,
+      personaCollections: personaDeclaredCollectionCount
+    });
     const chatLogId = shouldPersistHistory
       ? await saveXChatLog({
           threadId,
@@ -821,7 +836,8 @@ export async function POST(request: Request) {
           contextChunkIds: [],
           model: "watchlist_portfolio_slot_collection",
           strategyJobOptOut,
-          retentionExpiresAt
+          retentionExpiresAt,
+          interactionGenerationMs: slotMeta.generationMs
         })
       : null;
     return NextResponse.json(
@@ -837,11 +853,7 @@ export async function POST(request: Request) {
             collectionSearchStatus: "skipped_no_collections",
             collectionSearchNonReadyFileCount: 0,
             logId: chatLogId?.toHexString(),
-            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-              ragChunks: 0,
-              toolInvocations: 0,
-              personaCollections: personaDeclaredCollectionCount
-            })
+            interactionMeta: slotMeta
           },
           { persona, threadId }
         )
@@ -928,17 +940,38 @@ export async function POST(request: Request) {
   const hasXfinanceTool = xapiConfig.tools.some((t) => isAtxFunctionToolType(t.type));
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
 
+  const workspaceSnapshotCtx = {
+    userId: session.userId,
+    tenantId: session.tenantId,
+    workspacePortfolioId
+  };
+  const workspaceSnapshotQuoteNetwork = resolveWorkspaceSnapshotQuoteNetwork({
+    message: messageTrimmed,
+    reasoningMode,
+    reasoningEffort: parsed.data.reasoningEffort,
+    clientQuoteFreshness: parsed.data.quoteFreshness
+  });
+
+  let eagerWorkspacePreload: WorkspaceSnapshotPreload | null = null;
+  if (hasXfinanceTool) {
+    eagerWorkspacePreload = await loadWorkspaceSnapshotPreload(workspaceSnapshotCtx, {
+      snapshotQuoteNetwork: workspaceSnapshotQuoteNetwork
+    });
+  }
+
+  const atxWorkspaceExecutorOpts = !hasXfinanceTool
+    ? {}
+    : eagerWorkspacePreload
+      ? { workspacePreload: eagerWorkspacePreload }
+      : { workspaceLazyLoad: workspaceSnapshotCtx };
+
   if (!visionImage && hasXfinanceTool && shouldRunOptionsActionScan(messageTrimmed)) {
     const executor = createXfinanceToolExecutor({
       userId: session.userId,
       tenantId: session.tenantId,
       subscriptionPlan,
       workspacePortfolioId,
-      workspaceLazyLoad: {
-        userId: session.userId,
-        tenantId: session.tenantId,
-        workspacePortfolioId
-      }
+      ...atxWorkspaceExecutorOpts
     });
     const optionsScanStartedAt = Date.now();
     const optionsScanResult = await executor("atx_function", { operation: "options_action_scan" });
@@ -1013,6 +1046,12 @@ export async function POST(request: Request) {
       await updateCoreUserOptionsScanPreferences(userId, { lastRunAt: new Date() });
     }
 
+    const optionsMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+      ragChunks: contextCount,
+      toolInvocations: 1,
+      personaCollections: linkedCollectionIds.length
+    });
+
     const chatLogId = shouldPersistHistory
       ? await saveXChatLog({
           threadId,
@@ -1031,6 +1070,7 @@ export async function POST(request: Request) {
           model: "options_action_scan_direct",
           strategyJobOptOut,
           retentionExpiresAt,
+          interactionGenerationMs: optionsMeta.generationMs,
           xapiToolCalls: [
             {
               name: "atx_function",
@@ -1059,11 +1099,7 @@ export async function POST(request: Request) {
             optionsActionScan,
             optionsScanReportId,
             toolCalls: [{ name: "atx_function", durationMs: optionsScanDurationMs }],
-            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-              ragChunks: contextCount,
-              toolInvocations: 1,
-              personaCollections: linkedCollectionIds.length
-            })
+            interactionMeta: optionsMeta
           },
           { persona, threadId }
         )
@@ -1086,11 +1122,7 @@ export async function POST(request: Request) {
       tenantId: session.tenantId,
       subscriptionPlan,
       workspacePortfolioId,
-      workspaceLazyLoad: {
-        userId: session.userId,
-        tenantId: session.tenantId,
-        workspacePortfolioId
-      }
+      ...atxWorkspaceExecutorOpts
     });
     const watchlistCallStartedAt = Date.now();
     const watchlistToolResult = await executor("atx_function", { operation: "watchlist_snapshot" });
@@ -1167,6 +1199,11 @@ export async function POST(request: Request) {
     }
 
     const output = preprocessXchatMarkdown(responseMarkdown);
+    const wlMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+      ragChunks: contextCount,
+      toolInvocations: 1,
+      personaCollections: linkedCollectionIds.length
+    });
     const chatLogId = shouldPersistHistory
       ? await saveXChatLog({
           threadId,
@@ -1185,6 +1222,7 @@ export async function POST(request: Request) {
           model: "watchlist_snapshot_direct",
           strategyJobOptOut,
           retentionExpiresAt,
+          interactionGenerationMs: wlMeta.generationMs,
           xapiToolCalls: [
             {
               name: "atx_function",
@@ -1211,11 +1249,7 @@ export async function POST(request: Request) {
             collectionSearchNonReadyFileCount: 0,
             logId: chatLogId?.toHexString(),
             toolCalls: [{ name: "atx_function", durationMs: watchlistCallDurationMs }],
-            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-              ragChunks: contextCount,
-              toolInvocations: 1,
-              personaCollections: linkedCollectionIds.length
-            })
+            interactionMeta: wlMeta
           },
           { persona, threadId }
         )
@@ -1343,15 +1377,7 @@ export async function POST(request: Request) {
           tenantId: session.tenantId,
           subscriptionPlan,
           workspacePortfolioId,
-          ...(hasXfinanceTool
-            ? {
-                workspaceLazyLoad: {
-                  userId: session.userId,
-                  tenantId: session.tenantId,
-                  workspacePortfolioId
-                }
-              }
-            : {})
+          ...(hasXfinanceTool ? atxWorkspaceExecutorOpts : {})
         })
       : async () => ({
           result: "",
@@ -1482,6 +1508,12 @@ export async function POST(request: Request) {
     });
   }
 
+  const mainLoopMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+    ragChunks: contextCount,
+    toolInvocations: toolCallLogs.length,
+    personaCollections: linkedCollectionIds.length
+  });
+
   const chatLogId = shouldPersistHistory
     ? await saveXChatLog({
         threadId,
@@ -1516,6 +1548,7 @@ export async function POST(request: Request) {
           : undefined,
         strategyJobOptOut,
         retentionExpiresAt,
+        interactionGenerationMs: mainLoopMeta.generationMs,
         xchatInstructionsFingerprint: remoteChainInstructionsFingerprint
       })
     : null;
@@ -1565,11 +1598,7 @@ export async function POST(request: Request) {
                 }
               }
             : {}),
-          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-            ragChunks: contextCount,
-            toolInvocations: toolCallLogs.length,
-            personaCollections: linkedCollectionIds.length
-          })
+          interactionMeta: mainLoopMeta
         },
         { persona, threadId }
       )

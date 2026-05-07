@@ -12,7 +12,7 @@ import {
     type RefObject
 } from "react";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
@@ -43,6 +43,13 @@ import { hnwiComposerSuggestions } from "./xchat-example-prompts";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
 
 const EXAMPLE_PLACEHOLDER_INTERVAL_MS = 10_000;
+
+const ASK_PROGRESS_BADGES = [
+  "Gathering portfolio & account snapshot…",
+  "Fetching live Yahoo quotes & OI/IV…",
+  "Consulting options-strategy RAG + X sentiment…",
+  "Synthesizing conservative / balanced / aggressive outlooks…"
+] as const;
 
 export type XchatPendingPasteImage = {
   mediaType: "image/png" | "image/jpeg";
@@ -79,6 +86,10 @@ export type XchatComposerPanelProps = {
   voiceSessionPersonaLabel: string;
   reasoningMode: XchatReasoningMode;
   setReasoningMode: (mode: XchatReasoningMode) => void;
+  /** -1 = hidden; 0–3 = phased status copy while ask is in flight */
+  askProgressPhaseIndex: number;
+  quoteFreshness: "cached_first" | "live";
+  onQuoteFreshnessChange: (next: "cached_first" | "live") => void;
 };
 
 export function XchatComposerPanel({
@@ -104,7 +115,10 @@ export function XchatComposerPanel({
   onCancelAsk,
   voiceSessionPersonaLabel,
   reasoningMode,
-  setReasoningMode
+  setReasoningMode,
+  askProgressPhaseIndex,
+  quoteFreshness,
+  onQuoteFreshnessChange
 }: XchatComposerPanelProps) {
   const reduceMotion = useReducedMotion();
   const [composerFocused, setComposerFocused] = useState(false);
@@ -272,13 +286,22 @@ export function XchatComposerPanel({
         initiallyExpanded={templatesGalleryInitiallyExpanded}
         setInput={setInput}
       />
-      <div className="xchat-composer-reasoning-row">
-        <XchatReasoningModeToggle
-          disabled={loading}
-          value={reasoningMode}
-          onChange={setReasoningMode}
-        />
-      </div>
+      {loading && askProgressPhaseIndex >= 0 ? (
+        <div aria-live="polite" className="xchat-composer-progress" role="status">
+          <AnimatePresence initial={false} mode="wait">
+            <motion.span
+              key={askProgressPhaseIndex}
+              animate={{ opacity: 1, y: 0 }}
+              className="xchat-composer-progress__badge"
+              exit={reduceMotion ? undefined : { opacity: 0, y: -5 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+              transition={{ duration: reduceMotion ? 0 : 0.24 }}
+            >
+              {ASK_PROGRESS_BADGES[Math.min(askProgressPhaseIndex, ASK_PROGRESS_BADGES.length - 1)]}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+      ) : null}
       <motion.form
         animate={
           reduceMotion
@@ -505,8 +528,50 @@ export function XchatComposerPanel({
         ) : null}
       </motion.form>
       <div className="xchat-composer-shortcuts">
-        <div className="xchat-composer-shortcuts__row">
-          <XchatComposerNav />
+        <div className="xchat-composer-shortcuts__row xchat-composer-shortcuts__row--split">
+          <div className="xchat-composer-shortcuts__split-nav">
+            <XchatComposerNav />
+          </div>
+          <div className="xchat-composer-secondary-controls">
+            <XchatReasoningModeToggle
+              disabled={loading}
+              value={reasoningMode}
+              onChange={setReasoningMode}
+            />
+            <div
+              aria-label="Market data freshness"
+              className="xchat-composer-quote-row xchat-composer-quote-row--inline"
+              role="group"
+            >
+              <span className="xchat-composer-quote-row__label">Market data</span>
+              <div className="xchat-composer-quote-row__segments">
+                <button
+                  aria-pressed={quoteFreshness === "cached_first"}
+                  className={`xchat-composer-quote-row__seg${quoteFreshness === "cached_first" ? " xchat-composer-quote-row__seg--active" : ""}`}
+                  disabled={loading}
+                  title="Prefer Redis / warmed snapshot during US session for portfolio-style prompts (faster)"
+                  type="button"
+                  onClick={() => {
+                    onQuoteFreshnessChange("cached_first");
+                  }}
+                >
+                  Cached-first
+                </button>
+                <button
+                  aria-pressed={quoteFreshness === "live"}
+                  className={`xchat-composer-quote-row__seg${quoteFreshness === "live" ? " xchat-composer-quote-row__seg--active" : ""}`}
+                  disabled={loading}
+                  title="Always allow live Yahoo on cache miss for workspace watchlist quotes"
+                  type="button"
+                  onClick={() => {
+                    onQuoteFreshnessChange("live");
+                  }}
+                >
+                  Live
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <p className="xchat-composer-hint xchat-composer-hint--collapse-narrow" role="note">

@@ -580,6 +580,24 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "401": json401Session()
     }
   },
+  "GET /api/xchat/workspace-warm": {
+    summary: "Warm workspace snapshot cache for xChat",
+    description:
+      "Loads portfolio/accounts/watchlist snapshot (Mongo + optional Redis + Yahoo batch quotes for watchlist symbols) for the signed-in user. Optional **`portfolioId`** (24-char hex) scopes the same way as xChat workspace. Idempotent; safe to call on `/xchat` mount or portfolio changes.",
+    parameters: [
+      {
+        name: "portfolioId",
+        in: "query",
+        required: false,
+        description: "Workspace portfolio ObjectId hex; omit to use default portfolio resolution.",
+        schema: { type: "string", minLength: 24, maxLength: 24 }
+      }
+    ],
+    responses: {
+      "200": jsonResponse("Warm accepted.", "XchatWorkspaceWarmResponseEnvelope"),
+      "401": json401Session()
+    }
+  },
   "POST /api/xchat/history/sync-turn": {
     summary: "Sync one local xChat turn to user history collection (deprecated)",
     description:
@@ -1652,7 +1670,13 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           "Grok-style preset (mutually exclusive with **`reasoningEffort`**): **fast** — **`grok-4-1-fast`** for this turn (latency-first); **expert** — **`grok-4.3`** + **`reasoning.effort`: medium**; **heavy** — **`grok-4.3`** + **`reasoning.effort`: high**. Omitting **`reasoningMode`** matches **fast** when **`reasoningEffort`** is also omitted (UI default)."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
-      topK: { type: "integer", minimum: 1, maximum: 10 }
+      topK: { type: "integer", minimum: 1, maximum: 10 },
+      quoteFreshness: {
+        type: "string",
+        enum: ["cached_first", "live"],
+        description:
+          "Workspace watchlist quote policy for **`atx_function`** snapshot preload: **cached_first** (default when omitted and server applies conservative routing) uses Redis / in-process Yahoo batch cache only during US regular session for portfolio-style prompts; **live** always allows Yahoo on cache miss. **Expert** / **heavy** depth and phrases like **live refresh** force **live** regardless."
+      }
     }
   },
   XChatToolCallSummary: {
@@ -1856,6 +1880,19 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           lastPromptAt: { type: "string", format: "date-time", nullable: true },
           collectionId: { type: "string", nullable: true },
           historyMode: { type: "string", enum: ["mongo", "ephemeral"] }
+        }
+      }
+    }
+  },
+  XchatWorkspaceWarmResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["warmed"],
+        properties: {
+          warmed: { type: "boolean", enum: [true] }
         }
       }
     }

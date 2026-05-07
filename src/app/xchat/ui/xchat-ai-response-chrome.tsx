@@ -89,9 +89,25 @@ export function XchatAiResponseChrome({
   const [feedbackBusy, setFeedbackBusy] = useState(false);
 
   const closing = pickXchatClosingLine(bodyText);
-  const seconds =
-    interactionMeta !== undefined ? (interactionMeta.generationMs / 1000).toFixed(1) : null;
-  const sourcesTotal = interactionMeta?.sources.total ?? null;
+  const hasDuration =
+    interactionMeta !== undefined &&
+    typeof interactionMeta.generationMs === "number" &&
+    interactionMeta.generationMs > 0;
+  const secondsLabel = hasDuration
+    ? (interactionMeta.generationMs / 1000).toFixed(1)
+    : null;
+  const src = interactionMeta?.sources;
+  const sourcesTotal = src ? src.total : null;
+  const statsTitle =
+    src != null
+      ? [
+          `RAG snippets: ${src.ragChunks}`,
+          `Tool calls: ${src.toolInvocations}`,
+          src.personaCollections > 0 ? `Persona collections: ${src.personaCollections}` : null
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "Source counts unavailable for this turn.";
 
   const copyAll = useCallback(async () => {
     try {
@@ -237,17 +253,14 @@ export function XchatAiResponseChrome({
             <span className="xchat-ai-response-chrome__btn-label">Speak</span>
           </button>
         </div>
-        {(seconds !== null || sourcesTotal !== null) && (
-          <div className="xchat-ai-response-chrome__badge" aria-live="polite">
-            {seconds !== null ? <span>{seconds}s</span> : null}
-            {seconds !== null && sourcesTotal !== null ? <span className="xchat-ai-response-chrome__badge-sep">·</span> : null}
-            {sourcesTotal !== null ? (
-              <span title="RAG snippets + tool runs + persona-linked collections (this turn)">
-                {sourcesTotal} sources
-              </span>
-            ) : null}
-          </div>
-        )}
+        <div className="xchat-ai-response-chrome__stats" aria-label="Response stats">
+          <span className="xchat-ai-response-chrome__stat-time" title="Wall-clock time for this answer">
+            {secondsLabel !== null ? `${secondsLabel}s` : "—"}
+          </span>
+          <span className="xchat-ai-response-chrome__stat-pill" title={statsTitle}>
+            {sourcesTotal !== null ? `${sourcesTotal} sources` : "—"}
+          </span>
+        </div>
       </div>
     </footer>
   );

@@ -108,4 +108,13 @@ describe("getYahooBatchQuotes (Redis cache)", () => {
     const setArgs = redisMock.set.mock.calls[0];
     expect(setArgs?.[2]).toEqual({ EX: 60 });
   });
+
+  it("does not call Yahoo when allowNetwork is false and Redis is unset", async () => {
+    await resetRedisClientForTests();
+    delete process.env.REDIS_URL;
+    quoteFn.mockClear();
+    const out = await getYahooBatchQuotes(["AAPL"], { allowNetwork: false });
+    expect(quoteFn).not.toHaveBeenCalled();
+    expect(out).toEqual([]);
+  });
 });

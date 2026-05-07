@@ -283,6 +283,8 @@ export type XChatSessionLog = {
     durationMs: number;
     error?: string;
   }>;
+  /** Wall-clock time for this turn (ms), for history + response stats UI. */
+  interactionGenerationMs?: number;
   xaiTurnFileId?: string;
   xaiTurnPayloadHash?: string;
   xaiTurnRetentionExpiresAt?: Date;
@@ -307,6 +309,8 @@ export type XChatHistoryItem = {
   personaId?: string;
   contextReferenceCount: number;
   toolCallCount: number;
+  /** Present when the turn was saved after this field shipped (ms). */
+  interactionGenerationMs?: number;
 };
 
 export type XChatHistoryStats = {

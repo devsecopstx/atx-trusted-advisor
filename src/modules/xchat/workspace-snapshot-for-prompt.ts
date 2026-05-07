@@ -95,6 +95,14 @@ export type WorkspaceSnapshotContext = {
   workspacePortfolioId?: string | null;
 };
 
+export type LoadWorkspaceSnapshotPreloadOptions = {
+  /**
+   * **cached_first** — watchlist spot/target columns use Redis batch quotes + in-memory lookup cache only (no Yahoo HTTP on miss).
+   * **live** — allow Yahoo batch fetch on cache miss (default).
+   */
+  snapshotQuoteNetwork?: "cached_first" | "live";
+};
+
 /** Keep prompt size bounded; full book via atxfinance positions_snapshot. */
 export const MAX_POSITION_ROWS_IN_SNAPSHOT = 120;
 
@@ -216,7 +224,8 @@ async function resolveDefaultPortfolio(ctx: WorkspaceSnapshotContext) {
 
 async function buildPreloadFromPortfolio(
   ctx: WorkspaceSnapshotContext,
-  portfolio: Portfolio & { _id: NonNullable<Portfolio["_id"]> }
+  portfolio: Portfolio & { _id: NonNullable<Portfolio["_id"]> },
+  quoteAllowNetwork: boolean
 ): Promise<WorkspaceSnapshotPreload | null> {
   const t0 = performance.now();
   if (!portfolio._id) {
@@ -253,7 +262,12 @@ async function buildPreloadFromPortfolio(
 
   const wlSymbols = watchlist?.symbols ?? [];
   const fetchedQuotes =
-    wlSymbols.length > 0 ? await lookupSymbols(wlSymbols.map((x) => x.symbol)) : null;
+    wlSymbols.length > 0
+      ? await lookupSymbols(
+          wlSymbols.map((x) => x.symbol),
+          { allowNetwork: quoteAllowNetwork }
+        )
+      : null;
   const quoteMap = fetchedQuotes instanceof Map ? fetchedQuotes : new Map();
 
   const loadedAt = new Date().toISOString();
@@ -325,8 +339,10 @@ async function buildPreloadFromPortfolio(
  * Loads workspace snapshot (Mongo + optional Redis/in-memory cache). Used by ask, batch, orchestrator.
  */
 export async function loadWorkspaceSnapshotPreload(
-  ctx: WorkspaceSnapshotContext
+  ctx: WorkspaceSnapshotContext,
+  options?: LoadWorkspaceSnapshotPreloadOptions
 ): Promise<WorkspaceSnapshotPreload | null> {
+  const quoteAllowNetwork = options?.snapshotQuoteNetwork !== "cached_first";
   const tStart = performance.now();
   const portfolio = await resolveDefaultPortfolio(ctx);
   if (!portfolio?._id) {
@@ -380,7 +396,8 @@ export async function loadWorkspaceSnapshotPreload(
 
   const built = await buildPreloadFromPortfolio(
     ctx,
-    portfolio as Portfolio & { _id: ObjectId }
+    portfolio as Portfolio & { _id: ObjectId },
+    quoteAllowNetwork
   );
   if (built) {
     const ttl = getWorkspaceSnapshotCacheTtlSeconds();

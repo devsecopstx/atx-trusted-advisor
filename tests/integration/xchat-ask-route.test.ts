@@ -1036,7 +1036,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(toolLoopArg?.systemPrompt ?? "").toContain("Hosted search (web_search / x_search):");
   });
 
-  it("does not preload workspace snapshot on ask when atx_function is active; wires lazy executor context", async () => {
+  it("eager-calls workspace snapshot load when atx_function is active; executor uses lazy load when preload is null", async () => {
     const createSpy = vi.spyOn(toolExecutorModule, "createXfinanceToolExecutor");
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
@@ -1072,7 +1072,17 @@ describe("xchat ask route collection retrieval", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(workspaceSnapshotMocks.loadWorkspaceSnapshotPreload).not.toHaveBeenCalled();
+      expect(workspaceSnapshotMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledTimes(1);
+      expect(workspaceSnapshotMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledWith(
+        {
+          userId: "507f1f77bcf86cd799439011",
+          tenantId: "507f1f77bcf86cd799439022",
+          workspacePortfolioId: "507f1f77bcf86cd799439044"
+        },
+        expect.objectContaining({
+          snapshotQuoteNetwork: expect.any(String)
+        })
+      );
       const toolLoopArg = xaiMocks.respondWithXaiToolLoop.mock.calls[0]?.[0] as {
         systemPrompt?: string;
       };

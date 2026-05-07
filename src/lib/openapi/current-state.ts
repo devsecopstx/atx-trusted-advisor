@@ -1128,6 +1128,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/xchat/workspace-warm",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xchat"
+  },
+  {
     path: "/api/xchat/history",
     operations: [
       { method: "GET", auth: "session" },

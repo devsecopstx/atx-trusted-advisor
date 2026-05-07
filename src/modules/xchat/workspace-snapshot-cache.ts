@@ -6,7 +6,7 @@
  *
  * **Invalidation:** `bumpPortfolioWorkspaceContentRev` increments rev on book writes → natural cache miss (Mongo write-through; Redis is not authoritative).
  *
- * **TTL:** `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` (30–900s, default 120). Use 30–60 on hot paths after Redis/TLS is stable.
+ * **TTL:** `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` (30–900s, default 60). Tune per environment.
  */
 import { getRedisClient } from "@/lib/redis-client";
 
@@ -22,15 +22,15 @@ function evictMemoryExpired(): void {
   }
 }
 
-/** TTL for workspace snapshot cache (seconds). Clamped 30–900; default 120. */
+/** TTL for workspace snapshot cache (seconds). Clamped 30–900; default 60 (hot xChat path). */
 export function getWorkspaceSnapshotCacheTtlSeconds(): number {
   const raw = process.env.REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS?.trim();
   if (!raw) {
-    return 120;
+    return 60;
   }
   const n = Number(raw);
   if (!Number.isFinite(n)) {
-    return 120;
+    return 60;
   }
   return Math.min(900, Math.max(30, Math.floor(n)));
 }

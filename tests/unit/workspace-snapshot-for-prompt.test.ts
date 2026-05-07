@@ -15,7 +15,8 @@ const wsCacheMocks = vi.hoisted(() => ({
 }));
 
 const lookupSymbolsMock = vi.hoisted(() =>
-  vi.fn(async (symbols: string[]) => {
+  vi.fn(async (symbols: string[], opts?: { allowNetwork?: boolean }) => {
+    void opts;
     const m = new Map<string, { symbol: string; price: number; source: string }>();
     for (const s of symbols) {
       m.set(s, { symbol: s, price: 250.5, source: "yahoo-finance2" });
@@ -33,7 +34,7 @@ vi.mock("@/modules/xchat/workspace-snapshot-cache", () => ({
     workspaceContentRev: number;
   }) =>
     `xf:wsnap:v1:${input.tenantId ?? "_"}:${input.userId}:${input.portfolioIdHex}:${String(input.workspaceContentRev)}`,
-  getWorkspaceSnapshotCacheTtlSeconds: () => 120,
+  getWorkspaceSnapshotCacheTtlSeconds: () => 60,
   readWorkspaceSnapshotCache: wsCacheMocks.readWorkspaceSnapshotCache,
   writeWorkspaceSnapshotCache: wsCacheMocks.writeWorkspaceSnapshotCache
 }));
@@ -43,7 +44,7 @@ vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
   LOOKUP_ROUTE: "yahoo-finance2"
 }));
 
-import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
+import { buildWorkspaceServerSnapshotBlock, loadWorkspaceSnapshotPreload } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 describe("buildWorkspaceServerSnapshotBlock", () => {
   beforeEach(() => {
@@ -118,5 +119,34 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
     expect(r).toContain('"accountId":"507f1f77bcf86cd799439002"');
     expect(r).toContain('"extAccountId":"••••"');
     expect(wsCacheMocks.writeWorkspaceSnapshotCache).toHaveBeenCalled();
+  });
+
+  it("passes allowNetwork false to lookupSymbols when snapshotQuoteNetwork is cached_first", async () => {
+    repo.getDefaultPortfolio.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439001" },
+      name: "Main",
+      isDefault: true
+    });
+    repo.listPortfolioAccounts.mockResolvedValue([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439002" },
+        name: "Cash",
+        type: "cash",
+        extAccountId: "x",
+        isDefault: true,
+        cashBalance: 100
+      }
+    ]);
+    repo.listPortfolioPositionsByAccount.mockResolvedValue([]);
+    repo.getPortfolioWatchlist.mockResolvedValue({
+      name: "WL",
+      symbols: [{ symbol: "TSLA", addedAt: new Date("2026-01-01T00:00:00.000Z") }]
+    });
+    lookupSymbolsMock.mockClear();
+    await loadWorkspaceSnapshotPreload(
+      { userId: "507f1f77bcf86cd799439011", tenantId: "507f1f77bcf86cd799439022" },
+      { snapshotQuoteNetwork: "cached_first" }
+    );
+    expect(lookupSymbolsMock).toHaveBeenCalledWith(["TSLA"], { allowNetwork: false });
   });
 });
