@@ -30,6 +30,7 @@ import type {
     XchatInteractionMeta
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
+import { XchatSidebarTokenStats } from "@/app/xchat/ui/xchat-sidebar-token-stats";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { isRetailPaidSubscriptionPlan } from "@/lib/subscription-plan";
@@ -1657,6 +1658,7 @@ export function XchatConversation({
                       Focus composer
                     </button>
                     <p className="status-text">Shortcuts: Enter send · Shift+Enter newline</p>
+                    <XchatSidebarTokenStats />
                   </RailDisclosure>
                 </div>
 

@@ -750,6 +750,69 @@ export async function getXChatHistoryStatsByUser(input: {
   };
 }
 
+/** App-user sidebar: sums `xchat_logs.xaiUsage` for scoped tenant + user (TTL-bound retention). */
+export type XchatUserTokenUsageStats = {
+  totalTokens: number;
+  turnsWithUsage: number;
+  tokensLast60Minutes: number;
+  turnsWithUsageLast60Minutes: number;
+  /** Mean tokens/minute over the trailing window (total in window ÷ windowMinutes). */
+  tokensPerMinuteAvg60m: number;
+  windowMinutes: number;
+  computedAt: string;
+};
+
+export async function getXchatTokenUsageStatsForUser(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+}): Promise<XchatUserTokenUsageStats> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const scoped = mongoXchatLogsTenantScope({ userId: input.userId }, input.tenantId, "userTenant");
+  const windowMinutes = 60;
+  const sinceWindow = new Date(Date.now() - windowMinutes * 60 * 1000);
+  const matchWindow: Record<string, unknown> = {
+    $and: [scoped, { createdAt: { $gte: sinceWindow } }]
+  };
+
+  type AggRow = { totalTokens: number; turnsWithUsage: number };
+  const groupStage = {
+    $group: {
+      _id: null,
+      totalTokens: { $sum: { $ifNull: ["$xaiUsage.totalTokens", 0] } },
+      turnsWithUsage: {
+        $sum: {
+          $cond: [{ $gt: [{ $ifNull: ["$xaiUsage.totalTokens", 0] }, 0] }, 1, 0]
+        }
+      }
+    }
+  };
+
+  const col = db.collection<XChatSessionLog>(collections.chatLogs);
+
+  const [totalRows, windowRows] = await Promise.all([
+    col.aggregate<AggRow>([{ $match: scoped }, groupStage]).toArray(),
+    col.aggregate<AggRow>([{ $match: matchWindow }, groupStage]).toArray()
+  ]);
+
+  const totalTokens = totalRows[0]?.totalTokens ?? 0;
+  const turnsWithUsage = totalRows[0]?.turnsWithUsage ?? 0;
+  const tokensLast60Minutes = windowRows[0]?.totalTokens ?? 0;
+  const turnsWithUsageLast60Minutes = windowRows[0]?.turnsWithUsage ?? 0;
+  const tokensPerMinuteAvg60m =
+    tokensLast60Minutes > 0 ? Math.round((tokensLast60Minutes / windowMinutes) * 10) / 10 : 0;
+
+  return {
+    totalTokens,
+    turnsWithUsage,
+    tokensLast60Minutes,
+    turnsWithUsageLast60Minutes,
+    tokensPerMinuteAvg60m,
+    windowMinutes,
+    computedAt: new Date().toISOString()
+  };
+}
+
 export async function updatePersonasCollectionVerification(
   collectionId: string,
   verification: PersonaCollectionVerification

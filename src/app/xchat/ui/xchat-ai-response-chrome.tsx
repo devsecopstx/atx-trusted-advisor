@@ -60,6 +60,24 @@ function IconSpeak() {
   );
 }
 
+function IconThumbUp() {
+  return (
+    <svg aria-hidden width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 10v12" />
+      <path d="M15 5.88 14 10h5v12H5V10h5l-1-4.12a2 2 0 0 1 3.67-.76l1 4.88" />
+    </svg>
+  );
+}
+
+function IconThumbDown() {
+  return (
+    <svg aria-hidden width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 14V2" />
+      <path d="M9 18.12 10 14H5v-12h14v12h-5l1 4.88a2 2 0 0 1-3.67.76l-1-4.88" />
+    </svg>
+  );
+}
+
 export type XchatAiResponseChromeProps = {
   messageId: string;
   /** Markdown or plain assistant text to copy / speak. */
@@ -188,9 +206,6 @@ export function XchatAiResponseChrome({
             aria-label="Copy entire response"
             title={copyDone ? "Copied" : "Copy response"}
           >
-            <span className="xchat-ai-response-chrome__emoji" aria-hidden>
-              📋
-            </span>
             <IconCopy />
             <span className="xchat-ai-response-chrome__btn-label">{copyDone ? "Copied" : "Copy"}</span>
           </button>
@@ -201,9 +216,6 @@ export function XchatAiResponseChrome({
             aria-label="Copy link to this thread and turn"
             title={linkDone ? "Link copied" : "Copy shareable link"}
           >
-            <span className="xchat-ai-response-chrome__emoji" aria-hidden>
-              🔗
-            </span>
             <IconLink />
             <span className="xchat-ai-response-chrome__btn-label">{linkDone ? "Linked" : "Link"}</span>
           </button>
@@ -215,9 +227,7 @@ export function XchatAiResponseChrome({
             aria-label="Thumbs up"
             title={serverLogId ? "Good response" : "Enable history to leave feedback"}
           >
-            <span className="xchat-ai-response-chrome__emoji" aria-hidden>
-              👍
-            </span>
+            <IconThumbUp />
           </button>
           <button
             type="button"
@@ -227,9 +237,7 @@ export function XchatAiResponseChrome({
             aria-label="Thumbs down"
             title={serverLogId ? "Poor response" : "Enable history to leave feedback"}
           >
-            <span className="xchat-ai-response-chrome__emoji" aria-hidden>
-              👎
-            </span>
+            <IconThumbDown />
           </button>
           <button
             type="button"
@@ -239,16 +247,10 @@ export function XchatAiResponseChrome({
             aria-label="Regenerate — loads prompt into composer"
             title="Reload last prompt into composer — press Send to regenerate"
           >
-            <span className="xchat-ai-response-chrome__emoji" aria-hidden>
-              🔄
-            </span>
             <IconRegen />
             <span className="xchat-ai-response-chrome__btn-label">Regenerate</span>
           </button>
           <button type="button" className="xchat-ai-response-chrome__btn" onClick={speak} aria-label="Speak response">
-            <span className="xchat-ai-response-chrome__emoji" aria-hidden>
-              🔊
-            </span>
             <IconSpeak />
             <span className="xchat-ai-response-chrome__btn-label">Speak</span>
           </button>

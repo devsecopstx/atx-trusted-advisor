@@ -41,8 +41,11 @@ export function XchatTemplatesWorkspaceBar({
           <span className="xchat-workspace-bar__status-line">
             {askInFlight ? "Advisor compiling…" : "Workspace library"}
           </span>
+          <span aria-hidden className="xchat-workspace-bar__status-sep">
+            ·
+          </span>
           <span className="xchat-workspace-bar__status-meta">
-            {askInFlight ? "xChat is processing your prompt" : `${promptLibraryCount} prompts ready`}
+            {askInFlight ? "Processing prompt" : `${promptLibraryCount} prompts ready`}
           </span>
         </div>
       </div>

@@ -1,6 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useState, type RefObject } from "react";
+import {
+    useCallback,
+    useEffect,
+    useId,
+    useMemo,
+    useRef,
+    useState,
+    type RefObject
+} from "react";
+
+import { AnimatePresence, motion } from "framer-motion";
 
 import {
     applyXchatScanOptionsPrompt,
@@ -52,6 +62,31 @@ export function XchatTemplatesStrip({
   const [savePrompt, setSavePrompt] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreWrapRef = useRef<HTMLDivElement>(null);
+  const moreMenuId = useId();
+
+  useEffect(() => {
+    if (!moreMenuOpen) {
+      return;
+    }
+    function onDocMouseDown(e: MouseEvent) {
+      if (!moreWrapRef.current?.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMoreMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [moreMenuOpen]);
 
   const refreshUserTemplates = useCallback(async () => {
     try {
@@ -165,55 +200,103 @@ export function XchatTemplatesStrip({
     }
   }
 
+  const templatesRowTail = (
+    <div className="xchat-templates-strip__cards-tail">
+      <button
+        aria-expanded={seeAllOpen}
+        className="xchat-templates-strip__see-all"
+        type="button"
+        onClick={() => setSeeAllOpen((o) => !o)}
+      >
+        {seeAllOpen ? "Show less" : "See all"}
+      </button>
+      <div ref={moreWrapRef} className="xchat-templates-strip__more-wrap">
+        <button
+          aria-controls={moreMenuId}
+          aria-expanded={moreMenuOpen}
+          aria-haspopup="menu"
+          aria-label="More template actions"
+          className="xchat-templates-strip__icon-btn xchat-templates-strip__icon-btn--more"
+          type="button"
+          onClick={() => setMoreMenuOpen((v) => !v)}
+        >
+          <MoreGlyph />
+        </button>
+        <AnimatePresence>
+          {moreMenuOpen ? (
+            <motion.div
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              aria-label="Template actions"
+              className="xchat-templates-strip__more-menu"
+              exit={{ opacity: 0, y: 4, scale: 0.98 }}
+              id={moreMenuId}
+              initial={{ opacity: 0, y: 6, scale: 0.98 }}
+              role="menu"
+              transition={{ duration: 0.15 }}
+            >
+              <button
+                className="xchat-templates-strip__more-item"
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  openSaveDialog();
+                }}
+              >
+                Save prompt to library
+              </button>
+              <button
+                className="xchat-templates-strip__more-item"
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setSearchVisible((prev) => {
+                    const next = !prev;
+                    if (!prev) {
+                      setSeeAllOpen(true);
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {searchVisible ? "Hide template search" : "Search library"}
+              </button>
+              <button
+                className="xchat-templates-strip__more-item"
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setSeeAllOpen((o) => !o);
+                }}
+              >
+                {seeAllOpen ? "Collapse template grid" : "See all templates"}
+              </button>
+              <button
+                className="xchat-templates-strip__more-item"
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setInput("");
+                  queueMicrotask(() => composerRef.current?.focus());
+                }}
+              >
+                Write custom prompt
+              </button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+
   return (
-    <section aria-label="Prompt templates" className="xchat-templates-strip">
+    <motion.section aria-label="Prompt templates" className="xchat-templates-strip" initial={false}>
       <XchatTemplatesWorkspaceBar askInFlight={askInFlight} promptLibraryCount={mergedTemplates.length} />
       <div className="xchat-templates-strip__header">
         <span className="xchat-templates-strip__title">Templates</span>
-        <div className="xchat-templates-strip__header-actions">
-          <button
-            aria-expanded={searchVisible}
-            aria-label={searchVisible ? "Hide template search" : "Search templates"}
-            className="xchat-templates-strip__icon-btn"
-            type="button"
-            onClick={() => {
-              setSearchVisible((v) => !v);
-              if (!searchVisible) {
-                setSeeAllOpen(true);
-              }
-            }}
-          >
-            <SearchGlyph />
-          </button>
-          <button
-            aria-label="Save current composer text as a reusable template"
-            className="xchat-templates-strip__icon-btn"
-            title="Save prompt"
-            type="button"
-            onClick={openSaveDialog}
-          >
-            <BookmarkGlyph />
-          </button>
-          <button
-            aria-label="Focus composer for a custom prompt"
-            className="xchat-templates-strip__icon-btn"
-            type="button"
-            onClick={() => {
-              setInput("");
-              queueMicrotask(() => composerRef.current?.focus());
-            }}
-          >
-            <PlusGlyph />
-          </button>
-        </div>
-        <button
-          aria-expanded={seeAllOpen}
-          className="xchat-templates-strip__see-all"
-          type="button"
-          onClick={() => setSeeAllOpen((o) => !o)}
-        >
-          {seeAllOpen ? "Show less" : "See all"}
-        </button>
       </div>
 
       {userLoadFailed ? (
@@ -292,10 +375,12 @@ export function XchatTemplatesStrip({
             <span className="xchat-templates-strip__grid-card-title">Custom prompt</span>
             <span className="xchat-templates-strip__grid-card-meta">Write your own</span>
           </button>
+          <div className="xchat-templates-strip__tail-slot">{templatesRowTail}</div>
         </div>
       ) : (
-        <div className="xchat-templates-strip__scroller">
-          <div className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
+        <div className="xchat-templates-strip__cards-row">
+          <div className="xchat-templates-strip__scroller">
+            <div className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
             <button
               aria-busy={askInFlight}
               aria-label="Insert scan my options prompt into composer, then review and send"
@@ -307,9 +392,9 @@ export function XchatTemplatesStrip({
               <span className="xchat-templates-strip__card-title">Scan my options</span>
               <span className="xchat-templates-strip__card-meta">Holdings + watchlist</span>
             </button>
-          </div>
-          {scrollerTemplates.map((t) => (
-            <div key={t.id} className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
+            </div>
+            {scrollerTemplates.map((t) => (
+              <div key={t.id} className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
               <button
                 className="xchat-templates-strip__card"
                 type="button"
@@ -331,32 +416,34 @@ export function XchatTemplatesStrip({
                   ×
                 </button>
               ) : null}
-            </div>
-          ))}
-          <button
-            className="xchat-templates-strip__card xchat-templates-strip__card--add"
-            type="button"
-            onClick={() => {
-              setInput("");
-              queueMicrotask(() => composerRef.current?.focus());
-            }}
-          >
-            <span aria-hidden className="xchat-templates-strip__card-add-icon">
-              +
-            </span>
-            <span className="xchat-templates-strip__card-title">Custom prompt</span>
-            <span className="xchat-templates-strip__card-meta">Write your own</span>
-          </button>
+              </div>
+            ))}
+            <button
+              className="xchat-templates-strip__card xchat-templates-strip__card--add"
+              type="button"
+              onClick={() => {
+                setInput("");
+                queueMicrotask(() => composerRef.current?.focus());
+              }}
+            >
+              <span aria-hidden className="xchat-templates-strip__card-add-icon">
+                +
+              </span>
+              <span className="xchat-templates-strip__card-title">Custom prompt</span>
+              <span className="xchat-templates-strip__card-meta">Write your own</span>
+            </button>
+          </div>
+          {templatesRowTail}
         </div>
       )}
 
-      <p className="xchat-templates-strip__footnote" role="note">
-        Curated + saved prompts — review before Send. Use <strong>Depth</strong> (Fast / Expert / Heavy) for
-        plan-aware multi-agent runs (
-        <a className="xchat-templates-strip__doc-link" href="/resources/guides">
-          guides
-        </a>
-        ).
+      <p className="xchat-templates-strip__footnote" role="note" title="Curated + saved prompts — review before Send. Depth (Fast / Expert / Heavy) controls plan-aware multi-agent runs.">
+        <span className="xchat-templates-strip__footnote-inner">
+          Curated + saved prompts — review before Send · Depth (Fast / Expert / Heavy) for multi-agent runs ·{" "}
+          <a className="xchat-templates-strip__doc-link" href="/resources/guides">
+            guides
+          </a>
+        </span>
       </p>
 
       {saveOpen ? (
@@ -419,40 +506,16 @@ export function XchatTemplatesStrip({
           </div>
         </div>
       ) : null}
-    </section>
+    </motion.section>
   );
 }
 
-function SearchGlyph() {
+function MoreGlyph() {
   return (
-    <svg aria-hidden fill="none" height={16} viewBox="0 0 24 24" width={16}>
-      <path
-        d="M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15zM21 21l-4.35-4.35"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth={2}
-      />
-    </svg>
-  );
-}
-
-function PlusGlyph() {
-  return (
-    <svg aria-hidden fill="none" height={16} viewBox="0 0 24 24" width={16}>
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeLinecap="round" strokeWidth={2} />
-    </svg>
-  );
-}
-
-function BookmarkGlyph() {
-  return (
-    <svg aria-hidden fill="none" height={16} viewBox="0 0 24 24" width={16}>
-      <path
-        d="M6 4h12v16l-6-4-6 4V4z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
+    <svg aria-hidden fill="currentColor" height={16} viewBox="0 0 24 24" width={16}>
+      <circle cx={5} cy={12} r={2} />
+      <circle cx={12} cy={12} r={2} />
+      <circle cx={19} cy={12} r={2} />
     </svg>
   );
 }

@@ -6,6 +6,8 @@ export type XchatReasoningModeToggleProps = {
   value: XchatReasoningMode;
   onChange: (next: XchatReasoningMode) => void;
   disabled?: boolean;
+  /** Denser segmented control for inline composer toolbar */
+  compact?: boolean;
 };
 
 const MODES: Array<{ id: XchatReasoningMode; label: string; hint: string }> = [
@@ -17,10 +19,15 @@ const MODES: Array<{ id: XchatReasoningMode; label: string; hint: string }> = [
 export function XchatReasoningModeToggle({
   value,
   onChange,
-  disabled = false
+  disabled = false,
+  compact = false
 }: XchatReasoningModeToggleProps) {
   return (
-    <div aria-label="Answer depth" className="xchat-reasoning-mode" role="group">
+    <div
+      aria-label="Answer depth"
+      className={`xchat-reasoning-mode${compact ? " xchat-reasoning-mode--compact" : ""}`}
+      role="group"
+    >
       <span className="xchat-reasoning-mode__label">Depth</span>
       <div className="xchat-reasoning-mode__segments">
         {MODES.map((m) => (
