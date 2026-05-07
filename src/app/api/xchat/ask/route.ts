@@ -193,6 +193,36 @@ function isStayInChatReply(message: string): boolean {
   );
 }
 
+type XchatAskInteractionMeta = {
+  generationMs: number;
+  sources: {
+    ragChunks: number;
+    toolInvocations: number;
+    personaCollections: number;
+    total: number;
+  };
+};
+
+function buildXchatAskInteractionMeta(
+  startedAt: number,
+  parts: {
+    ragChunks: number;
+    toolInvocations: number;
+    personaCollections: number;
+  }
+): XchatAskInteractionMeta {
+  const generationMs = Math.max(1, Date.now() - startedAt);
+  return {
+    generationMs,
+    sources: {
+      ragChunks: parts.ragChunks,
+      toolInvocations: parts.toolInvocations,
+      personaCollections: parts.personaCollections,
+      total: parts.ragChunks + parts.toolInvocations + parts.personaCollections
+    }
+  };
+}
+
 export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
@@ -448,6 +478,9 @@ export async function POST(request: Request) {
     break;
   }
 
+  const askProcessingStartedAt = Date.now();
+  const personaDeclaredCollectionCount = resolveXchatPersonaDeclaredCollectionIds(persona).length;
+
   const personaModelRaw =
     typeof persona?.model === "string" ? persona.model.trim().slice(0, 128) : "";
   const effectiveModel =
@@ -635,7 +668,12 @@ export async function POST(request: Request) {
           contextSource: "none",
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId?.toHexString()
+          logId: chatLogId?.toHexString(),
+          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+            ragChunks: 0,
+            toolInvocations: 0,
+            personaCollections: personaDeclaredCollectionCount
+          })
         }
       },
       {
@@ -696,7 +734,12 @@ export async function POST(request: Request) {
           contextSource: "none",
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId?.toHexString()
+          logId: chatLogId?.toHexString(),
+          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+            ragChunks: 0,
+            toolInvocations: 0,
+            personaCollections: personaDeclaredCollectionCount
+          })
         }
       },
       {
@@ -746,7 +789,12 @@ export async function POST(request: Request) {
           contextSource: "none",
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId?.toHexString()
+          logId: chatLogId?.toHexString(),
+          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+            ragChunks: 0,
+            toolInvocations: 0,
+            personaCollections: personaDeclaredCollectionCount
+          })
         }
       },
       {
@@ -960,7 +1008,12 @@ export async function POST(request: Request) {
           logId: chatLogId?.toHexString(),
           optionsActionScan,
           optionsScanReportId,
-          toolCalls: [{ name: "atx_function", durationMs: optionsScanDurationMs }]
+          toolCalls: [{ name: "atx_function", durationMs: optionsScanDurationMs }],
+          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+            ragChunks: contextCount,
+            toolInvocations: 1,
+            personaCollections: linkedCollectionIds.length
+          })
         }
       },
       {
@@ -1104,7 +1157,12 @@ export async function POST(request: Request) {
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
           logId: chatLogId?.toHexString(),
-          toolCalls: [{ name: "atx_function", durationMs: watchlistCallDurationMs }]
+          toolCalls: [{ name: "atx_function", durationMs: watchlistCallDurationMs }],
+          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+            ragChunks: contextCount,
+            toolInvocations: 1,
+            personaCollections: linkedCollectionIds.length
+          })
         }
       },
       {
@@ -1450,7 +1508,12 @@ export async function POST(request: Request) {
                   : {})
               }
             }
-          : {})
+          : {}),
+        interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+          ragChunks: contextCount,
+          toolInvocations: toolCallLogs.length,
+          personaCollections: linkedCollectionIds.length
+        })
       }
     },
     {

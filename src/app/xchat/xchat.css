@@ -1754,6 +1754,95 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   line-height: 1.3;
 }
 
+.xchat-ai-response-chrome {
+  margin-top: 0.65rem;
+  padding-top: 0.45rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.xchat-ai-response-chrome__divider {
+  height: 1px;
+  margin-bottom: 0.55rem;
+  background: color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+}
+
+.xchat-ai-response-chrome__closing {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--xf-text-400);
+}
+
+.xchat-ai-response-chrome__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem 0.75rem;
+}
+
+.xchat-ai-response-chrome__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.xchat-ai-response-chrome__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.22rem 0.38rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-800) 75%, transparent);
+  color: var(--xf-text-200);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.xchat-ai-response-chrome__btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 42%, transparent);
+  color: var(--xf-text-100);
+}
+
+.xchat-ai-response-chrome__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.xchat-ai-response-chrome__btn--active {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  color: var(--xf-gain-green);
+}
+
+.xchat-ai-response-chrome__emoji {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.xchat-ai-response-chrome__btn svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.xchat-ai-response-chrome__btn-label {
+  white-space: nowrap;
+}
+
+.xchat-ai-response-chrome__badge {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--xf-text-400);
+  white-space: nowrap;
+}
+
+.xchat-ai-response-chrome__badge-sep {
+  margin: 0 0.28rem;
+  opacity: 0.55;
+}
+
 .xchat-guest-content-panel {
   background: transparent;
   border: none;

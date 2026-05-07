@@ -23,7 +23,12 @@ import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { expandWorkspaceProductRail, WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
-import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-conversation-types";
+import type {
+    HistoryItem,
+    HistoryStats,
+    Message,
+    XchatInteractionMeta
+} from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
@@ -367,6 +372,16 @@ export function XchatConversation({
   /** Default collapsed when a thread exists; expanded while `loading` so replies stay visible (branding). */
   const [threadUiCollapsed, setThreadUiCollapsed] = useState(true);
   const [threadId] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const fromUrl = new URLSearchParams(window.location.search).get("thread")?.trim();
+        if (fromUrl && fromUrl.length >= 8) {
+          return fromUrl;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
       return crypto.randomUUID();
     }
@@ -435,6 +450,31 @@ export function XchatConversation({
     estimateSize: () => 108,
     overscan: 4
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("thread") !== threadId) {
+        url.searchParams.set("thread", threadId);
+        window.history.replaceState({}, "", url.toString());
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [threadId]);
+
+  const handleMessageFeedback = useCallback((messageId: string, vote: "up" | "down") => {
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, feedbackVote: vote } : m)));
+  }, []);
+
+  const handleRegeneratePrompt = useCallback((pairedPrompt: string) => {
+    setInput(pairedPrompt);
+    queueMicrotask(() => composerRef.current?.focus());
+  }, []);
+
   const onStrategyJobLaunch = useCallback(() => {
     if (loading || strategyJobLaunchBusy) {
       return;
@@ -1017,6 +1057,7 @@ export function XchatConversation({
       ...(pastedImage ? { attachmentPreviewUrl: pastedImage.previewUrl } : {}),
       timestamp: Date.now()
     };
+    const pairedUserPromptForTurn = hasPasteImage && !prompt ? "[Pasted image]" : prompt;
     const nextStrategyOptOut = strategyJobOptOut || shouldStayInChatFromReply(prompt);
     if (nextStrategyOptOut !== strategyJobOptOut) {
       setStrategyJobOptOut(nextStrategyOptOut);
@@ -1084,7 +1125,8 @@ export function XchatConversation({
                 "_Educational conversations only. Not personalized investment advice. Review suitability, assignment risk, and tax impact before execution._"
               ].join("\n"),
               persona: activePersonaName,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              pairedUserPrompt: pairedUserPromptForTurn
             }
           ];
           const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
@@ -1177,6 +1219,7 @@ export function XchatConversation({
             reasoningTokens?: number;
             cachedPromptTokens?: number;
           };
+          interactionMeta?: XchatInteractionMeta;
         };
         error?: string;
         code?: string;
@@ -1228,7 +1271,9 @@ export function XchatConversation({
             timestamp: Date.now(),
             serverLogId: logId,
             strategyJobOffer: Boolean(payload.data?.strategyJobOffer),
-            optionsActionScan: payload.data?.optionsActionScan
+            optionsActionScan: payload.data?.optionsActionScan,
+            interactionMeta: payload.data?.interactionMeta,
+            pairedUserPrompt: pairedUserPromptForTurn
           }
         ];
         const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
@@ -1552,11 +1597,14 @@ export function XchatConversation({
               loading={loading}
               messages={messages}
               onCancelAsk={cancelAskInFlight}
+              onMessageFeedback={handleMessageFeedback}
+              onRegeneratePrompt={handleRegeneratePrompt}
               messagesEndRef={messagesEndRef}
               onStrategyJobLaunch={onStrategyJobLaunch}
               onStrategyJobStay={onStrategyJobStay}
               setThreadUiCollapsed={setThreadUiCollapsed}
               strategyJobLaunchBusy={strategyJobLaunchBusy}
+              threadId={threadId}
               threadMainVirtualize={threadMainVirtualize}
               threadScrollRef={threadScrollRef}
               threadUiCollapsed={threadUiCollapsed}

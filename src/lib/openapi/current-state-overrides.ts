@@ -408,6 +408,24 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "503": jsonResponse("Default admin persona (advisor) missing from database.", "ErrorResponse")
     }
   },
+  "POST /api/xchat/message-feedback": {
+    summary: "Vote on an xChat assistant turn (thumbs up/down)",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("XChatMessageFeedbackRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Feedback stored.", "XChatMessageFeedbackOkResponse"),
+      "400": jsonResponse("Invalid JSON, payload, or log id.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid but login-eligible platform role is required."),
+      "404": jsonResponse("Log row not found for this user/tenant.", "ErrorResponse")
+    }
+  },
   "POST /api/ai/rent/chat": {
     summary: "Rental AI chat (tenant-scoped xChat tool-loop)",
     description:
@@ -1658,6 +1676,25 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       cachedPromptTokens: { type: "integer", minimum: 0 }
     }
   },
+  XChatAskInteractionMeta: {
+    type: "object",
+    required: ["generationMs", "sources"],
+    description:
+      "Client-facing timing and source counts for the assistant turn (RAG snippets, tool invocations, persona-linked collections).",
+    properties: {
+      generationMs: { type: "integer", minimum: 0 },
+      sources: {
+        type: "object",
+        required: ["ragChunks", "toolInvocations", "personaCollections", "total"],
+        properties: {
+          ragChunks: { type: "integer", minimum: 0 },
+          toolInvocations: { type: "integer", minimum: 0 },
+          personaCollections: { type: "integer", minimum: 0 },
+          total: { type: "integer", minimum: 0 }
+        }
+      }
+    }
+  },
   XChatAskResponseData: {
     type: "object",
     required: [
@@ -1720,7 +1757,24 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "string",
         description: "When `multiAgentDowngraded` is true, the persona’s configured model id before downgrade."
       },
-      xaiUsage: refSchema("XChatAskXaiUsage")
+      xaiUsage: refSchema("XChatAskXaiUsage"),
+      interactionMeta: refSchema("XChatAskInteractionMeta")
+    }
+  },
+  XChatMessageFeedbackRequest: {
+    type: "object",
+    required: ["logId", "vote"],
+    additionalProperties: false,
+    properties: {
+      logId: { type: "string", minLength: 24, maxLength: 24, description: "Mongo `xchat_logs` ObjectId hex." },
+      vote: { type: "string", enum: ["up", "down"] }
+    }
+  },
+  XChatMessageFeedbackOkResponse: {
+    type: "object",
+    required: ["ok"],
+    properties: {
+      ok: { type: "boolean", enum: [true] }
     }
   },
   XChatAskResponseEnvelope: {

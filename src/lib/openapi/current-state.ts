@@ -1,16 +1,16 @@
 import { APP_VERSION } from "@/lib/app-version";
 import { ATX_CLUSTER_OPENAPI_SCHEMAS } from "@/lib/openapi/cluster-schemas";
 import {
-    CURRENT_STATE_COMPONENT_SCHEMAS,
-    getCurrentStateOperationOverride
+  CURRENT_STATE_COMPONENT_SCHEMAS,
+  getCurrentStateOperationOverride
 } from "@/lib/openapi/current-state-overrides";
 import type {
-    HttpMethod,
-    OpenApiDocument,
-    OpenApiOperation,
-    OpenApiParameter,
-    OpenApiPathItem,
-    OpenApiResponse
+  HttpMethod,
+  OpenApiDocument,
+  OpenApiOperation,
+  OpenApiParameter,
+  OpenApiPathItem,
+  OpenApiResponse
 } from "@/lib/openapi/types";
 
 type AuthScope = "public" | "session" | "admin";
@@ -1114,6 +1114,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/xchat/ask",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xchat"
+  },
+  {
+    path: "/api/xchat/message-feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "xchat"
   },

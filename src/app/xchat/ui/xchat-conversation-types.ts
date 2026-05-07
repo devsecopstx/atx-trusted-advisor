@@ -1,5 +1,15 @@
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 
+export type XchatInteractionMeta = {
+  generationMs: number;
+  sources: {
+    ragChunks: number;
+    toolInvocations: number;
+    personaCollections: number;
+    total: number;
+  };
+};
+
 export type Message = {
   id: string;
   role: "user" | "ai" | "error";
@@ -14,6 +24,11 @@ export type Message = {
   strategyJobOffer?: boolean;
   /** Structured options action scan payload for rich table rendering. */
   optionsActionScan?: OptionsActionScanDisplayData;
+  /** Server timing + source counts from `/api/xchat/ask`. */
+  interactionMeta?: XchatInteractionMeta;
+  /** User prompt that produced this assistant message (regenerate). */
+  pairedUserPrompt?: string;
+  feedbackVote?: "up" | "down" | null;
 };
 
 export type HistoryItem = {

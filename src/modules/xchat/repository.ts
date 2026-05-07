@@ -449,6 +449,28 @@ export async function retrieveRagChunks(
     .toArray();
 }
 
+export async function updateXchatLogUserFeedback(input: {
+  logId: ObjectId;
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+  vote: "up" | "down";
+}): Promise<boolean> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const base: Record<string, unknown> = {
+    _id: input.logId,
+    userId: input.userId
+  };
+  const query = mongoXchatLogsTenantScope(base, input.tenantId, "userTenant");
+  const result = await db.collection<XChatSessionLog>(collections.chatLogs).updateOne(query, {
+    $set: {
+      userFeedbackVote: input.vote,
+      userFeedbackAt: new Date()
+    }
+  });
+  return result.matchedCount === 1;
+}
+
 export async function saveXChatLog(
   payload: Omit<XChatSessionLog, "_id" | "createdAt">
 ): Promise<ObjectId> {

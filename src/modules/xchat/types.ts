@@ -291,6 +291,9 @@ export type XChatSessionLog = {
   xaiTurnSyncError?: string;
   /** User explicitly opted out of strategy-job handoff for this thread. */
   strategyJobOptOut?: boolean;
+  /** Optional thumbs feedback from xChat response chrome (POST `/api/xchat/message-feedback`). */
+  userFeedbackVote?: "up" | "down";
+  userFeedbackAt?: Date;
   retentionExpiresAt?: Date;
   createdAt: Date;
 };

@@ -44,6 +44,9 @@ export type XchatThreadPanelProps = {
   threadScrollRef: RefObject<HTMLDivElement | null>;
   threadUiSummary: { userTurnCount: number; preview: string };
   askElapsedMs: number;
+  threadId: string;
+  onMessageFeedback?: (messageId: string, vote: "up" | "down") => void;
+  onRegeneratePrompt?: (pairedPrompt: string) => void;
   /** Stop in-flight prompt (same client abort as composer Stop). */
   onCancelAsk?: () => void;
 } & XchatThreadPanelCopyProps;
@@ -75,6 +78,9 @@ export function XchatThreadPanel({
   threadUiSummary,
   askElapsedMs,
   activePersonaName,
+  threadId,
+  onMessageFeedback,
+  onRegeneratePrompt,
   onCancelAsk
 }: XchatThreadPanelProps) {
   const askWaitSeconds = Math.floor(askElapsedMs / 1000);
@@ -159,7 +165,10 @@ export function XchatThreadPanel({
                       emphasizeStrategyJobPrimary={emphasizeStrategyJobPrimary(msg.id)}
                       loading={loading}
                       msg={msg}
+                      onMessageFeedback={onMessageFeedback}
+                      onRegeneratePrompt={onRegeneratePrompt}
                       strategyJobLaunchBusy={strategyJobLaunchBusy}
+                      threadId={threadId}
                       onStrategyLaunch={onStrategyJobLaunch}
                       onStrategyStay={onStrategyJobStay}
                     />
@@ -174,7 +183,10 @@ export function XchatThreadPanel({
                 emphasizeStrategyJobPrimary={emphasizeStrategyJobPrimary(msg.id)}
                 loading={loading}
                 msg={msg}
+                onMessageFeedback={onMessageFeedback}
+                onRegeneratePrompt={onRegeneratePrompt}
                 strategyJobLaunchBusy={strategyJobLaunchBusy}
+                threadId={threadId}
                 onStrategyLaunch={onStrategyJobLaunch}
                 onStrategyStay={onStrategyJobStay}
               />
