@@ -158,7 +158,7 @@ Track these before **PR 3** prod cutover and during BFF rollout; **PR 4** code p
 
 ### Suggested sub-order
 
-0. **Heavy read offload (shipped):** Next materializes **`portfolio_workspace_snapshots`**; BFF **`GET /api/portfolios/{portfolioId}/workspace-snapshot`** (Mongo) and **`GET /api/portfolios/{portfolioId}/snapshot`** (JVM Redis read-through + Mongo, shared `xf:wsnap:v1:*` keys with Next) offload hot reads. Next **`loadWorkspaceSnapshotPreload`** / xOptions bootstrap may call the JVM snapshot after local cache miss when **`ATXFINANCE_BACKEND_ORIGIN`** is set.
+0. **Heavy read offload (shipped):** Next materializes **`portfolio_workspace_snapshots`**; BFF **`GET /api/portfolios/{portfolioId}/workspace-snapshot`** (Mongo) and **`GET /api/portfolios/{portfolioId}/snapshot`** (JVM Redis read-through + Mongo, shared `xf:wsnap:v1:*` keys with Next, response **`data.preload`** + **`data.structured`** + **`data.cache`**) offload hot reads. Next **`loadWorkspaceSnapshotPreload`** / **`GET /api/app-user/find-options/bootstrap`** call the JVM snapshot after local Redis miss when **`ATXFINANCE_BACKEND_ORIGIN`** is set; unset ⇒ Mongo fallback only (dual-run safe).
 1. **Read-only / low-risk:** `GET` history/stats routes if any are easy wins (still need session + Mongo parity).
 2. **Batch / async jobs:** Non-streaming paths that enqueue work (align with existing Pub/Sub worker if applicable).
 3. **`POST /api/xchat/ask` (streaming):** Last — highest coupling to Next’s tool loop, xAI client, and RAG orchestration.

@@ -22,8 +22,8 @@ function parseWorkspaceContentRev(searchParams: URLSearchParams): number | null 
 }
 
 /**
- * Redis-backed workspace snapshot on Spring when BFF is on; Next + Mongo fallback matches
- * `GET …/workspace-snapshot` payload with optional `cache` on JVM responses.
+ * Redis-backed workspace snapshot on Spring when BFF is on (`data.preload`, `data.cache`, optional
+ * `data.structured`); Next + Mongo fallback matches `GET …/workspace-snapshot` when proxy is off.
  */
 export async function GET(request: Request, context: RouteContext) {
   const proxied = await proxyPortfolioRequestToBackend(request.clone());

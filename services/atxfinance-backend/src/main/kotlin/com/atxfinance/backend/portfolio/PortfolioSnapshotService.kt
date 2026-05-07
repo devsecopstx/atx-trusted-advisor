@@ -16,6 +16,10 @@ import java.time.Instant
  *
  * TTL: shorter when [UsEquitiesRegularSession] reports likely open, longer when likely closed — see
  * [com.atxfinance.backend.config.RedisProps.portfolioSnapshotTtlOpenSeconds] / `…ClosedSeconds`.
+ *
+ * **`GET /api/portfolios/{id}/snapshot`** adds denormalized **`structured`** (see [PortfolioStructuredSummary])
+ * for holdings summary, balances, and watchlist quote strip — canonical fast-path for xChat preload + find-options
+ * when BFF + Redis are enabled; Next materializes Mongo rows and falls back when **`ATXFINANCE_BACKEND_ORIGIN`** is unset.
  */
 @Service
 class PortfolioSnapshotService(

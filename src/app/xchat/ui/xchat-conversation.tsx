@@ -37,6 +37,10 @@ import {
     dispatchWorkspaceAccountChanged,
     writeStoredWorkspaceAccountId
 } from "@/lib/workspace-account-selection";
+import {
+    consumeXchatAskSseResponse,
+    mergeLiveToolStatusRow
+} from "@/lib/xchat-live-sse-client";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import {
@@ -51,6 +55,11 @@ import {
     XCHAT_REASONING_MODE_STORAGE_KEY,
     type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
+
+const XCHAT_LIVE_SSE =
+    typeof process.env.NEXT_PUBLIC_XCHAT_LIVE_SSE === "string" &&
+    ["1", "true", "yes"].includes(process.env.NEXT_PUBLIC_XCHAT_LIVE_SSE.trim().toLowerCase());
+
 const XchatThreadPanelLazy = dynamic(
   () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),
   { ssr: false, loading: () => <XchatChatSkeleton variant="thread" /> }
@@ -1269,16 +1278,8 @@ export function XchatConversation({
         askBody.reasoningMode = reasoningMode;
       }
 
-      const response = await fetch("/api/xchat/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(askBody),
-        signal: askSignal
-      });
-
-      const payload = (await response.json().catch(() => ({}))) as {
+      type AskPayload = {
         data?: {
-          /** Canonical markdown alias of `response` from `/api/xchat/ask`. */
           content?: string;
           response: string;
           personaName?: string;
@@ -1303,7 +1304,7 @@ export function XchatConversation({
         xchatLimitSource?: "tenant_plan_effective";
       };
 
-      if (!response.ok || !payload.data) {
+      const handleAskFailure = (response: Response, payload: AskPayload) => {
         const limitSuffix =
           payload.code === "xchat_daily_limit_exceeded" && typeof payload.dailyLimit === "number"
             ? ` Workspace daily cap: ${payload.dailyLimit} prompts per UTC day (effective tenant+plan limit from Admin → Tenant workspace, including plan overrides when configured).`
@@ -1327,51 +1328,255 @@ export function XchatConversation({
           setInput(strategyStayRestorePromptRef.current);
           strategyStayRestorePromptRef.current = null;
         }
+      };
+
+      const handleAskSuccess = (data: NonNullable<AskPayload["data"]>) => {
+        const resolvedName = data.personaName ?? activePersonaName;
+        setActivePersonaName(resolvedName);
+
+        const logId = typeof data.logId === "string" ? data.logId : undefined;
+        const historyItemId = logId || `local-${Date.now()}`;
+        setMessages((prev) => {
+          const added = [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              role: "ai" as const,
+              content: data.content ?? data.response ?? "",
+              persona: resolvedName,
+              timestamp: Date.now(),
+              serverLogId: logId,
+              strategyJobOffer: Boolean(data.strategyJobOffer),
+              optionsActionScan: data.optionsActionScan,
+              interactionMeta: data.interactionMeta,
+              pairedUserPrompt: pairedUserPromptForTurn
+            }
+          ];
+          const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
+          return next;
+        });
+        setSavedHistory((prev) => {
+          const nextItem: HistoryItem = {
+            id: historyItemId,
+            message: hasPasteImage && !prompt ? "[Pasted image]" : prompt,
+            response: data.content ?? data.response ?? "",
+            model: "xchat",
+            createdAt: new Date().toISOString(),
+            personaId: personaIdSent,
+            contextReferenceCount: 0,
+            toolCallCount: data.toolCalls?.length ?? 0
+          };
+          const deduped = prev.filter((item) => item.id !== nextItem.id);
+          return [nextItem, ...deduped].slice(0, uiPromptLimit);
+        });
+        if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
+          setInput(strategyStayRestorePromptRef.current);
+          strategyStayRestorePromptRef.current = null;
+        }
+      };
+
+      if (XCHAT_LIVE_SSE) {
+        let streamRes: Response;
+        try {
+          streamRes = await fetch("/api/xchat/ask/stream", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "text/event-stream"
+            },
+            body: JSON.stringify(askBody),
+            signal: askSignal
+          });
+        } catch {
+          await new Promise((r) => setTimeout(r, 750));
+          if (askSignal.aborted) {
+            return;
+          }
+          streamRes = await fetch("/api/xchat/ask/stream", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "text/event-stream"
+            },
+            body: JSON.stringify(askBody),
+            signal: askSignal
+          });
+        }
+
+        const ct = streamRes.headers.get("content-type") ?? "";
+        if (streamRes.ok && ct.includes("text/event-stream")) {
+          const aiId = `ai-${Date.now()}`;
+          setMessages((prev) => {
+            const added = [
+              ...prev,
+              {
+                id: aiId,
+                role: "ai" as const,
+                content: "",
+                persona: activePersonaName,
+                timestamp: Date.now(),
+                liveToolStatuses: [],
+                pairedUserPrompt: pairedUserPromptForTurn
+              }
+            ];
+            const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
+            return next;
+          });
+
+          let accumulated = "";
+          let lastActivity = Date.now();
+          let stallWatch: number | undefined;
+          try {
+            stallWatch = window.setInterval(() => {
+              if (Date.now() - lastActivity > 90_000) {
+                askController.abort();
+              }
+            }, 4000) as unknown as number;
+
+            const sseOutcome = await consumeXchatAskSseResponse(
+              streamRes,
+              {
+              onPing: () => {
+                lastActivity = Date.now();
+              },
+              onDelta: (chunk) => {
+                lastActivity = Date.now();
+                accumulated += chunk;
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === aiId ? { ...m, content: accumulated } : m))
+                );
+              },
+              onToolStatus: (st) => {
+                lastActivity = Date.now();
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === aiId
+                      ? {
+                          ...m,
+                          liveToolStatuses: mergeLiveToolStatusRow(m.liveToolStatuses ?? [], st)
+                        }
+                      : m
+                  )
+                );
+              },
+              onDone: (done) => {
+                lastActivity = Date.now();
+                const data = done as NonNullable<AskPayload["data"]>;
+                const finalText =
+                  typeof data.content === "string"
+                    ? data.content
+                    : typeof data.response === "string"
+                      ? data.response
+                      : accumulated;
+                const resolvedName = data.personaName ?? activePersonaName;
+                setActivePersonaName(resolvedName);
+                const logId = typeof data.logId === "string" ? data.logId : undefined;
+                const historyItemId = logId || `local-${Date.now()}`;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === aiId
+                      ? {
+                          ...m,
+                          content: finalText,
+                          persona: resolvedName,
+                          serverLogId: logId,
+                          strategyJobOffer: Boolean(data.strategyJobOffer),
+                          optionsActionScan: data.optionsActionScan,
+                          interactionMeta: data.interactionMeta,
+                          liveToolStatuses: undefined,
+                          pairedUserPrompt: pairedUserPromptForTurn
+                        }
+                      : m
+                  )
+                );
+                setSavedHistory((prev) => {
+                  const nextItem: HistoryItem = {
+                    id: historyItemId,
+                    message: hasPasteImage && !prompt ? "[Pasted image]" : prompt,
+                    response: finalText,
+                    model: "xchat",
+                    createdAt: new Date().toISOString(),
+                    personaId: personaIdSent,
+                    contextReferenceCount: 0,
+                    toolCallCount: Array.isArray(data.toolCalls) ? data.toolCalls.length : 0
+                  };
+                  const deduped = prev.filter((item) => item.id !== nextItem.id);
+                  return [nextItem, ...deduped].slice(0, uiPromptLimit);
+                });
+                if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
+                  setInput(strategyStayRestorePromptRef.current);
+                  strategyStayRestorePromptRef.current = null;
+                }
+              },
+              onError: ({ message, code }) => {
+                lastActivity = Date.now();
+                setMessages((prev) => {
+                  const cleaned = prev.filter((m) => m.id !== aiId);
+                  if (code === "request_aborted") {
+                    const { next } = trimTranscriptToRecentPrompts(cleaned, uiPromptLimit);
+                    return next;
+                  }
+                  const added = [
+                    ...cleaned,
+                    {
+                      id: `error-${Date.now()}`,
+                      role: "error" as const,
+                      content: message,
+                      timestamp: Date.now()
+                    }
+                  ];
+                  const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
+                  return next;
+                });
+                if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
+                  setInput(strategyStayRestorePromptRef.current);
+                  strategyStayRestorePromptRef.current = null;
+                }
+              }
+            },
+            { signal: askSignal }
+          );
+
+            if (!sseOutcome.ok) {
+              setMessages((prev) => {
+                const cleaned = prev.filter((m) => m.id !== aiId);
+                const { next } = trimTranscriptToRecentPrompts(cleaned, uiPromptLimit);
+                return next;
+              });
+              return;
+            }
+            return;
+          } finally {
+            if (stallWatch) {
+              window.clearInterval(stallWatch);
+            }
+          }
+        }
+
+        const payload = (await streamRes.json().catch(() => ({}))) as AskPayload;
+        if (!streamRes.ok || !payload.data) {
+          handleAskFailure(streamRes, payload);
+          return;
+        }
+        handleAskSuccess(payload.data);
         return;
       }
 
-      const resolvedName = payload.data?.personaName ?? activePersonaName;
-      setActivePersonaName(resolvedName);
+      const response = await fetch("/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(askBody),
+        signal: askSignal
+      });
 
-      const logId = typeof payload.data?.logId === "string" ? payload.data.logId : undefined;
-      const historyItemId = logId || `local-${Date.now()}`;
-      setMessages((prev) => {
-        const added = [
-          ...prev,
-          {
-            id: `ai-${Date.now()}`,
-            role: "ai" as const,
-            content: payload.data?.content ?? payload.data?.response ?? "",
-            persona: resolvedName,
-            timestamp: Date.now(),
-            serverLogId: logId,
-            strategyJobOffer: Boolean(payload.data?.strategyJobOffer),
-            optionsActionScan: payload.data?.optionsActionScan,
-            interactionMeta: payload.data?.interactionMeta,
-            pairedUserPrompt: pairedUserPromptForTurn
-          }
-        ];
-        const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
-        return next;
-      });
-      setSavedHistory((prev) => {
-        const nextItem: HistoryItem = {
-          id: historyItemId,
-          message: hasPasteImage && !prompt ? "[Pasted image]" : prompt,
-          response: payload.data?.content ?? payload.data?.response ?? "",
-          model: "xchat",
-          createdAt: new Date().toISOString(),
-          personaId: personaIdSent,
-          contextReferenceCount: 0,
-          toolCallCount: payload.data?.toolCalls?.length ?? 0
-        };
-        const deduped = prev.filter((item) => item.id !== nextItem.id);
-        return [nextItem, ...deduped].slice(0, uiPromptLimit);
-      });
-      if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
-        setInput(strategyStayRestorePromptRef.current);
-        strategyStayRestorePromptRef.current = null;
+      const payload = (await response.json().catch(() => ({}))) as AskPayload;
+
+      if (!response.ok || !payload.data) {
+        handleAskFailure(response, payload);
+        return;
       }
+
+      handleAskSuccess(payload.data);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {

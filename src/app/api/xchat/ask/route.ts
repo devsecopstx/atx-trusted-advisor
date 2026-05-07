@@ -21,21 +21,23 @@ import {
 import {
   respondWithXaiToolLoop,
   searchDocumentsInCollections,
-  type ToolCallLog,
-  type XaiCollectionSearchSnippet
+  type XaiCollectionSearchSnippet,
+  type XaiToolLoopResult
 } from "@/lib/xai";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
+import { summarizeToolLikeStreamEvent } from "@/lib/xai-responses-stream";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
-import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import {
-  logXchatAskDebug,
-  logXchatAskFullPayload,
   logXchatAskPreRequestDebug,
   logXchatAskProviderErrorDebug,
+  logXchatAskStreamDebug,
   logXchatAskToolBatchDebug
 } from "@/lib/xchat-debug";
 import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
-import { createAuditEvent } from "@/modules/audit/repository";
+import {
+  resolveXchatSseHeartbeatMs,
+  wantsXchatLiveToolLoopSse
+} from "@/lib/xchat-live-sse-policy";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
@@ -71,8 +73,6 @@ import {
   saveXChatLog
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
-import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
-import type { XChatXaiUsageSnapshot } from "@/modules/xchat/types";
 import {
   ensureSuperAgentDefaultTools,
   isAtxFunctionToolType,
@@ -87,6 +87,10 @@ import {
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
+  completeXchatAskAfterModelLoop,
+  type XchatAskCompletePostLoopCtx
+} from "@/modules/xchat/xchat-ask-complete-post-loop";
+import {
   collectWatchlistPortfolioIdSlot,
   heavySynthesisIntent,
   isShowWatchlistIntent,
@@ -94,6 +98,7 @@ import {
   shouldRunOptionsActionScan,
   STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
+import { createXchatLiveSseReadableStream } from "@/modules/xchat/xchat-ask-stream-sse";
 import {
   MAX_XCHAT_ASK_JSON_BYTES,
   parseAndValidateXchatPasteImage
@@ -1417,9 +1422,13 @@ export async function POST(request: Request) {
     resolvedCollectionsLine: teamKbMetaLine
   });
   const userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
-  let xaiResponse: { outputText: string; model: string };
-  let toolCallLogs: ToolCallLog[] = [];
-  let xaiUsageSnapshot: XChatXaiUsageSnapshot | undefined;
+
+  if (!userId) {
+    return NextResponse.json(
+      { error: "Missing user id for xChat turn", code: "user_id_required" },
+      { status: 400 }
+    );
+  }
 
   const wireTools = buildWireToolsForXaiResponses(xapiConfig.tools);
   logXchatAskPreRequestDebug({
@@ -1431,48 +1440,73 @@ export async function POST(request: Request) {
     wireTools
   });
 
-  try {
-    const xaiTools = personaXapiToolsToXaiRequestTools(xapiConfig.tools);
-    const executor = needsLocalToolLoop
-      ? createXfinanceToolExecutor({
-          userId: session.userId,
-          tenantId: session.tenantId,
-          subscriptionPlan,
-          workspacePortfolioId,
-          ...(hasXfinanceTool ? atxWorkspaceExecutorOpts : {})
-        })
-      : async () => ({
-          result: "",
-          error: "local_tool_not_configured_for_persona"
-        });
+  const xaiTools = personaXapiToolsToXaiRequestTools(xapiConfig.tools);
+  const executor = needsLocalToolLoop
+    ? createXfinanceToolExecutor({
+        userId: session.userId,
+        tenantId: session.tenantId,
+        subscriptionPlan,
+        workspacePortfolioId,
+        ...(hasXfinanceTool ? atxWorkspaceExecutorOpts : {})
+      })
+    : async () => ({
+        result: "",
+        error: "local_tool_not_configured_for_persona"
+      });
 
-    const loopResult = await respondWithXaiToolLoop({
-      model: executionModel,
-      systemPrompt,
-      userPrompt,
-      userImageDataUrl: visionImage?.dataUrl,
-      tools: xaiTools,
-      toolChoice: xapiConfig.toolChoice,
-      maxTurns: xapiConfig.maxTurns,
-      executor,
-      parallelism: parallelAgentConfig,
-      responsesReasoning,
-      previousResponseId,
-      storeMessages: useRemoteConversationHistory,
-      signal: request.signal,
-      onLocalToolBatchComplete: (payload) => {
-        logXchatAskToolBatchDebug({
-          correlationId,
-          requestId,
-          ...payload
-        });
-      }
-    });
-    xaiUsageSnapshot = extractXaiResponsesUsage(loopResult.raw);
-    xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
-    toolCallLogs = loopResult.toolCalls;
-    previousResponseId = loopResult.responseId;
-  } catch (error) {
+  const askCompleteCtx = (): XchatAskCompletePostLoopCtx => ({
+    session,
+    persona: { _id: persona._id, name: persona.name },
+    threadId,
+    messageForPersistence,
+    systemPrompt,
+    userPrompt,
+    ragContext,
+    contextSource,
+    contextCount,
+    xapiConfig,
+    executionModel,
+    scope,
+    linkedCollectionIds,
+    collectionSearchStatus,
+    collectionSearchNonReadyFileCount,
+    correlationId,
+    requestId,
+    userId,
+    tenantId,
+    shouldPersistHistory,
+    retentionExpiresAt,
+    strategyJobOptOut,
+    remoteChainInstructionsFingerprint,
+    collectionContextReferences,
+    askProcessingStartedAt,
+    modelSelectionSource,
+    multiAgentDowngraded,
+    effectiveModel,
+    limiterRemainingMinute,
+    limiterRemainingHour,
+    limiterRemainingDay,
+    limiterHourlyLimit,
+    limiterDailyLimit
+  });
+
+  const toolLoopShared = {
+    model: executionModel,
+    systemPrompt,
+    userPrompt,
+    userImageDataUrl: visionImage?.dataUrl,
+    tools: xaiTools,
+    toolChoice: xapiConfig.toolChoice,
+    maxTurns: xapiConfig.maxTurns,
+    executor,
+    parallelism: parallelAgentConfig,
+    responsesReasoning,
+    previousResponseId,
+    storeMessages: useRemoteConversationHistory,
+    signal: request.signal
+  };
+
+  const handleToolLoopFailure = (error: unknown): NextResponse => {
     const aborted =
       request.signal.aborted ||
       (error instanceof DOMException && error.name === "AbortError") ||
@@ -1508,180 +1542,192 @@ export async function POST(request: Request) {
       },
       { status: 502 }
     );
-  }
+  };
 
-  /** Same pipeline as the client `preprocessXchatMarkdown` — store and return display-ready markdown (citations, Grok leak cleanup). Idempotent if run twice. */
-  const responseMarkdown = preprocessXchatMarkdown(xaiResponse.outputText);
+  const liveToolLoopSse = wantsXchatLiveToolLoopSse(request);
 
-  const contextChunkIds: ObjectId[] = [];
-
-  logXchatAskDebug({
-    userId: session.userId,
-    email: session.email,
-    personaId: persona?._id?.toHexString(),
-    personaName: persona?.name,
-    message: messageForPersistence,
-    systemPrompt,
-    userPrompt,
-    ragContextLength: ragContext.length,
-    contextSource,
-    contextCount,
-    tools: xapiConfig.tools.map((t) => t.type),
-    model: executionModel,
-    responseLength: responseMarkdown.length,
-    mode: xapiConfig.mode,
-    scope,
-    collectionId: linkedCollectionIds[0],
-    toolCallCount: toolCallLogs.length,
-    modelSelectionSource
-  });
-  logXchatAskFullPayload({
-    userId: session.userId,
-    personaName: persona?.name,
-    systemPrompt,
-    userPrompt,
-    ragContext,
-    tools: xapiConfig.tools.map((t) => t.type),
-    model: executionModel,
-    responseText: xaiResponse.outputText
-  });
-
-  try {
-    await createAuditEvent({
-      entityType: "xchat_session",
-      entityId: requestId,
-      action: "xchat_turn_pending_xai_sync",
-      actor: {
-        userId: session.userId,
-        email: session.email,
-        username: session.username
-      },
-      details: {
-        correlationId,
-        userIdMasked: maskIdentifier(session.userId),
-        tenantIdMasked: maskIdentifier(session.tenantId),
-        personaId: persona?._id?.toHexString(),
-        model: xaiResponse.model,
-        scope,
-        historyPolicy: shouldPersistHistory ? "opt_in_keep_last_10" : "ephemeral_only",
-        note: shouldPersistHistory
-          ? "Turn stored in xchat_logs with rolling last-10 policy and 60-day TTL."
-          : "No xchat_logs persistence; continuity comes from recent thread messages in the request."
-      }
+  if (liveToolLoopSse) {
+    const heartbeatMs = resolveXchatSseHeartbeatMs();
+    const limiterHead = buildLimiterHeaders({
+      remainingMinute: limiterRemainingMinute,
+      remainingHour: limiterRemainingHour,
+      remainingDay: limiterRemainingDay,
+      hourlyLimit: limiterHourlyLimit,
+      dailyLimit: limiterDailyLimit
     });
-  } catch (auditError) {
-    console.error("[xchat/ask] failed to write xchat turn audit event", {
-      requestId,
-      correlationId,
-      error: auditError instanceof Error ? auditError.message : String(auditError)
-    });
-  }
-
-  const mainLoopMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
-    ragChunks: contextCount,
-    toolInvocations: toolCallLogs.length,
-    personaCollections: linkedCollectionIds.length
-  });
-
-  const chatLogId = shouldPersistHistory
-    ? await saveXChatLog({
-        threadId,
-        requestId,
-        correlationId,
-        userId,
-        tenantId: tenantId ?? undefined,
-        userEmail: session.email,
-        requestedBy: session.username,
-        personaId: persona?._id,
-        personaName: persona.name,
-        scope,
-        message: messageForPersistence,
-        response: responseMarkdown,
-        contextChunkIds,
-        model: xaiResponse.model,
-        xaiUsage: xaiUsageSnapshot,
-        xaiResponseId: previousResponseId,
-        xapiMode: xapiConfig.mode,
-        xapiToolChoice: xapiConfig.toolChoice,
-        xapiMaxTurns: xapiConfig.maxTurns,
-        xapiToolCount: xapiConfig.tools.length,
-        collectionContextReferences,
-        xapiToolCalls: toolCallLogs.length > 0
-          ? toolCallLogs.map((tc) => ({
-              name: tc.name,
-              args: tc.args,
-              resultHash: buildSha256Hex(tc.result),
-              durationMs: tc.durationMs,
-              error: tc.error
-            }))
-          : undefined,
-        strategyJobOptOut,
-        retentionExpiresAt,
-        interactionGenerationMs: mainLoopMeta.generationMs,
-        xchatInstructionsFingerprint: remoteChainInstructionsFingerprint
-      })
-    : null;
-
-  fireAndForgetRecordXchatToolUsage({
-    userId: session.userId,
-    tenantId: tenantId ?? undefined,
-    personaId: persona?._id?.toHexString(),
-    personaName: persona?.name,
-    requestId,
-    toolCalls: toolCallLogs
-  });
-
-  return NextResponse.json(
-    {
-      data: withXchatAskContentAndMetadata(
-        {
-          response: responseMarkdown,
-          model: xaiResponse.model,
-          personaName: persona.name,
-          modelSelectionSource,
-          contextCount,
-          contextSource,
-          collectionSearchStatus,
-          collectionSearchNonReadyFileCount,
-          logId: chatLogId?.toHexString(),
-          toolCalls: toolCallLogs.length > 0
-            ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
-            : undefined,
-          ...(multiAgentDowngraded
-            ? { multiAgentDowngraded: true as const, personaModelRequested: effectiveModel }
-            : {}),
-          ...(xaiUsageSnapshot
-            ? {
-                xaiUsage: {
-                  inputTokens: xaiUsageSnapshot.inputTokens,
-                  outputTokens: xaiUsageSnapshot.outputTokens,
-                  totalTokens: xaiUsageSnapshot.totalTokens,
-                  ...(xaiUsageSnapshot.reasoningTokens != null &&
-                  xaiUsageSnapshot.reasoningTokens > 0
-                    ? { reasoningTokens: xaiUsageSnapshot.reasoningTokens }
-                    : {}),
-                  ...(xaiUsageSnapshot.cachedPromptTokens != null &&
-                  xaiUsageSnapshot.cachedPromptTokens > 0
-                    ? { cachedPromptTokens: xaiUsageSnapshot.cachedPromptTokens }
-                    : {})
+    const stream = createXchatLiveSseReadableStream({
+      heartbeatMs,
+      run: async (emit) => {
+        const streamStarted = Date.now();
+        emit.meta({
+          v: 1,
+          phase: "live_tool_loop",
+          threadId: threadId ?? "",
+          model: executionModel,
+          personaId: persona._id?.toHexString() ?? ""
+        });
+        logXchatAskStreamDebug({
+          sseEvent: "meta",
+          requestId,
+          correlationId,
+          phase: "live_tool_loop"
+        });
+        let loopResult: XaiToolLoopResult;
+        try {
+          loopResult = await respondWithXaiToolLoop({
+            ...toolLoopShared,
+            onLocalToolBatchComplete: (payload) => {
+              logXchatAskToolBatchDebug({
+                correlationId,
+                requestId,
+                ...payload
+              });
+              emit.tool_status({
+                phase: "local_complete",
+                turnIndex: payload.turnIndex,
+                tools: payload.calls.map((c) => c.name),
+                ...(payload.calls.some((c) => c.error)
+                  ? {
+                      errors: payload.calls
+                        .filter((c) => c.error)
+                        .map((c) => ({ name: c.name, error: c.error }))
+                    }
+                  : {})
+              });
+              logXchatAskStreamDebug({
+                sseEvent: "tool_status",
+                requestId,
+                kind: "local_complete",
+                turnIndex: payload.turnIndex,
+                toolCount: payload.parallelLocalCount
+              });
+            },
+            streamHooks: {
+              onTurnStart: (idx) => {
+                emit.turn({ index: idx });
+                logXchatAskStreamDebug({
+                  sseEvent: "turn_start",
+                  requestId,
+                  turnIndex: idx,
+                  elapsedMs: Date.now() - streamStarted
+                });
+              },
+              onTextDelta: (c) => emit.delta({ c }),
+              onProviderHeaders: (h) => {
+                emit.provider({
+                  grokConvId: h.get("x-grok-conv-id") ?? undefined,
+                  promptCache:
+                    h.get("x-prompt-cache-hits") ??
+                    h.get("x-prompt-cache") ??
+                    h.get("x-cache") ??
+                    undefined
+                });
+                logXchatAskStreamDebug({
+                  sseEvent: "provider_headers",
+                  requestId,
+                  hasGrokConvId: Boolean(h.get("x-grok-conv-id")?.trim())
+                });
+              },
+              onResponsesStreamEvent: (o) => {
+                const summary = summarizeToolLikeStreamEvent(o);
+                if (summary) {
+                  emit.tool_status(summary);
+                  logXchatAskStreamDebug({
+                    sseEvent: "tool_status_upstream",
+                    requestId,
+                    streamType: summary.streamType
+                  });
                 }
               }
-            : {}),
-          interactionMeta: mainLoopMeta
-        },
-        { persona, threadId }
-      )
-    },
-    {
-      headers: buildLimiterHeaders({
-        remainingMinute: limiterRemainingMinute,
-        remainingHour: limiterRemainingHour,
-        remainingDay: limiterRemainingDay,
-        hourlyLimit: limiterHourlyLimit,
-        dailyLimit: limiterDailyLimit
-      })
-    }
-  );
+            }
+          });
+        } catch (error) {
+          const aborted =
+            request.signal.aborted ||
+            (error instanceof DOMException && error.name === "AbortError") ||
+            (error instanceof Error && error.name === "AbortError");
+          if (aborted) {
+            emit.error({ message: "Request cancelled", code: "request_aborted" });
+            logXchatAskStreamDebug({
+              sseEvent: "error",
+              requestId,
+              code: "request_aborted",
+              elapsedMs: Date.now() - streamStarted
+            });
+            return;
+          }
+          const errMsg = error instanceof Error ? error.message : "Unknown provider error";
+          console.error("[xchat/ask] xAI provider call failed", {
+            mode: "responses_tool_loop_sse",
+            personaId: persona?._id?.toHexString(),
+            error: errMsg
+          });
+          logXchatAskProviderErrorDebug({
+            personaId: persona?._id?.toHexString(),
+            personaName: persona?.name,
+            error: errMsg,
+            wireTools: buildWireToolsForXaiResponses(xapiConfig.tools)
+          });
+          emit.error({
+            message: summarizeProviderErrorForClient(errMsg),
+            code: "provider_error"
+          });
+          logXchatAskStreamDebug({
+            sseEvent: "error",
+            requestId,
+            code: "provider_error",
+            elapsedMs: Date.now() - streamStarted
+          });
+          return;
+        }
+
+        const finalizeRes = await completeXchatAskAfterModelLoop(loopResult, askCompleteCtx());
+        const finalizeJson = (await finalizeRes.json()) as { data?: Record<string, unknown> };
+        const data = finalizeJson.data;
+        if (!data || typeof data !== "object") {
+          emit.error({ message: "finalize_failed", code: "internal_error" });
+          logXchatAskStreamDebug({
+            sseEvent: "error",
+            requestId,
+            code: "finalize_failed",
+            elapsedMs: Date.now() - streamStarted
+          });
+          return;
+        }
+        emit.done(data as Record<string, unknown>);
+        logXchatAskStreamDebug({
+          sseEvent: "done",
+          requestId,
+          correlationId,
+          elapsedMs: Date.now() - streamStarted,
+          turnsUsed: loopResult.turnsUsed,
+          deltaChars: loopResult.outputText.length
+        });
+      }
+    });
+    const sseHeaders = new Headers(limiterHead);
+    sseHeaders.set("content-type", "text/event-stream; charset=utf-8");
+    sseHeaders.set("cache-control", "no-cache, no-transform");
+    sseHeaders.set("connection", "keep-alive");
+    sseHeaders.set("x-accel-buffering", "no");
+    return new NextResponse(stream, { headers: sseHeaders });
+  }
+
+  try {
+    const loopResult = await respondWithXaiToolLoop({
+      ...toolLoopShared,
+      onLocalToolBatchComplete: (payload) => {
+        logXchatAskToolBatchDebug({
+          correlationId,
+          requestId,
+          ...payload
+        });
+      }
+    });
+    return completeXchatAskAfterModelLoop(loopResult, askCompleteCtx());
+  } catch (error) {
+    return handleToolLoopFailure(error);
+  }
   });
 }
 
@@ -1703,17 +1749,6 @@ function buildDeterministicId(prefix: string, ...parts: Array<string | undefined
   const normalized = parts.map((part) => (part ?? "").trim()).join("|");
   const digest = buildSha256Hex(normalized);
   return `${prefix}_${digest.slice(0, 24)}`;
-}
-
-function maskIdentifier(value: string | undefined): string | undefined {
-  const normalized = value?.trim();
-  if (!normalized) {
-    return undefined;
-  }
-  if (normalized.length <= 8) {
-    return "***";
-  }
-  return `${normalized.slice(0, 4)}...${normalized.slice(-4)}`;
 }
 
 function canSessionUsePersona(input: {

@@ -10,6 +10,13 @@ export type XchatInteractionMeta = {
   };
 };
 
+/** Live SSE tool row (streaming upstream / local batch markers). */
+export type XchatLiveToolStatus = {
+  name: string;
+  phase: string;
+  detail?: string;
+};
+
 export type Message = {
   id: string;
   role: "user" | "ai" | "error";
@@ -29,6 +36,8 @@ export type Message = {
   /** User prompt that produced this assistant message (regenerate). */
   pairedUserPrompt?: string;
   feedbackVote?: "up" | "down" | null;
+  /** Token-stream tool indicators; cleared when the turn completes. */
+  liveToolStatuses?: XchatLiveToolStatus[];
 };
 
 export type HistoryItem = {

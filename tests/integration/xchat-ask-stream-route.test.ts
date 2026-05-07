@@ -35,37 +35,19 @@ describe("POST /api/xchat/ask/stream", () => {
     vi.clearAllMocks();
   });
 
-  it("delegates to /api/xchat/ask and returns SSE on success", async () => {
+  it("proxies live SSE when delegate returns text/event-stream", async () => {
+    const ssePayload =
+      `event: meta\ndata: {"v":1,"phase":"live_tool_loop"}\n\n` +
+      `event: delta\ndata: {"c":"Hi"}\n\n` +
+      `event: done\ndata: {"model":"grok-test","interactionMeta":{"generationMs":1,"sources":{"ragChunks":0,"toolInvocations":0,"personaCollections":0,"total":0}}}\n\n`;
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          data: {
-            content: "Hello",
-            response: "Hello",
-            model: "grok-test",
-            metadata: {
-              threadId: "t1",
-              model: "grok-test",
-              personaId: "p1",
-              durationMs: 12,
-              sourcesUsed: 1
-            },
-            interactionMeta: {
-              generationMs: 12,
-              sources: {
-                ragChunks: 0,
-                toolInvocations: 0,
-                personaCollections: 1,
-                total: 1
-              }
-            }
-          }
-        }),
-        {
-          status: 200,
-          headers: { "x-xchat-limit-remaining-minute": "9" }
+      new Response(ssePayload, {
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+          "x-xchat-limit-remaining-minute": "9"
         }
-      )
+      })
     );
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -85,12 +67,10 @@ describe("POST /api/xchat/ask/stream", () => {
 
     const body = await readAll(res.body);
     expect(body).toContain("event: meta");
-    expect(body).toContain('"phase":"post_tool_loop"');
+    expect(body).toContain("live_tool_loop");
     expect(body).toContain("event: delta");
-    expect(body).toContain('"c":"Hello"');
+    expect(body).toContain('"c":"Hi"');
     expect(body).toContain("event: done");
-    expect(body).toContain('"model":"grok-test"');
-    expect(body).not.toContain('"content"');
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:3000/api/xchat/ask",
@@ -99,7 +79,8 @@ describe("POST /api/xchat/ask/stream", () => {
         body: JSON.stringify({ message: "hi" }),
         headers: expect.objectContaining({
           cookie: "xf_core_session=test",
-          "content-type": "application/json"
+          "content-type": "application/json",
+          accept: "text/event-stream"
         })
       })
     );

@@ -2,6 +2,7 @@ package com.atxfinance.backend.web
 
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.portfolio.PortfolioCrudService
+import com.atxfinance.backend.portfolio.PortfolioSnapshotService
 import com.atxfinance.backend.session.SessionCookieParser
 import jakarta.servlet.http.HttpServletRequest
 import org.bson.types.ObjectId
@@ -20,6 +21,7 @@ class PortfolioController(
     private val props: AtxfinanceProperties,
     private val sessionCookieParser: SessionCookieParser,
     private val portfolioCrudService: PortfolioCrudService,
+    private val portfolioSnapshotService: PortfolioSnapshotService,
 ) {
 
     @PostMapping("/api/portfolios")
@@ -129,6 +131,7 @@ class PortfolioController(
         val updated = portfolioCrudService.updatePortfolioName(existing, nameRaw)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Portfolio not found"))
 
+        portfolioSnapshotService.invalidateWorkspaceSnapshotCache(session, portfolioId)
         val data = portfolioCrudService.buildSummaryPayload(updated, session)
         return ResponseEntity.ok(mapOf("data" to data))
     }

@@ -1,4 +1,5 @@
 import { getEnv, XAI_BASE_URL_DEFAULT, XAI_MANAGEMENT_BASE_URL_DEFAULT } from "@/lib/env";
+import { consumeXaiResponsesSse } from "@/lib/xai-responses-stream";
 import { toXaiRequestTools } from "@/lib/xai-tools";
 
 type XaiChatMessage = {
@@ -607,9 +608,98 @@ function buildXaiResponsesVisionUserTurn(userPrompt: string, imageDataUrl: strin
   ];
 }
 
+export type XaiToolLoopStreamHooks = {
+  /** Fires at the start of each xAI HTTP round-trip (before streaming deltas). */
+  onTurnStart?: (turnIndex: number) => void;
+  /** Partial assistant text from upstream SSE (`stream: true`); omitted → non-streaming JSON turns only. */
+  onTextDelta?: (chunk: string) => void;
+  /** xAI response headers (e.g. `x-grok-conv-id`, caching hints) once per turn. */
+  onProviderHeaders?: (headers: Headers) => void;
+  /** Each parsed SSE JSON object from xAI (tool-call lifecycle, metadata). */
+  onResponsesStreamEvent?: (obj: Record<string, unknown>) => void;
+};
+
+async function postXaiResponsesJsonTurn(
+  baseUrl: string,
+  apiKey: string,
+  requestBody: Record<string, unknown>,
+  signal: AbortSignal | undefined
+): Promise<Record<string, unknown>> {
+  const response = await fetch(`${baseUrl}/responses`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(requestBody),
+    ...(signal ? { signal } : {})
+  });
+  const payload = await parseXaiResponseJson(response);
+  if (!response.ok) {
+    const errDetail = payload.error ?? payload._raw ?? payload;
+    throw new Error(
+      `xAI responses failed (${response.status} ${response.statusText}): ${JSON.stringify(errDetail)}`
+    );
+  }
+  return payload;
+}
+
 /**
- * Calls xAI `POST /v1/responses` with **non-streaming** JSON bodies so each turn can parse tool_calls
- * and run the local executor loop. SSE streaming is not used here.
+ * One tool-loop turn: streaming SSE when `streamHooks.onTextDelta` is set (`stream: true` on the wire),
+ * with automatic non-streaming fallback when the terminal payload is incomplete.
+ */
+async function postXaiResponsesToolTurn(
+  baseUrl: string,
+  apiKey: string,
+  requestBody: Record<string, unknown>,
+  signal: AbortSignal | undefined,
+  streamHooks?: XaiToolLoopStreamHooks
+): Promise<Record<string, unknown>> {
+  if (!streamHooks?.onTextDelta) {
+    return postXaiResponsesJsonTurn(baseUrl, apiKey, requestBody, signal);
+  }
+
+  const streamedBody = { ...requestBody, stream: true };
+  const response = await fetch(`${baseUrl}/responses`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(streamedBody),
+    ...(signal ? { signal } : {})
+  });
+
+  streamHooks.onProviderHeaders?.(response.headers);
+
+  if (!response.ok) {
+    const payload = await parseXaiResponseJson(response);
+    const errDetail = payload.error ?? payload._raw ?? payload;
+    throw new Error(
+      `xAI responses failed (${response.status} ${response.statusText}): ${JSON.stringify(errDetail)}`
+    );
+  }
+
+  const ct = response.headers.get("content-type") ?? "";
+  if (ct.includes("text/event-stream")) {
+    const streamOut = await consumeXaiResponsesSse(
+      response,
+      streamHooks.onTextDelta,
+      streamHooks.onResponsesStreamEvent
+    );
+    const p = streamOut.payload;
+    if (p && Array.isArray(p.output) && p.output.length > 0) {
+      return p;
+    }
+    return postXaiResponsesJsonTurn(baseUrl, apiKey, requestBody, signal);
+  }
+
+  return parseXaiResponseJson(response);
+}
+
+/**
+ * Calls xAI `POST /v1/responses` in a multi-turn tool loop. Uses **non-streaming** JSON by default;
+ * pass **`streamHooks.onTextDelta`** to enable upstream SSE (`stream: true`) per turn with JSON fallback.
  */
 export async function respondWithXaiToolLoop(input: {
   model?: string;
@@ -630,6 +720,8 @@ export async function respondWithXaiToolLoop(input: {
   signal?: AbortSignal;
   /** Optional: parallel local tool timings (tenant xChat debug hooks in the route). */
   onLocalToolBatchComplete?: (payload: XaiLocalToolBatchDebugPayload) => void;
+  /** Optional: live SSE token deltas + provider headers for `POST /api/xchat/ask/stream`. */
+  streamHooks?: XaiToolLoopStreamHooks;
 }): Promise<XaiToolLoopResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const model = input.model ?? defaultModel;
@@ -683,25 +775,16 @@ export async function respondWithXaiToolLoop(input: {
       requestBody.reasoning = { effort: input.responsesReasoning.effort };
     }
 
-    const response = await fetch(`${baseUrl}/responses`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(requestBody),
-      ...(signal ? { signal } : {})
-    });
+    input.streamHooks?.onTurnStart?.(turn);
 
-    const payload = await parseXaiResponseJson(response);
+    const payload = await postXaiResponsesToolTurn(
+      baseUrl,
+      apiKey,
+      requestBody,
+      signal,
+      input.streamHooks
+    );
     lastPayload = payload;
-
-    if (!response.ok) {
-      const errDetail = payload.error ?? payload._raw ?? payload;
-      throw new Error(
-        `xAI responses failed (${response.status} ${response.statusText}): ${JSON.stringify(errDetail)}`
-      );
-    }
 
     const responseId = asString(payload.id);
     if (responseId) {

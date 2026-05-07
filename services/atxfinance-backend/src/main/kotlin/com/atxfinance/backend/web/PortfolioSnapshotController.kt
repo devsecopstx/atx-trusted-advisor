@@ -1,6 +1,7 @@
 package com.atxfinance.backend.web
 
 import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.portfolio.PortfolioStructuredSummary
 import com.atxfinance.backend.portfolio.PortfolioSnapshotService
 import com.atxfinance.backend.session.SessionCookieParser
 import jakarta.servlet.http.HttpServletRequest
@@ -20,7 +21,8 @@ class PortfolioSnapshotController(
 ) {
     /**
      * Redis-cached read of materialized workspace preload (Mongo `portfolio_workspace_snapshots`).
-     * Response mirrors [PortfolioWorkspaceSnapshotController] with an extra `cache` object for observability.
+     * Response mirrors [PortfolioWorkspaceSnapshotController] with **`cache`** plus optional **`structured`**
+     * (holdings summary, account balances, watchlist quote strip, `lastUpdated`).
      */
     @GetMapping("/api/portfolios/{portfolioId}/snapshot")
     fun getPortfolioSnapshot(
@@ -34,6 +36,7 @@ class PortfolioSnapshotController(
                 props.sessionCookieName,
             ) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(mapOf("error" to "Unauthorized"))
 
+        val t0 = System.nanoTime()
         val pair =
             portfolioSnapshotService.getCachedWorkspaceSnapshot(portfolioId, workspaceContentRev, session)
                 ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "snapshot_not_found"))
@@ -42,6 +45,13 @@ class PortfolioSnapshotController(
         val redisState = cacheMeta["redis"]?.toString().orEmpty()
         val headers = HttpHeaders()
         headers.add("X-Atx-Snapshot-Cache", redisState)
-        return ResponseEntity.ok().headers(headers).body(mapOf("data" to (payload + mapOf("cache" to cacheMeta))))
+        val handlerMs = (System.nanoTime() - t0) / 1_000_000L
+        headers.add("X-Atx-Snapshot-Handler-Ms", handlerMs.toString())
+
+        val data = LinkedHashMap<String, Any?>(payload.size + 2)
+        data.putAll(payload)
+        PortfolioStructuredSummary.fromWorkspacePayload(payload)?.let { data["structured"] = it }
+        data["cache"] = cacheMeta
+        return ResponseEntity.ok().headers(headers).body(mapOf("data" to data))
     }
 }

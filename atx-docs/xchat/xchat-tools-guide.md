@@ -4,7 +4,7 @@
 
 **Standard:** [xAI docs](https://docs.x.ai/overview) — [`xai-api-standard.md`](./xai-api-standard.md).
 
-**Code map:** `ask/route.ts`, `xchat-prompt-build.ts`, `batch-prompt-context.ts`, `batch-service.ts`, `lib/xai.ts`, `lib/xai-tools.ts`, `tool-executor.ts`, `tool-definitions.ts`, `team-xai-collection-sync.ts`, `workspace-snapshot-for-prompt.ts`.
+**Code map:** `ask/route.ts`, `ask/stream/route.ts`, `xchat-prompt-build.ts`, `batch-prompt-context.ts`, `batch-service.ts`, `lib/xai.ts`, `lib/xai-responses-stream.ts`, `lib/xai-tools.ts`, `lib/xchat-live-sse-policy.ts`, `tool-executor.ts`, `tool-definitions.ts`, `team-xai-collection-sync.ts`, `workspace-snapshot-for-prompt.ts`.
 
 **UI (assistant bubbles):** `xchat-markdown-body.tsx` — `react-markdown` + `remark-gfm` + `rehype-sanitize`, Prism **oneDark** for fenced code, `preprocessXchatMarkdown` (`xchat-markdown-preprocess.ts`) for light cleanup before render.
 
@@ -23,6 +23,20 @@ flowchart TD
 
 - **Effective tools:** `mergeXchatHostedToolBaseline` keeps `web_search` + `x_search` on the wire even if Mongo omitted them.
 - **Ask execution:** Always `respondWithXaiToolLoop` (not chat-completions). Batch stays **single-turn** xAI Batch JSONL — same **prompt** builders, different **transport**.
+
+---
+
+## Live token SSE (interactive ask)
+
+**Goal:** Stream **partial assistant text** and **tool-phase markers** while the multi-turn Responses **tool loop** runs, without changing the **final** client contract: the SSE **`done`** event carries the **same `data` object** as `POST /api/xchat/ask` JSON (**`content`**, **`metadata`**, **`interactionMeta`**, **`toolCalls`**, usage snapshot fields, etc.).
+
+| Topic | Behavior |
+|--------|-----------|
+| **Wire** | When `streamHooks.onTextDelta` is set, `lib/xai.ts` sends **`stream: true`** to xAI **`POST /v1/responses`** per loop turn; `consumeXaiResponsesSse` parses SSE chunks (`response.output_text.delta`, Chat-style `choices[].delta`, etc.). If streaming yields no usable terminal payload, the turn **falls back** to non-streaming JSON (dual-run safe). |
+| **Headers** | `onProviderHeaders` forwards **`x-grok-conv-id`** and best-effort cache hints into SSE **`provider`** events (`promptCache` when present). |
+| **Mid-stream tools** | Parsed SSE objects feed **`onResponsesStreamEvent`** → summarized **`tool_status`** lines (`upstream` phase + vendor `streamType` + optional **`name`**). Local parallel tools emit **`tool_status`** with **`local_complete`** after each batch (same timing as `xchat_ask_tool_batch` debug). |
+| **Next routes** | **`POST /api/xchat/ask`** with **`Accept: text/event-stream`** runs the live pipeline (`createXchatLiveSseReadableStream`). Optional **`XCHAT_STREAM_INTERNAL_SECRET`** requires header **`x-xchat-stream-internal`** for that mode (server delegates add it). **`XCHAT_LIVE_SSE_ENABLED=false`** disables live SSE (JSON only). **`POST /api/xchat/ask/stream`** proxies to the ask route with streaming headers; set **`XCHAT_SSE_PROXY_BACKEND=true`** to forward the browser stream to Spring when BFF is on (stub / JVM path). |
+| **UI** | **`NEXT_PUBLIC_XCHAT_LIVE_SSE`** — client uses **`/api/xchat/ask/stream`**, consumes **`delta`** / **`tool_status`** / **`ping`** (stall watchdog ~90s), one retry on transport failure, then finalizes from **`done`**. |
 
 ---
 

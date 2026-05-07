@@ -85,6 +85,72 @@ export function createPostAskSseReadableStream(input: {
   });
 }
 
+export type XchatLiveSseEmit = {
+  meta: (data: Record<string, unknown>) => void;
+  delta: (data: { c: string }) => void;
+  done: (data: Record<string, unknown>) => void;
+  error: (data: { message: string; code?: string }) => void;
+  ping: (data: { t: number }) => void;
+  turn: (data: { index: number }) => void;
+  provider: (data: Record<string, unknown>) => void;
+  tool_status: (data: Record<string, unknown>) => void;
+};
+
+/**
+ * Live SSE pipeline for xChat: **`run`** executes the tool loop (emitting deltas asynchronously); optional heartbeat **`ping`** events keep proxies from timing out.
+ */
+export function createXchatLiveSseReadableStream(input: {
+  heartbeatMs?: number;
+  run: (emit: XchatLiveSseEmit) => Promise<void>;
+}): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const heartbeatMs =
+    typeof input.heartbeatMs === "number" && Number.isFinite(input.heartbeatMs)
+      ? Math.max(5000, Math.min(120_000, Math.floor(input.heartbeatMs)))
+      : 20_000;
+
+  return new ReadableStream({
+    async start(controller) {
+      const push = (event: string, data: unknown) =>
+        controller.enqueue(encoder.encode(formatSseMessage(event, data)));
+
+      const emit: XchatLiveSseEmit = {
+        meta: (d) => push("meta", d),
+        delta: (d) => push("delta", d),
+        done: (d) => push("done", d),
+        error: (d) => push("error", d),
+        ping: (d) => push("ping", d),
+        turn: (d) => push("turn", d),
+        provider: (d) => push("provider", d),
+        tool_status: (d) => push("tool_status", d)
+      };
+
+      const hb =
+        heartbeatMs > 0
+          ? setInterval(() => {
+              try {
+                emit.ping({ t: Date.now() });
+              } catch {
+                /* stream closed */
+              }
+            }, heartbeatMs)
+          : undefined;
+
+      try {
+        await input.run(emit);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        emit.error({ message });
+      } finally {
+        if (hb) {
+          clearInterval(hb);
+        }
+        controller.close();
+      }
+    }
+  });
+}
+
 export function resolveStreamChunkConfig(): { chunkChars: number; chunkDelayMs: number } {
   const chunkCharsRaw = process.env.XCHAT_STREAM_CHUNK_CHARS;
   const chunkDelayRaw = process.env.XCHAT_STREAM_CHUNK_DELAY_MS;

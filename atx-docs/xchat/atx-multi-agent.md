@@ -21,7 +21,7 @@
 | Topic | Decision |
 |--------|-----------|
 | **Traffic** | **BFF-only** — Next → Spring proxy, same-origin cookies. |
-| **Workspace preload** | Next materializes Mongo rows; optional **`GET /api/portfolios/{id}/snapshot`** on JVM (Redis `xf:wsnap:v1:*`, market-window TTL) warms **`loadWorkspaceSnapshotPreload`** / xOptions bootstrap when BFF is on — same keys as Next Redis cache. |
+| **Workspace preload** | Next materializes Mongo rows; **`GET /api/portfolios/{id}/snapshot`** on JVM (Redis `xf:wsnap:v1:*`, market-window TTL, **`data.structured`** strip) is the canonical fast-path when BFF + Redis are on — warms **`loadWorkspaceSnapshotPreload`** / find-options bootstrap; same keys as Next Redis cache; dual-run safe when origin unset. |
 | **Config** | `STRATEGY_MAX_JOBS_HOURLY` env → `app.atxfinance.strategy-max-jobs-hourly` (default **12**); soft warn default **8**. |
 
 ---
@@ -45,7 +45,7 @@ Thin HTTP handlers; async default; idempotent retries; hourly caps limit cost.
 | Layer | Role |
 |--------|------|
 | **Orchestrator (Spring + Redis)** | Step machine, validation, persistence, idempotency, rate limits, multi-agent coordination. |
-| **xChat `/ask`** | Responses API + tool loop; plan limits; streaming later. |
+| **xChat `/ask`** | Responses API + tool loop; plan limits; **live token SSE** on Next (per-turn streaming + SSE **`done`** = JSON `data`). |
 | **xStrategyBuilder** | Renders artifacts / review — **no** orchestration state. |
 
 **HTTP (Chunk 1):** Spring **`/api/strategy-jobs`** (BFF from Next when `ATXFINANCE_BACKEND_ORIGIN` set) — slot collection to `slots_complete`; see **[`../sre-ops/atxfinance-backend-http-api.md`](../sre-ops/atxfinance-backend-http-api.md)**.
@@ -58,12 +58,13 @@ Thin HTTP handlers; async default; idempotent retries; hourly caps limit cost.
 
 ## 3. Scale & ops
 
-Async jobs meet SLOs; **idempotency** via `Idempotency-Key` or deterministic hash on `(userId, emailAccountId, jobId, step, message)`. Redis/Mongo queries filter **`userId` + `emailAccountId`**. **Streaming (later):** SSE from Spring, BFF stream-through — see consolidation doc. Artifacts: **job-backed**, async default; UI polls or push.
+Async jobs meet SLOs; **idempotency** via `Idempotency-Key` or deterministic hash on `(userId, emailAccountId, jobId, step, message)`. Redis/Mongo queries filter **`userId` + `emailAccountId`**. **xChat streaming (shipped):** Next emits SSE during the tool loop; Spring **`POST /api/xchat/ask/stream`** optional behind **`XCHAT_SSE_PROXY_BACKEND`**. Strategy artifacts: **job-backed**, async default; UI polls or push.
 
 ---
 
 ## Changelog
 
+- **2026-05-07** — Document **live token SSE** for xChat ask on Next (per-turn `stream: true`, `done` = full JSON `data`); optional JVM **`/api/xchat/ask/stream`** BFF when **`XCHAT_SSE_PROXY_BACKEND`** is on. Artifact **v2** JSON Schema remains **deferred**.
 - **2026-04-03** — Non-negotiable Phase 1 list expanded (v2 schema deferred; `slots_complete`→artifact SLO anchor; routing + `clampMultiAgentParallelismForPlan`; Redis cap key aligned to `tenantId`+`userId`+`emailAccountId`; GET/turns enforce `emailAccountId` match).
 - **2026-03-23** — Consolidated docs + locked boundaries (server orchestrator, v1 artifact format, async SLOs, isolation, caps, BFF-only).
 - **2026-03-24** — Phase 1 xAI: TEAM_XAI + `XAI_TEAM_ID` only; legacy default/bootstrap collection work out of Phase 1 scope.

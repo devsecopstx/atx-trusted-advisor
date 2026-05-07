@@ -1,26 +1,27 @@
-import { proxyPortfolioRequestToBackend, releaseUnusedProxyResponse } from "@/lib/backend-bff";
 import {
-    createPostAskSseReadableStream,
-    resolveStreamChunkConfig,
-    type XchatAskStreamMetaEvent
-} from "@/modules/xchat/xchat-ask-stream-sse";
+    proxyPortfolioRequestToBackend,
+    releaseUnusedProxyResponse
+} from "@/lib/backend-bff";
+import {
+    isXchatSseProxyBackendEnabled,
+    resolveXchatStreamInternalSecretHeader
+} from "@/lib/xchat-live-sse-policy";
 
 /**
- * SSE wrapper around the full non-streaming xChat tool loop (`POST /api/xchat/ask`).
+ * Live SSE for xChat: proxies to Spring when `XCHAT_SSE_PROXY_BACKEND` + BFF are on; otherwise
+ * delegates to `POST /api/xchat/ask` with `Accept: text/event-stream` (true token stream + same `done` shape).
  *
- * Emits `meta` (protocol + thread/model hints), `delta` (`{ c: string }` chunks of the final
- * markdown), then `done` (ask `data` without duplicated `content`/`response` bodies). Errors from
- * the delegate route are returned as JSON with the same status (not SSE).
- *
- * When BFF is on, the upstream JVM may still return its stub stream; that body is forwarded as-is.
+ * Events: `meta`, `delta`, `turn`, `provider`, `tool_status`, `ping`, `done` (stripped bodies), `error`.
  */
 export async function POST(request: Request) {
-  const proxied = await proxyPortfolioRequestToBackend(request.clone());
-  if (proxied) {
-    if (proxied.status === 404) {
-      releaseUnusedProxyResponse(proxied);
-    } else {
-      return proxied;
+  if (isXchatSseProxyBackendEnabled()) {
+    const proxied = await proxyPortfolioRequestToBackend(request.clone());
+    if (proxied) {
+      if (proxied.status === 404) {
+        releaseUnusedProxyResponse(proxied);
+      } else {
+        return proxied;
+      }
     }
   }
 
@@ -34,7 +35,9 @@ export async function POST(request: Request) {
       method: "POST",
       headers: {
         "content-type": request.headers.get("content-type") ?? "application/json",
+        accept: "text/event-stream",
         cookie: request.headers.get("cookie") ?? "",
+        ...resolveXchatStreamInternalSecretHeader(),
         ...(request.headers.get("x-forwarded-for")
           ? { "x-forwarded-for": request.headers.get("x-forwarded-for")! }
           : {}),
@@ -57,74 +60,25 @@ export async function POST(request: Request) {
   }
 
   const limiterHeaders = pickXchatLimiterHeaders(askRes.headers);
+  const ct = askRes.headers.get("content-type") ?? "";
 
-  let payload: unknown;
-  try {
-    payload = await askRes.json();
-  } catch {
-    const fallbackText = await askRes.text();
-    return new Response(fallbackText, {
-      status: askRes.status,
-      headers: {
-        "content-type": askRes.headers.get("content-type") ?? "text/plain; charset=utf-8"
-      }
-    });
+  if (ct.includes("text/event-stream") && askRes.body) {
+    const headers = new Headers(limiterHeaders);
+    headers.set("content-type", "text/event-stream; charset=utf-8");
+    headers.set("cache-control", "no-cache, no-transform");
+    headers.set("connection", "keep-alive");
+    headers.set("x-accel-buffering", "no");
+    return new Response(askRes.body, { status: askRes.status, headers });
   }
 
-  if (!askRes.ok || typeof payload !== "object" || payload === null || !("data" in payload)) {
-    return Response.json(payload, {
-      status: askRes.status,
-      headers: limiterHeaders
-    });
-  }
-
-  const data = (payload as { data: Record<string, unknown> }).data;
-  const content =
-    typeof data.content === "string"
-      ? data.content
-      : typeof data.response === "string"
-        ? data.response
-        : "";
-
-  const metaRow =
-    data.metadata && typeof data.metadata === "object" && data.metadata !== null
-      ? (data.metadata as Record<string, unknown>)
-      : {};
-
-  const meta: XchatAskStreamMetaEvent = {
-    v: 1,
-    phase: "post_tool_loop",
-    threadId: typeof metaRow.threadId === "string" ? metaRow.threadId : "",
-    model:
-      typeof metaRow.model === "string"
-        ? metaRow.model
-        : typeof data.model === "string"
-          ? data.model
-          : "",
-    personaId: typeof metaRow.personaId === "string" ? metaRow.personaId : "",
-    ...(typeof metaRow.durationMs === "number" ? { durationMs: metaRow.durationMs } : {}),
-    ...(typeof metaRow.sourcesUsed === "number" ? { sourcesUsed: metaRow.sourcesUsed } : {})
-  };
-
-  const doneRest: Record<string, unknown> = { ...data };
-  delete doneRest.content;
-  delete doneRest.response;
-  const { chunkChars, chunkDelayMs } = resolveStreamChunkConfig();
-  const stream = createPostAskSseReadableStream({
-    content,
-    donePayload: doneRest,
-    meta,
-    chunkChars,
-    chunkDelayMs
+  const fallbackText = await askRes.text();
+  return new Response(fallbackText, {
+    status: askRes.status,
+    headers: {
+      ...Object.fromEntries(limiterHeaders.entries()),
+      "content-type": askRes.headers.get("content-type") ?? "application/json; charset=utf-8"
+    }
   });
-
-  const headers = new Headers(limiterHeaders);
-  headers.set("content-type", "text/event-stream; charset=utf-8");
-  headers.set("cache-control", "no-cache, no-transform");
-  headers.set("connection", "keep-alive");
-  headers.set("x-accel-buffering", "no");
-
-  return new Response(stream, { status: 200, headers });
 }
 
 function pickXchatLimiterHeaders(src: Headers): Headers {

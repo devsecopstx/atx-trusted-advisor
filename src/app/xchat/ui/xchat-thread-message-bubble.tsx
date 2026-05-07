@@ -38,6 +38,19 @@ export const XchatThreadMessageBubble = memo(
         {msg.role === "ai" && msg.persona ? <small className="xchat-msg-ai__persona">{msg.persona}</small> : null}
         {msg.role === "ai" ? (
           <>
+            {msg.liveToolStatuses && msg.liveToolStatuses.length > 0 ? (
+              <div className="xchat-live-tools" aria-live="polite">
+                {msg.liveToolStatuses.map((t, i) => (
+                  <span
+                    key={`${t.name}-${t.phase}-${i}`}
+                    className="xchat-live-tools__chip"
+                    title={t.detail ?? undefined}
+                  >
+                    {t.name} · {t.phase}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             {msg.strategyJobOffer ? (
               <XchatStrategyJobPreflightCards
                 emphasizePrimary={emphasizeStrategyJobPrimary}
@@ -94,6 +107,7 @@ export const XchatThreadMessageBubble = memo(
     prev.msg.strategyJobOffer === next.msg.strategyJobOffer &&
     prev.msg.optionsActionScan === next.msg.optionsActionScan &&
     prev.msg.interactionMeta === next.msg.interactionMeta &&
+    prev.msg.liveToolStatuses === next.msg.liveToolStatuses &&
     prev.msg.pairedUserPrompt === next.msg.pairedUserPrompt &&
     prev.msg.feedbackVote === next.msg.feedbackVote &&
     prev.msg.serverLogId === next.msg.serverLogId &&
