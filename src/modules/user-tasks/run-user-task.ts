@@ -84,14 +84,22 @@ async function postXchatAsk(params: {
     body: JSON.stringify(body)
   });
   const json = (await res.json().catch(() => ({}))) as {
-    data?: { response?: string; logId?: string };
+    data?: { content?: string; response?: string; logId?: string };
     error?: string;
     code?: string;
   };
+  const responseMarkdown =
+    typeof json.data?.content === "string"
+      ? json.data.content
+      : typeof json.data?.response === "string"
+        ? json.data.response
+        : undefined;
   const responseText =
-    typeof json.data?.response === "string" ? json.data.response : typeof json.error === "string"
-      ? json.error
-      : res.statusText;
+    responseMarkdown !== undefined
+      ? responseMarkdown
+      : typeof json.error === "string"
+        ? json.error
+        : res.statusText;
   const snippet = responseText.trim().slice(0, 480);
   return {
     ok: res.ok,

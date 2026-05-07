@@ -223,6 +223,46 @@ function buildXchatAskInteractionMeta(
   };
 }
 
+/** Compact metadata for clients (mirrors `interactionMeta` + resolved persona + request `threadId`). */
+type XchatAskResponseMetadataWire = {
+  durationMs: number;
+  sourcesUsed: number;
+  personaId: string;
+  model: string;
+  threadId: string;
+};
+
+type XchatAskDataWithTiming = {
+  response: string;
+  model: string;
+  interactionMeta: XchatAskInteractionMeta;
+};
+
+function buildXchatAskResponseMetadata(
+  data: XchatAskDataWithTiming,
+  ctx: { persona: { _id?: ObjectId } | null | undefined; threadId: string | undefined }
+): XchatAskResponseMetadataWire {
+  return {
+    durationMs: data.interactionMeta.generationMs,
+    sourcesUsed: data.interactionMeta.sources.total,
+    personaId: ctx.persona?._id?.toHexString() ?? "",
+    model: data.model,
+    threadId: ctx.threadId ?? ""
+  };
+}
+
+/** Canonical markdown alias (`content`) + metadata envelope alongside legacy `response` / `interactionMeta`. */
+function withXchatAskContentAndMetadata<T extends XchatAskDataWithTiming>(
+  data: T,
+  ctx: { persona: { _id?: ObjectId } | null | undefined; threadId: string | undefined }
+): T & { content: string; metadata: XchatAskResponseMetadataWire } {
+  return {
+    ...data,
+    content: data.response,
+    metadata: buildXchatAskResponseMetadata(data, ctx)
+  };
+}
+
 export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
@@ -658,23 +698,26 @@ export async function POST(request: Request) {
       : null;
     return NextResponse.json(
       {
-        data: {
-          response: responseMarkdown,
-          strategyJobOffer: false,
-          personaName: persona.name,
-          modelSelectionSource,
-          model: "strategy_job_opt_out",
-          contextCount: 0,
-          contextSource: "none",
-          collectionSearchStatus: "skipped_no_collections",
-          collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId?.toHexString(),
-          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-            ragChunks: 0,
-            toolInvocations: 0,
-            personaCollections: personaDeclaredCollectionCount
-          })
-        }
+        data: withXchatAskContentAndMetadata(
+          {
+            response: responseMarkdown,
+            strategyJobOffer: false,
+            personaName: persona.name,
+            modelSelectionSource,
+            model: "strategy_job_opt_out",
+            contextCount: 0,
+            contextSource: "none",
+            collectionSearchStatus: "skipped_no_collections",
+            collectionSearchNonReadyFileCount: 0,
+            logId: chatLogId?.toHexString(),
+            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+              ragChunks: 0,
+              toolInvocations: 0,
+              personaCollections: personaDeclaredCollectionCount
+            })
+          },
+          { persona, threadId }
+        )
       },
       {
         headers: buildLimiterHeaders({
@@ -724,23 +767,26 @@ export async function POST(request: Request) {
       : null;
     return NextResponse.json(
       {
-        data: {
-          response: responseMarkdown,
-          strategyJobOffer: true,
-          personaName: persona.name,
-          modelSelectionSource,
-          model: "strategy_job_preflight",
-          contextCount: 0,
-          contextSource: "none",
-          collectionSearchStatus: "skipped_no_collections",
-          collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId?.toHexString(),
-          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-            ragChunks: 0,
-            toolInvocations: 0,
-            personaCollections: personaDeclaredCollectionCount
-          })
-        }
+        data: withXchatAskContentAndMetadata(
+          {
+            response: responseMarkdown,
+            strategyJobOffer: true,
+            personaName: persona.name,
+            modelSelectionSource,
+            model: "strategy_job_preflight",
+            contextCount: 0,
+            contextSource: "none",
+            collectionSearchStatus: "skipped_no_collections",
+            collectionSearchNonReadyFileCount: 0,
+            logId: chatLogId?.toHexString(),
+            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+              ragChunks: 0,
+              toolInvocations: 0,
+              personaCollections: personaDeclaredCollectionCount
+            })
+          },
+          { persona, threadId }
+        )
       },
       {
         headers: buildLimiterHeaders({
@@ -780,22 +826,25 @@ export async function POST(request: Request) {
       : null;
     return NextResponse.json(
       {
-        data: {
-          response: responseMarkdown,
-          model: "watchlist_portfolio_slot_collection",
-          personaName: persona.name,
-          modelSelectionSource,
-          contextCount: 0,
-          contextSource: "none",
-          collectionSearchStatus: "skipped_no_collections",
-          collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId?.toHexString(),
-          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-            ragChunks: 0,
-            toolInvocations: 0,
-            personaCollections: personaDeclaredCollectionCount
-          })
-        }
+        data: withXchatAskContentAndMetadata(
+          {
+            response: responseMarkdown,
+            model: "watchlist_portfolio_slot_collection",
+            personaName: persona.name,
+            modelSelectionSource,
+            contextCount: 0,
+            contextSource: "none",
+            collectionSearchStatus: "skipped_no_collections",
+            collectionSearchNonReadyFileCount: 0,
+            logId: chatLogId?.toHexString(),
+            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+              ragChunks: 0,
+              toolInvocations: 0,
+              personaCollections: personaDeclaredCollectionCount
+            })
+          },
+          { persona, threadId }
+        )
       },
       {
         headers: buildLimiterHeaders({
@@ -996,25 +1045,28 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        data: {
-          response: output,
-          model: "options_action_scan_direct",
-          personaName: persona.name,
-          modelSelectionSource,
-          contextCount: 0,
-          contextSource: "none",
-          collectionSearchStatus: "skipped_no_collections",
-          collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId?.toHexString(),
-          optionsActionScan,
-          optionsScanReportId,
-          toolCalls: [{ name: "atx_function", durationMs: optionsScanDurationMs }],
-          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-            ragChunks: contextCount,
-            toolInvocations: 1,
-            personaCollections: linkedCollectionIds.length
-          })
-        }
+        data: withXchatAskContentAndMetadata(
+          {
+            response: output,
+            model: "options_action_scan_direct",
+            personaName: persona.name,
+            modelSelectionSource,
+            contextCount: 0,
+            contextSource: "none",
+            collectionSearchStatus: "skipped_no_collections",
+            collectionSearchNonReadyFileCount: 0,
+            logId: chatLogId?.toHexString(),
+            optionsActionScan,
+            optionsScanReportId,
+            toolCalls: [{ name: "atx_function", durationMs: optionsScanDurationMs }],
+            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+              ragChunks: contextCount,
+              toolInvocations: 1,
+              personaCollections: linkedCollectionIds.length
+            })
+          },
+          { persona, threadId }
+        )
       },
       {
         headers: buildLimiterHeaders({
@@ -1147,23 +1199,26 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        data: {
-          response: output,
-          model: "watchlist_snapshot_direct",
-          personaName: persona.name,
-          modelSelectionSource,
-          contextCount: 0,
-          contextSource: "none",
-          collectionSearchStatus: "skipped_no_collections",
-          collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId?.toHexString(),
-          toolCalls: [{ name: "atx_function", durationMs: watchlistCallDurationMs }],
-          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-            ragChunks: contextCount,
-            toolInvocations: 1,
-            personaCollections: linkedCollectionIds.length
-          })
-        }
+        data: withXchatAskContentAndMetadata(
+          {
+            response: output,
+            model: "watchlist_snapshot_direct",
+            personaName: persona.name,
+            modelSelectionSource,
+            contextCount: 0,
+            contextSource: "none",
+            collectionSearchStatus: "skipped_no_collections",
+            collectionSearchNonReadyFileCount: 0,
+            logId: chatLogId?.toHexString(),
+            toolCalls: [{ name: "atx_function", durationMs: watchlistCallDurationMs }],
+            interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+              ragChunks: contextCount,
+              toolInvocations: 1,
+              personaCollections: linkedCollectionIds.length
+            })
+          },
+          { persona, threadId }
+        )
       },
       {
         headers: buildLimiterHeaders({
@@ -1476,45 +1531,48 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     {
-      data: {
-        response: responseMarkdown,
-        model: xaiResponse.model,
-        personaName: persona.name,
-        modelSelectionSource,
-        contextCount,
-        contextSource,
-        collectionSearchStatus,
-        collectionSearchNonReadyFileCount,
-        logId: chatLogId?.toHexString(),
-        toolCalls: toolCallLogs.length > 0
-          ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
-          : undefined,
-        ...(multiAgentDowngraded
-          ? { multiAgentDowngraded: true as const, personaModelRequested: effectiveModel }
-          : {}),
-        ...(xaiUsageSnapshot
-          ? {
-              xaiUsage: {
-                inputTokens: xaiUsageSnapshot.inputTokens,
-                outputTokens: xaiUsageSnapshot.outputTokens,
-                totalTokens: xaiUsageSnapshot.totalTokens,
-                ...(xaiUsageSnapshot.reasoningTokens != null &&
-                xaiUsageSnapshot.reasoningTokens > 0
-                  ? { reasoningTokens: xaiUsageSnapshot.reasoningTokens }
-                  : {}),
-                ...(xaiUsageSnapshot.cachedPromptTokens != null &&
-                xaiUsageSnapshot.cachedPromptTokens > 0
-                  ? { cachedPromptTokens: xaiUsageSnapshot.cachedPromptTokens }
-                  : {})
+      data: withXchatAskContentAndMetadata(
+        {
+          response: responseMarkdown,
+          model: xaiResponse.model,
+          personaName: persona.name,
+          modelSelectionSource,
+          contextCount,
+          contextSource,
+          collectionSearchStatus,
+          collectionSearchNonReadyFileCount,
+          logId: chatLogId?.toHexString(),
+          toolCalls: toolCallLogs.length > 0
+            ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
+            : undefined,
+          ...(multiAgentDowngraded
+            ? { multiAgentDowngraded: true as const, personaModelRequested: effectiveModel }
+            : {}),
+          ...(xaiUsageSnapshot
+            ? {
+                xaiUsage: {
+                  inputTokens: xaiUsageSnapshot.inputTokens,
+                  outputTokens: xaiUsageSnapshot.outputTokens,
+                  totalTokens: xaiUsageSnapshot.totalTokens,
+                  ...(xaiUsageSnapshot.reasoningTokens != null &&
+                  xaiUsageSnapshot.reasoningTokens > 0
+                    ? { reasoningTokens: xaiUsageSnapshot.reasoningTokens }
+                    : {}),
+                  ...(xaiUsageSnapshot.cachedPromptTokens != null &&
+                  xaiUsageSnapshot.cachedPromptTokens > 0
+                    ? { cachedPromptTokens: xaiUsageSnapshot.cachedPromptTokens }
+                    : {})
+                }
               }
-            }
-          : {}),
-        interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
-          ragChunks: contextCount,
-          toolInvocations: toolCallLogs.length,
-          personaCollections: linkedCollectionIds.length
-        })
-      }
+            : {}),
+          interactionMeta: buildXchatAskInteractionMeta(askProcessingStartedAt, {
+            ragChunks: contextCount,
+            toolInvocations: toolCallLogs.length,
+            personaCollections: linkedCollectionIds.length
+          })
+        },
+        { persona, threadId }
+      )
     },
     {
       headers: buildLimiterHeaders({

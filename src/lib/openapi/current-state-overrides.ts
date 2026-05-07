@@ -383,7 +383,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single **non-streaming** `/v1/responses` tool-loop execution path (no chat-completions fallback; no SSE streaming in this route). Hosted RAG pre-search uses **persona-linked** xAI collection ids (`resolveXchatPersonaDeclaredCollectionIds` — `xaiCollection`, `teamCollection`, tool `collection_ids`; no implicit deploy env team KB merge). When **`XCHAT_USE_REMOTE_HISTORY=true`**, persona `keepXchatHistory` is true, `threadId` is present, and a prior turn stored `xaiResponseId`, ask sends `store_messages` + `previous_response_id` and omits client recent-turn injection for that continuation; otherwise recent messages from the request are still merged into the system prompt. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes **`atx_function`** (workspace tool; UI citations may use slug `atxfinance`), the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same persona-linked id list wired into tools. Successful JSON may include optional **`xaiUsage`** (token counts from the Responses API `usage` object) for client session stats and admin cost rollups.",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single **non-streaming** `/v1/responses` tool-loop execution path (no chat-completions fallback; no SSE streaming in this route). Hosted RAG pre-search uses **persona-linked** xAI collection ids (`resolveXchatPersonaDeclaredCollectionIds` — `xaiCollection`, `teamCollection`, tool `collection_ids`; no implicit deploy env team KB merge). When **`XCHAT_USE_REMOTE_HISTORY=true`**, persona `keepXchatHistory` is true, `threadId` is present, and a prior turn stored `xaiResponseId`, ask sends `store_messages` + `previous_response_id` and omits client recent-turn injection for that continuation; otherwise recent messages from the request are still merged into the system prompt. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes **`atx_function`** (workspace tool; UI citations may use slug `atxfinance`), the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same persona-linked id list wired into tools. Successful **`200`** includes **`data.content`** (markdown alias of **`data.response`**) and **`data.metadata`** (`durationMs`, `sourcesUsed`, `personaId`, `model`, `threadId` echo) alongside **`interactionMeta`**. Successful JSON may include optional **`xaiUsage`** (token counts from the Responses API `usage` object) for client session stats and admin cost rollups.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -1695,10 +1695,34 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       }
     }
   },
+  XChatAskResponseMetadata: {
+    type: "object",
+    required: ["durationMs", "sourcesUsed", "personaId", "model", "threadId"],
+    description:
+      "Compact metadata for UI/analytics: mirrors `interactionMeta.generationMs` and `interactionMeta.sources.total`, plus resolved persona id, effective model id, and echo of request `threadId` (empty when omitted). Persists only via Mongo when opt-in history is on (`getXchatUserPreferences` / `saveXChatLog`).",
+    properties: {
+      durationMs: { type: "integer", minimum: 1 },
+      sourcesUsed: { type: "integer", minimum: 0 },
+      personaId: {
+        type: "string",
+        description: "Resolved xPersona ObjectId hex for this turn (after admin assignment + picker override policy)."
+      },
+      model: {
+        type: "string",
+        description: "Effective model id from xAI or a sentinel for shortcut paths (e.g. `strategy_job_preflight`)."
+      },
+      threadId: {
+        type: "string",
+        description: "Echo of JSON body `threadId`; empty string when the client omitted it."
+      }
+    }
+  },
   XChatAskResponseData: {
     type: "object",
     required: [
       "response",
+      "content",
+      "metadata",
       "model",
       "personaName",
       "modelSelectionSource",
@@ -1710,6 +1734,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     ],
     properties: {
       response: { type: "string" },
+      content: {
+        type: "string",
+        description: "Same assistant markdown as `response` (canonical alias for integrations)."
+      },
+      metadata: refSchema("XChatAskResponseMetadata"),
       model: { type: "string" },
       personaName: {
         type: "string",

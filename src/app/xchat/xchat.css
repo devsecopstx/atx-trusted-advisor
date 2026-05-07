@@ -1933,8 +1933,8 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 }
 
 .xchat-markdown table {
-  width: 100%;
-  min-width: min(100%, 16rem);
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   margin: 0;
   font-size: 0.82rem;
@@ -1954,6 +1954,45 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 .xchat-markdown th {
   background: rgba(255, 255, 255, 0.04);
   color: var(--xf-text-200);
+}
+
+@media (hover: hover) {
+  .xchat-markdown tbody tr {
+    transition: background-color 0.14s ease;
+  }
+
+  .xchat-markdown tbody tr:hover td {
+    background-color: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  }
+}
+
+@media (max-width: 768px) {
+  .xchat-markdown thead th:first-child,
+  .xchat-markdown tbody td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--xf-surface-700);
+    box-shadow: 4px 0 12px -6px rgba(0, 0, 0, 0.55);
+  }
+
+  .xchat-markdown thead th:first-child {
+    z-index: 3;
+    background: color-mix(in srgb, var(--xf-surface-700) 88%, rgba(255, 255, 255, 0.06));
+  }
+
+  @media (hover: hover) {
+    .xchat-markdown tbody tr:hover td:first-child {
+      background-color: color-mix(in srgb, var(--xf-text-100) 8%, var(--xf-surface-700));
+    }
+  }
+}
+
+.xchat-md-table-wrap + .xchat-md-p {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--xf-text-400);
 }
 
 .xchat-markdown .xchat-md-a {

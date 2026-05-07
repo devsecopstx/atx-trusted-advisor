@@ -26,6 +26,15 @@
 
 - **`XCHAT_USE_REMOTE_HISTORY`** — parsed in **`src/lib/env.ts`** (default **`false`**). When **`true`**, `POST /api/xchat/ask` sets `store_messages` and, when `threadId` + prior `xaiResponseId` exist (same `personaId`), sends `previous_response_id` and omits Mongo recent-turn injection for that continuation. Disabled when `keepXchatHistory` is false on the persona, on vision turns, or without `threadId`. **Persona edits:** xAI does not allow sending `instructions` together with `previous_response_id`; the remote chain keeps the **first** turn’s system prompt. Ask stores **`xchatInstructionsFingerprint`** on each `xchat_logs` row (`computeXchatRemoteChainInstructionsFingerprint` in **`xchat-prompt-build.ts`**) and **starts a fresh chain** (drops `previous_response_id`, uses client `recentMessages` + new `instructions`) when the fingerprint no longer matches—so Mongo-updated persona text and tool/citation flags apply on the next turn.
 
+## Ask JSON envelope (`data.content` + `data.metadata`)
+
+Successful **`POST /api/xchat/ask`** responses include (inside **`data`**):
+
+- **`content`** — same markdown as **`response`** (integrations may prefer `content`; **`response`** remains for backward compatibility).
+- **`metadata`** — **`durationMs`** / **`sourcesUsed`** (same numbers as **`interactionMeta.generationMs`** and **`interactionMeta.sources.total`**), **`personaId`** (resolved xPersona hex for this turn), **`model`** (effective model or sentinel), **`threadId`** (echo of the request body’s **`threadId`**, or empty string when omitted).
+
+Canonical durable history still lives in **Mongo** when the user has opted in (**`getXchatUserPreferences`** → **`saveXChatLog`**); this wire metadata does **not** replace `xchat_logs`. Default published persona for app users without an assignment is governed by **`xchat_platform_settings.defaultAppUserPersonaId`** (see **`xchat-platform-settings.ts`** and persona resolution in the ask route)—the **`metadata.personaId`** field reflects the **effective** persona after assignment + picker policy, not only that default row.
+
 ## See also
 
 - [`xai-api-standard.md`](./xai-api-standard.md) · [`xchat-tools-guide.md`](./xchat-tools-guide.md) · [`atx-multi-agent.md`](./atx-multi-agent.md) (team-only collections)

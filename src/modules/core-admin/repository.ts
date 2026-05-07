@@ -3400,7 +3400,7 @@ export async function ensurePortfolioWatchlistForUser(input: {
         watchlistSymbols: ["TSLA"]
       });
     }
-  } catch (error) {
+  } catch {
     return null;
   }
   return getPortfolioWatchlist(input);

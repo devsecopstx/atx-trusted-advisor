@@ -1588,10 +1588,29 @@ describe("xchat ask route collection retrieval", () => {
     );
     expect(second.status).toBe(200);
     const secondPayload = (await second.json()) as {
-      data?: { response?: string; strategyJobOffer?: boolean };
+      data?: {
+        response?: string;
+        content?: string;
+        strategyJobOffer?: boolean;
+        interactionMeta?: { generationMs: number; sources: { total: number } };
+        metadata?: {
+          durationMs: number;
+          sourcesUsed: number;
+          personaId: string;
+          model: string;
+          threadId: string;
+        };
+      };
     };
     expect(secondPayload.data?.strategyJobOffer).toBe(false);
     expect(secondPayload.data?.response ?? "").toContain("Understood, staying in chat");
+    expect(secondPayload.data?.content ?? "").toContain("Understood, staying in chat");
+    expect(secondPayload.data?.content).toBe(secondPayload.data?.response);
+    expect(secondPayload.data?.metadata?.threadId).toBe(threadId);
+    expect(secondPayload.data?.metadata?.model).toBe("strategy_job_opt_out");
+    expect(secondPayload.data?.metadata?.personaId).toBe("507f1f77bcf86cd799439055");
+    expect(secondPayload.data?.metadata?.durationMs).toBe(secondPayload.data?.interactionMeta?.generationMs);
+    expect(secondPayload.data?.metadata?.sourcesUsed).toBe(secondPayload.data?.interactionMeta?.sources.total);
 
     const third = await postAsk(
       new Request("http://test/api/xchat/ask", {
@@ -1713,10 +1732,10 @@ describe("xchat ask route collection retrieval", () => {
       expect(text).toContain("| TSLA | $245.00 | +$5.25 (+2.19%)");
       expect(text).toContain("| NVDA | $488.00 | -$3.10 (-0.63%)");
       expect(text).toContain(
-        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&portfolioId=507f1f77bcf86cd799439044"
+        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044"
       );
       expect(text).toContain(
-        "[Open NVDA in xOptions](/xoptions?symbol=NVDA&portfolioId=507f1f77bcf86cd799439044"
+        "[Open NVDA in xOptions](/xoptions?symbol=NVDA&action=build&portfolioId=507f1f77bcf86cd799439044"
       );
       expect(text).toContain("Accessibility note:");
       expect(text).not.toMatch(/added /i);
@@ -1825,7 +1844,7 @@ describe("xchat ask route collection retrieval", () => {
         })
       );
       expect(payload.data?.response ?? "").toContain(
-        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&portfolioId=507f1f77bcf86cd799439044"
+        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044"
       );
     } finally {
       createSpy.mockRestore();
@@ -1877,7 +1896,7 @@ describe("xchat ask route collection retrieval", () => {
       expect(text).toContain("| Symbol | Spot | 1D Delta | Distance to Target | xOptions CTA |");
       expect(text).toContain("| TSLA | $245.00 | — | — |");
       expect(text).toContain(
-        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&portfolioId=507f1f77bcf86cd799439044"
+        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044"
       );
     } finally {
       createSpy.mockRestore();

@@ -1205,6 +1205,8 @@ export function XchatConversation({
 
       const payload = (await response.json().catch(() => ({}))) as {
         data?: {
+          /** Canonical markdown alias of `response` from `/api/xchat/ask`. */
+          content?: string;
           response: string;
           personaName?: string;
           logId?: string;
@@ -1266,7 +1268,7 @@ export function XchatConversation({
           {
             id: `ai-${Date.now()}`,
             role: "ai" as const,
-            content: payload.data?.response ?? "",
+            content: payload.data?.content ?? payload.data?.response ?? "",
             persona: resolvedName,
             timestamp: Date.now(),
             serverLogId: logId,
@@ -1283,7 +1285,7 @@ export function XchatConversation({
         const nextItem: HistoryItem = {
           id: historyItemId,
           message: hasPasteImage && !prompt ? "[Pasted image]" : prompt,
-          response: payload.data?.response ?? "",
+          response: payload.data?.content ?? payload.data?.response ?? "",
           model: "xchat",
           createdAt: new Date().toISOString(),
           personaId: personaIdSent,

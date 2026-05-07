@@ -71,6 +71,7 @@ function formatSignedPercent(value: number | undefined): string {
 function buildXoptionsSymbolHref(symbol: string, portfolioId?: string): string {
   const params = new URLSearchParams();
   params.set("symbol", symbol);
+  params.set("action", "build");
   if (portfolioId && /^[a-f\d]{24}$/i.test(portfolioId)) {
     params.set("portfolioId", portfolioId.toLowerCase());
   }
