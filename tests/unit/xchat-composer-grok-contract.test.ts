@@ -56,7 +56,7 @@ describe("xChat composer Grok shell contract", () => {
   it("sizes attach/mic glyphs in CSS for bar alignment", () => {
     expect(css).toContain(".xchat-composer__grok-tool--attach svg");
     expect(css).toContain(".xchat-composer__grok-tool--mic svg");
-    expect(css).toMatch(/width:\s*22px/);
+    expect(css).toMatch(/width:\s*20px/);
     expect(css).toContain(".xchat-composer__grok-bar");
     expect(css).toContain("align-items: center");
   });
