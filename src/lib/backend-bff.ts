@@ -44,6 +44,10 @@ export const nextBffApi = {
     workspaceSnapshot: {
       pathTemplate: "/api/portfolios/{portfolioId}/workspace-snapshot",
       methods: ["GET"]
+    },
+    portfolioSnapshot: {
+      pathTemplate: "/api/portfolios/{portfolioId}/snapshot",
+      methods: ["GET"]
     }
   },
   positions: {

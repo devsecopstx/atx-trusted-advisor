@@ -21,6 +21,8 @@ export async function GET(request: Request) {
   const t = Number.isFinite(hotLimit) ? hotLimit : 3;
   const accountId = accountIdRaw?.trim() ? accountIdRaw.trim() : null;
 
-  const payload = await getFindOptionsBootstrap(session, { holdingsLimit: h, hotLimit: t, accountId });
+  const payload = await getFindOptionsBootstrap(session, { holdingsLimit: h, hotLimit: t, accountId }, {
+    coordinatingRequest: request
+  });
   return NextResponse.json({ data: payload });
 }

@@ -3,6 +3,7 @@ package com.atxfinance.backend.web
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.portfolio.BsonJson
 import com.atxfinance.backend.portfolio.PortfolioNestedResourceService
+import com.atxfinance.backend.portfolio.PortfolioSnapshotService
 import com.atxfinance.backend.session.SessionCookieParser
 import jakarta.servlet.http.HttpServletRequest
 import org.bson.Document
@@ -25,6 +26,7 @@ class PortfolioSubresourcesController(
     private val props: AtxfinanceProperties,
     private val sessionCookieParser: SessionCookieParser,
     private val nested: PortfolioNestedResourceService,
+    private val portfolioSnapshotService: PortfolioSnapshotService,
 ) {
 
     @GetMapping("/api/portfolios/{portfolioId}/accounts")
@@ -64,6 +66,7 @@ class PortfolioSubresourcesController(
         val cash = (body["cashBalance"] as? Number)?.toDouble()
         val created = nested.insertAccount(session, portfolioId, trimmedName, type, ext, cash)
             ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Could not create account"))
+        portfolioSnapshotService.invalidateWorkspaceSnapshotCache(session, portfolioId)
         val row = accountRow(created, portfolioId, emptyList())
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("data" to row))
     }
@@ -88,6 +91,7 @@ class PortfolioSubresourcesController(
             val updated =
                 nested.patchAccount(session, portfolioId, accountId, body)
                     ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Account not found"))
+            portfolioSnapshotService.invalidateWorkspaceSnapshotCache(session, portfolioId)
             ResponseEntity.ok(mapOf("data" to BsonJson.documentToMap(updated)))
         } catch (ex: ResponseStatusException) {
             ResponseEntity.status(ex.statusCode).body(mapOf("error" to (ex.reason ?: "Request failed")))
@@ -113,6 +117,7 @@ class PortfolioSubresourcesController(
                 ),
             )
         }
+        portfolioSnapshotService.invalidateWorkspaceSnapshotCache(session, portfolioId)
         return ResponseEntity.ok(mapOf("ok" to true))
     }
 
@@ -155,6 +160,7 @@ class PortfolioSubresourcesController(
         val quotes = request.getParameter("quotes") == "1"
         val payload = nested.patchWatchlist(session, portfolioId, quotes, addSymbols, addEntries, removeSymbols, dedupe, name)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Watchlist not found"))
+        portfolioSnapshotService.invalidateWorkspaceSnapshotCache(session, portfolioId)
         return ResponseEntity.ok(payload)
     }
 

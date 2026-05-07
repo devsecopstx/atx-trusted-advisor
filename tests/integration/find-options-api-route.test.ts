@@ -32,7 +32,9 @@ describe("GET /api/app-user/find-options/*", () => {
     serviceMocks.getFindOptionsBootstrap.mockImplementation(async (session, input) => {
       const [context, holdings, hot] = await Promise.all([
         serviceMocks.getFindOptionsContext(session),
-        serviceMocks.getTopStockHoldingsByValue(session, input.holdingsLimit),
+        serviceMocks.getTopStockHoldingsByValue(session, input.holdingsLimit, {
+          accountId: input.accountId ?? null
+        }),
         serviceMocks.getHotWatchlistSymbols(session, input.hotLimit)
       ]);
       return {

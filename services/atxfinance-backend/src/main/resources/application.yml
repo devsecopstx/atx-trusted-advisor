@@ -77,6 +77,8 @@ app:
       auth-login-limit-per-minute: ${AUTH_RATE_LIMIT_LOGIN_PER_MINUTE:30}
       auth-callback-limit-per-minute: ${AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE:60}
       oauth-flow-cookie-max-age-seconds: ${OAUTH_FLOW_TTL_SECONDS:1800}
+      portfolio-snapshot-ttl-open-seconds: ${PORTFOLIO_SNAPSHOT_TTL_OPEN_SECONDS:60}
+      portfolio-snapshot-ttl-closed-seconds: ${PORTFOLIO_SNAPSHOT_TTL_CLOSED_SECONDS:300}
     scheduler:
       enabled: ${ADMIN_SCHEDULER_ENABLED:true}
       driver: ${ADMIN_SCHEDULER_DRIVER:quartz}

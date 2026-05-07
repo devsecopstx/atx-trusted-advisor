@@ -1,10 +1,11 @@
 package com.atxfinance.backend.web
 
 import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.portfolio.BsonJson
+import com.atxfinance.backend.portfolio.PortfolioSnapshotService
 import com.atxfinance.backend.portfolio.PositionPayloadNormalizer
 import com.atxfinance.backend.portfolio.PositionValidationException
 import com.atxfinance.backend.portfolio.PositionsService
-import com.atxfinance.backend.portfolio.BsonJson
 import com.atxfinance.backend.session.SessionCookieParser
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
@@ -21,6 +22,7 @@ class PositionsController(
     private val props: AtxfinanceProperties,
     private val sessionCookieParser: SessionCookieParser,
     private val positionsService: PositionsService,
+    private val portfolioSnapshotService: PortfolioSnapshotService,
 ) {
 
     @GetMapping("/api/positions")
@@ -87,6 +89,7 @@ class PositionsController(
 
         return try {
             val doc = positionsService.upsert(session, normalized)
+            portfolioSnapshotService.invalidateWorkspaceSnapshotCache(session, normalized.portfolioId)
             ResponseEntity.status(HttpStatus.CREATED).body(mapOf("data" to BsonJson.documentToMap(doc)))
         } catch (e: PositionValidationException) {
             validationResponse(e)
@@ -117,6 +120,7 @@ class PositionsController(
         if (!deleted) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Position not found"))
         }
+        portfolioSnapshotService.invalidateWorkspaceSnapshotCache(session, portfolioId)
         return ResponseEntity.ok(mapOf("ok" to true))
     }
 

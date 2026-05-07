@@ -6,6 +6,10 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 [Design and UX roadmap](#design-and-ux-roadmap) adds **open UX items** plus a short **multi-agent usage policy** (guidance, not a dated deliverable).
 
+**xChat performance — prod rollout:** Phase 1 ships **JVM** `GET /api/portfolios/{id}/snapshot` (tenant-scoped Redis, market-window TTL, purge on mutations), **Next** pre-warm / find-options bootstrap calling that path when `ATXFINANCE_BACKEND_ORIGIN` is set, and a **JVM SSE stub** whose events match the existing post-loop **`meta` / `done`** client shape. **Deploy:** roll **Next + Spring** together for snapshot cache; Next-only remains safe (Mongo materialization fallback).
+
+**Next priority (Phase 2):** **True token SSE inside the xAI tool loop** — stream incremental assistant/tool deltas while the Responses tool loop runs (`xai.ts` / provider parsing), without breaking the post-loop transport so clients keep progressive rendering. Out of scope for Phase 1: full streaming parser in Next/Spring until this lands.
+
 ---
 
 ## Product backlog
@@ -76,7 +80,11 @@ For the **core xStrategyBuilder loop** (collect → validate → synthesize → 
 
 ## xChat Hardcore
 
-**Outstanding:** Observability hardening, audit/doc parity, strict JSON Schema artifact v2 — [Deferred (larger lifts)](#deferred-larger-lifts). Vision paste follow-ups — [Deferred product TODOs](#deferred-product-todos).
+**Shipped (Phase 1 perf):** JVM portfolio workspace snapshot + Redis key alignment with Next; workspace pre-warm and xOptions bootstrap coordination over BFF; JVM `POST /api/xchat/ask/stream` stub aligned to post-loop SSE (`meta` / `done`) — **no** live token stream inside the tool loop yet.
+
+**Next priority:** **True token SSE inside the tool loop** (Phase 2) — partial tokens and tool-iteration progress on the wire while preserving the post-loop contract for clients. See [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md), [xchat-debug-logging.md](./xchat/xchat-debug-logging.md).
+
+**Outstanding (later):** Observability hardening, audit/doc parity, strict JSON Schema artifact v2 — [Deferred (larger lifts)](#deferred-larger-lifts). Vision paste follow-ups — [Deferred product TODOs](#deferred-product-todos).
 
 ---
 
@@ -206,7 +214,7 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 
 ### BFF / consolidation (intentionally Next-only for now)
 
-- **Portfolio workspace snapshots:** Next materializes `portfolio_workspace_snapshots` in Mongo (read order: Redis → materialized row by `portfolioId` + `workspaceContentRev` → live build). Scanner tasks warm rows after success. A future Spring BFF can serve the same payload for JVM-heavy consolidation without changing the document shape.
+- **Portfolio workspace snapshots:** Next materializes `portfolio_workspace_snapshots` in Mongo (read order: local Redis `xf:wsnap:v1:*` → optional **JVM** `GET /api/portfolios/{id}/snapshot` when BFF is on → materialized row → live build). Spring uses the **same Redis key prefix** with market-window TTL (60s open / 300s closed ET) and purges cache on app-user position/account/watchlist mutations. Scanner tasks still warm rows after success on Next.
 - xChat `/api/xchat/`* — deferred per [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md).
 - Persona governance extensions (publish, archive, rollback, versions, xAI collection helpers) — Next until moved to Spring.
 - Admin `PATCH/DELETE …/positions/{positionId}` — Next until registry + Kotlin parity.
@@ -218,5 +226,5 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 
 ## Deferred (larger lifts)
 
-- xChat **SSE streaming** (partial tokens + tool-loop progress) on Spring + BFF (`api-consolidation-spring-backend.md`); optional Next-native SSE interim if BFF lags.
+- **Active next — xChat true token SSE inside the tool loop:** Incremental assistant/tool deltas during xAI **Responses** tool iterations (`xai.ts` / provider client); Spring stream endpoint evolves from stub to end-to-end once parser is safe. Clients keep **post-loop** SSE semantics (`meta` / `done`) for progressive UI without a full ask-route rewrite. **Docs:** [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md), [atx-multi-agent.md](./xchat/atx-multi-agent.md). Optional Next-only SSE interim if BFF lags — prefer JVM path once streaming is stable.
 - Strict JSON Schema for strategy artifacts v2 (`atx-multi-agent.md`).

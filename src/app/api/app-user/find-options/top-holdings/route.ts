@@ -16,6 +16,8 @@ export async function GET(request: Request) {
   const limit = raw ? parseInt(raw, 10) : 10;
   const safe = Number.isFinite(limit) ? limit : 10;
 
-  const { holdings } = await getTopStockHoldingsByValue(session, safe);
+  const { holdings } = await getTopStockHoldingsByValue(session, safe, undefined, {
+    coordinatingRequest: request
+  });
   return NextResponse.json({ data: { holdings } });
 }

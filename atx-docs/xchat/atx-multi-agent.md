@@ -21,6 +21,7 @@
 | Topic | Decision |
 |--------|-----------|
 | **Traffic** | **BFF-only** — Next → Spring proxy, same-origin cookies. |
+| **Workspace preload** | Next materializes Mongo rows; optional **`GET /api/portfolios/{id}/snapshot`** on JVM (Redis `xf:wsnap:v1:*`, market-window TTL) warms **`loadWorkspaceSnapshotPreload`** / xOptions bootstrap when BFF is on — same keys as Next Redis cache. |
 | **Config** | `STRATEGY_MAX_JOBS_HOURLY` env → `app.atxfinance.strategy-max-jobs-hourly` (default **12**); soft warn default **8**. |
 
 ---

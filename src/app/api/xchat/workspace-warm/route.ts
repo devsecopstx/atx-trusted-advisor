@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       tenantId: session.tenantId,
       workspacePortfolioId: portfolioId
     },
-    { snapshotQuoteNetwork: "live" }
+    { snapshotQuoteNetwork: "live", coordinatingRequest: request }
   );
 
   return NextResponse.json({ data: { warmed: true as const } });

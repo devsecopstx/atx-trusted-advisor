@@ -6,8 +6,9 @@
  * **Taxonomy (for Cloud Logging filters):**
  * - **`[xchat/debug]`** — opt-in JSON lines when request ALS has tenant debug on; never from browser runtimes. Fields
  *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_ask_pre_request` |
- *   `xchat_ask_provider_error` | `xchat_ask_tool_batch` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats`.
- *   Workspace snapshot (same prefix, not in `XCHAT_DEBUG_LOG_TYPES`): `workspace_snapshot_load` | `workspace_snapshot_build`.
+ *   `xchat_ask_provider_error` | `xchat_ask_tool_batch` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats` |
+ *   `workspace_snapshot_backend`.
+ *   Workspace snapshot load/build (same prefix): `workspace_snapshot_load` | `workspace_snapshot_build`.
  *   See `atx-docs/xchat/xchat-debug-logging.md` and `atx-docs/sre-ops/mongo-indexing-guide.md` §8.
  * - **`[xchat/ask]`** — operational `console.warn` / `console.error` on RAG or
  *   provider failures (always on; no full prompts).
@@ -45,7 +46,8 @@ export const XCHAT_DEBUG_LOG_TYPES = [
   "xchat_ask_tool_batch",
   "xchat_batch",
   "xchat_history_list",
-  "xchat_history_stats"
+  "xchat_history_stats",
+  "workspace_snapshot_backend"
 ] as const;
 
 export type XchatDebugLogType = (typeof XCHAT_DEBUG_LOG_TYPES)[number];

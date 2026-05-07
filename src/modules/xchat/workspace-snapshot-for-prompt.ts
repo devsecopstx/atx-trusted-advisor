@@ -1,4 +1,5 @@
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
+import { tryFetchBackendPortfolioWorkspaceSnapshot } from "@/lib/backend-portfolio-snapshot";
 import { isXchatStructuredDebugEnabled } from "@/lib/xchat-debug";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
@@ -105,6 +106,11 @@ export type LoadWorkspaceSnapshotPreloadOptions = {
    * **live** — allow Yahoo batch fetch on cache miss (default).
    */
   snapshotQuoteNetwork?: "cached_first" | "live";
+  /**
+   * When set and BFF can reach Spring, try **`GET /api/portfolios/{id}/snapshot`** (JVM Redis read-through)
+   * after the local snapshot cache miss and before Mongo materialized read.
+   */
+  coordinatingRequest?: Request;
 };
 
 /** Keep prompt size bounded; full book via atxfinance positions_snapshot. */
@@ -198,7 +204,7 @@ export function normalizeWorkspaceContentRev(portfolio: { workspaceContentRev?: 
   return typeof r === "number" && Number.isFinite(r) && r >= 0 ? Math.floor(r) : 0;
 }
 
-function isValidWorkspacePreloadPayload(
+export function isValidWorkspacePreloadPayload(
   parsed: unknown,
   portfolioId: string,
   rev: number
@@ -407,6 +413,36 @@ export async function loadWorkspaceSnapshotPreload(
       }
     } catch {
       /* fall through */
+    }
+  }
+
+  if (options?.coordinatingRequest) {
+    const tJvm = performance.now();
+    const fromJvm = await tryFetchBackendPortfolioWorkspaceSnapshot({
+      coordinatingRequest: options.coordinatingRequest,
+      portfolioIdHex: portfolioId,
+      workspaceContentRev: rev
+    });
+    if (fromJvm && isValidWorkspacePreloadPayload(fromJvm, portfolioId, rev)) {
+      const ttl = getWorkspaceSnapshotCacheTtlSeconds();
+      try {
+        await writeWorkspaceSnapshotCache(cacheKey, JSON.stringify(fromJvm), ttl);
+      } catch {
+        /* ignore */
+      }
+      const elapsedMs = Math.round(performance.now() - tStart);
+      const backendFetchMs = Math.round(performance.now() - tJvm);
+      if (isXchatStructuredDebugEnabled()) {
+        console.info("[xchat/debug]", {
+          type: "workspace_snapshot_backend",
+          source: "jvm_snapshot",
+          elapsedMs,
+          backendFetchMs,
+          portfolioId,
+          workspaceContentRev: rev
+        });
+      }
+      return fromJvm;
     }
   }
 

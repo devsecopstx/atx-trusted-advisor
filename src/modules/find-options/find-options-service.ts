@@ -300,7 +300,8 @@ async function topHoldingsFromWorkspacePreloadIfFresh(
 export async function getTopStockHoldingsByValue(
   session: SessionUser,
   limit: number,
-  input?: { accountId?: string | null }
+  input?: { accountId?: string | null },
+  opts?: { coordinatingRequest?: Request }
 ): Promise<{ holdings: TopHoldingRow[] }> {
   const portfolio = await resolveDefaultPortfolio(session);
   if (!portfolio?._id) {
@@ -309,10 +310,13 @@ export async function getTopStockHoldingsByValue(
 
   const portfolioId = portfolio._id.toHexString();
   const book = await loadAppUserDefaultBook(session);
-  const preload = await loadWorkspaceSnapshotPreload({
-    userId: session.userId,
-    tenantId: session.tenantId
-  });
+  const preload = await loadWorkspaceSnapshotPreload(
+    {
+      userId: session.userId,
+      tenantId: session.tenantId
+    },
+    { snapshotQuoteNetwork: "live", coordinatingRequest: opts?.coordinatingRequest }
+  );
   const fast = await topHoldingsFromWorkspacePreloadIfFresh(
     portfolio as Portfolio & { _id: NonNullable<Portfolio["_id"]> },
     preload,
@@ -437,7 +441,8 @@ export async function getHotWatchlistSymbols(
 /** One round-trip for xOptions workspace: context + top holdings + hot watchlist scan. */
 export async function getFindOptionsBootstrap(
   session: SessionUser,
-  input: { holdingsLimit: number; hotLimit: number; accountId?: string | null }
+  input: { holdingsLimit: number; hotLimit: number; accountId?: string | null },
+  opts?: { coordinatingRequest?: Request }
 ): Promise<{
   context: FindOptionsContextPayload;
   holdings: TopHoldingRow[];
@@ -445,7 +450,7 @@ export async function getFindOptionsBootstrap(
 }> {
   const [context, holdingsResult, hotResult] = await Promise.all([
     getFindOptionsContext(session, { accountId: input.accountId ?? null }),
-    getTopStockHoldingsByValue(session, input.holdingsLimit, { accountId: input.accountId ?? null }),
+    getTopStockHoldingsByValue(session, input.holdingsLimit, { accountId: input.accountId ?? null }, opts),
     getHotWatchlistSymbols(session, input.hotLimit)
   ]);
   return {

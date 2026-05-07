@@ -36,8 +36,9 @@ Exported as `XCHAT_DEBUG_LOG_TYPES` in `src/lib/xchat-debug.ts`.
 | `xchat_ask_tool_batch` | After each `/v1/responses` turn that runs **local** tools in parallel: `turnIndex`, `parallelLocalCount`, per-call `name` + `durationMs`, `slowestMs`, plus `correlationId` / `requestId` for join with Mongo audit. |
 | `xchat_batch` | Batch flows: includes `batchPhase` — `item_prepare` (per JSONL line while building upload) or `job_created` (xAI batch id known). |
 | `xchat_history_list` | `GET /api/xchat/history` list response metadata (limit, counts, cursor). |
+| `workspace_snapshot_backend` | JVM snapshot coordination: **`backendFetchMs`**, **`elapsedMs`**, portfolio id, rev when **`loadWorkspaceSnapshotPreload`** successfully hydrates from **`GET /api/portfolios/{id}/snapshot`**. |
 
-**Workspace snapshot (optional, same prefix):** when tenant xChat debug is on, `[workspace-snapshot-for-prompt.ts](../../src/modules/xchat/workspace-snapshot-for-prompt.ts)` logs `console.info("[xchat/debug]", { type: "workspace_snapshot_load", … })` (cache vs mongo, `elapsedMs`, masked portfolio id) and `{ type: "workspace_snapshot_build", … }` after a Mongo build. These `type` strings are **not** in `XCHAT_DEBUG_LOG_TYPES` yet; filter on `workspace_snapshot_` in JSON if needed.
+**Workspace snapshot (optional, same prefix):** when tenant xChat debug is on, `[workspace-snapshot-for-prompt.ts](../../src/modules/xchat/workspace-snapshot-for-prompt.ts)` logs `console.info("[xchat/debug]", { type: "workspace_snapshot_load", … })` (cache vs mongo vs **jvm_snapshot** via `workspace_snapshot_backend`, `elapsedMs`, masked portfolio id) and `{ type: "workspace_snapshot_build", … }` after a Mongo build. Filter on `workspace_snapshot_` / `workspace_snapshot_backend` in JSON if needed.
 
 **Monitoring / SLO hints:** After index or Redis changes, compare `workspace_snapshot_load.elapsedMs` before vs after on the same portfolio. Aim **&lt;50 ms** when `source === "cache"`; use **`mongo`** rows to validate cold paths. See **`atx-docs/sre-ops/mongo-indexing-guide.md`** §8.
 

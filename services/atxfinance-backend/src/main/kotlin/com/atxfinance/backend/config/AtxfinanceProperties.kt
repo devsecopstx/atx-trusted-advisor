@@ -101,6 +101,13 @@ data class RedisProps(
     val authCallbackLimitPerMinute: Int = 60,
     /** PKCE + OAuth flow cookie Max-Age when Spring issues login redirect (align with Next: 30m). */
     val oauthFlowCookieMaxAgeSeconds: Int = 1800,
+    /**
+     * `GET /api/portfolios/{portfolioId}/snapshot` — Redis TTL when US regular session is **likely open**
+     * ([com.atxfinance.backend.portfolio.UsEquitiesRegularSession]).
+     */
+    val portfolioSnapshotTtlOpenSeconds: Long = 60,
+    /** Same route — TTL when session is **likely closed** (evenings/weekends; holidays not modeled). */
+    val portfolioSnapshotTtlClosedSeconds: Long = 300,
 )
 
 /**

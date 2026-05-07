@@ -12,9 +12,10 @@ If **`REDIS_URL`** or **`SPRING_DATA_REDIS_URL`** is set to a `redis://` or `red
 | **OAuth PKCE** | `OAuthPkceRedisStore` — key `xf:oauth:pkce:{state}`, TTL `OAUTH_PKCE_REDIS_TTL_SECONDS` (default **600**). `GET /api/auth/x/login` writes verifier; `GET /api/auth/x/callback` consumes it if cookies are missing. |
 | **Auth rate limits** | `AuthPathRateLimitFilter` — per client IP, rolling minute bucket (`X-Forwarded-For` first hop). Defaults: login **30**/min, callback **60**/min. Set to **0** to disable a limit. Env: `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE`, `AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE`. |
 | **Strategy jobs** | `StrategyJobRedisQuota` — UTC hour bucket `xf:sj:hourly:{userId}:{yyyyMMddHH}`; primary fuse when Redis is on (Mongo count still read for `softWarn` / meta). On failed insert, quota is decremented. |
+| **Portfolio workspace snapshot cache** | **`GET /api/portfolios/{portfolioId}/snapshot`** — read-through Redis for materialized xChat preload (`xf:wsnap:v1:*`, same prefix as Next); TTL **60s** when US regular session is likely **open** (ET 9:30–16:00 Mon–Fri), **300s** when likely **closed** (`PORTFOLIO_SNAPSHOT_TTL_OPEN_SECONDS` / `PORTFOLIO_SNAPSHOT_TTL_CLOSED_SECONDS`). Purges on JVM **position** and **account** / **watchlist** mutations. |
 | **Health** | `/api/health` and `/api/backend/health` include **`redis`** / `details.redis`: `ok` \| `error` \| `skipped`. |
 
-When **`REDIS_URL` is unset**, none of the above beans load; behavior matches pre-600 JVM (cookies-only OAuth context, Mongo-only strategy rate count, no auth filter).
+When **`REDIS_URL` is unset**, none of the above beans load; behavior matches pre-600 JVM (cookies-only OAuth context, Mongo-only strategy rate count, no auth filter, no snapshot Redis cache).
 
 ## TLS / `rediss://` vs plain
 
@@ -36,6 +37,8 @@ Under `app.atxfinance.redis`:
 - `auth-login-limit-per-minute` ← `${AUTH_RATE_LIMIT_LOGIN_PER_MINUTE:30}`
 - `auth-callback-limit-per-minute` ← `${AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE:60}`
 - `oauth-flow-cookie-max-age-seconds` ← `${OAUTH_FLOW_TTL_SECONDS:1800}`
+- `portfolio-snapshot-ttl-open-seconds` ← `${PORTFOLIO_SNAPSHOT_TTL_OPEN_SECONDS:60}`
+- `portfolio-snapshot-ttl-closed-seconds` ← `${PORTFOLIO_SNAPSHOT_TTL_CLOSED_SECONDS:300}`
 
 ## Deploy note (quota drift)
 
