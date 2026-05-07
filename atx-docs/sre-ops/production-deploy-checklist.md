@@ -11,6 +11,7 @@ Use this with **Deploy Cloud Run** (`workflow_dispatch`, `confirm_manual_approva
 5. **Billing/workspace defaults parity (when billing/workspace code changes):**
    - Open `/admin/tenant-preferences/workspace-limits?tenant=<targetTenantId>` and confirm intended `workspaceLimits` + `planOverrides`.
    - Open `/account/billing` (guest and signed-in) and confirm plan cards show matching quota rows and list prices for that tenant default.
+   - **Guest onboarding (≥3.16.3):** signup block is visible without the xChat Access launcher; **Select & Register** on a card updates plan pills and scrolls to the form; optional smoke: `POST /api/access-requests/public` with test **`password`** (≥12 chars) on staging only.
 
 ## Secrets and configuration (do not mix layers)
 

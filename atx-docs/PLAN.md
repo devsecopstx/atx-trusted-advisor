@@ -100,6 +100,12 @@ For the **core xStrategyBuilder loop** (collect → validate → synthesize → 
 
 **Open:** In-product usage meter / soft-limit banner on xChat and X Money as a **second** settlement path — see [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap). Stripe remains default for existing customers until product opts users into X Money checkout.
 
+**Shipped (≥3.16.3) — guest `/account/billing` onboarding:** Read-only guests see a **compact trial note**, then **`billing-guest-experience.tsx`** (email signup + plan pills + OAuth) with **tenant-resolved plan cards** below (or beside on large viewports). **`POST /api/access-requests/public`** persists an initial **`passwordHash`** (and **`emailVerifiedAt`** when missing) so approved users can use **email/password** without waiting on a separate invite link when they registered with a password. Deep links: **`?register=1`**, **`?plan=premium|basic|premium_plus`** (aliases normalized in route). Welcome toast: **`/workspace/onboarding?billing_welcome=1`**.
+
+**Tests (guest public signup):** `tests/unit/access-requests-public-body-schema.test.ts` (Zod: **`password`** required, min 12); `tests/integration/access-requests-public-rate-limit.test.ts` (429 / non-proxy; body includes password).
+
+**Gaps:** No hermetic CI test yet for the full **`POST /api/access-requests/public`** Mongo happy path; no component/E2E for **`BillingGuestExperience`** (plan pills, scroll-to-form, OAuth **`next`**).
+
 ---
 
 ## xMoney & crypto portfolio (704) — technical integration roadmap
@@ -209,7 +215,7 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 ### Test / doc follow-ups (conscious)
 
 - `**POST /api/import/broker/clean`:** Documented in `**api-endpoints.md`** and [app-user import](./design-system/portfolio/app-user-import-activity.md); no dedicated route integration test yet (destructive — mock `**deleteAllPositionsForPortfolio`** + job/task deletes if added). **Partial `mappings` / row toggles:** covered by unit tests on `**validateBrokerImportMappings`** in `**app-broker-import-job.test.ts`**; full apply path remains integration-heavy (job + scheduled task).
-- **Email/password:** unit tests `**password-crypto`**, `**auth-token-hash`**, **`admin-user-credential-invite`** (eligibility for admin resend); approve-route + **`admin-user-resend-credential-invite-route`** integration tests use mocks for SMTP; audit actions `**credential_invite_*`** / `**bootstrap_enqueue_failed**` documented in `**auth-and-access.md**` / `**current-state-features.md**` — no CI E2E against live SMTP.
+- **Email/password:** unit tests `**password-crypto`**, `**auth-token-hash`**, **`admin-user-credential-invite`** (eligibility for admin resend); approve-route + **`admin-user-resend-credential-invite-route`** integration tests use mocks for SMTP; audit actions `**credential_invite_*`** / `**bootstrap_enqueue_failed**` documented in `**auth-and-access.md**` / `**current-state-features.md**` — no CI E2E against live SMTP. **Guest register:** see [Stripe billing](#stripe-billing) (**Tests** / **Gaps** under shipped guest onboarding).
 - **X Money / multi-provider billing (704):** No automated coverage yet — follow the gap list under [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap) § Tests.
 
 ### BFF / consolidation (intentionally Next-only for now)

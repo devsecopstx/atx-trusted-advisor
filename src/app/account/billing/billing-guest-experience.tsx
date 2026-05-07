@@ -64,7 +64,7 @@ export function BillingGuestExperience({
     return () => window.clearTimeout(t);
   }, [scrollToFormOnMount]);
 
-  function applyPlanFromBillingId(planId: AtxBillingPlanId) {
+  function applyPlanFromBillingId(planId: BillingPlanCardPayload["planId"]) {
     const next = accessRequestPlanFromBillingPlanId(planId);
     setRegisterPlan(next);
     setPlanAnnouncement(`${accessRequestPlanLabel(next)} plan selected`);

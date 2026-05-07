@@ -18,7 +18,8 @@ import {
 import { setInitialPasswordFromPublicSignup } from "@/modules/identity/email-credentials-repository";
 import { ensureCoreUserByEmail } from "@/modules/identity/repository";
 
-const guestAccessRequestSchema = z.object({
+/** Exported for unit tests (`tests/unit/access-requests-public-body-schema.test.ts`). */
+export const guestAccessRequestSchema = z.object({
   /** Display handle for admins / audit; UI collects as "username" (letters + digits only). */
   name: z
     .string()
