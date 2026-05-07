@@ -114,6 +114,46 @@ export async function verifyUserPassword(user: CoreUser, plainPassword: string):
   return verifyPassword(plainPassword, user.passwordHash);
 }
 
+/**
+ * Guest billing signup: set password when none exists yet so email/password login works after access approval
+ * (skips separate invite flow). Does not grant roles.
+ */
+export async function setInitialPasswordFromPublicSignup(input: {
+  userId: ObjectId;
+  plainPassword: string;
+}): Promise<{ ok: true } | { ok: false; code: "not_found" | "already_has_password" }> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const user = await db.collection<CoreUser>(USERS).findOne({ _id: input.userId });
+  if (!user) {
+    return { ok: false, code: "not_found" };
+  }
+  if (user.passwordHash && typeof user.passwordHash === "string" && user.passwordHash.length > 0) {
+    return { ok: false, code: "already_has_password" };
+  }
+  const passwordHash = await hashPassword(input.plainPassword);
+  const now = new Date();
+  const emailVerifiedAt = user.emailVerifiedAt ?? now;
+  const res = await db.collection<CoreUser>(USERS).updateOne(
+    {
+      _id: input.userId,
+      $or: [{ passwordHash: { $exists: false } }, { passwordHash: "" }]
+    },
+    {
+      $set: {
+        passwordHash,
+        emailVerifiedAt,
+        credentialsVerifiedAt: now,
+        updatedAt: now
+      }
+    }
+  );
+  if (res.modifiedCount !== 1) {
+    return { ok: false, code: "already_has_password" };
+  }
+  return { ok: true };
+}
+
 export async function issuePasswordResetForUser(userId: ObjectId): Promise<{ rawToken: string } | null> {
   await ensureIdentityIndexes();
   const db = await getDb();

@@ -36,6 +36,10 @@ type XchatGuestPanelProps = {
   emailPasswordLoginHref?: string;
   registerDefaultPlan?: AccessRequestPlanValue;
   openRegisterByDefault?: boolean;
+  /** Trial landing / billing deep links: one primary path (OAuth + email register); returning users use footer sign-in link. */
+  registrationFirst?: boolean;
+  /** Billing plans page: hide locked composer chrome; keep Access + main content only. */
+  hideComposerPreview?: boolean;
 };
 
 const DEFAULT_SIGNIN_HREF = "/api/auth/x/login?next=%2Fxchat";
@@ -75,11 +79,15 @@ export function XchatGuestPanel({
   xOAuthLoginHref = DEFAULT_SIGNIN_HREF,
   emailPasswordLoginHref = DEFAULT_EMAIL_LOGIN_HREF,
   registerDefaultPlan = "basic",
-  openRegisterByDefault = false
+  openRegisterByDefault = false,
+  registrationFirst = false,
+  hideComposerPreview = false
 }: XchatGuestPanelProps) {
   const authMessage = authError ? (AUTH_ERROR_COPY[authError] ?? "Sign-in failed.") : null;
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
@@ -95,8 +103,34 @@ export function XchatGuestPanel({
       return;
     }
     setAccessOpen(true);
-    setRegisterOpen(true);
-  }, [openRegisterByDefault, pendingApproval]);
+    if (!registrationFirst) {
+      setRegisterOpen(true);
+    }
+  }, [openRegisterByDefault, pendingApproval, registrationFirst]);
+
+  const oauthProviderStack = (
+    <>
+      {googleLoginHref ? (
+        <a className="cta cta-oauth-google login-google-btn xchat-guest-actions__cta" href={googleLoginHref}>
+          <GoogleGIcon size={20} />
+          Google
+        </a>
+      ) : (
+        <button
+          className="cta cta-secondary xchat-guest-actions__cta xchat-guest-actions__cta--disabled"
+          disabled
+          type="button"
+        >
+          <GoogleGIcon size={20} />
+          Google unavailable
+        </button>
+      )}
+      <a className="cta cta-secondary login-oauth-x xchat-guest-actions__cta" href={xOAuthLoginHref}>
+        <XLogoIcon size={20} />
+        X
+      </a>
+    </>
+  );
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -105,8 +139,19 @@ export function XchatGuestPanel({
     }
     const name = registerName.trim();
     const email = registerEmail.trim().toLowerCase();
+    const password = registerPassword;
     if (!name || !email) {
-      setRegisterError("Name and email are required.");
+      setRegisterError("Username and email are required.");
+      setRegisterSuccess(null);
+      return;
+    }
+    if (!/^[a-zA-Z0-9]{2,120}$/.test(name)) {
+      setRegisterError("Username must be 2–120 characters; letters and numbers only.");
+      setRegisterSuccess(null);
+      return;
+    }
+    if (password.length < 12) {
+      setRegisterError("Password must be at least 12 characters.");
       setRegisterSuccess(null);
       return;
     }
@@ -120,7 +165,7 @@ export function XchatGuestPanel({
       const response = await fetch("/api/access-requests/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, requestedPlan: submittedPlan })
+        body: JSON.stringify({ name, email, requestedPlan: submittedPlan, password })
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -148,6 +193,7 @@ export function XchatGuestPanel({
       setAccessOpen(true);
       setRegisterName("");
       setRegisterEmail("");
+      setRegisterPassword("");
       setRegisterPlan(registerDefaultPlan);
     } catch {
       setRegisterError("Network error. Retry in a moment.");
@@ -159,9 +205,9 @@ export function XchatGuestPanel({
   return (
     <div className="xchat-main">
       <div className="xchat-persona-bar">
-        <span className="status-badge status-ready">xChat</span>
+        <span className="status-badge status-ready">{hideComposerPreview ? "Plans" : "xChat"}</span>
         <span className="status-text" style={{ fontSize: "0.75rem" }}>
-          Trial &amp; subscriptions
+          {hideComposerPreview ? "Billing & access" : "Trial & subscriptions"}
         </span>
       </div>
 
@@ -185,7 +231,11 @@ export function XchatGuestPanel({
       <section className="xchat-guest-actions">
         <h2 className="xchat-guest-actions__title">Access</h2>
         <p className="xchat-guest-actions__hint">
-          Guest preview: composer is visible; sign in for prompting, portfolio actions, and billing.
+          {hideComposerPreview
+            ? "Create your account below — plans are on the right. Google and X are optional after email signup."
+            : registrationFirst
+              ? "Start your Basic trial — no card on this step. Sign up with email first; Google and X are below the form."
+              : "Guest preview: composer is visible; sign in for prompting, portfolio actions, and billing."}
         </p>
         {authMessage ? <p className="status-text status-error">{authMessage}</p> : null}
         {authDetails ? <p className="status-text status-error">details: {authDetails}</p> : null}
@@ -196,71 +246,216 @@ export function XchatGuestPanel({
           type="button"
           onClick={() => setAccessOpen((prev) => !prev)}
         >
-          Sign-up or Sign-in
+          {registrationFirst ? "Get started" : "Sign-up or Sign-in"}
         </button>
         {accessOpen ? (
-          <div className="xchat-guest-actions__stack" id="xchat-guest-access-panel">
-            {googleLoginHref ? (
-              <a className="cta cta-oauth-google login-google-btn xchat-guest-actions__cta" href={googleLoginHref}>
-                <GoogleGIcon size={20} />
-                Google
-              </a>
-            ) : (
-              <button
-                className="cta cta-secondary xchat-guest-actions__cta xchat-guest-actions__cta--disabled"
-                disabled
-                type="button"
-              >
-                <GoogleGIcon size={20} />
-                Google unavailable
-              </button>
-            )}
-            <a className="cta cta-secondary login-oauth-x xchat-guest-actions__cta" href={xOAuthLoginHref}>
-              <XLogoIcon size={20} />
-              X
-            </a>
-            <a className="cta cta-secondary xchat-guest-actions__cta" href={emailPasswordLoginHref}>
-              Email + password
-            </a>
-            {!pendingApproval ? (
-              <button
-                aria-controls="xchat-guest-register-panel"
-                aria-expanded={registerOpen}
-                className="cta cta-secondary xchat-guest-actions__cta"
-                type="button"
-                onClick={() => setRegisterOpen((prev) => !prev)}
-              >
-                Register for access
-              </button>
-            ) : (
-              <button className="cta cta-secondary xchat-guest-actions__cta xchat-guest-actions__cta--disabled" disabled type="button">
-                Register unavailable
-              </button>
-            )}
-          </div>
+          registrationFirst && !pendingApproval ? (
+            <div
+              className="xchat-guest-actions__stack xchat-guest-actions__stack--email-first"
+              id="xchat-guest-access-panel"
+            >
+              <div className="xchat-guest-register-panel xchat-guest-register-panel--primary">
+                <form className="xchat-guest-register-form" onSubmit={handleRegister}>
+                  {!registerSuccess ? (
+                    <>
+                      <p className="xchat-guest-register-form__eyebrow">Welcome to aTx Trusted Advisory</p>
+                      <h3 className="xchat-guest-register-form__title xchat-guest-register-form__title--hero">
+                        Let&apos;s get started
+                      </h3>
+                      <div className="xchat-guest-register-form__grid">
+                        <label className="xchat-guest-register-form__field">
+                          <span>Username</span>
+                          <span className="xchat-guest-register-form__field-hint">Letters and numbers only</span>
+                          <input
+                            autoComplete="username"
+                            disabled={registerLoading}
+                            maxLength={120}
+                            name="username"
+                            onChange={(event) => setRegisterName(event.target.value)}
+                            placeholder="Username"
+                            required
+                            type="text"
+                            value={registerName}
+                          />
+                        </label>
+                        <label className="xchat-guest-register-form__field">
+                          <span>Email</span>
+                          <input
+                            autoComplete="email"
+                            disabled={registerLoading}
+                            maxLength={320}
+                            name="email"
+                            onChange={(event) => setRegisterEmail(event.target.value)}
+                            placeholder="Email address"
+                            required
+                            type="email"
+                            value={registerEmail}
+                          />
+                        </label>
+                        <label className="xchat-guest-register-form__field">
+                          <span>Password</span>
+                          <span className="xchat-guest-register-form__field-hint">At least 12 characters</span>
+                          <div className="xchat-guest-register-form__password-row">
+                            <input
+                              autoComplete="new-password"
+                              disabled={registerLoading}
+                              maxLength={128}
+                              name="password"
+                              onChange={(event) => setRegisterPassword(event.target.value)}
+                              placeholder="Password"
+                              required
+                              type={showRegisterPassword ? "text" : "password"}
+                              value={registerPassword}
+                            />
+                            <button
+                              className="xchat-guest-register-form__password-toggle"
+                              type="button"
+                              onClick={() => setShowRegisterPassword((v) => !v)}
+                            >
+                              {showRegisterPassword ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                        </label>
+                        <label className="xchat-guest-register-form__field xchat-guest-register-form__field--plan">
+                          <span>Plan</span>
+                          <select
+                            disabled={registerLoading}
+                            name="requestedPlan"
+                            onChange={(event) => setRegisterPlan(event.target.value as AccessRequestPlanValue)}
+                            value={registerPlan}
+                          >
+                            {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <button
+                        className="cta cta-primary xchat-guest-register-form__submit xchat-guest-actions__cta"
+                        disabled={registerLoading}
+                        type="submit"
+                      >
+                        {registerLoading ? "Submitting..." : "Sign up"}
+                      </button>
+                    </>
+                  ) : null}
+                  {registerError ? <p className="status-text status-error">{registerError}</p> : null}
+                  {registerSuccess ? (
+                    <div className="xchat-guest-register-success" role="status">
+                      <p className="status-text">{registerSuccess}</p>
+                      <p className="xchat-guest-register-success__hint">
+                        We don&apos;t email a magic link for this step. You can sign in with <strong>X</strong>,{" "}
+                        <strong>Google</strong>, or <strong>email + password</strong> (after setting a password from the
+                        approval email) using <strong>the same email</strong> you submitted.
+                      </p>
+                      <div className="xchat-guest-register-success__actions">
+                        {googleLoginHref ? (
+                          <a
+                            className="cta cta-oauth-google login-google-btn xchat-guest-actions__cta xchat-guest-register-success__cta"
+                            href={googleLoginHref}
+                          >
+                            <GoogleGIcon size={20} />
+                            Continue with Google
+                          </a>
+                        ) : (
+                          <button
+                            className="cta cta-secondary xchat-guest-actions__cta xchat-guest-actions__cta--disabled xchat-guest-register-success__cta"
+                            disabled
+                            type="button"
+                          >
+                            <GoogleGIcon size={20} />
+                            Google unavailable
+                          </button>
+                        )}
+                        <a
+                          className="cta cta-secondary login-oauth-x xchat-guest-actions__cta xchat-guest-register-success__cta"
+                          href={xOAuthLoginHref}
+                        >
+                          <XLogoIcon size={20} />
+                          Continue with X
+                        </a>
+                        <a
+                          className="cta cta-secondary xchat-guest-actions__cta xchat-guest-register-success__cta"
+                          href={emailPasswordLoginHref}
+                        >
+                          Continue with email + password
+                        </a>
+                      </div>
+                    </div>
+                  ) : null}
+                </form>
+                {!registerSuccess ? (
+                  <>
+                    <p className="xchat-guest-divider">Or continue with</p>
+                    <div className="xchat-guest-oauth-row">{oauthProviderStack}</div>
+                  </>
+                ) : null}
+                <p className="xchat-guest-actions__hint xchat-guest-actions__hint--footer">
+                  <a className="text-[var(--xf-gain-green)] underline-offset-2 hover:underline" href={emailPasswordLoginHref}>
+                    Already have an account? Sign in
+                  </a>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="xchat-guest-actions__stack" id="xchat-guest-access-panel">
+              {oauthProviderStack}
+              {!registrationFirst ? (
+                <a className="cta cta-secondary xchat-guest-actions__cta" href={emailPasswordLoginHref}>
+                  Email + password
+                </a>
+              ) : null}
+              {!pendingApproval && !registrationFirst ? (
+                <button
+                  aria-controls="xchat-guest-register-panel"
+                  aria-expanded={registerOpen}
+                  className="cta cta-secondary xchat-guest-actions__cta"
+                  type="button"
+                  onClick={() => setRegisterOpen((prev) => !prev)}
+                >
+                  Register for access
+                </button>
+              ) : null}
+              {pendingApproval ? (
+                <button className="cta cta-secondary xchat-guest-actions__cta xchat-guest-actions__cta--disabled" disabled type="button">
+                  Register unavailable
+                </button>
+              ) : null}
+              {registrationFirst ? (
+                <p className="xchat-guest-actions__hint" style={{ marginTop: "0.35rem" }}>
+                  <a className="text-[var(--xf-gain-green)] underline-offset-2 hover:underline" href={emailPasswordLoginHref}>
+                    Already have an account? Sign in
+                  </a>
+                </p>
+              ) : null}
+            </div>
+          )
         ) : null}
         {authError === "email_link_required" ? <LinkEmailForm xHandle={pendingXHandle} /> : null}
-        {!pendingApproval && registerOpen && accessOpen ? (
+        {!pendingApproval && registerOpen && accessOpen && !registrationFirst ? (
           <div className="xchat-guest-register-panel" id="xchat-guest-register-panel">
             <button
               className="xchat-guest-register-panel__close"
               type="button"
               onClick={() => setRegisterOpen((prev) => !prev)}
             >
-              Close registration
+              Back
             </button>
             <form className="xchat-guest-register-form" onSubmit={handleRegister}>
               <h3 className="xchat-guest-register-form__title">Register for access</h3>
               <div className="xchat-guest-register-form__grid">
                 <label className="xchat-guest-register-form__field">
-                  <span>Name</span>
+                  <span>Username</span>
+                  <span className="xchat-guest-register-form__field-hint">Letters and numbers only</span>
                   <input
-                    autoComplete="name"
+                    autoComplete="username"
                     disabled={registerLoading}
                     maxLength={120}
-                    name="name"
+                    name="username"
                     onChange={(event) => setRegisterName(event.target.value)}
-                    placeholder="Your name"
+                    placeholder="Username"
                     required
                     type="text"
                     value={registerName}
@@ -281,6 +476,30 @@ export function XchatGuestPanel({
                   />
                 </label>
                 <label className="xchat-guest-register-form__field">
+                  <span>Password</span>
+                  <span className="xchat-guest-register-form__field-hint">At least 12 characters</span>
+                  <div className="xchat-guest-register-form__password-row">
+                    <input
+                      autoComplete="new-password"
+                      disabled={registerLoading}
+                      maxLength={128}
+                      name="password"
+                      onChange={(event) => setRegisterPassword(event.target.value)}
+                      placeholder="Password"
+                      required
+                      type={showRegisterPassword ? "text" : "password"}
+                      value={registerPassword}
+                    />
+                    <button
+                      className="xchat-guest-register-form__password-toggle"
+                      type="button"
+                      onClick={() => setShowRegisterPassword((v) => !v)}
+                    >
+                      {showRegisterPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </label>
+                <label className="xchat-guest-register-form__field xchat-guest-register-form__field--plan">
                   <span>Plan</span>
                   <select
                     disabled={registerLoading}
@@ -352,6 +571,7 @@ export function XchatGuestPanel({
         ) : null}
       </section>
 
+      {hideComposerPreview ? null : (
       <div className="xchat-composer-wrap">
         <form
           className="xchat-composer"
@@ -436,6 +656,7 @@ export function XchatGuestPanel({
           <span className="xchat-composer-hint__text">Sign up or sign in for approved access.</span>
         </p>
       </div>
+      )}
     </div>
   );
 }

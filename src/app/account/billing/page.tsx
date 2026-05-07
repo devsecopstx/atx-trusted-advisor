@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
 import { redirect } from "next/navigation";
 
-import { BillingPlanGrid } from "@/app/account/billing/billing-plan-grid";
+import { BillingGuestExperience } from "@/app/account/billing/billing-guest-experience";
+import { BillingPlanGrid, buildBillingPlanCardPayloads } from "@/app/account/billing/billing-plan-grid";
 import { AtxBillingPortalButton } from "@/app/account/ui/atx-billing-portal";
 import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
@@ -44,10 +45,6 @@ export default async function AccountBillingPage({
     }
   }
   const guestReadonly = !approved;
-  const googleLoginHref = isGoogleOAuthConfigured()
-    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
-    : null;
-
   const sp = (await searchParams) ?? {};
   const checkout = typeof sp.checkout === "string" ? sp.checkout : undefined;
   const selectedGuestPlanRaw = typeof sp.plan === "string" ? sp.plan : undefined;
@@ -55,11 +52,22 @@ export default async function AccountBillingPage({
   const openRegisterByDefault = openRegisterRaw === "1" || openRegisterRaw === "true";
   const guestRegisterDefaultPlan: AccessRequestPlanValue =
     parseAccessRequestPlanInput(selectedGuestPlanRaw) ?? "basic";
+  const registrationFirst = openRegisterByDefault || typeof selectedGuestPlanRaw === "string";
+  const postAuthLandingPath = registrationFirst ? "/workspace/onboarding?billing_welcome=1" : "/xchat";
+
+  const googleLoginHref = isGoogleOAuthConfigured()
+    ? `/api/auth/google/login?next=${encodeURIComponent(postAuthLandingPath)}`
+    : null;
+  const guestXOAuthLoginHref = `/api/auth/x/login?next=${encodeURIComponent(postAuthLandingPath)}`;
+  const guestEmailLoginHref = `/login?next=${encodeURIComponent(postAuthLandingPath)}`;
 
   const defaultTenantId = await resolveTenantIdHexForGlobalAdminConsole(undefined);
-  let tenant = approved && session?.tenantId ? await getTenantByHexIdCached(session.tenantId) : null;
+  const sessionTenantId = session?.tenantId?.trim() ?? "";
+  /** Signed-in guests (e.g. pending approval) still carry `tenantId` — use it for list pricing + limits like approved users. */
+  let tenant =
+    sessionTenantId.length > 0 ? await getTenantByHexIdCached(sessionTenantId) : null;
   const defaultTenant =
-    defaultTenantId && (!tenant || defaultTenantId !== session?.tenantId)
+    defaultTenantId && (!tenant || defaultTenantId !== sessionTenantId)
       ? await getTenantByHexIdCached(defaultTenantId)
       : tenant;
   if (!tenant) {
@@ -70,6 +78,8 @@ export default async function AccountBillingPage({
   const checkoutReady =
     !guestReadonly && isStripeCheckoutConfiguredForTenant(planOverridesForStripe);
   const publishableConfigured = Boolean(getStripePublishableKey());
+  const billingGuestCards = buildBillingPlanCardPayloads(tenantForBillingDisplay);
+
   const checkoutBanner =
     checkout === "success"
       ? {
@@ -171,22 +181,34 @@ export default async function AccountBillingPage({
           </AppUserCollapsibleRailLayout>
         ) : (
           <XchatGuestReadonlyShell
+            emailPasswordLoginHref={guestEmailLoginHref}
             googleLoginHref={googleLoginHref}
+            hideComposerPreview
             openRegisterByDefault={openRegisterByDefault}
             rail={workspaceProductRail ?? undefined}
             registerDefaultPlan={guestRegisterDefaultPlan}
+            registrationFirst={registrationFirst}
+            showAccessPanel={false}
+            xOAuthLoginHref={guestXOAuthLoginHref}
           >
             <div className="billing-page">
-              <header className="billing-hero xf-noise-overlay surface-card xf-widget section-card">
-                <p className="billing-hero__eyebrow">ATX price plans</p>
-                <h1 className="billing-hero__title">Account &amp; billing</h1>
-                <p className="billing-hero__copy">
-                  Select a plan, then continue with Register for access. Basic is the default selection. Limits below are
-                  core workspace defaults (xChat <strong>UTC day</strong> and <strong>UTC hour</strong> rows); signed-in users see
-                  tenant-resolved caps.
+              <header className="billing-hero billing-hero--guest-note xf-noise-overlay surface-card xf-widget section-card">
+                <p className="billing-hero__copy billing-hero__copy--compact">
+                  <strong className="text-[var(--xf-text-100)]">Basic trial</strong> is selected by default — no card on
+                  this step. Limits shown below are core workspace defaults (xChat <strong>UTC day</strong> and{" "}
+                  <strong>UTC hour</strong> caps); signed-in users see tenant-resolved caps.
                 </p>
               </header>
-              <BillingPlanGrid tenant={tenantForBillingDisplay} approved={false} checkoutReady={false} />
+
+              <BillingGuestExperience
+                cards={billingGuestCards}
+                emailPasswordLoginHref={guestEmailLoginHref}
+                googleLoginHref={googleLoginHref}
+                initialPlan={guestRegisterDefaultPlan}
+                scrollToFormOnMount={registrationFirst}
+                xOAuthLoginHref={guestXOAuthLoginHref}
+              />
+
               <p className="billing-footnote">
                 <span className="xf-disclaimer-emphasis">Not financial advice.</span> Guest mode is read-only. Sign in
                 for approved access to checkout and account actions.

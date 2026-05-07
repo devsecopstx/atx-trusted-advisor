@@ -7,6 +7,7 @@ import {
     BILLING_WORKSPACE_LABEL_CHAT_HISTORY,
     billingCardPriceParts,
     billingCardWorkspaceDisplay,
+    billingPlanSummaryChips,
     formatWorkspaceLimitScalar
 } from "@/lib/billing-plan-workspace-display";
 import type { Tenant } from "@/modules/identity/types";
@@ -29,7 +30,7 @@ describe("billingCardWorkspaceDisplay", () => {
 
   it("guest uses catalog quota rows plus default prefs and list price", () => {
     const d = billingCardWorkspaceDisplay({ tenant: null, plan: basicPlan });
-    expect(d.priceParts).toEqual({ priceAmount: "$9", periodNote: "per month" });
+    expect(d.priceParts).toEqual({ priceAmount: "$5", periodNote: "per month" });
     expect(d.limitRows).toHaveLength(7);
     expect(d.limitRows[0]?.label).toBe("xOptions views / hr");
     expect(d.limitRows[0]?.value).toBe("10");
@@ -45,7 +46,7 @@ describe("billingCardWorkspaceDisplay", () => {
 
   it("guest premium column uses catalog premium cells", () => {
     const d = billingCardWorkspaceDisplay({ tenant: null, plan: premiumPlan });
-    expect(d.priceParts.priceAmount).toBe("$99");
+    expect(d.priceParts.priceAmount).toBe("$15");
     expect(d.limitRows[0]?.value).toContain("Unlimited");
   });
 
@@ -114,13 +115,34 @@ describe("billingCardPriceParts", () => {
   it("uses catalog when override row missing or has no price", () => {
     const basicPlan = ATX_BILLING_PLANS[0];
     expect(billingCardPriceParts(basicPlan, undefined)).toEqual({
-      priceAmount: "$9",
+      priceAmount: "$5",
       periodNote: "per month"
     });
     expect(billingCardPriceParts(basicPlan, {})).toEqual({
-      priceAmount: "$9",
+      priceAmount: "$5",
       periodNote: "per month"
     });
+  });
+});
+
+describe("billingPlanSummaryChips", () => {
+  it("extracts xOptions, xChat day, and portfolios from limit rows", () => {
+    const chips = billingPlanSummaryChips([
+      { label: "xOptions views / hr", value: "10" },
+      { label: "xChat prompts / day (UTC)", value: "200" },
+      { label: "xChat prompts / hr (UTC)", value: "Unlimited" },
+      { label: "Portfolios per user", value: "5" }
+    ]);
+    expect(chips).toEqual(["10 xOptions views/hr", "200 xChat prompts/day", "5 portfolios/user"]);
+  });
+
+  it("uses singular portfolio for 1", () => {
+    const chips = billingPlanSummaryChips([
+      { label: "xOptions views / hr", value: "1" },
+      { label: "xChat prompts / day (UTC)", value: "1" },
+      { label: "Portfolios per user", value: "1" }
+    ]);
+    expect(chips[2]).toBe("1 portfolio/user");
   });
 });
 

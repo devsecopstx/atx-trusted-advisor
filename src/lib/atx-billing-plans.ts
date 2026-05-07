@@ -25,7 +25,10 @@ export type AtxBillingPlan = {
   tagline: string;
   priceLabel: string;
   periodNote: string;
-  bullets: string[];
+  /** Collapsed billing card — one-line value prop */
+  summaryValueProp: string;
+  /** Shown below the limits table when the card is expanded */
+  limitsExpandNote?: string;
   highlight?: boolean;
 };
 
@@ -45,43 +48,33 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
   {
     id: "basic",
     name: "Basic",
-    tagline:
-      "HNWI-focused entry — workspace users, portfolios, accounts (risk & outlook), portfolio scoring factors",
-    priceLabel: "$9",
+    tagline: "HNWI entry — daily options context & single-portfolio workflows",
+    priceLabel: "$5",
     periodNote: "per month",
-    bullets: [
-      "Built for high-net-worth individual workflows and daily options context",
-      "Manage workspace users, portfolios, accounts (risk & outlook), and portfolio-level scoring factors (within your role and plan limits)",
-      "xStrategyBuilder includes entry-level weekly range coverage plus core article context",
-      "Full product access with plan limits; limited-time full-access trial may apply before you subscribe"
-    ]
+    summaryValueProp: "Built for daily options context & single-portfolio HNWI workflows",
+    limitsExpandNote:
+      "Full workspace access within plan limits; trial posture may apply before you subscribe. Limits reflect tenant defaults and per-plan overrides when configured."
   },
   {
     id: "premium_monthly",
     name: "Premium",
-    tagline: "Complex books — xChat + xStrategyBuilder with fair per-hour caps",
-    priceLabel: "$99",
+    tagline: "Complex books — xChat + xStrategyBuilder with fair caps",
+    priceLabel: "$15",
     periodNote: "per month",
     highlight: true,
-    bullets: [
-      "User defined, Complex portfolios: listed equities & options, and multi-account context",
-      "Generous posture with fair per-hour caps on xChat and xStrategyBuilder (scenario builder)",
-      "Expanded weekly range coverage and broader article context for strategy preparation",
-      "Power-user tier — meaningful Feedback on real scenarios helps us prioritize caps, tools, and roadmap"
-    ]
+    summaryValueProp: "Complex books + xStrategyBuilder — multi-account & generous caps",
+    limitsExpandNote:
+      "Power-user tier — meaningful feedback on real scenarios helps us prioritize caps, tools, and roadmap."
   },
   {
     id: "premium_plus_monthly",
     name: "Premium+",
-    tagline: "Dedicated instance — private, white-glove posture, account trade recomendations and rationale with automated verification",
-    priceLabel: "$299",
+    tagline: "Dedicated posture — family-office complexity & IB-linked verification (roadmap)",
+    priceLabel: "$30",
     periodNote: "per month",
-    bullets: [
-      "White-glove for ultra-complex and family-office books; direct line for structured product input",
-      "Dedicated enterprise-grade instance sized for your workflow",
-      "Top-tier weekly range coverage and extended article context",
-      "Interactive Brokers automated trades and verification (roadmap)",
-      "Private deployment — your data is not used for provider training; compliance-minded engagement expected"
-    ]
+    summaryValueProp:
+      "White-glove ultra-complex family-office workflows + dedicated instance + automated trade recs (roadmap)",
+    limitsExpandNote:
+      "Private deployment — your data is never used for provider training. Interactive Brokers verification and automated trade recommendations are roadmap commitments alongside your workspace limits."
   }
 ] as const;

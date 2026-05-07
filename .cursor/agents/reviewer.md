@@ -33,7 +33,12 @@ Cross-check **`.cursor/skills/test-commit-push/CHECKLIST.md`** for secrets, BFF,
 **Tenant workspace limits:** If a PR touches quotas (`workspaceLimits`, xChat daily min-with-plan, portfolio/account caps,
 xoptions deck usage, or `/api/admin/tenants/.../workspace-limits`), verify OpenAPI `CURRENT_STATE_ROUTES` parity,
 `atx-docs/sre-ops/tenant-workspace-limits.md` is accurate, and tests cover merge/parse or critical API paths where
-feasible.
+feasible. **`/account/billing` (including signed-in guests / pending approval):** list amounts must come from the
+resolved tenant’s `workspaceLimits.planOverrides.<tier>.price` when set; otherwise **`catalogListPriceUsdForPlan`** /
+`ATX_BILLING_PLAN_LIMIT_ROWS` **Price** row (Stripe list defaults) — not ad-hoc UI literals.
+**Guest billing access (`XchatGuestPanel` `registrationFirst`):** email signup is primary (**Let’s get started**);
+OAuth (Google/X) is below the email form; **`POST /api/access-requests/public`** body field **`name`** is an alphanumeric
+**username** (`^[a-zA-Z0-9]{2,120}$`), not a display name with spaces.
 
 **Rental AI (`/api/ai/rent/*`, `rentalProfile`, `core_tenants.apiKeys`):** Keep **`atx-docs/sre-ops/rental-ai-platform.md`** accurate; Next + Spring admin audit allowlists include **`rental_ai`** when entity filters change; OpenAPI inventory lists rental routes (including **`GET`** poll handlers); **`npm run seed:tenant`** + **`tenant-spec-v1-parse`** stay aligned on **`tenant.rentalProfile`** validation. Partner handoff: **`llm.txt`**, **`atx-docs/MCP-AI-ADVISOR.md`**, **`atx-docs/guides/rental-ai-system-prompt.md`**; Cursor context **`.cursor/rules/rental-ai-agent-manifest.mdc`**.
 

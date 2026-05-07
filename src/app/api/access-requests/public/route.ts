@@ -15,12 +15,21 @@ import {
     createAccessRequest,
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
+import { setInitialPasswordFromPublicSignup } from "@/modules/identity/email-credentials-repository";
 import { ensureCoreUserByEmail } from "@/modules/identity/repository";
 
 const guestAccessRequestSchema = z.object({
-  name: z.string().trim().min(2).max(120),
+  /** Display handle for admins / audit; UI collects as "username" (letters + digits only). */
+  name: z
+    .string()
+    .trim()
+    .min(2)
+    .max(120)
+    .regex(/^[a-zA-Z0-9]+$/, "Username must contain only letters and numbers"),
   email: z.string().trim().email(),
-  requestedPlan: z.string().trim().optional()
+  requestedPlan: z.string().trim().optional(),
+  /** Enables email/password login after access approval without a separate invite token. */
+  password: z.string().min(12).max(128)
 });
 
 const ACCESS_REQUEST_PUBLIC_POLICY = getBffRouteRateLimitPolicy("access_requests_public_create");
@@ -75,6 +84,21 @@ export async function POST(request: Request) {
   if (!user._id) {
     return NextResponse.json({ error: "Unable to resolve user for access request" }, { status: 500 });
   }
+
+  const pw = await setInitialPasswordFromPublicSignup({
+    userId: user._id,
+    plainPassword: parsed.data.password
+  });
+  if (!pw.ok) {
+    if (pw.code === "already_has_password") {
+      return NextResponse.json(
+        { error: "This email already has a password. Sign in instead or use forgot password." },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: "Unable to save credentials for this account." }, { status: 500 });
+  }
+
   const userId = user._id.toHexString();
 
   const existingPending = await getPendingAccessRequestByUserAndRole({

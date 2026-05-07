@@ -4,12 +4,8 @@
  * Optional `planOverrides` keyed by retail billing plan id (`basic`, `premium_monthly`, `premium_plus_monthly`).
  * Legacy key `premium_plus_yearly` is normalized to `premium_plus_monthly` on read.
  */
-import {
-    ATX_BILLING_PLANS,
-    ATX_BILLING_PLAN_IDS,
-    LEGACY_ATX_BILLING_PLAN_ID_PREMIUM_PLUS,
-    type AtxBillingPlanId
-} from "@/lib/atx-billing-plans";
+import { catalogListPriceUsdForPlan } from "@/lib/atx-billing-plan-limits";
+import { ATX_BILLING_PLAN_IDS, LEGACY_ATX_BILLING_PLAN_ID_PREMIUM_PLUS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 
 export type TenantWorkspaceLimits = {
   /** xOptions deck / follow-up views per user — labeled **per hour** on `/account/billing` and admin workspace limits; enforced via `app_feature_daily_usage` (UTC day bucket) until hourly metering ships. */
@@ -38,10 +34,9 @@ export type TenantWorkspaceLimits = {
 /** Fallback list price (USD, whole units) when plan defaults are unavailable. */
 export const DEFAULT_TENANT_PLAN_PRICE = 10;
 
-const DEFAULT_TENANT_PLAN_PRICE_BY_ID: Record<AtxBillingPlanId, number> = ATX_BILLING_PLANS.reduce(
-  (acc, plan) => {
-    const parsed = Number.parseInt(plan.priceLabel.replace(/^\$/, ""), 10);
-    acc[plan.id] = Number.isFinite(parsed) && parsed >= 1 ? parsed : DEFAULT_TENANT_PLAN_PRICE;
+const DEFAULT_TENANT_PLAN_PRICE_BY_ID: Record<AtxBillingPlanId, number> = ATX_BILLING_PLAN_IDS.reduce(
+  (acc, id) => {
+    acc[id] = catalogListPriceUsdForPlan(id);
     return acc;
   },
   {

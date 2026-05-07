@@ -3,11 +3,10 @@
  * @see atx-docs/sre-ops/tenant-workspace-limits.md — App user surfacing
  * @see atx-docs/sre-ops/stripe-billing-setup.md — Billing page vs admin list price
  */
-import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
+import { ATX_BILLING_PLAN_LIMIT_ROWS, catalogListPriceUsdForPlan } from "@/lib/atx-billing-plan-limits";
 import type { AtxBillingPlan, AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import {
     applyTenantPlanRowToBase,
-    defaultTenantPlanPriceFor,
     mergeTenantWorkspaceLimits,
     normalizePlanOverridesFromUnknown,
     type TenantPlanWorkspaceRow
@@ -113,13 +112,35 @@ export function billingCardPriceParts(
   if (typeof p === "number" && Number.isInteger(p) && p >= 1 && p <= 1_000_000) {
     return { priceAmount: `$${p}`, periodNote: plan.periodNote };
   }
-  return { priceAmount: `$${defaultTenantPlanPriceFor(plan.id)}`, periodNote: plan.periodNote };
+  return {
+    priceAmount: `$${catalogListPriceUsdForPlan(plan.id)}`,
+    periodNote: plan.periodNote
+  };
 }
 
 /**
  * Workspace limits block: quota rows + Change persona + Chat history max; list price uses tenant `planOverrides.<tier>.price` when set.
  * Guests use the published catalog matrix (`ATX_BILLING_PLAN_LIMIT_ROWS`).
  */
+/** Up to three scan-line chips derived from resolved quota rows (guest catalog or tenant-effective). */
+export function billingPlanSummaryChips(limitRows: readonly { label: string; value: string }[]): string[] {
+  const byLabel = (needle: string) => limitRows.find((r) => r.label === needle)?.value;
+  const xo = byLabel(BILLING_WORKSPACE_LABEL_XOPTIONS);
+  const xd = byLabel(BILLING_WORKSPACE_LABEL_XCHAT_DAILY);
+  const portfolios = limitRows.find((r) => r.label === "Portfolios per user")?.value;
+  const chips: string[] = [];
+  if (xo !== undefined) {
+    chips.push(`${xo} xOptions views/hr`);
+  }
+  if (xd !== undefined) {
+    chips.push(`${xd} xChat prompts/day`);
+  }
+  if (portfolios !== undefined) {
+    chips.push(`${portfolios} portfolio${portfolios === "1" ? "" : "s"}/user`);
+  }
+  return chips.slice(0, 3);
+}
+
 export function billingCardWorkspaceDisplay(input: {
   tenant: Tenant | null;
   plan: AtxBillingPlan;

@@ -14,6 +14,7 @@ import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pil
 import { withUtmParams } from "@/lib/marketing/utm";
 
 const REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
+const TRIAL_CTA_LABEL = "Start Free Basic Trial — No Card Required";
 const DEFAULT_POST_LOGIN = "/xchat";
 const MARKETING_UTM = { utm_source: "x", utm_campaign: "weekly-pulse", utm_medium: "owned-social" } as const;
 
@@ -66,19 +67,19 @@ export function PublicMarketingLanding() {
             </Link>
             <Link
               href={loginHref}
-              className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-200)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
+              className="rounded-full px-3 py-2 text-xs font-medium text-[var(--xf-text-400)] underline-offset-4 transition hover:text-[var(--xf-gain-green)] sm:px-4 sm:text-sm"
             >
-              Log in
+              Already have an account?
             </Link>
             <Link
               href={registerTrialHref}
-              className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95 sm:px-5"
+              className="rounded-full px-4 py-2 text-center text-sm font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95 sm:max-w-[min(100%,20rem)] sm:px-5 sm:text-base"
               style={{
                 background: "var(--xf-gain-green)",
                 boxShadow: "0 0 24px -4px color-mix(in srgb, var(--xf-gain-green) 45%, transparent)"
               }}
             >
-              Register for trial
+              {TRIAL_CTA_LABEL}
             </Link>
           </div>
         </div>
@@ -162,21 +163,14 @@ export function PublicMarketingLanding() {
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href={registerTrialHref}
-                className="inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-[var(--xf-bg-900)] sm:text-lg"
+                className="inline-flex max-w-full items-center justify-center gap-2 rounded-full px-6 py-4 text-center text-base font-semibold leading-snug text-[var(--xf-bg-900)] sm:px-8 sm:text-lg"
                 style={{
                   background: "var(--xf-gain-green)",
                   boxShadow: "0 0 28px -5px color-mix(in srgb, var(--xf-gain-green) 50%, transparent)"
                 }}
               >
-                Register for trial
+                {TRIAL_CTA_LABEL}
                 <span aria-hidden>→</span>
-              </Link>
-
-              <Link
-                href={loginHref}
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-white/20 bg-white/5 text-[var(--xf-text-100)] transition-all duration-200 hover:border-white/30 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Log in
               </Link>
 
               <Link
@@ -185,6 +179,12 @@ export function PublicMarketingLanding() {
               >
                 See plans
               </Link>
+
+              <p className="w-full text-sm text-[var(--xf-text-400)] sm:w-auto sm:pl-2">
+                <Link className="font-medium text-[var(--xf-text-300)] underline-offset-4 hover:text-[var(--xf-gain-green)] hover:underline" href={loginHref}>
+                  Already have an account? Sign in
+                </Link>
+              </p>
 
               <button
                 type="button"
@@ -323,28 +323,28 @@ export function PublicMarketingLanding() {
           </p>
           <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">Approved access for professionals</h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-            Log in or register to request access. Admins assign roles (viewer, operator, advisor). RIAs and family
-            offices: ask about tenant branding and pilot scopes for client portals. Limits and audit-friendly defaults
-            apply after sign-in.
+            Start a Basic trial (no card on this step) or request another plan. Admins assign roles (viewer, operator,
+            advisor). RIAs and family offices: ask about tenant branding and pilot scopes for client portals. Limits and
+            audit-friendly defaults apply after sign-in.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:flex-wrap">
             <Link
               href={registerTrialHref}
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl bg-[var(--xf-gain-green)] text-[var(--xf-bg-900)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="inline-flex max-w-[min(100%,22rem)] items-center justify-center px-6 py-4 text-center text-base font-semibold leading-snug tracking-tight rounded-2xl bg-[var(--xf-gain-green)] text-[var(--xf-bg-900)] hover:scale-[1.02] active:scale-[0.98] transition-all sm:px-8"
             >
-              Register for trial
-            </Link>
-            <Link
-              href={loginHref}
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-white/20 bg-white/5 text-[var(--xf-text-100)] transition-all duration-200 hover:border-white/30 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Log in
+              {TRIAL_CTA_LABEL}
             </Link>
             <Link
               href={plansHref}
               className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               See plans
+            </Link>
+            <Link
+              href={loginHref}
+              className="text-sm font-medium text-[var(--xf-text-400)] underline-offset-4 transition hover:text-[var(--xf-gain-green)] hover:underline"
+            >
+              Already have an account?
             </Link>
           </div>
         </div>

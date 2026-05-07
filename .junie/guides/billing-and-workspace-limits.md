@@ -13,7 +13,7 @@ Key behavior:
 - Stripe: `getStripePublishableKey`, `isStripeCheckoutConfiguredForTenant`; checkout button hidden if not configured.
 
 Troubleshooting:
-- If guests see $9/$99/$299 while admin defaults show different numbers, ensure guest path resolves a tenant and `normalizePlanOverridesFromUnknown` is applied.
+- If guests see list prices that disagree with admin defaults, ensure guest path resolves a tenant and `normalizePlanOverridesFromUnknown` is applied (`ATX_BILLING_PLANS` / `atx-limits.txt.tsv` are the published anchors).
 - When hourly limits show Unlimited unexpectedly, confirm `userChatHourlyLimit` semantics (0/undefined = unlimited).
 
 References:

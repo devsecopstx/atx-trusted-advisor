@@ -2927,6 +2927,59 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   padding: 0.55rem;
 }
 
+.xchat-guest-register-panel--primary {
+  margin-top: 0;
+  padding: 0.85rem 0.75rem;
+}
+
+.xchat-guest-actions__stack--email-first {
+  gap: 0.5rem;
+}
+
+.xchat-guest-register-form__eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xchat-guest-register-form__title--hero {
+  font-size: 1.05rem;
+  margin-bottom: 0.65rem;
+}
+
+.xchat-guest-register-form__field-hint {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--xf-text-400);
+  margin: -0.05rem 0 0.12rem;
+}
+
+.xchat-guest-register-form__field--plan {
+  grid-column: 1 / -1;
+}
+
+.xchat-guest-divider {
+  margin: 0.85rem 0 0.45rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--xf-text-400);
+}
+
+.xchat-guest-oauth-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.xchat-guest-actions__hint--footer {
+  margin-top: 0.65rem;
+  margin-bottom: 0;
+}
+
 .xchat-guest-register-panel__close {
   border: 0;
   background: transparent;
@@ -2989,6 +3042,60 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-guest-register-form__field > input:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 1px;
+}
+
+.xchat-guest-register-form__password-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: stretch;
+  width: 100%;
+}
+
+.xchat-guest-register-form__password-row input {
+  flex: 1;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--xf-text-100);
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.xchat-guest-register-form__password-row input:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 1px;
+}
+
+.xchat-guest-register-form__password-toggle {
+  flex-shrink: 0;
+  align-self: center;
+  border: none;
+  background: transparent;
+  color: var(--xf-gain-green);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.25rem 0.35rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.xchat-guest-register-form__field > select {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--xf-text-100);
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.xchat-guest-register-form__field > select:focus-visible {
   outline: 1px solid var(--xf-gain-green);
   outline-offset: 1px;
 }

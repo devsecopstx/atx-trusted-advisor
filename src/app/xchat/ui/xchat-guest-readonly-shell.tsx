@@ -17,6 +17,13 @@ type XchatGuestReadonlyShellProps = {
   registerDefaultPlan?: AccessRequestPlanValue;
   openRegisterByDefault?: boolean;
   /**
+   * Trial/deep-link UX: emphasize OAuth + email registration; tuck returning-user sign-in behind one link.
+   */
+  registrationFirst?: boolean;
+  xOAuthLoginHref?: string;
+  emailPasswordLoginHref?: string;
+  hideComposerPreview?: boolean;
+  /**
    * Replaces the default public resources rail (e.g. signed-in pending approval with
    * `AppUserAccountPublicRailForSession` + `railVariant="workspace-product"` from a server page).
    */
@@ -31,6 +38,10 @@ export function XchatGuestReadonlyShell({
   showAccessPanel = true,
   registerDefaultPlan = "basic",
   openRegisterByDefault = false,
+  registrationFirst = false,
+  xOAuthLoginHref,
+  emailPasswordLoginHref,
+  hideComposerPreview = false,
   rail,
   railChrome
 }: XchatGuestReadonlyShellProps) {
@@ -58,9 +69,13 @@ export function XchatGuestReadonlyShell({
       {showAccessPanel ? (
         <XchatGuestPanel
           content={children}
+          emailPasswordLoginHref={emailPasswordLoginHref}
           googleLoginHref={googleLoginHref}
-          registerDefaultPlan={registerDefaultPlan}
+          hideComposerPreview={hideComposerPreview}
           openRegisterByDefault={openRegisterByDefault}
+          registerDefaultPlan={registerDefaultPlan}
+          registrationFirst={registrationFirst}
+          xOAuthLoginHref={xOAuthLoginHref}
         />
       ) : (
         children

@@ -54,7 +54,11 @@ describe("POST /api/access-requests/public rate limit", () => {
       new Request("http://test/api/access-requests/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Guest User", email: "guest@example.com" })
+        body: JSON.stringify({
+          name: "GuestUser",
+          email: "guest@example.com",
+          password: "abcdabcdabcd"
+        })
       })
     );
     const payload = (await response.json()) as { error: string };
@@ -75,7 +79,11 @@ describe("POST /api/access-requests/public rate limit", () => {
       new Request("http://test/api/access-requests/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Guest User", email: "guest@example.com" })
+        body: JSON.stringify({
+          name: "GuestUser",
+          email: "guest@example.com",
+          password: "abcdabcdabcd"
+        })
       })
     );
     expect(response.status).not.toBe(404);
