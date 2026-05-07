@@ -55,6 +55,7 @@ describe("resolveOptionsScannerPersonaContext", () => {
   beforeEach(() => {
     getPersonaMock.mockReset();
     delete process.env.OPTIONS_SCANNER_PERSONA_NAME;
+    delete process.env.OPTIONS_SCANNER_MODEL;
   });
 
   it("returns null when persona is missing", async () => {
@@ -97,8 +98,28 @@ describe("resolveOptionsScannerPersonaContext", () => {
     expect(ctx!.systemPrompt).toContain("You are a test advisor.");
     expect(ctx!.systemPrompt).toContain("Scanner refinement");
     expect(ctx!.model).toBe("grok-4-1-fast-reasoning");
+    expect(ctx!.responsesReasoning).toBeUndefined();
     expect(ctx!.temperature).toBe(0.11);
     expect(ctx!.tools.length).toBeGreaterThan(0);
     expect(ctx!.maxTurns).toBe(4);
+  });
+
+  it("defaults model to grok-4.3 with expert reasoning when persona omits model", async () => {
+    getPersonaMock.mockResolvedValue({
+      _id: "x",
+      systemPrompt: "You are a test advisor.",
+      overridePrompt: "",
+      status: "published",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 3,
+        tools: []
+      }
+    });
+    const ctx = await resolveOptionsScannerPersonaContext();
+    expect(ctx).not.toBeNull();
+    expect(ctx!.model).toBe("grok-4.3");
+    expect(ctx!.responsesReasoning).toEqual({ effort: "medium" });
   });
 });

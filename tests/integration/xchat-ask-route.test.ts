@@ -237,7 +237,7 @@ describe("xchat ask route collection retrieval", () => {
       model?: string;
     };
     expect(call?.userImageDataUrl?.startsWith("data:image/png;base64,")).toBe(true);
-    expect(call?.model).toBe("grok-4-latest");
+    expect(call?.model).toBe("grok-4-1-fast");
   });
 
   it("uses XAI_VISION_MODEL for image turns when set", async () => {
@@ -1308,10 +1308,10 @@ describe("xchat ask route collection retrieval", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data?.modelSelectionSource).toBe("persona");
+    expect(payload.data?.modelSelectionSource).toBe("reasoning_mode");
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "grok-from-persona-doc"
+        model: "grok-4-1-fast"
       })
     );
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
@@ -1349,7 +1349,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(identityMocks.getCoreUserById).not.toHaveBeenCalled();
   });
 
-  it("escalates non-multi-agent persona to multi-agent when reasoningEffort is set (global_admin)", async () => {
+  it("routes legacy reasoningEffort on non-multi-agent persona to grok-4.3 reasoning (global_admin)", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         model: "grok-4-1-fast-reasoning"
@@ -1369,11 +1369,9 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "grok-4.20-multi-agent",
-        parallelism: {
-          agentCount: 4,
-          reasoningEffort: "low"
-        }
+        model: "grok-4.3",
+        parallelism: undefined,
+        responsesReasoning: { effort: "low" }
       })
     );
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
@@ -1395,7 +1393,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
   });
 
-  it("uses premium_plus parallelism when reasoningMode expert escalates a fast persona", async () => {
+  it("uses grok-4.3 medium reasoning when reasoningMode expert (premium_plus viewer)", async () => {
     identityMocks.getCoreUserById.mockResolvedValueOnce({
       subscriptionPlan: "premium_plus",
       billing: {
@@ -1429,13 +1427,14 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "grok-4.20-multi-agent",
-        parallelism: { agentCount: 4, reasoningEffort: "medium" }
+        model: "grok-4.3",
+        parallelism: undefined,
+        responsesReasoning: { effort: "medium" }
       })
     );
   });
 
-  it("falls back to escalation model without parallelism when basic tier uses reasoningMode expert", async () => {
+  it("uses grok-4.3 with medium reasoning when basic tier uses reasoningMode expert", async () => {
     identityMocks.getCoreUserById.mockResolvedValueOnce({
       subscriptionPlan: "basic",
       billing: {
@@ -1469,8 +1468,9 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "grok-4-1-fast",
-        parallelism: undefined
+        model: "grok-4.3",
+        parallelism: undefined,
+        responsesReasoning: { effort: "medium" }
       })
     );
   });
@@ -1531,7 +1531,7 @@ describe("xchat ask route collection retrieval", () => {
       model?: string;
       parallelism?: unknown;
     };
-    expect(toolLoopArg?.model).toBe("grok-4-1-fast-reasoning");
+    expect(toolLoopArg?.model).toBe("grok-4-1-fast");
     expect(toolLoopArg?.parallelism).toBeUndefined();
   });
 

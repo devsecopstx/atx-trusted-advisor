@@ -145,7 +145,8 @@ export function logXchatAskDebug(payload: {
     | "persona"
     | "vision_env"
     | "reasoning_mode"
-    | "reasoning_mode_fallback";
+    | "reasoning_mode_fallback"
+    | "reasoning_effort";
 }): void {
   if (!isXchatDebugEnabled()) return;
 

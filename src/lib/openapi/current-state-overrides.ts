@@ -1588,7 +1588,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     type: "object",
     required: [],
     description:
-      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot, **PNG or JPEG** only) is required. **Text and images** both use the **resolved persona `model`** (or `XAI_CHAT_MODEL` when the persona has no model) on `/v1/responses`, except **`reasoningMode` expert/heavy** may temporarily use **`grok-4.20-multi-agent`** for non–multi-agent personas when plan limits allow. Optional **`XAI_VISION_MODEL`** overrides that **only for image turns**. Multi-agent persona models fall back to the default chat model for image turns (no `agent_count`).",
+      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot, **PNG or JPEG** only) is required. **Depth routing** overrides persona **`model`** for that turn: **`reasoningMode` omitted / fast** → **`grok-4-1-fast`**; **expert** / **heavy** → **`grok-4.3`** with **`reasoning.effort`** **medium** / **high** (no multi-agent `agent_count`). Legacy **`reasoningEffort`** without **`reasoningMode`** maps non–multi-agent personas to **`grok-4.3`** + effort; **multi-agent** personas keep **`grok-4.20-multi-agent`** + plan **`multiAgentParallelMaxAgents`**. Optional **`XAI_VISION_MODEL`** overrides the resolved model **only for image turns** (and drops **`reasoning`** tuning). Multi-agent models fall back to the default chat model for image turns when **`XAI_VISION_MODEL`** is unset.",
     properties: {
       message: { type: "string", minLength: 0, maxLength: 8000 },
       imageAttachment: {
@@ -1625,13 +1625,13 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "string",
         enum: ["low", "medium", "high", "xhigh"],
         description:
-          "Mutually exclusive with **`reasoningMode`**. When the persona model is not multi-agent, the server may escalate to **`grok-4.20-multi-agent`** for this turn when plan **`multiAgentParallelMaxAgents`** allows parallelism; otherwise it falls back to the plan **`escalationModel`** without parallelism."
+          "Mutually exclusive with **`reasoningMode`**. When the persona **`model`** is **not** a multi-agent id, the server uses **`grok-4.3`** with matching **`reasoning.effort`** for this turn (no parallelism). **Multi-agent** personas keep **`grok-4.20-multi-agent`**; plan **`multiAgentParallelMaxAgents`** still clamps **`agent_count`**."
       },
       reasoningMode: {
         type: "string",
         enum: ["fast", "expert", "heavy"],
         description:
-          "Grok-style preset (mutually exclusive with **`reasoningEffort`**): **fast** — default single-pass path (multi-agent personas may downgrade when the message is simple); **expert** — maps to medium reasoning effort + up to **4** parallel agents when the subscription tier allows; **heavy** — high effort + up to **16** agents when allowed (**premium_plus**). **basic** tier falls back to **`escalationModel`** without parallelism."
+          "Grok-style preset (mutually exclusive with **`reasoningEffort`**): **fast** — **`grok-4-1-fast`** for this turn (latency-first); **expert** — **`grok-4.3`** + **`reasoning.effort`: medium**; **heavy** — **`grok-4.3`** + **`reasoning.effort`: high**. Omitting **`reasoningMode`** matches **fast** when **`reasoningEffort`** is also omitted (UI default)."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 }
@@ -1686,10 +1686,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           "persona",
           "vision_env",
           "reasoning_mode",
-          "reasoning_mode_fallback"
+          "reasoning_mode_fallback",
+          "reasoning_effort"
         ],
         description:
-          "`persona` / `default` — persona vs server chat default; `vision_env` — image turn override; `reasoning_mode` — Expert/Heavy escalated to multi-agent for this turn; `reasoning_mode_fallback` — parallelism unavailable for tier (uses plan escalation model)."
+          "`reasoning_mode` — Depth preset routing (**Fast** → **`grok-4-1-fast`**, **Expert**/**Heavy** → **`grok-4.3`** + reasoning); `reasoning_effort` — legacy body **`reasoningEffort`** routed to **`grok-4.3`** (non–multi-agent personas); `vision_env` — **`XAI_VISION_MODEL`** image override; `persona` / `default` — persona vs server default when no depth controls apply (rare in current product paths); `reasoning_mode_fallback` — reserved (prior tier clamp path; may be absent on newer servers)."
       },
       contextCount: { type: "integer", minimum: 0 },
       contextSource: { type: "string", enum: ["none", "xai_collection"] },

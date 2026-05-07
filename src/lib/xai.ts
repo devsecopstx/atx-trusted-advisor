@@ -14,6 +14,12 @@ type XaiChatResult = {
 
 type XaiToolChoice = "auto" | "required" | "none";
 type XaiReasoningEffort = "low" | "medium" | "high";
+
+/** `grok-4.3` on `/v1/responses`: reasoning depth without `agent_count` (see xAI reasoning guide). */
+export type XaiResponsesReasoningOnly = {
+  effort: "none" | XaiReasoningEffort;
+};
+
 type XaiParallelismConfig = {
   agentCount: number;
   reasoningEffort: XaiReasoningEffort;
@@ -310,6 +316,7 @@ export async function chatWithXai(input: {
   tools?: Array<Record<string, unknown>>;
   toolChoice?: XaiToolChoice;
   parallelism?: XaiParallelismConfig;
+  responsesReasoning?: XaiResponsesReasoningOnly;
 }): Promise<XaiChatResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const toolChoice = input.toolChoice ?? "auto";
@@ -329,6 +336,8 @@ export async function chatWithXai(input: {
   if (input.parallelism) {
     body.agent_count = input.parallelism.agentCount;
     body.reasoning = { effort: input.parallelism.reasoningEffort };
+  } else if (input.responsesReasoning) {
+    body.reasoning = { effort: input.responsesReasoning.effort };
   }
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -369,6 +378,7 @@ export async function respondWithXai(input: {
   toolChoice?: XaiToolChoice;
   maxTurns?: number;
   parallelism?: XaiParallelismConfig;
+  responsesReasoning?: XaiResponsesReasoningOnly;
 }): Promise<XaiResponsesResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const tools = toXaiRequestTools(input.tools ?? [], { forXaiResponsesApi: true });
@@ -386,6 +396,8 @@ export async function respondWithXai(input: {
   if (input.parallelism) {
     body.agent_count = input.parallelism.agentCount;
     body.reasoning = { effort: input.parallelism.reasoningEffort };
+  } else if (input.responsesReasoning) {
+    body.reasoning = { effort: input.responsesReasoning.effort };
   }
   const response = await fetch(`${baseUrl}/responses`, {
     method: "POST",
@@ -472,6 +484,8 @@ export async function respondWithXaiToolLoop(input: {
   maxTurns?: number;
   executor: ToolExecutor;
   parallelism?: XaiParallelismConfig;
+  /** For `grok-4.3`: send `reasoning.effort` without `agent_count` (mutually exclusive with `parallelism` on each request). */
+  responsesReasoning?: XaiResponsesReasoningOnly;
   previousResponseId?: string;
   storeMessages?: boolean;
   /** When aborted (e.g. client disconnected / user cancelled), in-flight xAI `fetch` calls reject and the loop exits. */
@@ -525,6 +539,8 @@ export async function respondWithXaiToolLoop(input: {
     if (input.parallelism) {
       requestBody.agent_count = input.parallelism.agentCount;
       requestBody.reasoning = { effort: input.parallelism.reasoningEffort };
+    } else if (input.responsesReasoning) {
+      requestBody.reasoning = { effort: input.responsesReasoning.effort };
     }
 
     const response = await fetch(`${baseUrl}/responses`, {

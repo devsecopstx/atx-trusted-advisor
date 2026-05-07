@@ -46,10 +46,7 @@ import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
-import {
-    MULTI_AGENT_PERSONA_MODEL_IDS,
-    PRIMARY_MULTI_AGENT_PERSONA_MODEL_ID
-} from "@/modules/xchat/multi-agent-persona-models";
+import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
 import { renderOptionsActionReportMarkdown } from "@/modules/xchat/options-action-scan";
@@ -59,11 +56,7 @@ import {
     resolveXchatPersonaDeclaredCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
-import {
-    clampMultiAgentParallelismForPlan,
-    clampTopK,
-    getPlanLimits
-} from "@/modules/xchat/plan-limits";
+import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getLatestXchatLogByThread,
@@ -101,7 +94,11 @@ import {
     formatTenantWorkspaceContextBlockForXchat,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
-import { resolveReasoningEffortFromAskPayload } from "@/modules/xchat/xchat-reasoning-mode";
+import {
+    resolveReasoningEffortFromAskPayload,
+    XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID,
+    XCHAT_DEPTH_FAST_MODEL_ID
+} from "@/modules/xchat/xchat-reasoning-mode";
 import {
     buildRecentThreadMessagesPromptBlock,
     type XchatRecentThreadMessage
@@ -164,7 +161,8 @@ type ModelSelectionSource =
   | "persona"
   | "vision_env"
   | "reasoning_mode"
-  | "reasoning_mode_fallback";
+  | "reasoning_mode_fallback"
+  | "reasoning_effort";
 type RequestedReasoningEffort = "low" | "medium" | "high" | "xhigh";
 type ParallelReasoningEffort = "low" | "medium" | "high";
 
@@ -457,29 +455,61 @@ export async function POST(request: Request) {
   let modelSelectionSource: ModelSelectionSource =
     personaModelRaw.length > 0 ? "persona" : "default";
 
-  let reasoningEffortForParallel = resolveReasoningEffortFromAskPayload({
-    reasoningMode: parsed.data.reasoningMode,
-    reasoningEffort: parsed.data.reasoningEffort
-  });
+  const reasoningMode = parsed.data.reasoningMode;
+  const bodyReasoningEffort = parsed.data.reasoningEffort;
+  const depthExpertHeavy = reasoningMode === "expert" || reasoningMode === "heavy";
+  const depthFast =
+    reasoningMode === "fast" ||
+    (reasoningMode === undefined && bodyReasoningEffort === undefined);
 
   let executionModel = effectiveModel;
-  let reasoningModeEscalated = false;
-  if (reasoningEffortForParallel && !MULTI_AGENT_PERSONA_MODEL_IDS.has(effectiveModel)) {
-    executionModel = PRIMARY_MULTI_AGENT_PERSONA_MODEL_ID;
-    modelSelectionSource = "reasoning_mode";
-    reasoningModeEscalated = true;
-  }
+  let responsesReasoning:
+    | { effort: "none" | "low" | "medium" | "high" }
+    | undefined;
 
+  let reasoningEffortForParallel: RequestedReasoningEffort | undefined;
   let multiAgentDowngraded = false;
-  if (MULTI_AGENT_PERSONA_MODEL_IDS.has(executionModel)) {
-    const allowParallelism =
-      reasoningEffortForParallel != null || heavySynthesisIntent(messageTrimmed);
-    if (!allowParallelism) {
-      executionModel = getDefaultPersonaChatModelId();
-      multiAgentDowngraded = true;
-      if (reasoningModeEscalated) {
-        modelSelectionSource = personaModelRaw.length > 0 ? "persona" : "default";
-        reasoningModeEscalated = false;
+
+  if (depthExpertHeavy) {
+    executionModel = XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID;
+    modelSelectionSource = "reasoning_mode";
+    responsesReasoning = {
+      effort: reasoningMode === "expert" ? "medium" : "high"
+    };
+  } else if (depthFast) {
+    executionModel = XCHAT_DEPTH_FAST_MODEL_ID;
+    modelSelectionSource = "reasoning_mode";
+  } else {
+    reasoningEffortForParallel = resolveReasoningEffortFromAskPayload({
+      reasoningMode: undefined,
+      reasoningEffort: bodyReasoningEffort
+    });
+
+    if (
+      reasoningEffortForParallel &&
+      !MULTI_AGENT_PERSONA_MODEL_IDS.has(effectiveModel)
+    ) {
+      executionModel = XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID;
+      modelSelectionSource = "reasoning_effort";
+      const eff: "low" | "medium" | "high" =
+        reasoningEffortForParallel === "xhigh"
+          ? "high"
+          : reasoningEffortForParallel;
+      responsesReasoning = { effort: eff };
+      reasoningEffortForParallel = undefined;
+    }
+
+    if (
+      responsesReasoning === undefined &&
+      MULTI_AGENT_PERSONA_MODEL_IDS.has(executionModel)
+    ) {
+      const allowParallelism =
+        reasoningEffortForParallel != null || heavySynthesisIntent(messageTrimmed);
+      if (!allowParallelism) {
+        executionModel = getDefaultPersonaChatModelId();
+        multiAgentDowngraded = true;
+        modelSelectionSource =
+          personaModelRaw.length > 0 ? "persona" : "default";
       }
     }
   }
@@ -505,41 +535,18 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    reasoningModeEscalated &&
-    !parallelAgentConfig &&
-    reasoningEffortForParallel &&
-    !isAdminSession
-  ) {
-    const limits = getPlanLimits(subscriptionPlan);
-    executionModel = limits.escalationModel;
-    reasoningEffortForParallel = undefined;
-    reasoningModeEscalated = false;
-    modelSelectionSource = "reasoning_mode_fallback";
-    multiAgentDowngraded = false;
-    const retryParallel = resolveParallelAgentConfig({
-      model: executionModel,
-      reasoningEffort: undefined
-    });
-    if (!retryParallel.ok) {
-      return NextResponse.json(
-        { error: retryParallel.error, code: retryParallel.code },
-        { status: 400 }
-      );
-    }
-    parallelAgentConfig = retryParallel.config;
-  }
-
   if (visionImage) {
     parallelAgentConfig = undefined;
     const visionModelOverride = readXaiVisionModelOverrideFromEnv();
     if (visionModelOverride) {
       executionModel = visionModelOverride;
       modelSelectionSource = "vision_env";
+      responsesReasoning = undefined;
     } else if (MULTI_AGENT_PERSONA_MODEL_IDS.has(executionModel)) {
       /** Multi-agent + `input_image` is unreliable on `/v1/responses`; fall back to the default chat model for this turn. */
       executionModel = getDefaultPersonaChatModelId();
       modelSelectionSource = "default";
+      responsesReasoning = undefined;
     }
   }
 
@@ -1248,6 +1255,7 @@ export async function POST(request: Request) {
       maxTurns: xapiConfig.maxTurns,
       executor,
       parallelism: parallelAgentConfig,
+      responsesReasoning,
       previousResponseId,
       storeMessages: useRemoteConversationHistory,
       signal: request.signal

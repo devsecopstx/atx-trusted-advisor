@@ -1,9 +1,13 @@
-import type { ToolExecutor } from "@/lib/xai";
+import type { ToolExecutor, XaiResponsesReasoningOnly } from "@/lib/xai";
 import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { getPersonaByNormalizedName } from "@/modules/xchat/repository";
 import type { PersonaConfig, PersonaXapiToolChoice } from "@/modules/xchat/types";
 import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
+import {
+    expertResponsesReasoningForModelId,
+    XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID
+} from "@/modules/xchat/xchat-reasoning-mode";
 
 /** Default xPersona **name** (Mongo `nameNormalized`) for `options_scanner` Grok refinement. */
 export const OPTIONS_SCANNER_DEFAULT_PERSONA_NAME = "finance-advisor";
@@ -21,6 +25,8 @@ export type OptionsScannerPersonaContext = {
   tools: Array<Record<string, unknown>>;
   toolChoice: PersonaXapiToolChoice;
   maxTurns: number;
+  /** Set when `model` is **`grok-4.3`** — forwarded to `/v1/responses` (and chat completions when used). */
+  responsesReasoning?: XaiResponsesReasoningOnly;
 };
 
 function isPersonaAllowedForScheduledScanner(persona: PersonaConfig): boolean {
@@ -31,9 +37,12 @@ function isPersonaAllowedForScheduledScanner(persona: PersonaConfig): boolean {
   return true;
 }
 
-function defaultChatModel(): string {
-  const m = process.env.XAI_CHAT_MODEL?.trim();
-  return m && m.length > 0 ? m : "grok-4-1-fast-reasoning";
+function defaultOptionsScannerModel(): string {
+  const override = process.env.OPTIONS_SCANNER_MODEL?.trim();
+  if (override && override.length > 0) {
+    return override.slice(0, 128);
+  }
+  return XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID;
 }
 
 /**
@@ -55,7 +64,8 @@ export async function resolveOptionsScannerPersonaContext(): Promise<OptionsScan
   const systemPrompt = [persona.systemPrompt.trim(), persona.overridePrompt?.trim(), SCANNER_OUTPUT_CONTRACT]
     .filter((x) => x.length > 0)
     .join("\n\n");
-  const model = persona.model?.trim() || defaultChatModel();
+  const model = persona.model?.trim() || defaultOptionsScannerModel();
+  const responsesReasoning = expertResponsesReasoningForModelId(model);
   const temperature =
     typeof persona.temperature === "number" && Number.isFinite(persona.temperature)
       ? persona.temperature
@@ -66,7 +76,8 @@ export async function resolveOptionsScannerPersonaContext(): Promise<OptionsScan
     temperature,
     tools,
     toolChoice: xapi.toolChoice,
-    maxTurns: xapi.maxTurns
+    maxTurns: xapi.maxTurns,
+    responsesReasoning
   };
 }
 

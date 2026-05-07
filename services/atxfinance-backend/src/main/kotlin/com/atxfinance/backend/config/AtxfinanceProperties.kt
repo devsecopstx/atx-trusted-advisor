@@ -54,7 +54,7 @@ data class AtxfinanceProperties(
     val strategyMaxJobsHourly: Int = 12,
     val strategySoftWarnJobsHourly: Int = 8,
     /** xAI chat model for strategy job LLM finalizer (env `STRATEGY_FINALIZER_MODEL`). */
-    val strategyFinalizerModel: String = "grok-4-1-fast-reasoning",
+    val strategyFinalizerModel: String = "grok-4.3",
     /**
      * When true and session is `global_admin`, run finalizer synchronously on the HTTP thread after the last slot turn
      * (still returns 200 from `POST …/turns`; may exceed typical gateway timeouts for heavy models).

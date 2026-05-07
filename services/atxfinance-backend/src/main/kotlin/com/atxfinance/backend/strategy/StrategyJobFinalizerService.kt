@@ -130,7 +130,7 @@ class StrategyJobFinalizerService(
     }
 
     private fun resolveModel(session: ResolvedSession): Triple<String, Int?, String?> {
-        var model = props.strategyFinalizerModel.trim().ifEmpty { "grok-4-1-fast-reasoning" }
+        var model = props.strategyFinalizerModel.trim().ifEmpty { "grok-4.3" }
         val multiModels = setOf("grok-4.20-multi-agent", "grok-4.20-multi-agent-0309")
         val isMulti = multiModels.contains(model)
         if (isMulti && session.roles.contains("global_admin") && props.strategyFinalizerMultiAgentForGlobalAdmin) {
@@ -138,10 +138,16 @@ class StrategyJobFinalizerService(
         }
         if (isMulti) {
             val fallback = env.getProperty("STRATEGY_FINALIZER_NON_ADMIN_MODEL")?.trim()
-                ?: "grok-4-1-fast-reasoning"
+                ?: "grok-4.3"
             model = fallback
         }
-        return Triple(model, null, null)
+        val reasoningOnlyEffort =
+            if (!multiModels.contains(model) && model.contains("grok-4.3")) {
+                "medium"
+            } else {
+                null
+            }
+        return Triple(model, null, reasoningOnlyEffort)
     }
 
     private fun markFailed(oid: ObjectId, code: String, message: String) {

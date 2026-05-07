@@ -78,7 +78,7 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `
 
 **Next.js BFF:** Browsers call the same paths on the **Next** host (`src/app/api/strategy-jobs/*`). Next forwards to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is set and **`shouldProxyAdminUsersToBackend()`** is true (`src/lib/backend-bff.ts`, same gate as portfolios and strategy-options). If the proxy does not run, Next returns **503** `service_unavailable` with an operator hint (unset origin vs loopback + dev). There are **no** `ATXFINANCE_BACKEND_PROXY_*` toggles — disable BFF by unsetting **`ATXFINANCE_BACKEND_ORIGIN`**. See **`AGENTS.md`** / **`.env.example`**.
 
-**Finalizer env (JVM):** `STRATEGY_FINALIZER_MODEL` (default `grok-4-1-fast-reasoning`), `STRATEGY_FINALIZER_SYNC_FOR_GLOBAL_ADMIN`, `STRATEGY_FINALIZER_MULTI_AGENT_FOR_GLOBAL_ADMIN`, optional `STRATEGY_TEAM_KB_COLLECTION_ID` (else team KB from `XAI_TEAM_ID` when it resolves to `collection_*`), optional `STRATEGY_FINALIZER_NON_ADMIN_MODEL` when multi-agent is not used. Requires `XAI_API_KEY` (same as xChat).
+**Finalizer env (JVM):** `STRATEGY_FINALIZER_MODEL` (default `grok-4.3`, with `reasoning.effort` **medium** when not multi-agent), `STRATEGY_FINALIZER_SYNC_FOR_GLOBAL_ADMIN`, `STRATEGY_FINALIZER_MULTI_AGENT_FOR_GLOBAL_ADMIN`, optional `STRATEGY_TEAM_KB_COLLECTION_ID` (else team KB from `XAI_TEAM_ID` when it resolves to `collection_*`), optional `STRATEGY_FINALIZER_NON_ADMIN_MODEL` when multi-agent is not used. Requires `XAI_API_KEY` (same as xChat).
 
 ## User feedback
 

@@ -36,6 +36,10 @@ import {
     buildCompactOccOptionSymbol,
     contractKeyForTarget
 } from "@/modules/strategy-options/options-scanner-targets";
+import {
+    expertResponsesReasoningForModelId,
+    XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID
+} from "@/modules/xchat/xchat-reasoning-mode";
 
 const REC_COLL = "portfolio_recommendations";
 
@@ -356,6 +360,7 @@ async function grokRefineDecision(input: {
           tools: ctx.tools,
           toolChoice: ctx.toolChoice,
           maxTurns: ctx.maxTurns,
+          responsesReasoning: ctx.responsesReasoning,
           executor: createOptionsScannerToolExecutor()
         });
         text = loop.outputText.trim();
@@ -364,17 +369,21 @@ async function grokRefineDecision(input: {
           model: ctx.model,
           systemPrompt: ctx.systemPrompt,
           userPrompt: user,
-          maxTurns: Math.min(Math.max(ctx.maxTurns, 1), 8)
+          maxTurns: Math.min(Math.max(ctx.maxTurns, 1), 8),
+          responsesReasoning: ctx.responsesReasoning
         });
         text = single.outputText.trim();
       }
     } else {
+      const legacyModel = XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID;
       const out = await chatWithXai({
+        model: legacyModel,
         messages: [
           { role: "system", content: legacySys },
           { role: "user", content: user }
         ],
-        temperature: 0.15
+        temperature: 0.15,
+        responsesReasoning: expertResponsesReasoningForModelId(legacyModel)
       });
       text = out.outputText.trim();
     }

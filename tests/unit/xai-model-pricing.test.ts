@@ -10,6 +10,7 @@ describe("resolveXaiModelTokenRates", () => {
   it("classifies multi-agent and fast models", () => {
     expect(resolveXaiModelTokenRates("grok-4.20-multi-agent-0309")).not.toBeNull();
     expect(resolveXaiModelTokenRates("grok-4-1-fast-reasoning")).not.toBeNull();
+    expect(resolveXaiModelTokenRates("grok-4.3")).not.toBeNull();
     expect(resolveXaiModelTokenRates("unknown-vendor-model")).toBeNull();
   });
 });

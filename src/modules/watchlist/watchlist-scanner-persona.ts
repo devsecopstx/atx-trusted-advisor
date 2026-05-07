@@ -7,6 +7,10 @@ import {
 import { getPersonaByNormalizedName } from "@/modules/xchat/repository";
 import type { PersonaConfig } from "@/modules/xchat/types";
 import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
+import {
+    expertResponsesReasoningForModelId,
+    XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID
+} from "@/modules/xchat/xchat-reasoning-mode";
 
 /** Default xPersona **name** (Mongo `nameNormalized`) for `watchlist_price_scanner` Grok rationale pass. */
 export const WATCHLIST_SCANNER_DEFAULT_PERSONA_NAME = "finance-advisor";
@@ -26,9 +30,12 @@ function isPersonaAllowedForScheduledScanner(persona: PersonaConfig): boolean {
   return true;
 }
 
-function defaultChatModel(): string {
-  const m = process.env.XAI_CHAT_MODEL?.trim();
-  return m && m.length > 0 ? m : "grok-4-1-fast-reasoning";
+function defaultWatchlistScannerModel(): string {
+  const override = process.env.WATCHLIST_SCANNER_MODEL?.trim();
+  if (override && override.length > 0) {
+    return override.slice(0, 128);
+  }
+  return XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID;
 }
 
 /**
@@ -50,7 +57,8 @@ export async function resolveWatchlistScannerPersonaContext(): Promise<Watchlist
   const systemPrompt = [persona.systemPrompt.trim(), persona.overridePrompt?.trim(), WATCHLIST_SCANNER_OUTPUT_CONTRACT]
     .filter((x) => x.length > 0)
     .join("\n\n");
-  const model = persona.model?.trim() || defaultChatModel();
+  const model = persona.model?.trim() || defaultWatchlistScannerModel();
+  const responsesReasoning = expertResponsesReasoningForModelId(model);
   const temperature =
     typeof persona.temperature === "number" && Number.isFinite(persona.temperature)
       ? persona.temperature
@@ -61,7 +69,8 @@ export async function resolveWatchlistScannerPersonaContext(): Promise<Watchlist
     temperature,
     tools,
     toolChoice: xapi.toolChoice,
-    maxTurns: xapi.maxTurns
+    maxTurns: xapi.maxTurns,
+    responsesReasoning
   };
 }
 
@@ -107,6 +116,7 @@ export async function refineWatchlistRowRationaleWithPersona(
         tools: ctx.tools,
         toolChoice: ctx.toolChoice,
         maxTurns: ctx.maxTurns,
+        responsesReasoning: ctx.responsesReasoning,
         executor: createOptionsScannerToolExecutor()
       });
       text = loop.outputText.trim();
@@ -115,7 +125,8 @@ export async function refineWatchlistRowRationaleWithPersona(
         model: ctx.model,
         systemPrompt: ctx.systemPrompt,
         userPrompt: user,
-        maxTurns: Math.min(Math.max(ctx.maxTurns, 1), 8)
+        maxTurns: Math.min(Math.max(ctx.maxTurns, 1), 8),
+        responsesReasoning: ctx.responsesReasoning
       });
       text = single.outputText.trim();
     }

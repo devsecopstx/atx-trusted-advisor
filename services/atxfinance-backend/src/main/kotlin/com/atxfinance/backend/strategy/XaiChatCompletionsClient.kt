@@ -40,6 +40,8 @@ class XaiChatCompletionsClient(
         if (agentCount != null && agentCount > 0 && reasoningEffort != null) {
             body["agent_count"] = agentCount
             body["reasoning"] = mapOf("effort" to reasoningEffort)
+        } else if (reasoningEffort != null) {
+            body["reasoning"] = mapOf("effort" to reasoningEffort)
         }
         val headers = HttpHeaders()
         headers.setBearerAuth(apiKey)

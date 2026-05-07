@@ -62,7 +62,7 @@ app:
     strategy-jobs-ttl-days: ${STRATEGY_JOBS_TTL_DAYS:90}
     strategy-max-jobs-hourly: ${STRATEGY_MAX_JOBS_HOURLY:12}
     strategy-soft-warn-jobs-hourly: ${STRATEGY_SOFT_WARN_JOBS_HOURLY:8}
-    strategy-finalizer-model: ${STRATEGY_FINALIZER_MODEL:grok-4-1-fast-reasoning}
+    strategy-finalizer-model: ${STRATEGY_FINALIZER_MODEL:grok-4.3}
     strategy-finalizer-sync-for-global-admin: ${STRATEGY_FINALIZER_SYNC_FOR_GLOBAL_ADMIN:false}
     strategy-finalizer-multi-agent-for-global-admin: ${STRATEGY_FINALIZER_MULTI_AGENT_FOR_GLOBAL_ADMIN:true}
     strategy-team-kb-collection-id: ${STRATEGY_TEAM_KB_COLLECTION_ID:}

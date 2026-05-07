@@ -32,13 +32,18 @@ import {
     loadWorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
+import {
+    expertResponsesReasoningForModelId,
+    XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID
+} from "@/modules/xchat/xchat-reasoning-mode";
 
 const BATCH_JOBS_COLLECTION = "xchat_batch_jobs";
 const BATCH_ITEMS_COLLECTION = "xchat_batch_items";
 const MAX_ITEMS_PER_BATCH = 500;
 const POLL_INTERVAL_MS = 15_000;
 const MAX_POLL_ATTEMPTS = 200;
-const DEFAULT_XCHAT_BATCH_MODEL = "grok-4-1-fast-reasoning";
+/** Admin xChat batch default — aligned with Expert depth (`grok-4.3` + reasoning); persona `model` overrides. */
+const DEFAULT_XCHAT_BATCH_MODEL = XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID;
 
 export type BatchWorkloadItem = {
   itemId: string;
@@ -219,8 +224,15 @@ export async function submitBatchJob(
       collectionId: primaryCollectionId
     });
 
+    const resolvedBatchModel = (
+      typeof input.persona.model === "string" && input.persona.model.trim().length > 0
+        ? input.persona.model.trim()
+        : DEFAULT_XCHAT_BATCH_MODEL
+    ).slice(0, 128);
+    const batchReasoning = expertResponsesReasoningForModelId(resolvedBatchModel);
+
     const baseChatBody: Record<string, unknown> = {
-      model: input.persona.model ?? DEFAULT_XCHAT_BATCH_MODEL,
+      model: resolvedBatchModel,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -231,9 +243,12 @@ export async function submitBatchJob(
       baseChatBody.tools = batchTools;
       baseChatBody.tool_choice = xapiConfigMerged.toolChoice;
     }
+    if (batchReasoning) {
+      baseChatBody.reasoning = { effort: batchReasoning.effort };
+    }
 
     const responsesBody: Record<string, unknown> = {
-      model: input.persona.model ?? DEFAULT_XCHAT_BATCH_MODEL,
+      model: resolvedBatchModel,
       instructions: systemPrompt,
       input: userPrompt,
       max_turns: xapiConfigMerged.maxTurns
@@ -241,6 +256,9 @@ export async function submitBatchJob(
     if (xapiConfigMerged.toolChoice !== "none" && batchTools.length > 0) {
       responsesBody.tools = batchTools;
       responsesBody.tool_choice = xapiConfigMerged.toolChoice;
+    }
+    if (batchReasoning) {
+      responsesBody.reasoning = { effort: batchReasoning.effort };
     }
 
     const body: Record<string, unknown> =
