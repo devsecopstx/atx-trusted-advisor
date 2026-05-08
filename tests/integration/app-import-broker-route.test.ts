@@ -22,6 +22,7 @@ vi.mock("@/modules/core-admin/repository", async () => {
 });
 
 import { POST as postAppBrokerImport } from "@/app/api/import/broker/route";
+import { brokerImportDryRunResponseSchema } from "@/modules/portfolio-import/broker-import-dry-run-schema";
 
 const MERRILL_HEADER = "Symbol,Quantity,Account #\n";
 
@@ -84,16 +85,17 @@ describe("POST /api/import/broker (app user)", () => {
       })
     );
     expect(response.status).toBe(200);
-    const payload = (await response.json()) as {
-      dryRun: boolean;
-      broker: string;
-      accounts: Array<{ accountRef: string; stockCount: number; estimatedBalanceUsd: number }>;
-    };
-    expect(payload.dryRun).toBe(true);
+    const raw: unknown = await response.json();
+    const payload = brokerImportDryRunResponseSchema.parse(raw);
     expect(payload.broker).toBe("merrill");
     expect(payload.accounts[0]?.accountRef).toBe("51X-98940");
     expect(payload.accounts[0]?.stockCount).toBe(1);
     expect(payload.accounts[0]?.estimatedBalanceUsd).toBeGreaterThanOrEqual(0);
+    expect(payload.csvStats.nonEmptyLines).toBeGreaterThanOrEqual(2);
+    expect(payload.csvStats.totalPositionsParsed).toBe(1);
+    expect(payload.sampleRows.length).toBeGreaterThanOrEqual(1);
+    expect(payload.sampleRows[0]?.symbol).toMatch(/TSLA/i);
+    expect(payload.previewWarnings).toEqual([]);
   });
 
   it("returns 404 when portfolio is not owned by session user", async () => {

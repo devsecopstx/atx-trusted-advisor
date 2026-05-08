@@ -20,6 +20,11 @@ import {
     validateBrokerImportMappings
 } from "@/modules/portfolio-import/app-broker-import-job";
 import { parseBrokerHoldingsAccounts, previewBrokerHoldingsAccounts } from "@/modules/portfolio-import/broker-holdings-import";
+import {
+    brokerImportCsvStatsFromParsed,
+    buildBrokerImportPreviewSampleRows,
+    collectBrokerImportPreviewWarnings
+} from "@/modules/portfolio-import/broker-import-dry-run-preview";
 
 const brokerSlugSchema = z
   .string()
@@ -115,7 +120,10 @@ export async function POST(request: Request) {
       dryRun: true,
       broker,
       exportType,
-      accounts: previewBrokerHoldingsAccounts(parsedAccounts)
+      accounts: previewBrokerHoldingsAccounts(parsedAccounts),
+      csvStats: brokerImportCsvStatsFromParsed(csv, parsedAccounts),
+      sampleRows: buildBrokerImportPreviewSampleRows(parsedAccounts, 48),
+      previewWarnings: collectBrokerImportPreviewWarnings(parsedAccounts)
     });
   }
 

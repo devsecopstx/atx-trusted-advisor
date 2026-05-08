@@ -1,8 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import type { XchatInteractionMeta } from "@/app/xchat/ui/xchat-conversation-types";
+import {
+    clearXchatSpeechPlaybackIfMessage,
+    getXchatSpeechPlaybackActiveMessageId,
+    setXchatSpeechPlaybackActiveMessageId,
+    subscribeXchatSpeechPlayback
+} from "@/app/xchat/ui/xchat-speech-playback-store";
 
 export function pickXchatClosingLine(markdown: string): string {
   const t = markdown.toLowerCase();
@@ -60,6 +66,14 @@ function IconSpeak() {
   );
 }
 
+function IconStopSpeak() {
+  return (
+    <svg aria-hidden width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+    </svg>
+  );
+}
+
 function IconThumbUp() {
   return (
     <svg aria-hidden width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -105,6 +119,25 @@ export function XchatAiResponseChrome({
   const [copyDone, setCopyDone] = useState(false);
   const [linkDone, setLinkDone] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+
+  const activeSpeechMessageId = useSyncExternalStore(
+    subscribeXchatSpeechPlayback,
+    getXchatSpeechPlaybackActiveMessageId,
+    () => null
+  );
+  const isSpeakingThisMessage = activeSpeechMessageId === messageId;
+
+  useEffect(() => {
+    return () => {
+      if (typeof window === "undefined" || !window.speechSynthesis) {
+        return;
+      }
+      if (getXchatSpeechPlaybackActiveMessageId() === messageId) {
+        window.speechSynthesis.cancel();
+        clearXchatSpeechPlaybackIfMessage(messageId);
+      }
+    };
+  }, [messageId]);
 
   const closing = pickXchatClosingLine(bodyText);
   const hasDuration =
@@ -174,15 +207,26 @@ export function XchatAiResponseChrome({
     [serverLogId, feedbackBusy, messageId, onFeedbackChange]
   );
 
+  const stopSpeak = useCallback(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      return;
+    }
+    window.speechSynthesis.cancel();
+    clearXchatSpeechPlaybackIfMessage(messageId);
+  }, [messageId]);
+
   const speak = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
       return;
     }
     window.speechSynthesis.cancel();
+    setXchatSpeechPlaybackActiveMessageId(messageId);
     const u = new SpeechSynthesisUtterance(stripMarkdownForSpeech(bodyText));
     u.rate = 1;
+    u.onend = () => clearXchatSpeechPlaybackIfMessage(messageId);
+    u.onerror = () => clearXchatSpeechPlaybackIfMessage(messageId);
     window.speechSynthesis.speak(u);
-  }, [bodyText]);
+  }, [bodyText, messageId]);
 
   const regen = useCallback(() => {
     const p = pairedUserPrompt?.trim();
@@ -250,9 +294,16 @@ export function XchatAiResponseChrome({
             <IconRegen />
             <span className="xchat-ai-response-chrome__btn-label">Regenerate</span>
           </button>
-          <button type="button" className="xchat-ai-response-chrome__btn" onClick={speak} aria-label="Speak response">
-            <IconSpeak />
-            <span className="xchat-ai-response-chrome__btn-label">Speak</span>
+          <button
+            type="button"
+            className={`xchat-ai-response-chrome__btn${isSpeakingThisMessage ? " xchat-ai-response-chrome__btn--active" : ""}`}
+            onClick={isSpeakingThisMessage ? stopSpeak : speak}
+            aria-label={isSpeakingThisMessage ? "Stop speaking" : "Speak response"}
+            aria-pressed={isSpeakingThisMessage}
+            title={isSpeakingThisMessage ? "Stop speech replay" : "Read this response aloud"}
+          >
+            {isSpeakingThisMessage ? <IconStopSpeak /> : <IconSpeak />}
+            <span className="xchat-ai-response-chrome__btn-label">{isSpeakingThisMessage ? "Stop" : "Speak"}</span>
           </button>
         </div>
         <div className="xchat-ai-response-chrome__stats" aria-label="Response stats">

@@ -18,14 +18,14 @@ export const importActivityWorkflowCopy = {
   ],
   howToHeading: "How to Import",
   howToSteps: [
-    "Make sure account numbers in your CSV exactly match the Broker ref shown below.",
-    'Check "Use for import" for the accounts you want to update.',
-    "Upload → review the safe preview → select rows → import (only selected rows are saved)."
+    "Choose portfolio, broker, and CSV (or paste). Account numbers in the file must match Broker ref below.",
+    'Turn on "Use for import" for each account this file should update.',
+    "Preview, pick rows, then Run import. Leave delete holdings checked for a full replace (default)."
   ],
   optionsHeading: "Options note",
   optionsBody:
     "Only net-long option legs are imported right now. Net-short legs are skipped until short modeling is enabled.",
-  cleanTitle: "Clean first, then import",
-  cleanBody:
-    "Use this for a completely fresh start. It clears all existing positions and prior import records in the selected portfolio (your accounts stay intact)."
+  deleteHoldingsFirstLabel: "Delete existing holdings before import",
+  deleteHoldingsFirstHint:
+    "When checked (default), all current positions in this portfolio are removed and prior broker-import jobs cleared immediately before your CSV is applied — a clean replace. Accounts and watchlists stay. Uncheck only if you intend to merge into positions already in the book."
 } as const;

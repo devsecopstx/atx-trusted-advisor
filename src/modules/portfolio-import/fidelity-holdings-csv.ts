@@ -59,6 +59,8 @@ export type FidelityHoldingsPosition = {
   optionType?: "call" | "put";
   strike?: number;
   expiration?: string;
+  /** Last / Last Price column from Portfolio CSV when present (distinct from cost basis / avg). */
+  lastPriceUsd?: number;
   /** Fidelity Portfolio CSV "Current Value" when present; drives dry-run balance totals (incl. short-option negatives). */
   currentValueUsd?: number;
 };
@@ -167,6 +169,8 @@ function appendFidelityHoldingPosition(
   const priceBasis = avgCost ?? lastPrice ?? 0;
   const cv =
     currentValueUsd != null && Number.isFinite(currentValueUsd) ? currentValueUsd : undefined;
+  const lastUsd =
+    lastPrice != null && Number.isFinite(lastPrice) && lastPrice >= 0 ? lastPrice : undefined;
 
   if (/^cash\s*\(/i.test(symbolRaw)) {
     positions.push({
@@ -174,6 +178,7 @@ function appendFidelityHoldingPosition(
       ticker: symbolRaw.replace(/^cash\s*\(([^)]*)\)/i, "$1").trim() || "CASH",
       shares: quantity,
       purchasePrice: priceBasis || 1,
+      ...(lastUsd !== undefined ? { lastPriceUsd: lastUsd } : {}),
       ...(cv !== undefined ? { currentValueUsd: cv } : {})
     });
     return;
@@ -192,6 +197,7 @@ function appendFidelityHoldingPosition(
       optionType: optionInfo.optionType,
       strike: optionInfo.strike,
       expiration: optionInfo.expiration,
+      ...(lastUsd !== undefined ? { lastPriceUsd: lastUsd } : {}),
       ...(cv !== undefined ? { currentValueUsd: cv } : {})
     });
     return;
@@ -202,6 +208,7 @@ function appendFidelityHoldingPosition(
     ticker: symbolRaw.toUpperCase(),
     shares: Math.round(quantity),
     purchasePrice: priceBasis > 0 ? priceBasis : undefined,
+    ...(lastUsd !== undefined ? { lastPriceUsd: lastUsd } : {}),
     ...(cv !== undefined ? { currentValueUsd: cv } : {})
   });
 }
