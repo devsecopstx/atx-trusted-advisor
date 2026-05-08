@@ -8,6 +8,7 @@ export type AuditEntityType =
   | "deploy_note_config"
   | "admin_delivery_channel"
   | "admin_portfolio"
+  | "portfolio_price_alert"
   | "xchat_session"
   | "core_scanner"
   | "rental_ai"

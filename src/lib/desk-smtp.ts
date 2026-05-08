@@ -58,6 +58,40 @@ export function getDeskSmtpConfig(): DeskSmtpConfig | null {
   return { host, port, secure, user, pass, from: fromParsed.data };
 }
 
+export async function sendDeskHtmlEmail(input: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<boolean> {
+  const toParsed = z.string().email().safeParse(input.to.trim());
+  if (!toParsed.success) {
+    return false;
+  }
+  const cfg = getDeskSmtpConfig();
+  if (!cfg) {
+    return false;
+  }
+  try {
+    const transport = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure,
+      auth: { user: cfg.user, pass: cfg.pass }
+    });
+    await transport.sendMail({
+      from: cfg.from,
+      to: toParsed.data,
+      subject: input.subject,
+      text: input.text,
+      html: input.html
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function sendDeskPlainEmail(input: {
   to: string;
   subject: string;
@@ -105,6 +139,27 @@ async function sleepMs(ms: number): Promise<void> {
 }
 
 /** Same retry policy as Slack desk notifications (`DESK_NOTIFICATION_SLACK_RETRIES`, `DESK_NOTIFICATION_RETRY_BASE_MS`). */
+/** Same retry policy as {@link sendDeskPlainEmailWithRetry} for multipart/alternative desk mail. */
+export async function sendDeskHtmlEmailWithRetry(input: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<boolean> {
+  const maxExtra = deskNotificationRetryCount();
+  let ok = false;
+  for (let attempt = 0; attempt <= maxExtra; attempt++) {
+    ok = await sendDeskHtmlEmail(input);
+    if (ok) {
+      return true;
+    }
+    if (attempt < maxExtra) {
+      await sleepMs(deskNotificationRetryBaseMs() * (attempt + 1));
+    }
+  }
+  return false;
+}
+
 export async function sendDeskPlainEmailWithRetry(
   to: string,
   subject: string,

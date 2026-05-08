@@ -41,7 +41,7 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 **Deep spec:** [nl-prompts.md](./xchat/nl-workflows/nl-prompts.md)
 
-**Shipped:** Premium / Premium+ **NL price alert management** in xChat via **`atx_function.price_alert_manage`** (tenant + workspace portfolio scope, confirmation on destructive ops, audit hooks, **`watchlist_price_scanner`** evaluation). Basic tier remains plan-gated (`getPlanLimits.nlPriceAlertManagementEnabled`).
+**Shipped:** **Premium+ advisor** (incl. `global_admin`) **NL price alert management** in xChat via **`atx_function.price_alert_manage`**: Mongo **`portfolio_price_alerts`** (one **active** row per user+symbol per tenant, 30d auto-expire), optional **portfolio/account hint** resolution, **ruleKind** required (no default direction), migration from legacy armed **`portfolio_alerts`** on **list**, desk alert + **branded desk HTML email** on fire (SMTP), cooldown + audits, **`watchlist_price_scanner`** + **`user_alert_manager`** scheduled evaluation, first-tenant alert ensures **`user_alert_manager`** task, admin **`POST /api/admin/portfolio-price-alerts/bulk-expire`**. **Basic** / **Premium** remain blocked (`getPlanLimits.nlPriceAlertManagementEnabled` false unless Premium+).
 
 ### Deferred product TODOs
 

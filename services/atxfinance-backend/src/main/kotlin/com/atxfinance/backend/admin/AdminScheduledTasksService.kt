@@ -631,6 +631,8 @@ class AdminScheduledTasksService(
                 "options_expiration_roll_manager",
                 "risk_concentration_scanner",
                 "tax_loss_harvest_scanner",
+                "marketing_post",
+                "user_alert_manager",
             )
         private const val FIVE_MIN_MS = 5L * 60L * 1000L
         private const val ONE_DAY_MS = 24L * 60L * 60L * 1000L

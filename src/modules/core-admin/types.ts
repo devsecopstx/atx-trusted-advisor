@@ -107,7 +107,8 @@ export type ScheduledTask = {
     | "options_expiration_roll_manager"
     | "risk_concentration_scanner"
     | "tax_loss_harvest_scanner"
-    | "marketing_post";
+    | "marketing_post"
+    | "user_alert_manager";
   scheduleCron?: string;
   /** RRULE expression for rich recurrence; preferred over cron when present. */
   scheduleRRule?: string;

@@ -1050,6 +1050,7 @@ export async function POST(request: Request) {
       userId: session.userId,
       tenantId: session.tenantId,
       subscriptionPlan,
+      platformRoles: session.roles,
       workspacePortfolioId,
       ...atxWorkspaceExecutorOpts
     });
@@ -1201,6 +1202,7 @@ export async function POST(request: Request) {
       userId: session.userId,
       tenantId: session.tenantId,
       subscriptionPlan,
+      platformRoles: session.roles,
       workspacePortfolioId,
       ...atxWorkspaceExecutorOpts
     });
@@ -1459,6 +1461,7 @@ export async function POST(request: Request) {
         userId: session.userId,
         tenantId: session.tenantId,
         subscriptionPlan,
+        platformRoles: session.roles,
         workspacePortfolioId,
         ...(hasXfinanceTool ? atxWorkspaceExecutorOpts : {})
       })

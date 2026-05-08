@@ -1,23 +1,14 @@
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
-import {
-    parsePortfolioAlertUserPriceRuleMetadata,
-    portfolioAlertUserPriceRuleMetadataV1Schema,
-    type PortfolioAlertUserPriceRuleMetadataV1
-} from "@/lib/portfolio-alert-user-price-rule-metadata";
+import { parsePortfolioAlertUserPriceRuleMetadata } from "@/lib/portfolio-alert-user-price-rule-metadata";
 import type { ToolExecutor } from "@/lib/xai";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
-    adminCreatePortfolioAlert,
     adminListPortfolioAlerts,
-    countArmedUserPriceAlertRulesForPortfolio,
     DEFAULT_ACCOUNT_CASH_BALANCE,
-    deleteAllUserPriceAlertRulesForPortfolio,
-    deleteUserPriceAlertRulesForSymbol,
     ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
     getPortfolioByIdForSessionUser,
     getUserWatchlist,
-    listArmedUserPriceAlertRulesForPortfolio,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     listScheduledTasks,
@@ -27,6 +18,16 @@ import {
 } from "@/modules/core-admin/repository";
 import type { AccountOutlook, WatchlistSymbol } from "@/modules/core-admin/types";
 import { parseAccountOutlook } from "@/modules/core-admin/types";
+import { ensureUserAlertManagerScheduledTaskForTenant } from "@/modules/price-alerts/ensure-user-alert-manager-task";
+import { migrateLegacyNlPriceAlertsIfNeeded } from "@/modules/price-alerts/migrate-legacy-nl-price-alerts";
+import {
+    countActivePortfolioPriceAlertsForTenant,
+    deleteActivePortfolioPriceAlertForUserSymbol,
+    deleteAllActivePortfolioPriceAlertsForUser,
+    listActivePortfolioPriceAlertsForUser,
+    upsertActivePortfolioPriceAlert
+} from "@/modules/price-alerts/portfolio-price-alerts-repository";
+import { resolvePortfolioHintFromNl } from "@/modules/price-alerts/resolve-portfolio-hint";
 import { fetchYahooOptionChainForExpiration } from "@/modules/strategy-options/options-chain";
 import {
     WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
@@ -37,7 +38,7 @@ import {
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
-import { getPlanLimits } from "@/modules/xchat/plan-limits";
+import { canManageNlPriceAlerts } from "@/modules/xchat/plan-limits";
 import {
     deleteCachedToolResult,
     getCachedToolResult,
@@ -474,6 +475,8 @@ export type XfinanceToolExecutorContext = {
   userId: string;
   tenantId?: string;
   subscriptionPlan?: "basic" | "premium" | "premium_plus";
+  /** Platform roles from session — NL price alerts require advisor or global_admin with Premium+. */
+  platformRoles?: string[];
   workspacePortfolioId?: string | null;
   /**
    * Eager preload (tests, batch, or explicit opt-in). When this key is present (including `null`),
@@ -989,28 +992,28 @@ function buildOperations(
     },
 
     price_alert_manage: async (args, ctx: ExecutorContext) => {
-      const limits = getPlanLimits(ctx.subscriptionPlan);
-      if (!limits.nlPriceAlertManagementEnabled) {
+      if (!canManageNlPriceAlerts(ctx.subscriptionPlan, ctx.platformRoles)) {
         return {
           error: "plan_blocked_nl_price_alerts",
           message:
-            "Natural-language price alert rules require Premium or Premium+. Use Portfolio → Alerts or upgrade.",
+            "Natural-language price alerts require Premium+ with an advisor seat (global admins included). Use Portfolio → Alerts or upgrade.",
           alertsDeepLink: "/portfolio/alerts"
         };
       }
 
-      const portfolio = await getDefaultPortfolioOrProvision(ctx);
-      if (!portfolio?._id) {
+      const workspacePf = await getDefaultPortfolioOrProvision(ctx);
+      if (!workspacePf?._id) {
         return { error: "no_default_portfolio" };
       }
-      const portfolioId = portfolio._id.toHexString();
-      const alertsDeepLink = `/portfolio/alerts?portfolioId=${encodeURIComponent(portfolioId)}`;
+      const workspacePortfolioIdHex = workspacePf._id.toHexString();
+      const workspaceAlertsDeepLink = `/portfolio/alerts?portfolioId=${encodeURIComponent(workspacePortfolioIdHex)}`;
 
       const op = typeof args.priceAlertOp === "string" ? args.priceAlertOp.trim() : "";
-      const enqueueAudit = (action: string, details: Record<string, unknown>) => {
+
+      const auditNl = (action: string, entityId: string, details: Record<string, unknown>) => {
         void createAuditEvent({
-          entityType: "admin_portfolio",
-          entityId: portfolioId,
+          entityType: "portfolio_price_alert",
+          entityId,
           action,
           actor: { userId: ctx.userId },
           details
@@ -1018,20 +1021,22 @@ function buildOperations(
       };
 
       if (op === "list") {
-        const rows = await adminListPortfolioAlerts(portfolioId);
-        const armed: Array<Record<string, unknown>> = [];
+        await migrateLegacyNlPriceAlertsIfNeeded({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId
+        });
+        const active = await listActivePortfolioPriceAlertsForUser({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId
+        });
+        const rows = await adminListPortfolioAlerts(workspacePortfolioIdHex);
         const recentDesk: Array<{ id: string; title: string; symbol: string | null }> = [];
         for (const r of rows) {
           const meta = parsePortfolioAlertUserPriceRuleMetadata(r.metadata);
           if (meta?.ruleState === "armed") {
-            armed.push({
-              id: r._id?.toHexString(),
-              symbol: r.symbol,
-              ruleKind: meta.ruleKind,
-              targetPriceUsd: meta.targetPriceUsd,
-              title: r.title
-            });
-          } else if (recentDesk.length < 8) {
+            continue;
+          }
+          if (recentDesk.length < 8) {
             recentDesk.push({
               id: r._id?.toHexString() ?? "",
               title: r.title,
@@ -1039,19 +1044,50 @@ function buildOperations(
             });
           }
         }
-        enqueueAudit("xchat_nl_price_alert_list", { armedCount: armed.length });
+        auditNl("xchat_nl_price_alert_list", ctx.userId, { activeCount: active.length });
         return {
-          portfolioId,
-          alertsDeepLink,
-          armedRuleCount: armed.length,
-          armedRules: armed,
+          portfolioId: workspacePortfolioIdHex,
+          alertsDeepLink: workspaceAlertsDeepLink,
+          activeAlertCount: active.length,
+          activeAlerts: active.map((a) => ({
+            id: a._id?.toHexString(),
+            symbol: a.symbolNorm,
+            ruleKind: a.ruleKind,
+            targetPriceUsd: a.targetPriceUsd,
+            portfolioId: a.portfolioId.toHexString(),
+            portfolioName: a.portfolioName,
+            expiresAt: a.expiresAt.toISOString()
+          })),
           recentDeskAlerts: recentDesk,
           note:
-            "Armed rows are NL price rules evaluated on tenant watchlist price scans. Other rows include scanners and fired notifications."
+            "Active alerts live in portfolio_price_alerts (one per symbol per user). Evaluated on tenant watchlist scans plus the user_alert_manager scheduled task."
         };
       }
 
       if (op === "add") {
+        const portfolioHintRaw =
+          (typeof args.portfolioHint === "string" && args.portfolioHint.trim()) ||
+          (typeof args.portfolioName === "string" && args.portfolioName.trim()) ||
+          (typeof args.inPortfolio === "string" && args.inPortfolio.trim()) ||
+          undefined;
+
+        const resolvedPf = await resolvePortfolioHintFromNl({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          portfolioHint: portfolioHintRaw,
+          workspacePortfolioId: ctx.workspacePortfolioId
+        });
+        if (!resolvedPf.ok) {
+          return {
+            error:
+              resolvedPf.error === "ambiguous" ? "portfolio_hint_ambiguous" : "portfolio_hint_not_found",
+            candidates: resolvedPf.candidates,
+            alertsDeepLink: workspaceAlertsDeepLink
+          };
+        }
+        const portfolioId = resolvedPf.portfolioIdHex;
+        const alertsDeepLink = `/portfolio/alerts?portfolioId=${encodeURIComponent(portfolioId)}`;
+
         const tickers = parseTickerListFromArgs(args, 1);
         const rawSym =
           tickers[0] ?? (typeof args.symbol === "string" ? args.symbol.trim().toUpperCase() : "");
@@ -1067,14 +1103,32 @@ function buildOperations(
           return { error: "invalid_target_price", alertsDeepLink };
         }
 
-        let ruleKind: PortfolioAlertUserPriceRuleMetadataV1["ruleKind"] = "crosses";
         const rk = typeof args.ruleKind === "string" ? args.ruleKind.trim().toLowerCase() : "";
+        let ruleKind: "above" | "below" | "crosses" | null = null;
         if (rk === "above" || rk === "below" || rk === "crosses") {
           ruleKind = rk;
         }
+        if (ruleKind == null) {
+          return {
+            error: "needs_rule_kind_clarification",
+            message:
+              "Say whether you want the alert when price goes **above**, **below**, or **crosses** the target.",
+            examples: [
+              "add alert TSLA 420 above",
+              "add alert NVDA 140 below",
+              "add alert AMD 175 crosses",
+              "add alert RKLB 25 above in my Roth account"
+            ],
+            alertsDeepLink
+          };
+        }
 
-        const armedCount = await countArmedUserPriceAlertRulesForPortfolio(portfolioId);
-        if (armedCount >= MAX_NL_USER_PRICE_ALERT_RULES) {
+        const activeBefore = await listActivePortfolioPriceAlertsForUser({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId
+        });
+        const hadSymbol = activeBefore.some((a) => a.symbolNorm === validSym);
+        if (!hadSymbol && activeBefore.length >= MAX_NL_USER_PRICE_ALERT_RULES) {
           return {
             error: "nl_price_alert_rule_cap",
             max: MAX_NL_USER_PRICE_ALERT_RULES,
@@ -1082,61 +1136,39 @@ function buildOperations(
           };
         }
 
-        const existing = await listArmedUserPriceAlertRulesForPortfolio(portfolioId);
-        const dup = existing.some((row) => {
-          const m = parsePortfolioAlertUserPriceRuleMetadata(row.metadata);
-          return (
-            row.symbol?.toUpperCase() === validSym &&
-            m?.targetPriceUsd === target &&
-            m?.ruleKind === ruleKind
-          );
-        });
-        if (dup) {
-          return {
-            error: "duplicate_rule",
-            symbol: validSym,
-            targetPriceUsd: target,
-            ruleKind,
-            alertsDeepLink
-          };
-        }
+        const tenantBefore = ctx.tenantId
+          ? await countActivePortfolioPriceAlertsForTenant(ctx.tenantId)
+          : 0;
 
-        const metadata = portfolioAlertUserPriceRuleMetadataV1Schema.parse({
-          v: 1,
-          source: "xchat_user_price_rule",
-          ruleKind,
+        const { doc, replaced } = await upsertActivePortfolioPriceAlert({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          portfolioIdHex: portfolioId,
+          portfolioName: resolvedPf.portfolioName,
+          symbolUpper: validSym,
           targetPriceUsd: target,
-          ruleState: "armed",
-          delivery: { channels: ["email"], pendingEmailDispatch: true },
-          provenance: { createdVia: "xchat_atx_function" }
+          ruleKind,
+          preserveLastReference: true
         });
 
-        const kindLabel =
-          ruleKind === "above" ? "above" : ruleKind === "below" ? "below" : "crosses";
-        const title = `Price rule: ${validSym} ${kindLabel} $${target.toFixed(2)}`;
-        const body = `Armed NL rule — fires when Yahoo quotes cross $${target.toFixed(2)} (${kindLabel}). Email uses desk channels when configured.`;
-
-        const created = await adminCreatePortfolioAlert({
-          portfolioId,
-          title,
-          body,
-          severity: "info",
-          status: "active",
-          symbol: validSym,
-          accountContext: "watchlist",
-          metadata
-        });
-
-        if (!created?._id) {
+        if (!doc?._id) {
           return { error: "create_failed", alertsDeepLink };
         }
 
+        if (ctx.tenantId) {
+          const tenantAfter = await countActivePortfolioPriceAlertsForTenant(ctx.tenantId);
+          if (tenantBefore === 0 && tenantAfter > 0) {
+            await ensureUserAlertManagerScheduledTaskForTenant(ctx.tenantId);
+          }
+        }
+
         invalidateWorkspacePreload();
-        enqueueAudit("xchat_nl_price_alert_add", {
+        auditNl("xchat_nl_price_alert_add", doc._id.toHexString(), {
           symbol: validSym,
           targetPriceUsd: target,
           ruleKind,
-          alertId: created._id.toHexString()
+          portfolioId,
+          replaced
         });
 
         let spotNote: string | undefined;
@@ -1154,13 +1186,14 @@ function buildOperations(
           ok: true,
           portfolioId,
           alertsDeepLink,
-          createdRuleId: created._id.toHexString(),
+          ruleDocId: doc._id.toHexString(),
           symbol: validSym,
           targetPriceUsd: target,
           ruleKind,
+          replaced,
           spotNote,
           deliveryNote:
-            "When this rule fires, desk email/notifications follow the same path as other portfolio alerts if SMTP + delivery channels are set."
+            "When this rule fires, we create a portfolio desk alert and may send Premium+ advisor branded email when desk SMTP is configured."
         };
       }
 
@@ -1170,24 +1203,28 @@ function buildOperations(
           tickers[0] ?? (typeof args.symbol === "string" ? args.symbol.trim().toUpperCase() : "");
         const validSym = /^[A-Z0-9.\-]{1,32}$/.test(rawSym) ? rawSym : "";
         if (!validSym) {
-          return { error: "invalid_symbol", alertsDeepLink };
+          return { error: "invalid_symbol", alertsDeepLink: workspaceAlertsDeepLink };
         }
         if (args.confirmDestructive !== true) {
           return {
             needs_confirmation: true,
-            alertsDeepLink,
-            summary: `Remove all NL price rules for ${validSym} on this workspace portfolio.`,
+            alertsDeepLink: workspaceAlertsDeepLink,
+            summary: `Remove your active NL price alert for ${validSym} (one alert per symbol for your user).`,
             instruction:
               "After the user confirms in chat, call again with confirmDestructive true (same symbol)."
           };
         }
-        const n = await deleteUserPriceAlertRulesForSymbol(portfolioId, validSym);
+        const n = await deleteActivePortfolioPriceAlertForUserSymbol({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          symbolUpper: validSym
+        });
         invalidateWorkspacePreload();
-        enqueueAudit("xchat_nl_price_alert_remove_symbol", { symbol: validSym, deleted: n });
+        auditNl("xchat_nl_price_alert_remove_symbol", ctx.userId, { symbol: validSym, deleted: n });
         return {
           ok: true,
-          portfolioId,
-          alertsDeepLink,
+          portfolioId: workspacePortfolioIdHex,
+          alertsDeepLink: workspaceAlertsDeepLink,
           deletedRules: n,
           symbol: validSym
         };
@@ -1197,19 +1234,22 @@ function buildOperations(
         if (args.confirmDestructive !== true) {
           return {
             needs_confirmation: true,
-            alertsDeepLink,
+            alertsDeepLink: workspaceAlertsDeepLink,
             summary:
-              "Remove every armed NL price rule on this workspace portfolio (scanner/fired desk rows stay).",
+              "Remove every active NL price alert you created via xChat (desk scanner rows stay).",
             instruction: "After explicit user confirmation, retry with confirmDestructive true."
           };
         }
-        const n = await deleteAllUserPriceAlertRulesForPortfolio(portfolioId);
+        const n = await deleteAllActivePortfolioPriceAlertsForUser({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId
+        });
         invalidateWorkspacePreload();
-        enqueueAudit("xchat_nl_price_alert_clear_all", { deleted: n });
+        auditNl("xchat_nl_price_alert_clear_all", ctx.userId, { deleted: n });
         return {
           ok: true,
-          portfolioId,
-          alertsDeepLink,
+          portfolioId: workspacePortfolioIdHex,
+          alertsDeepLink: workspaceAlertsDeepLink,
           deletedRules: n
         };
       }
@@ -1217,7 +1257,7 @@ function buildOperations(
       return {
         error: "invalid_price_alert_op",
         priceAlertOp: op || null,
-        alertsDeepLink
+        alertsDeepLink: workspaceAlertsDeepLink
       };
     },
 

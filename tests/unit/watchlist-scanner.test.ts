@@ -39,11 +39,13 @@ const alertMocks = vi.hoisted(() => ({
   persistPriceMoveAlerts: vi.fn()
 }));
 
-const userPriceRuleMocks = vi.hoisted(() => ({
-  processUserPriceRulesForPortfolio: vi.fn().mockResolvedValue({
+const nlPriceAlertMocks = vi.hoisted(() => ({
+  expireActivePortfolioPriceAlertsPastExpiry: vi.fn().mockResolvedValue(0),
+  processPortfolioPriceAlertsWithQuotes: vi.fn().mockResolvedValue({
     evaluated: 0,
     armedUpdates: 0,
-    fired: 0
+    fired: 0,
+    skippedCooldown: 0
   })
 }));
 
@@ -55,8 +57,12 @@ vi.mock("@/modules/watchlist/price-alert-service", async (importOriginal) => {
   };
 });
 
-vi.mock("@/modules/watchlist/user-price-alert-rules", () => ({
-  processUserPriceRulesForPortfolio: userPriceRuleMocks.processUserPriceRulesForPortfolio
+vi.mock("@/modules/price-alerts/portfolio-price-alerts-repository", () => ({
+  expireActivePortfolioPriceAlertsPastExpiry: nlPriceAlertMocks.expireActivePortfolioPriceAlertsPastExpiry
+}));
+
+vi.mock("@/modules/price-alerts/process-portfolio-price-alerts", () => ({
+  processPortfolioPriceAlertsWithQuotes: nlPriceAlertMocks.processPortfolioPriceAlertsWithQuotes
 }));
 
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
@@ -87,11 +93,14 @@ describe("runWatchlistPriceScanner", () => {
       recorded: [],
       skippedCooldown: 0
     });
-    userPriceRuleMocks.processUserPriceRulesForPortfolio.mockReset();
-    userPriceRuleMocks.processUserPriceRulesForPortfolio.mockResolvedValue({
+    nlPriceAlertMocks.expireActivePortfolioPriceAlertsPastExpiry.mockReset();
+    nlPriceAlertMocks.expireActivePortfolioPriceAlertsPastExpiry.mockResolvedValue(0);
+    nlPriceAlertMocks.processPortfolioPriceAlertsWithQuotes.mockReset();
+    nlPriceAlertMocks.processPortfolioPriceAlertsWithQuotes.mockResolvedValue({
       evaluated: 0,
       armedUpdates: 0,
-      fired: 0
+      fired: 0,
+      skippedCooldown: 0
     });
     repoMocks.updateWatchlistSymbolPrices.mockResolvedValue(1);
     repoMocks.getDefaultPortfolio.mockResolvedValue({ _id: defaultPortfolioId });

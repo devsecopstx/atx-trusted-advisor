@@ -109,6 +109,12 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     defaultJobName: "marketing-post-job",
     description:
       "Publishes templated or custom marketing posts with required disclaimer + UTM tagging to enabled social platforms."
+  },
+  user_alert_manager: {
+    displayName: "User price alert manager (hourly Mon–Fri 14–21 UTC)",
+    defaultJobName: "user-alert-manager-job",
+    description:
+      "Tenant-scoped NL price alerts (`portfolio_price_alerts`): batch Yahoo quotes for every distinct armed symbol, crossing evaluation, desk alerts + optional branded email, expiry sweep — complements watchlist_price_scanner for symbols off watchlists."
   }
 } satisfies Record<ScheduledTaskCategory, ScheduledTaskCategoryCatalogEntry>;
 

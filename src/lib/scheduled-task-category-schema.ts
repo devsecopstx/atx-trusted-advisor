@@ -17,6 +17,7 @@ export const SCHEDULED_TASK_CATEGORIES = [
   "risk_concentration_scanner",
   "tax_loss_harvest_scanner",
   "marketing_post",
+  "user_alert_manager",
 ] as const;
 
 export type ScheduledTaskCategory = (typeof SCHEDULED_TASK_CATEGORIES)[number];
@@ -44,7 +45,8 @@ export const SCHEDULED_TASK_CATEGORY_DEFAULT_CRON: Record<ScheduledTaskCategory,
   options_expiration_roll_manager: DEFAULT_SCHEDULED_TASK_CRON,
   risk_concentration_scanner: RISK_DAILY_CRON,
   tax_loss_harvest_scanner: TAX_SCAN_DAILY_CRON,
-  marketing_post: "0 13 * * 1-5"
+  marketing_post: "0 13 * * 1-5",
+  user_alert_manager: DEFAULT_SCHEDULED_TASK_CRON
 };
 
 export const scheduledTaskCategorySchema = z.enum(SCHEDULED_TASK_CATEGORIES);

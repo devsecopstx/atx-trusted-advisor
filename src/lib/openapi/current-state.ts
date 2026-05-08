@@ -493,6 +493,19 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tasks"
   },
   {
+    path: "/api/admin/portfolio-price-alerts/bulk-expire",
+    operations: [
+      {
+        method: "POST",
+        auth: "admin",
+        hasRequestBody: true,
+        summary:
+          "Expire every active document in portfolio_price_alerts for the given tenantId (global_admin ops)."
+      }
+    ],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/deploy-note-configs",
     operations: [
       { method: "GET", auth: "admin" },
@@ -1026,7 +1039,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
         method: "GET",
         auth: "session",
         summary:
-          "Desk alerts for the portfolio; rows may include armed NL user price rules (`metadata.source=xchat_user_price_rule`) created via xChat `atx_function.price_alert_manage`, scanner hits, and manual posts."
+          "Desk alerts for the portfolio (scanner hits, manual posts, NL-triggered notifications). Legacy armed NL rows (`metadata.source=xchat_user_price_rule`) migrate to `portfolio_price_alerts` on next xChat list; active NL rules are no longer stored as armed portfolio_alerts rows."
       },
       {
         method: "POST",

@@ -12,6 +12,7 @@ import type { ScheduledTask } from "@/modules/core-admin/types";
 import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requests-task";
 import { runMarketingPostTask } from "@/modules/marketing/publisher";
 import { runScheduledAppBrokerImportTask } from "@/modules/portfolio-import/app-broker-import-job";
+import { runUserAlertManagerScanner } from "@/modules/price-alerts/user-alert-manager-scanner";
 import {
     appendTenantIdToScheduledTaskOutput,
     logCoreScannerRunAudit,
@@ -36,6 +37,7 @@ const PORTFOLIO_SNAPSHOT_WARM_AFTER_SCAN_CATEGORIES = new Set([
   "price_scanner",
   "options_scanner",
   "watchlist_price_scanner",
+  "user_alert_manager",
   "corporate_events_scanner",
   "income_cash_flow_projector",
   "options_expiration_roll_manager",
@@ -173,6 +175,9 @@ async function runScheduledCategory(
   }
   if (task.category === "watchlist_price_scanner") {
     return runWatchlistPriceScanner(task, { bypassMarketWindow: bypass });
+  }
+  if (task.category === "user_alert_manager") {
+    return runUserAlertManagerScanner(task, { bypassMarketWindow: bypass });
   }
   if (task.category === "corporate_events_scanner") {
     return runCorporateEventsScanner(task);

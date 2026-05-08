@@ -12,7 +12,7 @@ export type PlanTierLimits = {
   maxTurns: number;
   maxTopK: number;
   maxToolCalls: number;
-  /** Premium tiers: xChat `atx_function` **price_alert_manage** for NL desk price rules (tenant + portfolio scoped). */
+  /** Premium+ tier only: NL price alerts (`price_alert_manage`); still requires advisor/global_admin role at runtime. */
   nlPriceAlertManagementEnabled: boolean;
   defaultModel: string;
   escalationModel: string;
@@ -49,7 +49,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     maxTurns: 5,
     maxTopK: 6,
     maxToolCalls: 10,
-    nlPriceAlertManagementEnabled: true,
+    nlPriceAlertManagementEnabled: false,
     defaultModel: "grok-4-1-fast",
     escalationModel: "grok-4-latest",
     complexityThreshold: 500,
@@ -78,6 +78,30 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
 
 export function getPlanLimits(plan?: SubscriptionPlan | string): PlanTierLimits {
   return PLAN_LIMITS[normalizeSubscriptionPlan(plan)];
+}
+
+/** Desk NL price alerts (xChat tool + branded email): Premium+ and advisor or global_admin. */
+export function hasNlPriceAlertDeskRole(roles: string[] | undefined): boolean {
+  const r = roles ?? [];
+  return r.includes("advisor") || r.includes("global_admin");
+}
+
+export function canManageNlPriceAlerts(
+  plan?: SubscriptionPlan | string,
+  roles?: string[]
+): boolean {
+  if (!getPlanLimits(plan).nlPriceAlertManagementEnabled) {
+    return false;
+  }
+  return hasNlPriceAlertDeskRole(roles);
+}
+
+/** Branded SMTP notifications on NL alert fires — same gate as {@link canManageNlPriceAlerts}. */
+export function canReceiveNlPriceAlertEmail(
+  plan?: SubscriptionPlan | string,
+  roles?: string[]
+): boolean {
+  return canManageNlPriceAlerts(plan, roles);
 }
 
 export function resolveModel(

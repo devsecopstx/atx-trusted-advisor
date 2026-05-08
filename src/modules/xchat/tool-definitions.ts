@@ -9,7 +9,7 @@ export const ATXFINANCE_TOOL_DEFINITION = {
   function: {
     name: "atx_function",
     description:
-      "Portfolio, accounts, watchlist (read + add/remove on the user's default watchlist), positions, scheduled tasks, Yahoo quotes, and Premium NL price alert rules (price_alert_manage). Scoped to the signed-in user only—never pass a user id. watchlist_add_symbols upserts tickers with default row metadata (Stock / balanced) and fills desk risk growth + outlook neutral only when unset; use when the user says e.g. \"add NVDA to my watchlist\". watchlist_remove_symbols removes tickers.",
+      "Portfolio, accounts, watchlist (read + add/remove on the user's default watchlist), positions, scheduled tasks, Yahoo quotes, and Premium+ advisor NL price alerts (price_alert_manage; one active rule per symbol per user; optional portfolio hint). Scoped to the signed-in user only—never pass a user id. watchlist_add_symbols upserts tickers with default row metadata (Stock / balanced) and fills desk risk growth + outlook neutral only when unset; use when the user says e.g. \"add NVDA to my watchlist\". watchlist_remove_symbols removes tickers.",
     parameters: {
       type: "object",
       properties: {
@@ -88,7 +88,16 @@ export const ATXFINANCE_TOOL_DEFINITION = {
           type: "string",
           enum: ["list", "add", "remove_symbol", "clear_all"],
           description:
-            "With operation price_alert_manage: list armed NL rules + recent desk rows; add a rule (symbol + targetPrice + optional ruleKind); remove_symbol or clear_all NL rules only—requires confirmDestructive true after the user explicitly confirms."
+            "With operation price_alert_manage (Premium+ advisor): list active NL alerts (`portfolio_price_alerts`) + recent desk rows; add requires symbol + targetPrice + ruleKind (above|below|crosses)—if direction missing, stop and ask; optional portfolioHint ties the alert book to a portfolio/account nickname or defaults to workspace; remove_symbol / clear_all need confirmDestructive after explicit user confirmation."
+        },
+        portfolioHint: {
+          type: "string",
+          description:
+            "price_alert_manage add: optional portfolio nickname, portfolio name, or custodian account label (e.g. \"in Roth\", \"growth portfolio\"). Defaults to current workspace portfolio when omitted."
+        },
+        inPortfolio: {
+          type: "string",
+          description: "Alias for portfolioHint when the user says \"in … portfolio/account\"."
         },
         targetPrice: {
           type: "number",
@@ -98,7 +107,7 @@ export const ATXFINANCE_TOOL_DEFINITION = {
           type: "string",
           enum: ["above", "below", "crosses"],
           description:
-            "price_alert_manage add: above = notify on upward cross; below = downward cross; crosses = either direction. Default crosses when user gives a single number without above/below."
+            "price_alert_manage add: required before calling add—above = upward cross through target; below = downward cross; crosses = either direction. If the user only gave a symbol + number, ask which direction (do not guess)."
         },
         confirmDestructive: {
           type: "boolean",

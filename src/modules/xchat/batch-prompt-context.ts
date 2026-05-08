@@ -46,7 +46,7 @@ function describePersonaToolForKbPrompt(tool: PersonaXapiToolDefinition): string
     return `- collections_search (mapped to file_search for xAI)${idPart}`;
   }
   if (t === "atx_function") {
-    return "- atx_function (portfolio/workspace reads + default-watchlist add/remove + Premium NL price_alert_manage; sent to xAI as the atx_function function tool in ask and batch)";
+    return "- atx_function (portfolio/workspace reads + default-watchlist add/remove + Premium+ advisor NL price_alert_manage; sent to xAI as the atx_function function tool in ask and batch)";
   }
   return `- ${t}`;
 }
