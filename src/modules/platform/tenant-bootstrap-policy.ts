@@ -188,6 +188,10 @@ export function normalizeWatchlistSeedSymbolsFromPreferences(
   return out.length > 0 ? out : undefined;
 }
 
+/**
+ * Watchlist seed symbols for new tenants/users (merged into `portfolio_watchlists`).
+ * Macro broad-market tickers (SPY/QQQ/VIX/…) belong on workspace pulse via `system_index_cache`, not desk defaults.
+ */
 export function resolveWatchlistSeedSymbols(input: {
   defaultWatchlist: boolean;
   overrideSymbols?: string[];

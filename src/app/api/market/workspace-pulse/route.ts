@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { summarizeNearestExpiryOptionsHighlight } from "@/modules/find-options/options-hot-scan";
+import { resolveMacroQuotesWithSystemCache } from "@/modules/market/system-index-cache";
 import { resolveUsMarketDayContext } from "@/modules/scanner/us-market-day-context";
-import { lookupSymbols, type SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
+import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 const MAX_HOLDINGS_GLANCE = 2;
@@ -53,7 +54,8 @@ type SearchNewsRow = {
 
 /**
  * GET /api/market/workspace-pulse?holdings=TSLA,AAPL
- * Macro indices (VIX, SPY, QQQ, IWM, DIA, TLT), Yahoo search headlines, optional per-holding options IV/OI glance.
+ * Macro indices (VIX, SPY, QQQ, IWM, DIA, TLT) via `system_index_cache` + Yahoo; not sourced from user watchlists.
+ * Yahoo search headlines; optional per-holding options IV/OI glance.
  */
 export async function GET(request: Request) {
   const session = await requireSessionUser();
@@ -66,9 +68,8 @@ export async function GET(request: Request) {
 
   const yf = getYahooFinance2();
 
-  const macroYahoo = WORKSPACE_MACRO_INDICES.map((m) => m.yahoo);
   const [macroQuotes, searchRes, ...optionHighlights] = await Promise.all([
-    lookupSymbols(macroYahoo),
+    resolveMacroQuotesWithSystemCache(WORKSPACE_MACRO_INDICES),
     yf
       .search("US stock market", {
         newsCount: 6,

@@ -21,7 +21,7 @@ export async function finalizeTenantRentalProvisioning(
   const sampleProvision = await provisionDefaultPortfolioForUser({
     userId: sampleUserId,
     tenantId: input.tenantId.toHexString(),
-    watchlistSymbols: ["TSLA", "SPY", "AAPL"]
+    watchlistSymbols: ["TSLA", "AAPL"]
   });
   const personaId = await ensureRentalAdvisorPersonaForTenant(db, {
     tenantSlug: input.tenantSlug,

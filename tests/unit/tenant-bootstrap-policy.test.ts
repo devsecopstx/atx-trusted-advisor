@@ -93,7 +93,7 @@ describe("tenant-bootstrap-policy", () => {
   });
 
   it("resolveWatchlistSeedSymbols hybrid precedence", () => {
-    const desk = ["SPY", "QQQ"];
+    const desk = ["TSLA", "NVDA", "AAPL", "AMD"];
     expect(
       resolveWatchlistSeedSymbols({
         defaultWatchlist: false,
@@ -120,6 +120,6 @@ describe("tenant-bootstrap-policy", () => {
         defaultWatchlist: true,
         deskDefaults: desk
       })
-    ).toEqual(["SPY", "QQQ"]);
+    ).toEqual(["TSLA", "NVDA", "AAPL", "AMD"]);
   });
 });
