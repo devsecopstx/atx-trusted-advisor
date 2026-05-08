@@ -14,6 +14,7 @@ import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { portfolioAlertRowScannerMetadata } from "@/lib/portfolio-alert-desk-present";
 import {
     adminListPortfolioAlerts,
     getPortfolioByIdForSessionUser,
@@ -129,7 +130,7 @@ export default async function PortfolioAlertsPage({
         accountType: a.accountId ? typeByAccountId[a.accountId.toHexString()] ?? null : null,
         createdAt: a.createdAt.toISOString(),
         updatedAt: a.updatedAt.toISOString(),
-        metadata: a.metadata ?? null
+        metadata: portfolioAlertRowScannerMetadata(a.metadata)
       }));
     } catch (error) {
       const detail = caughtErrorMessage(error);

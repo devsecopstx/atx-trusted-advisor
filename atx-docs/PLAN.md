@@ -41,6 +41,8 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 **Deep spec:** [nl-prompts.md](./xchat/nl-workflows/nl-prompts.md)
 
+**Shipped:** Premium / Premium+ **NL price alert management** in xChat via **`atx_function.price_alert_manage`** (tenant + workspace portfolio scope, confirmation on destructive ops, audit hooks, **`watchlist_price_scanner`** evaluation). Basic tier remains plan-gated (`getPlanLimits.nlPriceAlertManagementEnabled`).
+
 ### Deferred product TODOs
 
 - **xChat vision paste — still open:** virus scan policy, optional max dimensions, EXIF strip, batch/admin harness parity.

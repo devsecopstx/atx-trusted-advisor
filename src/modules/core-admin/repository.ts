@@ -12,6 +12,7 @@ import {
 } from "@/lib/mongo-tenant-scope";
 import { getDb } from "@/lib/mongodb";
 import { portfolioAlertScannerMetadataV1Schema } from "@/lib/portfolio-alert-scan-metadata";
+import { portfolioAlertUserPriceRuleMetadataV1Schema } from "@/lib/portfolio-alert-user-price-rule-metadata";
 import {
     computeNextRunAtFromSchedule,
     resolveScheduleDescription
@@ -2298,6 +2299,134 @@ export async function adminListPortfolioAlerts(portfolioId: string): Promise<Por
     .toArray();
 }
 
+/** Armed NL/xChat user price rules for evaluation during watchlist price scans. */
+export async function listArmedUserPriceAlertRulesForPortfolio(portfolioId: string): Promise<PortfolioAlert[]> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return [];
+  }
+  const db = await getDb();
+  return db
+    .collection<PortfolioAlert>(collections.portfolioAlerts)
+    .find(
+      withTenantScope(
+        {
+          ...userIdQuery(ctx.userId),
+          portfolioId: ctx.portfolioOid,
+          status: "active",
+          "metadata.source": "xchat_user_price_rule",
+          "metadata.ruleState": "armed"
+        },
+        ctx.tenantId
+      )
+    )
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .toArray();
+}
+
+export async function countArmedUserPriceAlertRulesForPortfolio(portfolioId: string): Promise<number> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return 0;
+  }
+  const db = await getDb();
+  return db.collection<PortfolioAlert>(collections.portfolioAlerts).countDocuments(
+    withTenantScope(
+      {
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid,
+        status: "active",
+        "metadata.source": "xchat_user_price_rule",
+        "metadata.ruleState": "armed"
+      },
+      ctx.tenantId
+    )
+  );
+}
+
+export async function adminPatchUserPriceRuleMetadataPrices(
+  portfolioId: string,
+  alertId: string,
+  patch: { lastReferencePrice: number }
+): Promise<boolean> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(alertId)) {
+    return false;
+  }
+  const px = patch.lastReferencePrice;
+  if (!Number.isFinite(px) || px <= 0) {
+    return false;
+  }
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return false;
+  }
+  const db = await getDb();
+  const res = await db.collection<PortfolioAlert>(collections.portfolioAlerts).updateOne(
+    strictWriteTenantFilter(
+      {
+        _id: new ObjectId(alertId),
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid,
+        "metadata.source": "xchat_user_price_rule",
+        status: "active"
+      },
+      ctx.tenantId
+    ),
+    { $set: { "metadata.lastReferencePrice": px, updatedAt: new Date() } }
+  );
+  return (res.modifiedCount ?? 0) > 0;
+}
+
+/** Deletes NL user price rules only (not scanner/desk alerts). */
+export async function deleteUserPriceAlertRulesForSymbol(portfolioId: string, symbolUpper: string): Promise<number> {
+  await ensurePortfolioIndexes();
+  const sym = symbolUpper.trim().toUpperCase().slice(0, 32);
+  if (!sym) {
+    return 0;
+  }
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return 0;
+  }
+  const db = await getDb();
+  const res = await db.collection<PortfolioAlert>(collections.portfolioAlerts).deleteMany(
+    strictWriteTenantFilter(
+      {
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid,
+        symbol: sym,
+        "metadata.source": "xchat_user_price_rule"
+      },
+      ctx.tenantId
+    )
+  );
+  return res.deletedCount ?? 0;
+}
+
+export async function deleteAllUserPriceAlertRulesForPortfolio(portfolioId: string): Promise<number> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return 0;
+  }
+  const db = await getDb();
+  const res = await db.collection<PortfolioAlert>(collections.portfolioAlerts).deleteMany(
+    strictWriteTenantFilter(
+      {
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid,
+        "metadata.source": "xchat_user_price_rule"
+      },
+      ctx.tenantId
+    )
+  );
+  return res.deletedCount ?? 0;
+}
+
 export async function adminGetPortfolioAlert(
   portfolioId: string,
   alertId: string
@@ -2382,9 +2511,14 @@ export async function adminCreatePortfolioAlert(input: {
     updatedAt: now
   };
   if (input.metadata !== undefined) {
-    const parsed = portfolioAlertScannerMetadataV1Schema.safeParse(input.metadata);
-    if (parsed.success) {
-      doc.metadata = parsed.data;
+    const userMeta = portfolioAlertUserPriceRuleMetadataV1Schema.safeParse(input.metadata);
+    if (userMeta.success) {
+      doc.metadata = userMeta.data;
+    } else {
+      const scanMeta = portfolioAlertScannerMetadataV1Schema.safeParse(input.metadata);
+      if (scanMeta.success) {
+        doc.metadata = scanMeta.data;
+      }
     }
   }
   const db = await getDb();

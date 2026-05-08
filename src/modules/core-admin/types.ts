@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import type { SubscriptionPlan } from "@/lib/subscription-plan";
 
 import type { PortfolioAlertScannerMetadataV1 } from "@/lib/portfolio-alert-scan-metadata";
+import type { PortfolioAlertUserPriceRuleMetadataV1 } from "@/lib/portfolio-alert-user-price-rule-metadata";
 
 import type { PortfolioScoringFactor } from "./scoring-factors";
 
@@ -519,9 +520,10 @@ export type PortfolioAlert = {
   status: "active" | "acknowledged" | "dismissed";
   symbol?: string;
   /**
-   * Structured provenance for scanners / digest jobs (`options_scanner` v1 — see `portfolio-alert-scan-metadata.ts`).
+   * Structured provenance: options scanner v1 (`portfolio-alert-scan-metadata.ts`) or NL xChat user price rules
+   * (`portfolio-alert-user-price-rule-metadata.ts`).
    */
-  metadata?: PortfolioAlertScannerMetadataV1;
+  metadata?: PortfolioAlertScannerMetadataV1 | PortfolioAlertUserPriceRuleMetadataV1;
   createdAt: Date;
   updatedAt: Date;
 };

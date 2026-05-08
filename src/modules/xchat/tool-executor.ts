@@ -1,11 +1,23 @@
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
-import type { ToolExecutor } from "@/lib/xai";
 import {
+    parsePortfolioAlertUserPriceRuleMetadata,
+    portfolioAlertUserPriceRuleMetadataV1Schema,
+    type PortfolioAlertUserPriceRuleMetadataV1
+} from "@/lib/portfolio-alert-user-price-rule-metadata";
+import type { ToolExecutor } from "@/lib/xai";
+import { createAuditEvent } from "@/modules/audit/repository";
+import {
+    adminCreatePortfolioAlert,
+    adminListPortfolioAlerts,
+    countArmedUserPriceAlertRulesForPortfolio,
     DEFAULT_ACCOUNT_CASH_BALANCE,
+    deleteAllUserPriceAlertRulesForPortfolio,
+    deleteUserPriceAlertRulesForSymbol,
     ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
     getPortfolioByIdForSessionUser,
     getUserWatchlist,
+    listArmedUserPriceAlertRulesForPortfolio,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     listScheduledTasks,
@@ -25,6 +37,7 @@ import {
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
+import { getPlanLimits } from "@/modules/xchat/plan-limits";
 import {
     deleteCachedToolResult,
     getCachedToolResult,
@@ -129,6 +142,7 @@ function createPortfolioAllocationChart(positions: Array<{ symbol: string; qty: 
 }
 /** Matches PATCH `/api/portfolios/:id/watchlist` batch size. */
 const MAX_WATCHLIST_MUTATE_PER_CALL = 20;
+const MAX_NL_USER_PRICE_ALERT_RULES = 40;
 
 const PRELOAD_SHORT_CIRCUIT_OPS = new Set([
   "portfolio_summary",
@@ -971,6 +985,239 @@ function buildOperations(
         rowCount: report.rows.length,
         rows: report.rows,
         disclaimer: report.disclaimer
+      };
+    },
+
+    price_alert_manage: async (args, ctx: ExecutorContext) => {
+      const limits = getPlanLimits(ctx.subscriptionPlan);
+      if (!limits.nlPriceAlertManagementEnabled) {
+        return {
+          error: "plan_blocked_nl_price_alerts",
+          message:
+            "Natural-language price alert rules require Premium or Premium+. Use Portfolio → Alerts or upgrade.",
+          alertsDeepLink: "/portfolio/alerts"
+        };
+      }
+
+      const portfolio = await getDefaultPortfolioOrProvision(ctx);
+      if (!portfolio?._id) {
+        return { error: "no_default_portfolio" };
+      }
+      const portfolioId = portfolio._id.toHexString();
+      const alertsDeepLink = `/portfolio/alerts?portfolioId=${encodeURIComponent(portfolioId)}`;
+
+      const op = typeof args.priceAlertOp === "string" ? args.priceAlertOp.trim() : "";
+      const enqueueAudit = (action: string, details: Record<string, unknown>) => {
+        void createAuditEvent({
+          entityType: "admin_portfolio",
+          entityId: portfolioId,
+          action,
+          actor: { userId: ctx.userId },
+          details
+        }).catch(() => {});
+      };
+
+      if (op === "list") {
+        const rows = await adminListPortfolioAlerts(portfolioId);
+        const armed: Array<Record<string, unknown>> = [];
+        const recentDesk: Array<{ id: string; title: string; symbol: string | null }> = [];
+        for (const r of rows) {
+          const meta = parsePortfolioAlertUserPriceRuleMetadata(r.metadata);
+          if (meta?.ruleState === "armed") {
+            armed.push({
+              id: r._id?.toHexString(),
+              symbol: r.symbol,
+              ruleKind: meta.ruleKind,
+              targetPriceUsd: meta.targetPriceUsd,
+              title: r.title
+            });
+          } else if (recentDesk.length < 8) {
+            recentDesk.push({
+              id: r._id?.toHexString() ?? "",
+              title: r.title,
+              symbol: r.symbol ?? null
+            });
+          }
+        }
+        enqueueAudit("xchat_nl_price_alert_list", { armedCount: armed.length });
+        return {
+          portfolioId,
+          alertsDeepLink,
+          armedRuleCount: armed.length,
+          armedRules: armed,
+          recentDeskAlerts: recentDesk,
+          note:
+            "Armed rows are NL price rules evaluated on tenant watchlist price scans. Other rows include scanners and fired notifications."
+        };
+      }
+
+      if (op === "add") {
+        const tickers = parseTickerListFromArgs(args, 1);
+        const rawSym =
+          tickers[0] ?? (typeof args.symbol === "string" ? args.symbol.trim().toUpperCase() : "");
+        const validSym = /^[A-Z0-9.\-]{1,32}$/.test(rawSym) ? rawSym : "";
+        if (!validSym) {
+          return { error: "invalid_symbol", alertsDeepLink };
+        }
+        const target =
+          parseNumberArg(args.targetPrice) ??
+          parseNumberArg(args.price) ??
+          parseNumberArg(args.level);
+        if (target == null || target <= 0 || target > 1_000_000) {
+          return { error: "invalid_target_price", alertsDeepLink };
+        }
+
+        let ruleKind: PortfolioAlertUserPriceRuleMetadataV1["ruleKind"] = "crosses";
+        const rk = typeof args.ruleKind === "string" ? args.ruleKind.trim().toLowerCase() : "";
+        if (rk === "above" || rk === "below" || rk === "crosses") {
+          ruleKind = rk;
+        }
+
+        const armedCount = await countArmedUserPriceAlertRulesForPortfolio(portfolioId);
+        if (armedCount >= MAX_NL_USER_PRICE_ALERT_RULES) {
+          return {
+            error: "nl_price_alert_rule_cap",
+            max: MAX_NL_USER_PRICE_ALERT_RULES,
+            alertsDeepLink
+          };
+        }
+
+        const existing = await listArmedUserPriceAlertRulesForPortfolio(portfolioId);
+        const dup = existing.some((row) => {
+          const m = parsePortfolioAlertUserPriceRuleMetadata(row.metadata);
+          return (
+            row.symbol?.toUpperCase() === validSym &&
+            m?.targetPriceUsd === target &&
+            m?.ruleKind === ruleKind
+          );
+        });
+        if (dup) {
+          return {
+            error: "duplicate_rule",
+            symbol: validSym,
+            targetPriceUsd: target,
+            ruleKind,
+            alertsDeepLink
+          };
+        }
+
+        const metadata = portfolioAlertUserPriceRuleMetadataV1Schema.parse({
+          v: 1,
+          source: "xchat_user_price_rule",
+          ruleKind,
+          targetPriceUsd: target,
+          ruleState: "armed",
+          delivery: { channels: ["email"], pendingEmailDispatch: true },
+          provenance: { createdVia: "xchat_atx_function" }
+        });
+
+        const kindLabel =
+          ruleKind === "above" ? "above" : ruleKind === "below" ? "below" : "crosses";
+        const title = `Price rule: ${validSym} ${kindLabel} $${target.toFixed(2)}`;
+        const body = `Armed NL rule — fires when Yahoo quotes cross $${target.toFixed(2)} (${kindLabel}). Email uses desk channels when configured.`;
+
+        const created = await adminCreatePortfolioAlert({
+          portfolioId,
+          title,
+          body,
+          severity: "info",
+          status: "active",
+          symbol: validSym,
+          accountContext: "watchlist",
+          metadata
+        });
+
+        if (!created?._id) {
+          return { error: "create_failed", alertsDeepLink };
+        }
+
+        invalidateWorkspacePreload();
+        enqueueAudit("xchat_nl_price_alert_add", {
+          symbol: validSym,
+          targetPriceUsd: target,
+          ruleKind,
+          alertId: created._id.toHexString()
+        });
+
+        let spotNote: string | undefined;
+        try {
+          const q = await getYahooMarketQuote({ symbol: validSym });
+          const px = q.price;
+          if (typeof px === "number" && Number.isFinite(px)) {
+            spotNote = `Spot ~ $${px.toFixed(2)} (Yahoo).`;
+          }
+        } catch {
+          /* ignore */
+        }
+
+        return {
+          ok: true,
+          portfolioId,
+          alertsDeepLink,
+          createdRuleId: created._id.toHexString(),
+          symbol: validSym,
+          targetPriceUsd: target,
+          ruleKind,
+          spotNote,
+          deliveryNote:
+            "When this rule fires, desk email/notifications follow the same path as other portfolio alerts if SMTP + delivery channels are set."
+        };
+      }
+
+      if (op === "remove_symbol") {
+        const tickers = parseTickerListFromArgs(args, 1);
+        const rawSym =
+          tickers[0] ?? (typeof args.symbol === "string" ? args.symbol.trim().toUpperCase() : "");
+        const validSym = /^[A-Z0-9.\-]{1,32}$/.test(rawSym) ? rawSym : "";
+        if (!validSym) {
+          return { error: "invalid_symbol", alertsDeepLink };
+        }
+        if (args.confirmDestructive !== true) {
+          return {
+            needs_confirmation: true,
+            alertsDeepLink,
+            summary: `Remove all NL price rules for ${validSym} on this workspace portfolio.`,
+            instruction:
+              "After the user confirms in chat, call again with confirmDestructive true (same symbol)."
+          };
+        }
+        const n = await deleteUserPriceAlertRulesForSymbol(portfolioId, validSym);
+        invalidateWorkspacePreload();
+        enqueueAudit("xchat_nl_price_alert_remove_symbol", { symbol: validSym, deleted: n });
+        return {
+          ok: true,
+          portfolioId,
+          alertsDeepLink,
+          deletedRules: n,
+          symbol: validSym
+        };
+      }
+
+      if (op === "clear_all") {
+        if (args.confirmDestructive !== true) {
+          return {
+            needs_confirmation: true,
+            alertsDeepLink,
+            summary:
+              "Remove every armed NL price rule on this workspace portfolio (scanner/fired desk rows stay).",
+            instruction: "After explicit user confirmation, retry with confirmDestructive true."
+          };
+        }
+        const n = await deleteAllUserPriceAlertRulesForPortfolio(portfolioId);
+        invalidateWorkspacePreload();
+        enqueueAudit("xchat_nl_price_alert_clear_all", { deleted: n });
+        return {
+          ok: true,
+          portfolioId,
+          alertsDeepLink,
+          deletedRules: n
+        };
+      }
+
+      return {
+        error: "invalid_price_alert_op",
+        priceAlertOp: op || null,
+        alertsDeepLink
       };
     },
 

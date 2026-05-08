@@ -39,6 +39,14 @@ const alertMocks = vi.hoisted(() => ({
   persistPriceMoveAlerts: vi.fn()
 }));
 
+const userPriceRuleMocks = vi.hoisted(() => ({
+  processUserPriceRulesForPortfolio: vi.fn().mockResolvedValue({
+    evaluated: 0,
+    armedUpdates: 0,
+    fired: 0
+  })
+}));
+
 vi.mock("@/modules/watchlist/price-alert-service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/modules/watchlist/price-alert-service")>();
   return {
@@ -46,6 +54,10 @@ vi.mock("@/modules/watchlist/price-alert-service", async (importOriginal) => {
     persistPriceMoveAlerts: alertMocks.persistPriceMoveAlerts
   };
 });
+
+vi.mock("@/modules/watchlist/user-price-alert-rules", () => ({
+  processUserPriceRulesForPortfolio: userPriceRuleMocks.processUserPriceRulesForPortfolio
+}));
 
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
 
@@ -74,6 +86,12 @@ describe("runWatchlistPriceScanner", () => {
       created: 0,
       recorded: [],
       skippedCooldown: 0
+    });
+    userPriceRuleMocks.processUserPriceRulesForPortfolio.mockReset();
+    userPriceRuleMocks.processUserPriceRulesForPortfolio.mockResolvedValue({
+      evaluated: 0,
+      armedUpdates: 0,
+      fired: 0
     });
     repoMocks.updateWatchlistSymbolPrices.mockResolvedValue(1);
     repoMocks.getDefaultPortfolio.mockResolvedValue({ _id: defaultPortfolioId });

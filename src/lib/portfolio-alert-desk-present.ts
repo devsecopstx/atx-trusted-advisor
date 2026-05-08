@@ -1,5 +1,14 @@
 import { parseAlertDte } from "@/lib/portfolio-alert-insights";
-import type { PortfolioAlertScannerMetadataV1 } from "@/lib/portfolio-alert-scan-metadata";
+import {
+    portfolioAlertScannerMetadataV1Schema,
+    type PortfolioAlertScannerMetadataV1
+} from "@/lib/portfolio-alert-scan-metadata";
+
+/** Strip NL user price-rule metadata so options-scanner desk UI stays type-safe. */
+export function portfolioAlertRowScannerMetadata(raw: unknown): PortfolioAlertScannerMetadataV1 | null {
+  const parsed = portfolioAlertScannerMetadataV1Schema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
 
 /** App `/portfolio/alerts` row — includes optional scanner metadata from Mongo. */
 export type PortfolioAlertRowVm = {
@@ -23,6 +32,9 @@ export type AlertSurfaceKind = "options_scanner" | "watchlist_price" | "account_
 export function classifyAlertSurface(title: string, body: string | null): AlertSurfaceKind {
   const t = title.toLowerCase();
   const b = (body ?? "").toLowerCase();
+  if (t.startsWith("price rule:")) {
+    return "account_general";
+  }
   if (t.includes("option scanner") || /\[close:(BUY_TO_CLOSE|SELL_TO_CLOSE)\]/i.test(body ?? "")) {
     return "options_scanner";
   }

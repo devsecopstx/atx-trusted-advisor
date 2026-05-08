@@ -33,7 +33,9 @@ Cross-check **`.cursor/skills/test-commit-push/CHECKLIST.md`** for secrets, BFF,
 **Tenant workspace limits:** If a PR touches quotas (`workspaceLimits`, xChat daily min-with-plan, portfolio/account caps,
 xoptions deck usage, or `/api/admin/tenants/.../workspace-limits`), verify OpenAPI `CURRENT_STATE_ROUTES` parity,
 `atx-docs/sre-ops/tenant-workspace-limits.md` is accurate, and tests cover merge/parse or critical API paths where
-feasible. **`/account/billing` (including signed-in guests / pending approval):** list amounts must come from the
+feasible.
+
+**xChat NL price alerts (`atx_function.price_alert_manage`):** Confirm **`getPlanLimits.nlPriceAlertManagementEnabled`** stays aligned with product (Premium+ / HNWI path); portfolio + tenant scoping matches **`portfolioScopedWriteContext`**; destructive ops require **`confirmDestructive`**; scanner hook parity in **`watchlist_price_scanner`** output; docs (**`current-state-features.md`**, **`PLAN.md`**, OpenAPI summaries) updated when behavior changes. **`/account/billing` (including signed-in guests / pending approval):** list amounts must come from the
 resolved tenant’s `workspaceLimits.planOverrides.<tier>.price` when set; otherwise **`catalogListPriceUsdForPlan`** /
 `ATX_BILLING_PLAN_LIMIT_ROWS` **Price** row (Stripe list defaults) — not ad-hoc UI literals.
 **Guest billing access (`XchatGuestPanel` `registrationFirst`):** email signup is primary (**Let’s get started**);

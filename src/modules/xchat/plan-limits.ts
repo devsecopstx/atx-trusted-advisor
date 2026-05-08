@@ -12,6 +12,8 @@ export type PlanTierLimits = {
   maxTurns: number;
   maxTopK: number;
   maxToolCalls: number;
+  /** Premium tiers: xChat `atx_function` **price_alert_manage** for NL desk price rules (tenant + portfolio scoped). */
+  nlPriceAlertManagementEnabled: boolean;
   defaultModel: string;
   escalationModel: string;
   complexityThreshold: number;
@@ -32,6 +34,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     maxTurns: 3,
     maxTopK: 3,
     maxToolCalls: 2,
+    nlPriceAlertManagementEnabled: false,
     defaultModel: "grok-4-1-fast",
     escalationModel: "grok-4-1-fast",
     complexityThreshold: Infinity,
@@ -46,6 +49,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     maxTurns: 5,
     maxTopK: 6,
     maxToolCalls: 10,
+    nlPriceAlertManagementEnabled: true,
     defaultModel: "grok-4-1-fast",
     escalationModel: "grok-4-latest",
     complexityThreshold: 500,
@@ -60,6 +64,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     maxTurns: 10,
     maxTopK: 10,
     maxToolCalls: 20,
+    nlPriceAlertManagementEnabled: true,
     defaultModel: "grok-4-1-fast",
     escalationModel: "grok-4-latest",
     complexityThreshold: 200,

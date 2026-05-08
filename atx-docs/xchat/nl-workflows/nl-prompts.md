@@ -70,6 +70,15 @@ return ${message}\n\n[Metadata]\nCollections: ${collections.join(', ')}\nTools: 
 return ${message}\n\n---\nAvailable collections: ${collections.join(', ')}\nAvailable tools: ${toolNames.join(', ')};
 }
 
+## NL price alert rules (xChat, Premium / Premium+)
+
+- **Tool:** `atx_function` → **`operation: price_alert_manage`** with **`priceAlertOp`**: `list` | `add` | `remove_symbol` | `clear_all`.
+- **Scope:** Workspace portfolio (same session binding as other workspace tools); Mongo **`portfolio_alerts`** with **`metadata.source: xchat_user_price_rule`** while armed.
+- **Evaluation:** Tenant **`watchlist_price_scanner`** batch quotes → crossing logic (`above` / `below` / `crosses`); first quote seeds **`lastReferencePrice`** without firing.
+- **Deletes:** Model must obtain explicit user confirmation, then retry with **`confirmDestructive: true`** for **`remove_symbol`** / **`clear_all`** (NL rules only — not bulk desk purge).
+- **Follow-up copy:** After mutations, assistant should link **`alertsDeepLink`** from tool JSON ( **`/portfolio/alerts?portfolioId=`** ).
+- **Plan gate:** Basic → **`plan_blocked_nl_price_alerts`** (`nlPriceAlertManagementEnabled`).
+
 ## watchlist nl example
 
 Missing FieldExample Server Response (one question only)default_account"Which account should I use as default?

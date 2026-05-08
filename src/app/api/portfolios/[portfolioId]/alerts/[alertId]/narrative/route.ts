@@ -3,8 +3,13 @@ import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
-import { classifyAlertSurface, extractCloseKindFromBody, parseContractKey, parseContractKeyFromBody } from "@/lib/portfolio-alert-desk-present";
-import type { PortfolioAlertScannerMetadataV1 } from "@/lib/portfolio-alert-scan-metadata";
+import {
+    classifyAlertSurface,
+    extractCloseKindFromBody,
+    parseContractKey,
+    parseContractKeyFromBody,
+    portfolioAlertRowScannerMetadata
+} from "@/lib/portfolio-alert-desk-present";
 import { respondWithXai } from "@/lib/xai";
 import { adminGetPortfolioAlert } from "@/modules/core-admin/repository";
 
@@ -40,7 +45,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Alert not found" }, { status: 404 });
   }
 
-  const meta = (alert.metadata ?? null) as PortfolioAlertScannerMetadataV1 | null;
+  const meta = portfolioAlertRowScannerMetadata(alert.metadata);
   const ck = parseContractKeyFromBody(alert.body ?? null);
   const parsed = ck ? parseContractKey(ck) : null;
   const surface = classifyAlertSurface(alert.title, alert.body ?? null);

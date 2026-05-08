@@ -1,4 +1,8 @@
-import { getDefaultPortfolio, listWatchlistsForTenantScope, updateWatchlistSymbolPrices } from "@/modules/core-admin/repository";
+import {
+    getDefaultPortfolio,
+    listWatchlistsForTenantScope,
+    updateWatchlistSymbolPrices
+} from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
@@ -6,6 +10,7 @@ import {
     resolveUsMarketDayContext,
     updateTenantMarketCalendarSnapshot
 } from "@/modules/scanner/tenant-market-calendar";
+import { processUserPriceRulesForPortfolio } from "@/modules/watchlist/user-price-alert-rules";
 import {
     evaluateSignificantPriceMoves,
     type PersistedPriceAlertRow,
@@ -90,7 +95,7 @@ export async function runWatchlistPriceScanner(
       const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
       return {
         status: "success",
-        output: `watchlist_price_scanner: skipped — ${reason} [${market.marketDate} ${market.timezone}] | watchlists=${watchlists.length} watchlists_with_symbols=${watchlistsWithSymbols} items_updated=0 rows_marked_review=0 persona_grok_calls=0 items_scanned=0 symbols_quoted=0 alerts_created=0 alerts_skipped_cooldown=0 duration_s=${durationSeconds}`,
+        output: `watchlist_price_scanner: skipped — ${reason} [${market.marketDate} ${market.timezone}] | watchlists=${watchlists.length} watchlists_with_symbols=${watchlistsWithSymbols} items_updated=0 rows_marked_review=0 persona_grok_calls=0 items_scanned=0 symbols_quoted=0 alerts_created=0 alerts_skipped_cooldown=0 nl_user_price_rules_fired=0 nl_user_price_rules_armed_updates=0 duration_s=${durationSeconds}`,
         auditDetails: {
           skipped: true,
           marketDate: market.marketDate,
@@ -125,7 +130,7 @@ export async function runWatchlistPriceScanner(
       });
       return {
         status: "success",
-        output: `watchlist_price_scanner: watchlists=0 watchlists_with_symbols=0 items_updated=0 rows_marked_review=0 persona_grok_calls=0 items_scanned=0 symbols_quoted=0 alerts_created=0 alerts_skipped_cooldown=0 duration_s=${durationSeconds}`,
+        output: `watchlist_price_scanner: watchlists=0 watchlists_with_symbols=0 items_updated=0 rows_marked_review=0 persona_grok_calls=0 items_scanned=0 symbols_quoted=0 alerts_created=0 alerts_skipped_cooldown=0 nl_user_price_rules_fired=0 nl_user_price_rules_armed_updates=0 duration_s=${durationSeconds}`,
         auditDetails: {
           watchlistCount: 0,
           watchlistsWithSymbols: 0,
@@ -154,6 +159,9 @@ export async function runWatchlistPriceScanner(
     let itemsScanned = 0;
     let symbolsQuoted = 0;
     const auditAlertRows: PersistedPriceAlertRow[] = [];
+    let nlUserPriceRulesFired = 0;
+    let nlUserPriceRulesArmedUpdates = 0;
+    const portfoliosProcessedForNlRules = new Set<string>();
 
     const tenantTickerSet = new Set<string>();
     for (const wl of watchlists) {
@@ -238,11 +246,12 @@ export async function runWatchlistPriceScanner(
         const moves = evaluateSignificantPriceMoves(symbols, updates);
         const uid = normalizeMongoUserIdHex(wl.userId);
         const tenantHex = wl.tenantId?.toHexString();
+        const explicitPfHex = wl.portfolioId != null ? wl.portfolioId.toHexString() : null;
         const defaultPf =
-          uid != null
+          explicitPfHex == null && uid != null
             ? await getDefaultPortfolio(uid, tenantHex ? { tenantId: tenantHex } : undefined)
             : null;
-        const alertPortfolioId = defaultPf?._id?.toHexString();
+        const alertPortfolioId = explicitPfHex ?? defaultPf?._id?.toHexString() ?? null;
         const persist =
           alertPortfolioId != null
             ? await persistPriceMoveAlerts(alertPortfolioId, moves)
@@ -251,6 +260,19 @@ export async function runWatchlistPriceScanner(
         alertsSkippedCooldown += persist.skippedCooldown;
         if (persist.recorded.length > 0) {
           auditAlertRows.push(...persist.recorded);
+        }
+
+        if (alertPortfolioId != null && !portfoliosProcessedForNlRules.has(alertPortfolioId)) {
+          portfoliosProcessedForNlRules.add(alertPortfolioId);
+          const quotePrices = new Map<string, number>();
+          for (const [sym, q] of quoteByNorm) {
+            if (q.price !== undefined && Number.isFinite(q.price)) {
+              quotePrices.set(sym, q.price);
+            }
+          }
+          const ur = await processUserPriceRulesForPortfolio(alertPortfolioId, quotePrices);
+          nlUserPriceRulesFired += ur?.fired ?? 0;
+          nlUserPriceRulesArmedUpdates += ur?.armedUpdates ?? 0;
         }
       }
     }
@@ -270,7 +292,7 @@ export async function runWatchlistPriceScanner(
 
     return {
       status: "success",
-      output: `watchlist_price_scanner: watchlists=${watchlists.length} watchlists_with_symbols=${watchlistsWithSymbols} items_updated=${updatedCount} rows_marked_review=${rowsMarkedReview} persona_grok_calls=${personaGrokCalls} items_scanned=${itemsScanned} symbols_quoted=${symbolsQuoted} alerts_created=${alertCount} alerts_skipped_cooldown=${alertsSkippedCooldown} duration_s=${durationSeconds}`,
+      output: `watchlist_price_scanner: watchlists=${watchlists.length} watchlists_with_symbols=${watchlistsWithSymbols} items_updated=${updatedCount} rows_marked_review=${rowsMarkedReview} persona_grok_calls=${personaGrokCalls} items_scanned=${itemsScanned} symbols_quoted=${symbolsQuoted} alerts_created=${alertCount} alerts_skipped_cooldown=${alertsSkippedCooldown} nl_user_price_rules_fired=${nlUserPriceRulesFired} nl_user_price_rules_armed_updates=${nlUserPriceRulesArmedUpdates} duration_s=${durationSeconds}`,
       auditDetails: {
         marketDate: market.marketDate,
         marketTimezone: market.timezone,
@@ -284,6 +306,8 @@ export async function runWatchlistPriceScanner(
         symbolsQuoted,
         alertsCreated: alertCount,
         alertsSkippedCooldown,
+        nlUserPriceRulesFired,
+        nlUserPriceRulesArmedUpdates,
         durationSeconds,
         ...(bypassMarketWindow ? { adminOnDemandMarketWindowBypass: true as const } : {})
       },

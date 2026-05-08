@@ -1022,9 +1022,23 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   {
     path: "/api/portfolios/{portfolioId}/alerts",
     operations: [
-      { method: "GET", auth: "session" },
-      { method: "POST", auth: "session", hasRequestBody: true },
-      { method: "DELETE", auth: "session" }
+      {
+        method: "GET",
+        auth: "session",
+        summary:
+          "Desk alerts for the portfolio; rows may include armed NL user price rules (`metadata.source=xchat_user_price_rule`) created via xChat `atx_function.price_alert_manage`, scanner hits, and manual posts."
+      },
+      {
+        method: "POST",
+        auth: "session",
+        hasRequestBody: true,
+        summary: "Create a portfolio desk alert row (tenant + owner scoped)."
+      },
+      {
+        method: "DELETE",
+        auth: "session",
+        summary: "Delete alerts for this portfolio per route handler contract."
+      }
     ],
     tag: "portfolios"
   },
