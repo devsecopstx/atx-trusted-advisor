@@ -68,6 +68,14 @@ describe("xchat-workspace-quote-policy", () => {
         clientQuoteFreshness: undefined
       })
     ).toBe("live");
+    expect(
+      resolveWorkspaceSnapshotQuoteNetwork({
+        message: "Summarize my watchlist risk",
+        reasoningMode: undefined,
+        reasoningEffort: "none",
+        clientQuoteFreshness: undefined
+      })
+    ).toBe("live");
   });
 
   it("forces live when market is closed", () => {

@@ -15,5 +15,10 @@ describe("resolveReasoningEffortFromAskPayload", () => {
         reasoningEffort: "low"
       })
     ).toBe("low");
+    expect(
+      resolveReasoningEffortFromAskPayload({
+        reasoningEffort: "none"
+      })
+    ).toBe("none");
   });
 });

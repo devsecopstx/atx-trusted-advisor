@@ -24,7 +24,7 @@ export function looksLikePortfolioOrOptionsWorkspaceQuery(message: string): bool
 export function resolveWorkspaceSnapshotQuoteNetwork(input: {
   message: string;
   reasoningMode: "fast" | "expert" | "heavy" | undefined;
-  reasoningEffort: "low" | "medium" | "high" | "xhigh" | undefined;
+  reasoningEffort: "none" | "low" | "medium" | "high" | "xhigh" | undefined;
   clientQuoteFreshness: XchatQuoteFreshness | undefined;
 }): "cached_first" | "live" {
   if (input.clientQuoteFreshness === "live") {

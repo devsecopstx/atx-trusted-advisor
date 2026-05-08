@@ -1387,6 +1387,56 @@ describe("xchat ask route collection retrieval", () => {
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
   });
 
+  it("routes legacy reasoningEffort none on non-multi-agent persona to grok-4.3 with reasoning disabled", async () => {
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        model: "grok-4-1-fast-reasoning"
+      })
+    );
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "quick grok 4.3 turn without reasoning tokens",
+          reasoningEffort: "none"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "grok-4.3",
+        parallelism: undefined,
+        responsesReasoning: { effort: "none" }
+      })
+    );
+  });
+
+  it("rejects reasoningEffort none when persona model is multi-agent", async () => {
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        model: "grok-4.20-multi-agent"
+      })
+    );
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "invalid combo",
+          reasoningEffort: "none"
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    const payload = (await response.json()) as { code?: string };
+    expect(payload.code).toBe("invalid_reasoning_effort");
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+  });
+
   it("rejects ask when reasoningMode and reasoningEffort are both sent", async () => {
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {

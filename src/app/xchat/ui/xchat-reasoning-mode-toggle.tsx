@@ -11,9 +11,17 @@ export type XchatReasoningModeToggleProps = {
 };
 
 const MODES: Array<{ id: XchatReasoningMode; label: string; hint: string }> = [
-  { id: "fast", label: "Fast", hint: "Single-pass — lowest latency" },
-  { id: "expert", label: "Expert", hint: "Deeper reasoning — up to 4 parallel agents on eligible plans" },
-  { id: "heavy", label: "Heavy", hint: "Maximum depth — up to 16 parallel agents on Premium+" }
+  { id: "fast", label: "Fast", hint: "grok-4-1-fast — lowest latency (no depth preset)" },
+  {
+    id: "expert",
+    label: "Expert",
+    hint: "grok-4.3 — reasoning.effort medium (more thinking for analysis & tools)"
+  },
+  {
+    id: "heavy",
+    label: "Heavy",
+    hint: "grok-4.3 — reasoning.effort high (deepest reasoning tokens)"
+  }
 ];
 
 export function XchatReasoningModeToggle({

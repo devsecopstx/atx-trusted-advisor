@@ -5,45 +5,45 @@ import { z } from "zod";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import {
-  isAppUserProductAccessAllowedState,
-  resolveAppUserBillingAccessState
+    isAppUserProductAccessAllowedState,
+    resolveAppUserBillingAccessState
 } from "@/lib/app-user-billing-state";
 import { requireSessionUser } from "@/lib/auth";
 import { isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
 import {
-  getPersonaByIdCached,
-  getTenantByHexIdCached,
-  loadDefaultXchatPersonaForSessionDeduped
+    getPersonaByIdCached,
+    getTenantByHexIdCached,
+    loadDefaultXchatPersonaForSessionDeduped
 } from "@/lib/server-request-cache";
 import {
-  effectiveWorkspaceLimitsForTenantAndPlan,
+    effectiveWorkspaceLimitsForTenantAndPlan,
 } from "@/lib/tenant-workspace-limits";
 import {
-  respondWithXaiToolLoop,
-  searchDocumentsInCollections,
-  type XaiCollectionSearchSnippet,
-  type XaiToolLoopResult
+    respondWithXaiToolLoop,
+    searchDocumentsInCollections,
+    type XaiCollectionSearchSnippet,
+    type XaiToolLoopResult
 } from "@/lib/xai";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
 import { summarizeToolLikeStreamEvent } from "@/lib/xai-responses-stream";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import {
-  logXchatAskPreRequestDebug,
-  logXchatAskProviderErrorDebug,
-  logXchatAskStreamDebug,
-  logXchatAskToolBatchDebug
+    logXchatAskPreRequestDebug,
+    logXchatAskProviderErrorDebug,
+    logXchatAskStreamDebug,
+    logXchatAskToolBatchDebug
 } from "@/lib/xchat-debug";
 import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
 import {
-  resolveXchatSseHeartbeatMs,
-  wantsXchatLiveToolLoopSse
+    resolveXchatSseHeartbeatMs,
+    wantsXchatLiveToolLoopSse
 } from "@/lib/xchat-live-sse-policy";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-  getCoreUserById,
-  getCoreUserOptionsScanPreferences,
-  updateCoreUserOptionsScanPreferences
+    getCoreUserById,
+    getCoreUserOptionsScanPreferences,
+    updateCoreUserOptionsScanPreferences
 } from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
@@ -56,68 +56,68 @@ import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan
 import { renderOptionsActionReportMarkdown } from "@/modules/xchat/options-action-scan";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import {
-  MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
-  resolveXchatPersonaDeclaredCollectionIds,
-  withLinkedCollectionTools
+    MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
+    resolveXchatPersonaDeclaredCollectionIds,
+    withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
-  buildRagLexicalCacheKey,
-  getRagLexicalCacheTtlSeconds,
-  setRagLexicalCache,
-  tryGetRagLexicalCache
+    buildRagLexicalCacheKey,
+    getRagLexicalCacheTtlSeconds,
+    setRagLexicalCache,
+    tryGetRagLexicalCache
 } from "@/modules/xchat/rag-lexical-cache";
 import {
-  getLatestXchatLogByThread,
-  saveXChatLog
+    getLatestXchatLogByThread,
+    saveXChatLog
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import {
-  ensureSuperAgentDefaultTools,
-  isAtxFunctionToolType,
-  mergeXchatHostedToolBaseline,
-  normalizePersonaXapiConfig,
-  type PersonaXapiConfig
+    ensureSuperAgentDefaultTools,
+    isAtxFunctionToolType,
+    mergeXchatHostedToolBaseline,
+    normalizePersonaXapiConfig,
+    type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 import { postProcessWatchlistMarkdown } from "@/modules/xchat/watchlist-response-postprocess";
 import {
-  loadWorkspaceSnapshotPreload
+    loadWorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
-  completeXchatAskAfterModelLoop,
-  type XchatAskCompletePostLoopCtx
+    completeXchatAskAfterModelLoop,
+    type XchatAskCompletePostLoopCtx
 } from "@/modules/xchat/xchat-ask-complete-post-loop";
 import {
-  collectWatchlistPortfolioIdSlot,
-  heavySynthesisIntent,
-  isShowWatchlistIntent,
-  shouldOfferStrategyJobPreflight,
-  shouldRunOptionsActionScan,
-  STRATEGY_JOB_PREFLIGHT_MARKDOWN
+    collectWatchlistPortfolioIdSlot,
+    heavySynthesisIntent,
+    isShowWatchlistIntent,
+    shouldOfferStrategyJobPreflight,
+    shouldRunOptionsActionScan,
+    STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
 import { createXchatLiveSseReadableStream } from "@/modules/xchat/xchat-ask-stream-sse";
 import {
-  MAX_XCHAT_ASK_JSON_BYTES,
-  parseAndValidateXchatPasteImage
+    MAX_XCHAT_ASK_JSON_BYTES,
+    parseAndValidateXchatPasteImage
 } from "@/modules/xchat/xchat-image-attachment";
 import {
-  buildSessionToolInstructions,
-  buildXchatSystemPrompt,
-  computeXchatRemoteChainInstructionsFingerprint,
-  formatTenantWorkspaceContextBlockForXchat,
-  XCHAT_SERVER_ROUTING_POLICY_BLOCK
+    buildSessionToolInstructions,
+    buildXchatSystemPrompt,
+    computeXchatRemoteChainInstructionsFingerprint,
+    formatTenantWorkspaceContextBlockForXchat,
+    XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
 import {
-  resolveReasoningEffortFromAskPayload,
-  XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID,
-  XCHAT_DEPTH_FAST_MODEL_ID
+    resolveReasoningEffortFromAskPayload,
+    XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID,
+    XCHAT_DEPTH_FAST_MODEL_ID
 } from "@/modules/xchat/xchat-reasoning-mode";
 import {
-  buildRecentThreadMessagesPromptBlock,
-  type XchatRecentThreadMessage
+    buildRecentThreadMessagesPromptBlock,
+    type XchatRecentThreadMessage
 } from "@/modules/xchat/xchat-recent-history-prompt";
 import { resolveWorkspaceSnapshotQuoteNetwork } from "@/modules/xchat/xchat-workspace-quote-policy";
 
@@ -143,7 +143,7 @@ const askSchema = z
       .optional(),
     portfolioId: z.string().trim().regex(/^[a-f\d]{24}$/i).optional(),
     personaId: z.string().optional(),
-    reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
+    reasoningEffort: z.enum(["none", "low", "medium", "high", "xhigh"]).optional(),
     reasoningMode: z.enum(["fast", "expert", "heavy"]).optional(),
     scope: z.string().min(1).max(128).optional(),
     topK: z.number().int().min(1).max(10).optional(),
@@ -181,7 +181,7 @@ type ModelSelectionSource =
   | "reasoning_mode"
   | "reasoning_mode_fallback"
   | "reasoning_effort";
-type RequestedReasoningEffort = "low" | "medium" | "high" | "xhigh";
+type RequestedReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
 type ParallelReasoningEffort = "low" | "medium" | "high";
 
 type ParallelAgentConfig = {
@@ -548,6 +548,19 @@ export async function POST(request: Request) {
 
   const reasoningMode = parsed.data.reasoningMode;
   const bodyReasoningEffort = parsed.data.reasoningEffort;
+  if (
+    bodyReasoningEffort === "none" &&
+    MULTI_AGENT_PERSONA_MODEL_IDS.has(effectiveModel)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "reasoningEffort none is only valid when routing to grok-4.3 (non-multi-agent personas).",
+        code: "invalid_reasoning_effort"
+      },
+      { status: 400 }
+    );
+  }
   const depthExpertHeavy = reasoningMode === "expert" || reasoningMode === "heavy";
   const depthFast =
     reasoningMode === "fast" ||
@@ -582,7 +595,7 @@ export async function POST(request: Request) {
     ) {
       executionModel = XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID;
       modelSelectionSource = "reasoning_effort";
-      const eff: "low" | "medium" | "high" =
+      const eff: "none" | "low" | "medium" | "high" =
         reasoningEffortForParallel === "xhigh"
           ? "high"
           : reasoningEffortForParallel;
@@ -1803,7 +1816,10 @@ function resolveParallelAgentConfig(input: {
   | { ok: true; config?: ParallelAgentConfig }
   | { ok: false; error: string; code: string } {
   if (!MULTI_AGENT_PERSONA_MODEL_IDS.has(input.model)) {
-    if (input.reasoningEffort) {
+    if (
+      input.reasoningEffort !== undefined &&
+      input.reasoningEffort !== "none"
+    ) {
       return {
         ok: false,
         error:
@@ -1812,6 +1828,15 @@ function resolveParallelAgentConfig(input: {
       };
     }
     return { ok: true, config: undefined };
+  }
+
+  if (input.reasoningEffort === "none") {
+    return {
+      ok: false,
+      error:
+        "reasoningEffort none is only valid when routing to grok-4.3 (non-multi-agent personas).",
+      code: "invalid_reasoning_effort"
+    };
   }
 
   const effort: ParallelReasoningEffort =

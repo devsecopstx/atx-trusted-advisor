@@ -294,9 +294,11 @@ export function XchatTemplatesStrip({
 
   return (
     <motion.section aria-label="Prompt templates" className="xchat-templates-strip" initial={false}>
-      <XchatTemplatesWorkspaceBar askInFlight={askInFlight} promptLibraryCount={mergedTemplates.length} />
-      <div className="xchat-templates-strip__header">
-        <span className="xchat-templates-strip__title">Templates</span>
+      <div className="xchat-templates-strip__top-row">
+        <div className="xchat-templates-strip__header">
+          <span className="xchat-templates-strip__title">Templates</span>
+        </div>
+        <XchatTemplatesWorkspaceBar askInFlight={askInFlight} promptLibraryCount={mergedTemplates.length} />
       </div>
 
       {userLoadFailed ? (

@@ -1624,7 +1624,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     type: "object",
     required: [],
     description:
-      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot, **PNG or JPEG** only) is required. **Depth routing** overrides persona **`model`** for that turn: **`reasoningMode` omitted / fast** → **`grok-4-1-fast`**; **expert** / **heavy** → **`grok-4.3`** with **`reasoning.effort`** **medium** / **high** (no multi-agent `agent_count`). Legacy **`reasoningEffort`** without **`reasoningMode`** maps non–multi-agent personas to **`grok-4.3`** + effort; **multi-agent** personas keep **`grok-4.20-multi-agent`** + plan **`multiAgentParallelMaxAgents`**. Optional **`XAI_VISION_MODEL`** overrides the resolved model **only for image turns** (and drops **`reasoning`** tuning). Multi-agent models fall back to the default chat model for image turns when **`XAI_VISION_MODEL`** is unset.",
+      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot, **PNG or JPEG** only) is required. **Depth routing** overrides persona **`model`** for that turn: **`reasoningMode` omitted / fast** → **`grok-4-1-fast`**; **expert** / **heavy** → **`grok-4.3`** with **`reasoning.effort`** **medium** / **high** per [xAI reasoning](https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter) (no multi-agent `agent_count`). Legacy **`reasoningEffort`** without **`reasoningMode`** maps non–multi-agent personas to **`grok-4.3`** + **`reasoning.effort`** (**`none`** disables reasoning on grok-4.3 only); **multi-agent** personas keep **`grok-4.20-multi-agent`** + plan **`multiAgentParallelMaxAgents`**. Optional **`XAI_VISION_MODEL`** overrides the resolved model **only for image turns** (and drops **`reasoning`** tuning). Multi-agent models fall back to the default chat model for image turns when **`XAI_VISION_MODEL`** is unset.",
     properties: {
       message: { type: "string", minLength: 0, maxLength: 8000 },
       imageAttachment: {
@@ -1659,15 +1659,15 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       },
       reasoningEffort: {
         type: "string",
-        enum: ["low", "medium", "high", "xhigh"],
+        enum: ["none", "low", "medium", "high", "xhigh"],
         description:
-          "Mutually exclusive with **`reasoningMode`**. When the persona **`model`** is **not** a multi-agent id, the server uses **`grok-4.3`** with matching **`reasoning.effort`** for this turn (no parallelism). **Multi-agent** personas keep **`grok-4.20-multi-agent`**; plan **`multiAgentParallelMaxAgents`** still clamps **`agent_count`**."
+          "Mutually exclusive with **`reasoningMode`**. When the persona **`model`** is **not** a multi-agent id, the server uses **`grok-4.3`** with matching Responses API **`reasoning.effort`** for this turn (**`none`** disables reasoning on grok-4.3). Not allowed when the persona model is multi-agent. **Multi-agent** personas keep **`grok-4.20-multi-agent`** for **`low`**/**`medium`**/**`high`**/**`xhigh`**; plan **`multiAgentParallelMaxAgents`** clamps **`agent_count`**."
       },
       reasoningMode: {
         type: "string",
         enum: ["fast", "expert", "heavy"],
         description:
-          "Grok-style preset (mutually exclusive with **`reasoningEffort`**): **fast** — **`grok-4-1-fast`** for this turn (latency-first); **expert** — **`grok-4.3`** + **`reasoning.effort`: medium**; **heavy** — **`grok-4.3`** + **`reasoning.effort`: high**. Omitting **`reasoningMode`** matches **fast** when **`reasoningEffort`** is also omitted (UI default)."
+          "Grok-style preset (mutually exclusive with **`reasoningEffort`**): **fast** — **`grok-4-1-fast`** for this turn (latency-first); **expert** — **`grok-4.3`** + **`reasoning.effort`: medium**; **heavy** — **`grok-4.3`** + **`reasoning.effort`: high** ([effort levels](https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter)). Omitting **`reasoningMode`** matches **fast** when **`reasoningEffort`** is also omitted (UI default)."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 },

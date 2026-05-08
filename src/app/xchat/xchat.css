@@ -3175,6 +3175,28 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   padding: 0 0.04rem;
 }
 
+.xchat-templates-strip__top-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.45rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.xchat-templates-strip__top-row .xchat-templates-strip__header {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.xchat-templates-strip__top-row .xchat-workspace-bar {
+  flex: 1 1 12rem;
+  min-width: 0;
+  width: auto;
+  margin-bottom: 0;
+}
+
 .xchat-templates-strip__header {
   display: flex;
   align-items: center;
@@ -3190,6 +3212,10 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   text-transform: uppercase;
   color: var(--xf-text-400);
   margin-right: auto;
+}
+
+.xchat-templates-strip__top-row .xchat-templates-strip__title {
+  margin-right: 0;
 }
 
 .xchat-templates-strip__cards-row {

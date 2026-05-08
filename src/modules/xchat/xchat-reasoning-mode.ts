@@ -1,6 +1,10 @@
 import type { XaiResponsesReasoningOnly } from "@/lib/xai";
 
-/** Grok-style composer presets → server `reasoningEffort` / multi-agent policy (see `POST /api/xchat/ask`). */
+/**
+ * Grok-style composer presets → `POST /api/xchat/ask` routing.
+ * Depth uses **`grok-4.3`** with xAI Responses **`reasoning.effort`** (same semantics as vendor `reasoning_effort` on grok-4.3).
+ * @see https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter
+ */
 export type XchatReasoningMode = "fast" | "expert" | "heavy";
 
 /** Depth toggle **Fast** — latency-first single-pass model (overrides persona `model` for that turn). */
@@ -11,7 +15,8 @@ export const XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID = "grok-4.3" as const;
 
 export const XCHAT_REASONING_MODE_STORAGE_KEY = "xf_xchat_reasoning_mode";
 
-export type RequestedReasoningEffortInput = "low" | "medium" | "high" | "xhigh";
+/** Legacy body control; includes **`none`** for grok-4.3 (disables reasoning per xAI docs). */
+export type RequestedReasoningEffortInput = "none" | "low" | "medium" | "high" | "xhigh";
 
 /**
  * `reasoningMode` wins when set; otherwise passes through `reasoningEffort`.
