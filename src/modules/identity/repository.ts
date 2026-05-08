@@ -18,6 +18,7 @@ import {
 } from "@/modules/identity/login-audit";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import { TenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
+import { normalizeTenantIdHexFromStoredMembershipField } from "@/modules/identity/tenant-membership-grounding";
 import type { TenantShellBranding } from "@/modules/identity/tenant-shell-branding";
 import {
     mergeTenantWorkspaceLimits,
@@ -1925,27 +1926,6 @@ export async function getTenantMembershipForUserAndTenant(
   return db.collection<TenantMembership>(collections.memberships).findOne({ userId, tenantId });
 }
 
-function tenantIdFromMembershipField(value: unknown): string | null {
-  if (!value) {
-    return null;
-  }
-  if (value instanceof ObjectId) {
-    return value.toHexString();
-  }
-  if (typeof value === "string") {
-    const t = value.trim();
-    if (!t) {
-      return null;
-    }
-    return ObjectId.isValid(t) ? new ObjectId(t).toHexString() : null;
-  }
-  try {
-    return new ObjectId(value as ObjectId).toHexString();
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Session grounding: prefer canonical `{ userId, tenantId }` ObjectIds, then fall back to scanning
  * the user's membership rows with normalized tenant-id comparison (legacy BSON / string drift).
@@ -1975,7 +1955,7 @@ export async function resolveTenantMembershipForSessionGrounding(
     .toArray()) as TenantMembership[];
 
   for (const row of rows) {
-    const rowHex = tenantIdFromMembershipField(row.tenantId);
+    const rowHex = normalizeTenantIdHexFromStoredMembershipField(row.tenantId);
     if (rowHex === wantHex) {
       return row;
     }

@@ -37,6 +37,8 @@ const billingProxyCache = new Map<
 >();
 
 const SESSION_GROUNDING_CACHE_TTL_MS = 15_000;
+/** Avoid hung edge middleware if origin never responds (fail-open via timeout). */
+const SESSION_GROUNDING_FETCH_TIMEOUT_MS = 10_000;
 const sessionGroundingCache = new Map<string, { ok: boolean; expiresAt: number }>();
 
 export function isSessionEdgeGroundingEnabled(raw = process.env.SESSION_EDGE_GROUNDING): boolean {
@@ -79,8 +81,21 @@ async function resolveSessionGroundingOk(request: NextRequest): Promise<boolean>
       headers: {
         cookie: request.headers.get("cookie") ?? ""
       },
-      cache: "no-store"
+      cache: "no-store",
+      signal: AbortSignal.timeout(SESSION_GROUNDING_FETCH_TIMEOUT_MS)
     });
+
+    // Fail-open on transient origin errors so refresh / first API call does not wipe a valid session.
+    // Route handlers still enforce `requireSessionUser` + Mongo authorization.
+    if (res.status >= 500 || res.status === 429) {
+      logSessionGroundingFetchError({
+        failOpen: true,
+        httpStatus: res.status,
+        reason: "session_grounding_upstream_transient"
+      });
+      return true;
+    }
+
     const ok = res.ok;
     sessionGroundingCache.set(sessionCookie, {
       ok,
@@ -95,10 +110,11 @@ async function resolveSessionGroundingOk(request: NextRequest): Promise<boolean>
     return ok;
   } catch (err) {
     logSessionGroundingFetchError({
-      ok: false,
-      error: err instanceof Error ? err.message : String(err)
+      failOpen: true,
+      error: err instanceof Error ? err.message : String(err),
+      reason: "session_grounding_fetch_throw_or_timeout"
     });
-    return false;
+    return true;
   }
 }
 

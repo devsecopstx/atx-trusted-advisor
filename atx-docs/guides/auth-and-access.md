@@ -7,7 +7,8 @@ This is the auth/access entrypoint. Use this page for incident triage, then jump
 - `src/modules/identity/authorization.ts` (login/role gate behavior)
 - `src/modules/surface-policy.ts` (admin_console vs app_user path policy)
 - [tenant-ux-plan.md](../design-system/tenant-ux-plan.md) — **Tenant UX (`tenant_ux`):** route catalog, per-role visibility + default landing (Mongo/UI/enforcement backlog); **`GET /api/admin/platform/route-catalog`**
-- `src/proxy.ts` (edge auth: guest-capable **HTML** for `/xoptions`, `/portfolio`, `/portfolios`; other protected pages redirect unauthenticated users to `/xchat`; matched **API** paths → 401 without session)
+- `src/proxy.ts` (edge auth: guest-capable **HTML** for `/xoptions`, `/portfolio`, `/portfolios`; other protected pages redirect unauthenticated users to `/xchat`; matched **API** paths → 401 without session; **session grounding** below)
+- `GET /api/internal/authz/session-grounding` — used by **`src/proxy.ts`** when **`SESSION_EDGE_GROUNDING`** is enabled (**default on**); validates Mongo user + tenant membership for **`session.tenantId`**
 - `atx-docs/sre-ops/auth-oauth-spring-dual-run.md` (OAuth dual-run/cutover operations)
 - `atx-docs/sre-ops/x-oauth-atx-callbacks.md` (callback host/config checklist)
 
@@ -19,6 +20,20 @@ Session payload distinguishes:
 - **Tenant membership (`tenantRole`)**: `tenant_admin`, `member`
 
 `app_user` in docs means signed-in product users with platform roles `advisor`, `operator`, or `viewer`; it is not a stored role string.
+
+## Edge session grounding (`SESSION_EDGE_GROUNDING`)
+
+**Shipped:** **≥3.17.x** — For requests that match **`src/proxy.ts`** `config.matcher` and carry **`xf_core_session`**, the proxy **`fetch`**es **`GET /api/internal/authz/session-grounding`** with forwarded **Cookie** (short TTL in-memory cache per cookie value).
+
+**Passes (200 `{ ok: true }`):** Session **`userId`** / **`tenantId`** are valid **ObjectId** hex; **`getCoreUserById`** finds an active, non-suspended user; **`isCoreUserAccountAccessApproved`** (**`core_users.accountStatus`** omitted or **`approved`**); **`resolveTenantMembershipForSessionGrounding`** finds a **`core_tenant_memberships`** row for that user and tenant — canonical **`findOne({ userId, tenantId })`** first, then a bounded scan of the user’s membership rows with **`normalizeTenantIdHexFromStoredMembershipField`** so legacy BSON/string **`tenantId`** shapes still match the session tenant.
+
+**Fails:** **401** JSON **`code`**: `invalid_session`, `user_ineligible`, `account_not_approved`, `no_tenant_membership`. On protected **API** paths the proxy returns **401** **`session_not_grounded`** and clears the session cookie; on **HTML** paths → redirect **`/xchat?error=session_not_grounded`** + cookie clear.
+
+**Transient failures (fail-open):** If the edge **`fetch`** to **`session-grounding`** **throws** (network, timeout ~10s) or the route returns **5xx** / **429**, the proxy **does not** deny or clear the cookie — route handlers still run **`requireSessionUser`** and Mongo checks. Logs **`session_grounding_fetch_error`** with **`failOpen: true`** / **`reason`** (`session_grounding_fetch_throw_or_timeout` or **`session_grounding_upstream_transient`**). This avoids logging users out on refresh when the internal check flakes.
+
+**Disable (break-glass only):** **`SESSION_EDGE_GROUNDING=0`**, **`false`**, or **`no`** — see **`.env.example`**.
+
+**Ops script:** **`npm run ops:users:find-orphans`** — lists **`core_users`** without **`core_tenant_memberships`** (data hygiene; not a substitute for grounding).
 
 ## Surface policy
 
@@ -102,6 +117,7 @@ Keep these aligned to avoid missing cookie context and callback failures:
 - `access_request_pending`: account exists but lacks login-allowed role
 - `email_unverified`: account has login role but `core_users.emailVerifiedAt` is missing; verification token/email was (best-effort) issued and OAuth session is denied until verify-email completes
 - `bootstrap_failed`: post-auth bootstrap failed (membership/session persistence path)
+- `session_not_grounded`: edge proxy rejected the session after **`GET /api/internal/authz/session-grounding`** failed (stale cookie, suspended/rejected/unapproved user, missing membership, or internal fetch error when fail-closed)
 
 ## App_user HTTP 500 triage
 
