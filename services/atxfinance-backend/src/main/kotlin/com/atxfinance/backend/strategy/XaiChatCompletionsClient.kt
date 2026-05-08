@@ -24,6 +24,8 @@ class XaiChatCompletionsClient(
         temperature: Double = 0.2,
         agentCount: Int? = null,
         reasoningEffort: String? = null,
+        /** xAI prompt caching — stable key for identical system-prefix affinity across jobs. */
+        promptCacheKey: String? = null,
     ): XaiChatCompletionResult {
         val apiKey = env.getProperty("XAI_API_KEY")?.trim()
             ?: throw IllegalStateException("XAI_API_KEY is required for chat completions")
@@ -42,6 +44,10 @@ class XaiChatCompletionsClient(
             body["reasoning"] = mapOf("effort" to reasoningEffort)
         } else if (reasoningEffort != null) {
             body["reasoning"] = mapOf("effort" to reasoningEffort)
+        }
+        val cacheKey = promptCacheKey?.trim()?.takeIf { it.isNotEmpty() }
+        if (cacheKey != null) {
+            body["prompt_cache_key"] = cacheKey.take(256)
         }
         val headers = HttpHeaders()
         headers.setBearerAuth(apiKey)

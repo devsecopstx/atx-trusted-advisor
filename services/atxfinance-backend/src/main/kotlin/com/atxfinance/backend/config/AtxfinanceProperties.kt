@@ -63,6 +63,12 @@ data class AtxfinanceProperties(
     val strategyFinalizerSyncForGlobalAdmin: Boolean = false,
     /** When true and session is `global_admin`, send `agent_count` + `reasoning` for multi-agent finalizer models. */
     val strategyFinalizerMultiAgentForGlobalAdmin: Boolean = true,
+    /**
+     * When true, strategy artifact generation should use xAI **Batch** (`/v1/batches`) instead of synchronous chat completions.
+     * **Not wired on the JVM yet** — finalizer logs once and still uses synchronous chat completions.
+     * Env: `STRATEGY_FINALIZER_USE_XAI_BATCH`.
+     */
+    val strategyFinalizerUseXaiBatch: Boolean = false,
     /** Optional explicit team KB `collection_*` id when `XAI_TEAM_ID` is a team UUID (env `STRATEGY_TEAM_KB_COLLECTION_ID`). */
     val strategyTeamKbCollectionId: String = "",
     /** Mongo collection for materialized xChat workspace preload rows (Next + JVM read/purge). */

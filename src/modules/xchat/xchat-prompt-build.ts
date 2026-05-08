@@ -145,7 +145,9 @@ export function formatTenantWorkspaceContextBlockForXchat(input: {
 }
 
 /**
- * Locked order: **tenant display (optional) → persona → RAG → recent history → snapshot → session tool instructions → routing policy → citation policy → beta client UI note** (double-newline separated).
+ * Locked order for **xAI prompt caching** (stable prefix first, volatile suffix last):
+ * tenant display (optional) → persona → session tools → routing policy → citation policy → beta UI →
+ * RAG snippets → recent history → workspace snapshot.
  */
 export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): string {
   const citationsEnabled = input.citationsEnabled !== false;
@@ -161,34 +163,38 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
     typeof input.ragContext === "string" && input.ragContext.trim().length > 0
       ? `Use the following RAG context if relevant:\n${input.ragContext.trim()}`
       : "No RAG context available.";
-  const parts: string[] = [];
+  const stableParts: string[] = [];
   if (tenantCtx) {
-    parts.push(tenantCtx);
+    stableParts.push(tenantCtx);
   }
-  parts.push(base, rag);
+  stableParts.push(base);
+  const session = input.sessionToolInstructions.trim();
+  if (session) {
+    stableParts.push(session);
+  }
+  const routing = typeof input.routingPolicyBlock === "string" ? input.routingPolicyBlock.trim() : "";
+  if (routing) {
+    stableParts.push(routing);
+  }
+  stableParts.push(citationsEnabled ? XCHAT_CITATION_MARKDOWN_CONTRACT : XCHAT_NO_CITATIONS_INSTRUCTION);
+  stableParts.push(XCHAT_BETA_CLIENT_UI_INSTRUCTIONS);
+
+  const volatileParts: string[] = [];
+  volatileParts.push(rag);
   const hist =
     typeof input.recentHistoryBlock === "string" && input.recentHistoryBlock.trim().length > 0
       ? input.recentHistoryBlock.trim()
       : "";
   if (hist) {
-    parts.push(hist);
+    volatileParts.push(hist);
   }
   const snap =
     typeof input.workspaceSnapshot === "string" && input.workspaceSnapshot.trim().length > 0
       ? input.workspaceSnapshot.trim()
       : "";
   if (snap) {
-    parts.push(snap);
+    volatileParts.push(snap);
   }
-  const session = input.sessionToolInstructions.trim();
-  if (session) {
-    parts.push(session);
-  }
-  const routing = typeof input.routingPolicyBlock === "string" ? input.routingPolicyBlock.trim() : "";
-  if (routing) {
-    parts.push(routing);
-  }
-  parts.push(citationsEnabled ? XCHAT_CITATION_MARKDOWN_CONTRACT : XCHAT_NO_CITATIONS_INSTRUCTION);
-  parts.push(XCHAT_BETA_CLIENT_UI_INSTRUCTIONS);
-  return parts.join("\n\n");
+
+  return [...stableParts, ...volatileParts].join("\n\n");
 }

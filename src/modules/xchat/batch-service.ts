@@ -260,6 +260,8 @@ export async function submitBatchJob(
     if (batchReasoning) {
       responsesBody.reasoning = { effort: batchReasoning.effort };
     }
+    responsesBody.prompt_cache_key =
+      `xf-xchat-batch:${input.tenantId ?? "no-tenant"}:${input.personaId}`.slice(0, 256);
 
     const body: Record<string, unknown> =
       xapiConfigMerged.mode === "chat_completions" ? baseChatBody : responsesBody;

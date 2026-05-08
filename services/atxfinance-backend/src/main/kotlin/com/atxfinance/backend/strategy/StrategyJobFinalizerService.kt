@@ -13,6 +13,7 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
+import org.slf4j.LoggerFactory
 import java.util.Date
 
 @Service
@@ -27,6 +28,8 @@ class StrategyJobFinalizerService(
     private val yahoo: StrategyOptionsYahooClient,
     private val portfolioApi: DefaultPortfolioApiService,
 ) {
+
+    private val log = LoggerFactory.getLogger(StrategyJobFinalizerService::class.java)
 
     fun runFinalize(session: ResolvedSession, jobId: String) {
         if (!ObjectId.isValid(jobId)) {
@@ -58,6 +61,14 @@ class StrategyJobFinalizerService(
             if (key.isNullOrEmpty()) {
                 markFailed(oid, "artifact_xai_unconfigured", "XAI_API_KEY is not configured")
                 return
+            }
+
+            if (props.strategyFinalizerUseXaiBatch) {
+                log.warn(
+                    "STRATEGY_FINALIZER_USE_XAI_BATCH=true but JVM xAI Batch submission is not implemented; " +
+                        "using synchronous chat completions for job {}",
+                    jobId,
+                )
             }
 
             val slots = job.get("slots", Document::class.java) ?: Document()
@@ -98,6 +109,7 @@ class StrategyJobFinalizerService(
                     temperature = 0.2,
                     agentCount = agentCount,
                     reasoningEffort = effort,
+                    promptCacheKey = "xf-strategy-finalizer",
                 )
             } catch (e: Exception) {
                 markFailed(oid, "artifact_xai_error", e.message ?: "xAI chat failed")

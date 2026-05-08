@@ -46,6 +46,10 @@ const prefsMocks = vi.hoisted(() => ({
   getXchatUserPreferences: vi.fn()
 }));
 
+const platformSettingsMocks = vi.hoisted(() => ({
+  getXchatPlatformSettings: vi.fn()
+}));
+
 const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
@@ -91,6 +95,13 @@ vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
 vi.mock("@/modules/xchat/user-preferences-repository", () => prefsMocks);
+vi.mock("@/modules/xchat/xchat-platform-settings", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/xchat-platform-settings")>();
+  return {
+    ...actual,
+    getXchatPlatformSettings: platformSettingsMocks.getXchatPlatformSettings
+  };
+});
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/xchat/options-action-report-repository", () => optionsScanReportMocks);
@@ -208,6 +219,7 @@ describe("xchat ask route collection retrieval", () => {
     prefsMocks.getXchatUserPreferences.mockResolvedValue({
       keepLastTenMessages: true
     });
+    platformSettingsMocks.getXchatPlatformSettings.mockResolvedValue(null);
     workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValue("");
     symbolLookupMocks.lookupSymbols.mockResolvedValue(new Map());

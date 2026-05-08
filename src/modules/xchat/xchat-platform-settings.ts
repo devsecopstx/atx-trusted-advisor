@@ -7,6 +7,11 @@ export type XchatPlatformSettingsDoc = {
   singletonKey: typeof SINGLETON_KEY;
   /** Published xPersona ObjectId hex — default for app_user when no admin-assigned persona. */
   defaultAppUserPersonaId?: string;
+  /**
+   * Cap verbatim prior thread messages for **`grok-4.3`** ask turns (4–6). Older turns become one condensed digest block.
+   * Omitted → **5**. Ignored for non–Grok 4.3 models.
+   */
+  xchatGrok43MaxPriorThreadMessages?: number;
   /** AES-GCM sealed refresh token for X marketing posting (see `marketing-x-oauth-seal.ts`). */
   marketingXPostingRefreshTokenSealed?: string;
   /** AES-GCM sealed access token (rotated by centralized token manager before each post when stale). */

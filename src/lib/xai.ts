@@ -716,6 +716,15 @@ export async function respondWithXaiToolLoop(input: {
   responsesReasoning?: XaiResponsesReasoningOnly;
   previousResponseId?: string;
   storeMessages?: boolean;
+  /**
+   * xAI Responses **prompt caching** (see xAI “Prompt caching” advanced usage docs): stable key per thread/session.
+   * Sent only when `instructions` is present (first chain turn); omitted on `previous_response_id` continuations.
+   */
+  promptCacheKey?: string;
+  /**
+   * Reserved: async **`/v1/batches`** tool-loop path (non-interactive). Not implemented — interactive ask stays synchronous.
+   */
+  useXaiBatch?: boolean;
   /** When aborted (e.g. client disconnected / user cancelled), in-flight xAI `fetch` calls reject and the loop exits. */
   signal?: AbortSignal;
   /** Optional: parallel local tool timings (tenant xChat debug hooks in the route). */
@@ -731,6 +740,12 @@ export async function respondWithXaiToolLoop(input: {
   const toolCalls: ToolCallLog[] = [];
   const tools = toXaiRequestTools(input.tools, { forXaiResponsesApi: true });
   const signal = input.signal;
+
+  if (input.useXaiBatch === true) {
+    throw new Error(
+      "useXaiBatch is not supported for interactive respondWithXaiToolLoop; use POST /api/xchat/batch or JVM batch wiring"
+    );
+  }
 
   const trimmedImageUrl = input.userImageDataUrl?.trim();
   let conversationInput: unknown =
@@ -767,6 +782,10 @@ export async function respondWithXaiToolLoop(input: {
     } else {
       /** Per xAI docs, do not send `instructions` with `previous_response_id` (continuation turns). */
       requestBody.instructions = input.systemPrompt;
+      const cacheKey = input.promptCacheKey?.trim();
+      if (cacheKey) {
+        requestBody.prompt_cache_key = cacheKey.slice(0, 256);
+      }
     }
     if (input.parallelism) {
       requestBody.agent_count = input.parallelism.agentCount;

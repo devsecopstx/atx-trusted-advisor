@@ -103,6 +103,7 @@ import {
     MAX_XCHAT_ASK_JSON_BYTES,
     parseAndValidateXchatPasteImage
 } from "@/modules/xchat/xchat-image-attachment";
+import { getXchatPlatformSettings } from "@/modules/xchat/xchat-platform-settings";
 import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
@@ -116,7 +117,7 @@ import {
     XCHAT_DEPTH_FAST_MODEL_ID
 } from "@/modules/xchat/xchat-reasoning-mode";
 import {
-    buildRecentThreadMessagesPromptBlock,
+    resolveRecentThreadMessagesPromptBlock,
     type XchatRecentThreadMessage
 } from "@/modules/xchat/xchat-recent-history-prompt";
 import { resolveWorkspaceSnapshotQuoteNetwork } from "@/modules/xchat/xchat-workspace-quote-policy";
@@ -139,7 +140,7 @@ const askSchema = z
           content: z.string().trim().min(1).max(8_000)
         })
       )
-      .max(10)
+      .max(32)
       .optional(),
     portfolioId: z.string().trim().regex(/^[a-f\d]{24}$/i).optional(),
     personaId: z.string().optional(),
@@ -681,12 +682,15 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
-  const userPrefs = userId
-    ? await getXchatUserPreferences({
-        userId,
-        tenantId
-      })
-    : null;
+  const [userPrefs, xchatPlatformSettings] = await Promise.all([
+    userId
+      ? getXchatUserPreferences({
+          userId,
+          tenantId
+        })
+      : Promise.resolve(null),
+    getXchatPlatformSettings()
+  ]);
   const shouldPersistHistory = userPrefs?.keepLastTenMessages === true;
   const retentionExpiresAt = shouldPersistHistory
     ? new Date(Date.now() + XCHAT_OPT_IN_RETENTION_DAYS * 24 * 60 * 60 * 1000)
@@ -1402,13 +1406,15 @@ export async function POST(request: Request) {
       content: row.content.trim()
     }))
     .filter((row) => row.content.length > 0)
-    .slice(-10);
+    .slice(-32);
   const recentHistoryBlock =
     useRemoteConversationHistory && previousResponseId
       ? ""
-      : buildRecentThreadMessagesPromptBlock(recentThreadMessages, {
-          maxMessages: 10
-        });
+      : resolveRecentThreadMessagesPromptBlock({
+          messages: recentThreadMessages,
+          executionModel,
+          grok43MaxPriorThreadMessages: xchatPlatformSettings?.xchatGrok43MaxPriorThreadMessages
+        }) ?? "";
 
   const builtSystemPrompt = buildXchatSystemPrompt({
     tenantWorkspaceContextBlock,
@@ -1506,6 +1512,11 @@ export async function POST(request: Request) {
     limiterDailyLimit
   });
 
+  const promptCacheKey =
+    threadId?.trim() && !previousResponseId
+      ? `xf-xchat:${threadId.trim().slice(0, 200)}`
+      : undefined;
+
   const toolLoopShared = {
     model: executionModel,
     systemPrompt,
@@ -1519,6 +1530,7 @@ export async function POST(request: Request) {
     responsesReasoning,
     previousResponseId,
     storeMessages: useRemoteConversationHistory,
+    promptCacheKey,
     signal: request.signal
   };
 

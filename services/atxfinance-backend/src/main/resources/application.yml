@@ -65,6 +65,7 @@ app:
     strategy-finalizer-model: ${STRATEGY_FINALIZER_MODEL:grok-4.3}
     strategy-finalizer-sync-for-global-admin: ${STRATEGY_FINALIZER_SYNC_FOR_GLOBAL_ADMIN:false}
     strategy-finalizer-multi-agent-for-global-admin: ${STRATEGY_FINALIZER_MULTI_AGENT_FOR_GLOBAL_ADMIN:true}
+    strategy-finalizer-use-xai-batch: ${STRATEGY_FINALIZER_USE_XAI_BATCH:false}
     strategy-team-kb-collection-id: ${STRATEGY_TEAM_KB_COLLECTION_ID:}
     portfolio-workspace-snapshots-collection: ${PORTFOLIO_WORKSPACE_SNAPSHOTS_COLLECTION:portfolio_workspace_snapshots}
     portfolio-workspace-snapshot-purge-enabled: ${PORTFOLIO_WORKSPACE_SNAPSHOT_PURGE_ENABLED:true}

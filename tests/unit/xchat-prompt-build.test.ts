@@ -128,7 +128,7 @@ describe("buildXchatSystemPrompt", () => {
     expect(out.indexOf("P")).toBeGreaterThan(0);
   });
 
-  it("locks order: persona, RAG, recent history, snapshot, session", () => {
+  it("locks order: stable prefix (persona, session, citations, beta) then volatile (RAG, history, snapshot)", () => {
     const out = buildXchatSystemPrompt({
       personaSystem: "P",
       fallbackPersonaSystem: "F",
@@ -145,12 +145,12 @@ describe("buildXchatSystemPrompt", () => {
     const iCite = out.indexOf("Citation chips");
     const iBeta = out.indexOf("Client UI (beta)");
     expect(iP).toBe(0);
-    expect(iRag).toBeGreaterThan(iP);
-    expect(iHist).toBeGreaterThan(iRag);
-    expect(iSnap).toBeGreaterThan(iHist);
-    expect(iSess).toBeGreaterThan(iSnap);
+    expect(iSess).toBeGreaterThan(iP);
     expect(iCite).toBeGreaterThan(iSess);
     expect(iBeta).toBeGreaterThan(iCite);
+    expect(iRag).toBeGreaterThan(iBeta);
+    expect(iHist).toBeGreaterThan(iRag);
+    expect(iSnap).toBeGreaterThan(iHist);
   });
 
   it("uses fallback persona when base empty", () => {

@@ -55,6 +55,42 @@ describe("respondWithXaiToolLoop", () => {
     expect(body0).not.toHaveProperty("system_prompt");
   });
 
+  it("sends prompt_cache_key on first Responses turn when provided", async () => {
+    fetchMock.mockResolvedValueOnce(
+      xaiResponsesOk({
+        model: "grok-4.3",
+        output_text: "ok"
+      })
+    );
+
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    await respondWithXaiToolLoop({
+      systemPrompt: "SYS",
+      userPrompt: "hi",
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
+      executor: async () => ({ result: "{}" }),
+      promptCacheKey: "xf-thread-abc"
+    });
+
+    const [, init0] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body0 = JSON.parse(String(init0.body)) as Record<string, unknown>;
+    expect(body0.prompt_cache_key).toBe("xf-thread-abc");
+  });
+
+  it("rejects useXaiBatch until batch tool-loop is implemented", async () => {
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    await expect(
+      respondWithXaiToolLoop({
+        systemPrompt: "s",
+        userPrompt: "u",
+        tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
+        executor: async () => ({ result: "{}" }),
+        useXaiBatch: true
+      })
+    ).rejects.toThrow(/useXaiBatch/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("does not call xAI when AbortSignal is already aborted", async () => {
     const ac = new AbortController();
     ac.abort();
