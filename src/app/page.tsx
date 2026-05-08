@@ -9,8 +9,8 @@ import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "aTx Trusted Advisory — AI Co-Pilot for Options Income & Portfolio Defense",
-  description: `HNWI-grade workspace for covered calls, wheels, and iron condors — real portfolio integration, desk alerts, strategy jobs, and Grok-backed xChat. RIAs and family offices: tenant branding and white-label-ready portals. ${EDUCATIONAL_ONLY_SHORT}`,
+  title: "aTx Trusted Advisory — Real-Money Options Income & Grok-Backed Portfolio Context",
+  description: `Real-money options income with AI that understands your book — wheels, covered calls, CSPs, and LEAP overlays with portfolio context, risk guardrails, and audit trails. Enterprise-grade tenant isolation; white-label portals for RIAs and family offices. ${EDUCATIONAL_ONLY_SHORT}`,
   alternates: {
     canonical: "/"
   }

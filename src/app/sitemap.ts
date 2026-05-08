@@ -70,6 +70,10 @@ const publicRoutes = [
     changeFrequency: "monthly" as const,
     priority: 0.55,
   },
+  { path: "/wheel-strategy-ai", changeFrequency: "monthly" as const, priority: 0.58 },
+  { path: "/covered-call-portfolio-manager", changeFrequency: "monthly" as const, priority: 0.58 },
+  { path: "/ibkr-options-automation", changeFrequency: "monthly" as const, priority: 0.58 },
+  { path: "/ria-white-label-platform", changeFrequency: "monthly" as const, priority: 0.58 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

@@ -1318,9 +1318,47 @@ a.xf-watchlist-sym-cell__ext:hover {
 
 .xf-watchlist-quote-panel__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.xf-watchlist-quote-panel__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.xf-watchlist-quote-panel__brand-text {
+  min-width: 0;
+}
+
+.xf-watchlist-quote-panel__logo {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.xf-watchlist-quote-panel__logo--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--xf-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--xf-text-300);
+}
+
+.xf-watchlist-quote-panel__delayed {
+  margin: 0.12rem 0 0;
+  font-size: 0.68rem;
+  color: var(--xf-text-400);
+  line-height: 1.25;
 }
 
 .xf-watchlist-quote-panel__title {
@@ -1381,6 +1419,10 @@ a.xf-watchlist-sym-cell__ext:hover {
   color: var(--xf-text-100);
   font-family: var(--xf-font-mono);
   font-size: 0.84rem;
+}
+
+.xf-watchlist-quote-panel__chart {
+  margin-top: 1rem;
 }
 
 .xf-watchlist-quote-panel__foot {

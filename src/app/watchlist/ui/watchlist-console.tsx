@@ -30,6 +30,7 @@ import {
     XMarkIcon
 } from "@/app/admin/ui/crud-icons";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
+import { SymbolOhlcChartPanel } from "@/app/ui/symbol-ohlc-chart-panel";
 import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
 import {
     XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
@@ -2401,9 +2402,26 @@ ${bodyRows}
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="xf-watchlist-quote-panel__head">
-                  <h3 className="xf-watchlist-quote-panel__title">
-                    {quotePanelRow.symbol} quote
-                  </h3>
+                  <div className="xf-watchlist-quote-panel__brand">
+                    {quotePanelRow.quote?.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- remote CDN; matches desk tiles
+                      <img
+                        alt=""
+                        className="xf-watchlist-quote-panel__logo"
+                        height={40}
+                        src={quotePanelRow.quote.logoUrl}
+                        width={40}
+                      />
+                    ) : (
+                      <div aria-hidden className="xf-watchlist-quote-panel__logo xf-watchlist-quote-panel__logo--fallback">
+                        {quotePanelRow.symbol.slice(0, 2)}
+                      </div>
+                    )}
+                    <div className="xf-watchlist-quote-panel__brand-text">
+                      <h3 className="xf-watchlist-quote-panel__title">{quotePanelRow.symbol} quote</h3>
+                      <p className="xf-watchlist-quote-panel__delayed">US equity · delayed quote</p>
+                    </div>
+                  </div>
                   <button
                     aria-label="Close quote details"
                     className="xf-watchlist-quote-panel__close"
@@ -2467,6 +2485,15 @@ ${bodyRows}
                     <dd>{quotePanelRow.quote?.companyName?.trim() || quotePanelRow.symbol}</dd>
                   </div>
                 </dl>
+                <div className="xf-watchlist-quote-panel__chart">
+                  <SymbolOhlcChartPanel
+                    enabled
+                    initialRange="1d"
+                    showRangeSelector
+                    symbol={quotePanelRow.symbol}
+                    variant="compact"
+                  />
+                </div>
                 <p className="xf-watchlist-quote-panel__foot">
                   Data source: Yahoo Finance.
                 </p>

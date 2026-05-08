@@ -11,6 +11,7 @@ describe("resolvePolicyPathForRequest", () => {
     expect(resolvePolicyPathForRequest("/api/xchat/ask")).toBe("/xchat");
     expect(resolvePolicyPathForRequest("/api/app-user/xchat/bootstrap")).toBe("/xchat");
     expect(resolvePolicyPathForRequest("/api/user/watchlist")).toBe("/watchlist");
+    expect(resolvePolicyPathForRequest("/api/app-user/symbol-chart")).toBe("/watchlist");
     expect(resolvePolicyPathForRequest("/api/portfolios/x")).toBe("/portfolio");
     expect(resolvePolicyPathForRequest("/api/tenant-tasks/x")).toBe("/workspace");
     expect(resolvePolicyPathForRequest("/workspace/tasks")).toBe("/workspace/tasks");

@@ -33,4 +33,21 @@ describe("sitemap public resources", () => {
       expect(urls).toContain(u);
     }
   });
+
+  it("includes SEO solution landing routes", () => {
+    const entries = sitemap();
+    const urls = entries.map((e) => e.url).sort();
+    const BASE = "https://atxtrustedadvisory.com";
+    const expected = [
+      "/wheel-strategy-ai",
+      "/covered-call-portfolio-manager",
+      "/ibkr-options-automation",
+      "/ria-white-label-platform"
+    ]
+      .map((p) => `${BASE}${p}`)
+      .sort();
+    for (const u of expected) {
+      expect(urls).toContain(u);
+    }
+  });
 });

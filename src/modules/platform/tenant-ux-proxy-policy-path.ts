@@ -1,7 +1,7 @@
 import {
-  APP_USER_PRODUCT_PATH_PREFIXES,
-  isAppUserProductPath,
-  normalizePathnameForPolicy
+    APP_USER_PRODUCT_PATH_PREFIXES,
+    isAppUserProductPath,
+    normalizePathnameForPolicy
 } from "@/modules/platform/app-user-product-prefixes";
 
 /**
@@ -19,7 +19,8 @@ export function resolvePolicyPathForRequest(pathname: string): string | null {
   if (p.startsWith("/api/xchat")) return "/xchat";
   if (p.startsWith("/api/app-user/xchat")) return "/xchat";
   if (p.startsWith("/api/app-user/find-options")) return "/xoptions";
-  if (p.startsWith("/api/app-user/symbol-chart")) return "/xoptions";
+  /** OHLC chart: watchlist quote drawer + xOptions chain — gate on watchlist (HNWI tape) not xOptions-only. */
+  if (p.startsWith("/api/app-user/symbol-chart")) return "/watchlist";
   if (p.startsWith("/api/app-user/xoptions")) return "/xoptions";
   if (p.startsWith("/api/user/watchlist")) return "/watchlist";
   if (p.startsWith("/api/user/workspace-portfolio")) return "/workspace";
