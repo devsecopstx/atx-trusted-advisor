@@ -36,6 +36,101 @@ const billingProxyCache = new Map<
   { requiresBilling: boolean; state: string; redirectPath: string; expiresAt: number }
 >();
 
+const SESSION_GROUNDING_CACHE_TTL_MS = 15_000;
+const sessionGroundingCache = new Map<string, { ok: boolean; expiresAt: number }>();
+
+export function isSessionEdgeGroundingEnabled(raw = process.env.SESSION_EDGE_GROUNDING): boolean {
+  if (raw === undefined || raw.trim() === "") {
+    return true;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return !(normalized === "0" || normalized === "false" || normalized === "no");
+}
+
+function clearSessionCookieOn(response: NextResponse): void {
+  response.cookies.set(SESSION_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0
+  });
+}
+
+function logSessionGroundingFetchError(payload: Record<string, unknown>): void {
+  console.warn(
+    JSON.stringify({
+      type: "session_grounding_fetch_error",
+      ...payload
+    })
+  );
+}
+
+async function resolveSessionGroundingOk(request: NextRequest): Promise<boolean> {
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? "";
+  const hit = sessionGroundingCache.get(sessionCookie);
+  if (hit && hit.expiresAt > Date.now()) {
+    return hit.ok;
+  }
+  const url = new URL("/api/internal/authz/session-grounding", request.url);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        cookie: request.headers.get("cookie") ?? ""
+      },
+      cache: "no-store"
+    });
+    const ok = res.ok;
+    sessionGroundingCache.set(sessionCookie, {
+      ok,
+      expiresAt: Date.now() + SESSION_GROUNDING_CACHE_TTL_MS
+    });
+    if (sessionGroundingCache.size > 500) {
+      const first = sessionGroundingCache.keys().next();
+      if (!first.done) {
+        sessionGroundingCache.delete(first.value);
+      }
+    }
+    return ok;
+  } catch (err) {
+    logSessionGroundingFetchError({
+      ok: false,
+      error: err instanceof Error ? err.message : String(err)
+    });
+    return false;
+  }
+}
+
+async function enforceSessionGrounding(
+  request: NextRequest,
+  pathname: string
+): Promise<NextResponse | null> {
+  if (!isSessionEdgeGroundingEnabled()) {
+    return null;
+  }
+  const grounded = await resolveSessionGroundingOk(request);
+  if (grounded) {
+    return null;
+  }
+  if (pathname.startsWith("/api/")) {
+    const res = NextResponse.json(
+      {
+        error: "Unauthorized",
+        code: "session_not_grounded"
+      },
+      { status: 401 }
+    );
+    clearSessionCookieOn(res);
+    return res;
+  }
+  const redirectUrl = new URL("/xchat", request.url);
+  redirectUrl.searchParams.set("error", "session_not_grounded");
+  const res = NextResponse.redirect(redirectUrl);
+  clearSessionCookieOn(res);
+  return res;
+}
+
 function isPublicGuestReadablePath(pathname: string): boolean {
   return publicGuestReadablePaths.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
@@ -319,6 +414,10 @@ export async function proxy(request: NextRequest) {
 
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   if (hasSession) {
+    const grounding = await enforceSessionGrounding(request, pathname);
+    if (grounding) {
+      return grounding;
+    }
     const billingEnforced = await enforceBillingAccess(request, pathname);
     if (billingEnforced) {
       return billingEnforced;

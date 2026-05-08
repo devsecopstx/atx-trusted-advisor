@@ -31,10 +31,18 @@ const coreAdminMocks = vi.hoisted(() => ({
   getPendingAccessRequestByUserAndRole: vi.fn()
 }));
 
+const defaultMembership = {
+  _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+  userId: { toHexString: () => "507f1f77bcf86cd799439011" },
+  tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
+  role: "tenant_admin" as const,
+  isDefaultTenant: true,
+  updatedAt: new Date()
+};
+
 const identityMocks = vi.hoisted(() => ({
   dedupeDefaultTenantMembershipsForUser: vi.fn().mockResolvedValue(undefined),
-  getDefaultTenantMembershipForUser: vi.fn().mockResolvedValue(null),
-  ensureDefaultTenant: vi.fn(),
+  getDefaultTenantMembershipForUser: vi.fn(),
   ensureCoreUserByEmail: vi.fn(),
   getCoreUserByEmail: vi.fn(),
   getCoreUserByXIdentity: vi.fn(),
@@ -43,7 +51,6 @@ const identityMocks = vi.hoisted(() => ({
   mergePlaceholderXUserIntoEmailUser: vi.fn(),
   resolveAuthContext: vi.fn(),
   updateCoreUserEmail: vi.fn(),
-  upsertTenantMembership: vi.fn(),
   ensureSeededGlobalAdmin: vi.fn(),
   recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined)
 }));
@@ -128,13 +135,7 @@ describe("auth link-email route", () => {
       }
     }));
     identityMocks.dedupeDefaultTenantMembershipsForUser.mockResolvedValue(undefined);
-    identityMocks.getDefaultTenantMembershipForUser.mockResolvedValue(null);
-    identityMocks.ensureDefaultTenant.mockResolvedValue({
-      _id: { toHexString: () => "507f1f77bcf86cd799439022" }
-    });
-    identityMocks.upsertTenantMembership.mockResolvedValue({
-      _id: { toHexString: () => "507f1f77bcf86cd799439033" }
-    });
+    identityMocks.getDefaultTenantMembershipForUser.mockResolvedValue(defaultMembership);
     identityMocks.ensureSeededGlobalAdmin.mockResolvedValue({
       user: {
         _id: { toHexString: () => "507f1f77bcf86cd799439011" },

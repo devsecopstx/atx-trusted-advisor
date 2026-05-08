@@ -12,13 +12,13 @@ import {
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
 import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
+import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     dedupeDefaultTenantMembershipsForUser,
     ensureCoreUserByEmail,
-    ensureDefaultTenant,
     ensureSeededGlobalAdmin,
     getCoreUserByEmail,
     getCoreUserByXIdentity,
@@ -28,10 +28,8 @@ import {
     recordUserSuccessfulLogin,
     resolveAuthContext,
     unlinkXAccountFromUser,
-    updateCoreUserEmail,
-    upsertTenantMembership
+    updateCoreUserEmail
 } from "@/modules/identity/repository";
-import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 
 const linkSchema = z.object({
   email: z.string().email()
@@ -151,25 +149,39 @@ export async function POST(request: Request) {
           avatarUrl: pending.avatarUrl
         });
 
+  const linkedUserId = linkedUser._id;
+  if (!linkedUserId) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "missing_user_id",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      email: requestedEmail,
+      xUserId: pending.xUserId,
+      username: pending.username
+    });
+    return NextResponse.json({ error: "Missing user id" }, { status: 500 });
+  }
+
   const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
   const hasLoginRole = canUserLogin(linkedUser.roles);
 
   if (!hasLoginRole) {
-    const userId = linkedUser._id?.toHexString();
-    if (userId) {
-      const requestedRole = "operator";
-      const existingPending = await getPendingAccessRequestByUserAndRole({
+    const userId = linkedUserId.toHexString();
+    const requestedRole = "operator";
+    const existingPending = await getPendingAccessRequestByUserAndRole({
+      userId,
+      requestedRole
+    });
+    if (!existingPending) {
+      await createAccessRequest({
         userId,
-        requestedRole
+        requestedRole,
+        contactEmail: requestedEmail,
+        reason: "Auto-created from email-link login attempt"
       });
-      if (!existingPending) {
-        await createAccessRequest({
-          userId,
-          requestedRole,
-          contactEmail: requestedEmail,
-          reason: "Auto-created from email-link login attempt"
-        });
-      }
     }
 
     if (!allowAnyXUserLogin) {
@@ -180,7 +192,7 @@ export async function POST(request: Request) {
         clientIp: loginMeta.clientIp,
         country: loginMeta.country,
         userAgent: loginMeta.userAgent,
-        userId: linkedUser._id?.toHexString(),
+        userId: linkedUserId.toHexString(),
         xUserId: pending.xUserId,
         username: pending.username,
         email: requestedEmail
@@ -192,10 +204,10 @@ export async function POST(request: Request) {
     }
   }
 
-  if (!linkedUser.emailVerifiedAt && linkedUser._id) {
+  if (!linkedUser.emailVerifiedAt) {
     let verificationSent = false;
     try {
-      const issued = await issueEmailVerificationForUser(linkedUser._id);
+      const issued = await issueEmailVerificationForUser(linkedUserId);
       if (issued?.rawToken) {
         verificationSent = await sendEmailVerificationEmail({
           request,
@@ -214,7 +226,7 @@ export async function POST(request: Request) {
       clientIp: loginMeta.clientIp,
       country: loginMeta.country,
       userAgent: loginMeta.userAgent,
-      userId: linkedUser._id.toHexString(),
+      userId: linkedUserId.toHexString(),
       xUserId: pending.xUserId,
       username: pending.username,
       email: linkedUser.email
@@ -225,41 +237,65 @@ export async function POST(request: Request) {
     });
   }
 
-  const tenant = await ensureDefaultTenant();
-  if (!tenant._id || !linkedUser._id) {
+  if (linkedUser.status === "suspended") {
     await appendLoginAuditRecord({
       outcome: "failure",
       provider: "link_email",
-      errorCode: "tenant_context_failed",
+      errorCode: "user_suspended",
       clientIp: loginMeta.clientIp,
       country: loginMeta.country,
       userAgent: loginMeta.userAgent,
-      userId: linkedUser._id?.toHexString(),
+      userId: linkedUserId.toHexString(),
       xUserId: pending.xUserId,
       username: pending.username,
       email: requestedEmail
     });
-    return NextResponse.json({ error: "Failed to resolve tenant context" }, { status: 500 });
+    return NextResponse.json({
+      ok: true,
+      redirectTo: "/xchat?error=user_suspended"
+    });
   }
-  await dedupeDefaultTenantMembershipsForUser(linkedUser._id);
-  const existingDefault = await getDefaultTenantMembershipForUser(linkedUser._id);
-  if (!existingDefault) {
-    try {
-      await upsertTenantMembership({
-        userId: linkedUser._id,
-        tenantId: tenant._id,
-        role: "tenant_admin",
-        isDefaultTenant: true
-      });
-    } catch (error) {
-      if (isTenantMembershipCapExceededError(error)) {
-        return NextResponse.json(
-          { error: error.message, code: error.code },
-          { status: 409 }
-        );
-      }
-      throw error;
-    }
+
+  if (!isCoreUserAccountAccessApproved(linkedUser)) {
+    const err =
+      linkedUser.accountStatus === "rejected" ? "account_rejected" : "account_pending_approval";
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: err,
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      userId: linkedUserId.toHexString(),
+      xUserId: pending.xUserId,
+      username: pending.username,
+      email: requestedEmail
+    });
+    return NextResponse.json({
+      ok: true,
+      redirectTo: `/xchat?error=${encodeURIComponent(err)}`
+    });
+  }
+
+  await dedupeDefaultTenantMembershipsForUser(linkedUserId);
+  const existingDefault = await getDefaultTenantMembershipForUser(linkedUserId);
+  if (!existingDefault?.tenantId) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "no_tenant_membership",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      userId: linkedUserId.toHexString(),
+      xUserId: pending.xUserId,
+      username: pending.username,
+      email: requestedEmail
+    });
+    return NextResponse.json({
+      ok: true,
+      redirectTo: "/xchat?error=no_tenant_membership"
+    });
   }
 
   const authContext = await resolveAuthContext({ user: linkedUser });

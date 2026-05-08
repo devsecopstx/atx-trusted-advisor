@@ -16,7 +16,7 @@ import {
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
 import { setInitialPasswordFromPublicSignup } from "@/modules/identity/email-credentials-repository";
-import { ensureCoreUserByEmail } from "@/modules/identity/repository";
+import { ensureCoreUserByEmail, updateCoreUserAccountStatus } from "@/modules/identity/repository";
 
 /** Exported for unit tests (`tests/unit/access-requests-public-body-schema.test.ts`). */
 export const guestAccessRequestSchema = z.object({
@@ -122,6 +122,11 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   }
+
+  await updateCoreUserAccountStatus({
+    userId: user._id,
+    accountStatus: "pending_approval"
+  });
 
   let created;
   try {

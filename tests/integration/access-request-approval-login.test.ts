@@ -64,7 +64,8 @@ const identityMocks = vi.hoisted(() => {
     linkXAccountToUser: vi.fn(),
     ensureDefaultTenant: vi.fn(),
     dedupeDefaultTenantMembershipsForUser: vi.fn().mockResolvedValue(undefined),
-    getDefaultTenantMembershipForUser: vi.fn().mockResolvedValue(null),
+    getDefaultTenantMembershipForUser: vi.fn(),
+    updateCoreUserAccountStatus: vi.fn().mockResolvedValue(undefined),
     upsertTenantMembership: vi.fn(),
     resolveAuthContext: vi.fn(),
     ensureCoreUserByEmail: vi.fn(),
@@ -249,6 +250,33 @@ describe("access request approval login flow", () => {
     identityMocks.getCoreUserByEmail.mockImplementation(async () => makeUser());
     identityMocks.unlinkXAccountFromUser.mockResolvedValue(undefined);
     identityMocks.linkXAccountToUser.mockImplementation(async () => makeUser());
+    identityMocks.getDefaultTenantMembershipForUser.mockImplementation(async () => {
+      const tenantHex = state.accessRequest.tenantHex || "507f1f77bcf86cd799439033";
+      if (state.userRoles.some((r) => r === "global_admin" || r === "admin")) {
+        return {
+          _id: { toHexString: () => "507f1f77bcf86cd7994390dd" },
+          userId: { toHexString: () => state.userId },
+          tenantId: { toHexString: () => tenantHex },
+          role: "tenant_admin",
+          isDefaultTenant: true,
+          updatedAt: new Date()
+        };
+      }
+      if (
+        state.accessRequestStatus === "approved" &&
+        state.userRoles.some((r) => ["viewer", "operator", "advisor"].includes(r))
+      ) {
+        return {
+          _id: { toHexString: () => "507f1f77bcf86cd7994390dd" },
+          userId: { toHexString: () => state.userId },
+          tenantId: { toHexString: () => tenantHex },
+          role: "member",
+          isDefaultTenant: true,
+          updatedAt: new Date()
+        };
+      }
+      return null;
+    });
     identityMocks.ensureDefaultTenant.mockResolvedValue({
       _id: {
         toHexString: () => "507f1f77bcf86cd799439033"
@@ -425,10 +453,10 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(response.headers.get("location")).toContain("/xchat");
+    expect(response.headers.get("location")).toContain("no_tenant_membership");
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
-    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).toHaveBeenCalledTimes(1);
-    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).not.toHaveBeenCalled();
+    expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
   it("falls back to viewer session when admin allowlist blocks a global admin and ALLOW_ANY_X_USER_LOGIN is enabled", async () => {

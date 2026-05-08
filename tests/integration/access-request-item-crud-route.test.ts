@@ -29,6 +29,7 @@ const identityMocks = vi.hoisted(() => ({
   addRoleToCoreUser: vi.fn(),
   assertCanAddUserToTenant: vi.fn().mockResolvedValue(undefined),
   updateCoreUserSubscriptionPlan: vi.fn(),
+  updateCoreUserAccountStatus: vi.fn().mockResolvedValue(undefined),
   getCoreUserById: vi.fn(),
   upsertTenantMembership: vi.fn(),
   getTenantByHexId: vi.fn().mockResolvedValue({
@@ -153,6 +154,7 @@ describe("access request item CRUD route", () => {
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
     bootstrapMocks.enqueueAccessRequestBootstrap.mockResolvedValue(undefined);
     identityMocks.upsertTenantMembership.mockResolvedValue(undefined);
+    identityMocks.updateCoreUserAccountStatus.mockResolvedValue(undefined);
     identityMocks.getTenantByHexId.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd7994390aa" },
       tenantPreferences: { bootstrap_on_approve: true }

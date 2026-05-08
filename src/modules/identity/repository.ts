@@ -27,6 +27,7 @@ import {
 import type {
     AuthContext,
     CoreUser,
+    CoreUserAccountStatus,
     CoreUserBillingOverride,
     CoreUserOptionsScanPreferences,
     CoreUserStripeSubscriptionStatus,
@@ -133,11 +134,22 @@ export async function upsertCoreUserByEmail(input: {
   email: string;
   roles: CoreUser["roles"];
   status?: CoreUser["status"];
+  accountStatus?: CoreUserAccountStatus;
 }): Promise<CoreUser> {
   await ensureIdentityIndexes();
   const db = await getDb();
   const email = normalizeEmail(input.email);
   const now = new Date();
+
+  const $set: Record<string, unknown> = {
+    email,
+    roles: input.roles,
+    status: input.status ?? "active",
+    updatedAt: now
+  };
+  if (input.accountStatus !== undefined) {
+    $set.accountStatus = input.accountStatus;
+  }
 
   await db.collection<CoreUser>(collections.users).updateOne(
     { email },
@@ -146,12 +158,7 @@ export async function upsertCoreUserByEmail(input: {
         createdAt: now,
         subscriptionPlan: "basic"
       },
-      $set: {
-        email,
-        roles: input.roles,
-        status: input.status ?? "active",
-        updatedAt: now
-      }
+      $set
     },
     { upsert: true }
   );
@@ -893,6 +900,7 @@ export async function createCoreUser(input: {
     roles: [input.role],
     subscriptionPlan: input.subscriptionPlan ?? "basic",
     status: input.status ?? "active",
+    accountStatus: "approved",
     createdAt: now,
     updatedAt: now
   };
@@ -918,6 +926,7 @@ export async function ensureCoreUserByEmail(input: {
         email,
         roles: input.defaultRoles ?? [],
         status: input.defaultStatus ?? "active",
+        accountStatus: "pending_approval" satisfies CoreUserAccountStatus,
         subscriptionPlan: "basic",
         createdAt: now,
         updatedAt: now
@@ -1819,13 +1828,31 @@ export async function upsertTenantMembership(input: {
   return membership;
 }
 
+export async function updateCoreUserAccountStatus(input: {
+  userId: ObjectId;
+  accountStatus: CoreUserAccountStatus;
+}): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: input.userId },
+    {
+      $set: {
+        accountStatus: input.accountStatus,
+        updatedAt: new Date()
+      }
+    }
+  );
+}
+
 export async function ensureSeededGlobalAdmin(
   adminEmail: string
 ): Promise<{ user: CoreUser; tenant: Tenant; membership: TenantMembership }> {
   const user = await upsertCoreUserByEmail({
     email: adminEmail,
     roles: ["global_admin"],
-    status: "active"
+    status: "active",
+    accountStatus: "approved"
   });
   if (!user._id) {
     throw new Error("Seeded user is missing _id");
@@ -1887,6 +1914,15 @@ export async function getDefaultTenantMembershipForUser(
     .limit(1)
     .toArray();
   return rows[0] ?? null;
+}
+
+export async function getTenantMembershipForUserAndTenant(
+  userId: ObjectId,
+  tenantId: ObjectId
+): Promise<TenantMembership | null> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  return db.collection<TenantMembership>(collections.memberships).findOne({ userId, tenantId });
 }
 
 export async function resolveAuthContext(input: {

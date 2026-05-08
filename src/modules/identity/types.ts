@@ -18,6 +18,9 @@ import type { TenantRoleFlags } from "@/modules/platform/tenant-route-policy";
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
 export type { SubscriptionPlan };
 
+/** Access gate for product sessions — OAuth/public signup rows default to pending until admin approves. Omitted on legacy rows → treated as approved. */
+export type CoreUserAccountStatus = "pending_approval" | "approved" | "rejected";
+
 export type CoreUserStripeSubscriptionStatus =
   | "trialing"
   | "active"
@@ -64,6 +67,8 @@ export type CoreUser = {
   xaiCollectionId?: string;
   xaiCollectionName?: string;
   status: "active" | "suspended";
+  /** Product access approval (distinct from {@link status} suspension). */
+  accountStatus?: CoreUserAccountStatus;
   xAccount?: {
     xUserId: string;
     username: string;

@@ -311,6 +311,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/internal/authz/session-grounding",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "admin-system"
+  },
+  {
     path: "/api/integrations/ibkr/status",
     operations: [{ method: "GET", auth: "session" }],
     tag: "integrations"

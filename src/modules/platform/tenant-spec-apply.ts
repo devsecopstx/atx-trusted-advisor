@@ -68,6 +68,7 @@ async function provisionInitialTenantAdmin(
       $set: {
         roles,
         status: "active",
+        accountStatus: "approved",
         updatedAt: now
       }
     },

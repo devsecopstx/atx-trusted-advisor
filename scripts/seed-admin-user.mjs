@@ -639,6 +639,7 @@ async function seed() {
         $set: {
           roles: ["global_admin"],
           status: "active",
+          accountStatus: "approved",
           subscriptionPlan: DEFAULT_SEED_SUBSCRIPTION_PLAN,
           updatedAt: now,
           ...xPre

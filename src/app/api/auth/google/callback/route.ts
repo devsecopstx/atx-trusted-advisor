@@ -27,6 +27,7 @@ import {
     createAccessRequest,
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
+import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
@@ -317,6 +318,20 @@ export async function GET(request: Request) {
   if (!hasLoginRole && !shouldAllowFallbackLogin) {
     await ensurePendingOperatorAccessRequestAfterGoogleOAuth(user);
     return redirectWithLoginAudit("access_request_pending", {
+      userId: user._id.toHexString(),
+      xUserId: identity.xUserId,
+      username: identity.username,
+      email: user.email
+    });
+  }
+
+  if (!isCoreUserAccountAccessApproved(user)) {
+    if (user.accountStatus !== "rejected") {
+      await ensurePendingOperatorAccessRequestAfterGoogleOAuth(user);
+    }
+    const err =
+      user.accountStatus === "rejected" ? "account_rejected" : "account_pending_approval";
+    return redirectWithLoginAudit(err, {
       userId: user._id.toHexString(),
       xUserId: identity.xUserId,
       username: identity.username,

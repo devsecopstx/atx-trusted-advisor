@@ -41,7 +41,7 @@ const identityMocks = vi.hoisted(() => {
     linkXAccountToUser: vi.fn(),
     ensureDefaultTenant: vi.fn(),
     dedupeDefaultTenantMembershipsForUser: vi.fn().mockResolvedValue(undefined),
-    getDefaultTenantMembershipForUser: vi.fn().mockResolvedValue(null),
+    getDefaultTenantMembershipForUser: vi.fn(),
     upsertTenantMembership: vi.fn(),
     resolveAuthContext: vi.fn(),
     ensureCoreUserByEmail: vi.fn(),
@@ -115,6 +115,15 @@ describe("X OAuth without email + ADMIN_SEED_X_USER_ID", () => {
 
     coreAdminMocks.getPendingAccessRequestByUserAndRole.mockResolvedValue(null);
     coreAdminMocks.createAccessRequest.mockResolvedValue(undefined);
+
+    identityMocks.getDefaultTenantMembershipForUser.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd7994390dd" },
+      userId: { toHexString: () => adminUserId },
+      tenantId: { toHexString: () => "507f1f77bcf86cd799439033" },
+      role: "tenant_admin",
+      isDefaultTenant: true,
+      updatedAt: new Date()
+    });
 
     identityMocks.getCoreUserByXIdentity.mockResolvedValue(null);
     identityMocks.getCoreUserByEmail.mockResolvedValue(null);

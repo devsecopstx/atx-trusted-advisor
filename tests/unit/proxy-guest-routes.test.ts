@@ -52,6 +52,9 @@ describe("proxy (middleware) guest HTML routes", () => {
           : input instanceof URL
             ? input.href
             : (input as Request).url;
+      if (url.includes("/api/internal/authz/session-grounding")) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
       if (url.includes("/api/internal/authz/billing-access")) {
         return new Response(JSON.stringify({ data: { requiresBilling: false } }), { status: 200 });
       }

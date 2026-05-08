@@ -24,6 +24,7 @@ import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages
 import { buildXIdentityPlaceholderEmail, isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { resolveXOAuthRedirectUri } from "@/lib/x-oauth-redirect-uri";
 import { createAccessRequest, getPendingAccessRequestByUserAndRole } from "@/modules/core-admin/repository";
+import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { issueEmailVerificationForUser } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
@@ -343,6 +344,20 @@ export async function GET(request: Request) {
   }
   if (!user._id) {
     return redirectWithLoginAudit("access_request_pending", {
+      xUserId: xIdentity.xUserId,
+      username: xIdentity.username,
+      email: user.email
+    });
+  }
+
+  if (!isCoreUserAccountAccessApproved(user)) {
+    if (user.accountStatus !== "rejected") {
+      await ensurePendingOperatorAccessRequestAfterOAuth(user);
+    }
+    const err =
+      user.accountStatus === "rejected" ? "account_rejected" : "account_pending_approval";
+    return redirectWithLoginAudit(err, {
+      userId: user._id.toHexString(),
       xUserId: xIdentity.xUserId,
       username: xIdentity.username,
       email: user.email

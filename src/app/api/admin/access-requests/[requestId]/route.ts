@@ -34,6 +34,7 @@ import {
     assertCanAddUserToTenant,
     getCoreUserById,
     getTenantByHexId,
+    updateCoreUserAccountStatus,
     updateCoreUserSubscriptionPlan,
     upsertTenantMembership
 } from "@/modules/identity/repository";
@@ -300,6 +301,10 @@ async function handleUpdate(request: Request, context: RouteContext) {
         role: "member",
         isDefaultTenant: true
       });
+      await updateCoreUserAccountStatus({
+        userId,
+        accountStatus: "approved"
+      });
     } catch (error) {
       if (isTenantMembershipCapExceededError(error)) {
         return NextResponse.json(
@@ -350,6 +355,20 @@ async function handleUpdate(request: Request, context: RouteContext) {
       }
     } catch (error) {
       console.error("[access-request/approve] tenant policy lookup failed", error);
+    }
+  }
+
+  if (
+    parsed.data.status === "rejected" &&
+    ObjectId.isValid(existing.userId)
+  ) {
+    const uid = new ObjectId(existing.userId);
+    const applicant = await getCoreUserById(uid);
+    if (applicant?.accountStatus === "pending_approval") {
+      await updateCoreUserAccountStatus({
+        userId: uid,
+        accountStatus: "rejected"
+      });
     }
   }
 

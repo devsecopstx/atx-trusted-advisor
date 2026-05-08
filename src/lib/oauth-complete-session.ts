@@ -10,15 +10,14 @@ import { resolveSessionLandingPath } from "@/lib/default-landing-path";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
+import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     dedupeDefaultTenantMembershipsForUser,
-    ensureDefaultTenant,
     getDefaultTenantMembershipForUser,
     recordUserSuccessfulLogin,
-    resolveAuthContext,
-    upsertTenantMembership
+    resolveAuthContext
 } from "@/modules/identity/repository";
 import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 import type { CoreUser } from "@/modules/identity/types";
@@ -88,12 +87,11 @@ export async function finalizeOAuthSessionAndRedirect(options: {
     return NextResponse.redirect(new URL("/login?error=not_authorized_admin", origin));
   }
 
-  const tenant = await ensureDefaultTenant();
-  if (!tenant._id) {
+  if (user.status === "suspended") {
     await appendLoginAuditRecord({
       outcome: "failure",
       provider,
-      errorCode: "tenant_bootstrap_failed",
+      errorCode: "user_suspended",
       clientIp: loginMeta?.clientIp,
       country: loginMeta?.country,
       userAgent: loginMeta?.userAgent,
@@ -102,19 +100,46 @@ export async function finalizeOAuthSessionAndRedirect(options: {
       username: identity.username,
       email: user.email
     });
-    return NextResponse.redirect(new URL("/login?error=tenant_bootstrap_failed", origin));
+    return NextResponse.redirect(new URL("/xchat?error=user_suspended", origin));
+  }
+
+  if (!isCoreUserAccountAccessApproved(user)) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider,
+      errorCode: user.accountStatus === "rejected" ? "account_rejected" : "account_pending_approval",
+      clientIp: loginMeta?.clientIp,
+      country: loginMeta?.country,
+      userAgent: loginMeta?.userAgent,
+      userId: userObjectId.toHexString(),
+      xUserId: identity.xUserId,
+      username: identity.username,
+      email: user.email
+    });
+    const err =
+      user.accountStatus === "rejected" ? "account_rejected" : "account_pending_approval";
+    return NextResponse.redirect(new URL(`/xchat?error=${encodeURIComponent(err)}`, origin));
   }
 
   try {
     await dedupeDefaultTenantMembershipsForUser(userObjectId);
     const existingDefault = await getDefaultTenantMembershipForUser(userObjectId);
-    if (!existingDefault) {
-      await upsertTenantMembership({
-        userId: userObjectId,
-        tenantId: tenant._id,
-        role: "tenant_admin",
-        isDefaultTenant: true
+    if (!existingDefault?.tenantId) {
+      await appendLoginAuditRecord({
+        outcome: "failure",
+        provider,
+        errorCode: "no_tenant_membership",
+        clientIp: loginMeta?.clientIp,
+        country: loginMeta?.country,
+        userAgent: loginMeta?.userAgent,
+        userId: userObjectId.toHexString(),
+        xUserId: identity.xUserId,
+        username: identity.username,
+        email: user.email
       });
+      return NextResponse.redirect(
+        new URL("/xchat?error=no_tenant_membership", origin)
+      );
     }
     const authContext = await resolveAuthContext({ user });
     const hasLoginRole = canUserLogin(user.roles);

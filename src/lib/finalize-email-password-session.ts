@@ -2,6 +2,7 @@ import { createSession } from "@/lib/auth";
 import type { ClientLoginMeta } from "@/lib/client-request-meta";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
+import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
 import { canUserLogin, normalizeCoreRoles } from "@/modules/identity/authorization";
 import {
     recordUserSuccessfulLogin,
@@ -12,7 +13,12 @@ import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-pl
 
 export class EmailPasswordSessionError extends Error {
   constructor(
-    public readonly code: "missing_user" | "not_authorized" | "suspended" | "no_tenant"
+    public readonly code:
+      | "missing_user"
+      | "not_authorized"
+      | "suspended"
+      | "no_tenant"
+      | "account_not_approved"
   ) {
     super(code);
     this.name = "EmailPasswordSessionError";
@@ -32,6 +38,9 @@ export async function finalizeEmailPasswordSession(input: {
   }
   if (user.status === "suspended") {
     throw new EmailPasswordSessionError("suspended");
+  }
+  if (!isCoreUserAccountAccessApproved(user)) {
+    throw new EmailPasswordSessionError("account_not_approved");
   }
   if (!canUserLogin(user.roles)) {
     throw new EmailPasswordSessionError("not_authorized");
