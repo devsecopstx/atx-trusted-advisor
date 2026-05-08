@@ -19,7 +19,7 @@
 
 ## Per-user xAI collections (retired / off)
 
-- **`XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION`** appears in **`.env.example`** as an *opt-in legacy* path (Mongo → per-user xAI upload via `user_history_agent`). In production code, **`isXchatUserHistoryXaiCollectionEnabled()`** in [`xchat-platform-settings.ts`](../../src/modules/xchat/xchat-platform-settings.ts) currently returns **`false`**, so OAuth bootstrap, `/api/xchat/collections` **user_history**, and `user_history_agent` **do not** upload turns to xAI regardless of that env flag.
+- **Per-user xAI history (`user_history`)** is gated by Mongo **`xchat_user_preferences`**: the user must enable **“Keep last 10 messages”** and the secondary **“Enable long-term xAI memory…”** toggle. Only then does OAuth bootstrap (when prefs already saved), **`GET /api/xchat/collections`** expose **`user_history`**, and **`user_history_agent`** upload pending `xchat_logs` turns. Opt-out / purge clears the xAI collection binding — see [`../sre-ops/audit-lineage-and-controls.md`](../sre-ops/audit-lineage-and-controls.md) § xChat long-term xAI memory.
 - Re-enabling would require an explicit product change to that function (and tests), not only env.
 
 ## Remote xAI conversation state

@@ -39,6 +39,7 @@ data class AtxfinanceProperties(
     val ragFilesCollection: String = "xai_collections",
     val ragChunksCollection: String = "xchat_rag_chunks",
     val xchatLogsCollection: String = "xchat_logs",
+    val xchatUserPreferencesCollection: String = "xchat_user_preferences",
     val defaultExtBrokerRef: String = "extBrokerName",
     val defaultAccountCashBalance: Double = 25_000.0,
     val tenantPortfolioOrgKey: String = "org-atx-finance",

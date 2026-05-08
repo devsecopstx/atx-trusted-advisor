@@ -1,4 +1,4 @@
-import { MongoServerError, ObjectId } from "mongodb";
+import { MongoServerError, ObjectId, type UpdateFilter } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 
@@ -9,7 +9,10 @@ export type XchatUserPreferences = {
   userId: ObjectId;
   tenantId?: ObjectId;
   keepLastTenMessages: boolean;
+  /** Requires `keepLastTenMessages`; drives xAI `user_history` collection + `user-history` agent sync. */
+  enableLongTermXaiMemory?: boolean;
   consentedAt?: Date;
+  xaiMemoryConsentedAt?: Date;
   updatedAt: Date;
 };
 
@@ -51,18 +54,38 @@ export async function getXchatUserPreferences(input: {
     .next();
 }
 
+/** Opt-in xAI `user_history` uploads + agent sync; never true without Mongo history retention. */
+export async function userHasLongTermXaiMemoryEnabled(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+}): Promise<boolean> {
+  const prefs = await getXchatUserPreferences(input);
+  return prefs?.keepLastTenMessages === true && prefs?.enableLongTermXaiMemory === true;
+}
+
 export async function upsertXchatUserPreferences(input: {
   userId: ObjectId;
   tenantId?: ObjectId | null;
   keepLastTenMessages: boolean;
+  enableLongTermXaiMemory?: boolean;
 }): Promise<XchatUserPreferences> {
   await ensureIndexes();
   const db = await getDb();
   const collection = db.collection<XchatUserPreferences>(COLLECTION);
+  const existing = await getXchatUserPreferences({ userId: input.userId, tenantId: input.tenantId });
+  let enableLongTerm =
+    input.enableLongTermXaiMemory !== undefined
+      ? input.enableLongTermXaiMemory
+      : Boolean(existing?.enableLongTermXaiMemory);
+  if (!input.keepLastTenMessages) {
+    enableLongTerm = false;
+  }
+
   const now = new Date();
   const setFields: Record<string, unknown> = {
     userId: input.userId,
     keepLastTenMessages: input.keepLastTenMessages,
+    enableLongTermXaiMemory: enableLongTerm,
     updatedAt: now
   };
   if (input.tenantId) {
@@ -71,15 +94,21 @@ export async function upsertXchatUserPreferences(input: {
   if (input.keepLastTenMessages) {
     setFields.consentedAt = now;
   }
+  if (enableLongTerm) {
+    setFields.xaiMemoryConsentedAt =
+      existing?.enableLongTermXaiMemory === true && existing.xaiMemoryConsentedAt
+        ? existing.xaiMemoryConsentedAt
+        : now;
+  }
+
+  const updateModifiers: UpdateFilter<XchatUserPreferences> = { $set: setFields as never };
+  if (!enableLongTerm) {
+    updateModifiers.$unset = { xaiMemoryConsentedAt: "" };
+  }
+
   if (input.tenantId) {
     const query: Record<string, unknown> = { userId: input.userId, tenantId: input.tenantId };
-    await collection.updateOne(
-      query,
-      {
-        $set: setFields
-      },
-      { upsert: true }
-    );
+    await collection.updateOne(query, updateModifiers, { upsert: true });
     const updated = await collection.findOne(query);
     if (!updated) {
       throw new Error("Failed to upsert xChat user preferences");
@@ -91,21 +120,18 @@ export async function upsertXchatUserPreferences(input: {
     userId: input.userId,
     $or: [{ tenantId: null }, { tenantId: { $exists: false } }]
   };
-  const existing = await collection.find(noTenantQuery).sort({ updatedAt: -1, _id: -1 }).limit(1).next();
+  const existingRow = await collection.find(noTenantQuery).sort({ updatedAt: -1, _id: -1 }).limit(1).next();
 
-  if (existing?._id) {
-    await collection.updateOne(
-      { _id: existing._id },
-      {
-        $set: setFields
-      }
-    );
+  if (existingRow?._id) {
+    await collection.updateOne({ _id: existingRow._id }, updateModifiers);
   } else {
     const insertDoc: XchatUserPreferences = {
       userId: input.userId,
       keepLastTenMessages: input.keepLastTenMessages,
+      enableLongTermXaiMemory: enableLongTerm,
       updatedAt: now,
-      ...(input.keepLastTenMessages ? { consentedAt: now } : {})
+      ...(input.keepLastTenMessages ? { consentedAt: now } : {}),
+      ...(enableLongTerm ? { xaiMemoryConsentedAt: now } : {})
     };
     try {
       await collection.insertOne(insertDoc);
@@ -118,12 +144,7 @@ export async function upsertXchatUserPreferences(input: {
       if (!raceWinner?._id) {
         throw error;
       }
-      await collection.updateOne(
-        { _id: raceWinner._id },
-        {
-          $set: setFields
-        }
-      );
+      await collection.updateOne({ _id: raceWinner._id }, updateModifiers);
     }
   }
 

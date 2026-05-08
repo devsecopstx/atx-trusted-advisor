@@ -22,6 +22,10 @@ const teamXaiMocks = vi.hoisted(() => ({
   resolveTeamKbCollectionId: vi.fn()
 }));
 
+const prefsMocks = vi.hoisted(() => ({
+  userHasLongTermXaiMemoryEnabled: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/core-admin/repository", () => settingsMocks);
@@ -32,6 +36,7 @@ vi.mock("@/modules/xchat/repository", async (importOriginal) => {
 vi.mock("@/modules/xchat/team-xai-collection", () => ({
   resolveTeamKbCollectionId: teamXaiMocks.resolveTeamKbCollectionId
 }));
+vi.mock("@/modules/xchat/user-preferences-repository", () => prefsMocks);
 
 import { GET as getCollections } from "@/app/api/xchat/collections/route";
 
@@ -40,6 +45,7 @@ const TEAM_DEFAULT_COLLECTION_ID = "collection_integration_team_default";
 describe("xchat collections route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    prefsMocks.userHasLongTermXaiMemoryEnabled.mockResolvedValue(false);
     teamXaiMocks.resolveTeamKbCollectionId.mockResolvedValue(TEAM_DEFAULT_COLLECTION_ID);
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
@@ -126,7 +132,23 @@ describe("xchat collections route", () => {
     expect(response.status).toBe(401);
   });
 
+  it("includes user_history when long-term xAI memory preference is enabled", async () => {
+    prefsMocks.userHasLongTermXaiMemoryEnabled.mockResolvedValueOnce(true);
+    const response = await getCollections();
+    const payload = (await response.json()) as {
+      data: Array<{ collectionId: string; source: string }>;
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ collectionId: "collection_user_history", source: "user_history" })
+      ])
+    );
+    expect(bootstrapMocks.resolveOrCreateUserBootstrapCollection).toHaveBeenCalled();
+  });
+
   it("gracefully returns defaults when user collection resolve/create fails", async () => {
+    prefsMocks.userHasLongTermXaiMemoryEnabled.mockResolvedValueOnce(true);
     bootstrapMocks.resolveOrCreateUserBootstrapCollection.mockRejectedValueOnce(
       new Error("xai unavailable")
     );

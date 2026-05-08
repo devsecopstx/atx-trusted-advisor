@@ -9,10 +9,11 @@ import type { ScheduledTask } from "@/modules/core-admin/types";
 import {
     listXchatLogsPendingXaiSync,
     markXchatLogXaiSynced,
-    markXchatLogXaiSyncFailed
+    markXchatLogXaiSyncFailed,
+    markXchatLogXaiSyncSkippedNoLongTermConsent
 } from "@/modules/xchat/repository";
 import type { XChatSessionLog } from "@/modules/xchat/types";
-import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
+import { userHasLongTermXaiMemoryEnabled } from "@/modules/xchat/user-preferences-repository";
 
 const DEFAULT_LIMIT = 50;
 
@@ -34,21 +35,34 @@ function logTenantHex(log: XChatSessionLog): string | undefined {
 
 /**
  * Upload one Mongo `xchat_logs` row to the user’s xAI history collection (`user_history` source).
- * Idempotent when `syncedToXaiAt` is already set (returns ok).
+ * Idempotent when `syncedToXaiAt` is already set (returns ok, uploaded=false).
  */
 export async function syncXchatSessionLogToUserCollection(
   log: XChatSessionLog
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!isXchatUserHistoryXaiCollectionEnabled()) {
-    return { ok: true };
-  }
+): Promise<{ ok: true; uploaded: boolean } | { ok: false; error: string }> {
   const logId = log._id;
   const userIdHex = logUserIdHex(log);
   if (!logId || !userIdHex) {
     return { ok: false, error: "skip: missing _id or userId" };
   }
+  const prefsUserId =
+    log.userId instanceof ObjectId ? log.userId : ObjectId.isValid(userIdHex) ? new ObjectId(userIdHex) : null;
+  if (!prefsUserId) {
+    return { ok: false, error: "skip: invalid userId" };
+  }
+  const logTenant = log.tenantId;
+  const prefsTenantId =
+    logTenant instanceof ObjectId
+      ? logTenant
+      : logTenant != null && ObjectId.isValid(String(logTenant))
+        ? new ObjectId(String(logTenant))
+        : null;
+  if (!(await userHasLongTermXaiMemoryEnabled({ userId: prefsUserId, tenantId: prefsTenantId }))) {
+    await markXchatLogXaiSyncSkippedNoLongTermConsent(logId);
+    return { ok: true, uploaded: false };
+  }
   if (log.syncedToXaiAt) {
-    return { ok: true };
+    return { ok: true, uploaded: false };
   }
   const message = log.message?.trim() ?? "";
   const response = log.response?.trim() ?? "";
@@ -82,7 +96,7 @@ export async function syncXchatSessionLogToUserCollection(
       xaiTurnPayloadHash: built.payloadHash,
       xaiTurnRetentionExpiresAt: built.retentionExpiresAt
     });
-    return { ok: true };
+    return { ok: true, uploaded: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await markXchatLogXaiSyncFailed(logId, msg);
@@ -97,13 +111,6 @@ export async function runUserHistoryAgent(
   task: ScheduledTask,
   input?: { limit?: number }
 ): Promise<{ status: "success" | "failed"; output: string }> {
-  if (!isXchatUserHistoryXaiCollectionEnabled()) {
-    return {
-      status: "success",
-      output:
-        "user_history_agent: skipped (set XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION=true to upload turns to per-user xAI collections)."
-    };
-  }
   const limit = input?.limit ?? DEFAULT_LIMIT;
   const tenantOid = task.tenantId ?? undefined;
   const pending = await listXchatLogsPendingXaiSync({
@@ -120,13 +127,18 @@ export async function runUserHistoryAgent(
   }
 
   let synced = 0;
+  let skippedNoLongTermConsent = 0;
   let failed = 0;
   const errors: string[] = [];
 
   for (const log of pending) {
     const r = await syncXchatSessionLogToUserCollection(log);
     if (r.ok) {
-      synced += 1;
+      if (r.uploaded) {
+        synced += 1;
+      } else {
+        skippedNoLongTermConsent += 1;
+      }
     } else {
       failed += 1;
       const logId = log._id;
@@ -141,6 +153,6 @@ export async function runUserHistoryAgent(
   const tail = errors.length > 0 ? ` Errors: ${errors.slice(0, 5).join(" | ")}` : "";
   return {
     status: failed > 0 && synced === 0 ? "failed" : "success",
-    output: `user_history_agent: processed=${String(pending.length)} synced=${String(synced)} failed=${String(failed)}.${tail}`
+    output: `user_history_agent: processed=${String(pending.length)} synced=${String(synced)} skipped_no_long_term_consent=${String(skippedNoLongTermConsent)} failed=${String(failed)}.${tail}`
   };
 }

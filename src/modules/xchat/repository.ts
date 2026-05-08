@@ -563,6 +563,12 @@ const pendingXaiSyncFilter: Record<string, unknown> = {
     },
     {
       $or: [{ xaiTurnFileId: { $exists: false } }, { xaiTurnFileId: null }, { xaiTurnFileId: "" }]
+    },
+    {
+      $or: [
+        { xaiLongTermSyncSkippedAt: { $exists: false } },
+        { xaiLongTermSyncSkippedAt: null }
+      ]
     }
   ]
 };
@@ -605,9 +611,37 @@ export async function markXchatLogXaiSynced(
         xaiTurnRetentionExpiresAt: fields.xaiTurnRetentionExpiresAt,
         syncedToXaiAt: now,
         xaiTurnSyncError: null
+      },
+      $unset: { xaiLongTermSyncSkippedAt: "" }
+    }
+  );
+}
+
+export async function markXchatLogXaiSyncSkippedNoLongTermConsent(logId: ObjectId): Promise<void> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  await db.collection(collections.chatLogs).updateOne(
+    { _id: logId },
+    {
+      $set: {
+        xaiLongTermSyncSkippedAt: new Date(),
+        xaiTurnSyncError: null
       }
     }
   );
+}
+
+/** When the user opts into long-term xAI memory, prior consent-skipped rows become eligible again. */
+export async function clearXchatLogsLongTermSyncSkippedForUser(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+}): Promise<void> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const scoped = mongoXchatLogsTenantScope({ userId: input.userId }, input.tenantId, "userTenant");
+  await db.collection(collections.chatLogs).updateMany(scoped, {
+    $unset: { xaiLongTermSyncSkippedAt: "" }
+  });
 }
 
 export async function markXchatLogXaiSyncFailed(logId: ObjectId, errorMessage: string): Promise<void> {

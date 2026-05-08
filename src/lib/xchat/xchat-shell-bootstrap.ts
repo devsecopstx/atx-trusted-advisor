@@ -22,7 +22,10 @@ export type XchatShellHistoryRow = {
 
 export type XchatServerShellBootstrap = {
   keepLastTenMessages: boolean;
+  /** Opt-in xAI `user_history` / agent sync (only meaningful when `keepLastTenMessages`). */
+  enableLongTermXaiMemory: boolean;
   consentedAt: string | null;
+  xaiMemoryConsentedAt: string | null;
   historyItemsNewestFirst: XchatShellHistoryRow[];
 };
 
@@ -52,7 +55,12 @@ async function readXchatShellBootstrapFromDb(
   const tenantId = tenantIdHex && ObjectId.isValid(tenantIdHex) ? new ObjectId(tenantIdHex) : null;
   const prefs = await getXchatUserPreferences({ userId, tenantId });
   const keepLastTenMessages = prefs?.keepLastTenMessages === true;
+  const enableLongTermXaiMemory =
+    keepLastTenMessages === true && prefs?.enableLongTermXaiMemory === true;
   const consentedAt = prefs?.consentedAt ? prefs.consentedAt.toISOString() : null;
+  const xaiMemoryConsentedAt = prefs?.xaiMemoryConsentedAt
+    ? prefs.xaiMemoryConsentedAt.toISOString()
+    : null;
   /** Shell hydrate: up to 20 turns; tenant `chatHistoryMax` still clamps below when smaller. */
   const cap = Math.min(Math.max(historyCap, 1), 20);
   const rows = keepLastTenMessages
@@ -60,7 +68,9 @@ async function readXchatShellBootstrapFromDb(
     : [];
   return {
     keepLastTenMessages,
+    enableLongTermXaiMemory,
     consentedAt,
+    xaiMemoryConsentedAt,
     historyItemsNewestFirst: rows.map(serializeRow)
   };
 }

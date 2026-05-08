@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
@@ -8,7 +9,7 @@ import {
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
-import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
+import { userHasLongTermXaiMemoryEnabled } from "@/modules/xchat/user-preferences-repository";
 
 type VisibleCollection = {
   collectionId: string;
@@ -34,8 +35,14 @@ export async function GET() {
     });
   }
 
-  if (isXchatUserHistoryXaiCollectionEnabled()) {
-    try {
+  try {
+    const userOid = ObjectId.isValid(session.userId) ? new ObjectId(session.userId) : null;
+    const tenantOid =
+      session.tenantId && ObjectId.isValid(session.tenantId) ? new ObjectId(session.tenantId) : null;
+    if (
+      userOid &&
+      (await userHasLongTermXaiMemoryEnabled({ userId: userOid, tenantId: tenantOid }))
+    ) {
       const userCollection = await resolveOrCreateUserBootstrapCollection({
         userId: session.userId,
         tenantId: session.tenantId
@@ -47,12 +54,12 @@ export async function GET() {
           source: "user_history"
         });
       }
-    } catch (error) {
-      console.warn("[xchat/collections] failed to resolve/create user collection", {
-        userId: session.userId,
-        error: error instanceof Error ? error.message : String(error)
-      });
     }
+  } catch (error) {
+    console.warn("[xchat/collections] failed to resolve/create user collection", {
+      userId: session.userId,
+      error: error instanceof Error ? error.message : String(error)
+    });
   }
 
   const userSettings = await getUserAdminSettings(session.userId, {

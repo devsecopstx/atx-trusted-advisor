@@ -37,8 +37,8 @@ const billingProxyCache = new Map<
 >();
 
 const SESSION_GROUNDING_CACHE_TTL_MS = 15_000;
-/** Avoid hung edge middleware if origin never responds (fail-open via timeout). */
-const SESSION_GROUNDING_FETCH_TIMEOUT_MS = 10_000;
+/** Same-origin internal checks from the edge proxy — bounded wait avoids hung middleware (timeouts fail-open below). */
+const PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS = 10_000;
 const sessionGroundingCache = new Map<string, { ok: boolean; expiresAt: number }>();
 
 export function isSessionEdgeGroundingEnabled(raw = process.env.SESSION_EDGE_GROUNDING): boolean {
@@ -82,7 +82,7 @@ async function resolveSessionGroundingOk(request: NextRequest): Promise<boolean>
         cookie: request.headers.get("cookie") ?? ""
       },
       cache: "no-store",
-      signal: AbortSignal.timeout(SESSION_GROUNDING_FETCH_TIMEOUT_MS)
+      signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
     });
 
     // Fail-open on transient origin errors so refresh / first API call does not wipe a valid session.
@@ -212,7 +212,8 @@ async function resolveTenantUxPolicyDecision(
       headers: {
         cookie: request.headers.get("cookie") ?? ""
       },
-      cache: "no-store"
+      cache: "no-store",
+      signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
     });
     if (!res.ok) {
       logTenantUxPolicyFetchError({
@@ -229,9 +230,25 @@ async function resolveTenantUxPolicyDecision(
       }
       return { allowed: true, redirectPath: "/xchat" };
     }
-    const json = (await res.json()) as {
-      data?: { allowed?: boolean; redirectPath?: string };
-    };
+    let json: { data?: { allowed?: boolean; redirectPath?: string } };
+    try {
+      json = (await res.json()) as { data?: { allowed?: boolean; redirectPath?: string } };
+    } catch (parseErr) {
+      logTenantUxPolicyFetchError({
+        policyPath,
+        ok: false,
+        error: parseErr instanceof Error ? parseErr.message : String(parseErr),
+        reason: "tenant_ux_policy_invalid_json"
+      });
+      if (isTenantUxPolicyFailClosedEnabled()) {
+        return {
+          allowed: false,
+          redirectPath: "/xchat",
+          policyUnavailable: true
+        };
+      }
+      return { allowed: true, redirectPath: "/xchat" };
+    }
     const decision: TenantUxPolicyDecision = {
       allowed: json?.data?.allowed !== false,
       redirectPath: json?.data?.redirectPath?.trim() || "/xchat"
@@ -333,7 +350,8 @@ async function resolveBillingDecision(
       headers: {
         cookie: request.headers.get("cookie") ?? ""
       },
-      cache: "no-store"
+      cache: "no-store",
+      signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
     });
     if (!res.ok) {
       return { requiresBilling: false, state: "approved_unpaid", redirectPath: "/account/billing" };

@@ -67,6 +67,7 @@ import {
     mergeBaseFromRawWatchlistEntry,
     symbolFromRawWatchlistEntry
 } from "@/modules/watchlist/watchlist-row-raw";
+import { clearPerUserXaiHistoryCollectionForUserTenant } from "@/modules/xchat/user-history-xai-purge";
 
 const collections = {
   accessRequests: "admin_access_requests",
@@ -5041,6 +5042,7 @@ async function purgeCoreUserAssociatedData(
   if (!ObjectId.isValid(userIdHex)) {
     return;
   }
+  await clearPerUserXaiHistoryCollectionForUserTenant({ userIdHex });
   await deleteAllPortfoliosOwnedByUser(userIdHex);
   const db = await getDb();
   const oid = new ObjectId(userIdHex);

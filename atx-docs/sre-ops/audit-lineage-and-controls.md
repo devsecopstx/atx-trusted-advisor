@@ -59,6 +59,19 @@ Document this difference in runbooks when debugging “missing” rows across en
 | Policy trace (rule id + version per allow/deny) | **Partial** — product actions log `action` + `details`; no unified policy-version field. |
 | Retention / legal hold | **Ops** — define in deployment policy, not enforced in app code here. |
 
+## xChat long-term xAI memory (`user_history`)
+
+**Product rule:** Mongo remains the default chat record (`xchat_logs`, capped retention). **xAI-hosted long-term memory** is **off** until the user explicitly enables **both** `keepLastTenMessages` and `enableLongTermXaiMemory` on **`xchat_user_preferences`** (see **`PUT /api/xchat/preferences`**).
+
+| Step | Traceability |
+|------|----------------|
+| User enables long-term memory | **`admin_audit_events`**: `entityType` **`core_user`**, `entityId` = user hex, `action` **`xchat_long_term_xai_memory_enabled`**, `details.tenantId`, `details.xaiMemoryConsentedAt`. |
+| User disables long-term memory | Same row shape, `action` **`xchat_long_term_xai_memory_disabled`**. Remote cleanup: **`clearPerUserXaiHistoryCollectionForUserTenant`** (xAI Management **DELETE** collection when key present, unset bootstrap + **`core_users`** xAI ids). |
+| Scheduled / manual **`user-history`** agent | Task run rows in **`admin_task_runs`** (`output` includes `synced`, `skipped_no_long_term_consent`, `failed`). Mongo updates: **`syncedToXaiAt`** + file ids on success; **`xaiLongTermSyncSkippedAt`** when the user has not opted in (excluded from pending scans). |
+| Full user purge (**HNWI deletion**) | **`purgeAllDataAssociatedWithCoreUser`** calls **`clearPerUserXaiHistoryCollectionForUserTenant`** **before** deleting **`xchat_logs`** / prefs so xAI collections are removed when **`XAI_MANAGEMENT_API_KEY`** is configured (fail-open warn-only on API errors). |
+
+**Stack parity:** Next **`runUserHistoryAgent`** / **`syncXchatSessionLogToUserCollection`** and Kotlin **`UserHistoryAgentService`** both honor the same preference flags and **`xaiLongTermSyncSkippedAt`** semantics.
+
 ## Related
 
 - [atx-docs README](../README.md) — full docs index

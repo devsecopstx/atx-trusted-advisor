@@ -110,6 +110,68 @@ describe("proxy (middleware) guest HTML routes", () => {
     }
   });
 
+  it("fail-opens tenant ux policy when internal route returns 200 with invalid JSON (V2 on, fail-open)", async () => {
+    vi.stubEnv("TENANT_UX_ENFORCEMENT_V2", "true");
+    vi.stubEnv("TENANT_UX_POLICY_FAIL_CLOSED", "false");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : (input as Request).url;
+      if (url.includes("/api/internal/authz/session-grounding")) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+      if (url.includes("/api/internal/authz/billing-access")) {
+        return new Response(JSON.stringify({ data: { requiresBilling: false } }), { status: 200 });
+      }
+      if (url.includes("/api/internal/tenant-ux/policy")) {
+        return new Response("not-json", { status: 200 });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    try {
+      const res = await proxy(request("/api/xchat/ask", "signed-tenantux-json-failopen"));
+      expect(res.status).toBeLessThan(400);
+    } finally {
+      fetchSpy.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("returns 503 when tenant ux policy returns invalid JSON and TENANT_UX_POLICY_FAIL_CLOSED=true", async () => {
+    vi.stubEnv("TENANT_UX_ENFORCEMENT_V2", "true");
+    vi.stubEnv("TENANT_UX_POLICY_FAIL_CLOSED", "true");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : (input as Request).url;
+      if (url.includes("/api/internal/authz/session-grounding")) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+      if (url.includes("/api/internal/authz/billing-access")) {
+        return new Response(JSON.stringify({ data: { requiresBilling: false } }), { status: 200 });
+      }
+      if (url.includes("/api/internal/tenant-ux/policy")) {
+        return new Response("not-json", { status: 200 });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    try {
+      const res = await proxy(request("/api/xchat/ask", "signed-tenantux-json-failclosed"));
+      expect(res.status).toBe(503);
+      const json = (await res.json()) as { code?: string };
+      expect(json.code).toBe("tenant_ux_policy_unavailable");
+    } finally {
+      fetchSpy.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("still denies when session-grounding returns 401 (invalid session)", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url =

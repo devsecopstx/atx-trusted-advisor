@@ -35,6 +35,13 @@ Session payload distinguishes:
 
 **Ops script:** **`npm run ops:users:find-orphans`** — lists **`core_users`** without **`core_tenant_memberships`** (data hygiene; not a substitute for grounding).
 
+## Edge billing + tenant UX policy (same-origin internal `fetch`)
+
+**≥3.17.7** — **`GET /api/internal/authz/billing-access`** and **`GET /api/internal/tenant-ux/policy`** use the same **~10s** **`AbortSignal.timeout`** as session grounding so edge middleware does not hang if origin stalls.
+
+- **Billing:** Non-OK responses or **`fetch`** errors already **fail-open** on **`requiresBilling`** (no session cookie clear).
+- **Tenant UX policy:** Malformed JSON on **200** is treated like an outage: **fail-open** (**allow**) unless **`TENANT_UX_POLICY_FAIL_CLOSED`** — then matched **API** paths get **503** **`tenant_ux_policy_unavailable`** (still **no** cookie clear).
+
 ## Surface policy
 
 - `admin_console`: `/admin/*` and `/api/admin/*` (`global_admin` only)

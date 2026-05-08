@@ -290,6 +290,8 @@ export type XChatSessionLog = {
   xaiTurnRetentionExpiresAt?: Date;
   /** Set when markdown turn was uploaded and linked to the user xAI collection (user_history source). */
   syncedToXaiAt?: Date;
+  /** Agent marked row as ineligible for xAI long-term sync (user did not opt into long-term memory). Excluded from pending sync scans. */
+  xaiLongTermSyncSkippedAt?: Date;
   xaiTurnSyncError?: string;
   /** User explicitly opted out of strategy-job handoff for this thread. */
   strategyJobOptOut?: boolean;

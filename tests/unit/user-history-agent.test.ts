@@ -12,23 +12,24 @@ vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 const repoMocks = vi.hoisted(() => ({
   listXchatLogsPendingXaiSync: vi.fn(),
   markXchatLogXaiSynced: vi.fn(),
-  markXchatLogXaiSyncFailed: vi.fn()
+  markXchatLogXaiSyncFailed: vi.fn(),
+  markXchatLogXaiSyncSkippedNoLongTermConsent: vi.fn()
 }));
 
 vi.mock("@/modules/xchat/repository", () => repoMocks);
 
-const settingsMocks = vi.hoisted(() => ({
-  isXchatUserHistoryXaiCollectionEnabled: vi.fn()
+const prefsMocks = vi.hoisted(() => ({
+  userHasLongTermXaiMemoryEnabled: vi.fn()
 }));
 
-vi.mock("@/modules/xchat/xchat-platform-settings", () => settingsMocks);
+vi.mock("@/modules/xchat/user-preferences-repository", () => prefsMocks);
 
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 
 describe("runUserHistoryAgent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    settingsMocks.isXchatUserHistoryXaiCollectionEnabled.mockReturnValue(true);
+    prefsMocks.userHasLongTermXaiMemoryEnabled.mockResolvedValue(true);
   });
 
   it("returns success with zero pending", async () => {
@@ -46,11 +47,30 @@ describe("runUserHistoryAgent", () => {
     expect(r.output).toContain("no pending");
   });
 
-  it("skips entirely when per-user xAI sync env is disabled", async () => {
-    settingsMocks.isXchatUserHistoryXaiCollectionEnabled.mockReturnValue(false);
+  it("marks consent skip when long-term xAI memory is disabled for user", async () => {
+    prefsMocks.userHasLongTermXaiMemoryEnabled.mockResolvedValue(false);
+    const logId = new ObjectId();
+    const uid = new ObjectId();
+    repoMocks.listXchatLogsPendingXaiSync.mockResolvedValueOnce([
+      {
+        _id: logId,
+        userId: uid,
+        tenantId: null,
+        requestId: "r1",
+        correlationId: "c1",
+        message: "hi",
+        response: "hello",
+        model: "grok-test",
+        personaName: "Ops",
+        scope: "global",
+        contextChunkIds: [],
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        retentionExpiresAt: new Date("2026-02-01T00:00:00.000Z")
+      }
+    ]);
     const task = {
       _id: new ObjectId(),
-      tenantId: new ObjectId(),
+      tenantId: undefined,
       name: "user_history_agent",
       category: "user-history" as const,
       scheduleCron: "0 * * * *",
@@ -58,8 +78,10 @@ describe("runUserHistoryAgent", () => {
     };
     const r = await runUserHistoryAgent(task);
     expect(r.status).toBe("success");
-    expect(r.output).toContain("skipped");
-    expect(repoMocks.listXchatLogsPendingXaiSync).not.toHaveBeenCalled();
+    expect(r.output).toContain("skipped_no_long_term_consent=1");
+    expect(r.output).toContain("synced=0");
+    expect(repoMocks.markXchatLogXaiSyncSkippedNoLongTermConsent).toHaveBeenCalledWith(logId);
+    expect(bootstrapMocks.uploadBuiltXchatTurnToXaiCollection).not.toHaveBeenCalled();
   });
 
   it("syncs one log and marks synced", async () => {

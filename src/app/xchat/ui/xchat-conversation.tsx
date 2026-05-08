@@ -84,7 +84,9 @@ type AskToolCallSummary = {
 
 type XchatPrivacyPrefs = {
   keepLastTenMessages: boolean;
+  enableLongTermXaiMemory: boolean;
   consentedAt: string | null;
+  xaiMemoryConsentedAt: string | null;
 };
 
 export type XchatConversationProps = {
@@ -387,7 +389,9 @@ export function XchatConversation({
     serverBootstrap
       ? {
           keepLastTenMessages: serverBootstrap.keepLastTenMessages,
-          consentedAt: serverBootstrap.consentedAt
+          enableLongTermXaiMemory: serverBootstrap.enableLongTermXaiMemory,
+          consentedAt: serverBootstrap.consentedAt,
+          xaiMemoryConsentedAt: serverBootstrap.xaiMemoryConsentedAt
         }
       : null
   );
@@ -654,7 +658,9 @@ export function XchatConversation({
         }
         const next: XchatPrivacyPrefs = {
           keepLastTenMessages: payload.data?.keepLastTenMessages === true,
-          consentedAt: payload.data?.consentedAt ?? null
+          enableLongTermXaiMemory: payload.data?.enableLongTermXaiMemory === true,
+          consentedAt: payload.data?.consentedAt ?? null,
+          xaiMemoryConsentedAt: payload.data?.xaiMemoryConsentedAt ?? null
         };
         setPrivacyPrefs(next);
       } catch (error) {
@@ -663,7 +669,9 @@ export function XchatConversation({
         }
         setPrivacyPrefs({
           keepLastTenMessages: false,
-          consentedAt: null
+          enableLongTermXaiMemory: false,
+          consentedAt: null,
+          xaiMemoryConsentedAt: null
         });
         setPrivacyPrefsError(error instanceof Error ? error.message : "Failed to load privacy settings");
       } finally {
@@ -1054,36 +1062,74 @@ export function XchatConversation({
     });
   }, [initialXchatItem]);
 
-  const setKeepLastTenMessages = useCallback(
-    async (enabled: boolean) => {
-      setPrivacyPrefsSaving(true);
-      setPrivacyPrefsError(null);
-      try {
-        const response = await fetch("/api/xchat/preferences", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ keepLastTenMessages: enabled })
-        });
-        const payload = (await response.json().catch(() => ({}))) as {
-          data?: XchatPrivacyPrefs;
-          error?: string;
-        };
-        if (!response.ok) {
-          throw new Error(payload.error ?? `Preferences update failed (${response.status})`);
-        }
-        setPrivacyPrefs({
-          keepLastTenMessages: payload.data?.keepLastTenMessages === true,
-          consentedAt: payload.data?.consentedAt ?? null
-        });
-      } catch (error) {
-        setPrivacyPrefsError(error instanceof Error ? error.message : "Failed to update privacy setting");
-      } finally {
-        setPrivacyPrefsSaving(false);
+  const setKeepLastTenMessages = useCallback(async (enabled: boolean) => {
+    setPrivacyPrefsSaving(true);
+    setPrivacyPrefsError(null);
+    try {
+      const response = await fetch("/api/xchat/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          keepLastTenMessages: enabled,
+          enableLongTermXaiMemory: enabled ? (privacyPrefs?.enableLongTermXaiMemory ?? false) : false
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        data?: XchatPrivacyPrefs;
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Preferences update failed (${response.status})`);
       }
-    },
-    []
-  );
+      setPrivacyPrefs({
+        keepLastTenMessages: payload.data?.keepLastTenMessages === true,
+        enableLongTermXaiMemory: payload.data?.enableLongTermXaiMemory === true,
+        consentedAt: payload.data?.consentedAt ?? null,
+        xaiMemoryConsentedAt: payload.data?.xaiMemoryConsentedAt ?? null
+      });
+    } catch (error) {
+      setPrivacyPrefsError(error instanceof Error ? error.message : "Failed to update privacy setting");
+    } finally {
+      setPrivacyPrefsSaving(false);
+    }
+  }, [privacyPrefs?.enableLongTermXaiMemory]);
+
+  const setEnableLongTermXaiMemory = useCallback(async (enabled: boolean) => {
+    if (!privacyPrefs?.keepLastTenMessages) {
+      return;
+    }
+    setPrivacyPrefsSaving(true);
+    setPrivacyPrefsError(null);
+    try {
+      const response = await fetch("/api/xchat/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          keepLastTenMessages: true,
+          enableLongTermXaiMemory: enabled
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        data?: XchatPrivacyPrefs;
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Preferences update failed (${response.status})`);
+      }
+      setPrivacyPrefs({
+        keepLastTenMessages: payload.data?.keepLastTenMessages === true,
+        enableLongTermXaiMemory: payload.data?.enableLongTermXaiMemory === true,
+        consentedAt: payload.data?.consentedAt ?? null,
+        xaiMemoryConsentedAt: payload.data?.xaiMemoryConsentedAt ?? null
+      });
+    } catch (error) {
+      setPrivacyPrefsError(error instanceof Error ? error.message : "Failed to update privacy setting");
+    } finally {
+      setPrivacyPrefsSaving(false);
+    }
+  }, [privacyPrefs?.keepLastTenMessages]);
 
   const deleteChatHistoryNow = useCallback(async () => {
     setHistoryDeleteBusy(true);
@@ -1681,6 +1727,26 @@ export function XchatConversation({
                         />
                       </label>
                     </div>
+                    {privacyPrefs?.keepLastTenMessages === true ? (
+                      <div className="xchat-sidebar-privacy-row">
+                        <span className="xchat-sidebar-privacy-row__label">
+                          Enable long-term xAI memory for personalized strategy continuity?
+                        </span>
+                        <label
+                          className="xchat-sidebar-privacy-row__control"
+                          aria-label="Enable long-term xAI memory for personalized strategy continuity"
+                        >
+                          <input
+                            checked={privacyPrefs?.enableLongTermXaiMemory === true}
+                            disabled={privacyPrefsLoading || privacyPrefsSaving}
+                            onChange={(e) => {
+                              void setEnableLongTermXaiMemory(e.target.checked);
+                            }}
+                            type="checkbox"
+                          />
+                        </label>
+                      </div>
+                    ) : null}
                     <details className="xchat-sidebar-privacy-note">
                       <summary className="xchat-sidebar-privacy-note__summary">Privacy details</summary>
                       <div className="xchat-sidebar-privacy-note__body">

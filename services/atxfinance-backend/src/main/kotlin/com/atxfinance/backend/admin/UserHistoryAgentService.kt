@@ -34,6 +34,10 @@ class UserHistoryAgentService(
                 Criteria.where("xaiTurnFileId").`is`(null),
                 Criteria.where("xaiTurnFileId").`is`(""),
             ),
+            Criteria().orOperator(
+                Criteria.where("xaiLongTermSyncSkippedAt").`is`(null),
+                Criteria.where("xaiLongTermSyncSkippedAt").exists(false),
+            ),
         )
         val q = Query.query(pendingWithTenantScope(pendingCriteria, tenantIdHex))
             .with(Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("_id")))
@@ -43,6 +47,7 @@ class UserHistoryAgentService(
             return "success" to "user_history_agent: no pending xchat turns (tenant=${tenantIdHex ?: "all"})."
         }
         var synced = 0
+        var skippedNoLongTermConsent = 0
         var failed = 0
         val errors = mutableListOf<String>()
         for (doc in pending) {
@@ -51,6 +56,12 @@ class UserHistoryAgentService(
             if (logId == null || userIdHex.isNullOrBlank()) {
                 failed += 1
                 errors.add("skip: missing _id or userId")
+                continue
+            }
+            val logTenant = extractTenantObjectId(doc)
+            if (!userOptedInLongTermXaiMemory(userIdHex, logTenant)) {
+                markSkippedNoLongTermConsent(logId)
+                skippedNoLongTermConsent += 1
                 continue
             }
             val message = doc.getString("message")?.trim().orEmpty()
@@ -85,7 +96,7 @@ class UserHistoryAgentService(
             ""
         }
         val status = if (failed > 0 && synced == 0) "failed" else "success"
-        return status to "user_history_agent: processed=${pending.size} synced=$synced failed=$failed.$tail"
+        return status to "user_history_agent: processed=${pending.size} synced=$synced skipped_no_long_term_consent=$skippedNoLongTermConsent failed=$failed.$tail"
     }
 
     private fun extractUserIdHex(doc: Document): String? {
@@ -95,6 +106,45 @@ class UserHistoryAgentService(
             is String -> raw.trim().takeIf { it.isNotEmpty() }
             else -> raw.toString().trim().takeIf { it.isNotEmpty() }
         }
+    }
+
+    private fun extractTenantObjectId(doc: Document): ObjectId? {
+        val raw = doc["tenantId"] ?: return null
+        return when (raw) {
+            is ObjectId -> raw
+            is String -> raw.trim().takeIf { it.isNotEmpty() && ObjectId.isValid(it) }?.let { ObjectId(it) }
+            else -> null
+        }
+    }
+
+    /** Mirrors Next `userHasLongTermXaiMemoryEnabled` — both flags must be true on `xchat_user_preferences`. */
+    private fun userOptedInLongTermXaiMemory(userIdHex: String, logTenant: ObjectId?): Boolean {
+        if (!ObjectId.isValid(userIdHex)) {
+            return false
+        }
+        val uid = ObjectId(userIdHex)
+        val prefsMatch =
+            Criteria.where("userId").`is`(uid)
+                .and("keepLastTenMessages").`is`(true)
+                .and("enableLongTermXaiMemory").`is`(true)
+        val tenantFlex =
+            if (logTenant != null) {
+                Criteria().orOperator(
+                    Criteria.where("tenantId").`is`(logTenant),
+                    Criteria.where("tenantId").`is`(null),
+                    Criteria.where("tenantId").exists(false),
+                )
+            } else {
+                Criteria().orOperator(
+                    Criteria.where("tenantId").`is`(null),
+                    Criteria.where("tenantId").exists(false),
+                )
+            }
+        val q =
+            Query.query(Criteria().andOperator(prefsMatch, tenantFlex))
+                .with(Sort.by(Sort.Direction.DESC, "updatedAt"))
+                .limit(1)
+        return mongoTemplate.exists(q, props.xchatUserPreferencesCollection)
     }
 
     private fun resolveUserXaiCollectionId(userIdHex: String, tenantIdHex: String?): String? {
@@ -193,6 +243,7 @@ class UserHistoryAgentService(
                 set("xaiTurnRetentionExpiresAt", retentionExpiresAt)
                 set("syncedToXaiAt", Date())
                 set("xaiTurnSyncError", null)
+                unset("xaiLongTermSyncSkippedAt")
             },
             props.xchatLogsCollection,
         )
@@ -202,6 +253,17 @@ class UserHistoryAgentService(
         mongoTemplate.updateFirst(
             Query.query(Criteria.where("_id").`is`(logId)),
             Update().set("xaiTurnSyncError", err.take(min(err.length, 2000))),
+            props.xchatLogsCollection,
+        )
+    }
+
+    private fun markSkippedNoLongTermConsent(logId: ObjectId) {
+        mongoTemplate.updateFirst(
+            Query.query(Criteria.where("_id").`is`(logId)),
+            Update().apply {
+                set("xaiLongTermSyncSkippedAt", Date())
+                set("xaiTurnSyncError", null)
+            },
             props.xchatLogsCollection,
         )
     }

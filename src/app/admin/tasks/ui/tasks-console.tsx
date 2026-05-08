@@ -666,6 +666,7 @@ export function TasksConsole() {
                               className="crud-input text-sm"
                               disabled={loading}
                               value={m.name}
+                              title={id ? `Job id: ${id}` : undefined}
                               onChange={(e) =>
                                 setEdits((prev) => ({
                                   ...prev,
@@ -1047,7 +1048,9 @@ export function TasksConsole() {
                   <tbody>
                     {filteredSortedRuns.map((run) => (
                       <tr key={run._id ?? run.startedAt}>
-                        <td>{run.taskName}</td>
+                        <td>
+                          <span title={`Job id: ${run.taskId}`}>{run.taskName}</span>
+                        </td>
                         <td>{JOB_TYPE_LABELS[run.category as ScheduledTaskDoc["category"]] ?? run.category}</td>
                         <td>
                           <span

@@ -21,7 +21,7 @@ import {
 } from "@/modules/identity/repository";
 import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 import type { CoreUser } from "@/modules/identity/types";
-import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
+import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 
 export type OAuthLinkedIdentity = {
   xUserId: string;
@@ -174,25 +174,29 @@ export async function finalizeOAuthSessionAndRedirect(options: {
       });
     }
 
-    if (isXchatUserHistoryXaiCollectionEnabled()) {
-      try {
+    try {
+      const prefs = await getXchatUserPreferences({
+        userId: authContext.userId,
+        tenantId: authContext.tenantId
+      });
+      if (prefs?.keepLastTenMessages === true && prefs?.enableLongTermXaiMemory === true) {
         await resolveOrCreateUserBootstrapCollection({
           userId: authContext.userId.toHexString(),
           tenantId: authContext.tenantId.toHexString(),
           email: user.email
         });
-      } catch (historyCollectionError) {
-        console.warn(
-          "[auth/oauth] per-user xChat history xAI collection non-fatal; will retry on /api/xchat/collections",
-          {
-            userId: authContext.userId.toHexString(),
-            message:
-              historyCollectionError instanceof Error
-                ? historyCollectionError.message
-                : String(historyCollectionError)
-          }
-        );
       }
+    } catch (historyCollectionError) {
+      console.warn(
+        "[auth/oauth] per-user xChat history xAI collection non-fatal; will retry on /api/xchat/collections",
+        {
+          userId: authContext.userId.toHexString(),
+          message:
+            historyCollectionError instanceof Error
+              ? historyCollectionError.message
+              : String(historyCollectionError)
+        }
+      );
     }
 
     try {

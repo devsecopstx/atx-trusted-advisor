@@ -9,7 +9,7 @@ import {
     resolveAuthContext
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
-import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
+import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 
 export class EmailPasswordSessionError extends Error {
   constructor(
@@ -66,22 +66,26 @@ export async function finalizeEmailPasswordSession(input: {
     });
   }
 
-  if (isXchatUserHistoryXaiCollectionEnabled()) {
-    try {
+  try {
+    const prefs = await getXchatUserPreferences({
+      userId: authContext.userId,
+      tenantId: authContext.tenantId
+    });
+    if (prefs?.keepLastTenMessages === true && prefs?.enableLongTermXaiMemory === true) {
       await resolveOrCreateUserBootstrapCollection({
         userId: authContext.userId.toHexString(),
         tenantId: authContext.tenantId.toHexString(),
         email: user.email
       });
-    } catch (historyCollectionError) {
-      console.warn("[auth/email] per-user xChat history xAI collection non-fatal", {
-        userId: authContext.userId.toHexString(),
-        message:
-          historyCollectionError instanceof Error
-            ? historyCollectionError.message
-            : String(historyCollectionError)
-      });
     }
+  } catch (historyCollectionError) {
+    console.warn("[auth/email] per-user xChat history xAI collection non-fatal", {
+      userId: authContext.userId.toHexString(),
+      message:
+        historyCollectionError instanceof Error
+          ? historyCollectionError.message
+          : String(historyCollectionError)
+    });
   }
 
   const username = authContext.username ?? user.email.split("@")[0] ?? "user";

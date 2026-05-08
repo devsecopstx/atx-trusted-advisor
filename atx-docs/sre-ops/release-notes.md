@@ -37,6 +37,8 @@ Append a short **Deploy:** clause so ops can scan the log:
 
 ## Entries
 
+- **3.17.7** — **Edge proxy — internal fetch timeouts + tenant UX JSON hardening:** **`src/proxy.ts`** — **`billing-access`** and **`tenant-ux/policy`** same-origin checks use **~10s** **`AbortSignal.timeout`** (parity with session grounding). **`tenant-ux/policy`** **200** with invalid JSON no longer can throw out of middleware; **fail-open** unless **`TENANT_UX_POLICY_FAIL_CLOSED`**. Docs **`auth-and-access.md`**; tests **`proxy-guest-routes`**. **Deploy:** Next.
+
 - **3.17.6** — **Edge session grounding — fail-open on transient errors:** **`src/proxy.ts`** — internal **`fetch`** throw / timeout (~10s) or **5xx**/**429** from **`GET /api/internal/authz/session-grounding`** no longer denies or clears **`xf_core_session`** (avoids refresh → persona **`401`** / logout when origin/Mongo blips). Explicit **401** from grounding still **`session_not_grounded`** + cookie clear. Docs **`auth-and-access.md`**; tests **`proxy-guest-routes`**. **Deploy:** Next.
 
 - **3.17.5** — **Auth — session grounding tests/docs + semver:** **`normalizeTenantIdHexFromStoredMembershipField`** (`tenant-membership-grounding.ts`) + unit **`tenant-membership-grounding`**; proxy matcher contract **`proxy-matcher-personas`** (bare **`/api/personas`**). Docs: **`auth-and-access.md`** § Edge session grounding, **`api-endpoints.md`** internal authz route, **`current-state-features.md`** auth note, **`.env.example`** **`SESSION_EDGE_GROUNDING`**. **Deploy:** Next.

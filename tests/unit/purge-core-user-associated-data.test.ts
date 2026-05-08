@@ -24,13 +24,19 @@ function buildMockDb() {
 }
 
 vi.mock("@/lib/mongodb", () => ({
-  getDb: vi.fn(),
+  getDb: vi.fn()
 }));
+
+const clearUserHistoryMocks = vi.hoisted(() => ({
+  clearPerUserXaiHistoryCollectionForUserTenant: vi.fn().mockResolvedValue(undefined)
+}));
+
+vi.mock("@/modules/xchat/user-history-xai-purge", () => clearUserHistoryMocks);
 
 import { getDb } from "@/lib/mongodb";
 import {
     purgeAllDataAssociatedWithCoreUser,
-    purgeEphemeralCoreUserScaffolding,
+    purgeEphemeralCoreUserScaffolding
 } from "@/modules/core-admin/repository";
 
 const VALID_HEX = "507f1f77bcf86cd799439011";
@@ -44,6 +50,10 @@ describe("purge core user associated data", () => {
     await purgeAllDataAssociatedWithCoreUser({
       userIdHex: VALID_HEX,
       emailNormalized: "User@Example.com",
+    });
+
+    expect(clearUserHistoryMocks.clearPerUserXaiHistoryCollectionForUserTenant).toHaveBeenCalledWith({
+      userIdHex: VALID_HEX
     });
 
     const names = deleteManyLog.map((e) => e.collection);
