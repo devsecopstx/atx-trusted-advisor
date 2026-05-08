@@ -20,6 +20,7 @@ import type { AccountOutlook, WatchlistSymbol } from "@/modules/core-admin/types
 import { parseAccountOutlook } from "@/modules/core-admin/types";
 import { ensureUserAlertManagerScheduledTaskForTenant } from "@/modules/price-alerts/ensure-user-alert-manager-task";
 import { migrateLegacyNlPriceAlertsIfNeeded } from "@/modules/price-alerts/migrate-legacy-nl-price-alerts";
+import { MAX_NL_USER_PRICE_ALERT_RULES } from "@/modules/price-alerts/nl-price-alert-limits";
 import {
     countActivePortfolioPriceAlertsForTenant,
     deleteActivePortfolioPriceAlertForUserSymbol,
@@ -143,7 +144,6 @@ function createPortfolioAllocationChart(positions: Array<{ symbol: string; qty: 
 }
 /** Matches PATCH `/api/portfolios/:id/watchlist` batch size. */
 const MAX_WATCHLIST_MUTATE_PER_CALL = 20;
-const MAX_NL_USER_PRICE_ALERT_RULES = 40;
 
 const PRELOAD_SHORT_CIRCUIT_OPS = new Set([
   "portfolio_summary",

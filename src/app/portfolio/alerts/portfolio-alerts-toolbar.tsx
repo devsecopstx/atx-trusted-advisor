@@ -5,6 +5,11 @@ import { useCallback, useState } from "react";
 
 import { escapeCsvField } from "@/lib/csv-field-escape";
 
+export type PortfolioAlertAccountOption = {
+  readonly id: string;
+  readonly label: string;
+};
+
 type AlertRow = {
   _id: string;
   title: string;
@@ -117,6 +122,10 @@ export function PortfolioAlertsToolbar({ portfolioId, alertCount }: PortfolioAle
 
   return (
     <div className="portfolio-alerts-toolbar">
+      <p className="portfolio-alerts-toolbar__hint">
+        Desk CSV reflects <strong>scanner rows only</strong>. NL price rules export is planned — rules live in{" "}
+        <strong>portfolio_price_alerts</strong>.
+      </p>
       <div className="portfolio-alerts-toolbar__actions">
         <button
           type="button"

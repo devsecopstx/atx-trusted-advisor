@@ -82,6 +82,56 @@ export async function listActivePortfolioPriceAlertsForUser(input: {
   return rows as PortfolioPriceAlertDoc[];
 }
 
+export async function listActivePortfolioPriceAlertsForUserPortfolio(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioIdHex: string;
+}): Promise<PortfolioPriceAlertDoc[]> {
+  await ensurePortfolioPriceAlertIndexes();
+  if (!ObjectId.isValid(input.portfolioIdHex)) {
+    return [];
+  }
+  const pfOid = new ObjectId(input.portfolioIdHex);
+  const db = await getDb();
+  const rows = await db
+    .collection(COLLECTION)
+    .find({
+      ...userActiveFilter(input.userId, input.tenantId),
+      portfolioId: pfOid
+    })
+    .sort({ symbolNorm: 1 })
+    .limit(200)
+    .toArray();
+  return rows as PortfolioPriceAlertDoc[];
+}
+
+export async function expirePortfolioPriceAlertByIdForUser(input: {
+  alertIdHex: string;
+  userId: string;
+  tenantId?: string;
+  portfolioIdHex: string;
+}): Promise<boolean> {
+  await ensurePortfolioPriceAlertIndexes();
+  if (
+    !ObjectId.isValid(input.alertIdHex) ||
+    !ObjectId.isValid(input.portfolioIdHex)
+  ) {
+    return false;
+  }
+  const db = await getDb();
+  const now = new Date();
+  const res = await db.collection(COLLECTION).updateOne(
+    {
+      _id: new ObjectId(input.alertIdHex),
+      portfolioId: new ObjectId(input.portfolioIdHex),
+      ...mongoPortfolioFamilyUserScope(normUserId(input.userId), input.tenantId, "allowLegacyUserScope"),
+      status: "active"
+    },
+    { $set: { status: "expired" as PortfolioPriceAlertStatus, updatedAt: now } }
+  );
+  return (res.modifiedCount ?? 0) > 0;
+}
+
 export async function listActivePortfolioPriceAlertsForTenantBySymbols(input: {
   tenantIdHex: string;
   symbolNormsUpper: string[];

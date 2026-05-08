@@ -7,6 +7,7 @@ import {
     PortfolioAlertsInteractive,
     type PortfolioAlertRowVm
 } from "@/app/portfolio/alerts/portfolio-alerts-interactive";
+import type { PriceRuleRowVm } from "@/app/portfolio/alerts/portfolio-alerts-types";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
@@ -22,11 +23,30 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin } from "@/modules/identity/authorization";
+import { getCoreUserById } from "@/modules/identity/repository";
+import type { PortfolioPriceAlertDoc } from "@/modules/price-alerts/portfolio-price-alert-types";
+import { listActivePortfolioPriceAlertsForUserPortfolio } from "@/modules/price-alerts/portfolio-price-alerts-repository";
+import { canManageNlPriceAlerts } from "@/modules/xchat/plan-limits";
 
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
+
+function mapPriceAlertDocToVm(doc: PortfolioPriceAlertDoc): PriceRuleRowVm {
+  return {
+    id: doc._id!.toHexString(),
+    symbol: doc.symbolNorm,
+    ruleKind: doc.ruleKind,
+    targetPriceUsd: doc.targetPriceUsd,
+    portfolioName: doc.portfolioName?.trim() ? doc.portfolioName.trim() : null,
+    lastReferencePrice: doc.lastReferencePrice ?? null,
+    status: doc.status,
+    expiresAt: doc.expiresAt.toISOString(),
+    updatedAt: doc.updatedAt.toISOString(),
+    createdAt: doc.createdAt.toISOString()
+  };
+}
 
 export default async function PortfolioAlertsPage({
   searchParams
@@ -103,6 +123,10 @@ export default async function PortfolioAlertsPage({
       : "/portfolios";
 
   let alertRows: PortfolioAlertRowVm[] = [];
+  let alertAccounts: { id: string; label: string }[] = [];
+  let priceRuleRows: PriceRuleRowVm[] = [];
+  let nlPriceAlertsEnabled = false;
+  let lastActivityIso: string | null = null;
   if (portfolioId && !workspaceError) {
     try {
       const loaded = await adminListPortfolioAlerts(portfolioId);
@@ -111,6 +135,12 @@ export default async function PortfolioAlertsPage({
         portfolioId,
         tenantId: session.tenantId
       });
+      alertAccounts = accounts
+        .filter((ac) => ac._id)
+        .map((ac) => ({
+          id: ac._id!.toHexString(),
+          label: ac.name?.trim() ? ac.name.trim().slice(0, 120) : `Account ${ac._id!.toHexString().slice(0, 8)}…`
+        }));
       const typeByAccountId: Record<string, string> = {};
       for (const ac of accounts) {
         if (ac._id) {
@@ -132,6 +162,29 @@ export default async function PortfolioAlertsPage({
         updatedAt: a.updatedAt.toISOString(),
         metadata: portfolioAlertRowScannerMetadata(a.metadata)
       }));
+
+      const [priceDocs, coreUser] = await Promise.all([
+        listActivePortfolioPriceAlertsForUserPortfolio({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          portfolioIdHex: portfolioId
+        }),
+        ObjectId.isValid(session.userId)
+          ? getCoreUserById(new ObjectId(session.userId))
+          : Promise.resolve(null)
+      ]);
+      priceRuleRows = priceDocs.map(mapPriceAlertDocToVm);
+      nlPriceAlertsEnabled = canManageNlPriceAlerts(coreUser?.subscriptionPlan, session.roles);
+
+      const activityTimes: number[] = [];
+      for (const row of alertRows) {
+        activityTimes.push(new Date(row.updatedAt).getTime());
+      }
+      for (const doc of priceDocs) {
+        activityTimes.push(doc.updatedAt.getTime());
+      }
+      lastActivityIso =
+        activityTimes.length > 0 ? new Date(Math.max(...activityTimes)).toISOString() : null;
     } catch (error) {
       const detail = caughtErrorMessage(error);
       console.error(`[portfolio/alerts] list failed portfolioId=${portfolioId} detail=${detail}`);
@@ -208,7 +261,15 @@ export default async function PortfolioAlertsPage({
                   <span className="portfolio-alerts-realtime-text">real time</span>.
                 </p>
               </header>
-              <PortfolioAlertsInteractive portfolioId={portfolioId} portfolioName={portfolioName} rows={alertRows} />
+              <PortfolioAlertsInteractive
+                portfolioId={portfolioId}
+                portfolioName={portfolioName}
+                rows={alertRows}
+                priceRules={priceRuleRows}
+                alertAccounts={alertAccounts}
+                nlPriceAlertsEnabled={nlPriceAlertsEnabled}
+                lastActivityIso={lastActivityIso}
+              />
             </section>
           )}
         </AppUserCollapsibleRailLayout>

@@ -1061,6 +1061,35 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "portfolios"
   },
   {
+    path: "/api/portfolios/{portfolioId}/price-alerts",
+    operations: [
+      {
+        method: "GET",
+        auth: "session",
+        summary: "List active NL price rules for this portfolio (`portfolio_price_alerts`). May BFF-proxy to Spring."
+      },
+      {
+        method: "POST",
+        auth: "session",
+        hasRequestBody: true,
+        summary:
+          "Upsert one active NL price rule per symbol for this book (Premium+ with advisor/global_admin gate; tenant partial unique index)."
+      }
+    ],
+    tag: "portfolios"
+  },
+  {
+    path: "/api/portfolios/{portfolioId}/price-alerts/{alertId}",
+    operations: [
+      {
+        method: "DELETE",
+        auth: "session",
+        summary: "Expire (soft-delete) an NL price rule owned by the session user for this portfolio."
+      }
+    ],
+    tag: "portfolios"
+  },
+  {
     path: "/api/portfolios/{portfolioId}/recommendations",
     operations: [
       { method: "GET", auth: "session" },
