@@ -1,6 +1,8 @@
 import {
     getAdminXchatModelCostSummary,
-    getAdminXchatToolUsageSummary
+    getAdminXchatToolUsageSummary,
+    getAdminXchatVendorSpendByTenantPersona,
+    getAdminXchatVendorSpendDaily
 } from "@/modules/xchat/tool-usage-repository";
 import { estimateHostedToolUsd } from "@/modules/xchat/xai-model-pricing";
 
@@ -24,15 +26,23 @@ export default async function AdminXchatToolUsagePage() {
     sinceIso: summary.sinceIso,
     byTool: summary.byTool
   });
+  const vendorDaily = await getAdminXchatVendorSpendDaily({ sinceIso: summary.sinceIso });
+  const vendorByTenantPersona = await getAdminXchatVendorSpendByTenantPersona({
+    sinceIso: summary.sinceIso
+  });
 
   return (
     <section className="panel stack-gap">
       <article className="surface-card xf-widget section-card">
-        <h2>xChat tool usage</h2>
+        <h2>xChat usage & spend</h2>
         <p className="status-text">
           Fire-and-forget tool rows from <code>/api/xchat/ask</code> → MongoDB <code>xchat_tool_usage</code>. Model /
-          token rows come from <code>xchat_logs</code> (same window). Last {summary.windowDays} days since{" "}
-          {summary.sinceIso}.
+          token rows come from <code>xchat_logs</code> (same window). Vendor{" "}
+          <strong>
+            <code>cost_in_usd_ticks</code>
+          </strong>{" "}
+          appears when xAI returns it on Responses <code>usage</code> (stored as <code>xaiUsage.costUsdTicks</code>).
+          Last {summary.windowDays} days since {summary.sinceIso}.
         </p>
         <p className="status-text">
           <strong>Hosted tool calls:</strong> {summary.totalCalls}
@@ -45,6 +55,86 @@ export default async function AdminXchatToolUsagePage() {
               · <strong>turns with token usage captured:</strong> {modelCost.turnsWithUsage}
             </>
           ) : null}
+        </p>
+      </article>
+
+      <article className="surface-card xf-widget section-card">
+        <h3>Vendor-reported spend (usd ticks)</h3>
+        <p className="status-text">
+          Raw sums from <code>xchat_logs.xaiUsage.costUsdTicks</code>. Interpretation matches xAI billing console (see
+          vendor docs for tick → USD mapping). Rows without vendor ticks are excluded — enable history persistence and a
+          recent xAI API that returns <code>cost_in_usd_ticks</code>.
+        </p>
+        {vendorDaily.length === 0 ? (
+          <p className="status-text">No vendor tick rows in this window.</p>
+        ) : (
+          <div className="crud-table-wrap">
+            <table className="crud-table">
+              <thead>
+                <tr>
+                  <th>Day (UTC)</th>
+                  <th>Turns</th>
+                  <th>Σ ticks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendorDaily.map((row) => (
+                  <tr key={row.dayUtc}>
+                    <td>{row.dayUtc}</td>
+                    <td>{row.turns}</td>
+                    <td>{row.vendorUsdTicks.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </article>
+
+      <article className="surface-card xf-widget section-card">
+        <h3>Vendor ticks by tenant + persona</h3>
+        {vendorByTenantPersona.length === 0 ? (
+          <p className="status-text">No vendor tick rows in this window.</p>
+        ) : (
+          <div className="crud-table-wrap">
+            <table className="crud-table">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Persona</th>
+                  <th>Turns</th>
+                  <th>Σ ticks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendorByTenantPersona.map((row) => (
+                  <tr
+                    key={`${row.tenantIdHex}:${row.personaIdHex ?? "none"}:${row.personaName ?? ""}`}
+                  >
+                    <td>
+                      <code>{row.tenantIdHex}</code>
+                    </td>
+                    <td>
+                      {row.personaName ?? "—"}{" "}
+                      {row.personaIdHex ? (
+                        <code className="status-text">({row.personaIdHex.slice(0, 10)}…)</code>
+                      ) : null}
+                    </td>
+                    <td>{row.turns}</td>
+                    <td>{row.vendorUsdTicks.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="status-text" style={{ marginTop: "0.75rem" }}>
+          Tenant breach alerts: create an{" "}
+          <strong>
+            <code>xchat_spend_alert</code>
+          </strong>{" "}
+          scheduled task (tenant-scoped) and set{" "}
+          <code>core_tenants.tenantPreferences.xchat_daily_spend_alert_usd_ticks</code>.
         </p>
       </article>
 

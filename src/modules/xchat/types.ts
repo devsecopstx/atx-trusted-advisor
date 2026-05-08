@@ -235,6 +235,8 @@ export type XChatXaiUsageSnapshot = {
   totalTokens: number;
   reasoningTokens?: number;
   cachedPromptTokens?: number;
+  /** Vendor `usage.cost_in_usd_ticks` when present (integer). */
+  costUsdTicks?: number;
 };
 
 /** One prompt/response turn in Mongo `xchat_logs` (TTL via retentionExpiresAt). user_history_agent syncs unsynced rows to the user xAI collection. */

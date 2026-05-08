@@ -345,6 +345,9 @@ export async function completeXchatAskAfterModelLoop(
                   ...(xaiUsageSnapshot.cachedPromptTokens != null &&
                   xaiUsageSnapshot.cachedPromptTokens > 0
                     ? { cachedPromptTokens: xaiUsageSnapshot.cachedPromptTokens }
+                    : {}),
+                  ...(xaiUsageSnapshot.costUsdTicks != null && xaiUsageSnapshot.costUsdTicks > 0
+                    ? { costUsdTicks: xaiUsageSnapshot.costUsdTicks }
                     : {})
                 }
               }

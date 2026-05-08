@@ -18,6 +18,7 @@ export const SCHEDULED_TASK_CATEGORIES = [
   "tax_loss_harvest_scanner",
   "marketing_post",
   "user_alert_manager",
+  "xchat_spend_alert",
 ] as const;
 
 export type ScheduledTaskCategory = (typeof SCHEDULED_TASK_CATEGORIES)[number];
@@ -46,7 +47,9 @@ export const SCHEDULED_TASK_CATEGORY_DEFAULT_CRON: Record<ScheduledTaskCategory,
   risk_concentration_scanner: RISK_DAILY_CRON,
   tax_loss_harvest_scanner: TAX_SCAN_DAILY_CRON,
   marketing_post: "0 13 * * 1-5",
-  user_alert_manager: DEFAULT_SCHEDULED_TASK_CRON
+  user_alert_manager: DEFAULT_SCHEDULED_TASK_CRON,
+  /** Daily tenant xChat vendor-spend check (rolling 24h vs threshold on `core_tenants.tenantPreferences`). */
+  xchat_spend_alert: "30 13 * * 1-5"
 };
 
 export const scheduledTaskCategorySchema = z.enum(SCHEDULED_TASK_CATEGORIES);

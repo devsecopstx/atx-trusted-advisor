@@ -80,6 +80,8 @@ app:
       oauth-flow-cookie-max-age-seconds: ${OAUTH_FLOW_TTL_SECONDS:1800}
       portfolio-snapshot-ttl-open-seconds: ${PORTFOLIO_SNAPSHOT_TTL_OPEN_SECONDS:60}
       portfolio-snapshot-ttl-closed-seconds: ${PORTFOLIO_SNAPSHOT_TTL_CLOSED_SECONDS:300}
+      option-chain-cache-ttl-open-seconds: ${OPTION_CHAIN_CACHE_TTL_OPEN_SECONDS:120}
+      option-chain-cache-ttl-closed-seconds: ${OPTION_CHAIN_CACHE_TTL_CLOSED_SECONDS:900}
     scheduler:
       enabled: ${ADMIN_SCHEDULER_ENABLED:true}
       driver: ${ADMIN_SCHEDULER_DRIVER:quartz}

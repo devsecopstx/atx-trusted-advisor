@@ -115,6 +115,13 @@ data class RedisProps(
     val portfolioSnapshotTtlOpenSeconds: Long = 60,
     /** Same route — TTL when session is **likely closed** (evenings/weekends; holidays not modeled). */
     val portfolioSnapshotTtlClosedSeconds: Long = 300,
+    /**
+     * Redis TTL for raw Yahoo option-chain JSON (`StrategyOptionsYahooClient`) when US regular session is likely open.
+     * Env: `OPTION_CHAIN_CACHE_TTL_OPEN_SECONDS`.
+     */
+    val optionChainCacheTtlOpenSeconds: Long = 120,
+    /** Yahoo option-chain JSON cache TTL when session likely closed. Env: `OPTION_CHAIN_CACHE_TTL_CLOSED_SECONDS`. */
+    val optionChainCacheTtlClosedSeconds: Long = 900,
 )
 
 /**

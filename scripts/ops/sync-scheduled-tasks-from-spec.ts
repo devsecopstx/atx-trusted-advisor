@@ -32,9 +32,15 @@ import cronstrue from "cronstrue";
 import { SCHEDULED_TASK_CATEGORY_DISPLAY_NAME } from "@/lib/scheduled-task-category-catalog";
 import {
     SCHEDULED_TASK_CATEGORIES,
-    SCHEDULED_TASK_CATEGORY_DEFAULT_CRON
+    SCHEDULED_TASK_CATEGORY_DEFAULT_CRON,
+    type ScheduledTaskCategory
 } from "@/lib/scheduled-task-category-schema";
 import { computeNextRunAtFromCron } from "@/lib/scheduled-task-cron";
+
+/** Categories omitted from automatic upsert (operators create rows manually). */
+const SCHEDULED_TASK_CATEGORIES_EXCLUDED_FROM_SPEC_SYNC: ReadonlySet<ScheduledTaskCategory> = new Set([
+  "xchat_spend_alert"
+]);
 
 import { resolveMongoUri } from "../lib/resolve-mongo-uri.mjs";
 import { resolveSyncTargetMongoDatabaseName } from "../lib/sync-target-mongo-db";
@@ -373,6 +379,10 @@ async function main(): Promise<void> {
   });
 
   for (const category of SCHEDULED_TASK_CATEGORIES) {
+    if (SCHEDULED_TASK_CATEGORIES_EXCLUDED_FROM_SPEC_SYNC.has(category)) {
+      plan.push(`SKIP ${category} (manual tenant tasks only — not auto-seeded)`);
+      continue;
+    }
     const scheduleCron = SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[category];
     const name = SCHEDULED_TASK_CATEGORY_DISPLAY_NAME[category];
     const scheduleDescription = describeCron(scheduleCron);

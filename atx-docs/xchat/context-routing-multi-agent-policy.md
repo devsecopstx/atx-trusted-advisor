@@ -19,6 +19,13 @@ New work: **`XAI_TEAM_ID`** per tenant; TEAM append/retrieval; chat-history coll
 
 **Rule:** Multi-source context (team + Mongo RAG where enabled) does **not** by itself require parallel agents. Prefer **one model + merged retrieval + selective tools**.
 
+### Cost optimization (HNWI / scale)
+
+- **RAG-first:** Keep canonical options-strategy narratives, desk playbooks, and skills-style prose in **team xAI collections** (persona-linked) so `searchDocumentsInCollections` grounds answers without extra tool/model churn. See [`atx-docs/rag-collection/options-strategy-xchat-seeding.md`](../rag-collection/options-strategy-xchat-seeding.md) for upload guidance.
+- **Tool-second:** Use `atx_function` / Yahoo only when the user needs **live** book or market state; static structure education belongs in RAG.
+- **Spend telemetry:** Persisted turns store xAI **`usage.cost_in_usd_ticks`** as **`xchat_logs.xaiUsage.costUsdTicks`** when the API returns it — Admin → **xChat usage & spend** aggregates vendor ticks; optional tenant **`xchat_spend_alert`** scheduled task compares rolling 24h spend to **`tenantPreferences.xchat_daily_spend_alert_usd_ticks`**.
+- **Spring + Redis:** Workspace preload remains **`xf:wsnap:v1:*`** (shared with Next). JVM **`StrategyOptionsYahooClient`** caches raw Yahoo option-chain JSON under **`xf:oyahoo:v1:{UNDERLYING}:{epoch}`** with market-aware TTLs to cut duplicate chain fetches before any downstream use.
+
 ### NL slot collection for watchlist intent
 
 - If user asks **"show watchlist for ..."** and the ask payload does not include `portfolioId`, run slot collection before tool execution.

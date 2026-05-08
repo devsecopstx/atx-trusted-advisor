@@ -338,3 +338,114 @@ export async function getAdminXchatModelCostSummary(input: {
     estimatedGrandTotalUsd: estimatedTokenUsdTotal + estimatedHostedToolUsdTotal
   };
 }
+
+export type AdminXchatTenantPersonaVendorSpendRow = {
+  tenantIdHex: string;
+  personaIdHex: string | null;
+  personaName: string | null;
+  turns: number;
+  vendorUsdTicks: number;
+};
+
+export type AdminXchatDailyVendorSpendRow = {
+  dayUtc: string;
+  turns: number;
+  vendorUsdTicks: number;
+};
+
+function tenantHexFromLog(tenantId: unknown): string {
+  if (tenantId && typeof tenantId === "object" && "toHexString" in tenantId) {
+    return (tenantId as ObjectId).toHexString();
+  }
+  return "unknown";
+}
+
+function personaHexFromLog(personaId: unknown): string | null {
+  if (personaId && typeof personaId === "object" && "toHexString" in personaId) {
+    return (personaId as ObjectId).toHexString();
+  }
+  return null;
+}
+
+/**
+ * Sums xAI **`usage.cost_in_usd_ticks`** persisted on **`xchat_logs.xaiUsage.costUsdTicks`** (vendor field).
+ */
+export async function getAdminXchatVendorSpendByTenantPersona(input: {
+  sinceIso: string;
+}): Promise<AdminXchatTenantPersonaVendorSpendRow[]> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const since = new Date(input.sinceIso);
+  type Agg = {
+    _id: { tenantKey: unknown; personaKey: unknown; personaName: string | null };
+    turns: number;
+    vendorUsdTicks: number;
+  };
+  const rows = await db
+    .collection<XChatSessionLog>(CHAT_LOGS)
+    .aggregate<Agg>([
+      {
+        $match: {
+          createdAt: { $gte: since },
+          "xaiUsage.costUsdTicks": { $gt: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            tenantKey: "$tenantId",
+            personaKey: "$personaId",
+            personaName: "$personaName"
+          },
+          turns: { $sum: 1 },
+          vendorUsdTicks: { $sum: { $ifNull: ["$xaiUsage.costUsdTicks", 0] } }
+        }
+      },
+      { $sort: { vendorUsdTicks: -1 } }
+    ])
+    .toArray();
+
+  return rows.map((r) => ({
+    tenantIdHex: tenantHexFromLog(r._id.tenantKey),
+    personaIdHex: personaHexFromLog(r._id.personaKey),
+    personaName: r._id.personaName ?? null,
+    turns: r.turns,
+    vendorUsdTicks: r.vendorUsdTicks
+  }));
+}
+
+export async function getAdminXchatVendorSpendDaily(input: {
+  sinceIso: string;
+}): Promise<AdminXchatDailyVendorSpendRow[]> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const since = new Date(input.sinceIso);
+  type Agg = { _id: string; turns: number; vendorUsdTicks: number };
+  const rows = await db
+    .collection<XChatSessionLog>(CHAT_LOGS)
+    .aggregate<Agg>([
+      {
+        $match: {
+          createdAt: { $gte: since },
+          "xaiUsage.costUsdTicks": { $gt: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "UTC" }
+          },
+          turns: { $sum: 1 },
+          vendorUsdTicks: { $sum: { $ifNull: ["$xaiUsage.costUsdTicks", 0] } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ])
+    .toArray();
+
+  return rows.map((r) => ({
+    dayUtc: r._id,
+    turns: r.turns,
+    vendorUsdTicks: r.vendorUsdTicks
+  }));
+}

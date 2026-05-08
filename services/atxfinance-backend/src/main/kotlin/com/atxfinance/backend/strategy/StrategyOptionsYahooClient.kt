@@ -1,7 +1,11 @@
 package com.atxfinance.backend.strategy
 
+import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.portfolio.UsEquitiesRegularSession
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.net.http.HttpClient
@@ -16,6 +20,8 @@ import java.time.format.DateTimeFormatter
 @Component
 class StrategyOptionsYahooClient(
     private val objectMapper: ObjectMapper,
+    private val redisProvider: ObjectProvider<StringRedisTemplate>,
+    private val propsProvider: ObjectProvider<AtxfinanceProperties>,
 ) {
     private val client: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(8))
@@ -25,6 +31,54 @@ class StrategyOptionsYahooClient(
         "Mozilla/5.0 (compatible; atxfinance-backend/1.0; +https://fintech-advisor.ai)"
 
     fun fetchOptionsJson(underlying: String, dateEpochSeconds: Long?): JsonNode? {
+        val u = underlying.trim().uppercase()
+        if (u.isEmpty()) {
+            return null
+        }
+        val epochKey = dateEpochSeconds?.takeIf { it > 0 } ?: 0L
+        val cacheKey = "xf:oyahoo:v1:$u:$epochKey"
+
+        val redis = redisProvider.ifAvailable
+        val props = propsProvider.ifAvailable
+        if (redis != null && props != null) {
+            try {
+                val cached = redis.opsForValue().get(cacheKey)
+                if (!cached.isNullOrBlank()) {
+                    return objectMapper.readTree(cached)
+                }
+            } catch (_: Exception) {
+                /* fall through */
+            }
+        }
+
+        val body = fetchOptionsJsonHttp(u, dateEpochSeconds) ?: return null
+
+        if (redis != null && props != null) {
+            val ttl = resolveOptionChainCacheTtlSeconds(props)
+            try {
+                redis.opsForValue().set(cacheKey, body, Duration.ofSeconds(ttl))
+            } catch (_: Exception) {
+                /* ignore */
+            }
+        }
+
+        return try {
+            objectMapper.readTree(body)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun resolveOptionChainCacheTtlSeconds(props: AtxfinanceProperties): Long {
+        val open = UsEquitiesRegularSession.isRegularSessionLikelyOpen(Instant.now())
+        return if (open) {
+            props.redis.optionChainCacheTtlOpenSeconds
+        } else {
+            props.redis.optionChainCacheTtlClosedSeconds
+        }.coerceIn(15L, 7200L)
+    }
+
+    private fun fetchOptionsJsonHttp(underlying: String, dateEpochSeconds: Long?): String? {
         val base = "https://query1.finance.yahoo.com/v7/finance/options/$underlying"
         val url = if (dateEpochSeconds != null && dateEpochSeconds > 0) {
             "$base?date=$dateEpochSeconds"
@@ -44,11 +98,7 @@ class StrategyOptionsYahooClient(
         if (resp.statusCode() !in 200..299) {
             return null
         }
-        return try {
-            objectMapper.readTree(resp.body())
-        } catch (_: Exception) {
-            null
-        }
+        return resp.body()
     }
 
     /** Spot quote for an equity underlying (uses options chain endpoint quote array). */

@@ -16,6 +16,7 @@ import java.time.Instant
  *
  * TTL: shorter when [UsEquitiesRegularSession] reports likely open, longer when likely closed — see
  * [com.atxfinance.backend.config.RedisProps.portfolioSnapshotTtlOpenSeconds] / `…ClosedSeconds`.
+ * The cached **`preload`** payload is the same materialized row Next uses for xChat (holdings, watchlist strip, etc.).
  *
  * **`GET /api/portfolios/{id}/snapshot`** adds denormalized **`structured`** (see [PortfolioStructuredSummary])
  * for holdings summary, balances, and watchlist quote strip — canonical fast-path for xChat preload + find-options

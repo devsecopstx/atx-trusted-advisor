@@ -193,8 +193,9 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
       },
       {
         href: "/admin/xchat-tool-usage",
-        title: "xChat tool usage",
-        description: "Tool call telemetry for xChat operational review."
+        title: "xChat usage & spend",
+        description:
+          "Tool telemetry, token-based estimates, and vendor cost_usd_ticks rollups by day / tenant / persona."
       }
     ]
   },

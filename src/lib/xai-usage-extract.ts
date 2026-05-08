@@ -27,11 +27,23 @@ export function extractXaiResponsesUsage(raw: unknown): XChatXaiUsageSnapshot | 
   const outputTokens = num(u.completion_tokens ?? u.output_tokens);
   const reasoningTokens = num(u.reasoning_tokens);
   const cachedPromptTokens = num(u.cached_prompt_tokens ?? u.cache_read_input_tokens);
+  /** xAI vendor-reported spend (integer ticks; semantics match console billing — store raw). */
+  const costUsdTicks = num(
+    (u as { cost_in_usd_ticks?: unknown }).cost_in_usd_ticks ??
+      (u as { costInUsdTicks?: unknown }).costInUsdTicks
+  );
   let totalTokens = num(u.total_tokens);
   if (totalTokens === 0) {
     totalTokens = inputTokens + outputTokens + reasoningTokens;
   }
-  if (inputTokens === 0 && outputTokens === 0 && reasoningTokens === 0 && totalTokens === 0) {
+  if (
+    inputTokens === 0 &&
+    outputTokens === 0 &&
+    reasoningTokens === 0 &&
+    totalTokens === 0 &&
+    cachedPromptTokens === 0 &&
+    costUsdTicks === 0
+  ) {
     return undefined;
   }
   return {
@@ -39,6 +51,7 @@ export function extractXaiResponsesUsage(raw: unknown): XChatXaiUsageSnapshot | 
     outputTokens,
     totalTokens,
     ...(reasoningTokens > 0 ? { reasoningTokens } : {}),
-    ...(cachedPromptTokens > 0 ? { cachedPromptTokens } : {})
+    ...(cachedPromptTokens > 0 ? { cachedPromptTokens } : {}),
+    ...(costUsdTicks > 0 ? { costUsdTicks } : {})
   };
 }

@@ -32,6 +32,7 @@ import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner"
 import { runOptionsActionScheduledDigest } from "@/modules/xchat/options-action-scheduled-task";
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 import { warmPortfolioWorkspaceSnapshotsForTenant } from "@/modules/xchat/warm-portfolio-workspace-snapshots";
+import { runXchatTenantSpendAlertTask } from "@/modules/xchat/xchat-spend-alert-task";
 
 const PORTFOLIO_SNAPSHOT_WARM_AFTER_SCAN_CATEGORIES = new Set([
   "price_scanner",
@@ -172,6 +173,9 @@ async function runScheduledCategory(
   }
   if (task.category === "user-history") {
     return runUserHistoryAgent(task);
+  }
+  if (task.category === "xchat_spend_alert") {
+    return runXchatTenantSpendAlertTask(task);
   }
   if (task.category === "watchlist_price_scanner") {
     return runWatchlistPriceScanner(task, { bypassMarketWindow: bypass });

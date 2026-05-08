@@ -69,6 +69,12 @@ export type TenantPreferences = TenantBrandingPreferences & {
   bootstrap_policy?: Record<string, unknown>;
   /** Optional tenant-wide watchlist seed symbols for operator/advisor when policy enables watchlist. */
   watchlist_seed_symbols?: string[];
+  /**
+   * Rolling **24h** xChat vendor spend alert: scheduled task **`xchat_spend_alert`** compares the sum of
+   * **`xchat_logs.xaiUsage.costUsdTicks`** (from xAI `usage.cost_in_usd_ticks`) to this threshold (same units).
+   * Omit or ≤0 to skip meaningful breach detection (task still runs but reports skipped).
+   */
+  xchat_daily_spend_alert_usd_ticks?: number;
 };
 
 

@@ -512,6 +512,11 @@ class AdminScheduledTasksService(
                 output = optionsStrategyEngine.scheduledTaskDryRunOutput(taskName) +
                     " — full Yahoo/Mongo scanner pass runs on Next.js task-runner when scheduled there."
             }
+            "xchat_spend_alert" -> {
+                status = "success"
+                output =
+                    "xchat_spend_alert: Kotlin worker noop — tenant spend alert executes on Next.js task-runner."
+            }
             "corporate_events_scanner", "income_cash_flow_projector", "options_expiration_roll_manager",
             "risk_concentration_scanner", "tax_loss_harvest_scanner" -> {
                 status = "success"
@@ -633,6 +638,7 @@ class AdminScheduledTasksService(
                 "tax_loss_harvest_scanner",
                 "marketing_post",
                 "user_alert_manager",
+                "xchat_spend_alert",
             )
         private const val FIVE_MIN_MS = 5L * 60L * 1000L
         private const val ONE_DAY_MS = 24L * 60L * 60L * 1000L

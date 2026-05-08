@@ -115,6 +115,12 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     defaultJobName: "user-alert-manager-job",
     description:
       "Tenant-scoped NL price alerts (`portfolio_price_alerts`): batch Yahoo quotes for every distinct armed symbol, crossing evaluation, desk alerts + optional branded email, expiry sweep — complements watchlist_price_scanner for symbols off watchlists."
+  },
+  xchat_spend_alert: {
+    displayName: "xChat vendor spend alert (weekdays 13:30 UTC)",
+    defaultJobName: "xchat-spend-alert-job",
+    description:
+      "Tenant-only: sums rolling 24h `xchat_logs.xaiUsage.costUsdTicks` (xAI `usage.cost_in_usd_ticks`) and compares to `core_tenants.tenantPreferences.xchat_daily_spend_alert_usd_ticks`. Emits a breach line in task output / Slack when over threshold. **Not auto-seeded** — create manually per tenant."
   }
 } satisfies Record<ScheduledTaskCategory, ScheduledTaskCategoryCatalogEntry>;
 
