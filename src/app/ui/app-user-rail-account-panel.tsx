@@ -33,12 +33,15 @@ type AppUserRailAccountPanelProps = {
   feedbackPageLabel?: string;
   /** When set, adds “Link Google” (same verified email as profile) for X-first sign-in. */
   googleLinkHref?: string | null;
+  /** Hide Settings / Plans / Legal shortcuts when duplicated in the workspace Resources section. */
+  hideShortcutLinks?: boolean;
 };
 
 export function AppUserRailAccountPanel({
   details,
   feedbackPageLabel,
-  googleLinkHref = null
+  googleLinkHref = null,
+  hideShortcutLinks = false
 }: AppUserRailAccountPanelProps) {
   const pathname = usePathname() ?? "";
   const pageLabel = feedbackPageLabel?.trim() || pathname || "App";
@@ -165,32 +168,38 @@ export function AppUserRailAccountPanel({
         </details>
       ) : null}
 
-      <nav className="app-user-rail-account-panel__nav" aria-label="Account shortcuts">
-        {isGlobalAdmin ? (
-          <Link className="app-user-rail-sublink" href="/admin/manage_account">
-            Settings
-          </Link>
-        ) : (
-          <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
-            Settings (Hub admin)
-          </span>
-        )}
-        {googleLinkHref ? (
-          <XfHoverHint hint="Uses the same verified email as your aTx Advisor profile.">
-            <Link className="app-user-rail-sublink app-user-rail-sublink--oauth" href={googleLinkHref}>
-              <GoogleGIcon className="inline-block align-[-0.12em] opacity-90" size={14} />
-              <span className="ml-1">Link Google</span>
+      {hideShortcutLinks ? (
+        <div className="app-user-rail-account-panel__pwa-only">
+          <PwaInstallAccountPrompt />
+        </div>
+      ) : (
+        <nav className="app-user-rail-account-panel__nav" aria-label="Account shortcuts">
+          {isGlobalAdmin ? (
+            <Link className="app-user-rail-sublink" href="/admin/manage_account">
+              Settings
             </Link>
-          </XfHoverHint>
-        ) : null}
-        <Link className="app-user-rail-sublink" href="/account/billing">
-          Plans &amp; billing
-        </Link>
-        <Link className="app-user-rail-sublink" href="/legal/terms">
-          Legal
-        </Link>
-        <PwaInstallAccountPrompt />
-      </nav>
+          ) : (
+            <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
+              Settings (Hub admin)
+            </span>
+          )}
+          {googleLinkHref ? (
+            <XfHoverHint hint="Uses the same verified email as your aTx Advisor profile.">
+              <Link className="app-user-rail-sublink app-user-rail-sublink--oauth" href={googleLinkHref}>
+                <GoogleGIcon className="inline-block align-[-0.12em] opacity-90" size={14} />
+                <span className="ml-1">Link Google</span>
+              </Link>
+            </XfHoverHint>
+          ) : null}
+          <Link className="app-user-rail-sublink" href="/account/billing">
+            Plans &amp; billing
+          </Link>
+          <Link className="app-user-rail-sublink" href="/legal/terms">
+            Legal
+          </Link>
+          <PwaInstallAccountPrompt />
+        </nav>
+      )}
 
       <div className="app-user-rail-account-panel__actions">
         <button

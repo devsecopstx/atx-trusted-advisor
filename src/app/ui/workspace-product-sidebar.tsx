@@ -1,11 +1,13 @@
 "use client";
 
+import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
     useCallback,
     useEffect,
+    useMemo,
     useState,
     useSyncExternalStore,
     type ReactNode,
@@ -15,12 +17,16 @@ import {
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
+import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import {
     LucideBookOpenIcon,
+    LucideChevronLeftIcon,
+    LucideChevronRightIcon,
     LucideClipboardListIcon,
     LucideListBulletsIcon,
     LucideMonitorIcon,
+    LucideSettingsIcon,
     LucideSquarePenIcon,
     LucideUploadIcon,
     XoptionsRocketIcon
@@ -28,6 +34,7 @@ import {
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { useTenantUxPolicy } from "@/app/ui/use-tenant-ux-policy";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
+import { WorkspaceProductRailProvider } from "@/app/ui/workspace-product-rail-context";
 import { WorkspaceRailAppearance } from "@/app/ui/workspace-rail-appearance";
 import { WorkspaceRailLogout } from "@/app/ui/workspace-rail-logout";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
@@ -132,6 +139,7 @@ function SidebarLink({
     .join(" ");
   return (
     <Link
+      aria-current={active ? "page" : undefined}
       className={cls}
       href={href}
       title={title}
@@ -292,10 +300,14 @@ function SidebarAccordionSummary({
   primaryHref?: string;
   primaryNavTitle?: string;
 }) {
+  const pathname = usePathname() ?? "";
+  const primaryActive =
+    primaryHref != null && primaryHref.length > 0 && sublinkActive(pathname, primaryHref);
   const iconNode =
     icon != null ? (
       primaryHref ? (
         <Link
+          aria-current={primaryActive ? "page" : undefined}
           className="portfolios-workspace-sidebar__summary-icon portfolios-workspace-sidebar__summary-primary-link"
           data-workspace-sidebar-primary=""
           href={primaryHref}
@@ -317,34 +329,6 @@ function SidebarAccordionSummary({
       </span>
       <RailSectionChevron />
     </>
-  );
-}
-
-function ChevronsExpandIcon({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden className={className} fill="none" viewBox="0 0 24 24">
-      <path
-        d="M13 17l5-5-5-5M6 17l5-5-5-5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </svg>
-  );
-}
-
-function ChevronsCollapseIcon({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden className={className} fill="none" viewBox="0 0 24 24">
-      <path
-        d="M11 17l-5-5 5-5M18 17l-5-5 5-5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </svg>
   );
 }
 
@@ -497,6 +481,48 @@ export function WorkspaceProductSidebar({
   const showExpandedUi = narrowPersistedWorkspaceRail ? expanded : narrowViewport || expanded;
   const showCollapseToggle = narrowPersistedWorkspaceRail ? true : !narrowViewport;
 
+  const toggleRail = useCallback(() => persistExpanded(!expanded), [expanded, persistExpanded]);
+
+  const railContextValue = useMemo(
+    () => ({ expanded, showExpandedUi, toggle: toggleRail }),
+    [expanded, showExpandedUi, toggleRail]
+  );
+
+  useEffect(() => {
+    if (!showCollapseToggle || typeof window === "undefined") {
+      return;
+    }
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "b") {
+        return;
+      }
+      const t = e.target;
+      if (t instanceof HTMLElement) {
+        const tag = t.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable) {
+          return;
+        }
+      }
+      e.preventDefault();
+      persistExpanded(!expanded);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showCollapseToggle, expanded, persistExpanded]);
+
+  const workspaceBrandHref =
+    isPathVisible("/portfolios") ? "/portfolios" : isPathVisible("/xchat") ? "/xchat" : "/xchat";
+
+  const resourcesAccordionRouteMatch =
+    pathname.startsWith("/resources") ||
+    pathname.startsWith("/account/tasks") ||
+    pathname.startsWith("/import-activity") ||
+    pathname.startsWith("/account/billing") ||
+    (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
+    pathname.startsWith("/legal") ||
+    pathname.startsWith("/admin/manage_account") ||
+    xchatAttachmentsDeepLinkActive;
+
   const showXoptionsToggle = isXoptionsRoute;
   const xoptionsStrategyBuilderVisible = useSyncExternalStore(
     subscribeXoptionsStrategyBuilderVisibility,
@@ -643,11 +669,7 @@ export function WorkspaceProductSidebar({
       key: "resources",
       href: "/resources/guides",
       label: "Resources",
-      isActive:
-        pathname.startsWith("/resources") ||
-        pathname.startsWith("/account/tasks") ||
-        pathname.startsWith("/import-activity") ||
-        xchatAttachmentsDeepLinkActive,
+      isActive: resourcesAccordionRouteMatch,
       icon: <ResourcesIcon className="h-[1.35rem] w-[1.35rem] text-[var(--xf-text-200)]" />
     }
   ];
@@ -668,8 +690,55 @@ export function WorkspaceProductSidebar({
   const mobilePersistedRailExpandedDrawer =
     narrowPersistedWorkspaceRail && expanded && narrowMobile767;
 
+  /*
+   * BEFORE: Collapse lived in the footer beside the avatar; nav had no explicit “main vs resources” grouping.
+   * AFTER: Institutional header (aTx⚡Finance + obvious chevron toggle), grouped main desk nav, Resources divider,
+   *        account chrome moved to the footer stack (appearance → profile disclosure → logout → legal micro-links).
+   */
+  const sidebarHeader = (
+    <header className="workspace-product-sidebar__header">
+      <div
+        className={`workspace-product-sidebar__header-inner${showExpandedUi ? "" : " workspace-product-sidebar__header-inner--collapsed"}`}
+      >
+        <Link
+          aria-label={showExpandedUi ? "Workspace home" : "aTx Finance — workspace home"}
+          className="workspace-product-sidebar__brand"
+          href={workspaceBrandHref}
+          title="Workspace home"
+        >
+          <AtxFinanceMark className="shrink-0" size={showExpandedUi ? 22 : 20} />
+          {showExpandedUi ? (
+            <>
+              <LightningBolt size={16} />
+              <span className="workspace-product-sidebar__brand-finance">Finance</span>
+            </>
+          ) : null}
+        </Link>
+        {showCollapseToggle ? (
+          <XfHoverHint hint={showExpandedUi ? "Collapse sidebar (⌘B / Ctrl+B)" : "Expand sidebar (⌘B / Ctrl+B)"}>
+            <button
+              aria-controls="workspace-product-sidebar-scroll"
+              aria-expanded={showExpandedUi}
+              aria-label="Toggle sidebar"
+              className="workspace-product-sidebar__collapse-toggle xf-focus-ring--sidebar"
+              type="button"
+              onClick={() => persistExpanded(!expanded)}
+            >
+              {showExpandedUi ? (
+                <LucideChevronLeftIcon className="workspace-product-sidebar__collapse-toggle-icon" />
+              ) : (
+                <LucideChevronRightIcon className="workspace-product-sidebar__collapse-toggle-icon" />
+              )}
+            </button>
+          </XfHoverHint>
+        ) : null}
+      </div>
+    </header>
+  );
+
   const expandedNav = (
     <nav className="portfolios-workspace-sidebar portfolios-workspace-sidebar--rail-fill" aria-label="Workspace">
+      <div className="workspace-product-sidebar__nav-main">
       {isPathVisible("/portfolios") || isPathVisible("/portfolio") || isPathVisible("/watchlist") || isPathVisible("/import-activity") ? (
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--core-action"
@@ -817,19 +886,16 @@ export function WorkspaceProductSidebar({
           <span>Admin hub</span>
         </SidebarLink>
       ) : null}
+      </div>
 
       <div className="portfolios-workspace-sidebar__spacer" aria-hidden />
 
-      <div className="portfolios-workspace-sidebar__bottom">
+      <div className="portfolios-workspace-sidebar__bottom workspace-product-sidebar__nav-secondary">
+      <div className="workspace-product-sidebar__section-rule" aria-hidden />
       {isPathVisible("/resources") || showAttachmentsRail ? (
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--secondary-nav"
-        routeMatch={
-          pathname.startsWith("/resources") ||
-          pathname.startsWith("/account/tasks") ||
-          pathname.startsWith("/import-activity") ||
-          xchatAttachmentsDeepLinkActive
-        }
+        routeMatch={resourcesAccordionRouteMatch}
       >
         <summary
           className="portfolios-workspace-sidebar__accordion-summary"
@@ -877,6 +943,36 @@ export function WorkspaceProductSidebar({
           ) : null}
           {isPathVisible("/resources") ? (
             <>
+              {isGlobalAdmin ? (
+                <SidebarLink href="/admin/manage_account" nested title="Workspace and profile settings">
+                  <LucideSettingsIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
+                  Settings
+                </SidebarLink>
+              ) : (
+                <XfHoverHint hint="Workspace settings are available from the Admin Hub for tenant admins.">
+                  <span
+                    className="portfolios-workspace-sidebar__link portfolios-workspace-sidebar__link--nested portfolios-workspace-sidebar__link--muted"
+                    role="note"
+                    tabIndex={0}
+                  >
+                    <LucideSettingsIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
+                    Settings
+                  </span>
+                </XfHoverHint>
+              )}
+              <SidebarLink href="/account/billing" nested title="Plans and billing">
+                Plans &amp; billing
+              </SidebarLink>
+              <SidebarLink href="/legal/terms" nested title="Legal terms and policies">
+                Legal
+              </SidebarLink>
+            </>
+          ) : null}
+          {isPathVisible("/resources") ? (
+            <div aria-hidden className="portfolios-workspace-sidebar__collections-rule" />
+          ) : null}
+          {isPathVisible("/resources") ? (
+            <>
           <SidebarLink href="/resources/guides" nested title="Browse guides and resource articles">
             <LucideBookOpenIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
             Guides
@@ -903,145 +999,155 @@ export function WorkspaceProductSidebar({
         </div>
       </RouteSyncedDetails>
       ) : null}
-
-      {accountDetails ? (
-        <RouteSyncedDetails
-          className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--secondary-nav"
-          routeMatch={
-            (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
-            pathname.startsWith("/legal")
-          }
-        >
-          <summary className="portfolios-workspace-sidebar__accordion-summary">
-            <SidebarAccordionSummary icon={<PersonIcon className="portfolios-workspace-sidebar__glyph" />} label="Account" />
-          </summary>
-          <div className="portfolios-workspace-sidebar__accordion-body portfolios-workspace-sidebar__accordion-body--account">
-            <AppUserRailAccountPanel
-              details={accountDetails}
-              feedbackPageLabel={accountFeedbackPageLabel}
-              googleLinkHref={googleLinkHref}
-            />
-          </div>
-        </RouteSyncedDetails>
-      ) : null}
       </div>
     </nav>
   );
 
-  const railFooter = (
-    <footer className="flex shrink-0 flex-col border-t border-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_92%,transparent)]">
-      <div
-        className={
-          showExpandedUi
-            ? showCollapseToggle
-              ? "flex flex-row items-center justify-between gap-2 px-2.5 py-2"
-              : "flex flex-row items-center justify-end gap-2 px-2.5 py-2"
-            : "flex flex-col items-center gap-2 py-2.5"
-        }
-      >
-        {showCollapseToggle ? (
-          <XfHoverHint hint={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}>
-            <button
-              aria-expanded={showExpandedUi}
-              aria-label={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-toggle-bg)] text-[var(--xf-xchat-rail-toggle-color)] transition-[border-color,background-color,color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_35%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
-              type="button"
-              onClick={() => persistExpanded(!expanded)}
-            >
-              {showExpandedUi ? (
-                <ChevronsCollapseIcon className="h-5 w-5" />
-              ) : (
-                <ChevronsExpandIcon className="h-5 w-5" />
-              )}
-            </button>
-          </XfHoverHint>
-        ) : null}
+  const displayName =
+    accountDetails?.displayName?.trim() ||
+    accountDetails?.username?.trim() ||
+    "Account";
 
-        <XfHoverHint hint="Account">
-          <Link
-            aria-label="Account"
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_40%,transparent)]"
-            href="/account"
-            title="Account"
+  const railFooter = (
+    <footer className="workspace-product-sidebar__footer flex shrink-0 flex-col border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_94%,transparent)] transition-all duration-200 ease-out">
+      <div className="workspace-product-sidebar__footer-account-rule" aria-hidden />
+      <WorkspaceRailAppearance railExpanded={showExpandedUi} />
+      {accountDetails ? (
+        <details className="workspace-rail-account-disclosure">
+          <summary
+            className={`workspace-rail-account-disclosure__summary xf-focus-ring--sidebar${showExpandedUi ? "" : " workspace-rail-account-disclosure__summary--icon-only"}`}
           >
-            {accountDetails?.avatarUrl?.trim() ? (
-              <Image alt="" aria-hidden className="h-full w-full object-cover" height={40} src={accountDetails.avatarUrl} unoptimized width={40} />
+            <span className="workspace-rail-account-disclosure__avatar-wrap">
+              {accountDetails.avatarUrl?.trim() ? (
+                <Image
+                  alt=""
+                  aria-hidden
+                  className="workspace-rail-account-disclosure__avatar"
+                  height={36}
+                  src={accountDetails.avatarUrl}
+                  unoptimized
+                  width={36}
+                />
+              ) : (
+                <PersonIcon className="workspace-rail-account-disclosure__avatar-fallback" />
+              )}
+            </span>
+            {showExpandedUi ? (
+              <span className="workspace-rail-account-disclosure__identity">
+                <span className="workspace-rail-account-disclosure__name">{displayName}</span>
+                <span className="workspace-rail-account-disclosure__hint">Profile &amp; feedback</span>
+              </span>
             ) : (
-              <PersonIcon className="h-5 w-5 text-[var(--xf-text-300)]" />
+              <span className="sr-only">Open account menu</span>
             )}
-          </Link>
-        </XfHoverHint>
-      </div>
-      <div className="workspace-rail-footer-stack">
-        <WorkspaceRailAppearance railExpanded={showExpandedUi} />
-        {accountDetails ? <WorkspaceRailLogout railExpanded={showExpandedUi} /> : null}
-      </div>
+            {showExpandedUi ? <RailSectionChevron /> : null}
+          </summary>
+          <div className="workspace-rail-account-disclosure__panel portfolios-workspace-sidebar__accordion-body--account">
+            <AppUserRailAccountPanel
+              details={accountDetails}
+              feedbackPageLabel={accountFeedbackPageLabel}
+              googleLinkHref={googleLinkHref}
+              hideShortcutLinks
+            />
+          </div>
+        </details>
+      ) : null}
+      {accountDetails ? <WorkspaceRailLogout railExpanded={showExpandedUi} /> : null}
+      <nav aria-label="Legal references" className="workspace-product-sidebar__legal-micro">
+        <Link href="/legal/imprint">Imprint</Link>
+        <span aria-hidden className="workspace-product-sidebar__legal-sep">
+          ·
+        </span>
+        <Link href="/legal/terms">Terms</Link>
+        <span aria-hidden className="workspace-product-sidebar__legal-sep">
+          ·
+        </span>
+        <Link href="/legal/privacy">Privacy</Link>
+      </nav>
     </footer>
   );
 
+  const sidebarShellClassName = `flex h-auto max-[767px]:self-start md:h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-all duration-200 ease-out dark:shadow-md${narrowPersistedWorkspaceRail && narrowMobile767 ? " workspace-product-sidebar--xchat-mobile-compact" : ""}`;
+
+  const sidebarShellStyle = {
+    width:
+      railWidthPx === undefined
+        ? "100%"
+        : narrowPersistedWorkspaceRail && narrowMobile767 && !expanded
+          ? "clamp(2.65rem, 12vw, 3.75rem)"
+          : `${railWidthPx}px`,
+    boxSizing: "border-box" as const
+  };
+
   if (mobilePersistedRailExpandedDrawer) {
     return (
-      <>
-        <button
-          aria-label="Close workspace sidebar"
-          className="workspace-product-sidebar__mobile-drawer-backdrop fixed inset-0 z-[44] border-0 bg-[color-mix(in_srgb,var(--xf-bg-900)_58%,transparent)] p-0 backdrop-blur-[2px]"
-          type="button"
-          onClick={() => persistExpanded(false)}
-        />
-        <div
-          aria-label="Workspace navigation"
-          aria-modal="true"
-          className="workspace-product-sidebar__mobile-drawer-panel fixed bottom-0 left-0 top-0 z-[45] flex min-h-0 w-[min(17.5rem,calc(100vw-1rem-env(safe-area-inset-left)-env(safe-area-inset-right)))] flex-col border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] shadow-xl backdrop-blur-md max-[767px]:rounded-r-xl"
-          role="dialog"
-        >
-          <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain py-1">
-            {expandedNav}
+      <WorkspaceProductRailProvider value={railContextValue}>
+        <>
+          <button
+            aria-label="Close workspace sidebar"
+            className="workspace-product-sidebar__mobile-drawer-backdrop fixed inset-0 z-[44] border-0 bg-[color-mix(in_srgb,var(--xf-bg-900)_58%,transparent)] p-0 backdrop-blur-[2px]"
+            type="button"
+            onClick={() => persistExpanded(false)}
+          />
+          <div
+            aria-label="Workspace navigation"
+            aria-modal="true"
+            className="workspace-product-sidebar__mobile-drawer-panel fixed bottom-0 left-0 top-0 z-[45] flex min-h-0 w-[min(17.5rem,calc(100vw-1rem-env(safe-area-inset-left)-env(safe-area-inset-right)))] flex-col border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] shadow-xl backdrop-blur-md max-[767px]:rounded-r-xl"
+            role="dialog"
+          >
+            {sidebarHeader}
+            <div
+              className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-0 py-1"
+              id="workspace-product-sidebar-scroll"
+            >
+              {expandedNav}
+            </div>
+            {railFooter}
           </div>
-          {railFooter}
-        </div>
-      </>
+        </>
+      </WorkspaceProductRailProvider>
     );
   }
 
   return (
-    <div
-      className={`flex h-auto max-[767px]:self-start md:h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-[width] duration-200 ease-out dark:shadow-md${narrowPersistedWorkspaceRail && narrowMobile767 ? " workspace-product-sidebar--xchat-mobile-compact" : ""}`}
-      style={{
-        width:
-          railWidthPx === undefined
-            ? "100%"
-            : narrowPersistedWorkspaceRail && narrowMobile767 && !expanded
-              ? "clamp(2.65rem, 12vw, 3.75rem)"
-              : `${railWidthPx}px`,
-        boxSizing: "border-box"
-      }}
-      suppressHydrationWarning={true}
-    >
-      <div className="flex min-h-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain py-1 max-[767px]:flex-none md:flex-1">
-        {showExpandedUi ? (
-          expandedNav
-        ) : (
-          <nav aria-label="Workspace" className="flex flex-col items-center gap-0.5 px-1 pt-1">
-            {collapsedIcons.map((item) => (
-              <XfHoverHint hint={item.label} key={item.key}>
-                <Link
-                  className={`flex h-11 w-11 min-h-[44px] min-w-[44px] min-[768px]:max-[980px]:h-12 min-[768px]:max-[980px]:w-12 min-[768px]:max-[980px]:min-h-[48px] min-[768px]:max-[980px]:min-w-[48px] shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] ${
-                    item.isActive
-                      ? "bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_14%,transparent)] text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
-                      : "text-[var(--xf-text-200)]"
-                  }`}
-                  href={item.href}
-                  title={item.label}
-                >
-                  {item.icon}
-                </Link>
-              </XfHoverHint>
-            ))}
-          </nav>
-        )}
-      </div>
+    <WorkspaceProductRailProvider value={railContextValue}>
+      <motion.div
+        className={sidebarShellClassName}
+        layout
+        style={sidebarShellStyle}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {sidebarHeader}
+        <div
+          className="flex min-h-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-0 py-1 max-[767px]:flex-none md:flex-1"
+          id="workspace-product-sidebar-scroll"
+        >
+          {showExpandedUi ? (
+            expandedNav
+          ) : (
+            <nav aria-label="Workspace" className="flex flex-col items-center gap-1 px-1 pt-0.5">
+              {collapsedIcons.map((item) => (
+                <XfHoverHint hint={item.label} key={item.key} showDelayMs={150}>
+                  <Link
+                    aria-current={item.isActive ? "page" : undefined}
+                    className={`flex h-11 w-11 min-h-[44px] min-w-[44px] min-[768px]:max-[980px]:h-12 min-[768px]:max-[980px]:w-12 min-[768px]:max-[980px]:min-h-[48px] min-[768px]:max-[980px]:min-w-[48px] shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color,transform] duration-150 ease-out hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] xf-focus-ring--sidebar ${
+                      item.isActive
+                        ? "bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_14%,transparent)] text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
+                        : "text-[var(--xf-text-200)]"
+                    }`}
+                    href={item.href}
+                    title={item.label}
+                  >
+                    {item.icon}
+                  </Link>
+                </XfHoverHint>
+              ))}
+            </nav>
+          )}
+        </div>
 
-      {railFooter}
-    </div>
+        {railFooter}
+      </motion.div>
+    </WorkspaceProductRailProvider>
   );
 }

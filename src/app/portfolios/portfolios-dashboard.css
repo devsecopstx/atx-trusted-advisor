@@ -724,7 +724,8 @@
 .portfolios-workspace-sidebar__link--active {
   background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 12%, transparent);
   color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
-  box-shadow: inset 3px 0 0 var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  box-shadow: inset 4px 0 0 var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  font-weight: 700;
 }
 
 .portfolios-workspace-sidebar__glyph {
@@ -1052,7 +1053,8 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link:focus-visible {
 html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
   background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 10%, transparent);
   color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 78%, var(--xf-text-100));
-  box-shadow: inset 3px 0 0 var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  box-shadow: inset 4px 0 0 var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  font-weight: 700;
 }
 
 /* ── /portfolios main column: tenant accent overrides (books grid, manage panel, footer) ── */
@@ -1095,12 +1097,257 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
 }
 
 /* ── Workspace rail: footer stack (appearance + logout) ── */
+/*
+ * BEFORE: `workspace-rail-footer-stack` wrapped appearance + logout under a shared border-top.
+ * AFTER: `WorkspaceProductSidebar` owns `workspace-product-sidebar__footer` (appearance → account disclosure → logout → legal micro-links).
+ */
 
 .workspace-rail-footer-stack {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+/* ── Workspace product sidebar: institutional header, grouping, focus rings ── */
+
+.xf-focus-ring--sidebar:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.workspace-product-sidebar__header {
+  flex-shrink: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-xchat-rail-bg) 85%, var(--xf-bg-900));
+  padding: 0.4rem 0.45rem 0.45rem;
+}
+
+.workspace-product-sidebar__header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.workspace-product-sidebar__header-inner--collapsed {
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.workspace-product-sidebar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 10px;
+  padding: 0.15rem 0.2rem;
+  margin: -0.15rem -0.2rem;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.workspace-product-sidebar__brand:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.workspace-product-sidebar__brand:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.workspace-product-sidebar__brand-finance {
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+  white-space: nowrap;
+}
+
+.workspace-product-sidebar__collapse-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, var(--xf-xchat-rail-border));
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-200);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.workspace-product-sidebar__collapse-toggle:hover {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 42%, transparent);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 10%, transparent);
+}
+
+.workspace-product-sidebar__collapse-toggle-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+}
+
+.workspace-product-sidebar__nav-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 0.2rem;
+}
+
+.workspace-product-sidebar__nav-secondary {
+  padding-top: 0.15rem;
+}
+
+.workspace-product-sidebar__section-rule {
+  margin: 0.35rem 0 0.45rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.workspace-product-sidebar__footer {
+  flex-shrink: 0;
+}
+
+.workspace-product-sidebar__footer-account-rule {
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.workspace-rail-account-disclosure {
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.workspace-rail-account-disclosure__summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  min-height: 2.75rem;
+  transition: background-color 0.15s ease;
+}
+
+.workspace-rail-account-disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.workspace-rail-account-disclosure__summary:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+}
+
+.workspace-rail-account-disclosure__summary--icon-only {
+  justify-content: center;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.workspace-rail-account-disclosure__avatar-wrap {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.workspace-rail-account-disclosure__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.workspace-rail-account-disclosure__avatar-fallback {
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--xf-text-300);
+}
+
+.workspace-rail-account-disclosure__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.workspace-rail-account-disclosure__name {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--xf-text-100);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-rail-account-disclosure__hint {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.workspace-rail-account-disclosure__panel {
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  padding: 0;
+}
+
+.workspace-rail-account-disclosure[open] .portfolios-workspace-sidebar__chevron {
+  transform: rotate(0deg);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+}
+
+.workspace-rail-account-disclosure:not([open]) .portfolios-workspace-sidebar__chevron {
+  transform: rotate(-90deg);
+}
+
+.workspace-product-sidebar__legal-micro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem 0.45rem;
+  padding: 0.35rem 0.55rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.workspace-product-sidebar__legal-micro a {
+  color: color-mix(in srgb, var(--xf-text-400) 72%, transparent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.workspace-product-sidebar__legal-micro a:hover {
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 75%, var(--xf-text-300));
+}
+
+.workspace-product-sidebar__legal-sep {
+  color: color-mix(in srgb, var(--xf-text-400) 45%, transparent);
+  user-select: none;
+}
+
+.app-user-rail-account-panel__pwa-only {
+  padding: 0 0 0.35rem;
 }
 
 .workspace-rail-appearance {

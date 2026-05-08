@@ -35,4 +35,11 @@ describe("WorkspaceProductSidebar rail contract", () => {
     expect(src).not.toContain('href="/resources/about"');
     expect(src).not.toContain('href="/resources/decision-workflow"');
   });
+
+  it("mounts rail context + accessible header toggle (⌘B contract)", () => {
+    expect(src).toContain("WorkspaceProductRailProvider");
+    expect(src).toContain('aria-label="Toggle sidebar"');
+    expect(src).toContain("workspace-product-sidebar__header");
+    expect(src).toContain('aria-controls="workspace-product-sidebar-scroll"');
+  });
 });

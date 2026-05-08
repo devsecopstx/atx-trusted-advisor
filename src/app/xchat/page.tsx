@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { StarfieldBackground } from "@/app/ui/starfield-background";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
@@ -92,6 +93,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   if (!session) {
     return (
       <div className="xchat-shell">
+        <StarfieldBackground />
         <XchatGuestHeader />
         <div className="xchat-body">
           <XchatGuestReadonlyShell showAccessPanel={false}>
@@ -126,6 +128,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       : null;
   return (
     <div className="xchat-shell">
+      <StarfieldBackground />
       {approved ? (
         <AppUserApprovedHeader
           current="xchat"

@@ -23,6 +23,26 @@
   flex-direction: column;
 }
 
+/** Full-viewport nebula + stars (canvas); sits under header + body. */
+.xchat-starfield-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 125% 95% at 36% 26%,
+    color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 12%, var(--xf-bg-900)) 0%,
+    var(--xf-bg-900) 58%,
+    var(--xf-bg-900) 100%
+  );
+}
+
+.xchat-shell > .xchat-header,
+.xchat-shell > .xchat-body {
+  position: relative;
+  z-index: 1;
+}
+
 .xchat-header {
   display: flex;
   align-items: center;
