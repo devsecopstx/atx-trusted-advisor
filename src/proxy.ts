@@ -448,6 +448,7 @@ export const config = {
     "/resources/:path*",
     "/admin/:path*",
     "/api/admin/:path*",
+    "/api/personas",
     "/api/personas/:path*",
     "/api/rag/:path*",
     "/api/xchat/:path*",

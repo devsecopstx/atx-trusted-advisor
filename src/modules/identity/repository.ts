@@ -1925,6 +1925,64 @@ export async function getTenantMembershipForUserAndTenant(
   return db.collection<TenantMembership>(collections.memberships).findOne({ userId, tenantId });
 }
 
+function tenantIdFromMembershipField(value: unknown): string | null {
+  if (!value) {
+    return null;
+  }
+  if (value instanceof ObjectId) {
+    return value.toHexString();
+  }
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (!t) {
+      return null;
+    }
+    return ObjectId.isValid(t) ? new ObjectId(t).toHexString() : null;
+  }
+  try {
+    return new ObjectId(value as ObjectId).toHexString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Session grounding: prefer canonical `{ userId, tenantId }` ObjectIds, then fall back to scanning
+ * the user's membership rows with normalized tenant-id comparison (legacy BSON / string drift).
+ */
+export async function resolveTenantMembershipForSessionGrounding(
+  userId: ObjectId,
+  tenantIdHex: string
+): Promise<TenantMembership | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  const tenantOid = new ObjectId(tenantIdHex);
+  const direct = await getTenantMembershipForUserAndTenant(userId, tenantOid);
+  if (direct?._id) {
+    return direct;
+  }
+
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const wantHex = tenantOid.toHexString();
+  const rows = (await db
+    .collection(collections.memberships)
+    .find({
+      userId: { $in: [userId, userId.toHexString()] }
+    })
+    .limit(50)
+    .toArray()) as TenantMembership[];
+
+  for (const row of rows) {
+    const rowHex = tenantIdFromMembershipField(row.tenantId);
+    if (rowHex === wantHex) {
+      return row;
+    }
+  }
+  return null;
+}
+
 export async function resolveAuthContext(input: {
   user: CoreUser;
 }): Promise<AuthContext> {

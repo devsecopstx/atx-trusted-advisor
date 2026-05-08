@@ -8,7 +8,7 @@ const authMocks = vi.hoisted(() => ({
 
 const identityMocks = vi.hoisted(() => ({
   getCoreUserById: vi.fn(),
-  getTenantMembershipForUserAndTenant: vi.fn()
+  resolveTenantMembershipForSessionGrounding: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -39,7 +39,7 @@ describe("internal session grounding route", () => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    identityMocks.getTenantMembershipForUserAndTenant.mockResolvedValue({
+    identityMocks.resolveTenantMembershipForSessionGrounding.mockResolvedValue({
       _id: new ObjectId(),
       userId: uid,
       tenantId: tid,
@@ -57,7 +57,7 @@ describe("internal session grounding route", () => {
   });
 
   it("returns 401 when membership row is missing", async () => {
-    identityMocks.getTenantMembershipForUserAndTenant.mockResolvedValueOnce(null);
+    identityMocks.resolveTenantMembershipForSessionGrounding.mockResolvedValueOnce(null);
     const res = await GET();
     expect(res.status).toBe(401);
     expect(((await res.json()) as { code: string }).code).toBe("no_tenant_membership");

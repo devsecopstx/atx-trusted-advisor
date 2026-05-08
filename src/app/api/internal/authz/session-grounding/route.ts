@@ -3,10 +3,7 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
-import {
-    getCoreUserById,
-    getTenantMembershipForUserAndTenant
-} from "@/modules/identity/repository";
+import { getCoreUserById, resolveTenantMembershipForSessionGrounding } from "@/modules/identity/repository";
 
 /**
  * Validates that the signed session still matches Mongo: active user, approved access gate,
@@ -27,7 +24,6 @@ export async function GET() {
   }
 
   const userId = new ObjectId(session.userId);
-  const tenantId = new ObjectId(session.tenantId);
   const user = await getCoreUserById(userId);
 
   if (!user?._id || user.status === "suspended") {
@@ -41,7 +37,7 @@ export async function GET() {
     );
   }
 
-  const membership = await getTenantMembershipForUserAndTenant(userId, tenantId);
+  const membership = await resolveTenantMembershipForSessionGrounding(userId, session.tenantId);
   if (!membership?._id) {
     return NextResponse.json(
       { ok: false as const, code: "no_tenant_membership" },
