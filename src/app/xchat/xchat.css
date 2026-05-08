@@ -72,24 +72,6 @@
   min-width: 0;
 }
 
-.xchat-header-xai-badge {
-  flex-shrink: 0;
-  font-size: 0.52rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--xf-text-300);
-  padding: 0.14rem 0.34rem;
-  border-radius: 5px;
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
-  background: color-mix(in srgb, var(--xf-surface-800) 88%, transparent);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-gain-green)) 12%, transparent);
-}
-
-html[data-xf-ui="soft"] .xchat-header-xai-badge {
-  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
-}
-
 .xchat-header-brand-stack .xchat-header-brand {
   margin-right: 0;
   flex: 0 1 auto;
@@ -143,12 +125,21 @@ html[data-xf-ui="soft"] .xchat-header-xai-badge {
   height: 28px;
 }
 
-/** Approved header: xAI badge + tenant block, right-aligned with the bar. */
+/** Approved header: appearance controls + tenant card on one row (right-aligned). */
 .xchat-header-trailing--approved-meta {
   align-items: center;
   justify-content: flex-end;
   gap: 0.45rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.xchat-header-approved-meta-row {
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
 }
 
 .xchat-header-tenant-card {
@@ -2049,6 +2040,20 @@ html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
 
 .xchat-ai-response-chrome__btn-label {
   white-space: nowrap;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-ai-response-chrome__closing {
+  font-size: 0.75rem;
+  line-height: 1.55;
+  font-weight: 400;
+  opacity: 0.65;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-ai-response-chrome__stat-time,
+html:not([data-xf-ui="soft"]) .xchat-ai-response-chrome__stat-pill {
+  font-size: 0.75rem;
+  font-weight: 400;
+  opacity: 0.6;
 }
 
 .xchat-guest-content-panel {
@@ -4424,6 +4429,16 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   line-height: 1.45;
 }
 
+html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok.xchat-composer__textarea--singleline {
+  line-height: 1.5;
+}
+
 .xchat-composer__grok-trailing {
   display: flex;
   flex-wrap: wrap;
@@ -5448,6 +5463,10 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
     min-height: 2.75rem;
     padding-block: 0.42rem;
     font-size: 0.94rem;
+  }
+
+  html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
+    font-size: 0.90625rem;
   }
 
   .xchat-composer__grok-tool {

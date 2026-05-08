@@ -22,6 +22,8 @@ const tickerRegex = /^[A-Z0-9.\-]{1,32}$/;
 const optionsReportRowSchema = z.object({
   rowId: z.string().trim().min(1).max(160),
   source: z.enum(["holding", "watchlist"]),
+  portfolioAccountId: z.string().trim().regex(/^[a-f0-9]{24}$/i).optional(),
+  portfolioAccountName: z.string().trim().min(1).max(120).optional(),
   symbol: z.string().trim().min(1).max(32),
   strike: z.number().positive().optional(),
   exp: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

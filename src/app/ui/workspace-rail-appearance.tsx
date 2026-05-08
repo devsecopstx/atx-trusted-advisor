@@ -46,7 +46,12 @@ function themeIcon(value: XfUiThemePreference, className: string) {
   return <LucideMonitorIcon className={className} />;
 }
 
-export function WorkspaceRailAppearance() {
+type WorkspaceRailAppearanceProps = {
+  /** Compact strip under top-nav tenant chrome (vs workspace rail footer). */
+  variant?: "rail" | "header";
+};
+
+export function WorkspaceRailAppearance({ variant = "rail" }: WorkspaceRailAppearanceProps) {
   const { pref, setPreference } = useXfShellTheme();
 
   const pick = useCallback(
@@ -56,18 +61,20 @@ export function WorkspaceRailAppearance() {
     [setPreference]
   );
 
-  const iconCls = "h-[1.125rem] w-[1.125rem]";
+  const iconCls = variant === "header" ? "h-[1rem] w-[1rem]" : "h-[1.125rem] w-[1.125rem]";
+  const labelId =
+    variant === "header" ? "workspace-header-appearance-label" : "workspace-rail-appearance-label";
+  const rootCls =
+    variant === "header"
+      ? "workspace-rail-appearance workspace-rail-appearance--header"
+      : "workspace-rail-appearance";
 
   return (
-    <div className="workspace-rail-appearance">
-      <p className="workspace-rail-appearance__heading sr-only" id="workspace-rail-appearance-label">
+    <div className={rootCls}>
+      <p className="workspace-rail-appearance__heading sr-only" id={labelId}>
         Appearance
       </p>
-      <div
-        aria-labelledby="workspace-rail-appearance-label"
-        className="workspace-rail-appearance__group"
-        role="radiogroup"
-      >
+      <div aria-labelledby={labelId} className="workspace-rail-appearance__group" role="radiogroup">
         {THEME_OPTIONS.map((opt) => {
           const selected = pref === opt.value;
           const mods = ["workspace-rail-appearance__btn", selected ? "workspace-rail-appearance__btn--active" : ""]

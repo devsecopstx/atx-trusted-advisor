@@ -8,6 +8,7 @@ import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header
 import type { AppUserProductNavCurrent } from "./app_user-product-nav";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "./product-brand-constants";
 import { useTenantShellBranding } from "./tenant-branding-context";
+import { WorkspaceRailAppearance } from "./workspace-rail-appearance";
 import { XchatHeaderBrand } from "./xchat-header-brand";
 
 type AppUserApprovedHeaderProps = {
@@ -49,23 +50,23 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
       </Link>
       <div className="xchat-header-main">
         <div className="xchat-header-trailing xchat-header-trailing--approved-meta">
-          <span className="xchat-header-xai-badge" title="Advisory models powered by xAI">
-            xAI Powered
-          </span>
-          {showTenantCard ? (
-            <div className="xchat-header-tenant-card" title={tenantTitle}>
-              {ws ? (
-                <>
-                  <span className="xchat-header-tenant-card__name">{ws.name}</span>
-                  {branding?.tagline ? (
-                    <span className="xchat-header-tenant-card__tagline">{branding.tagline}</span>
-                  ) : null}
-                </>
-              ) : branding?.tagline ? (
-                <span className="xchat-header-tenant-card__tagline">{branding.tagline}</span>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="xchat-header-approved-meta-row">
+            <WorkspaceRailAppearance variant="header" />
+            {showTenantCard ? (
+              <div className="xchat-header-tenant-card" title={tenantTitle}>
+                {ws ? (
+                  <>
+                    <span className="xchat-header-tenant-card__name">{ws.name}</span>
+                    {branding?.tagline ? (
+                      <span className="xchat-header-tenant-card__tagline">{branding.tagline}</span>
+                    ) : null}
+                  </>
+                ) : branding?.tagline ? (
+                  <span className="xchat-header-tenant-card__tagline">{branding.tagline}</span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </header>

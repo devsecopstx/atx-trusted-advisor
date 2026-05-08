@@ -1609,6 +1609,28 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
   color: inherit;
 }
 
+/** Top-nav placement (left of tenant card in approved header) — compact icon strip, no rail padding. */
+.workspace-rail-appearance--header {
+  flex-shrink: 0;
+  padding: 0;
+  width: auto;
+  max-width: none;
+}
+
+.workspace-rail-appearance--header .workspace-rail-appearance__group {
+  justify-content: flex-start;
+  gap: 0.22rem;
+  width: auto;
+}
+
+.workspace-rail-appearance--header .workspace-rail-appearance__btn {
+  flex: 0 0 auto;
+  min-height: 1.72rem;
+  min-width: 1.78rem;
+  padding: 0.1rem 0.2rem;
+  border-radius: 8px;
+}
+
 html[data-xf-ui="soft"] .workspace-rail-appearance__btn {
   background: color-mix(in srgb, var(--xf-text-100) 5%, var(--xf-bg-900));
 }

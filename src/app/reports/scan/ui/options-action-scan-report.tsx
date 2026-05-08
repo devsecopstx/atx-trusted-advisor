@@ -152,6 +152,8 @@ function exportCsv(data: OptionsActionScanDisplayData): void {
   const lines = [
     [
       "source",
+      "portfolioAccountId",
+      "portfolioAccountName",
       "symbol",
       "strike",
       "expiration",
@@ -169,6 +171,8 @@ function exportCsv(data: OptionsActionScanDisplayData): void {
     lines.push(
       [
         row.source,
+        row.portfolioAccountId ?? "",
+        csvEscape(row.portfolioAccountName ?? ""),
         instrument.symbol,
         instrument.strike != null ? instrument.strike.toFixed(2) : "",
         instrument.exp ?? "",
@@ -213,9 +217,10 @@ function exportPdf(data: OptionsActionScanDisplayData): void {
   });
   autoTable(doc, {
     startY: (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 102,
-    head: [["Instrument", "Action", "Urgency", "Confidence", "Window", "Why"]],
+    head: [["Instrument", "Book", "Action", "Urgency", "Confidence", "Window", "Why"]],
     body: holdings.map((row) => [
       instrumentLabel(row),
+      row.portfolioAccountName?.trim() || row.portfolioAccountId || "—",
       row.recommendedAction,
       row.urgency.toUpperCase(),
       row.confidence.toUpperCase(),
@@ -299,6 +304,32 @@ function toXoptionsHref(row: OptionsActionReportRow): string {
     params.set("contractType", instrument.type);
   }
   return `/xoptions?${params.toString()}`;
+}
+
+function toPortfolioAccountHref(accountId: string): string {
+  return `/portfolio/accounts/${accountId}`;
+}
+
+function BookCell({ row }: { row: OptionsActionReportRow }) {
+  if (!row.portfolioAccountId) {
+    return <span className="text-[0.62rem] text-[var(--xf-text-500)]">—</span>;
+  }
+  return (
+    <div className="flex max-w-[10rem] flex-col gap-1">
+      <span
+        className="line-clamp-2 text-[0.68rem] font-medium leading-snug text-[var(--xf-text-200)]"
+        title={row.portfolioAccountName ?? row.portfolioAccountId}
+      >
+        {row.portfolioAccountName ?? "Book"}
+      </span>
+      <Link
+        className="inline-flex w-fit items-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_42%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.65rem] font-bold text-[var(--xf-gain-green)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)]"
+        href={toPortfolioAccountHref(row.portfolioAccountId)}
+      >
+        Open book
+      </Link>
+    </div>
+  );
 }
 
 function scanDteDays(yyyyMmDd: string | undefined): number | null {
@@ -822,6 +853,7 @@ function OptionsActionScanReportInner({
             rows={holdings}
             sort={holdingSort}
             onSortChange={setHoldingSort}
+            showBookColumn
             showGenericHelper={false}
             applyEnabled={rowApplyEnabled}
             applyCache={applyCache}
@@ -844,6 +876,7 @@ function OptionsActionScanReportInner({
             rows={watchlist}
             sort={watchlistSort}
             onSortChange={setWatchlistSort}
+            showBookColumn={false}
             showGenericHelper
             applyEnabled={rowApplyEnabled}
             applyCache={applyCache}
@@ -877,6 +910,8 @@ function ReportTable(props: {
   rows: OptionsActionReportRow[];
   sort: SortState;
   onSortChange: (sort: SortState) => void;
+  /** Holdings table: show custodian book + link to account workspace. */
+  showBookColumn: boolean;
   showGenericHelper: boolean;
   applyEnabled: boolean;
   applyCache: ApplyCacheData;
@@ -892,10 +927,17 @@ function ReportTable(props: {
   return (
     <>
       <div className="hidden overflow-x-auto rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_28%,var(--xf-surface-700))] sm:block">
-        <table className="w-full min-w-[52rem] border-collapse text-left text-xs">
+        <table
+          className={`w-full border-collapse text-left text-xs ${props.showBookColumn ? "min-w-[58rem]" : "min-w-[52rem]"}`}
+        >
           <thead>
             <tr className="border-b border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_72%,transparent)]">
               <SortTh label="Instrument" sortKey="symbol" {...props} />
+              {props.showBookColumn ? (
+                <th className="px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]">
+                  Book
+                </th>
+              ) : null}
               <SortTh label="Action" sortKey="action" {...props} />
               <SortTh label="Urgency" sortKey="urgency" {...props} />
               <SortTh label="Confidence" sortKey="confidence" {...props} />
@@ -914,7 +956,10 @@ function ReportTable(props: {
           <tbody>
             {props.rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-4 text-[var(--xf-text-400)]" colSpan={8}>
+                <td
+                  className="px-3 py-4 text-[var(--xf-text-400)]"
+                  colSpan={props.showBookColumn ? 9 : 8}
+                >
                   No rows.
                 </td>
               </tr>
@@ -941,6 +986,11 @@ function ReportTable(props: {
                     <td className="align-top px-3 py-2.5">
                       <InstrumentStack row={row} />
                     </td>
+                    {props.showBookColumn ? (
+                      <td className="align-top px-3 py-2.5">
+                        <BookCell row={row} />
+                      </td>
+                    ) : null}
                     <td className="align-top px-3 py-2.5">
                       <span className={actionLabelClasses(row.recommendedAction)}>{row.recommendedAction}</span>
                     </td>
@@ -1046,6 +1096,16 @@ function ReportTable(props: {
                 key={row.rowId || `${row.source}-${row.symbol}-mobile-${idx}`}
               >
                 <InstrumentStack row={row} />
+                {props.showBookColumn && row.portfolioAccountId ? (
+                  <div className="mt-2 rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_35%,transparent)] px-2 py-1.5">
+                    <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[var(--xf-text-500)]">
+                      Book
+                    </p>
+                    <p className="mt-0.5 text-[0.72rem] font-medium text-[var(--xf-text-200)]">
+                      {row.portfolioAccountName ?? "Book"}
+                    </p>
+                  </div>
+                ) : null}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className={actionLabelClasses(row.recommendedAction)}>{row.recommendedAction}</span>
                   <UrgencyBadge urgency={row.urgency} />
@@ -1064,12 +1124,22 @@ function ReportTable(props: {
                     onToggle={() => toggleWhy(row.rowId)}
                   />
                 </div>
-                <Link
-                  className="mt-3 inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_38%,transparent)] bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_8%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-xoptions-accent)]"
-                  href={toXoptionsHref(row)}
-                >
-                  Open in xOptions
-                </Link>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {props.showBookColumn && row.portfolioAccountId ? (
+                    <Link
+                      className="inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_42%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.68rem] font-bold text-[var(--xf-gain-green)]"
+                      href={toPortfolioAccountHref(row.portfolioAccountId)}
+                    >
+                      Open book
+                    </Link>
+                  ) : null}
+                  <Link
+                    className="inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_38%,transparent)] bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_8%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-xoptions-accent)]"
+                    href={toXoptionsHref(row)}
+                  >
+                    Open in xOptions
+                  </Link>
+                </div>
                 {props.applyEnabled ? (
                   <div className="mt-3 space-y-1">
                     <button
@@ -1152,8 +1222,17 @@ function SortTh(props: {
   return (
     <th className={`px-3 py-2.5 ${align === "right" ? "text-right" : "text-left"}`}>
       <button
-        className={`inline-flex items-center gap-1 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)] ${align === "right" ? "ml-auto" : ""}`}
         type="button"
+        className={[
+          "inline-flex max-w-full cursor-pointer items-center gap-1 border-0 bg-transparent p-0 shadow-none outline-none",
+          "appearance-none [-webkit-appearance:none]",
+          "text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]",
+          "hover:bg-transparent hover:text-[var(--xf-text-300)]",
+          "focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--xf-tenant-primary)_45%,transparent)] focus-visible:ring-offset-0",
+          align === "right" ? "ml-auto justify-end text-right" : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onClick={() => props.onSortChange(sortToggle(props.sort, props.sortKey))}
       >
         {props.label}

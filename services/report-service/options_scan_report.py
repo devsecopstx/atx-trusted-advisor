@@ -51,6 +51,8 @@ class ReportRow:
     urgency: str
     confidence: str
     target_window: str
+    portfolio_account_id: Optional[str] = None
+    portfolio_account_name: Optional[str] = None
 
 
 @dataclass
@@ -171,6 +173,8 @@ def _build_payload(data: Dict[str, Any]) -> ReportPayload:
     for raw in raw_rows:
         if not isinstance(raw, dict):
             continue
+        pid = raw.get("portfolioAccountId")
+        pname = raw.get("portfolioAccountName")
         rows.append(
             ReportRow(
                 source=str(raw.get("source") or "watchlist"),
@@ -186,6 +190,12 @@ def _build_payload(data: Dict[str, Any]) -> ReportPayload:
                 urgency=str(raw.get("urgency") or "low").strip().lower(),
                 confidence=str(raw.get("confidence") or "low").strip().lower(),
                 target_window=str(raw.get("targetWindow") or "").strip(),
+                portfolio_account_id=str(pid).strip().lower()
+                if isinstance(pid, str) and len(pid.strip()) == 24
+                else None,
+                portfolio_account_name=str(pname).strip()
+                if isinstance(pname, str) and pname.strip()
+                else None,
             )
         )
     generated_at_raw = str(scan_data.get("generatedAt") or "")
@@ -305,16 +315,25 @@ def generate_options_action_scan_report(payload: ReportPayload) -> bytes:
     return buffer.getvalue()
 
 
+def _book_label(row: ReportRow) -> str:
+    if row.portfolio_account_name:
+        return row.portfolio_account_name
+    if row.portfolio_account_id:
+        return row.portfolio_account_id
+    return "—"
+
+
 def _rows_table(rows: List[ReportRow], styles) -> Table:
-    header = ["INSTRUMENT", "ACTION", "URGENCY", "CONFIDENCE", "EXP", "RATIONALE", "WINDOW"]
+    header = ["INSTRUMENT", "BOOK", "ACTION", "URGENCY", "CONFIDENCE", "EXP", "RATIONALE", "WINDOW"]
     table_data = [header]
     if not rows:
-        table_data.append([Paragraph("No rows.", styles["TableCell"]), "", "", "", "", "", ""])
+        table_data.append([Paragraph("No rows.", styles["TableCell"]), "", "", "", "", "", "", ""])
     else:
         for row in rows:
             table_data.append(
                 [
                     Paragraph(_instrument_label(row), styles["TableCell"]),
+                    Paragraph(_book_label(row), styles["TableCell"]),
                     Paragraph(f"<b>{row.recommended_action}</b>", styles["TableCell"]),
                     Paragraph(f"<b>{row.urgency.upper()}</b>", styles["TableCell"]),
                     Paragraph(f"<font color='#16a34a'><b>{_confidence_label(row.confidence)}</b></font>", styles["TableCell"]),
@@ -323,7 +342,7 @@ def _rows_table(rows: List[ReportRow], styles) -> Table:
                     Paragraph(row.target_window or "—", styles["TableCell"]),
                 ]
             )
-    col_widths = [1.45 * inch, 0.65 * inch, 0.7 * inch, 0.95 * inch, 0.8 * inch, 2.4 * inch, 1.0 * inch]
+    col_widths = [1.35 * inch, 1.05 * inch, 0.62 * inch, 0.68 * inch, 0.88 * inch, 0.72 * inch, 2.25 * inch, 0.95 * inch]
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
     table.setStyle(
         TableStyle(
@@ -367,6 +386,8 @@ def _sample_payload() -> ReportPayload:
                 urgency="high",
                 confidence="high",
                 target_window="Today",
+                portfolio_account_id="507f1f77bcf86cd799439011",
+                portfolio_account_name="Primary IRA",
             )
         ],
     )

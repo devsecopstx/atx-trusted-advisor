@@ -1289,6 +1289,14 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     properties: {
       rowId: { type: "string" },
       source: { type: "string", enum: ["holding", "watchlist"] },
+      portfolioAccountId: {
+        type: "string",
+        description: "Mongo `portfolio_accounts` ObjectId hex when `source` is `holding`."
+      },
+      portfolioAccountName: {
+        type: "string",
+        description: "Custodian book display name when `source` is `holding`."
+      },
       symbol: { type: "string" },
       strike: { type: "number" },
       exp: { type: "string", format: "date" },

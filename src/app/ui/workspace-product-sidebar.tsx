@@ -44,7 +44,6 @@ import {
 } from "@/app/ui/workspace-mobile-drawer-nav-context";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { WorkspaceProductRailProvider } from "@/app/ui/workspace-product-rail-context";
-import { WorkspaceRailAppearance } from "@/app/ui/workspace-rail-appearance";
 import { WorkspaceRailLogout } from "@/app/ui/workspace-rail-logout";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
@@ -70,8 +69,8 @@ import {
 
 const RAIL_EXPANDED_STORAGE_KEY = "xf-workspace-product-rail-expanded";
 
-/** Expanded desktop rail (`lg+`). Legacy was 280px; halved for wider main workspace. */
-const WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX = 140;
+/** Expanded desktop rail (`lg+`). Was 280px → 140px → +25% (175px) so desk labels (e.g. Portfolio desk) stay on one line. */
+const WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX = 175;
 const WORKSPACE_PRODUCT_RAIL_COLLAPSED_WIDTH_PX = 64;
 
 /** Fired after localStorage preference writes so `useSyncExternalStore` subscribers re-read. */
@@ -1204,7 +1203,6 @@ export function WorkspaceProductSidebar({
   const railFooter = (
     <footer className="workspace-product-sidebar__footer flex shrink-0 flex-col border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_94%,transparent)] transition-all duration-200 ease-out">
       <div className="workspace-product-sidebar__footer-account-rule" aria-hidden />
-      <WorkspaceRailAppearance />
       {accountDetails ? (
         <details className="workspace-rail-account-disclosure">
           <summary
@@ -1291,9 +1289,12 @@ export function WorkspaceProductSidebar({
               ref={drawerPanelRef}
               aria-labelledby="workspace-drawer-title"
               aria-modal="true"
-              className={`workspace-product-sidebar__drawer-panel workspace-rail-drawer-panel fixed bottom-0 left-0 top-0 z-[1045] flex min-h-0 w-[140px] max-[767px]:w-[min(100vw,160px)] flex-col border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] pt-[calc(env(safe-area-inset-top)+3.25rem)] pl-[env(safe-area-inset-left)] shadow-xl backdrop-blur-md max-[767px]:rounded-r-xl ${drawerTransitionClass}`}
+              className={`workspace-product-sidebar__drawer-panel workspace-rail-drawer-panel fixed bottom-0 left-0 top-0 z-[1045] flex min-h-0 flex-col border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] pt-[calc(env(safe-area-inset-top)+3.25rem)] pl-[env(safe-area-inset-left)] shadow-xl backdrop-blur-md max-[767px]:rounded-r-xl ${drawerTransitionClass}`}
               id="workspace-drawer-panel"
               role="dialog"
+              style={{
+                width: `min(100vw, ${WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX}px)`
+              }}
             >
               <span className="sr-only" id="workspace-drawer-title">
                 Workspace navigation

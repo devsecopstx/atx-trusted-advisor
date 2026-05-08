@@ -31,6 +31,10 @@ export type OptionsScanRowApplyToWatchlistAction = {
 export type OptionsActionReportRow = {
   rowId: string;
   source: OptionsActionSource;
+  /** Portfolio custodian book (`portfolio_accounts` hex id); holdings only. */
+  portfolioAccountId?: string;
+  /** Display name for the book; holdings only. */
+  portfolioAccountName?: string;
   symbol: string;
   strike?: number;
   exp?: string;
@@ -397,8 +401,10 @@ function deriveWatchlistAction(input: {
 function buildReportRowId(row: Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist">, index: number): string {
   const exp = row.exp ?? "na";
   const contractType = row.type ?? "na";
+  const book = row.portfolioAccountId ?? "na";
   return [
     row.source,
+    book,
     row.symbol,
     exp,
     contractType,
@@ -422,26 +428,40 @@ function withApplyAction(
   }));
 }
 
+function markdownTableCell(value: string): string {
+  return value.replace(/\|/g, "\\|");
+}
+
 export function renderOptionsActionReportMarkdown(input: {
   rows: OptionsActionReportRow[];
   isBasicTier: boolean;
   generatedAtIso: string;
 }): string {
   const header = input.isBasicTier
-    ? "| symbol | strike | exp | type | qty | action | target_window | confidence |\n|---|---:|---|---|---:|---|---|---|"
-    : "| source | symbol | strike | exp | type | qty | action | why | urgency | target_window | confidence |\n|---|---|---:|---|---|---:|---|---|---|---|---|";
+    ? "| symbol | strike | exp | type | qty | book | action | target_window | confidence |\n|---|---:|---|---|---:|---|---|---|---|"
+    : "| source | symbol | strike | exp | type | qty | book | action | why | urgency | target_window | confidence |\n|---|---|---:|---|---|---:|---|---|---|---|---|---|";
+  const emptyLine = input.isBasicTier
+    ? "| — | — | — | — | — | — | HOLD | monitor | low |"
+    : "| — | — | — | — | — | — | — | HOLD | — | low | monitor | low |";
   const lines =
     input.rows.length === 0
-      ? ["| - | - | - | - | - | HOLD | monitor | low |"]
+      ? [emptyLine]
       : input.rows.map((row) => {
           const strike = row.strike != null ? row.strike.toFixed(2) : "—";
           const exp = row.exp ?? "—";
           const type = row.type ?? "—";
           const qty = row.qty != null ? String(row.qty) : "—";
+          const bookRaw =
+            row.source === "holding"
+              ? row.portfolioAccountName?.trim() ||
+                row.portfolioAccountId ||
+                "—"
+              : "—";
+          const book = markdownTableCell(bookRaw);
           if (input.isBasicTier) {
-            return `| ${row.symbol} | ${strike} | ${exp} | ${type} | ${qty} | ${row.recommendedAction} | ${row.targetWindow} | ${row.confidence} |`;
+            return `| ${row.symbol} | ${strike} | ${exp} | ${type} | ${qty} | ${book} | ${row.recommendedAction} | ${row.targetWindow} | ${row.confidence} |`;
           }
-          return `| ${row.source} | ${row.symbol} | ${strike} | ${exp} | ${type} | ${qty} | ${row.recommendedAction} | ${row.why} | ${row.urgency} | ${row.targetWindow} | ${row.confidence} |`;
+          return `| ${row.source} | ${row.symbol} | ${strike} | ${exp} | ${type} | ${qty} | ${book} | ${row.recommendedAction} | ${row.why} | ${row.urgency} | ${row.targetWindow} | ${row.confidence} |`;
         });
   return [
     `### Options action scan (${new Date(input.generatedAtIso).toLocaleString("en-US", { timeZone: "UTC" })} UTC)`,
@@ -502,22 +522,37 @@ export async function buildOptionsActionReport(
         })
       : [];
 
-  const optionHoldings = positions
-    .map((position) =>
-      normalizeOptionHolding({
-        symbol: position.symbol,
-        optionType: position.optionType,
-        strike: position.strike,
-        expiration: position.expiration,
-        qty: position.qty,
-        avgCost: position.avgCost
-      })
-    )
-    .filter((row): row is NormalizedOptionHolding => row !== null);
+  const accountById = new Map<string, string>();
+  for (const account of accounts) {
+    const id = account._id?.toHexString();
+    if (!id) {
+      continue;
+    }
+    const label =
+      typeof account.name === "string" && account.name.trim().length > 0
+        ? account.name.trim()
+        : typeof account.extAccountId === "string" && account.extAccountId.trim().length > 0
+          ? account.extAccountId.trim()
+          : "Book";
+    accountById.set(id, label);
+  }
 
   const quoteCache = new Map<string, number | null>();
   const holdingRows: Array<Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist">> = [];
-  for (const holding of optionHoldings) {
+  for (const position of positions) {
+    const holding = normalizeOptionHolding({
+      symbol: position.symbol,
+      optionType: position.optionType,
+      strike: position.strike,
+      expiration: position.expiration,
+      qty: position.qty,
+      avgCost: position.avgCost
+    });
+    if (!holding) {
+      continue;
+    }
+    const accountHex = position.accountId?.toHexString?.() ?? "";
+    const portfolioAccountName = accountHex ? accountById.get(accountHex) ?? "Book" : undefined;
     const market = await fetchHoldingMarketSnapshot(holding, quoteCache);
     const action = deriveHoldingAction(holding, market);
     holdingRows.push({
@@ -527,6 +562,8 @@ export async function buildOptionsActionReport(
       exp: holding.expirationIsoDate,
       type: holding.optionType,
       qty: holding.qty,
+      portfolioAccountId: accountHex || undefined,
+      portfolioAccountName: accountHex ? portfolioAccountName : undefined,
       ...action
     });
   }
