@@ -3,29 +3,41 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-/** Locks Templates heading + workspace library status bar on one flex row above the gallery. */
-describe("xChat templates strip + workspace bar layout contract", () => {
+/** Locks compact workspace library header + pill scroller contract above the composer. */
+describe("xChat templates strip + workspace library layout contract", () => {
   const stripPath = path.join(process.cwd(), "src/app/xchat/ui/xchat-templates-strip.tsx");
   const cssPath = path.join(process.cwd(), "src/app/xchat/xchat.css");
   const strip = readFileSync(stripPath, "utf8");
   const css = readFileSync(cssPath, "utf8");
 
-  it("keeps Templates label and workspace library status in top-row (Templates before bar)", () => {
+  it("keeps workspace library header cluster before actions in top-row", () => {
     expect(strip).toContain('className="xchat-templates-strip__top-row"');
-    expect(strip).toContain("XchatTemplatesWorkspaceBar");
-    expect(strip).toContain('className="xchat-templates-strip__title">Templates</span>');
+    expect(strip).toContain('className="xchat-templates-strip__header-main"');
+    expect(strip).toContain('className="xchat-templates-strip__library-heading">Workspace library</h3>');
+    expect(strip).toContain("xchat-templates-strip__ready-badge");
+    expect(strip).toContain("prompts ready");
+    expect(strip).toContain('className="xchat-templates-strip__header-actions"');
+    expect(strip).toContain("xchat-workspace-bar__pulse");
     const topRowIx = strip.indexOf("xchat-templates-strip__top-row");
-    const titleIx = strip.indexOf("xchat-templates-strip__title");
-    const barIx = strip.indexOf("<XchatTemplatesWorkspaceBar");
+    const mainIx = strip.indexOf("xchat-templates-strip__header-main");
+    const actionsIx = strip.indexOf("xchat-templates-strip__header-actions");
     expect(topRowIx).toBeGreaterThan(-1);
-    expect(titleIx).toBeGreaterThan(-1);
-    expect(barIx).toBeGreaterThan(-1);
-    expect(topRowIx).toBeLessThan(titleIx);
-    expect(titleIx).toBeLessThan(barIx);
+    expect(mainIx).toBeGreaterThan(-1);
+    expect(actionsIx).toBeGreaterThan(-1);
+    expect(topRowIx).toBeLessThan(mainIx);
+    expect(mainIx).toBeLessThan(actionsIx);
   });
 
-  it("defines flex layout for top row and workspace bar shrink", () => {
+  it("exposes keyboard-scrollable pill row with group semantics when collapsed", () => {
+    expect(strip).toContain('role="group"');
+    expect(strip).toContain("xchat-templates-strip__scroller--pills");
+    expect(strip).toContain("xchat-templates-strip__card--pill");
+  });
+
+  it("defines compact header + pill scroller styles", () => {
     expect(css).toContain(".xchat-templates-strip__top-row");
-    expect(css).toContain(".xchat-templates-strip__top-row .xchat-workspace-bar");
+    expect(css).toContain(".xchat-templates-strip__header-main");
+    expect(css).toContain(".xchat-templates-strip__scroller--pills");
+    expect(css).toContain(".xchat-templates-strip__card--pill");
   });
 });

@@ -3168,54 +3168,72 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 .xchat-templates-strip {
   display: flex;
   flex-direction: column;
-  gap: 0.14rem;
+  gap: 0.35rem;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   padding: 0 0.04rem;
 }
 
+@media (min-width: 768px) {
+  .xchat-templates-strip {
+    gap: 0.28rem;
+  }
+}
+
 .xchat-templates-strip__top-row {
   display: flex;
   flex-direction: row;
-  align-items: stretch;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.45rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
   width: 100%;
   min-width: 0;
 }
 
-.xchat-templates-strip__top-row .xchat-templates-strip__header {
-  flex: 0 0 auto;
-  align-self: center;
-}
-
-.xchat-templates-strip__top-row .xchat-workspace-bar {
-  flex: 1 1 12rem;
-  min-width: 0;
-  width: auto;
-  margin-bottom: 0;
-}
-
-.xchat-templates-strip__header {
+.xchat-templates-strip__header-main {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  flex-wrap: nowrap;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
-.xchat-templates-strip__title {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+.xchat-templates-strip__library-heading {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--xf-text-400);
-  margin-right: auto;
+  color: var(--xf-text-200);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.xchat-templates-strip__top-row .xchat-templates-strip__title {
-  margin-right: 0;
+.xchat-templates-strip__ready-badge {
+  flex-shrink: 0;
+  padding: 0.12rem 0.38rem;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--xf-gain-green);
+  background: color-mix(in srgb, var(--xf-surface-700) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.xchat-templates-strip__header-actions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.xchat-templates-strip__header-actions .xchat-templates-strip__cards-tail {
+  margin-left: 0;
 }
 
 .xchat-templates-strip__cards-row {
@@ -3227,9 +3245,20 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   min-width: 0;
 }
 
+.xchat-templates-strip__cards-row--compact {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
 .xchat-templates-strip__cards-row .xchat-templates-strip__scroller {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.xchat-templates-strip__cards-row--compact .xchat-templates-strip__scroller {
+  flex: none;
+  width: 100%;
 }
 
 .xchat-templates-strip__cards-tail {
@@ -3300,8 +3329,8 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   height: 1.5rem;
   padding: 0;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
   color: var(--xf-text-300);
   cursor: pointer;
   transition:
@@ -3311,7 +3340,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-templates-strip__icon-btn:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: color-mix(in srgb, var(--xf-text-100) 9%, transparent);
   color: var(--xf-text-100);
 }
 
@@ -3393,36 +3422,21 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   overflow-x: auto;
   padding-bottom: 0.05rem;
   scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--xf-text-100) 28%, transparent) transparent;
 }
 
-@media (max-width: 380px) {
-  .xchat-templates-strip__cards-row {
-    flex-wrap: wrap;
-  }
+.xchat-templates-strip__scroller--pills {
+  gap: 0.35rem;
+  padding: 0.1rem 0.12rem 0.22rem;
+  margin: 0 -0.06rem;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 0.2rem;
+}
 
-  .xchat-templates-strip__cards-row .xchat-templates-strip__cards-tail {
-    flex-basis: 100%;
-    justify-content: flex-end;
-    padding-top: 0.05rem;
-  }
-
-  .xchat-templates-strip__scroller {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    max-height: 5.4rem;
-    overflow-y: auto;
-  }
-
-  .xchat-templates-strip__card-wrap--scroll {
-    flex: 1 1 calc(50% - 0.12rem);
-    max-width: calc(50% - 0.08rem);
-  }
-
-  .xchat-templates-strip__card {
-    flex: 1 1 auto;
-    width: 100%;
-    min-height: 2.65rem;
-  }
+.xchat-templates-strip__scroller--pills:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--xf-text-100) 45%, transparent);
+  border-radius: 10px;
 }
 
 .xchat-templates-strip__card {
@@ -3479,7 +3493,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   align-items: center;
   justify-content: center;
   border-style: dashed;
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
 }
 
 .xchat-templates-strip__card--scan {
@@ -3508,6 +3522,70 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   font-weight: 600;
   color: var(--xf-gain-green);
   line-height: 1;
+}
+
+/* Compact single-row pills (collapsed strip): short header stack ~≤110px desktop */
+.xchat-templates-strip__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.xchat-templates-strip__card--pill {
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 12px;
+  scroll-snap-align: start;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .xchat-templates-strip__card--pill {
+    min-height: 2.45rem;
+    padding: 0.5rem 1rem;
+  }
+}
+
+.xchat-templates-strip__card--pill .xchat-templates-strip__card-title {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+  overflow: visible;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+@media (min-width: 768px) {
+  .xchat-templates-strip__card--pill .xchat-templates-strip__card-title {
+    font-size: 0.875rem;
+  }
+}
+
+.xchat-templates-strip__card--pill:active {
+  transform: scale(0.95);
+}
+
+.xchat-templates-strip__card--pill:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--xf-text-100) 50%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 26%, transparent);
+}
+
+.xchat-templates-strip__card--pill.xchat-templates-strip__card--add {
+  flex-direction: row;
 }
 
 .xchat-templates-strip__grid-full {
@@ -3553,7 +3631,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   align-items: center;
   justify-content: center;
   border-style: dashed;
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
 }
 
 .xchat-templates-strip__grid-card--scan {
@@ -3626,8 +3704,9 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-templates-strip__card-delete--scroll {
   position: absolute;
-  top: 0.15rem;
-  right: 0.15rem;
+  top: 50%;
+  right: 0.18rem;
+  transform: translateY(-50%);
 }
 
 .xchat-templates-strip__hint {
@@ -3902,17 +3981,29 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-templates-strip__footnote {
   margin: 0;
-  font-size: 0.58rem;
-  line-height: 1.25;
+  font-size: 0.625rem;
+  line-height: 1.3;
   color: var(--xf-text-400);
-  opacity: 0.72;
+  opacity: 0.78;
 }
 
 .xchat-templates-strip__footnote-inner {
-  display: block;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+@media (min-width: 720px) {
+  .xchat-templates-strip__footnote-inner {
+    display: block;
+    -webkit-line-clamp: unset;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: normal;
+  }
 }
 
 .xchat-templates-strip__doc-link {

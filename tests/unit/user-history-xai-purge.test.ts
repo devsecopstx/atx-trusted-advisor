@@ -1,28 +1,31 @@
 import { ObjectId } from "mongodb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => {
-  const deleteXaiCollectionMock = vi.fn().mockResolvedValue(undefined);
-  const updateManyMock = vi.fn().mockResolvedValue({ modifiedCount: 1 });
-  const updateOneMock = vi.fn().mockResolvedValue({ modifiedCount: 1 });
-  return { deleteXaiCollectionMock, updateManyMock, updateOneMock };
+vi.mock("@/lib/xai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/xai")>();
+  return {
+    ...actual,
+    deleteXaiCollection: vi.fn(),
+    hasXaiManagementApiKey: vi.fn()
+  };
 });
-
-vi.mock("@/lib/xai", () => ({
-  deleteXaiCollection: (...args: unknown[]) => mocks.deleteXaiCollectionMock(...args),
-  hasXaiManagementApiKey: vi.fn().mockReturnValue(true)
-}));
 
 vi.mock("@/lib/mongodb", () => ({
   getDb: vi.fn()
 }));
 
 import { getDb } from "@/lib/mongodb";
+import * as Xai from "@/lib/xai";
 import { clearPerUserXaiHistoryCollectionForUserTenant } from "@/modules/xchat/user-history-xai-purge";
 
 describe("clearPerUserXaiHistoryCollectionForUserTenant", () => {
+  const updateManyMock = vi.fn().mockResolvedValue({ modifiedCount: 1 });
+  const updateOneMock = vi.fn().mockResolvedValue({ modifiedCount: 1 });
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.mocked(Xai.hasXaiManagementApiKey).mockReturnValue(true);
+    vi.mocked(Xai.deleteXaiCollection).mockResolvedValue(undefined);
+
     vi.mocked(getDb).mockResolvedValue({
       collection: vi.fn().mockReturnValue({
         find: vi.fn().mockReturnValue({
@@ -30,8 +33,8 @@ describe("clearPerUserXaiHistoryCollectionForUserTenant", () => {
             toArray: vi.fn().mockResolvedValue([{ xaiCollectionId: "col_a" }, { xaiCollectionId: "col_a" }])
           })
         }),
-        updateMany: mocks.updateManyMock,
-        updateOne: mocks.updateOneMock
+        updateMany: updateManyMock,
+        updateOne: updateOneMock
       })
     } as never);
   });
@@ -42,9 +45,9 @@ describe("clearPerUserXaiHistoryCollectionForUserTenant", () => {
       tenantIdHex: "507f1f77bcf86cd799439022"
     });
 
-    expect(mocks.deleteXaiCollectionMock).toHaveBeenCalledTimes(1);
-    expect(mocks.deleteXaiCollectionMock).toHaveBeenCalledWith("col_a");
-    expect(mocks.updateManyMock).toHaveBeenCalledWith(
+    expect(Xai.deleteXaiCollection).toHaveBeenCalledTimes(1);
+    expect(Xai.deleteXaiCollection).toHaveBeenCalledWith("col_a");
+    expect(updateManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "507f1f77bcf86cd799439011",
         tenantId: "507f1f77bcf86cd799439022"
@@ -53,7 +56,7 @@ describe("clearPerUserXaiHistoryCollectionForUserTenant", () => {
         $unset: { xaiCollectionId: "", xaiCollectionName: "" }
       })
     );
-    expect(mocks.updateOneMock).toHaveBeenCalledWith(
+    expect(updateOneMock).toHaveBeenCalledWith(
       { _id: new ObjectId("507f1f77bcf86cd799439011") },
       expect.objectContaining({
         $unset: { xaiCollectionId: "", xaiCollectionName: "" }
@@ -61,9 +64,22 @@ describe("clearPerUserXaiHistoryCollectionForUserTenant", () => {
     );
   });
 
+  it("skips xAI delete when management key is not configured", async () => {
+    vi.mocked(Xai.hasXaiManagementApiKey).mockReturnValue(false);
+
+    await clearPerUserXaiHistoryCollectionForUserTenant({
+      userIdHex: "507f1f77bcf86cd799439011",
+      tenantIdHex: "507f1f77bcf86cd799439022"
+    });
+
+    expect(Xai.deleteXaiCollection).not.toHaveBeenCalled();
+    expect(updateManyMock).toHaveBeenCalled();
+    expect(updateOneMock).toHaveBeenCalled();
+  });
+
   it("no-ops on invalid user id", async () => {
     await clearPerUserXaiHistoryCollectionForUserTenant({ userIdHex: "not-valid" });
-    expect(mocks.deleteXaiCollectionMock).not.toHaveBeenCalled();
+    expect(Xai.deleteXaiCollection).not.toHaveBeenCalled();
     expect(vi.mocked(getDb)).not.toHaveBeenCalled();
   });
 });

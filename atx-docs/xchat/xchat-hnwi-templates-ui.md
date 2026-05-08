@@ -7,7 +7,7 @@ Approved **app_user** xChat composer polish: curated **Templates** gallery + **p
 | Piece | Detail |
 |-------|--------|
 | **Source** | `src/modules/xchat/xchat-hnwi-templates.ts` — `XCHAT_HNWI_PROMPT_TEMPLATES` (HNWI / RIA-oriented prompts; workspace-aware wording). |
-| **UI** | `src/app/xchat/ui/xchat-templates-strip.tsx` — **single top row** (**`xchat-templates-strip__top-row`**) with label **Templates** + **`XchatTemplatesWorkspaceBar`** (“Workspace library” / compile status); below that: search, **+**, **See all**, horizontal strip or full grid, **Custom prompt** card. |
+| **UI** | `src/app/xchat/ui/xchat-templates-strip.tsx` — **`xchat-templates-strip__top-row`**: pulse + **Workspace library** heading + **N prompts ready** badge + **See all** / overflow (**⋯**); optional search; compact **pill** scroller (**`role="group"`**, arrow-key scroll when focused) or **See all** grid + **Custom prompt**. Pulse reuses **`xchat-workspace-bar__pulse`** styles from `xchat-templates-workspace-bar.tsx`. |
 | **Behavior** | Clicking a card fills the composer (`setInput`); user reviews before **Send**. Not auto-submit. |
 | **Deep link** | `?rail=xchat&item=examples` opens templates with search + **See all** expanded (`templatesGalleryInitiallyExpanded`). |
 
@@ -21,7 +21,7 @@ Approved **app_user** xChat composer polish: curated **Templates** gallery + **p
 
 ## Styling
 
-**`src/app/xchat/xchat.css`** — `.xchat-templates-strip__*` (including **`__top-row`** beside **`.xchat-workspace-bar`**), `.xchat-persona-menu__*`; soft theme overrides under `html[data-xf-ui="soft"]`.
+**`src/app/xchat/xchat.css`** — `.xchat-templates-strip__*` (**`__header-main`**, **`__scroller--pills`**, **`__card--pill`**, **`__top-row`**), workspace pulse (**`.xchat-workspace-bar__pulse`**), `.xchat-persona-menu__*`; soft theme overrides under `html[data-xf-ui="soft"]`.
 
 ## User templates & Depth
 

@@ -7,15 +7,13 @@ import {
     useMemo,
     useRef,
     useState,
+    type KeyboardEvent as ReactKeyboardEvent,
     type RefObject
 } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import {
-    applyXchatScanOptionsPrompt,
-    XchatTemplatesWorkspaceBar
-} from "@/app/xchat/ui/xchat-templates-workspace-bar";
+import { applyXchatScanOptionsPrompt } from "@/app/xchat/ui/xchat-templates-workspace-bar";
 import {
     filterXchatPromptTemplates,
     XCHAT_HNWI_PROMPT_TEMPLATES,
@@ -64,7 +62,29 @@ export function XchatTemplatesStrip({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreWrapRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const moreMenuId = useId();
+
+  const onScrollerKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const el = scrollerRef.current;
+    if (!el) {
+      return;
+    }
+    const step = Math.min(160, Math.max(80, Math.floor(el.clientWidth * 0.35)));
+    if (e.key === "ArrowRight" || e.key === "PageDown") {
+      el.scrollBy({ left: step, behavior: "smooth" });
+      e.preventDefault();
+    } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+      el.scrollBy({ left: -step, behavior: "smooth" });
+      e.preventDefault();
+    } else if (e.key === "Home") {
+      el.scrollTo({ left: 0, behavior: "smooth" });
+      e.preventDefault();
+    } else if (e.key === "End") {
+      el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+      e.preventDefault();
+    }
+  }, []);
 
   useEffect(() => {
     if (!moreMenuOpen) {
@@ -75,16 +95,16 @@ export function XchatTemplatesStrip({
         setMoreMenuOpen(false);
       }
     }
-    function onKey(e: KeyboardEvent) {
+    function onDocKeyDown(e: globalThis.KeyboardEvent) {
       if (e.key === "Escape") {
         setMoreMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", onDocMouseDown);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("keydown", onDocKeyDown);
     return () => {
       document.removeEventListener("mousedown", onDocMouseDown);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onDocKeyDown);
     };
   }, [moreMenuOpen]);
 
@@ -208,7 +228,15 @@ export function XchatTemplatesStrip({
         type="button"
         onClick={() => setSeeAllOpen((o) => !o)}
       >
-        {seeAllOpen ? "Show less" : "See all"}
+        {seeAllOpen ? (
+          <>
+            Show less <span aria-hidden>⋯</span>
+          </>
+        ) : (
+          <>
+            See all <span aria-hidden>⋯</span>
+          </>
+        )}
       </button>
       <div ref={moreWrapRef} className="xchat-templates-strip__more-wrap">
         <button
@@ -295,10 +323,17 @@ export function XchatTemplatesStrip({
   return (
     <motion.section aria-label="Prompt templates" className="xchat-templates-strip" initial={false}>
       <div className="xchat-templates-strip__top-row">
-        <div className="xchat-templates-strip__header">
-          <span className="xchat-templates-strip__title">Templates</span>
+        <div className="xchat-templates-strip__header-main">
+          <span
+            aria-hidden
+            className={`xchat-workspace-bar__pulse${askInFlight ? " xchat-workspace-bar__pulse--live" : ""}`}
+          />
+          <h3 className="xchat-templates-strip__library-heading">Workspace library</h3>
+          <span className="xchat-templates-strip__ready-badge" aria-live="polite">
+            {askInFlight ? "Advisor compiling…" : `${mergedTemplates.length} prompts ready`}
+          </span>
         </div>
-        <XchatTemplatesWorkspaceBar askInFlight={askInFlight} promptLibraryCount={mergedTemplates.length} />
+        <div className="xchat-templates-strip__header-actions">{templatesRowTail}</div>
       </div>
 
       {userLoadFailed ? (
@@ -341,6 +376,7 @@ export function XchatTemplatesStrip({
           {filtered.map((t) => (
             <div key={t.id} className="xchat-templates-strip__card-wrap">
               <button
+                aria-label={`${t.title}. ${t.subtitle}`}
                 className="xchat-templates-strip__grid-card"
                 type="button"
                 onClick={() => applyTemplate(t)}
@@ -364,6 +400,7 @@ export function XchatTemplatesStrip({
             </div>
           ))}
           <button
+            aria-label="Custom prompt — clear composer and write your own message"
             className="xchat-templates-strip__grid-card xchat-templates-strip__grid-card--add"
             type="button"
             onClick={() => {
@@ -380,48 +417,61 @@ export function XchatTemplatesStrip({
           <div className="xchat-templates-strip__tail-slot">{templatesRowTail}</div>
         </div>
       ) : (
-        <div className="xchat-templates-strip__cards-row">
-          <div className="xchat-templates-strip__scroller">
+        <div className="xchat-templates-strip__cards-row xchat-templates-strip__cards-row--compact">
+          <div
+            ref={scrollerRef}
+            aria-label="Workspace prompt shortcuts — use arrow keys when focused to scroll horizontally"
+            className="xchat-templates-strip__scroller xchat-templates-strip__scroller--pills"
+            role="group"
+            tabIndex={0}
+            onKeyDown={onScrollerKeyDown}
+          >
             <div className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
-            <button
-              aria-busy={askInFlight}
-              aria-label="Insert scan my options prompt into composer, then review and send"
-              className="xchat-templates-strip__card xchat-templates-strip__card--scan"
-              disabled={askInFlight}
-              type="button"
-              onClick={() => applyXchatScanOptionsPrompt(setInput, composerRef)}
-            >
-              <span className="xchat-templates-strip__card-title">Scan my options</span>
-              <span className="xchat-templates-strip__card-meta">Holdings + watchlist</span>
-            </button>
+              <button
+                aria-busy={askInFlight}
+                aria-label="Scan my options from holdings and watchlist — inserts prompt into composer; review and send"
+                className="xchat-templates-strip__card xchat-templates-strip__card--pill xchat-templates-strip__card--scan"
+                disabled={askInFlight}
+                type="button"
+                onClick={() => applyXchatScanOptionsPrompt(setInput, composerRef)}
+              >
+                <span className="xchat-templates-strip__card-title">Scan my options</span>
+                <span className="xchat-templates-strip__card-meta xchat-templates-strip__sr-only">
+                  Holdings + watchlist
+                </span>
+              </button>
             </div>
             {scrollerTemplates.map((t) => (
               <div key={t.id} className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
-              <button
-                className="xchat-templates-strip__card"
-                type="button"
-                onClick={() => applyTemplate(t)}
-              >
-                <span className="xchat-templates-strip__card-title">{t.title}</span>
-                <span className="xchat-templates-strip__card-meta">{t.subtitle}</span>
-              </button>
-              {t.savedDocId ? (
                 <button
-                  aria-label={`Delete saved template ${t.title}`}
-                  className="xchat-templates-strip__card-delete xchat-templates-strip__card-delete--scroll"
+                  aria-label={`${t.title}. ${t.subtitle}`}
+                  className="xchat-templates-strip__card xchat-templates-strip__card--pill"
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void removeSaved(t.savedDocId!);
-                  }}
+                  onClick={() => applyTemplate(t)}
                 >
-                  ×
+                  <span className="xchat-templates-strip__card-title">{t.title}</span>
+                  <span className="xchat-templates-strip__card-meta xchat-templates-strip__sr-only">
+                    {t.subtitle}
+                  </span>
                 </button>
-              ) : null}
+                {t.savedDocId ? (
+                  <button
+                    aria-label={`Delete saved template ${t.title}`}
+                    className="xchat-templates-strip__card-delete xchat-templates-strip__card-delete--scroll"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void removeSaved(t.savedDocId!);
+                    }}
+                  >
+                    ×
+                  </button>
+                ) : null}
               </div>
             ))}
             <button
-              className="xchat-templates-strip__card xchat-templates-strip__card--add"
+              aria-label="Custom prompt — clear composer and write your own message"
+              className="xchat-templates-strip__card xchat-templates-strip__card--pill xchat-templates-strip__card--add"
               type="button"
               onClick={() => {
                 setInput("");
@@ -432,10 +482,11 @@ export function XchatTemplatesStrip({
                 +
               </span>
               <span className="xchat-templates-strip__card-title">Custom prompt</span>
-              <span className="xchat-templates-strip__card-meta">Write your own</span>
+              <span className="xchat-templates-strip__card-meta xchat-templates-strip__sr-only">
+                Write your own
+              </span>
             </button>
           </div>
-          {templatesRowTail}
         </div>
       )}
 
