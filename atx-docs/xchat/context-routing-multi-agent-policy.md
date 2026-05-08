@@ -33,7 +33,9 @@ Do **not** set **`grok-4.20-multi-agent`** / **`grok-4.20-multi-agent-0309`** as
 
 ## Effective xAI model
 
-`POST /api/xchat/ask` uses the **resolved persona’s** `model` field (Admin → Personas / Mongo). If it is empty, the server uses **`XAI_CHAT_MODEL`** (env / Cloud Run), else **`grok-4-1-fast-reasoning`**. There is **no** raw client `model` id override — optional **`reasoningMode`** (`fast` \| `expert` \| `heavy`) maps to internal **`reasoningEffort`** and may **escalate** a non–multi-agent persona to **`grok-4.20-multi-agent`** for that turn when plan limits allow; otherwise the server uses the plan **`escalationModel`** without parallelism. Mutually exclusive with body **`reasoningEffort`** (send one or the other).
+`POST /api/xchat/ask` uses the **resolved persona’s** `model` field (Admin → Personas / Mongo). If it is empty, the server uses **`XAI_CHAT_MODEL`** (env / Cloud Run), else **`grok-4-1-fast-reasoning`**. There is **no** raw client `model` id override.
+
+**Depth for this turn** (optional **`reasoningMode`**: `fast` \| `expert` \| `heavy`, mutually exclusive with body **`reasoningEffort`**): **`fast`** → **`grok-4-1-fast`**; **`expert`** → **`grok-4.3`** + **`reasoning.effort` `medium`**; **`heavy`** → **`grok-4.3`** + **`reasoning.effort` `high`**. Legacy **`reasoningEffort`** alone maps non–multi-agent personas to **`grok-4.3`** + matching **`reasoning.effort`** (including **`none`** on grok-4.3); **`reasoningEffort` `none`** is rejected when the persona model is multi-agent. When the persona **`model`** is **`grok-4.20-multi-agent`** / **`grok-4.20-multi-agent-0309`** and depth presets are not forcing **`grok-4.3`**, **`agent_count`** + **`reasoning.effort`** follow **`reasoningEffort`** + plan **`multiAgentParallelMaxAgents`** (see plan-limits).
 
 ## Plan limits (subscription → multi-agent cap)
 
