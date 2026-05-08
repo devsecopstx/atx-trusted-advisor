@@ -28,6 +28,8 @@ import {
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { useTenantUxPolicy } from "@/app/ui/use-tenant-ux-policy";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
+import { WorkspaceRailAppearance } from "@/app/ui/workspace-rail-appearance";
+import { WorkspaceRailLogout } from "@/app/ui/workspace-rail-logout";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
@@ -927,47 +929,53 @@ export function WorkspaceProductSidebar({
   );
 
   const railFooter = (
-    <footer
-      className={`flex shrink-0 border-t border-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_92%,transparent)] ${
-        showExpandedUi
-          ? showCollapseToggle
-            ? "flex-row items-center justify-between gap-2 px-2.5 py-2"
-            : "flex-row items-center justify-end gap-2 px-2.5 py-2"
-          : "flex-col items-center gap-2 py-2.5"
-      }`}
-    >
-      {showCollapseToggle ? (
-        <XfHoverHint hint={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}>
-          <button
-            aria-expanded={showExpandedUi}
-            aria-label={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-toggle-bg)] text-[var(--xf-xchat-rail-toggle-color)] transition-[border-color,background-color,color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_35%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
-            type="button"
-            onClick={() => persistExpanded(!expanded)}
-          >
-            {showExpandedUi ? (
-              <ChevronsCollapseIcon className="h-5 w-5" />
-            ) : (
-              <ChevronsExpandIcon className="h-5 w-5" />
-            )}
-          </button>
-        </XfHoverHint>
-      ) : null}
+    <footer className="flex shrink-0 flex-col border-t border-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_92%,transparent)]">
+      <div
+        className={
+          showExpandedUi
+            ? showCollapseToggle
+              ? "flex flex-row items-center justify-between gap-2 px-2.5 py-2"
+              : "flex flex-row items-center justify-end gap-2 px-2.5 py-2"
+            : "flex flex-col items-center gap-2 py-2.5"
+        }
+      >
+        {showCollapseToggle ? (
+          <XfHoverHint hint={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}>
+            <button
+              aria-expanded={showExpandedUi}
+              aria-label={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-toggle-bg)] text-[var(--xf-xchat-rail-toggle-color)] transition-[border-color,background-color,color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_35%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
+              type="button"
+              onClick={() => persistExpanded(!expanded)}
+            >
+              {showExpandedUi ? (
+                <ChevronsCollapseIcon className="h-5 w-5" />
+              ) : (
+                <ChevronsExpandIcon className="h-5 w-5" />
+              )}
+            </button>
+          </XfHoverHint>
+        ) : null}
 
-      <XfHoverHint hint="Account">
-        <Link
-          aria-label="Account"
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_40%,transparent)]"
-          href="/account"
-          title="Account"
-        >
-          {accountDetails?.avatarUrl?.trim() ? (
-            <Image alt="" aria-hidden className="h-full w-full object-cover" height={40} src={accountDetails.avatarUrl} unoptimized width={40} />
-          ) : (
-            <PersonIcon className="h-5 w-5 text-[var(--xf-text-300)]" />
-          )}
-        </Link>
-      </XfHoverHint>
+        <XfHoverHint hint="Account">
+          <Link
+            aria-label="Account"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_40%,transparent)]"
+            href="/account"
+            title="Account"
+          >
+            {accountDetails?.avatarUrl?.trim() ? (
+              <Image alt="" aria-hidden className="h-full w-full object-cover" height={40} src={accountDetails.avatarUrl} unoptimized width={40} />
+            ) : (
+              <PersonIcon className="h-5 w-5 text-[var(--xf-text-300)]" />
+            )}
+          </Link>
+        </XfHoverHint>
+      </div>
+      <div className="workspace-rail-footer-stack">
+        <WorkspaceRailAppearance railExpanded={showExpandedUi} />
+        {accountDetails ? <WorkspaceRailLogout railExpanded={showExpandedUi} /> : null}
+      </div>
     </footer>
   );
 

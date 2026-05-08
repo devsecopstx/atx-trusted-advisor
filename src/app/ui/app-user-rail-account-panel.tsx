@@ -7,7 +7,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { SendIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { BillingAccessAccountRailStatus } from "@/app/ui/billing-access-account-rail-status";
 import { GoogleGIcon } from "@/app/ui/oauth-provider-icons";
-import { XfThemePreferenceMenu } from "@/app/ui/public-theme-picker";
 import { PwaInstallAccountPrompt } from "@/app/ui/pwa-install-account-prompt";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { tenantIdHexLastFourUserFacing } from "@/lib/mongo-object-id-hex";
@@ -48,26 +47,7 @@ export function AppUserRailAccountPanel({
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
   const [isSendingFeedback, setIsSendingFeedback] = useState(false);
-  const [logoutStatus, setLogoutStatus] = useState("");
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
   const feedbackDialogRef = useRef<HTMLDivElement | null>(null);
-
-  async function handleLogout() {
-    setLogoutStatus("");
-    setIsLoggingOut(true);
-    try {
-      const response = await fetch("/api/auth/logout", { method: "POST" });
-      if (!response.ok) {
-        throw new Error("Logout failed");
-      }
-      window.location.href = "/xchat";
-    } catch (error) {
-      setLogoutStatus(error instanceof Error ? error.message : "Logout failed");
-    } finally {
-      setIsLoggingOut(false);
-    }
-  }
 
   async function handleFeedbackSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -212,13 +192,6 @@ export function AppUserRailAccountPanel({
         <PwaInstallAccountPrompt />
       </nav>
 
-      <details className="app-user-rail-account-panel__appearance">
-        <summary className="app-user-rail-account-panel__appearance-summary">Appearance</summary>
-        <div className="app-user-rail-account-panel__appearance-body">
-          <XfThemePreferenceMenu aria-label="Appearance theme" />
-        </div>
-      </details>
-
       <div className="app-user-rail-account-panel__actions">
         <button
           className="app-user-rail-account-panel__btn"
@@ -230,17 +203,7 @@ export function AppUserRailAccountPanel({
         >
           Submit feedback
         </button>
-        <button
-          className="app-user-rail-account-panel__btn app-user-rail-account-panel__btn--logout"
-          disabled={isLoggingOut}
-          type="button"
-          onClick={() => void handleLogout()}
-        >
-          {isLoggingOut ? "Logging out…" : "Logout"}
-        </button>
       </div>
-
-      {logoutStatus ? <p className="status-text status-error text-[0.7rem]">{logoutStatus}</p> : null}
       {feedbackStatus && !feedbackOpen ? (
         <p className="status-text text-[0.7rem] text-[var(--xf-gain-green)]">{feedbackStatus}</p>
       ) : null}

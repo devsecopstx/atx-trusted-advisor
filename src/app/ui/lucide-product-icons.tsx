@@ -158,6 +158,23 @@ export function LucideListBulletsIcon({ className, ...props }: SVGProps<SVGSVGEl
   );
 }
 
+/** Session / account rail — https://lucide.dev/icons/log-out */
+export function LucideLogOutIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
+      <path
+        d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+      <path d="M16 17l5-5-5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} />
+      <path d="M21 12H9" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} />
+    </svg>
+  );
+}
+
 export function LucideSquarePenIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>

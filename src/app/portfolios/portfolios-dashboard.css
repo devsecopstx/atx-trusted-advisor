@@ -1093,3 +1093,297 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
   border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 38%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 12%, transparent);
 }
+
+/* ── Workspace rail: footer stack (appearance + logout) ── */
+
+.workspace-rail-footer-stack {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.workspace-rail-appearance {
+  flex-shrink: 0;
+  padding: 0.45rem 0.55rem 0.35rem;
+}
+
+.workspace-rail-appearance__heading {
+  margin: 0 0 0.35rem;
+  padding: 0 0.1rem;
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.workspace-rail-appearance__group {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.28rem;
+  width: 100%;
+}
+
+.workspace-rail-appearance__btn {
+  flex: 1 1 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.18rem;
+  min-height: 2.65rem;
+  min-width: 0;
+  padding: 0.28rem 0.18rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-300);
+  cursor: pointer;
+  font: inherit;
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.workspace-rail-appearance__btn--compact {
+  min-height: 2.75rem;
+  padding: 0.22rem 0.12rem;
+}
+
+.workspace-rail-appearance__btn:hover {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 28%, transparent);
+  color: var(--xf-text-100);
+}
+
+.workspace-rail-appearance__btn--active {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 12%, transparent);
+  color: var(--xf-text-100);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
+}
+
+.workspace-rail-appearance__btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 40%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.workspace-rail-appearance__btn-label {
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: inherit;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.workspace-rail-appearance__btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+html[data-xf-ui="soft"] .workspace-rail-appearance__btn {
+  background: color-mix(in srgb, var(--xf-text-100) 5%, var(--xf-bg-900));
+}
+
+/* ── Workspace rail: logout (destructive) + shared sidebar destructive pattern ── */
+
+.workspace-rail-logout {
+  flex-shrink: 0;
+  padding: 0.65rem 0.65rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.workspace-rail-logout--compact {
+  display: flex;
+  justify-content: center;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.workspace-rail-logout .sidebar-destructive-action {
+  width: 100%;
+}
+
+.workspace-rail-logout--compact .sidebar-destructive-action {
+  width: auto;
+}
+
+.sidebar-destructive-action__trigger {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  min-height: 3rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-destructive) 28%, transparent);
+  background: transparent;
+  color: var(--xf-destructive);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: left;
+  transition:
+    transform 0.14s ease,
+    border-color 0.14s ease,
+    background-color 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.sidebar-destructive-action__trigger:hover {
+  color: var(--xf-destructive-hover);
+  background: var(--xf-destructive-surface-hover);
+  border-color: color-mix(in srgb, var(--xf-destructive) 42%, transparent);
+}
+
+.sidebar-destructive-action__trigger:active {
+  transform: scale(0.985);
+}
+
+.sidebar-destructive-action__trigger:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 35%, transparent),
+    0 0 0 1px var(--xf-destructive-ring);
+}
+
+.sidebar-destructive-action__trigger--strong {
+  border-color: color-mix(in srgb, var(--xf-destructive) 45%, transparent);
+}
+
+.sidebar-destructive-action__trigger--compact {
+  width: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  padding: 0;
+  gap: 0;
+}
+
+.sidebar-destructive-action__trigger-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--xf-destructive);
+}
+
+.sidebar-destructive-action__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--xf-bg-900) 72%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.sidebar-destructive-action__dialog {
+  width: min(100%, 22rem);
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 96%, transparent);
+  box-shadow: var(--xf-shadow-soft);
+}
+
+.sidebar-destructive-action__title {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.sidebar-destructive-action__desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--xf-text-300);
+}
+
+.sidebar-destructive-action__err {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  color: var(--xf-destructive);
+}
+
+.sidebar-destructive-action__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 1.35rem;
+}
+
+.sidebar-destructive-action__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.sidebar-destructive-action__btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.sidebar-destructive-action__btn--ghost {
+  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: transparent;
+  color: var(--xf-text-200);
+}
+
+.sidebar-destructive-action__btn--ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.sidebar-destructive-action__btn--danger {
+  border-color: color-mix(in srgb, var(--xf-destructive) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-destructive) 22%, var(--xf-bg-900));
+  color: var(--xf-text-100);
+}
+
+.sidebar-destructive-action__btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--xf-destructive) 38%, var(--xf-bg-900));
+  border-color: color-mix(in srgb, var(--xf-destructive) 65%, transparent);
+}
+
+.sidebar-destructive-action__btn--danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--xf-destructive-ring);
+}
+
+html[data-xf-ui="soft"] .sidebar-destructive-action__dialog {
+  background: color-mix(in srgb, var(--xf-bg-900) 96%, var(--xf-text-100) 4%);
+  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+}
+
+html[data-xf-ui="soft"] .sidebar-destructive-action__desc {
+  color: var(--xf-text-200);
+}

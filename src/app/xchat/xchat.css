@@ -6150,30 +6150,6 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
   color: var(--xf-text-200);
 }
 
-.app-user-rail-account-panel__appearance {
-  margin: 0;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
-  padding: 0.35rem 0.45rem;
-  background: color-mix(in srgb, var(--xf-bg-800) 55%, transparent);
-}
-
-.app-user-rail-account-panel__appearance-summary {
-  cursor: pointer;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--xf-text-200);
-  list-style: none;
-}
-
-.app-user-rail-account-panel__appearance-summary::-webkit-details-marker {
-  display: none;
-}
-
-.app-user-rail-account-panel__appearance-body {
-  margin-top: 0.35rem;
-}
-
 .app-user-rail-account-panel__actions {
   display: flex;
   flex-direction: column;
@@ -6199,15 +6175,6 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
 .app-user-rail-account-panel__btn:hover {
   border-color: color-mix(in srgb, var(--xf-gain-green) 40%, transparent);
   color: var(--xf-gain-green);
-}
-
-.app-user-rail-account-panel__btn--logout {
-  color: color-mix(in srgb, var(--xf-text-100) 85%, transparent);
-}
-
-.app-user-rail-account-panel__btn--logout:hover {
-  color: var(--xf-text-100);
-  border-color: color-mix(in srgb, var(--xf-danger-400) 55%, transparent);
 }
 
 .app-user-rail-stack__body {

@@ -17,6 +17,11 @@
   --xf-purple-500: #b6bcc7;
   --xf-success-400: #8bd5b3;
   --xf-danger-400: #f5a0ad;
+  /** Destructive actions (logout, irreversible controls) — prefer over raw reds in rails/modals */
+  --xf-destructive: var(--xf-danger-400);
+  --xf-destructive-hover: color-mix(in srgb, var(--xf-danger-400) 82%, var(--xf-text-100));
+  --xf-destructive-ring: color-mix(in srgb, var(--xf-danger-400) 55%, transparent);
+  --xf-destructive-surface-hover: color-mix(in srgb, var(--xf-danger-400) 16%, transparent);
   --xf-warning-400: #dfc78d;
   --xf-gain-green: #39ff14;
   /** Wordmark lightning bolt (between aTx and Finance) — branding “lightning yellow” */
