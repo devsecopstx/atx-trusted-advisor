@@ -8,6 +8,7 @@ import {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
     useSyncExternalStore,
     type ReactNode,
@@ -17,6 +18,7 @@ import {
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
+import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
 import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import {
@@ -25,14 +27,21 @@ import {
     LucideChevronRightIcon,
     LucideClipboardListIcon,
     LucideListBulletsIcon,
+    LucideMenuIcon,
     LucideMonitorIcon,
     LucideSettingsIcon,
     LucideSquarePenIcon,
     LucideUploadIcon,
+    LucideXIcon,
     XoptionsRocketIcon
 } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
+import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
 import { useTenantUxPolicy } from "@/app/ui/use-tenant-ux-policy";
+import {
+    WorkspaceMobileDrawerNavProvider,
+    useWorkspaceMobileDrawerClose
+} from "@/app/ui/workspace-mobile-drawer-nav-context";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { WorkspaceProductRailProvider } from "@/app/ui/workspace-product-rail-context";
 import { WorkspaceRailAppearance } from "@/app/ui/workspace-rail-appearance";
@@ -40,6 +49,7 @@ import { WorkspaceRailLogout } from "@/app/ui/workspace-rail-logout";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import {
     isXoptionsStrategyBuilderVisible,
@@ -59,6 +69,10 @@ import {
 } from "@/lib/xoptions/xoptions-education-preferences";
 
 const RAIL_EXPANDED_STORAGE_KEY = "xf-workspace-product-rail-expanded";
+
+/** Expanded desktop rail (`lg+`). Legacy was 280px; halved for wider main workspace. */
+const WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX = 140;
+const WORKSPACE_PRODUCT_RAIL_COLLAPSED_WIDTH_PX = 64;
 
 /** Fired after localStorage preference writes so `useSyncExternalStore` subscribers re-read. */
 export const WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE = "xf-workspace-product-rail-prefs-change";
@@ -130,6 +144,7 @@ function SidebarLink({
 }) {
   const pathname = usePathname() ?? "";
   const active = sublinkActive(pathname, href);
+  const closeDrawer = useWorkspaceMobileDrawerClose();
   const cls = [
     "portfolios-workspace-sidebar__link",
     active ? "portfolios-workspace-sidebar__link--active" : "",
@@ -144,6 +159,9 @@ function SidebarLink({
       href={href}
       title={title}
       suppressHydrationWarning={true}
+      onClick={() => {
+        closeDrawer?.();
+      }}
     >
       {children}
     </Link>
@@ -301,6 +319,7 @@ function SidebarAccordionSummary({
   primaryNavTitle?: string;
 }) {
   const pathname = usePathname() ?? "";
+  const closeDrawer = useWorkspaceMobileDrawerClose();
   const primaryActive =
     primaryHref != null && primaryHref.length > 0 && sublinkActive(pathname, primaryHref);
   const iconNode =
@@ -312,7 +331,10 @@ function SidebarAccordionSummary({
           data-workspace-sidebar-primary=""
           href={primaryHref}
           title={primaryNavTitle ?? `Open ${label}`}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            closeDrawer?.();
+          }}
         >
           {icon}
         </Link>
@@ -332,20 +354,37 @@ function SidebarAccordionSummary({
   );
 }
 
-function subscribeMaxWidth980(cb: () => void): () => void {
+/** Viewports below Tailwind `lg` (1024px): overlay drawer + top workspace chrome, full-width content. */
+function subscribeMaxWidth1023(cb: () => void): () => void {
   if (typeof window === "undefined") {
     return () => {};
   }
-  const mq = window.matchMedia("(max-width: 980px)");
+  const mq = window.matchMedia("(max-width: 1023px)");
   mq.addEventListener("change", cb);
   return () => mq.removeEventListener("change", cb);
 }
 
-function getMaxWidth980Snapshot(): boolean {
-  return typeof window !== "undefined" && window.matchMedia("(max-width: 980px)").matches;
+function getMaxWidth1023Snapshot(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
 }
 
-/** Phones: icon rail stays ≤ ~15–18% vw; expanded nav uses a fixed drawer so chat keeps full width. */
+function subscribeReducedMotion(cb: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+
+function getReducedMotionSnapshot(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+/** Phones: drawer width cap + quick-action pills in top chrome. */
 function subscribeMaxWidth767(cb: () => void): () => void {
   if (typeof window === "undefined") {
     return () => {};
@@ -379,6 +418,131 @@ type CollapsedIconItem = {
   isActive: boolean;
 };
 
+type WorkspaceTopChromeBarProps = {
+  drawerOpen: boolean;
+  onToggleDrawer: () => void;
+  workspaceBrandHref: string;
+  watchlistHref: string;
+  /** `<768px`: show xOptions · Watchlist · xChat pills */
+  showQuickPills: boolean;
+  isPathVisible: (pathPrefix: string) => boolean;
+  workspaceBook: AppUserDefaultBook | null;
+  accountDetails: AppUserRailAccountPanelDetails | null;
+};
+
+function WorkspaceTopChromeBar({
+  drawerOpen,
+  onToggleDrawer,
+  workspaceBrandHref,
+  watchlistHref,
+  showQuickPills,
+  isPathVisible,
+  workspaceBook,
+  accountDetails
+}: WorkspaceTopChromeBarProps) {
+  const branding = useTenantShellBranding();
+  const deskLabel = branding?.displayName?.trim() || null;
+
+  return (
+    <header className="workspace-top-chrome">
+      <div className="workspace-top-chrome__leading">
+        <button
+          aria-controls="workspace-drawer-panel"
+          aria-expanded={drawerOpen}
+          aria-label={drawerOpen ? "Close workspace navigation" : "Open workspace navigation"}
+          className="workspace-top-chrome__icon-btn xf-focus-ring--sidebar"
+          type="button"
+          onClick={onToggleDrawer}
+        >
+          {drawerOpen ? (
+            <LucideXIcon className="h-5 w-5 text-[var(--xf-text-100)]" />
+          ) : (
+            <LucideMenuIcon className="h-5 w-5 text-[var(--xf-text-100)]" />
+          )}
+        </button>
+        <Link
+          aria-label="Workspace home"
+          className="workspace-top-chrome__brand-lockup xf-focus-ring--sidebar"
+          href={workspaceBrandHref}
+          title="Workspace home"
+        >
+          {branding?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- tenant CDN / data URLs
+            <img
+              alt=""
+              className="workspace-top-chrome__tenant-logo"
+              height={28}
+              src={branding.logoUrl}
+              width={28}
+            />
+          ) : (
+            <AtxFinanceMark className="shrink-0" size={20} />
+          )}
+        </Link>
+        {deskLabel ? (
+          <span className="workspace-top-chrome__tenant-name min-w-0 truncate font-medium text-[var(--xf-text-200)]">
+            {deskLabel}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="workspace-top-chrome__center min-w-0">
+        {workspaceBook?.workspacePortfolios?.length ? (
+          <div className="workspace-top-chrome__portfolio workspace-top-chrome__portfolio--compact">
+            <AppUserWorkspacePortfolioPicker
+              portfolios={workspaceBook.workspacePortfolios}
+              selectedPortfolioId={workspaceBook.portfolioId}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="workspace-top-chrome__trailing">
+        {showQuickPills ? (
+          <nav aria-label="Workspace shortcuts" className="workspace-top-chrome__pills">
+            {isPathVisible("/xoptions") ? (
+              <Link className="workspace-top-chrome__pill" href="/xoptions">
+                xOptions
+              </Link>
+            ) : null}
+            {isPathVisible("/watchlist") ? (
+              <Link className="workspace-top-chrome__pill" href={watchlistHref}>
+                Watchlist
+              </Link>
+            ) : null}
+            {isPathVisible("/xchat") ? (
+              <Link className="workspace-top-chrome__pill" href="/xchat">
+                xChat
+              </Link>
+            ) : null}
+          </nav>
+        ) : null}
+        {accountDetails ? (
+          <Link
+            aria-label="Account and feedback"
+            className="workspace-top-chrome__avatar-btn xf-focus-ring--sidebar"
+            href="/account/billing"
+          >
+            {accountDetails.avatarUrl?.trim() ? (
+              <Image
+                alt=""
+                aria-hidden
+                className="workspace-top-chrome__avatar-img"
+                height={32}
+                src={accountDetails.avatarUrl}
+                unoptimized
+                width={32}
+              />
+            ) : (
+              <PersonIcon className="h-7 w-7 text-[var(--xf-text-300)]" />
+            )}
+          </Link>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
 export function WorkspaceProductSidebar({
   defaultPortfolioId,
   isGlobalAdmin,
@@ -401,8 +565,14 @@ export function WorkspaceProductSidebar({
   );
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
-  const narrowViewport = useSyncExternalStore(subscribeMaxWidth980, getMaxWidth980Snapshot, () => false);
-  const narrowMobile767 = useSyncExternalStore(subscribeMaxWidth767, getMaxWidth767Snapshot, () => false);
+  const belowLg = useSyncExternalStore(subscribeMaxWidth1023, getMaxWidth1023Snapshot, () => false);
+  const belowMd = useSyncExternalStore(subscribeMaxWidth767, getMaxWidth767Snapshot, () => false);
+  const reduceMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    () => false
+  );
+  const isDesktopLg = !belowLg;
   const isXchatRoute = pathname.startsWith("/xchat");
   const isXoptionsRoute = pathname.startsWith("/xoptions");
   const isWatchlistRoute = pathname.startsWith("/watchlist");
@@ -412,18 +582,6 @@ export function WorkspaceProductSidebar({
   const isAccountOrLegalAppRoute =
     (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
     pathname.startsWith("/legal");
-  /**
-   * Narrow viewports: xChat, xOptions, desks, and account/legal use persisted expand/collapse so the
-   * main column stays usable on phones. Landing on those routes (incl. xOptions from xChat) collapses the rail (see effect).
-   */
-  const narrowPersistedWorkspaceRail =
-    narrowViewport &&
-    (isXchatRoute ||
-      isXoptionsRoute ||
-      isPortfoliosDeskRoute ||
-      isWatchlistRoute ||
-      isPortfolioAlertsRoute ||
-      isAccountOrLegalAppRoute);
   const xchatHistoryDeepLinkActive = isXchatRoute && searchParams.get("item") === "history";
   const xchatExamplePromptsDeepLinkActive =
     isXchatRoute && searchParams.get("item") === "example-prompts";
@@ -457,6 +615,9 @@ export function WorkspaceProductSidebar({
   }, []);
 
   useEffect(() => {
+    if (!belowLg) {
+      return;
+    }
     if (
       !isPortfoliosDeskRoute &&
       !isWatchlistRoute &&
@@ -468,6 +629,7 @@ export function WorkspaceProductSidebar({
     }
     persistExpanded(false);
   }, [
+    belowLg,
     isAccountOrLegalAppRoute,
     isPortfolioAlertsRoute,
     isPortfoliosDeskRoute,
@@ -477,21 +639,38 @@ export function WorkspaceProductSidebar({
     persistExpanded
   ]);
 
-  /** Full labels + accordions; narrow routes without persisted rail stay expanded full-width without toggle. */
-  const showExpandedUi = narrowPersistedWorkspaceRail ? expanded : narrowViewport || expanded;
-  const showCollapseToggle = narrowPersistedWorkspaceRail ? true : !narrowViewport;
+  useEffect(() => {
+    if (!belowLg || typeof document === "undefined") {
+      return;
+    }
+    document.documentElement.setAttribute("data-xf-workspace-top-chrome", "");
+    return () => document.documentElement.removeAttribute("data-xf-workspace-top-chrome");
+  }, [belowLg]);
+
+  useEffect(() => {
+    if (!belowLg || !expanded) {
+      return;
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        persistExpanded(false);
+      }
+    }
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [belowLg, expanded, persistExpanded]);
+
+  /** Desktop lg+: full labels when expanded; icon rail when collapsed. Drawer / top chrome always use full labels. */
+  const showWideSidebarChrome = belowLg || expanded;
 
   const toggleRail = useCallback(() => persistExpanded(!expanded), [expanded, persistExpanded]);
 
   const railContextValue = useMemo(
-    () => ({ expanded, showExpandedUi, toggle: toggleRail }),
-    [expanded, showExpandedUi, toggleRail]
+    () => ({ expanded, showExpandedUi: showWideSidebarChrome, toggle: toggleRail }),
+    [expanded, showWideSidebarChrome, toggleRail]
   );
 
   useEffect(() => {
-    if (!showCollapseToggle || typeof window === "undefined") {
-      return;
-    }
     function onKey(e: KeyboardEvent) {
       if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "b") {
         return;
@@ -508,7 +687,7 @@ export function WorkspaceProductSidebar({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showCollapseToggle, expanded, persistExpanded]);
+  }, [expanded, persistExpanded]);
 
   const workspaceBrandHref =
     isPathVisible("/portfolios") ? "/portfolios" : isPathVisible("/xchat") ? "/xchat" : "/xchat";
@@ -684,11 +863,15 @@ export function WorkspaceProductSidebar({
     });
   }
 
-  const railWidthPx =
-    narrowViewport && !narrowPersistedWorkspaceRail ? undefined : showExpandedUi ? 260 : 64;
+  const railWidthPx = isDesktopLg
+    ? expanded
+      ? WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX
+      : WORKSPACE_PRODUCT_RAIL_COLLAPSED_WIDTH_PX
+    : 0;
 
-  const mobilePersistedRailExpandedDrawer =
-    narrowPersistedWorkspaceRail && expanded && narrowMobile767;
+  const drawerOpen = belowLg && expanded;
+  const drawerPanelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(drawerOpen, drawerPanelRef);
 
   /*
    * BEFORE: Collapse lived in the footer beside the avatar; nav had no explicit “main vs resources” grouping.
@@ -698,33 +881,43 @@ export function WorkspaceProductSidebar({
   const sidebarHeader = (
     <header className="workspace-product-sidebar__header">
       <div
-        className={`workspace-product-sidebar__header-inner${showExpandedUi ? "" : " workspace-product-sidebar__header-inner--collapsed"}`}
+        className={`workspace-product-sidebar__header-inner${showWideSidebarChrome ? "" : " workspace-product-sidebar__header-inner--collapsed"}`}
       >
         <Link
-          aria-label={showExpandedUi ? "Workspace home" : "aTx Finance — workspace home"}
+          aria-label={showWideSidebarChrome ? "Workspace home" : "aTx Finance — workspace home"}
           className="workspace-product-sidebar__brand"
           href={workspaceBrandHref}
           title="Workspace home"
         >
-          <AtxFinanceMark className="shrink-0" size={showExpandedUi ? 22 : 20} />
-          {showExpandedUi ? (
+          <AtxFinanceMark className="shrink-0" size={showWideSidebarChrome ? 22 : 20} />
+          {showWideSidebarChrome ? (
             <>
               <LightningBolt size={16} />
               <span className="workspace-product-sidebar__brand-finance">Finance</span>
             </>
           ) : null}
         </Link>
-        {showCollapseToggle ? (
-          <XfHoverHint hint={showExpandedUi ? "Collapse sidebar (⌘B / Ctrl+B)" : "Expand sidebar (⌘B / Ctrl+B)"}>
+        {belowLg ? (
+          <button
+            aria-label="Close workspace navigation"
+            className="workspace-product-sidebar__drawer-close xf-focus-ring--sidebar"
+            type="button"
+            onClick={() => persistExpanded(false)}
+          >
+            <LucideXIcon className="workspace-product-sidebar__collapse-toggle-icon" />
+          </button>
+        ) : null}
+        {isDesktopLg ? (
+          <XfHoverHint hint={expanded ? "Collapse sidebar (⌘B / Ctrl+B)" : "Expand sidebar (⌘B / Ctrl+B)"}>
             <button
               aria-controls="workspace-product-sidebar-scroll"
-              aria-expanded={showExpandedUi}
+              aria-expanded={expanded}
               aria-label="Toggle sidebar"
               className="workspace-product-sidebar__collapse-toggle xf-focus-ring--sidebar"
               type="button"
               onClick={() => persistExpanded(!expanded)}
             >
-              {showExpandedUi ? (
+              {expanded ? (
                 <LucideChevronLeftIcon className="workspace-product-sidebar__collapse-toggle-icon" />
               ) : (
                 <LucideChevronRightIcon className="workspace-product-sidebar__collapse-toggle-icon" />
@@ -1011,11 +1204,11 @@ export function WorkspaceProductSidebar({
   const railFooter = (
     <footer className="workspace-product-sidebar__footer flex shrink-0 flex-col border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_94%,transparent)] transition-all duration-200 ease-out">
       <div className="workspace-product-sidebar__footer-account-rule" aria-hidden />
-      <WorkspaceRailAppearance railExpanded={showExpandedUi} />
+      <WorkspaceRailAppearance />
       {accountDetails ? (
         <details className="workspace-rail-account-disclosure">
           <summary
-            className={`workspace-rail-account-disclosure__summary xf-focus-ring--sidebar${showExpandedUi ? "" : " workspace-rail-account-disclosure__summary--icon-only"}`}
+            className={`workspace-rail-account-disclosure__summary xf-focus-ring--sidebar${showWideSidebarChrome ? "" : " workspace-rail-account-disclosure__summary--icon-only"}`}
           >
             <span className="workspace-rail-account-disclosure__avatar-wrap">
               {accountDetails.avatarUrl?.trim() ? (
@@ -1032,7 +1225,7 @@ export function WorkspaceProductSidebar({
                 <PersonIcon className="workspace-rail-account-disclosure__avatar-fallback" />
               )}
             </span>
-            {showExpandedUi ? (
+            {showWideSidebarChrome ? (
               <span className="workspace-rail-account-disclosure__identity">
                 <span className="workspace-rail-account-disclosure__name">{displayName}</span>
                 <span className="workspace-rail-account-disclosure__hint">Profile &amp; feedback</span>
@@ -1040,7 +1233,7 @@ export function WorkspaceProductSidebar({
             ) : (
               <span className="sr-only">Open account menu</span>
             )}
-            {showExpandedUi ? <RailSectionChevron /> : null}
+            {showWideSidebarChrome ? <RailSectionChevron /> : null}
           </summary>
           <div className="workspace-rail-account-disclosure__panel portfolios-workspace-sidebar__accordion-body--account">
             <AppUserRailAccountPanel
@@ -1052,102 +1245,111 @@ export function WorkspaceProductSidebar({
           </div>
         </details>
       ) : null}
-      {accountDetails ? <WorkspaceRailLogout railExpanded={showExpandedUi} /> : null}
-      <nav aria-label="Legal references" className="workspace-product-sidebar__legal-micro">
-        <Link href="/legal/imprint">Imprint</Link>
-        <span aria-hidden className="workspace-product-sidebar__legal-sep">
-          ·
-        </span>
-        <Link href="/legal/terms">Terms</Link>
-        <span aria-hidden className="workspace-product-sidebar__legal-sep">
-          ·
-        </span>
-        <Link href="/legal/privacy">Privacy</Link>
-      </nav>
+      {accountDetails ? <WorkspaceRailLogout railExpanded={showWideSidebarChrome} /> : null}
     </footer>
   );
 
-  const sidebarShellClassName = `flex h-auto max-[767px]:self-start md:h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-all duration-200 ease-out dark:shadow-md${narrowPersistedWorkspaceRail && narrowMobile767 ? " workspace-product-sidebar--xchat-mobile-compact" : ""}`;
+  const sidebarShellClassName =
+    "workspace-product-sidebar--desktop-rail flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-[width] duration-200 ease-out dark:shadow-md";
 
   const sidebarShellStyle = {
-    width:
-      railWidthPx === undefined
-        ? "100%"
-        : narrowPersistedWorkspaceRail && narrowMobile767 && !expanded
-          ? "clamp(2.65rem, 12vw, 3.75rem)"
-          : `${railWidthPx}px`,
+    width: `${railWidthPx}px`,
     boxSizing: "border-box" as const
   };
 
-  if (mobilePersistedRailExpandedDrawer) {
-    return (
-      <WorkspaceProductRailProvider value={railContextValue}>
-        <>
-          <button
-            aria-label="Close workspace sidebar"
-            className="workspace-product-sidebar__mobile-drawer-backdrop fixed inset-0 z-[44] border-0 bg-[color-mix(in_srgb,var(--xf-bg-900)_58%,transparent)] p-0 backdrop-blur-[2px]"
-            type="button"
-            onClick={() => persistExpanded(false)}
+  const drawerTransitionClass = reduceMotion
+    ? ""
+    : "workspace-product-sidebar__drawer-panel--motion workspace-rail-drawer-transition";
+
+  const mobileDrawerClose = belowLg ? () => persistExpanded(false) : null;
+
+  return (
+    <WorkspaceProductRailProvider value={railContextValue}>
+      <WorkspaceMobileDrawerNavProvider closeDrawer={mobileDrawerClose}>
+        {belowLg ? (
+          <WorkspaceTopChromeBar
+            accountDetails={accountDetails}
+            drawerOpen={drawerOpen}
+            isPathVisible={isPathVisible}
+            showQuickPills={belowMd}
+            watchlistHref={watchlistHref}
+            workspaceBook={workspaceBook}
+            workspaceBrandHref={workspaceBrandHref}
+            onToggleDrawer={() => persistExpanded(!expanded)}
           />
-          <div
-            aria-label="Workspace navigation"
-            aria-modal="true"
-            className="workspace-product-sidebar__mobile-drawer-panel fixed bottom-0 left-0 top-0 z-[45] flex min-h-0 w-[min(17.5rem,calc(100vw-1rem-env(safe-area-inset-left)-env(safe-area-inset-right)))] flex-col border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] shadow-xl backdrop-blur-md max-[767px]:rounded-r-xl"
-            role="dialog"
+        ) : null}
+
+        {drawerOpen ? (
+          <>
+            <button
+              aria-label="Close workspace navigation"
+              className="workspace-product-sidebar__drawer-backdrop workspace-rail-drawer-backdrop fixed inset-0 z-[1040] border-0 p-0"
+              type="button"
+              onClick={() => persistExpanded(false)}
+            />
+            <div
+              ref={drawerPanelRef}
+              aria-labelledby="workspace-drawer-title"
+              aria-modal="true"
+              className={`workspace-product-sidebar__drawer-panel workspace-rail-drawer-panel fixed bottom-0 left-0 top-0 z-[1045] flex min-h-0 w-[140px] max-[767px]:w-[min(100vw,160px)] flex-col border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] pt-[calc(env(safe-area-inset-top)+3.25rem)] pl-[env(safe-area-inset-left)] shadow-xl backdrop-blur-md max-[767px]:rounded-r-xl ${drawerTransitionClass}`}
+              id="workspace-drawer-panel"
+              role="dialog"
+            >
+              <span className="sr-only" id="workspace-drawer-title">
+                Workspace navigation
+              </span>
+              {sidebarHeader}
+              <div
+                className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-0 py-1"
+                id="workspace-product-sidebar-scroll"
+              >
+                {expandedNav}
+              </div>
+              {railFooter}
+            </div>
+          </>
+        ) : null}
+
+        {isDesktopLg ? (
+          <motion.div
+            className={sidebarShellClassName}
+            layout={!reduceMotion}
+            style={sidebarShellStyle}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
           >
             {sidebarHeader}
             <div
               className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-0 py-1"
               id="workspace-product-sidebar-scroll"
             >
-              {expandedNav}
+              {expanded ? (
+                expandedNav
+              ) : (
+                <nav aria-label="Workspace" className="flex flex-col items-center gap-1 px-1 pt-0.5">
+                  {collapsedIcons.map((item) => (
+                    <XfHoverHint hint={item.label} key={item.key} showDelayMs={150}>
+                      <Link
+                        aria-current={item.isActive ? "page" : undefined}
+                        className={`flex h-11 w-11 min-h-[44px] min-w-[44px] min-[1024px]:h-12 min-[1024px]:w-12 min-[1024px]:min-h-[48px] min-[1024px]:min-w-[48px] shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color,transform] duration-150 ease-out hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] xf-focus-ring--sidebar ${
+                          item.isActive
+                            ? "bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_14%,transparent)] text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
+                            : "text-[var(--xf-text-200)]"
+                        }`}
+                        href={item.href}
+                        title={item.label}
+                      >
+                        {item.icon}
+                      </Link>
+                    </XfHoverHint>
+                  ))}
+                </nav>
+              )}
             </div>
+
             {railFooter}
-          </div>
-        </>
-      </WorkspaceProductRailProvider>
-    );
-  }
-
-  return (
-    <WorkspaceProductRailProvider value={railContextValue}>
-      <motion.div
-        className={sidebarShellClassName}
-        layout
-        style={sidebarShellStyle}
-        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      >
-        {sidebarHeader}
-        <div
-          className="flex min-h-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-0 py-1 max-[767px]:flex-none md:flex-1"
-          id="workspace-product-sidebar-scroll"
-        >
-          {showExpandedUi ? (
-            expandedNav
-          ) : (
-            <nav aria-label="Workspace" className="flex flex-col items-center gap-1 px-1 pt-0.5">
-              {collapsedIcons.map((item) => (
-                <XfHoverHint hint={item.label} key={item.key} showDelayMs={150}>
-                  <Link
-                    aria-current={item.isActive ? "page" : undefined}
-                    className={`flex h-11 w-11 min-h-[44px] min-w-[44px] min-[768px]:max-[980px]:h-12 min-[768px]:max-[980px]:w-12 min-[768px]:max-[980px]:min-h-[48px] min-[768px]:max-[980px]:min-w-[48px] shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color,transform] duration-150 ease-out hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] xf-focus-ring--sidebar ${
-                      item.isActive
-                        ? "bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_14%,transparent)] text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
-                        : "text-[var(--xf-text-200)]"
-                    }`}
-                    href={item.href}
-                    title={item.label}
-                  >
-                    {item.icon}
-                  </Link>
-                </XfHoverHint>
-              ))}
-            </nav>
-          )}
-        </div>
-
-        {railFooter}
-      </motion.div>
+          </motion.div>
+        ) : null}
+      </WorkspaceMobileDrawerNavProvider>
     </WorkspaceProductRailProvider>
   );
 }

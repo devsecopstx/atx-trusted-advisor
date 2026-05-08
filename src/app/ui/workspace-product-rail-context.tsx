@@ -5,7 +5,7 @@ import { createContext, useContext, type ReactNode } from "react";
 export type WorkspaceProductRailContextValue = {
   /** Raw persisted preference (`xf-workspace-product-rail-expanded` localStorage). */
   expanded: boolean;
-  /** Effective expanded UI (narrow breakpoints + desk routes may force layout). */
+  /** Wide chrome (labels + footer disclosure): desktop lg follows `expanded`; below lg follows drawer/top chrome. */
   showExpandedUi: boolean;
   toggle: () => void;
 };

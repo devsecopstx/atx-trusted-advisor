@@ -42,4 +42,9 @@ describe("WorkspaceProductSidebar rail contract", () => {
     expect(src).toContain("workspace-product-sidebar__header");
     expect(src).toContain('aria-controls="workspace-product-sidebar-scroll"');
   });
+
+  it("uses halved expanded workspace rail width (140px vs legacy 280)", () => {
+    expect(src).toMatch(/WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX\s*=\s*140/);
+    expect(src).toContain("WORKSPACE_PRODUCT_RAIL_COLLAPSED_WIDTH_PX");
+  });
 });

@@ -46,11 +46,7 @@ function themeIcon(value: XfUiThemePreference, className: string) {
   return <LucideMonitorIcon className={className} />;
 }
 
-type WorkspaceRailAppearanceProps = {
-  railExpanded: boolean;
-};
-
-export function WorkspaceRailAppearance({ railExpanded }: WorkspaceRailAppearanceProps) {
+export function WorkspaceRailAppearance() {
   const { pref, setPreference } = useXfShellTheme();
 
   const pick = useCallback(
@@ -64,10 +60,7 @@ export function WorkspaceRailAppearance({ railExpanded }: WorkspaceRailAppearanc
 
   return (
     <div className="workspace-rail-appearance">
-      <p
-        className={`workspace-rail-appearance__heading${railExpanded ? "" : " sr-only"}`}
-        id="workspace-rail-appearance-label"
-      >
+      <p className="workspace-rail-appearance__heading sr-only" id="workspace-rail-appearance-label">
         Appearance
       </p>
       <div
@@ -77,11 +70,7 @@ export function WorkspaceRailAppearance({ railExpanded }: WorkspaceRailAppearanc
       >
         {THEME_OPTIONS.map((opt) => {
           const selected = pref === opt.value;
-          const mods = [
-            "workspace-rail-appearance__btn",
-            selected ? "workspace-rail-appearance__btn--active" : "",
-            railExpanded ? "" : "workspace-rail-appearance__btn--compact"
-          ]
+          const mods = ["workspace-rail-appearance__btn", selected ? "workspace-rail-appearance__btn--active" : ""]
             .filter(Boolean)
             .join(" ");
           const btn = (
@@ -94,9 +83,6 @@ export function WorkspaceRailAppearance({ railExpanded }: WorkspaceRailAppearanc
               onClick={() => pick(opt.value)}
             >
               <span className="workspace-rail-appearance__btn-icon">{themeIcon(opt.value, iconCls)}</span>
-              {railExpanded ? (
-                <span className="workspace-rail-appearance__btn-label">{opt.label}</span>
-              ) : null}
             </button>
           );
           return (

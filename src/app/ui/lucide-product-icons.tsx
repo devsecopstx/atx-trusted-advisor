@@ -235,3 +235,21 @@ export function LucideSquarePenIcon({ className, ...props }: SVGProps<SVGSVGElem
     </svg>
   );
 }
+
+/** Workspace mobile/tablet drawer toggle — https://lucide.dev/icons/menu */
+export function LucideMenuIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
+      <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeLinecap="round" strokeWidth={1.75} />
+    </svg>
+  );
+}
+
+/** Close drawer / dismiss — https://lucide.dev/icons/x */
+export function LucideXIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeLinecap="round" strokeWidth={1.75} />
+    </svg>
+  );
+}

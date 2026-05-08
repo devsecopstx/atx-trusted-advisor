@@ -1099,7 +1099,8 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
 /* ── Workspace rail: footer stack (appearance + logout) ── */
 /*
  * BEFORE: `workspace-rail-footer-stack` wrapped appearance + logout under a shared border-top.
- * AFTER: `WorkspaceProductSidebar` owns `workspace-product-sidebar__footer` (appearance → account disclosure → logout → legal micro-links).
+ * AFTER: `WorkspaceProductSidebar` owns `workspace-product-sidebar__footer` (appearance → account disclosure → logout).
+ * Legal links live in the shared `GlobalFooter` only (same as `/portfolios` + `/xchat` layout).
  */
 
 .workspace-rail-footer-stack {
@@ -1114,6 +1115,218 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
 .xf-focus-ring--sidebar:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 55%, transparent);
   outline-offset: 2px;
+}
+
+/* Fixed top bar: <1024px workspace surfaces (hamburger, tenant, portfolio, quick pills, avatar). */
+.workspace-top-chrome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0.45rem 0.65rem;
+  padding-left: max(0.65rem, env(safe-area-inset-left));
+  padding-right: max(0.65rem, env(safe-area-inset-right));
+  padding-top: max(0.45rem, env(safe-area-inset-top));
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 92%, var(--xf-surface-800));
+  backdrop-filter: blur(10px);
+}
+
+.workspace-top-chrome__leading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.workspace-top-chrome__icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, var(--xf-border-subtle));
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.workspace-top-chrome__icon-btn:hover {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 38%, transparent);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 8%, transparent);
+}
+
+.workspace-top-chrome__brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  padding: 0.1rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.workspace-top-chrome__tenant-logo {
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.workspace-top-chrome__tenant-name {
+  max-width: 9rem;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+@media (min-width: 768px) {
+  .workspace-top-chrome__tenant-name {
+    max-width: 14rem;
+    font-size: 0.78rem;
+  }
+}
+
+.workspace-top-chrome__center {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.workspace-top-chrome__portfolio--compact {
+  transform: scale(0.92);
+  transform-origin: center top;
+  max-width: min(100%, 220px);
+}
+
+.workspace-top-chrome__portfolio--compact .app-user-rail-workspace-row {
+  font-size: 0.68rem;
+}
+
+.workspace-top-chrome__portfolio--compact .app-user-rail-account-select {
+  font-size: 0.68rem;
+  max-width: 100%;
+}
+
+.workspace-top-chrome__trailing {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.workspace-top-chrome__pills {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.28rem;
+}
+
+@media (max-width: 767px) {
+  .workspace-top-chrome__pills {
+    display: flex;
+  }
+}
+
+.workspace-top-chrome__pill {
+  flex-shrink: 0;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--xf-text-100);
+  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 35%, transparent);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 10%, transparent);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.workspace-top-chrome__pill:hover {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 16%, transparent);
+}
+
+.workspace-top-chrome__avatar-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  overflow: hidden;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.workspace-top-chrome__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workspace-rail-drawer-backdrop {
+  cursor: pointer;
+  background: color-mix(in srgb, var(--xf-bg-900) 50%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+@keyframes workspace-rail-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.workspace-product-sidebar__drawer-panel.workspace-rail-drawer-transition {
+  animation: workspace-rail-drawer-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-product-sidebar__drawer-panel.workspace-rail-drawer-transition {
+    animation: none;
+  }
+}
+
+.workspace-product-sidebar__drawer-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, var(--xf-xchat-rail-border));
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-200);
+  cursor: pointer;
+}
+
+.workspace-product-sidebar__drawer-close:hover {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 42%, transparent);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
 }
 
 .workspace-product-sidebar__header {
@@ -1319,33 +1532,6 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
   transform: rotate(-90deg);
 }
 
-.workspace-product-sidebar__legal-micro {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem 0.45rem;
-  padding: 0.35rem 0.55rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-}
-
-.workspace-product-sidebar__legal-micro a {
-  color: color-mix(in srgb, var(--xf-text-400) 72%, transparent);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.workspace-product-sidebar__legal-micro a:hover {
-  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 75%, var(--xf-text-300));
-}
-
-.workspace-product-sidebar__legal-sep {
-  color: color-mix(in srgb, var(--xf-text-400) 45%, transparent);
-  user-select: none;
-}
-
 .app-user-rail-account-panel__pwa-only {
   padding: 0 0 0.35rem;
 }
@@ -1356,8 +1542,8 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
 }
 
 .workspace-rail-appearance__heading {
-  margin: 0 0 0.35rem;
-  padding: 0 0.1rem;
+  margin: 0;
+  padding: 0;
   font-size: 0.58rem;
   font-weight: 750;
   letter-spacing: 0.06em;
@@ -1376,13 +1562,13 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
 .workspace-rail-appearance__btn {
   flex: 1 1 0;
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.18rem;
-  min-height: 2.65rem;
+  gap: 0;
+  min-height: 2.25rem;
   min-width: 0;
-  padding: 0.28rem 0.18rem;
+  padding: 0.2rem 0.12rem;
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
   background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
@@ -1394,11 +1580,6 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
     background-color 0.14s ease,
     color 0.14s ease,
     box-shadow 0.14s ease;
-}
-
-.workspace-rail-appearance__btn--compact {
-  min-height: 2.75rem;
-  padding: 0.22rem 0.12rem;
 }
 
 .workspace-rail-appearance__btn:hover {
@@ -1418,16 +1599,6 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 40%, transparent),
     0 0 0 1px color-mix(in srgb, var(--xf-text-100) 10%, transparent);
-}
-
-.workspace-rail-appearance__btn-label {
-  font-size: 0.58rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: inherit;
-  line-height: 1.1;
-  text-align: center;
 }
 
 .workspace-rail-appearance__btn-icon {

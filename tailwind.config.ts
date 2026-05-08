@@ -17,7 +17,23 @@ const config: Config = {
       /** Align with `atx-docs/design-system/atxfinance-brand-kit.css` (--xf-font-sans / --xf-font-mono) */
       fontFamily: {
         sans: ["var(--xf-font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ["var(--xf-font-mono)", "ui-monospace", "monospace"]
+        mono: ["var(--xf-font-mono)", "ui-monospace", "monospace"],
+        /** xChat / Grok conversation stack (Inter already loaded via `--xf-font-sans`) */
+        grok: [
+          "var(--xf-font-sans)",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "Roboto",
+          '"Helvetica Neue"',
+          "Arial",
+          "sans-serif"
+        ]
+      },
+      fontSize: {
+        /** Grok-style conversation base (deep shell CSS also sets this on `.xchat-messages`) */
+        "grok-base": ["0.9375rem", { lineHeight: "1.6", letterSpacing: "-0.005em" }]
       }
     }
   },

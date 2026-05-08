@@ -6,16 +6,6 @@
   flex-direction: column;
 }
 
-.xchat-layout-root--safe {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  box-sizing: border-box;
-}
-
-.xchat-layout-root--safe > .app-footer {
-  padding-bottom: max(0.65rem, calc(0.35rem + env(safe-area-inset-bottom)));
-}
-
 .xchat-shell {
   flex: 1;
   min-height: 0;
@@ -38,7 +28,8 @@
 }
 
 .xchat-shell > .xchat-header,
-.xchat-shell > .xchat-body {
+.xchat-shell > .xchat-body,
+.xchat-shell > .app-footer {
   position: relative;
   z-index: 1;
 }
@@ -46,8 +37,8 @@
 .xchat-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 1rem;
+  gap: 0.5rem;
+  padding: 0.38rem 0.7rem;
   background: var(--xf-bg-800);
   border-bottom: 1px solid color-mix(in srgb, var(--xf-tenant-accent, transparent) 22%, rgba(255, 255, 255, 0.1));
   flex-wrap: nowrap;
@@ -83,13 +74,13 @@
 
 .xchat-header-xai-badge {
   flex-shrink: 0;
-  font-size: 0.56rem;
+  font-size: 0.52rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--xf-text-300);
-  padding: 0.2rem 0.42rem;
-  border-radius: 6px;
+  padding: 0.14rem 0.34rem;
+  border-radius: 5px;
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
   background: color-mix(in srgb, var(--xf-surface-800) 88%, transparent);
   box-shadow: 0 0 14px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-gain-green)) 12%, transparent);
@@ -145,6 +136,63 @@ html[data-xf-ui="soft"] .xchat-header-xai-badge {
   object-fit: contain;
   border-radius: var(--xf-radius-sm);
   border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-text-100)) 18%, transparent);
+}
+
+.xchat-header-tenant-logo--header-compact {
+  width: 28px;
+  height: 28px;
+}
+
+/** Approved header: xAI badge + tenant block, right-aligned with the bar. */
+.xchat-header-trailing--approved-meta {
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.xchat-header-tenant-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.06rem;
+  min-width: 0;
+  max-width: min(260px, 46vw);
+  padding: 0.22rem 0.45rem;
+  border-radius: var(--xf-radius-sm, 8px);
+  border: 1px solid var(--xf-border-subtle);
+  background: color-mix(in srgb, var(--xf-surface-800) 92%, transparent);
+  text-align: right;
+}
+
+.xchat-header-tenant-card__name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  color: var(--xf-text-200);
+  word-break: break-word;
+}
+
+.xchat-header-tenant-card__tagline {
+  font-size: 0.58rem;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--xf-text-400);
+  word-break: break-word;
+}
+
+.xf-logo-lockup-inline--header-compact.xf-logo-lockup-inline--header-single .xf-logo-row--header-single {
+  gap: 0.32rem;
+}
+
+.xf-logo-lockup-inline--header-compact .xf-logo-text--sm {
+  font-size: 0.88rem;
+}
+
+.xf-logo-lockup-inline--header-compact .xf-header-tagline--inline {
+  font-size: 0.62rem;
+  margin-left: 0.28rem;
 }
 
 .xchat-header-tenant-under-brand--chip {
@@ -1670,6 +1718,80 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   gap: 0.875rem;
   padding: 1rem 0;
   -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * Grok-aligned conversation typography — deep/dark shell only (`data-xf-ui` absent or not "soft").
+ * Soft/light shell keeps legacy `.xchat-msg` sizing below.
+ */
+html:not([data-xf-ui="soft"]) {
+  --xchat-grok-assistant-fg: #e5e5e7;
+  --xchat-grok-user-fg: #ffffff;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-messages {
+  font-family: var(--xf-font-sans), system-ui, -apple-system, blinkmacsystemfont, "Segoe UI", roboto, "Helvetica Neue",
+    arial, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+  font-weight: 400;
+}
+
+@media (max-width: 768px) {
+  html:not([data-xf-ui="soft"]) .xchat-messages {
+    font-size: 0.90625rem;
+  }
+}
+
+html:not([data-xf-ui="soft"]) .xchat-messages .xchat-msg {
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-msg-ai {
+  color: var(--xchat-grok-assistant-fg);
+  font-weight: 400;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-msg-user {
+  color: var(--xchat-grok-user-fg);
+}
+
+html:not([data-xf-ui="soft"]) .xchat-msg-user .xchat-msg-user-body__text {
+  font-weight: 500;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-msg-ai .xchat-markdown {
+  font-size: inherit;
+  line-height: 1.62;
+  font-weight: 400;
+  color: inherit;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-msg-ai .xchat-markdown strong,
+html:not([data-xf-ui="soft"]) .xchat-msg-ai .xchat-markdown b {
+  font-weight: 600;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-msg-ai .xchat-markdown h1,
+html:not([data-xf-ui="soft"]) .xchat-msg-ai .xchat-markdown h2,
+html:not([data-xf-ui="soft"]) .xchat-msg-ai .xchat-markdown h3,
+html:not([data-xf-ui="soft"]) .xchat-msg-ai .xchat-markdown h4 {
+  font-weight: 600;
+  color: var(--xchat-grok-assistant-fg);
+}
+
+html:not([data-xf-ui="soft"]) .xchat-msg-ai .xchat-markdown table {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
+  opacity: 0.6;
+  font-size: 0.6875rem;
+  font-weight: 400;
 }
 
 .xchat-thread-area > .xchat-thread-collapsed-bar {
@@ -5239,7 +5361,7 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1023px) {
   /**
    * Flex column + min-height: 0 fixes iOS/small viewports: grid rows default to min-height:auto,
    * so `.xchat-main` grew with content and pushed the composer below the fold.
@@ -5260,7 +5382,15 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
     flex: 0 0 auto;
     order: 0;
     max-height: none;
-    width: 100%;
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .xchat-left-rail > * {
+    pointer-events: auto;
   }
 
   .xchat-main {
@@ -5268,58 +5398,13 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
     flex: 1 1 0%;
     min-height: 0;
     max-width: 100%;
+    width: 100%;
     padding-inline: 0.35rem;
-  }
-}
-
-@media (max-width: 767px) {
-  /**
-   * Phones: horizontal shell — icon rail capped (~15–18vw) + chat column flex-1 so composer stays in view.
-   * Expanded sidebar becomes a fixed drawer (see WorkspaceProductSidebar), not an in-flow 260px column.
-   */
-  .xchat-main-shell {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    gap: 0.35rem;
-    overflow-x: hidden;
-  }
-
-  .xchat-left-rail.xchat-left-rail--workspace-product {
-    flex: 0 0 auto;
-    width: auto;
-    max-width: clamp(2.75rem, 18vw, 4rem);
-    min-width: 0;
-    align-self: stretch;
-  }
-
-  .xchat-main {
-    flex: 1 1 0%;
-    min-width: 0;
-    min-height: 0;
-    padding-inline: 0.28rem;
   }
 
   .xchat-shell > .xchat-header {
-    padding: 0.42rem 0.55rem;
-    gap: 0.35rem;
-  }
-
-  .workspace-product-sidebar--xchat-mobile-compact nav[aria-label="Workspace"] {
-    gap: 0.15rem;
-    padding-left: 0.12rem;
-    padding-right: 0.12rem;
-    padding-top: 0.2rem;
-  }
-
-  .workspace-product-sidebar--xchat-mobile-compact nav[aria-label="Workspace"] a {
-    border-radius: 10px;
-  }
-
-  .workspace-product-sidebar--xchat-mobile-compact > footer.flex {
-    gap: 0.28rem;
-    padding-top: 0.32rem;
-    padding-bottom: 0.32rem;
+    padding: 0.32rem 0.48rem;
+    gap: 0.32rem;
   }
 
   .xchat-welcome-header {
@@ -5806,7 +5891,7 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
 
 .app-user-shell-with-rail {
   display: grid;
-  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
   gap: 0.85rem;
   width: 100%;
   flex: 1;
@@ -5825,9 +5910,54 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
   box-sizing: border-box;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1023px) {
   .app-user-shell-with-rail {
     grid-template-columns: 1fr;
+  }
+
+  /**
+   * Overlay drawer rail: first grid column collapses so main stays full width.
+   * `WorkspaceProductSidebar` renders fixed top chrome + drawer (not in-flow below lg).
+   */
+  .app-user-shell-with-rail--workspace-product {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .app-user-shell-with-rail--workspace-product > .app-user-rail-stack--workspace-product {
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    overflow: visible;
+    padding: 0;
+    margin: 0;
+    border: none;
+    pointer-events: none;
+  }
+
+  .app-user-shell-with-rail--workspace-product > .app-user-rail-stack--workspace-product > * {
+    pointer-events: auto;
+  }
+
+  html[data-xf-workspace-top-chrome] .app-user-shell-with-rail--workspace-product > .app-user-shell-main {
+    padding-top: calc(3.35rem + env(safe-area-inset-top));
+  }
+
+  html[data-xf-workspace-top-chrome] .portfolio-page-body .app-user-shell-with-rail--workspace-product > .app-user-shell-main {
+    padding-top: calc(3.35rem + env(safe-area-inset-top));
+  }
+
+  html[data-xf-workspace-top-chrome] .xchat-shell > .xchat-header {
+    display: none;
+  }
+
+  html[data-xf-workspace-top-chrome] .xchat-body {
+    padding-top: 0;
+  }
+
+  html[data-xf-workspace-top-chrome] .xchat-main-shell {
+    padding-top: calc(3.35rem + env(safe-area-inset-top));
+    box-sizing: border-box;
   }
 }
 
@@ -5856,50 +5986,10 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
   overflow: hidden;
 }
 
-@media (max-width: 980px) {
-  .app-user-shell-with-rail--workspace-product {
-    grid-template-columns: 1fr;
-  }
-}
-
 /**
- * Phones (workspace-product shell): keep icon rail beside main — matches xChat horizontal shell.
- * The 980px rule stacks rail above content, which pushes xOptions / builder below the fold.
+ * Phones: workspace-product surfaces use the fixed top chrome + drawer from `WorkspaceProductSidebar`
+ * (see `@media (max-width: 1023px)` above). No in-flow icon rail beside main.
  */
-@media (max-width: 767px) {
-  /**
-   * Top-align rail + main so "Find options" starts beside the first icon (not vertically centered
-   * in a tall flex-grown row). `stretch` + sidebar `h-full` left a large empty band above main.
-   */
-  .app-user-shell-with-rail--workspace-product {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.35rem;
-    align-items: start;
-    align-content: start;
-    overflow-x: hidden;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  .app-user-rail-stack--workspace-product {
-    width: auto;
-    min-width: 0;
-    justify-self: start;
-    align-self: start;
-  }
-
-  .app-user-rail-stack--workspace-product .app-user-rail-stack__body--workspace-product {
-    flex: 0 1 auto;
-  }
-
-  .app-user-shell-with-rail--workspace-product > .app-user-shell-main {
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    align-self: start;
-  }
-}
 
 .app-user-rail-stack {
   min-height: 0;

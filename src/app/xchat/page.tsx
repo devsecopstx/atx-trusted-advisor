@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { GlobalFooter } from "@/app/ui/global-footer";
 import { StarfieldBackground } from "@/app/ui/starfield-background";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
@@ -107,6 +108,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             />
           </XchatGuestReadonlyShell>
         </div>
+        <GlobalFooter />
       </div>
     );
   }
@@ -183,6 +185,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           </XchatGuestReadonlyShell>
         )}
       </div>
+      <GlobalFooter />
     </div>
   );
 }

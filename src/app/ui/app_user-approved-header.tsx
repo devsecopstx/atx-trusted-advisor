@@ -28,40 +28,43 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
   const ws = props.workspaceTenant;
   const branding = useTenantShellBranding();
 
+  const tenantTitle = props.session.tenantId?.trim() ?? "";
+  const showTenantCard = Boolean(ws || branding?.tagline);
+
   return (
     <header className="xchat-header">
-      <div className="xchat-header-leading">
-        <div className="xchat-header-brand-stack">
-          <div className="xchat-header-brand-row">
-            <Link aria-label={USER_PRODUCT_HOME_ARIA_LABEL} className="xchat-header-brand" href="/xchat">
-              {branding?.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- data URLs + arbitrary tenant CDNs
-                <img
-                  alt=""
-                  className="xchat-header-tenant-logo"
-                  height={36}
-                  src={branding.logoUrl}
-                  width={36}
-                />
-              ) : (
-                <XchatHeaderBrand />
-              )}
-            </Link>
-            <span className="xchat-header-xai-badge" title="Advisory models powered by xAI">
-              xAI Powered
-            </span>
-          </div>
-          {ws ? (
-            <span className="xchat-header-tenant-under-brand" title={props.session.tenantId?.trim() ?? ""}>
-              <span className="xchat-header-tenant-under-brand__name">{ws.name}</span>
-              {branding?.tagline ? (
-                <span className="xchat-header-tenant-under-brand__tagline">{branding.tagline}</span>
+      <Link aria-label={USER_PRODUCT_HOME_ARIA_LABEL} className="xchat-header-brand" href="/xchat">
+        {branding?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- data URLs + arbitrary tenant CDNs
+          <img
+            alt=""
+            className="xchat-header-tenant-logo xchat-header-tenant-logo--header-compact"
+            height={28}
+            src={branding.logoUrl}
+            width={28}
+          />
+        ) : (
+          <XchatHeaderBrand compact />
+        )}
+      </Link>
+      <div className="xchat-header-main">
+        <div className="xchat-header-trailing xchat-header-trailing--approved-meta">
+          <span className="xchat-header-xai-badge" title="Advisory models powered by xAI">
+            xAI Powered
+          </span>
+          {showTenantCard ? (
+            <div className="xchat-header-tenant-card" title={tenantTitle}>
+              {ws ? (
+                <>
+                  <span className="xchat-header-tenant-card__name">{ws.name}</span>
+                  {branding?.tagline ? (
+                    <span className="xchat-header-tenant-card__tagline">{branding.tagline}</span>
+                  ) : null}
+                </>
+              ) : branding?.tagline ? (
+                <span className="xchat-header-tenant-card__tagline">{branding.tagline}</span>
               ) : null}
-            </span>
-          ) : branding?.tagline ? (
-            <span className="xchat-header-tenant-under-brand">
-              <span className="xchat-header-tenant-under-brand__tagline">{branding.tagline}</span>
-            </span>
+            </div>
           ) : null}
         </div>
       </div>
