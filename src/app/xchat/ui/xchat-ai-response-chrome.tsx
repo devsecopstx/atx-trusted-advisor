@@ -103,7 +103,16 @@ export type XchatAiResponseChromeProps = {
   feedbackVote?: "up" | "down" | null;
   onFeedbackChange?: (messageId: string, vote: "up" | "down") => void;
   onRegenerate?: (pairedPrompt: string) => void;
+  /**
+   * `metaStrip` — full-width bar below the response card: icon-only utilities, subtle border, light type.
+   * `default` — legacy inline chrome (text labels on key actions).
+   */
+  variant?: "default" | "metaStrip";
 };
+
+function btnLabelClass(variant: "default" | "metaStrip"): string {
+  return variant === "metaStrip" ? "sr-only" : "xchat-ai-response-chrome__btn-label";
+}
 
 export function XchatAiResponseChrome({
   messageId,
@@ -114,7 +123,8 @@ export function XchatAiResponseChrome({
   pairedUserPrompt,
   feedbackVote,
   onFeedbackChange,
-  onRegenerate
+  onRegenerate,
+  variant = "metaStrip"
 }: XchatAiResponseChromeProps) {
   const [copyDone, setCopyDone] = useState(false);
   const [linkDone, setLinkDone] = useState(false);
@@ -237,9 +247,15 @@ export function XchatAiResponseChrome({
 
   const feedbackDisabled = !serverLogId || feedbackBusy;
 
+  const lbl = btnLabelClass(variant);
+  const chromeClass =
+    variant === "metaStrip"
+      ? "xchat-ai-response-chrome xchat-ai-response-chrome--meta-strip"
+      : "xchat-ai-response-chrome";
+
   return (
-    <footer className="xchat-ai-response-chrome">
-      <div className="xchat-ai-response-chrome__divider" aria-hidden />
+    <footer className={chromeClass}>
+      {variant === "default" ? <div className="xchat-ai-response-chrome__divider" aria-hidden /> : null}
       <p className="xchat-ai-response-chrome__closing">{closing}</p>
       <div className="xchat-ai-response-chrome__bar">
         <div className="xchat-ai-response-chrome__actions" role="toolbar" aria-label="Response actions">
@@ -251,7 +267,7 @@ export function XchatAiResponseChrome({
             title={copyDone ? "Copied" : "Copy response"}
           >
             <IconCopy />
-            <span className="xchat-ai-response-chrome__btn-label">{copyDone ? "Copied" : "Copy"}</span>
+            <span className={lbl}>{copyDone ? "Copied" : "Copy"}</span>
           </button>
           <button
             type="button"
@@ -261,7 +277,7 @@ export function XchatAiResponseChrome({
             title={linkDone ? "Link copied" : "Copy shareable link"}
           >
             <IconLink />
-            <span className="xchat-ai-response-chrome__btn-label">{linkDone ? "Linked" : "Link"}</span>
+            <span className={lbl}>{linkDone ? "Linked" : "Link"}</span>
           </button>
           <button
             type="button"
@@ -292,7 +308,7 @@ export function XchatAiResponseChrome({
             title="Reload last prompt into composer — press Send to regenerate"
           >
             <IconRegen />
-            <span className="xchat-ai-response-chrome__btn-label">Regenerate</span>
+            <span className={lbl}>Regenerate</span>
           </button>
           <button
             type="button"
@@ -303,7 +319,7 @@ export function XchatAiResponseChrome({
             title={isSpeakingThisMessage ? "Stop speech replay" : "Read this response aloud"}
           >
             {isSpeakingThisMessage ? <IconStopSpeak /> : <IconSpeak />}
-            <span className="xchat-ai-response-chrome__btn-label">{isSpeakingThisMessage ? "Stop" : "Speak"}</span>
+            <span className={lbl}>{isSpeakingThisMessage ? "Stop" : "Speak"}</span>
           </button>
         </div>
         <div className="xchat-ai-response-chrome__stats" aria-label="Response stats">

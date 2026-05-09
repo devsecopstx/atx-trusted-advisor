@@ -1,17 +1,19 @@
 "use client";
 
 import {
-    QueryClient,
-    QueryClientProvider,
-    useMutation,
-    useQuery,
-    useQueryClient
+  QueryClient,
+  QueryClientProvider,
+  useMutation,
+  useQuery,
+  useQueryClient
 } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
+import { buildXoptionsStrategyBuilderHref } from "@/lib/xoptions/xoptions-desk-deep-link";
 import { formatExpirationShortLabel } from "@/lib/xoptions/xoptions-order-preview";
 import { parseOccOptionSymbol } from "@/modules/watchlist/option-expiration";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
@@ -46,6 +48,12 @@ type OptionsActionScanReportProps = {
   shareMode?: "enabled" | "disabled";
   title?: string;
   showHeaderSummary?: boolean;
+  /** When true (xChat thread), outer width/padding come from `.xchat-msg-ai-inner` — avoid double gutters. */
+  embeddedInThread?: boolean;
+  /** Rendered below the primary advisory actions (e.g. xChat response meta strip — copy, link, regenerate). */
+  responseMetaSlot?: ReactNode;
+  /** Workspace portfolio scope for `/xoptions` deep links from this report. */
+  workspacePortfolioId?: string | null;
 };
 
 type ApplyWatchlistResponse = {
@@ -569,7 +577,10 @@ function OptionsActionScanReportInner({
   data,
   shareMode = "enabled",
   title = "Options Action Scan",
-  showHeaderSummary = true
+  showHeaderSummary = true,
+  embeddedInThread = false,
+  responseMetaSlot,
+  workspacePortfolioId = null
 }: OptionsActionScanReportProps) {
   const queryClient = useQueryClient();
   const [holdingSort, setHoldingSort] = useState<SortState>(defaultSort);
@@ -678,6 +689,34 @@ function OptionsActionScanReportInner({
     [watchlist]
   );
 
+  const topWatchScannerSymbols = useMemo(() => {
+    const syms: string[] = [];
+    for (const row of watchlist) {
+      const u = toRowInstrument(row).symbol.trim().toUpperCase();
+      if (u.length > 0 && !syms.includes(u)) {
+        syms.push(u);
+      }
+      if (syms.length >= 3) {
+        break;
+      }
+    }
+    return syms;
+  }, [watchlist]);
+
+  const xoptionsScannerHref = useMemo(() => {
+    if (topWatchScannerSymbols.length === 0) {
+      return "/xoptions";
+    }
+    return buildXoptionsStrategyBuilderHref(workspacePortfolioId, topWatchScannerSymbols[0]!);
+  }, [topWatchScannerSymbols, workspacePortfolioId]);
+
+  const xoptionsScannerTitle =
+    topWatchScannerSymbols.length >= 2
+      ? `Opens xOptions with ${topWatchScannerSymbols[0]} — watchlist focus: ${topWatchScannerSymbols.slice(0, 3).join(", ")}`
+      : topWatchScannerSymbols.length === 1
+        ? `Open xOptions for ${topWatchScannerSymbols[0]}`
+        : "Open xOptions strategy builder";
+
   async function createShareLink() {
     setShareBusy(true);
     setShareError(null);
@@ -734,22 +773,26 @@ function OptionsActionScanReportInner({
     });
   }
 
+  const rootClass = embeddedInThread
+    ? "options-action-scan-root options-action-scan-root--embedded w-full py-7"
+    : "options-action-scan-root mx-auto w-full max-w-[1480px] px-6 py-8";
+
   return (
-    <section className="options-action-scan-root mx-auto w-full max-w-[1480px] px-6 py-8">
-      <div className="relative isolate overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-xl backdrop-blur-xl dark:border-slate-700/60 dark:bg-[#0F172A]/95">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-slate-100/70 to-transparent dark:from-white/5" />
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200/70 px-8 py-7 dark:border-slate-700/60">
+    <section className={rootClass}>
+      <div className="relative isolate min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700/60 dark:bg-[#0F172A]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-slate-100/80 to-transparent dark:from-slate-800/40 dark:to-transparent" />
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-8 py-7 dark:border-slate-700/60">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold tracking-[-0.2px] text-[var(--xf-text-100)]">{title}</h2>
-            <div className="text-xs text-slate-400">{generatedAtLabel}</div>
+            <h2 className="text-xl font-semibold tracking-[-0.2px] text-slate-900 dark:text-slate-100">{title}</h2>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{generatedAtLabel}</div>
           </div>
-          <div className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium tracking-wider text-emerald-400">
+          <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium tracking-wider text-emerald-400">
             ADVISOR
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-6 p-8 text-[14.5px] md:grid-cols-3">
-          <section className="space-y-4">
+        <div className="mb-8 grid grid-cols-1 gap-6 p-8 pb-0 text-[14.5px] text-slate-800 md:grid-cols-3 dark:text-slate-200">
+          <section className="scroll-mt-8 space-y-4" id="options-scan-stc-candidates">
             <div className="flex items-center gap-2">
               <div className="text-[13px] font-semibold tracking-[0.5px] text-slate-600 dark:text-slate-300">
                 CLOSE CANDIDATES
@@ -827,7 +870,6 @@ function OptionsActionScanReportInner({
                   ? `strongest conviction currently ${highConfidenceStc}.`
                   : "no high-confidence conviction ticker yet."}
               </p>
-              <p className="mt-1 text-[0.68rem] text-[var(--xf-text-400)]">{data.disclaimer}</p>
             </div>
             {share ? (
               <div className="flex flex-wrap items-center gap-2 rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] px-2.5 py-2 text-xs">
@@ -855,31 +897,68 @@ function OptionsActionScanReportInner({
           </aside>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-slate-200/70 bg-slate-50/95 px-8 py-7 dark:border-slate-700/60 dark:bg-[#0B0F14]">
-          <button
-            className="rounded-lg border border-slate-300 px-5 py-2 text-xs font-medium transition hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
-            type="button"
-            onClick={() => void downloadPdfReport()}
-          >
-            {pdfBusy ? "Generating PDF…" : "Download PDF Report"}
-          </button>
-          <button
-            className="rounded-lg border border-slate-300 px-5 py-2 text-xs font-medium transition hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
-            type="button"
-            onClick={() => exportCsv(data)}
-          >
-            Export CSV
-          </button>
-          <div className="flex-1" />
-          {shareMode === "enabled" ? (
-            <button
-              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-medium text-white transition hover:bg-emerald-500 hover:shadow-md"
-              disabled={shareBusy}
-              type="button"
-              onClick={() => void createShareLink()}
+        <p className="px-8 pb-8 pt-2 text-[11px] text-slate-600 dark:text-slate-400">{data.disclaimer}</p>
+      </div>
+
+      <div
+        className={[
+          "options-action-scan-advisory-strip mt-4 w-full border-t border-slate-200/90 pt-4 dark:border-slate-700/50",
+          embeddedInThread ? "" : "mx-auto max-w-[1480px] px-6"
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {closeCount > 0 ? (
+              <a
+                className="inline-flex items-center rounded-lg border border-emerald-500/45 bg-emerald-500/[0.12] px-3 py-2 text-center text-[12px] font-semibold leading-tight text-emerald-400 shadow-sm transition hover:bg-emerald-500/20"
+                href="#options-scan-stc-candidates"
+              >
+                Recommend STC review · {closeCount} candidate{closeCount === 1 ? "" : "s"}
+              </a>
+            ) : null}
+            <Link
+              className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-[12px] font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-700/90"
+              href={xoptionsScannerHref}
+              title={xoptionsScannerTitle}
             >
-              {shareBusy ? "Creating link…" : "Create Temporary Share Link (24h)"}
+              {topWatchScannerSymbols.length > 0
+                ? `Add top watchlist names to xOptions scanner (${topWatchScannerSymbols.slice(0, 3).join(", ")})`
+                : "Open xOptions scanner"}
+            </Link>
+            <button
+              className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-[12px] font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-700/90"
+              disabled={pdfBusy}
+              type="button"
+              onClick={() => void downloadPdfReport()}
+            >
+              {pdfBusy ? "Generating PDF…" : "Export full scan to PDF"}
             </button>
+            <button
+              className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-[12px] font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-700/90"
+              type="button"
+              onClick={() => exportCsv(data)}
+              title="Excel-ready comma-separated export"
+            >
+              Export CSV (Excel-ready)
+            </button>
+            {shareMode === "enabled" ? (
+              <>
+                <span className="min-w-2 flex-1 basis-8 max-md:hidden" aria-hidden />
+                <button
+                  className="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-[12px] font-semibold text-white shadow-md transition hover:bg-emerald-500 disabled:opacity-60 max-md:w-full"
+                  disabled={shareBusy}
+                  type="button"
+                  onClick={() => void createShareLink()}
+                >
+                  {shareBusy ? "Creating link…" : "Create 24h share link"}
+                </button>
+              </>
+            ) : null}
+          </div>
+          {responseMetaSlot ? (
+            <div className="border-t border-slate-200/75 pt-3 dark:border-slate-700/45">{responseMetaSlot}</div>
           ) : null}
         </div>
       </div>

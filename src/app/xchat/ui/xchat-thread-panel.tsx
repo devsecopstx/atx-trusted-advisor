@@ -43,24 +43,16 @@ export type XchatThreadPanelProps = {
   messagesEndRef: RefObject<HTMLDivElement | null>;
   threadScrollRef: RefObject<HTMLDivElement | null>;
   threadUiSummary: { userTurnCount: number; preview: string };
-  askElapsedMs: number;
   threadId: string;
   onMessageFeedback?: (messageId: string, vote: "up" | "down") => void;
   onRegeneratePrompt?: (pairedPrompt: string) => void;
   onNewThread?: () => void;
-  /** Stop in-flight prompt (same client abort as composer Stop). */
-  onCancelAsk?: () => void;
+  /** Earlier rows hidden when transcript is collapsed to the last N messages. */
+  hiddenEarlierMessageCount?: number;
+  onExpandEarlierMessages?: () => void;
+  /** Workspace portfolio for `/xoptions` links inside embedded scan cards. */
+  workspacePortfolioId?: string | null;
 } & XchatThreadPanelCopyProps;
-
-function formatXchatTradingClock(ms: number): string {
-  if (ms < 80) {
-    return "00:00.0";
-  }
-  const m = Math.floor(ms / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const tenths = Math.floor((ms % 1000) / 100);
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${tenths}`;
-}
 
 export function XchatThreadPanel({
   threadUiCollapsed,
@@ -77,15 +69,15 @@ export function XchatThreadPanel({
   messagesEndRef,
   threadScrollRef,
   threadUiSummary,
-  askElapsedMs,
   activePersonaName,
   threadId,
   onMessageFeedback,
   onRegeneratePrompt,
   onNewThread,
-  onCancelAsk
+  hiddenEarlierMessageCount = 0,
+  onExpandEarlierMessages,
+  workspacePortfolioId = null
 }: XchatThreadPanelProps) {
-  const askWaitSeconds = Math.floor(askElapsedMs / 1000);
   const latestAssistantMessage = [...messages].reverse().find((msg) => msg.role === "ai");
   const showRetainedContextBadge = latestAssistantMessage?.contextRetainedFromPriorTurns === true;
   return (
@@ -97,7 +89,9 @@ export function XchatThreadPanel({
           type="button"
           onClick={() => {
             setThreadUiCollapsed(false);
-            queueMicrotask(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }));
+            queueMicrotask(() =>
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
+            );
           }}
         >
           <span aria-hidden className="xchat-thread-collapsed-bar__icon">
@@ -118,8 +112,22 @@ export function XchatThreadPanel({
       ) : (
         <div
           ref={threadScrollRef}
-          className={`xchat-messages xchat-messages-container${threadMainVirtualize ? " xchat-messages--virtual-thread" : ""}`}
+          className={`xchat-messages xchat-messages-container${threadMainVirtualize ? " xchat-messages--virtual-thread" : ""}${loading ? " xchat-messages-container--advisor-working" : ""}`}
         >
+          {hiddenEarlierMessageCount > 0 && onExpandEarlierMessages ? (
+            <button
+              className="xchat-thread-expand-earlier"
+              type="button"
+              onClick={() => {
+                onExpandEarlierMessages();
+                queueMicrotask(() =>
+                  messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
+                );
+              }}
+            >
+              Show earlier messages ({hiddenEarlierMessageCount} hidden)
+            </button>
+          ) : null}
           {messages.length > 0 ? (
             <div className="xchat-thread-minimize-row">
               <button
@@ -183,6 +191,7 @@ export function XchatThreadPanel({
                       onRegeneratePrompt={onRegeneratePrompt}
                       strategyJobLaunchBusy={strategyJobLaunchBusy}
                       threadId={threadId}
+                      workspacePortfolioId={workspacePortfolioId}
                       onStrategyLaunch={onStrategyJobLaunch}
                       onStrategyStay={onStrategyJobStay}
                     />
@@ -201,62 +210,12 @@ export function XchatThreadPanel({
                 onRegeneratePrompt={onRegeneratePrompt}
                 strategyJobLaunchBusy={strategyJobLaunchBusy}
                 threadId={threadId}
+                workspacePortfolioId={workspacePortfolioId}
                 onStrategyLaunch={onStrategyJobLaunch}
                 onStrategyStay={onStrategyJobStay}
               />
             ))
           )}
-
-          {loading ? (
-            <div aria-busy="true" aria-live="polite" className="xchat-await" role="status">
-              <div className="xchat-await__row">
-                <div className="xchat-typing" aria-hidden>
-                  <span className="xchat-typing-dot" />
-                  <span className="xchat-typing-dot" />
-                  <span className="xchat-typing-dot" />
-                </div>
-                <div className="xchat-await__copy">
-                  <span className="xchat-await__title">Advisor is working</span>
-                  <span className="xchat-await__hint">
-                    {askWaitSeconds >= 10
-                      ? "Still running — portfolio or market tools can take up to a minute."
-                      : askWaitSeconds >= 3
-                        ? "Your persona may be calling workspace or Yahoo tools…"
-                        : "Sending to xAI…"}
-                  </span>
-                  <span
-                    className="xchat-await__timer"
-                    aria-label={`Elapsed ${askWaitSeconds} seconds`}
-                  >
-                    {formatXchatTradingClock(askElapsedMs)}
-                  </span>
-                </div>
-                {onCancelAsk ? (
-                  <button
-                    aria-label="Stop generating"
-                    className="xchat-await__stop"
-                    type="button"
-                    onClick={() => {
-                      onCancelAsk();
-                    }}
-                  >
-                    Stop
-                  </button>
-                ) : null}
-              </div>
-              <div aria-hidden className="xchat-await__skeleton">
-                <div className="xchat-await__sk-track xchat-await__sk-track--long">
-                  <span className="xchat-await__sk-line" />
-                </div>
-                <div className="xchat-await__sk-track xchat-await__sk-track--med">
-                  <span className="xchat-await__sk-line" />
-                </div>
-                <div className="xchat-await__sk-track xchat-await__sk-track--short">
-                  <span className="xchat-await__sk-line" />
-                </div>
-              </div>
-            </div>
-          ) : null}
 
           <div ref={messagesEndRef} />
         </div>

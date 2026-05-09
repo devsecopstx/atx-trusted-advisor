@@ -14,19 +14,16 @@ import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import {
-    getDefaultPortfolio,
-    getPortfolioByIdForSessionUser,
-    getPortfolioWatchlist,
-    provisionDefaultPortfolioForUser
+  getDefaultPortfolio,
+  getPortfolioByIdForSessionUser,
+  getPortfolioWatchlist,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
-import "@/app/portfolios/portfolios-dashboard.css";
-import "../xchat/xchat.css";
 
 import { WatchlistConsole } from "./ui/watchlist-console";
-import "./watchlist.css";
 
 export default async function WatchlistPage({
   searchParams

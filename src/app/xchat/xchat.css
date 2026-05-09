@@ -1872,6 +1872,36 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   overflow-y: auto;
   scroll-behavior: smooth;
   padding-bottom: 32px;
+  position: relative;
+}
+
+.xchat-thread-expand-earlier {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xf-bg-900) 22%, var(--xf-surface-700));
+  color: color-mix(in srgb, var(--xf-text-400) 88%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.42rem 1rem;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.xchat-thread-expand-earlier:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 8%, var(--xf-surface-700));
+  color: var(--xf-text-300);
+}
+
+/** Extra scroll pad while fixed “Advisor is working” overlay sits above the composer */
+.xchat-messages-container.xchat-messages-container--advisor-working {
+  padding-bottom: 11rem;
 }
 
 /*
@@ -1986,6 +2016,17 @@ html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
   overflow-x: auto;
 }
 
+.xchat-msg-ai-inner {
+  width: 100%;
+  max-width: 1480px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
 .xchat-msg-user {
   align-self: flex-end;
   width: fit-content;
@@ -2083,15 +2124,37 @@ html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
 }
 
 .xchat-msg-ai {
-  align-self: flex-start;
-  width: fit-content;
-  max-width: min(100%, 92%);
-  background: var(--xf-surface-700);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--xf-text-100);
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  padding: 1.5rem 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  color: inherit;
   font-size: 14.5px;
   line-height: 1.55;
   letter-spacing: -0.01em;
+}
+
+/** Markdown memo panel — utilities sit in `.xchat-ai-response-chrome--meta-strip` below, not inside this surface. */
+.xchat-msg-ai-body--markdown {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 1.25rem 1.35rem;
+  border-radius: 14px;
+  border: 1px solid rgb(51 65 85 / 0.6);
+  background: #0f172a;
+  color: rgb(226 232 240);
+}
+
+html[data-xf-ui="soft"] .xchat-msg-ai-body--markdown {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+  color: var(--xf-text-100);
 }
 
 .xchat-assistant-message,
@@ -2131,6 +2194,58 @@ html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
   padding-top: 0.45rem;
   width: 100%;
   min-width: 0;
+}
+
+/** Thin utilities strip below the response card (markdown / strategy job paths). */
+.xchat-msg-ai-inner > .xchat-ai-response-chrome--meta-strip {
+  margin-top: 0.75rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+}
+
+html[data-xf-ui="soft"] .xchat-msg-ai-inner > .xchat-ai-response-chrome--meta-strip {
+  border-top-color: #e2e8f0;
+}
+
+.xchat-ai-response-chrome--meta-strip {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.xchat-ai-response-chrome--meta-strip .xchat-ai-response-chrome__closing {
+  margin-bottom: 0.4rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.xchat-ai-response-chrome--meta-strip .xchat-ai-response-chrome__btn {
+  padding: 0.32rem;
+  border: none;
+  background: transparent;
+  opacity: 0.7;
+}
+
+.xchat-ai-response-chrome--meta-strip .xchat-ai-response-chrome__btn:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.xchat-ai-response-chrome--meta-strip .xchat-ai-response-chrome__btn svg {
+  opacity: inherit;
+}
+
+.xchat-ai-response-chrome--meta-strip .xchat-ai-response-chrome__stats {
+  opacity: 0.72;
+}
+
+.xchat-ai-response-chrome--meta-strip .xchat-ai-response-chrome__stat-pill {
+  background: transparent;
+  font-size: 0.65rem;
+  padding: 0.12rem 0.42rem;
+  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+}
+
+.xchat-ai-response-chrome--meta-strip .xchat-ai-response-chrome__stat-time {
+  font-size: 0.68rem;
 }
 
 .xchat-ai-response-chrome__divider {
@@ -2408,11 +2523,18 @@ html:not([data-xf-ui="soft"]) .xchat-ai-response-chrome__stat-pill {
 /* Guided strategy job — card layout (deep + soft shells). Primary accent: institutional violet (--xf-xoptions-accent). */
 .xchat-sjp {
   margin-top: 0.75rem;
-  padding: 1rem 1.1rem 1.1rem;
+  margin-bottom: 0.75rem;
+  padding: 1.35rem 1.25rem 1.5rem;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--xf-text-400) 22%, transparent);
   background: color-mix(in srgb, var(--xf-surface-800) 88%, transparent);
-  max-width: 52rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+html:not([data-xf-ui="soft"]) .xchat-sjp {
+  background: #0f172a;
+  border-color: rgb(51 65 85 / 0.6);
 }
 
 .xchat-sjp__title {
@@ -2632,12 +2754,14 @@ html:not([data-xf-ui="soft"]) .xchat-ai-response-chrome__stat-pill {
 }
 
 html[data-xf-ui="soft"] .xchat-sjp {
-  background: color-mix(in srgb, var(--xf-surface-600) 94%, transparent);
-  border-color: color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
 }
 
 html[data-xf-ui="soft"] .xchat-sjp__card {
-  background: color-mix(in srgb, var(--xf-surface-600) 88%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, #ffffff);
+  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
 }
 
 .xchat-markdown .xchat-md-code-inline {
@@ -2897,10 +3021,11 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-await__title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--xf-text-100);
-  letter-spacing: 0.02em;
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--xf-text-400) 92%, transparent);
+  letter-spacing: -0.2px;
 }
 
 .xchat-await__hint {
@@ -2929,9 +3054,10 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--xf-lightning-yellow) 55%, transparent);
-  background: color-mix(in srgb, var(--xf-bg-900) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-lightning-yellow) 72%, transparent);
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 20%, transparent);
   color: var(--xf-lightning-yellow);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-lightning-yellow) 24%, transparent);
   cursor: pointer;
   transition:
     background 120ms ease,
@@ -2940,7 +3066,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-await__stop:hover {
-  background: color-mix(in srgb, var(--xf-lightning-yellow) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 28%, transparent);
   border-color: color-mix(in srgb, var(--xf-lightning-yellow) 78%, transparent);
 }
 
@@ -3076,6 +3202,14 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
     inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 8%, transparent);
 }
 
+.options-action-scan-root--embedded {
+  margin: 0;
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+  box-shadow: none;
+}
+
 /* Skeleton shell for `next/dynamic` loading state — preserves layout while the
  * heavy scan-report chunk (jspdf, react-table, etc.) downloads. */
 .options-action-scan-root--loading {
@@ -3113,13 +3247,6 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   .options-action-scan-root--loading::after {
     animation: none;
   }
-}
-
-.xchat-sjp {
-  max-width: 820px;
-  margin-top: 12px;
-  margin-bottom: 12px;
-  padding: 20px 24px;
 }
 
 .xchat-scan-action-btn {
@@ -3769,8 +3896,9 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   border-radius: 8px;
   background: transparent;
   color: var(--xf-text-400);
-  font-size: 0.68rem;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -4287,10 +4415,11 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-composer-progress__badge {
   display: inline-block;
-  font-size: 0.66rem;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
-  letter-spacing: 0.01em;
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--xf-text-400) 92%, transparent);
+  letter-spacing: -0.2px;
 }
 
 .xchat-reasoning-mode {
@@ -4547,8 +4676,10 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 0.45rem 0 0.55rem;
-  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 9%, transparent);
+  padding: 13px 0;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, #0b0f14 95%, transparent);
+  backdrop-filter: blur(12px);
 }
 
 .xchat-composer {
@@ -4568,7 +4699,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 /* Approved shell — compact toolbar + embedded Sources */
 .xchat-composer--grok {
   gap: 0.22rem;
-  padding: 0.32rem 0.42rem 0.36rem;
+  padding: 0.56rem 0.78rem;
   border-radius: 16px;
   background: color-mix(in srgb, var(--xf-bg-900) 94%, var(--xf-text-100) 6%);
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 11%, transparent);
@@ -4604,15 +4735,19 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-composer__input-shell {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 0.06rem;
   min-width: 0;
   width: 100%;
-  padding: 0.04rem 0.22rem 0.04rem 0.06rem;
+  padding: 0.18rem 0.28rem 0.18rem 0.08rem;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 11%, transparent);
   background: color-mix(in srgb, var(--xf-bg-900) 72%, transparent);
   box-sizing: border-box;
+}
+
+.xchat-composer__input-shell:focus-within {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 30%, transparent);
 }
 
 .xchat-composer__input-shell > .xf-hover-hint.xchat-composer__input-grow {
@@ -4623,7 +4758,10 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-composer__input-shell .xchat-composer__field {
-  padding: 0.32rem 0.28rem;
+  padding-left: 0.24rem;
+  padding-right: 0.24rem;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .xchat-composer__sources--embed {
@@ -4668,26 +4806,20 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-composer__textarea--grok {
-  min-height: 2.55rem;
-  padding: 0.875rem 0.18rem;
-  font-size: 15px;
-  line-height: 1.375;
+  min-height: 2.4rem;
+  padding-bottom: 0.45rem;
+  padding-left: 0.18rem;
+  padding-right: 0.18rem;
+  letter-spacing: -0.1px;
 }
 
 .xchat-composer__textarea--grok.xchat-composer__textarea--singleline {
-  min-height: 2.55rem;
+  min-height: 2.4rem;
   max-height: 9rem;
-  line-height: 1.45;
 }
 
 html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
-  font-size: 15px;
-  line-height: 1.375;
-  letter-spacing: -0.005em;
-}
-
-html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok.xchat-composer__textarea--singleline {
-  line-height: 1.5;
+  letter-spacing: -0.1px;
 }
 
 .xchat-composer__grok-trailing {
@@ -4972,13 +5104,14 @@ html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok.xchat-composer__te
 
 .xchat-composer__send-circle--stop:not(:disabled) {
   cursor: pointer;
-  background: color-mix(in srgb, var(--xf-lightning-yellow) 88%, var(--xf-bg-900));
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 90%, var(--xf-bg-900));
   color: var(--xf-bg-900);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-lightning-yellow) 28%, transparent);
 }
 
 .xchat-composer__send-circle--stop:not(:disabled):hover {
   transform: translateY(-1px);
-  filter: brightness(1.06);
+  filter: brightness(1.08);
 }
 
 .xchat-composer__row {
@@ -5162,8 +5295,10 @@ html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok.xchat-composer__te
 }
 
 .xchat-composer__field::placeholder {
-  color: color-mix(in srgb, var(--xf-text-400) 92%, var(--xf-bg-900));
-  font-size: 13px;
+  color: color-mix(in srgb, var(--xf-text-400) 100%, var(--xf-bg-900));
+  font-size: 14.5px;
+  line-height: 1.35;
+  letter-spacing: -0.1px;
 }
 
 .xchat-composer__icon-btn {
@@ -5417,9 +5552,9 @@ html[data-xf-ui="soft"] .xchat-composer-examples__panel {
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(0, 0, 0, 0.2);
   color: var(--xf-text-200, rgba(255, 255, 255, 0.86));
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.1px;
   line-height: 1.2;
   text-decoration: none;
   max-width: 100%;
@@ -5481,28 +5616,28 @@ html[data-xf-ui="soft"] .xchat-composer-examples__panel {
   color: var(--xf-text-400);
 }
 
-/* Soft / light shell — composer chrome (borders + surfaces tuned for pale backgrounds) */
+/* Soft / light shell — composer matches white paper cards on skyline */
 html[data-xf-ui="soft"] .xchat-composer-wrap {
-  border-top-color: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  backdrop-filter: none;
 }
 
 html[data-xf-ui="soft"] .xchat-composer {
-  border-color: color-mix(in srgb, var(--xf-text-100) 16%, transparent);
-  background: color-mix(in srgb, var(--xf-text-100) 5%, var(--xf-surface-700));
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
 }
 
 html[data-xf-ui="soft"] .xchat-composer--grok {
-  background: color-mix(in srgb, var(--xf-text-100) 6%, var(--xf-bg-900));
-  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 10%, transparent),
-    0 1px 2px rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
 }
 
 html[data-xf-ui="soft"] .xchat-composer__input-shell {
-  background: color-mix(in srgb, var(--xf-bg-900) 88%, var(--xf-text-100) 5%);
-  border-color: color-mix(in srgb, var(--xf-text-100) 13%, transparent);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
 }
 
 html[data-xf-ui="soft"] .xchat-composer__sources {
@@ -5640,11 +5775,12 @@ html[data-xf-ui="soft"] .xchat-composer__persona-select--inline {
 }
 
 html[data-xf-ui="soft"] .xchat-composer__field {
-  color: var(--xf-text-100);
+  color: #0f172a;
 }
 
 html[data-xf-ui="soft"] .xchat-composer__field::placeholder {
-  color: color-mix(in srgb, var(--xf-text-400) 64%, var(--xf-bg-900));
+  color: #94a3b8;
+  line-height: 1.35;
 }
 
 html[data-xf-ui="soft"] .xchat-templates-strip__card--scan {
@@ -5761,7 +5897,12 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
   }
 
   .xchat-msg-ai {
-    max-width: min(100%, 96%);
+    max-width: 100%;
+  }
+
+  .xchat-msg-ai-inner {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 
   .options-action-scan-root,
@@ -5806,21 +5947,23 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
     bottom: 0;
     z-index: 6;
     margin-top: auto;
-    padding-top: 0.38rem;
-    padding-bottom: max(0.45rem, env(safe-area-inset-bottom));
+    padding-top: 13px;
+    padding-bottom: max(13px, env(safe-area-inset-bottom));
     border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
     background: var(--xf-bg-900);
     box-shadow: 0 -12px 28px color-mix(in srgb, var(--xf-bg-900) 88%, transparent);
   }
 
-  .xchat-composer__textarea--grok {
-    min-height: 2.75rem;
-    padding-block: 0.42rem;
-    font-size: 0.94rem;
+  html[data-xf-ui="soft"] .xchat-composer-wrap {
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 -10px 28px rgb(15 23 42 / 0.07);
   }
 
-  html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
-    font-size: 0.90625rem;
+  .xchat-composer__textarea--grok {
+    min-height: 2.75rem;
+    padding-bottom: 0.5rem;
+    letter-spacing: -0.1px;
   }
 
   .xchat-composer__grok-tool {

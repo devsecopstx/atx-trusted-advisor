@@ -1,15 +1,15 @@
 "use client";
 
 import {
-    useEffect,
-    useRef,
-    useState,
-    type ClipboardEvent,
-    type FocusEvent,
-    type FormEvent,
-    type KeyboardEvent,
-    type MutableRefObject,
-    type RefObject
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type FocusEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  type MutableRefObject,
+  type RefObject
 } from "react";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -18,17 +18,17 @@ import Link from "next/link";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 import {
-    XchatComposerArrowUpIcon,
-    XchatComposerAttachIcon,
-    XchatComposerMicIcon,
-    XchatComposerSourcesGridIcon,
-    XchatComposerStopIcon,
-    XchatComposerWaveformIcon
+  XchatComposerArrowUpIcon,
+  XchatComposerAttachIcon,
+  XchatComposerMicIcon,
+  XchatComposerSourcesGridIcon,
+  XchatComposerStopIcon,
+  XchatComposerWaveformIcon
 } from "@/app/xchat/ui/xchat-composer-icons";
 import {
-    canUseNativeXaiStt,
-    startNativeXaiSttSession,
-    type NativeXaiSttSessionControls
+  canUseNativeXaiStt,
+  startNativeXaiSttSession,
+  type NativeXaiSttSessionControls
 } from "@/app/xchat/ui/xchat-native-stt-client";
 import { VoiceModeSession } from "@/app/xchat/voice/VoiceModeSession";
 
@@ -38,18 +38,12 @@ import { XchatTemplatesStrip } from "@/app/xchat/ui/xchat-templates-strip";
 
 import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
 
+import { XCHAT_ASK_PROGRESS_BADGES } from "./xchat-ask-progress-badges";
 import { XchatComposerNav } from "./xchat-composer-nav";
 import { hnwiComposerSuggestions } from "./xchat-example-prompts";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
 
 const EXAMPLE_PLACEHOLDER_INTERVAL_MS = 10_000;
-
-const ASK_PROGRESS_BADGES = [
-  "Gathering portfolio & account snapshot…",
-  "Fetching live Yahoo quotes & OI/IV…",
-  "Consulting options-strategy RAG + X sentiment…",
-  "Synthesizing conservative / balanced / aggressive outlooks…"
-] as const;
 
 export type XchatPendingPasteImage = {
   mediaType: "image/png" | "image/jpeg";
@@ -297,7 +291,7 @@ export function XchatComposerPanel({
               initial={reduceMotion ? false : { opacity: 0, y: 6 }}
               transition={{ duration: reduceMotion ? 0 : 0.24 }}
             >
-              {ASK_PROGRESS_BADGES[Math.min(askProgressPhaseIndex, ASK_PROGRESS_BADGES.length - 1)]}
+              {XCHAT_ASK_PROGRESS_BADGES[Math.min(askProgressPhaseIndex, XCHAT_ASK_PROGRESS_BADGES.length - 1)]}
             </motion.span>
           </AnimatePresence>
         </div>
@@ -420,7 +414,7 @@ export function XchatComposerPanel({
                   ref={composerRef}
                   aria-busy={loading}
                   aria-label="xChat message composer"
-                  className="xchat-composer__field xchat-composer__textarea xchat-composer__textarea--grok xchat-composer__textarea--singleline"
+                  className="xchat-composer__field xchat-composer__textarea xchat-composer__textarea--grok xchat-composer__textarea--singleline text-[14.5px] leading-[1.35] pt-[1px]"
                   maxLength={4000}
                   onBlur={() => {
                     setTextareaFocused(false);

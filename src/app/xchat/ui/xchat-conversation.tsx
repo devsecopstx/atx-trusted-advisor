@@ -2,14 +2,14 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-    FormEvent,
-    Suspense,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ReactNode
+  FormEvent,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode
 } from "react";
 
 import dynamic from "next/dynamic";
@@ -22,18 +22,19 @@ import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import { LucideListBulletsIcon, LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import {
-    collapseWorkspaceProductRail,
-    expandWorkspaceProductRail,
-    WorkspaceProductSidebar
+  collapseWorkspaceProductRail,
+  expandWorkspaceProductRail,
+  WorkspaceProductSidebar
 } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { XchatAdvisorWorkingOverlay } from "@/app/xchat/ui/xchat-advisor-working-overlay";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type {
-    HistoryItem,
-    HistoryStats,
-    Message,
-    ThreadItem,
-    XchatInteractionMeta
+  HistoryItem,
+  HistoryStats,
+  Message,
+  ThreadItem,
+  XchatInteractionMeta
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
 import { XchatSidebarTokenStats } from "@/app/xchat/ui/xchat-sidebar-token-stats";
@@ -41,26 +42,26 @@ import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { isRetailPaidSubscriptionPlan } from "@/lib/subscription-plan";
 import {
-    dispatchWorkspaceAccountChanged,
-    writeStoredWorkspaceAccountId
+  dispatchWorkspaceAccountChanged,
+  writeStoredWorkspaceAccountId
 } from "@/lib/workspace-account-selection";
 import {
-    consumeXchatAskSseResponse,
-    mergeLiveToolStatusRow
+  consumeXchatAskSseResponse,
+  mergeLiveToolStatusRow
 } from "@/lib/xchat-live-sse-client";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import {
-    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
-    XCHAT_PENDING_PROMPT_STORAGE_KEY
+  XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
+  XCHAT_PENDING_PROMPT_STORAGE_KEY
 } from "@/lib/xchat/xchat-pending-prompt";
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
 import {
-    XCHAT_REASONING_MODE_STORAGE_KEY,
-    type XchatReasoningMode
+  XCHAT_REASONING_MODE_STORAGE_KEY,
+  type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
 
 const XCHAT_LIVE_SSE =
@@ -144,7 +145,8 @@ const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 const XCHAT_QUOTE_FRESHNESS_STORAGE_KEY = "xchat_quote_freshness_v1";
 
-const XCHAT_UI_RESPONSE_LIMIT = 3;
+/** Collapsed thread UI: show only the last N chat rows until the user expands. */
+const XCHAT_UI_VISIBLE_MESSAGE_CAP = 5;
 
 const THREAD_MAIN_VIRTUAL_MIN = 18;
 
@@ -188,30 +190,6 @@ function trimTranscriptToRecentPrompts(
     return { next: msgs };
   }
   return { next: msgs.slice(startIdx) };
-}
-
-function trimTranscriptToRecentResponses(
-  msgs: Message[],
-  maxAssistantResponses: number
-): Message[] {
-  if (msgs.length === 0) {
-    return msgs;
-  }
-  let assistantCount = 0;
-  let startIdx = 0;
-  for (let i = msgs.length - 1; i >= 0; i -= 1) {
-    if (msgs[i].role === "ai" || msgs[i].role === "error") {
-      assistantCount += 1;
-      if (assistantCount === maxAssistantResponses) {
-        startIdx = i;
-        break;
-      }
-    }
-  }
-  if (assistantCount < maxAssistantResponses) {
-    return msgs;
-  }
-  return msgs.slice(startIdx);
 }
 
 function buildAskRecentMessages(messages: Message[], maxItems = 10): Array<{
@@ -420,6 +398,8 @@ export function XchatConversation({
   /** After send, hide the transcript for a minimal view; user expands to read the thread. */
   /** Default collapsed when a thread exists; expanded while `loading` so replies stay visible (branding). */
   const [threadUiCollapsed, setThreadUiCollapsed] = useState(true);
+  /** When false, thread list shows only the last `XCHAT_UI_VISIBLE_MESSAGE_CAP` rows; expand keeps full history. */
+  const [threadHistoryExpanded, setThreadHistoryExpanded] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState(() => {
     if (typeof window !== "undefined") {
       try {
@@ -485,10 +465,19 @@ export function XchatConversation({
     const clipped = preview.length > 64 ? `${preview.slice(0, 64)}…` : preview;
     return { userTurnCount: n, preview: clipped };
   }, [messages]);
-  const visibleThreadMessages = useMemo(
-    () => trimTranscriptToRecentResponses(messages, XCHAT_UI_RESPONSE_LIMIT),
-    [messages]
-  );
+  const hiddenEarlierMessageCount = useMemo(() => {
+    if (threadHistoryExpanded || messages.length <= XCHAT_UI_VISIBLE_MESSAGE_CAP) {
+      return 0;
+    }
+    return messages.length - XCHAT_UI_VISIBLE_MESSAGE_CAP;
+  }, [messages.length, threadHistoryExpanded]);
+
+  const visibleThreadMessages = useMemo(() => {
+    if (threadHistoryExpanded || messages.length <= XCHAT_UI_VISIBLE_MESSAGE_CAP) {
+      return messages;
+    }
+    return messages.slice(-XCHAT_UI_VISIBLE_MESSAGE_CAP);
+  }, [messages, threadHistoryExpanded]);
   const threadMainVirtualize = !threadUiCollapsed && visibleThreadMessages.length >= THREAD_MAIN_VIRTUAL_MIN;
   const threadVirtualizer = useVirtualizer({
     count: visibleThreadMessages.length,
@@ -512,6 +501,19 @@ export function XchatConversation({
     },
     []
   );
+
+  const expandFullThreadHistory = useCallback(() => {
+    setThreadHistoryExpanded(true);
+    queueMicrotask(() => scrollToLatestMessage("smooth"));
+  }, [scrollToLatestMessage]);
+
+  /** Smooth scroll to transcript bottom on every message update (user + assistant + streaming deltas). */
+  useEffect(() => {
+    if (threadUiCollapsed) {
+      return;
+    }
+    scrollToLatestMessage("smooth");
+  }, [messages, threadUiCollapsed, scrollToLatestMessage]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -590,6 +592,7 @@ export function XchatConversation({
       setActiveThreadId(threadId);
       setInput("");
       setStrategyJobOptOut(false);
+      setThreadHistoryExpanded(false);
       setThreadUiCollapsed(false);
       expandWorkspaceProductRail();
       queueMicrotask(() => {
@@ -618,6 +621,7 @@ export function XchatConversation({
     setSavedHistory([]);
     setInput("");
     setStrategyJobOptOut(false);
+    setThreadHistoryExpanded(false);
     setThreadUiCollapsed(false);
     queueMicrotask(() => composerRef.current?.focus());
   }, []);
@@ -759,11 +763,7 @@ export function XchatConversation({
   }, [input, resizeComposer]);
 
   useEffect(() => {
-    scrollToLatestMessage("smooth");
-  }, [messages, scrollToLatestMessage]);
-
-  useEffect(() => {
-    scrollToLatestMessage("auto");
+    queueMicrotask(() => scrollToLatestMessage("smooth"));
   }, [activeThreadId, scrollToLatestMessage]);
 
   const askProgressPhaseIndex = useMemo(() => {
@@ -1233,6 +1233,7 @@ export function XchatConversation({
       setThreadItems([]);
       setMessages([]);
       setActiveThreadId(createThreadId());
+      setThreadHistoryExpanded(false);
       setStrategyJobOptOut(false);
       setHistoryStats((prev) =>
         prev
@@ -2046,14 +2047,14 @@ export function XchatConversation({
           <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
             <XchatThreadPanelLazy
               activePersonaName={activePersonaName}
-              askElapsedMs={askElapsedMs}
               emphasizeStrategyJobPrimary={emphasizeStrategyForMessage}
               loading={loading}
               messages={messages}
-              onCancelAsk={cancelAskInFlight}
               onMessageFeedback={handleMessageFeedback}
               onRegeneratePrompt={handleRegeneratePrompt}
               onNewThread={startNewThread}
+              hiddenEarlierMessageCount={hiddenEarlierMessageCount}
+              onExpandEarlierMessages={expandFullThreadHistory}
               messagesEndRef={messagesEndRef}
               onStrategyJobLaunch={onStrategyJobLaunch}
               onStrategyJobStay={onStrategyJobStay}
@@ -2066,9 +2067,17 @@ export function XchatConversation({
               threadUiSummary={threadUiSummary}
               threadVirtualizer={threadVirtualizer}
               visibleThreadMessages={visibleThreadMessages}
+              workspacePortfolioId={workspacePortfolioId?.trim() ? workspacePortfolioId.trim() : null}
             />
           </Suspense>
         </div>
+
+        <XchatAdvisorWorkingOverlay
+          askElapsedMs={askElapsedMs}
+          askProgressPhaseIndex={askProgressPhaseIndex}
+          loading={loading}
+          onStop={cancelAskInFlight}
+        />
 
         <Suspense fallback={<XchatChatSkeleton variant="composer" />}>
           <XchatComposerPanelLazy
