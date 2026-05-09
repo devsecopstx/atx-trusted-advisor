@@ -323,7 +323,7 @@ function BookCell({ row }: { row: OptionsActionReportRow }) {
         {row.portfolioAccountName ?? "Book"}
       </span>
       <Link
-        className="inline-flex w-fit items-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_42%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.65rem] font-bold text-[var(--xf-gain-green)] xf-shadow-hairline-inset hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)]"
+        className="inline-flex w-fit items-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_42%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-3 py-1 text-xs font-bold text-[var(--xf-gain-green)] xf-shadow-hairline-inset hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)]"
         href={toPortfolioAccountHref(row.portfolioAccountId)}
       >
         Open book
@@ -356,7 +356,7 @@ function UrgencyAlertIcon() {
 
 function UrgencyBadge({ urgency }: { urgency: OptionsActionReportRow["urgency"] }) {
   const base =
-    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.06em]";
+    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider";
   if (urgency === "high") {
     return (
       <span
@@ -405,7 +405,7 @@ function ConfidenceBadge({ confidence }: { confidence: OptionsActionReportRow["c
       }}
     >
       <span
-        className="flex items-center justify-between gap-2 text-[0.62rem] font-extrabold uppercase tracking-[0.07em]"
+        className="flex items-center justify-between gap-2 text-[10px] font-medium uppercase tracking-wider"
         style={{ color: accent }}
       >
         <span>{label}</span>
@@ -436,7 +436,7 @@ function InstrumentStack({ row }: { row: OptionsActionReportRow }) {
   if (instrument.strike == null || !instrument.exp || !instrument.type) {
     return (
       <div className="flex flex-col gap-0.5 py-0.5">
-        <span className="text-[0.9375rem] font-bold leading-tight tracking-tight text-[var(--xf-text-100)]">
+        <span className="text-[15px] font-semibold leading-tight tracking-tight text-[var(--xf-text-100)]">
           {instrument.symbol}
         </span>
         <span className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[var(--xf-text-500)]">
@@ -452,7 +452,7 @@ function InstrumentStack({ row }: { row: OptionsActionReportRow }) {
   const shortExp = formatExpirationShortLabel(instrument.exp);
   return (
     <div className="flex flex-col gap-0.5 py-0.5">
-      <span className="text-[0.9375rem] font-bold leading-tight tracking-tight text-[var(--xf-text-100)]">
+      <span className="text-[15px] font-semibold leading-tight tracking-tight text-[var(--xf-text-100)]">
         {instrument.symbol}
       </span>
       <span className={`font-mono text-[0.72rem] font-semibold tabular-nums ${typeHue}`}>
@@ -497,7 +497,7 @@ function WhyCell(props: {
       role="button"
       tabIndex={0}
       title={props.expanded ? undefined : props.text}
-      className="group/why max-w-full cursor-pointer rounded-md px-1 py-0.5 text-left outline-none transition hover:bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--xf-tenant-primary)_45%,transparent)] sm:max-w-[min(22rem,42vw)]"
+      className="group/why max-w-full cursor-pointer rounded-md px-1 py-0.5 text-left outline-none transition hover:bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--xf-tenant-primary)_45%,transparent)] sm:max-w-[min(18rem,34vw)]"
       onClick={(event) => {
         event.stopPropagation();
         props.onToggle();
@@ -735,9 +735,10 @@ function OptionsActionScanReportInner({
   }
 
   return (
-    <section className="options-action-scan-root w-full max-w-[1480px] mx-auto px-6 pb-8">
-      <div className="overflow-hidden rounded-2xl border border-slate-700/60 bg-[#0F172A]/95 shadow-2xl backdrop-blur-xl">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/60 px-8 py-5">
+    <section className="options-action-scan-root mx-auto w-full max-w-[1480px] px-6 py-8">
+      <div className="relative isolate overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-xl backdrop-blur-xl dark:border-slate-700/60 dark:bg-[#0F172A]/95">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-slate-100/70 to-transparent dark:from-white/5" />
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200/70 px-8 py-7 dark:border-slate-700/60">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold tracking-[-0.2px] text-[var(--xf-text-100)]">{title}</h2>
             <div className="text-xs text-slate-400">{generatedAtLabel}</div>
@@ -750,7 +751,9 @@ function OptionsActionScanReportInner({
         <div className="grid grid-cols-1 gap-6 p-8 text-[14.5px] md:grid-cols-3">
           <section className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold text-slate-300">CLOSE CANDIDATES</div>
+              <div className="text-[13px] font-semibold tracking-[0.5px] text-slate-600 dark:text-slate-300">
+                CLOSE CANDIDATES
+              </div>
               <div className="rounded bg-slate-700 px-2 py-0.5 font-mono text-[10px]">{closeCount}</div>
             </div>
             <ReportTable
@@ -771,7 +774,9 @@ function OptionsActionScanReportInner({
 
           <section className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold text-slate-300">WATCHLIST</div>
+              <div className="text-[13px] font-semibold tracking-[0.5px] text-slate-600 dark:text-slate-300">
+                WATCHLIST
+              </div>
               <div className="rounded bg-slate-700 px-2 py-0.5 font-mono text-[10px]">{watchlist.length}</div>
             </div>
             <ReportTable
@@ -795,12 +800,13 @@ function OptionsActionScanReportInner({
             ) : null}
           </section>
 
-          <aside className="space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-950/60 p-5">
+          <aside className="relative space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-950/60 p-5 pl-6 shadow-[0_0_22px_rgba(16,185,129,0.12)]">
+            <div className="pointer-events-none absolute inset-y-3 left-0 w-1 rounded-r bg-emerald-400/65" />
             {showHeaderSummary ? (
               <>
                 <div className="flex items-center gap-2">
                   <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
-                  <div className="text-sm font-semibold text-emerald-300">CONVICTION</div>
+                  <div className="text-[13px] font-semibold tracking-[0.5px] text-emerald-300">CONVICTION</div>
                 </div>
                 <div className="text-3xl font-semibold tracking-tighter text-emerald-400">
                   {highConfidenceStc ?? "—"}
@@ -849,16 +855,16 @@ function OptionsActionScanReportInner({
           </aside>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-slate-700/60 bg-[#0B0F14] px-8 py-5">
+        <div className="flex flex-wrap items-center gap-3 border-t border-slate-200/70 bg-slate-50/95 px-8 py-7 dark:border-slate-700/60 dark:bg-[#0B0F14]">
           <button
-            className="rounded-lg border border-slate-600 px-4 py-2 text-xs font-medium transition hover:bg-slate-800"
+            className="rounded-lg border border-slate-300 px-5 py-2 text-xs font-medium transition hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
             type="button"
             onClick={() => void downloadPdfReport()}
           >
             {pdfBusy ? "Generating PDF…" : "Download PDF Report"}
           </button>
           <button
-            className="rounded-lg border border-slate-600 px-4 py-2 text-xs font-medium transition hover:bg-slate-800"
+            className="rounded-lg border border-slate-300 px-5 py-2 text-xs font-medium transition hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
             type="button"
             onClick={() => exportCsv(data)}
           >
@@ -867,7 +873,7 @@ function OptionsActionScanReportInner({
           <div className="flex-1" />
           {shareMode === "enabled" ? (
             <button
-              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-medium text-white transition hover:bg-emerald-500 hover:shadow-md"
               disabled={shareBusy}
               type="button"
               onClick={() => void createShareLink()}
@@ -901,15 +907,15 @@ function ReportTable(props: {
 
   return (
     <>
-      <div className="hidden overflow-x-auto rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_28%,var(--xf-surface-700))] sm:block">
+      <div className="hidden overflow-x-auto rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_28%,var(--xf-surface-700))] shadow-sm sm:block">
         <table
           className={`w-full border-collapse text-left text-xs ${props.showBookColumn ? "min-w-[58rem]" : "min-w-[52rem]"}`}
         >
           <thead>
-            <tr className="border-b border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_72%,transparent)]">
+            <tr className="border-b border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-slate-100/85 dark:bg-slate-900">
               <SortTh label="Instrument" sortKey="symbol" {...props} />
               {props.showBookColumn ? (
-                <th className="px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]">
+                <th className="px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.09em] text-slate-600 dark:text-slate-400">
                   Book
                 </th>
               ) : null}
@@ -917,13 +923,13 @@ function ReportTable(props: {
               <SortTh label="Urgency" sortKey="urgency" {...props} />
               <SortTh label="Confidence" sortKey="confidence" {...props} />
               <SortTh align="right" label="Exp" sortKey="expiry" {...props} />
-              <th className="px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]">
+              <th className="px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.09em] text-slate-600 dark:text-slate-400">
                 Why
               </th>
-              <th className="px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]">
+              <th className="px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.09em] text-slate-600 dark:text-slate-400">
                 Open
               </th>
-              <th className="px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]">
+              <th className="px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.09em] text-slate-600 dark:text-slate-400">
                 Apply
               </th>
             </tr>
@@ -1102,7 +1108,7 @@ function ReportTable(props: {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {props.showBookColumn && row.portfolioAccountId ? (
                     <Link
-                      className="inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_42%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.68rem] font-bold text-[var(--xf-gain-green)]"
+                      className="inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_42%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-3 py-1 text-xs font-bold text-[var(--xf-gain-green)]"
                       href={toPortfolioAccountHref(row.portfolioAccountId)}
                     >
                       Open book
@@ -1201,7 +1207,7 @@ function SortTh(props: {
         className={[
           "inline-flex max-w-full cursor-pointer items-center gap-1 border-0 bg-transparent p-0 shadow-none outline-none",
           "appearance-none [-webkit-appearance:none]",
-          "text-[0.62rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-text-400)]",
+          "text-[0.62rem] font-semibold uppercase tracking-[0.09em] text-slate-600 dark:text-slate-400",
           "hover:bg-transparent hover:text-[var(--xf-text-300)]",
           "focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--xf-tenant-primary)_45%,transparent)] focus-visible:ring-offset-0",
           align === "right" ? "ml-auto justify-end text-right" : ""
