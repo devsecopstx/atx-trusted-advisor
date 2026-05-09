@@ -6,22 +6,15 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 [Design and UX roadmap](#design-and-ux-roadmap) adds **open UX items** plus a short **multi-agent usage policy** (guidance, not a dated deliverable).
 
-**xChat performance — prod rollout:** Phase 1 **shipped** — **JVM** `GET /api/portfolios/{id}/snapshot` (tenant-scoped Redis, market-window TTL, **`data.structured`** + purge on mutations), **Next** pre-warm / find-options bootstrap calling that path when `ATXFINANCE_BACKEND_ORIGIN` is set, and a **JVM SSE stub** for **`POST /api/xchat/ask/stream`** (optional **`XCHAT_SSE_PROXY_BACKEND`** when BFF is on). **Deploy:** roll **Next + Spring** together for snapshot cache; Next-only remains safe (Mongo materialization fallback).
-
-**Phase 2 — shipped:** **True token SSE inside the xAI Responses tool loop** on Next — `stream: true` per turn with SSE parsing (`xai-responses-stream.ts` / `xai.ts`), **`POST /api/xchat/ask`** returns **`text/event-stream`** when `Accept` includes it (optional **`XCHAT_STREAM_INTERNAL_SECRET`** + **`x-xchat-stream-internal`** for server delegates), **`POST /api/xchat/ask/stream`** forwards live SSE or JVM stub; JSON ask remains the **fallback** (`XCHAT_LIVE_SSE_ENABLED=false` or omit streaming accept). UI: **`NEXT_PUBLIC_XCHAT_LIVE_SSE`** enables `/api/xchat/ask/stream` + live deltas + tool chips + heartbeat stall abort + one reconnect retry on transport failure.
-
 ---
 
 ## Product backlog
-
-**AI Rental — Phase 1 (API) shipped:** White-label `**/api/ai/rent/*`** (Bearer `**atxr_*`** keys, `**chat**` JSON + SSE, `**strategy**` / `**analyze**` `**POST`→202** + `**GET`** poll), UTC-day token metering, `**admin_audit_events`** `**rental_ai**`, OpenAPI tag `**rental-ai**`. **LLM / MCP handoff:** `[MCP-AI-ADVISOR.md](./MCP-AI-ADVISOR.md)` · repo root `[llm.txt](../llm.txt)`. **Next priorities:** true metered Stripe billing, admin key UX, embed / multi-portfolio polish — backlog **41**.
-
 
 | Priority | Item                                                          | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | -------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **11**   | **Tenant UX (`tenant_ux`) — V2 soak + observability**         | Enable `**TENANT_UX_ENFORCEMENT_V2`** staging→prod (fail-open log `**tenant_ux_policy_fetch_error`**; optional `**TENANT_UX_POLICY_FAIL_CLOSED**`). **Remaining:** metrics/alerts, Redis policy cache, `/api/*` map audit, PWA manifest. [tenant-ux-plan.md](./design-system/tenant-ux-plan.md) · [tenant-ux-enforcement.md](./sre-ops/tenant-ux-enforcement.md)                                                                                                                                                                                                      |
 | **41**   | **AI Rental Platform — billing & admin delivery**             | **Post Phase-1 API:** Stripe Checkout + `**ENABLE_RENTAL_AI_BILLING`** (planned env name — not in schema yet) for rental SKUs; webhook-driven `**rentalExpiresAt` / status**; **admin console** mint/list/revoke/rotate for `**core_tenants.apiKeys`** (plaintext-once delivery); **Redis** semaphore for strict multi-instance rental concurrency (today in-process cap **8**/tenant); optional **CORS** / embed allow-list for partner iframes. Baseline: [rental-ai-platform.md](./sre-ops/rental-ai-platform.md), [release-notes.md](./sre-ops/release-notes.md). |
-| **10**   | **Multi-tenant — provisioning follow-ups**                    | **Open:** Admin Bootstrap log / replay UX; Spring `**DefaultPortfolioProvisionService**` parity for new preference fields; richer Admin **YAML preview** on tenant create/edit. **Baseline shipped ≥3.12.6** — § [Multi-tenant (priority **10**)](#multi-tenant-priority-10); `**tenant-specs/README.md`** · `**auth-and-access.md`**.                                                      |
+| **10**   | **Multi-tenant — provisioning follow-ups**                    | **Open:** Admin Bootstrap log / replay UX; Spring `**DefaultPortfolioProvisionService**` parity for new preference fields; richer Admin **YAML preview** on tenant create/edit. `**tenant-specs/README.md`** · `**auth-and-access.md`**.                                                                                                                                                                                                                                                                                                                          |
 | **200**  | **IBKR — Client Portal integration & execution path**         | **Open next:** operator paper-account test harness; CP session **refresh / re-auth UX** (token/OAuth-style SSO still future). **Then:** live portfolio sync + pacing-safe caching; contract/market-data helpers; order builder + `/iserver/order/confirm` preview; automation rule engine + kill switches; pre-trade risk dashboard + notifications; tests/monitoring + production hardening/rollout. **Blocks** custodian-automated execution narrative alongside **900** until this path matures.                                                                   |
 | **900**  | **Automated trades w/ verify**                                | Ship only after **ETRADE** and **IBKR** execution/custodian path; until then alerts / manual execution only.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **704**  | **Billing — xMoney parallel checkout + crypto book (phased)** | **Production-grade roadmap:** [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap) — Phase 0 (billing), Phase 1 (crypto book + quotes), **Phase 2** (xAI strategies / alerts / xOptions payoff), **Phase 3** (optional X Money wallet sync + settlement). **Today:** Stripe-only; no multi-provider adapter yet. **External API:** [docs.xmoney.com/api/reference](https://docs.xmoney.com/api/reference).                                                                                                                   |
@@ -33,15 +26,13 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 ### Multi-tenant (priority **10**)
 
-**Shipped (v1):** Structured `**bootstrap_policy`**, `**bootstrap_on_approve`**, `**watchlist_seed_symbols**`; unified `**ensureTenantBootstrapForUser**` on first login and (when flag) on access-request approve; CLI/YAML + Mongo via `**seed:tenant**`. **Remaining** (keep in backlog table): Admin bootstrap visibility/replay; Spring read-path parity; optional form preview.
-
-**Detail:** `[.cursor/skills/skill-tenant-roadmap/SKILL.md](../.cursor/skills/skill-tenant-roadmap/SKILL.md)` § *PLAN 10*.
+Open follow-ups stay in the backlog table: Admin bootstrap visibility/replay, Spring read-path parity, and optional create/edit form preview.
 
 ### NL and strategy preflight
 
 **Deep spec:** [nl-prompts.md](./xchat/nl-workflows/nl-prompts.md)
 
-**Shipped:** **Premium+ advisor** (incl. `global_admin`) **NL price alert management** in xChat via **`atx_function.price_alert_manage`**: Mongo **`portfolio_price_alerts`** (one **active** row per user+symbol per tenant, 30d auto-expire), optional **portfolio/account hint** resolution, **ruleKind** required (no default direction), migration from legacy armed **`portfolio_alerts`** on **list**, desk alert + **branded desk HTML email** on fire (SMTP), cooldown + audits, **`watchlist_price_scanner`** + **`user_alert_manager`** scheduled evaluation, first-tenant alert ensures **`user_alert_manager`** task, admin **`POST /api/admin/portfolio-price-alerts/bulk-expire`**. **`/portfolio/alerts`** product UI: unified TanStack-virtualized **desk + NL** table, REST **`GET`/`POST /api/portfolios/{id}/price-alerts`** + **`DELETE …/price-alerts/{alertId}`**, xChat-first hero, simulation email preview (no junk desk rows). **Basic** / **Premium** remain blocked (`getPlanLimits.nlPriceAlertManagementEnabled` false unless Premium+).
+Open follow-ups: scanner threshold tuning + richer alert ergonomics across `watchlist_price_scanner`, `user_alert_manager`, and `/portfolio/alerts` workflows.
 
 ### Deferred product TODOs
 
@@ -53,7 +44,6 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 ### Desk email & delivery (ops / PR review)
 
 - **Reviewer / infra:** Desk SMTP on **Next** for portfolio `email`, `**POST /api/admin/delivery-channels/.../test`**, and related paths (`src/lib/desk-smtp.ts`) — tenant delivery-channels are **not** BFF-proxied; see [deploy-and-ops.md](./guides/deploy-and-ops.md) (`gcp-runtime-secrets.inc.sh`, `verify-gcp-runtime-secrets.sh`, sync `ops:secrets:sync-desk-smtp:*`). **Reference:** [design-system/current-state-features.md](./design-system/current-state-features.md).
-- **Shipped (≥3.12.7):** **Admin → Manage users** — **`POST /api/admin/users/{userId}/resend-credential-invite`** reissues the password-setup token and resends the same desk template as access approval (eligible: login role, no **`passwordHash`**, deliverable email, not **`ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY`**). Audit **`credential_invite_resent`** / **`credential_invite_resend_email_failed`**. BFF stays on Next for this path (Mongo + SMTP).
 - **Outstanding:** Portfolio `**sms`** / `**push`** channel kinds (still skipped). **Credential invite + password reset** use desk SMTP when configured (**Next** always; **Spring** when BFF handles approve — mount `**PUBLIC_APP_BASE_URL`** + SMTP on JVM).
 - ZenBusiness hosted mailbox: SMTP host `**mail.b.hostedemail.com`**; [client setup](https://help.zenbusiness.com/Websites_Domains_Emails/Setting_up_Email/How_Do_I_Set_Up_My_Email_on_My_Phone%2C_Computer%2C_Tablet%2C_or_Other_Device%3F).
 
@@ -62,10 +52,6 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 ## Design and UX roadmap
 
 **Audience:** High-frequency workflows and RIAs with appropriate licensing — polish that supports trust and operator scan speed.
-
-### Shipped
-
-- **Ambient Market Veil background** — `src/components/animations/MarketVeilBackground.tsx`. Layered backdrop = Austin skyline `<img>` (`/branding/atx-skyline.jpg`, **B&W watermark** via `filter: grayscale(100%) contrast(0.92) brightness(1.05)` + opacity `0.22` so the city stays a quiet brand mark and never competes with chat content) + readability gradient (top-down 0.32→0.42→0.58 dim) + Canvas2D grid/particles (RAF deferred behind `load`+idle, FPS auto-throttle, `prefers-reduced-motion` + `visibilitychange` aware, mouse parallax capped at ±5 px on desktop). Mounted on `/xchat`, `/xoptions`, `/portfolios`; replaces the `/xchat` `StarfieldBackground`. Tenant toggle: `tenantPreferences.ambient_market_veil` (default-on) at **`/admin/tenant-preferences/ambient`**; dev preview at **`/dev/veil`** (skyline / overlay toggles + opacity slider + filter input). Tunables: `--veil-opacity` / `--veil-grid-speed` / `--veil-particle-count`; props `skylineSrc`, `overlay`, **`skylineFilter`**, and **`skylineOpacity`** for white-label override.
 
 ### Open UX work
 
@@ -86,10 +72,6 @@ For the **core xStrategyBuilder loop** (collect → validate → synthesize → 
 
 ## xChat Hardcore
 
-**Shipped (Phase 1 perf):** JVM **`GET /api/portfolios/{id}/snapshot`** — canonical Redis read-through + **`data.structured`** (holdings summary, balances, watchlist quote strip) + purge on book mutations; Redis keys aligned with Next; workspace pre-warm and find-options bootstrap coordination over BFF when **`ATXFINANCE_BACKEND_ORIGIN`** is set; JVM **`POST /api/xchat/ask/stream`** stub (proxied only when **`XCHAT_SSE_PROXY_BACKEND`** is on).
-
-**Shipped (Phase 2):** **Live token SSE inside the xAI tool loop** on Next — same final **`data`** JSON as non-streaming ask, emitted on SSE **`done`**; progressive **`delta`** / **`tool_status`** / **`turn`** / **`provider`** (+ **`ping`** heartbeats). See [xchat-tools-guide.md](./xchat/xchat-tools-guide.md), [xchat-debug-logging.md](./xchat/xchat-debug-logging.md).
-
 **Outstanding (later):** Observability hardening, audit/doc parity, strict JSON Schema artifact v2 — [Deferred (larger lifts)](#deferred-larger-lifts). Vision paste follow-ups — [Deferred product TODOs](#deferred-product-todos).
 
 ---
@@ -105,10 +87,6 @@ For the **core xStrategyBuilder loop** (collect → validate → synthesize → 
 ## Stripe billing
 
 **Open:** In-product usage meter / soft-limit banner on xChat and X Money as a **second** settlement path — see [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap). Stripe remains default for existing customers until product opts users into X Money checkout.
-
-**Shipped (≥3.16.3) — guest `/account/billing` onboarding:** Read-only guests see a **compact trial note**, then **`billing-guest-experience.tsx`** (email signup + plan pills + OAuth) with **tenant-resolved plan cards** below (or beside on large viewports). **`POST /api/access-requests/public`** persists an initial **`passwordHash`** (and **`emailVerifiedAt`** when missing) so approved users can use **email/password** without waiting on a separate invite link when they registered with a password. Deep links: **`?register=1`**, **`?plan=premium|basic|premium_plus`** (aliases normalized in route). Welcome toast: **`/workspace/onboarding?billing_welcome=1`**.
-
-**Tests (guest public signup):** `tests/unit/access-requests-public-body-schema.test.ts` (Zod: **`password`** required, min 12); `tests/integration/access-requests-public-rate-limit.test.ts` (429 / non-proxy; body includes password).
 
 **Gaps:** No hermetic CI test yet for the full **`POST /api/access-requests/public`** Mongo happy path; no component/E2E for **`BillingGuestExperience`** (plan pills, scroll-to-form, OAuth **`next`**).
 
@@ -221,12 +199,12 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 ### Test / doc follow-ups (conscious)
 
 - `**POST /api/import/broker/clean`:** Documented in `**api-endpoints.md`** and [app-user import](./design-system/portfolio/app-user-import-activity.md); no dedicated route integration test yet (destructive — mock `**deleteAllPositionsForPortfolio`** + job/task deletes if added). **Partial `mappings` / row toggles:** covered by unit tests on `**validateBrokerImportMappings`** in `**app-broker-import-job.test.ts`**; full apply path remains integration-heavy (job + scheduled task). **Dry-run preview payload:** `**app-import-broker-route.test.ts`** asserts **`brokerImportDryRunResponseSchema`** (`**csvStats`**, **`sampleRows`**, **`previewWarnings`**); **`broker-import-dry-run-preview.test.ts`** covers sample-row shaping and warnings.
-- **Email/password:** unit tests `**password-crypto`**, `**auth-token-hash`**, **`admin-user-credential-invite`** (eligibility for admin resend); approve-route + **`admin-user-resend-credential-invite-route`** integration tests use mocks for SMTP; audit actions `**credential_invite_*`** / `**bootstrap_enqueue_failed**` documented in `**auth-and-access.md**` / `**current-state-features.md**` — no CI E2E against live SMTP. **Guest register:** see [Stripe billing](#stripe-billing) (**Tests** / **Gaps** under shipped guest onboarding).
+- **Email/password:** unit tests `**password-crypto`**, `**auth-token-hash`**, **`admin-user-credential-invite`** (eligibility for admin resend); approve-route + **`admin-user-resend-credential-invite-route`** integration tests use mocks for SMTP; audit actions `**credential_invite_*`** / `**bootstrap_enqueue_failed**` documented in `**auth-and-access.md**` / `**current-state-features.md**` — no CI E2E against live SMTP. **Guest register:** see [Stripe billing](#stripe-billing) (**Gaps** for remaining test coverage).
 - **X Money / multi-provider billing (704):** No automated coverage yet — follow the gap list under [xMoney & crypto portfolio (704)](#xmoney-crypto-portfolio-704-technical-integration-roadmap) § Tests.
 
 ### BFF / consolidation (intentionally Next-only for now)
 
-- **Portfolio workspace snapshots — JVM fast-path shipped:** Next materializes `portfolio_workspace_snapshots` in Mongo (read order: local Redis `xf:wsnap:v1:*` → optional **JVM** `GET /api/portfolios/{id}/snapshot` when **`ATXFINANCE_BACKEND_ORIGIN`** is set → materialized row → live build). Spring uses the **same Redis key prefix** with market-window TTL (60s open / 300s closed ET), returns **`data.preload`** + **`data.structured`** + **`data.cache`**, and purges snapshot keys on app-user position/account/watchlist mutations and **portfolio rename**. Scanner tasks still warm rows after success on Next (audit/task-runner path).
+- **Portfolio workspace snapshots — JVM fast-path:** Next materializes `portfolio_workspace_snapshots` in Mongo (read order: local Redis `xf:wsnap:v1:*` → optional **JVM** `GET /api/portfolios/{id}/snapshot` when **`ATXFINANCE_BACKEND_ORIGIN`** is set → materialized row → live build). Spring uses the **same Redis key prefix** with market-window TTL (60s open / 300s closed ET), returns **`data.preload`** + **`data.structured`** + **`data.cache`**, and purges snapshot keys on app-user position/account/watchlist mutations and **portfolio rename**. Scanner tasks still warm rows after success on Next (audit/task-runner path).
 - xChat `/api/xchat/`* — deferred per [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md).
 - Persona governance extensions (publish, archive, rollback, versions, xAI collection helpers) — Next until moved to Spring.
 - Admin `PATCH/DELETE …/positions/{positionId}` — Next until registry + Kotlin parity.
