@@ -66,15 +66,21 @@ import {
     setTaxEducationEnabled,
     subscribeXoptionsEducationPrefs
 } from "@/lib/xoptions/xoptions-education-preferences";
+import {
+  getRailExpandedSnapshot,
+  RAIL_EXPANDED_STORAGE_KEY,
+  WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE
+} from "@/lib/workspace-product-rail-storage";
 
-const RAIL_EXPANDED_STORAGE_KEY = "xf-workspace-product-rail-expanded";
+export {
+  WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE,
+  collapseWorkspaceProductRail,
+  expandWorkspaceProductRail
+} from "@/lib/workspace-product-rail-storage";
 
 /** Expanded desktop rail (`lg+`). Was 280px → 140px → +25% (175px) so desk labels (e.g. Portfolio desk) stay on one line. */
 const WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX = 175;
 const WORKSPACE_PRODUCT_RAIL_COLLAPSED_WIDTH_PX = 64;
-
-/** Fired after localStorage preference writes so `useSyncExternalStore` subscribers re-read. */
-export const WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE = "xf-workspace-product-rail-prefs-change";
 
 function subscribeRailExpandedPrefs(cb: () => void): () => void {
   if (typeof window === "undefined") {
@@ -87,43 +93,6 @@ function subscribeRailExpandedPrefs(cb: () => void): () => void {
     window.removeEventListener(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE, onChange);
     window.removeEventListener("storage", onChange);
   };
-}
-
-function getRailExpandedSnapshot(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  try {
-    return localStorage.getItem(RAIL_EXPANDED_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-/** Expand the workspace product rail and persist (e.g. xChat `?rail=` deep links). */
-export function expandWorkspaceProductRail(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  try {
-    localStorage.setItem(RAIL_EXPANDED_STORAGE_KEY, "1");
-  } catch {
-    /* ignore */
-  }
-  window.dispatchEvent(new Event(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE));
-}
-
-/** Collapse the workspace product rail and persist (e.g. default xChat entry after login). */
-export function collapseWorkspaceProductRail(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  try {
-    localStorage.setItem(RAIL_EXPANDED_STORAGE_KEY, "0");
-  } catch {
-    /* ignore */
-  }
-  window.dispatchEvent(new Event(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE));
 }
 
 function pathKeyFromHref(href: string): string {

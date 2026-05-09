@@ -263,6 +263,70 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   display: block;
 }
 
+.xf-watchlist-columns-picker {
+  position: relative;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .xf-watchlist-columns-picker {
+    display: inline-block;
+  }
+}
+
+.xf-watchlist-columns-picker > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--xf-surface-600);
+  color: var(--xf-text-300);
+}
+
+.xf-watchlist-columns-picker > summary::-webkit-details-marker {
+  display: none;
+}
+
+.xf-watchlist-columns-picker[open] > summary {
+  border-color: rgba(234, 179, 8, 0.45);
+  color: var(--xf-text-100);
+}
+
+.xf-watchlist-columns-picker__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 30;
+  min-width: 12rem;
+  max-height: min(70vh, 20rem);
+  overflow: auto;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--xf-surface-700);
+  box-shadow: var(--xf-shadow-card);
+}
+
+.xf-watchlist-columns-picker__panel label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--xf-text-200);
+  padding: 0.28rem 0;
+  cursor: pointer;
+}
+
+.xf-watchlist-columns-picker__panel input {
+  accent-color: var(--xf-gain-green);
+}
+
 .xf-watchlist-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -276,14 +340,15 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   -webkit-overflow-scrolling: touch;
 }
 
-.xf-watchlist-table--virtual {
+/* Block layout + CSS grid tracks; column template from --wl-desk-cols (TanStack visibility). */
+.xf-watchlist-table--desk {
   display: block;
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
 }
 
-.xf-watchlist-table--virtual thead {
+.xf-watchlist-table--desk thead {
   display: block;
   width: 100%;
   position: sticky;
@@ -292,30 +357,46 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   background: var(--xf-bg-900, #050505);
 }
 
-.xf-watchlist-table--virtual thead tr,
-.xf-watchlist-table--virtual tbody tr.xf-watchlist-table__data-row {
+.xf-watchlist-table--desk tbody {
+  display: block;
+  width: 100%;
+}
+
+.xf-watchlist-table--desk thead tr,
+.xf-watchlist-table--desk tbody tr.xf-watchlist-table__data-row {
   display: grid;
-  grid-template-columns:
+  grid-template-columns: var(
+    --wl-desk-cols,
     3rem minmax(7rem, 1.45fr) minmax(4.75rem, 0.85fr) minmax(4.5rem, 0.72fr) minmax(4.25rem, 0.68fr)
-    minmax(3.6rem, 0.52fr) minmax(5.25rem, 0.78fr) minmax(3.85rem, 0.58fr) minmax(3.35rem, 0.52fr)
-    minmax(8.5rem, 1.25fr) minmax(5.75rem, 0.82fr) minmax(6.25rem, 1fr);
+      minmax(3.6rem, 0.52fr) minmax(5.25rem, 0.78fr) minmax(3.85rem, 0.58fr) minmax(3.35rem, 0.52fr)
+      minmax(8.5rem, 1.25fr) minmax(5.75rem, 0.82fr) minmax(6.25rem, 1fr)
+  );
   width: 100%;
   box-sizing: border-box;
   align-items: start;
 }
 
-.xf-watchlist-table--virtual thead tr {
+.xf-watchlist-table--desk thead tr {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.xf-watchlist-table--virtual tbody tr.xf-watchlist-table__data-row td {
+.xf-watchlist-table--desk tbody tr.xf-watchlist-table__data-row td {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.xf-watchlist-table--virtual tbody {
+  position: relative;
 }
 
 .xf-watchlist-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
+}
+
+.xf-watchlist-table.xf-watchlist-table--desk {
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .xf-watchlist-table th {
@@ -1284,6 +1365,27 @@ a.xf-watchlist-sym-cell__ext:hover {
   line-height: 1.5;
   padding: 0.6rem 0.65rem;
   white-space: pre-wrap;
+}
+
+.xf-watchlist-rationale-modal__chart {
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: min(42vh, 22rem);
+  overflow: auto;
+}
+
+.xf-watchlist-rationale-modal__chart-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xf-watchlist-rationale-modal__chart .xf-symbol-ohlc-chart--compact {
+  max-width: 100%;
 }
 
 .xf-watchlist-rationale-editor {

@@ -122,3 +122,72 @@ export function formatPortfolioRiskPct(targetNotional: number | null, portfolioT
   }
   return `${((targetNotional / portfolioTotal) * 100).toFixed(1)}%`;
 }
+
+/** Numeric % book for desk coloring (same guards as `formatPortfolioRiskPct`). */
+export function targetEntryRiskPctNumeric(targetNotional: number | null, portfolioTotal: number): number | null {
+  if (
+    targetNotional == null ||
+    !Number.isFinite(targetNotional) ||
+    !Number.isFinite(portfolioTotal) ||
+    portfolioTotal <= 0
+  ) {
+    return null;
+  }
+  return (targetNotional / portfolioTotal) * 100;
+}
+
+/** CSS classes for compact watchlist % book risk (`watchlist.css`). */
+export function targetEntryRiskPctToneClass(pct: number | null): string {
+  if (pct == null) {
+    return "";
+  }
+  if (pct >= 8) {
+    return "xf-watchlist-risk-pct--high";
+  }
+  if (pct >= 4) {
+    return "xf-watchlist-risk-pct--mid";
+  }
+  return "xf-watchlist-risk-pct--low";
+}
+
+export type WatchlistLegAccentInput = {
+  lineType?: string;
+  chainGlance?: { contractType?: "call" | "put" } | null;
+};
+
+/** Mobile card left border: put / call / equity (`watchlist.css`). */
+export function watchlistMobileLegAccentClass(row: WatchlistLegAccentInput): string {
+  const lt = (row.lineType ?? "").toLowerCase();
+  if (lt.includes("put")) {
+    return "xf-watchlist-mobile-card--put";
+  }
+  if (lt.includes("call")) {
+    return "xf-watchlist-mobile-card--call";
+  }
+  const cg = row.chainGlance?.contractType;
+  if (cg === "put") {
+    return "xf-watchlist-mobile-card--put";
+  }
+  if (cg === "call") {
+    return "xf-watchlist-mobile-card--call";
+  }
+  return "xf-watchlist-mobile-card--equity";
+}
+
+export type WatchlistRsiToneInput = {
+  technicals?: { rsi14?: number | null } | null;
+};
+
+export function watchlistRsiToneClass(row: WatchlistRsiToneInput): string {
+  const rsi = row.technicals?.rsi14;
+  if (rsi == null || !Number.isFinite(rsi)) {
+    return "";
+  }
+  if (rsi < 30) {
+    return "xf-watchlist-rsi--oversold";
+  }
+  if (rsi > 70) {
+    return "xf-watchlist-rsi--overbought";
+  }
+  return "";
+}
