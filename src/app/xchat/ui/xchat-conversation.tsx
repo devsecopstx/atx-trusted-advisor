@@ -496,6 +496,22 @@ export function XchatConversation({
     estimateSize: () => 108,
     overscan: 4
   });
+  const scrollToLatestMessage = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      const end = messagesEndRef.current;
+      if (!end) {
+        return;
+      }
+      requestAnimationFrame(() => {
+        end.scrollIntoView({
+          behavior,
+          block: "end",
+          inline: "nearest"
+        });
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -577,11 +593,11 @@ export function XchatConversation({
       setThreadUiCollapsed(false);
       expandWorkspaceProductRail();
       queueMicrotask(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        scrollToLatestMessage("smooth");
         composerRef.current?.focus();
       });
     },
-    [uiPromptLimit]
+    [scrollToLatestMessage, uiPromptLimit]
   );
 
   const refreshThreadItems = useCallback(async () => {
@@ -743,8 +759,12 @@ export function XchatConversation({
   }, [input, resizeComposer]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    scrollToLatestMessage("smooth");
+  }, [messages, scrollToLatestMessage]);
+
+  useEffect(() => {
+    scrollToLatestMessage("auto");
+  }, [activeThreadId, scrollToLatestMessage]);
 
   const askProgressPhaseIndex = useMemo(() => {
     if (!loading) {
@@ -2001,24 +2021,16 @@ export function XchatConversation({
           </details>
 
           <div className="hidden md:contents">
-            <header className="xchat-welcome-header">
-              <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
+            <header className="xchat-welcome-header xchat-welcome-header--inline">
+              <h1 className="xchat-welcome-title xchat-welcome-title--inline">Welcome, {welcomeName}!</h1>
               {tenantWorkspaceSessionLabel ? (
-                <p className="xchat-welcome-tenant">
-                  <span className="xchat-welcome-tenant__full hidden md:inline font-medium text-[var(--xf-text-200)]">
-                    Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
-                  </span>
-                  <span className="xchat-welcome-tenant__short md:hidden font-medium text-[var(--xf-text-200)]">
-                    {tenantWorkspaceSessionLabel}
-                  </span>
+                <p className="xchat-welcome-tenant xchat-welcome-tenant--inline font-medium text-[var(--xf-text-200)]">
+                  Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
                 </p>
               ) : null}
-              <p className="xchat-welcome-sub hidden md:block">
+              <p className="xchat-welcome-sub xchat-welcome-sub--inline">
                 Overview of xChat — portfolio, watchlist, and advisor options tools. Use Templates above the composer for
                 starter prompts; Depth (Fast / Expert / Heavy) controls plan-aware reasoning.
-              </p>
-              <p className="xchat-welcome-sub xchat-welcome-sub--mobile-compact md:hidden">
-                Portfolio, watchlist, and options tools — Templates sit above the composer; Depth sets reasoning.
               </p>
             </header>
 

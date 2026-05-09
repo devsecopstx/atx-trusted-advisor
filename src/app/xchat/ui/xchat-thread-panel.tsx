@@ -118,7 +118,7 @@ export function XchatThreadPanel({
       ) : (
         <div
           ref={threadScrollRef}
-          className={`xchat-messages${threadMainVirtualize ? " xchat-messages--virtual-thread" : ""}`}
+          className={`xchat-messages xchat-messages-container${threadMainVirtualize ? " xchat-messages--virtual-thread" : ""}`}
         >
           {messages.length > 0 ? (
             <div className="xchat-thread-minimize-row">

@@ -514,7 +514,7 @@ export function XchatComposerPanel({
             ) : (
               <button
                 aria-label="Send message"
-                className="xchat-composer__send-circle xchat-composer__send-circle--toolbar"
+                className="xchat-composer__send-circle xchat-composer__send-circle--toolbar xchat-composer__send-circle--primary"
                 disabled={loading || !canSend}
                 type="submit"
               >
