@@ -1,5 +1,6 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { UploadIcon } from "@/app/admin/ui/crud-icons";
@@ -12,7 +13,6 @@ import { detectFidelityActivitiesCsv } from "@/modules/portfolio-import/fidelity
 import { detectFidelityPortfolioHoldingsCsv } from "@/modules/portfolio-import/fidelity-holdings-csv";
 
 import { importActivityWorkflowCopy } from "./import-activity-copy";
-import { ImportActivityPreviewPanel } from "./import-activity-preview-panel";
 import { brokerImportPreviewRowKey, type BrokerPreviewAccount } from "./import-activity-types";
 
 export type ImportActivityPortfolioOption = {
@@ -65,6 +65,7 @@ async function parseJson<T>(res: Response): Promise<T> {
 
 const SUPPORTED_IMPORT_BROKERS = new Set(["merrill", "fidelity"]);
 const BROKER_IMPORT_PREFERRED_ORDER = ["fidelity", "merrill", "etrade", "ibkr"] as const;
+const PREVIEW_ROW_HEIGHT = 36;
 
 function orderBrokersForImport(brokers: ImportActivityBrokerOption[]): ImportActivityBrokerOption[] {
   const rank = new Map<string, number>(
@@ -132,14 +133,23 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const [results, setResults] = useState<BrokerApplyRow[] | null>(null);
   const [taskOutput, setTaskOutput] = useState<string | null>(null);
   const [deleteExistingHoldingsFirst, setDeleteExistingHoldingsFirst] = useState(true);
-  const [previewPanelOpen, setPreviewPanelOpen] = useState(false);
+  const [previewSectionOpen, setPreviewSectionOpen] = useState(false);
   const [previewSampleRows, setPreviewSampleRows] = useState<BrokerImportPreviewSampleRow[]>([]);
   const [previewCsvStats, setPreviewCsvStats] = useState<BrokerImportCsvStats | null>(null);
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
   const [csvZoneFocused, setCsvZoneFocused] = useState(false);
   const [workflowExpanded, setWorkflowExpanded] = useState(false);
 
-  const accountsSectionRef = useRef<HTMLDivElement>(null);
+  const previewSectionRef = useRef<HTMLDivElement>(null);
+  const previewRowsScrollRef = useRef<HTMLDivElement>(null);
+
+  /* eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual */
+  const previewRowsVirtualizer = useVirtualizer({
+    count: previewSampleRows.length,
+    getScrollElement: () => previewRowsScrollRef.current,
+    estimateSize: () => PREVIEW_ROW_HEIGHT,
+    overscan: 8
+  });
 
   const loadAccounts = useCallback(async () => {
     if (!portfolioId) {
@@ -301,7 +311,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
     setPreviewSampleRows([]);
     setPreviewCsvStats(null);
     setPreviewWarnings([]);
-    setPreviewPanelOpen(false);
+    setPreviewSectionOpen(false);
   }, []);
 
   const executeDryRun = useCallback(
@@ -365,7 +375,8 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         setPreviewCsvStats(payload.csvStats);
         setPreviewWarnings(payload.previewWarnings);
         if (openPanel) {
-          setPreviewPanelOpen(true);
+          setPreviewSectionOpen(true);
+          queueMicrotask(() => previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
         }
         if (!silent) {
           setMessage(`Preview ready — ${payload.accounts.length} broker account(s). Review the sheet, then apply.`);
@@ -464,7 +475,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
     setMessage(null);
     setResults(null);
     setTaskOutput(null);
-    setPreviewPanelOpen(false);
+    setPreviewSectionOpen(false);
     try {
       if (deleteExistingHoldingsFirst) {
         await parseJson<{
@@ -521,11 +532,32 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   };
 
   const csvExpanded = csvZoneFocused || brokerCsv.trim().length > 0;
+  const hasPreviewRows = previewSampleRows.length > 0;
+  const csvRawPreview = useMemo(() => {
+    if (!brokerCsv.trim()) {
+      return "";
+    }
+    return brokerCsv.split(/\r?\n/).slice(0, 80).join("\n");
+  }, [brokerCsv]);
+  const parsedPositionCount = previewCsvStats?.totalPositionsParsed ?? 0;
+  const previewHeaderCount = parsedPositionCount > 0 ? parsedPositionCount : previewSampleRows.length;
+  const previewCollapsibleLabel = previewSectionOpen ? "Hide parsed positions" : "Show parsed positions";
+  const canRunImport =
+    !busy &&
+    Boolean(
+      portfolioId &&
+        brokerPreview?.length &&
+        brokerImportSupported &&
+        someImportRowSelected &&
+        somePortfolioAccountEligible &&
+        mappingDiagnostics.healthy
+    );
+  const canRunPreview = !busy && Boolean(portfolioId) && brokerImportSupported;
 
   return (
-    <div className="import-activity import-activity--compact grid w-full gap-2 md:gap-3">
+    <div className="import-activity import-activity--compact flex w-full min-w-0 flex-col gap-3">
       <div className="import-activity__layout-grid">
-        <div className="import-activity__primary">
+        <div className="import-activity__primary flex min-w-0 flex-col gap-2.5">
           {portfolios.length === 0 ? (
             <p className="text-xs import-activity__text-secondary mb-2">No portfolios yet — create one from Portfolios first.</p>
           ) : (
@@ -552,7 +584,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
           )}
 
           {portfolioId ? (
-            <div ref={accountsSectionRef} className="import-activity__panel import-activity__panel--tight mb-2">
+            <div className="import-activity__panel import-activity__panel--tight mb-2">
               <table className="import-activity__table import-activity__table--compact">
                 <thead className="import-activity__thead">
                   <tr>
@@ -607,7 +639,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
             </div>
           ) : null}
 
-          <section className="import-activity__source-panel mb-2" aria-label="Broker and CSV import">
+          <section className="import-activity__source-panel mb-1.5" aria-label="Broker and CSV import">
             <label className="import-activity__inline-field import-activity__source-panel-broker">
               <span className="import-activity__section-label">Broker</span>
               <select
@@ -725,6 +757,18 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 placeholder="Drag & drop a .csv here, choose file, or paste…"
                 aria-label="Broker CSV contents"
               />
+              <details className="import-activity__workflow-details mt-2">
+                <summary className="import-activity__workflow-summary">Raw CSV preview (compact)</summary>
+                <div className="import-activity__workflow-inner">
+                  {csvRawPreview ? (
+                    <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded-md border border-[var(--ia-border)] bg-[var(--ia-field-bg)] p-2 font-mono text-[0.65rem] leading-snug text-[var(--xf-text-100)]">
+                      {csvRawPreview}
+                    </pre>
+                  ) : (
+                    <p className="m-0 text-[0.7rem]">Upload or paste CSV content to preview rows here.</p>
+                  )}
+                </div>
+              </details>
             </div>
           </section>
 
@@ -750,26 +794,19 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
             </div>
           ) : null}
 
-          <div className="import-activity__actions-row import-activity__actions-row--tight mb-1">
+          <div className="import-activity__actions-row import-activity__actions-row--tight mb-1 hidden md:flex">
             <button
               type="button"
-              className="import-activity__btn-secondary text-[0.8rem] py-1.5"
-              disabled={busy || !portfolioId || !brokerImportSupported}
+              className="import-activity__btn-secondary min-h-11 text-[0.8rem] py-2.5"
+              disabled={!canRunPreview}
               onClick={() => void runPreview()}
             >
               <UploadIcon className="crud-icon h-3.5 w-3.5" /> Preview (dry run)
             </button>
             <button
               type="button"
-              className="import-activity__btn-primary text-[0.8rem] py-1.5"
-              disabled={
-                busy ||
-                !portfolioId ||
-                !brokerPreview?.length ||
-                !brokerImportSupported ||
-                !someImportRowSelected ||
-                !somePortfolioAccountEligible
-              }
+              className="import-activity__btn-primary min-h-11 text-[0.8rem] py-2.5"
+              disabled={!canRunImport}
               onClick={() => void runImport()}
             >
               <UploadIcon className="crud-icon h-3.5 w-3.5" /> Run import now
@@ -777,9 +814,12 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
             {brokerPreview?.length ? (
               <button
                 type="button"
-                className="import-activity__btn-secondary text-[0.8rem] py-1.5"
+                className="import-activity__btn-secondary min-h-11 text-[0.8rem] py-2.5"
                 disabled={busy}
-                onClick={() => setPreviewPanelOpen(true)}
+                onClick={() => {
+                  setPreviewSectionOpen(true);
+                  previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
               >
                 Open preview
               </button>
@@ -787,6 +827,9 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
           </div>
 
           {message ? <p className="import-activity__status-msg text-[0.8rem] mb-2">{message}</p> : null}
+          <p className="text-[0.72rem] font-medium text-[color:var(--xf-gain-green)]">
+            Safe preview — no positions will be changed yet
+          </p>
 
           <details
             className="import-activity__workflow-details mb-2"
@@ -866,62 +909,194 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
             </details>
           ) : null}
         </div>
-
-        <aside className="import-activity__summary-aside" aria-label="Import summary">
-          <div className="import-activity__summary-card">
-            <p className="import-activity__summary-headline">{summaryHeadline}</p>
-            <p className="import-activity__summary-csv">{csvStatusLine}</p>
-            <p className="import-activity__summary-risk">{importActivityWorkflowCopy.optionsBody}</p>
-            <div className="import-activity__summary-chips" aria-label="Accounts enabled for import mapping">
-              {accounts
-                .filter((a) => Boolean(a._id?.trim()) && accountUseForImport[a._id!] !== false)
-                .map((a) => (
-                  <span key={a._id} className="import-activity__summary-chip">
-                    {a.name}{" "}
-                    <span className="font-mono tabular-nums">({accountRefLastFourOnlyDisplay(a.extAccountId)})</span> ✓
-                  </span>
-                ))}
-              {selectedBrokerAccountCount === 0 ? (
-                <span className="import-activity__text-tertiary text-[0.65rem]">No accounts enabled for import.</span>
-              ) : null}
-            </div>
-          </div>
-        </aside>
       </div>
 
-      <ImportActivityPreviewPanel
-        open={previewPanelOpen}
-        onClose={() => setPreviewPanelOpen(false)}
-        busy={busy}
-        totalPositionsParsed={totalPositionsParsed}
-        selectedPositionsEstimate={selectedPositionsEstimate}
-        deleteExistingHoldingsFirst={deleteExistingHoldingsFirst}
-        accountMappingHealthy={mappingDiagnostics.healthy}
-        mappingIssueLabels={mappingDiagnostics.issueLabels}
-        previewWarnings={previewWarnings}
-        sampleRows={previewSampleRows}
-        brokerPreviewAccounts={brokerPreview ?? []}
-        importRowSelected={importRowSelected}
-        brokerImportPreviewRowKey={brokerImportPreviewRowKey}
-        onToggleImportRow={(key, checked) => {
-          setImportRowSelected((prev) => ({ ...prev, [key]: checked }));
-        }}
-        onApplyImport={() => void runImport()}
-        onEditSelection={() => {
-          setPreviewPanelOpen(false);
-          queueMicrotask(() => accountsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-        }}
-        canApplyImport={
-          Boolean(
-            portfolioId &&
-              brokerPreview?.length &&
-              brokerImportSupported &&
-              someImportRowSelected &&
-              somePortfolioAccountEligible &&
-              mappingDiagnostics.healthy
-          )
-        }
-      />
+      <section
+        ref={previewSectionRef}
+        className="import-activity__panel p-2.5 md:p-3"
+        aria-label="Parsed positions preview"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-[var(--xf-text-100)]">Parsed Positions</h2>
+            <span className="inline-flex min-h-6 items-center rounded-full border border-[var(--ia-border)] bg-[var(--ia-muted-bg)] px-2 font-mono text-[0.7rem] tabular-nums text-[var(--xf-text-100)]">
+              {previewHeaderCount}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="import-activity__btn-secondary min-h-11 px-3 py-2 text-[0.75rem] md:hidden"
+            onClick={() => setPreviewSectionOpen((prev) => !prev)}
+            aria-expanded={previewSectionOpen}
+            aria-controls="import-activity-parsed-positions"
+          >
+            {previewCollapsibleLabel}
+          </button>
+        </div>
+
+        <div className="mt-1.5 import-activity__summary-card">
+          <p className="import-activity__summary-headline">{summaryHeadline}</p>
+          <p className="import-activity__summary-csv">{csvStatusLine}</p>
+          <p className="import-activity__summary-risk">{importActivityWorkflowCopy.optionsBody}</p>
+          <div className="import-activity__summary-chips" aria-label="Accounts enabled for import mapping">
+            {accounts
+              .filter((a) => Boolean(a._id?.trim()) && accountUseForImport[a._id!] !== false)
+              .map((a) => (
+                <span key={a._id} className="import-activity__summary-chip">
+                  {a.name} <span className="font-mono tabular-nums">({accountRefLastFourOnlyDisplay(a.extAccountId)})</span> ✓
+                </span>
+              ))}
+            {selectedBrokerAccountCount === 0 ? (
+              <span className="import-activity__text-tertiary text-[0.65rem]">No accounts enabled for import.</span>
+            ) : null}
+          </div>
+        </div>
+
+        <div id="import-activity-parsed-positions" className={previewSectionOpen ? "mt-3 space-y-2" : "mt-3 hidden md:block md:space-y-2"}>
+          {!mappingDiagnostics.healthy && mappingDiagnostics.issueLabels.length > 0 ? (
+            <p className="import-activity-preview-warn-copy">
+              No portfolio match: {mappingDiagnostics.issueLabels.slice(0, 6).join(", ")}
+              {mappingDiagnostics.issueLabels.length > 6 ? "…" : ""}
+            </p>
+          ) : null}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="import-activity-preview-metric">
+              <span className="import-activity-preview-metric-label">Positions (parsed)</span>
+              <span className="import-activity-preview-metric-value">{totalPositionsParsed}</span>
+            </div>
+            <div className="import-activity-preview-metric">
+              <span className="import-activity-preview-metric-label">Selected for apply</span>
+              <span className="import-activity-preview-metric-value">{selectedPositionsEstimate}</span>
+            </div>
+          </div>
+          <p className="import-activity-preview-note">Safe preview — no positions will be changed yet</p>
+
+          {brokerPreview?.length ? (
+            <div className="import-activity-preview-account-toggles">
+              <span className="import-activity-preview-section-label">Include broker accounts</span>
+              <ul className="import-activity-preview-chip-list">
+                {brokerPreview.map((row) => {
+                  const key = brokerImportPreviewRowKey(row);
+                  const on = importRowSelected[key] === true;
+                  return (
+                    <li key={key}>
+                      <label className="import-activity-preview-chip">
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) => {
+                            setImportRowSelected((prev) => ({ ...prev, [key]: e.target.checked }));
+                          }}
+                          className="import-activity-preview-chip-input"
+                        />
+                        <span>{row.label || row.accountRef}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="import-activity-preview-table-wrap">
+            <div className="import-activity-preview-table-header">
+              <span className="import-activity-preview-col-account">Account</span>
+              <span className="import-activity-preview-col-symbol">Symbol</span>
+              <span className="import-activity-preview-col-qty">Qty</span>
+              <span className="import-activity-preview-col-num">Avg</span>
+              <span className="import-activity-preview-col-num">Last</span>
+              <span className="import-activity-preview-col-num">Value</span>
+              <span className="import-activity-preview-col-type">Type</span>
+            </div>
+            <div ref={previewRowsScrollRef} className="import-activity-preview-table-scroll">
+              <div
+                className="import-activity-preview-table-virtual-inner"
+                style={{ height: `${previewRowsVirtualizer.getTotalSize()}px`, position: "relative" }}
+              >
+                {previewRowsVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = previewSampleRows[virtualRow.index];
+                  if (!row) {
+                    return null;
+                  }
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      className="import-activity-preview-table-row"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`
+                      }}
+                    >
+                      <span className="import-activity-preview-col-account truncate" title={row.accountLabel}>
+                        {row.accountLabel}
+                      </span>
+                      <span className="import-activity-preview-col-symbol truncate font-mono text-[0.65rem]" title={row.symbol}>
+                        {row.symbol}
+                      </span>
+                      <span className="import-activity-preview-col-qty font-mono tabular-nums">{row.qty}</span>
+                      <span className="import-activity-preview-col-num font-mono tabular-nums">{row.avgCost}</span>
+                      <span className="import-activity-preview-col-num font-mono tabular-nums">{row.last}</span>
+                      <span className="import-activity-preview-col-num font-mono tabular-nums">{row.value}</span>
+                      <span className="import-activity-preview-col-type">{row.rowType}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {hasPreviewRows ? (
+              <p className="import-activity-preview-sample-foot">
+                Showing first {previewSampleRows.length} position row{previewSampleRows.length === 1 ? "" : "s"} (sample).
+              </p>
+            ) : (
+              <p className="import-activity-preview-empty">Run preview to parse positions from your CSV file.</p>
+            )}
+          </div>
+
+          {previewWarnings.length > 0 ? (
+            <ul className="import-activity-preview-warnings">
+              {previewWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </section>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--ia-border)] bg-[color:color-mix(in_srgb,var(--xf-bg-900)_94%,transparent)] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-2">
+          <button
+            type="button"
+            className="import-activity__btn-secondary min-h-11 w-full justify-center px-3 py-2.5 text-[0.85rem]"
+            disabled={!canRunPreview}
+            onClick={() => void runPreview()}
+          >
+            <UploadIcon className="crud-icon h-4 w-4" /> Preview (dry run)
+          </button>
+          <button
+            type="button"
+            className="import-activity__btn-primary min-h-11 w-full justify-center px-3 py-2.5 text-[0.85rem]"
+            disabled={!canRunImport}
+            onClick={() => void runImport()}
+          >
+            <UploadIcon className="crud-icon h-4 w-4" /> Run import now
+          </button>
+          <button
+            type="button"
+            className="import-activity__btn-secondary min-h-11 w-full justify-center px-3 py-2.5 text-[0.85rem]"
+            disabled={busy || !brokerPreview?.length}
+            onClick={() => {
+              setPreviewSectionOpen(true);
+              previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            Open preview
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

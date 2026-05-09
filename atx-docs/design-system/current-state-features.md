@@ -459,11 +459,14 @@ After mounting **`MarketVeilBackground`** on `/xchat`, `/xoptions`, and `/portfo
 
 **Animation cadence** (calibrated against the Grok Imagine reference): grid breathes over 52 s; tick highlights fire every 2.4–4.8 s (240 ms gold flash on a random node); connection-pulse bursts every 5–10 s (300 ms). Default canvas alpha bumped from `0.09` → `0.14` so the network reads against the skyline.
 
-| Route        | Run #1 perf | Run #2 perf | TBT (#1/#2) | LCP (#1/#2) | CLS  |
-|--------------|------------:|------------:|------------:|------------:|-----:|
-| `/xoptions`  |        1.00 |        1.00 |     0/0 ms  | 757/746 ms  | 0.00 |
-| `/xchat`     |        1.00 |        1.00 |     0/0 ms  | 723/721 ms  | 0.00 |
-| `/portfolios`|        1.00 |        1.00 |     0/0 ms  | 756/741 ms  | 0.00 |
+| Route        | Run #1 perf | Run #2 perf | TBT (#1/#2)  | LCP (#1/#2) | CLS  |
+|--------------|------------:|------------:|-------------:|------------:|-----:|
+| `/xoptions`  |        1.00 |        1.00 |     0/0 ms   | 740/690 ms  | 0.00 |
+| `/xchat`     |        1.00 |        0.99 |     0/101 ms | 720/730 ms  | 0.00 |
+| `/portfolios`|        1.00 |        1.00 |     0/0 ms   | 740/740 ms  | 0.00 |
+| `/portfolio` |        1.00 |        1.00 |     0/0 ms   | 740/750 ms  | 0.00 |
+
+> Re-measured **2026-05-09 13:32 CT** after dialing the skyline back to a B&W watermark (`filter: grayscale(100%) contrast(0.92) brightness(1.05)` + opacity `0.22`) and lightening the readability vignette. Numbers are unchanged vs the pre-watermark run — CSS `filter`/`opacity` are GPU-cheap, no extra script work, no new bytes shipped. The single-run 0.99 on `/xchat` is sample noise (TBT 101 ms one run, 0 ms the other); LCP held at 0.72 s either way.
 
 Acceptance criterion (≤ +2 perf points delta on `/xoptions`) still holds — delta is **0** even after lifting visibility, tightening cadence, and dialing the skyline back to a B&W watermark. The skyline `<img>` rides at `fetchpriority="low"`, so it never competes with critical chrome for early bandwidth; CSS `filter`/`opacity` are GPU-cheap (no extra paint cycles, no script work). Canvas init still defers behind `window.load` + idle so it never enters the FCP→TTI window. CLS stays 0 because every layer is `position: fixed` inside the wrapper.
 

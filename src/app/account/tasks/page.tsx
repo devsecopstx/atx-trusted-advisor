@@ -5,7 +5,6 @@ import { UserTasksClient } from "@/app/account/tasks/user-tasks-client";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { GlobalFooter } from "@/app/ui/global-footer";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
 import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
@@ -76,7 +75,6 @@ export default async function AccountTasksPage({ searchParams }: PageProps) {
           </div>
         </AppUserCollapsibleRailLayout>
       </div>
-      <GlobalFooter />
     </div>
   );
 }
