@@ -32,7 +32,7 @@
   );
 }
 
-.xchat-shell > .xchat-header,
+.xchat-shell > .workspace-product-sticky-top,
 .xchat-shell > .xchat-body,
 .xchat-shell > .app-footer {
   position: relative;
@@ -157,6 +157,9 @@
 
 .xchat-header-workspace-quick-nav__link {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
   padding: 0.28rem 0.55rem;
   border-radius: var(--xf-radius-sm, 8px);
   border: 1px solid var(--xf-border-subtle);
@@ -173,13 +176,33 @@
     background-color 0.12s ease;
 }
 
+.xchat-header-workspace-quick-nav__glyph {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  color: var(--xf-text-400);
+  transition: color 0.12s ease;
+}
+
 .xchat-header-workspace-quick-nav__link:hover {
   color: var(--xf-gain-green);
   border-color: color-mix(in srgb, var(--xf-gain-green) 42%, var(--xf-border-subtle));
 }
 
+.xchat-header-workspace-quick-nav__link:hover .xchat-header-workspace-quick-nav__glyph {
+  color: var(--xf-gain-green);
+}
+
 .xchat-header-workspace-quick-nav__link--admin {
   border-color: color-mix(in srgb, var(--xf-gain-green) 28%, var(--xf-border-subtle));
+  color: var(--xf-gain-green);
+}
+
+.xchat-header-workspace-quick-nav__link--admin .xchat-header-workspace-quick-nav__glyph {
+  color: color-mix(in srgb, var(--xf-gain-green) 82%, var(--xf-text-400));
+}
+
+.xchat-header-workspace-quick-nav__link--admin:hover .xchat-header-workspace-quick-nav__glyph {
   color: var(--xf-gain-green);
 }
 
@@ -992,7 +1015,8 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 .xchat-main > .xchat-persona-bar,
 .xchat-main > .status-text,
 .xchat-main > .xchat-guest-actions,
-.xchat-main > .xchat-composer-wrap {
+.xchat-main > .xchat-composer-wrap,
+.xchat-main > .app-footer {
   flex-shrink: 0;
 }
 
@@ -5458,7 +5482,7 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
     padding-inline: 0.35rem;
   }
 
-  .xchat-shell > .xchat-header {
+  .xchat-shell > .workspace-product-sticky-top .xchat-header {
     padding: 0.32rem 0.48rem;
     gap: 0.32rem;
   }
@@ -6007,7 +6031,7 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
     padding-top: calc(3.35rem + env(safe-area-inset-top));
   }
 
-  html[data-xf-workspace-top-chrome] .xchat-shell > .xchat-header {
+  html[data-xf-workspace-top-chrome] .xchat-shell > .workspace-product-sticky-top .xchat-header {
     display: none;
   }
 

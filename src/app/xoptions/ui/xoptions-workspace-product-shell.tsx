@@ -24,7 +24,7 @@ export async function XoptionsWorkspaceProductShell({
   const rail = await AppUserAccountPublicRailForSession({ session, railVariant: "workspace-product" });
 
   return (
-    <div className="xchat-shell flex min-h-0 flex-1 flex-col overflow-hidden bg-[color:var(--xf-xoptions-surface)] text-[color:var(--xf-text-100)]">
+    <div className="xchat-shell flex min-h-0 flex-col overflow-hidden bg-[color:var(--xf-xoptions-surface)] text-[color:var(--xf-text-100)]">
       <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
         <div className="workspace-product-approved-header-slot">
           <AppUserApprovedHeader

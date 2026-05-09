@@ -53,22 +53,12 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
   const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
 
   return (
-    <div className="xchat-shell">
-      <AppUserApprovedHeader
-        current="xoptions"
-        feedbackPageLabel="xOptions"
-        session={session}
-        workspaceTenant={workspaceTenant}
-      />
-      <div className="xchat-body min-w-0 px-3 py-4 md:px-8 md:py-6">
-        <AppUserCollapsibleRailLayout
-          mainClassName="min-w-0 w-full max-w-full"
-          rail={<AppUserAccountPublicRailForSession railVariant="workspace-product" session={session} />}
-          railChrome="workspace-product"
-        >
-          <XoptionsStrategyBuilderMount />
-        </AppUserCollapsibleRailLayout>
-      </div>
-    </div>
+    <XoptionsWorkspaceProductShell
+      feedbackPageLabel="xOptions"
+      session={session}
+      workspaceTenant={workspaceTenant}
+    >
+      <XoptionsStrategyBuilderMount />
+    </XoptionsWorkspaceProductShell>
   );
 }

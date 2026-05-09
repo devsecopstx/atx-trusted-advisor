@@ -1255,6 +1255,9 @@ html[data-xf-workspace-top-chrome] .workspace-product-approved-header-slot {
 
 .workspace-top-chrome__pill {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
   padding: 0.22rem 0.45rem;
   border-radius: 999px;
   font-size: 0.65rem;
@@ -1267,7 +1270,27 @@ html[data-xf-workspace-top-chrome] .workspace-product-approved-header-slot {
   background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 10%, transparent);
   transition:
     background-color 0.15s ease,
-    border-color 0.15s ease;
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.workspace-top-chrome__pill-glyph {
+  width: 0.82rem;
+  height: 0.82rem;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--xf-text-100) 72%, transparent);
+}
+
+.workspace-top-chrome__pill:hover .workspace-top-chrome__pill-glyph {
+  color: var(--xf-text-100);
+}
+
+.workspace-top-chrome__pill--admin .workspace-top-chrome__pill-glyph {
+  color: color-mix(in srgb, var(--xf-gain-green) 78%, var(--xf-text-300));
+}
+
+.workspace-top-chrome__pill--admin:hover .workspace-top-chrome__pill-glyph {
+  color: var(--xf-gain-green);
 }
 
 .workspace-top-chrome__pill:hover {

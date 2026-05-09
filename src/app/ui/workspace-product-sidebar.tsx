@@ -21,12 +21,16 @@ import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-por
 import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import {
+    LucideBookOpenIcon,
     LucideChevronLeftIcon,
     LucideChevronRightIcon,
+    LucideClipboardListIcon,
     LucideListBulletsIcon,
     LucideMenuIcon,
     LucideMonitorIcon,
+    LucideSettingsIcon,
     LucideSquarePenIcon,
+    LucideUploadIcon,
     LucideXIcon,
     XoptionsRocketIcon
 } from "@/app/ui/lucide-product-icons";
@@ -439,24 +443,39 @@ function WorkspaceTopChromeBar({
               </Link>
             ) : null}
             {isPathVisible("/resources") ? (
-              <Link className="workspace-top-chrome__pill" href="/resources/guides">
-                Resources
-              </Link>
+              <XfHoverHint hint="Guides, docs, and workspace resources — educational reference only." showDelayMs={260}>
+                <Link className="workspace-top-chrome__pill" href="/resources/guides">
+                  <LucideBookOpenIcon aria-hidden className="workspace-top-chrome__pill-glyph" />
+                  <span>Resources</span>
+                </Link>
+              </XfHoverHint>
             ) : null}
             {isPathVisible("/import-activity") ? (
-              <Link className="workspace-top-chrome__pill" href="/import-activity">
-                Import
-              </Link>
+              <XfHoverHint
+                hint="Upload broker CSV activity and reconcile custodian fills against your books."
+                showDelayMs={260}
+              >
+                <Link className="workspace-top-chrome__pill" href="/import-activity">
+                  <LucideUploadIcon aria-hidden className="workspace-top-chrome__pill-glyph" />
+                  <span>Import</span>
+                </Link>
+              </XfHoverHint>
             ) : null}
             {isPathVisible("/resources") ? (
-              <Link className="workspace-top-chrome__pill" href="/account/tasks">
-                Tasks
-              </Link>
+              <XfHoverHint hint="Scheduled workspace tasks, reminders, and automation runs." showDelayMs={260}>
+                <Link className="workspace-top-chrome__pill" href="/account/tasks">
+                  <LucideClipboardListIcon aria-hidden className="workspace-top-chrome__pill-glyph" />
+                  <span>Tasks</span>
+                </Link>
+              </XfHoverHint>
             ) : null}
             {isGlobalAdmin ? (
-              <Link className="workspace-top-chrome__pill workspace-top-chrome__pill--admin" href="/admin">
-                Hub
-              </Link>
+              <XfHoverHint hint="Global admin console — tenants, access, personas, and ops tools." showDelayMs={260}>
+                <Link className="workspace-top-chrome__pill workspace-top-chrome__pill--admin" href="/admin">
+                  <LucideSettingsIcon aria-hidden className="workspace-top-chrome__pill-glyph" />
+                  <span>Hub</span>
+                </Link>
+              </XfHoverHint>
             ) : null}
           </nav>
         ) : null}

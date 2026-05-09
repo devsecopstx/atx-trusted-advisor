@@ -93,11 +93,18 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
 
   if (!session) {
     return (
-      <div className="xchat-shell">
+      <div className="xchat-shell flex min-h-0 flex-col overflow-hidden">
         <StarfieldBackground />
-        <XchatGuestHeader />
-        <div className="xchat-body">
-          <XchatGuestReadonlyShell showAccessPanel={false}>
+        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
+          <XchatGuestHeader />
+        </div>
+        <div className="xchat-body flex min-h-0 flex-1 flex-col overflow-hidden">
+          <XchatGuestReadonlyShell
+            mainFooter={<GlobalFooter />}
+            showAccessPanel={false}
+            workspaceProductGrid
+            workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"
+          >
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}
@@ -108,7 +115,6 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             />
           </XchatGuestReadonlyShell>
         </div>
-        <GlobalFooter />
       </div>
     );
   }
@@ -129,23 +135,29 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       ? oauthAuthErrorMessages[authError]
       : null;
   return (
-    <div className="xchat-shell">
+    <div className="xchat-shell flex min-h-0 flex-col overflow-hidden">
       <StarfieldBackground />
       {approved ? (
-        <AppUserApprovedHeader
-          current="xchat"
-          feedbackPageLabel="xChat"
-          session={session}
-          workspaceTenant={workspaceTenant}
-        />
+        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
+          <div className="workspace-product-approved-header-slot">
+            <AppUserApprovedHeader
+              current="xchat"
+              feedbackPageLabel="xChat"
+              session={session}
+              workspaceTenant={workspaceTenant}
+            />
+          </div>
+        </div>
       ) : (
-        <XchatGuestHeader />
+        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
+          <XchatGuestHeader />
+        </div>
       )}
 
-      <div className="xchat-body">
+      <div className="xchat-body flex min-h-0 flex-1 flex-col overflow-hidden">
         {oauthLinkBannerMessage ? (
           <p
-            className="xchat-oauth-inline-alert"
+            className="xchat-oauth-inline-alert shrink-0"
             role="alert"
             style={{
               margin: "0 0 0.75rem",
@@ -171,7 +183,12 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             />
           </Suspense>
         ) : (
-          <XchatGuestReadonlyShell rail={pendingWorkspaceRail ?? undefined} showAccessPanel={false}>
+          <XchatGuestReadonlyShell
+            mainFooter={<GlobalFooter />}
+            rail={pendingWorkspaceRail ?? undefined}
+            showAccessPanel={false}
+            workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"
+          >
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}
@@ -185,7 +202,6 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           </XchatGuestReadonlyShell>
         )}
       </div>
-      <GlobalFooter />
     </div>
   );
 }

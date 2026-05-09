@@ -33,8 +33,11 @@ describe("WorkspaceProductSidebar rail contract", () => {
     expect(approvedHeaderSrc).toContain("/account/tasks");
     expect(approvedHeaderSrc).toContain('href="/admin"');
     expect(approvedHeaderSrc).toContain("xchat-header-workspace-quick-nav");
+    expect(approvedHeaderSrc).toContain("LucideBookOpenIcon");
+    expect(approvedHeaderSrc).toContain("XfHoverHint");
     expect(src).toContain('href="/resources/guides"');
     expect(src).toContain("workspace-top-chrome__pill--admin");
+    expect(src).toContain("workspace-top-chrome__pill-glyph");
   });
 
   it("mounts rail context + accessible header toggle (⌘B contract)", () => {

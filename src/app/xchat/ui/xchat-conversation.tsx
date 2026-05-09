@@ -8,7 +8,8 @@ import {
     useEffect,
     useMemo,
     useRef,
-    useState
+    useState,
+    type ReactNode
 } from "react";
 
 import dynamic from "next/dynamic";
@@ -133,6 +134,8 @@ export type XchatConversationProps = {
   tenantWorkspaceSessionLabel?: string | null;
   /** Tenant allowlist for workspace rail; pass from server so Resources and routes match policy without client race. */
   visiblePathPrefixes?: string[];
+  /** Legal footer under the chat main column only (not full viewport width). */
+  mainFooter?: ReactNode;
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
@@ -351,7 +354,8 @@ export function XchatConversation({
   initialXchatItem = null,
   serverBootstrap = null,
   visiblePathPrefixes,
-  tenantWorkspaceSessionLabel = null
+  tenantWorkspaceSessionLabel = null,
+  mainFooter = null
 }: XchatConversationProps) {
   const router = useRouter();
   const uiPromptLimit = Math.max(1, Math.min(500, workspaceChatHistoryMax));
@@ -2005,6 +2009,7 @@ export function XchatConversation({
             voiceSessionPersonaLabel={activePersonaName}
           />
         </Suspense>
+        {mainFooter}
       </div>
     </div>
   );

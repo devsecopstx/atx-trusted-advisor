@@ -8,11 +8,18 @@ import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import type { AppUserProductNavCurrent } from "./app_user-product-nav";
+import {
+    LucideBookOpenIcon,
+    LucideClipboardListIcon,
+    LucideSettingsIcon,
+    LucideUploadIcon
+} from "./lucide-product-icons";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "./product-brand-constants";
 import { useTenantShellBranding } from "./tenant-branding-context";
 import { useTenantUxPolicy } from "./use-tenant-ux-policy";
 import { WorkspaceRailAppearance } from "./workspace-rail-appearance";
 import { XchatHeaderBrand } from "./xchat-header-brand";
+import { XfHoverHint } from "./xf-hover-hint";
 
 type AppUserApprovedHeaderProps = {
   session: SessionUser;
@@ -71,27 +78,42 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
             {showWorkspaceQuickNav ? (
               <nav className="xchat-header-workspace-quick-nav" aria-label="Workspace shortcuts">
                 {showResourcesNav ? (
-                  <Link className="xchat-header-workspace-quick-nav__link" href="/resources/guides">
-                    Resources
-                  </Link>
+                  <XfHoverHint hint="Guides, docs, and workspace resources — educational reference only." showDelayMs={220}>
+                    <Link className="xchat-header-workspace-quick-nav__link" href="/resources/guides">
+                      <LucideBookOpenIcon aria-hidden className="xchat-header-workspace-quick-nav__glyph" />
+                      <span>Resources</span>
+                    </Link>
+                  </XfHoverHint>
                 ) : null}
                 {showBrokerImportNav ? (
-                  <Link className="xchat-header-workspace-quick-nav__link" href="/import-activity">
-                    Broker import
-                  </Link>
+                  <XfHoverHint
+                    hint="Upload broker CSV activity and reconcile custodian fills against your books."
+                    showDelayMs={220}
+                  >
+                    <Link className="xchat-header-workspace-quick-nav__link" href="/import-activity">
+                      <LucideUploadIcon aria-hidden className="xchat-header-workspace-quick-nav__glyph" />
+                      <span>Broker import</span>
+                    </Link>
+                  </XfHoverHint>
                 ) : null}
                 {showTasksNav ? (
-                  <Link className="xchat-header-workspace-quick-nav__link" href="/account/tasks">
-                    Tasks
-                  </Link>
+                  <XfHoverHint hint="Scheduled workspace tasks, reminders, and automation runs." showDelayMs={220}>
+                    <Link className="xchat-header-workspace-quick-nav__link" href="/account/tasks">
+                      <LucideClipboardListIcon aria-hidden className="xchat-header-workspace-quick-nav__glyph" />
+                      <span>Tasks</span>
+                    </Link>
+                  </XfHoverHint>
                 ) : null}
                 {showAdminHubNav ? (
-                  <Link
-                    className="xchat-header-workspace-quick-nav__link xchat-header-workspace-quick-nav__link--admin"
-                    href="/admin"
-                  >
-                    Admin hub
-                  </Link>
+                  <XfHoverHint hint="Global admin console — tenants, access, personas, and ops tools." showDelayMs={220}>
+                    <Link
+                      className="xchat-header-workspace-quick-nav__link xchat-header-workspace-quick-nav__link--admin"
+                      href="/admin"
+                    >
+                      <LucideSettingsIcon aria-hidden className="xchat-header-workspace-quick-nav__glyph" />
+                      <span>Admin hub</span>
+                    </Link>
+                  </XfHoverHint>
                 ) : null}
               </nav>
             ) : null}

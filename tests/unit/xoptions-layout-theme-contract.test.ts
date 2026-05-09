@@ -11,6 +11,7 @@ describe("xoptions layout + soft theme contract", () => {
   it("imports portfolios-dashboard.css for workspace rail sidebar tokens", () => {
     const layout = readFileSync(join(process.cwd(), "src/app/xoptions/layout.tsx"), "utf8");
     expect(layout).toContain("portfolios-dashboard.css");
+    expect(layout).not.toContain("GlobalFooter");
   });
 
   it("maps xf-xoptions-surface to app canvas under html[data-xf-ui=soft]", () => {
