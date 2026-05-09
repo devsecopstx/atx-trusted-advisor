@@ -29,6 +29,7 @@
 | **Edge V2** | `src/proxy.ts` — internal **`GET /api/internal/tenant-ux/policy`**; matcher includes **`/xcoach`**; fail-open + JSON log **`tenant_ux_policy_fetch_error`**; optional **`TENANT_UX_POLICY_FAIL_CLOSED`**. |
 | **xChat / batch** | Tenant desk line in **system prompt** + remote-chain fingerprint; welcome header line on approved shell; xChat **batch** inherits tenant block when tenant known. |
 | **Branding tokens** | `tenantPreferences` (`xf_accent_color`, **`xf_tenant_logo_url`**, **`xf_tenant_tagline`**, `xf_ui_theme`, brand aliases); **`--xf-tenant-primary`**, **`--xf-tenant-secondary`** in brand kit + root layout + **`TenantBrandingProvider`**. |
+| **Ambient Market Veil** | `tenantPreferences.ambient_market_veil` (boolean, **default-on**) — gates the Canvas2D ambient grid/particle background on `/xchat`, `/xoptions`, `/portfolios`. Surfaced through **`WorkspaceTenantHeaderContext.ambientMarketVeilEnabled`** (`src/lib/workspace-tenant-header.ts`) and resolved via **`isAmbientMarketVeilEnabledForTenant`** (`src/modules/identity/tenant-branding-preferences.ts`). Admin toggle at **`/admin/tenant-preferences/ambient`** (PATCH `tenantPreferences.ambient_market_veil` → `updateTenantAmbientMarketVeil`); dev preview at **`/dev/veil`**. CSS knobs: **`--veil-opacity`** (default `0.09`), **`--veil-grid-speed`** (default `1.0`), **`--veil-particle-count`** (default `28`), optional **`--veil-accent`** (falls back to `--xf-tenant-accent`). |
 
 ---
 

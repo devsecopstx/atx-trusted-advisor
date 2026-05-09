@@ -165,6 +165,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
           "Platform default published xPersona for app users who do not have an admin-assigned persona."
       },
       {
+        href: "/admin/tenant-preferences/ambient",
+        title: "Ambient experience",
+        description:
+          "Toggle the Ambient Market Veil background (Canvas2D grid + drift particles) on /xchat, /xoptions, and /portfolios; default-on for paid tenants."
+      },
+      {
         href: "/admin/manage-backoffice",
         title: "Manage backoffice",
         description:

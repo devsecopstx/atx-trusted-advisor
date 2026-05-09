@@ -11,12 +11,14 @@ import {
     getTenantByHexId,
     resolvedWorkspaceLimitsForTenant,
     resolveTenantIdHexForGlobalAdminConsole,
+    updateTenantAmbientMarketVeil,
     updateTenantBrandingPreferencesOneTime,
     updateTenantWorkspaceLimits,
     updateTenantXchatDebugEnabled,
     updateTenantXfUiThemePreference
 } from "@/modules/identity/repository";
 import {
+    parseTenantAmbientMarketVeil,
     parseTenantBrandingPreferencesPayload,
     parseTenantXchatDebugEnabled
 } from "@/modules/identity/tenant-branding-preferences";
@@ -198,6 +200,25 @@ export async function PATCH(request: Request, context: RouteContext) {
     const afterDebug = await updateTenantXchatDebugEnabled(effectiveTenantHex, xchatDebugToggle);
     if (afterDebug?._id) {
       updated = afterDebug;
+    }
+  }
+
+  if (
+    tpBody &&
+    typeof tpBody === "object" &&
+    !Array.isArray(tpBody) &&
+    "ambient_market_veil" in (tpBody as Record<string, unknown>)
+  ) {
+    const veilToggle = parseTenantAmbientMarketVeil((tpBody as Record<string, unknown>).ambient_market_veil);
+    if (veilToggle === undefined) {
+      return NextResponse.json(
+        { error: "Invalid ambient_market_veil — use boolean or null" },
+        { status: 400 }
+      );
+    }
+    const afterVeil = await updateTenantAmbientMarketVeil(effectiveTenantHex, veilToggle);
+    if (afterVeil?._id) {
+      updated = afterVeil;
     }
   }
 

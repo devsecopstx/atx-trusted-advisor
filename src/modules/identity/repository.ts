@@ -2276,6 +2276,31 @@ export async function updateTenantXchatDebugEnabled(
   return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
 }
 
+/**
+ * Toggle `tenantPreferences.ambient_market_veil` (global_admin — Admin → Tenant
+ * preferences → Ambient experience). Pass `null` to **clear** (returns to default-on),
+ * `true` to explicitly enable, `false` to opt out for the tenant.
+ */
+export async function updateTenantAmbientMarketVeil(
+  tenantIdHex: string,
+  enabled: boolean | null
+): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const now = new Date();
+  await db.collection<Tenant>(collections.tenants).updateOne(
+    { _id: id },
+    enabled === null
+      ? { $unset: { "tenantPreferences.ambient_market_veil": "" }, $set: { updatedAt: now } }
+      : { $set: { "tenantPreferences.ambient_market_veil": enabled, updatedAt: now } }
+  );
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+}
+
 export async function resolvedWorkspaceLimitsForTenant(
   tenant: Tenant | null
 ): Promise<TenantWorkspaceLimits> {

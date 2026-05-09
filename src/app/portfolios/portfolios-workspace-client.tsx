@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { MarketVeilBackground } from "@/components/animations/MarketVeilBackground";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
@@ -75,8 +76,11 @@ export function PortfoliosWorkspaceClient({
     .map((h) => h.symbol)
     .join(",");
 
+  const ambientVeilEnabled = workspaceTenant?.ambientMarketVeilEnabled ?? true;
+
   return (
     <>
+      {ambientVeilEnabled ? <MarketVeilBackground /> : null}
       <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
         <div className="workspace-product-approved-header-slot">
           <AppUserApprovedHeader

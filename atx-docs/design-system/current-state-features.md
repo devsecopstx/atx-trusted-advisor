@@ -14,7 +14,7 @@ Values below track **`package.json`** and **`services/atxfinance-backend/gradle/
 | Layer | Stack |
 |--------|--------|
 | **Frontend (core app)** | **Next.js 16.x** (App Router), **React 19.2.x**, **TypeScript 5.9.x**, **Tailwind CSS 3.4.x**, **ESLint 9.x** + `eslint-config-next` |
-| **UI / data viz** | **ApexCharts 5.x** + `react-apexcharts`, **Framer Motion**, **TanStack React Virtual**, **react-markdown** + **rehype-sanitize** / **remark-gfm** |
+| **UI / data viz** | **ApexCharts 5.x** + `react-apexcharts`, **Framer Motion**, **TanStack React Virtual**, **react-markdown** + **rehype-sanitize** / **remark-gfm**, **Ambient Market Veil** (`src/components/animations/MarketVeilBackground.tsx`) — pure Canvas2D + RAF grid/particle veil on `/xchat`, `/xoptions`, `/portfolios` (deferred behind `load`+idle, FPS auto-throttle, `prefers-reduced-motion`/`visibilitychange`-aware), gated by `core_tenants.tenantPreferences.ambient_market_veil` (default-on; admin toggle at `/admin/tenant-preferences/ambient`; dev preview `/dev/veil`) |
 | **Next runtime libs** | **MongoDB** Node driver **7.x**, **Zod 4.x**, **Stripe** SDK **17.x**, **yahoo-finance2** **3.14.x** (batch/single quote paths use **`yahooQuoteWithValidationFallback`** when schema validation fails), **nodemailer** **8.x** (desk SMTP + credential-invite / reset mail), optional **redis** client **4.x**, **@google-cloud/pubsub** **4.x**, **yaml**, **cronstrue** / **rrule** |
 | **API docs (Next)** | **swagger-ui-react** / **swagger-ui-dist** **5.32.x** — admin **`/admin/api-docs`** backed by **`GET /api/openapi`** |
 | **Tests (Next)** | **Vitest 3.2.x**, **tsx**; integration + OpenAPI parity under **`tests/integration/**`** |

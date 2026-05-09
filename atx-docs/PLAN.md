@@ -63,6 +63,10 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 **Audience:** High-frequency workflows and RIAs with appropriate licensing — polish that supports trust and operator scan speed.
 
+### Shipped
+
+- **Ambient Market Veil background** — `src/components/animations/MarketVeilBackground.tsx` (Canvas2D + RAF, deferred behind `load`+idle, FPS auto-throttle, `prefers-reduced-motion` + `visibilitychange` aware, mouse parallax capped at ±5 px on desktop). Mounted on `/xchat`, `/xoptions`, `/portfolios`. Tenant toggle: `tenantPreferences.ambient_market_veil` (default-on) at **`/admin/tenant-preferences/ambient`**; dev preview at **`/dev/veil`**. CSS knobs `--veil-opacity` / `--veil-grid-speed` / `--veil-particle-count` are author-tunable.
+
 ### Open UX work
 
 - **Wheel strategy visual** — Subtle, accessible motion for the wheel / income-cycle story on marketing and in-product surfaces (e.g. pitch hero motif, optional branded flow diagram). Respect `prefers-reduced-motion`; keep loops slow and non-distracting.

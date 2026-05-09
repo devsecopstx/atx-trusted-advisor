@@ -5,6 +5,7 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { StarfieldBackground } from "@/app/ui/starfield-background";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
+import { MarketVeilBackground } from "@/components/animations/MarketVeilBackground";
 import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
@@ -121,6 +122,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
 
   const approved = canUserLogin(session.roles);
   const workspaceTenant = approved ? await getWorkspaceTenantHeaderContext(session.tenantId) : null;
+  const ambientVeilEnabled = approved ? (workspaceTenant?.ambientMarketVeilEnabled ?? true) : false;
 
   const pendingWorkspaceRail = !approved
     ? await AppUserAccountPublicRailForSession({
@@ -137,6 +139,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   return (
     <div className="xchat-shell flex min-h-0 flex-col overflow-hidden">
       <StarfieldBackground />
+      {ambientVeilEnabled ? <MarketVeilBackground /> : null}
       {approved ? (
         <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
           <div className="workspace-product-approved-header-slot">

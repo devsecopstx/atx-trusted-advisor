@@ -75,7 +75,48 @@ export type TenantPreferences = TenantBrandingPreferences & {
    * Omit or ≤0 to skip meaningful breach detection (task still runs but reports skipped).
    */
   xchat_daily_spend_alert_usd_ticks?: number;
+  /**
+   * Ambient **Market Veil** background animation on app_user product shells (initially `/xchat`, `/xoptions`, `/portfolios`).
+   * - `undefined` (unset) or `true` → veil is rendered (default opt-in for paid tenants).
+   * - `false` → veil is hidden for the entire tenant.
+   * Read by `isAmbientMarketVeilEnabledForTenant` and surfaced through `WorkspaceTenantHeaderContext.ambientMarketVeilEnabled`.
+   */
+  ambient_market_veil?: boolean;
 };
+
+/**
+ * Default-on resolver for the ambient market-veil background. Only `false` opts a
+ * tenant out; missing/unset/null/true all enable the veil. Keeps copy-paths tiny
+ * for page integration.
+ */
+export function isAmbientMarketVeilEnabledForTenant(
+  tenant: { tenantPreferences?: TenantPreferences | null } | null | undefined
+): boolean {
+  return tenant?.tenantPreferences?.ambient_market_veil !== false;
+}
+
+/** Parse `tenantPreferences.ambient_market_veil` from admin PATCH (boolean or string). */
+export function parseTenantAmbientMarketVeil(raw: unknown): boolean | null | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  if (raw === null) {
+    return null;
+  }
+  if (typeof raw === "boolean") {
+    return raw;
+  }
+  if (typeof raw === "string") {
+    const t = raw.trim().toLowerCase();
+    if (t === "true") {
+      return true;
+    }
+    if (t === "false") {
+      return false;
+    }
+  }
+  return undefined;
+}
 
 
 const BRANDING_KEYS = ["xchat_brandname", "xstrategybuilder_brandname"] as const satisfies readonly (keyof TenantBrandingPreferences)[];

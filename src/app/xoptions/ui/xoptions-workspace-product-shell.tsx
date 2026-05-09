@@ -4,6 +4,7 @@ import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-pu
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
+import { MarketVeilBackground } from "@/components/animations/MarketVeilBackground";
 import type { SessionUser } from "@/lib/auth";
 import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 
@@ -22,9 +23,11 @@ export async function XoptionsWorkspaceProductShell({
   children
 }: XoptionsWorkspaceProductShellProps) {
   const rail = await AppUserAccountPublicRailForSession({ session, railVariant: "workspace-product" });
+  const ambientVeil = workspaceTenant?.ambientMarketVeilEnabled ?? true;
 
   return (
     <div className="xchat-shell flex min-h-0 flex-col overflow-hidden bg-[color:var(--xf-xoptions-surface)] text-[color:var(--xf-text-100)]">
+      {ambientVeil ? <MarketVeilBackground /> : null}
       <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
         <div className="workspace-product-approved-header-slot">
           <AppUserApprovedHeader
