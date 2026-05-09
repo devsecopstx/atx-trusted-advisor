@@ -25,8 +25,15 @@ export async function XoptionsWorkspaceProductShell({
   const rail = await AppUserAccountPublicRailForSession({ session, railVariant: "workspace-product" });
   const ambientVeil = workspaceTenant?.ambientMarketVeilEnabled ?? true;
 
+  // When the veil renders, drop the opaque `--xf-xoptions-surface` background
+  // so the skyline + canvas show through; otherwise keep the legacy purple-slate
+  // surface for tenants that opted out of the veil.
+  const shellSurfaceClass = ambientVeil ? "" : "bg-[color:var(--xf-xoptions-surface)]";
+
   return (
-    <div className="xchat-shell flex min-h-0 flex-col overflow-hidden bg-[color:var(--xf-xoptions-surface)] text-[color:var(--xf-text-100)]">
+    <div
+      className={`xchat-shell flex min-h-0 flex-col overflow-hidden text-[color:var(--xf-text-100)] ${shellSurfaceClass}`.trim()}
+    >
       {ambientVeil ? <MarketVeilBackground /> : null}
       <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
         <div className="workspace-product-approved-header-slot">

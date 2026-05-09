@@ -3,30 +3,39 @@
 import { useEffect, useRef } from "react";
 
 /**
- * `MarketVeilBackground` — ambient market-data veil for app_user product shells.
+ * `MarketVeilBackground` — ambient Austin-skyline veil for app_user product shells.
  *
- * **Visual:** subtle teal grid (slow breathing cycle), drifting accent particles
- * with occasional "tick" highlights, and faint micro-connection lines between
- * neighbour particles. Sits at `z-index: -1` behind product chrome; mostly
- * transparent so any tenant background image (e.g. Austin skyline) shows
- * through. Designed to evoke a live-data veil without distracting traders.
+ * **Visual stack (bottom → top, all inside one `position: fixed` wrapper at `z-index: -1`):**
+ * 1. Tenant skyline image (`<img>`, default `/branding/atx-skyline.jpg`) — covers
+ *    viewport with `object-position: center bottom` so the city silhouette + river
+ *    stay anchored. Loads with `decoding="async"` + `fetchpriority="low"` so it
+ *    never competes with critical product chrome for early bandwidth.
+ * 2. Dark gradient overlay — top-down 0.55 → 0.78 dim so chat/desk text reads
+ *    against the city. Tunable via `--veil-overlay`.
+ * 3. Canvas2D layer — subtle teal grid (slow breathing cycle), drifting accent
+ *    particles with occasional gold "tick" highlights, faint micro-connection
+ *    lines between neighbour particles. Pure transparent canvas above the image.
  *
  * **Performance contract** (must hold — see `atx-docs/design-system/current-state-features.md`):
  * - Pure Canvas2D + `requestAnimationFrame`; zero new runtime deps.
+ * - Skyline image is referenced as a regular `<img>` so the browser handles
+ *   caching, decoding, and HTTP/2 multiplexing without competing with the LCP
+ *   candidate (`fetchpriority="low"`).
  * - Setup + animation loop start are gated behind `window.load` + an idle hop
- *   so they never enter Lighthouse’s FCP → TTI window (TBT contract). This
- *   mirrors the same defer pattern that just brought `/xchat` back to perf 1.00
- *   for `StarfieldBackground`.
+ *   so they never enter Lighthouse’s FCP → TTI window (TBT contract).
  * - Auto-throttles particle count when measured FPS drops below 45.
  * - Pauses on `document.visibilitychange === "hidden"` and on
  *   `prefers-reduced-motion: reduce` (no RAF, single static frame instead).
  * - `aria-hidden="true"` + `pointer-events: none` (purely decorative).
  *
  * **Tunables** (props *or* CSS custom properties — props win):
- * - `--veil-opacity` (default `0.09`) — global alpha multiplier.
+ * - `--veil-opacity` (default `0.09`) — canvas grid/particle alpha multiplier.
  * - `--veil-grid-speed` (default `1.0`) — multiplier on the 52 s breathing cycle.
- * - `--veil-particle-count` (default `28`) — desktop target; mobile and
- *   reduced-motion paths derive from this.
+ * - `--veil-particle-count` (default `28`) — desktop target; mobile clamps to ≤18.
+ * - `--veil-bg-image` (default `url(/branding/atx-skyline.jpg)`) — tenant override
+ *   accepts any CSS `image` value (including `none` to render canvas only).
+ * - `--veil-overlay` (default `linear-gradient(180deg, rgba(5,5,5,0.55) 0%,
+ *   rgba(5,5,5,0.78) 100%)`) — readability overlay above the skyline.
  *
  * **Mouse parallax** is desktop-only (skipped on coarse pointers) and capped
  * at ±5 px so it never crosses into a perceptible camera move.
@@ -35,6 +44,28 @@ import { useEffect, useRef } from "react";
  * unless the tenant explicitly tunes the veil via CSS variables on `:root`
  * (preferred) or via props on this component.
  */
+
+const DEFAULT_SKYLINE_SRC = "/branding/atx-skyline.jpg";
+/**
+ * Watermark-style image filter. Single source of truth for the “quiet
+ * background” treatment on every theme — `grayscale(100%)` flattens the colour
+ * city image into neutral tones (so the same JPG works for soft + deep + any
+ * future tenant accent without per-theme assets) and `opacity 0.22` keeps the
+ * skyline as a subtle hint behind product chrome (WCAG AA preserved against
+ * `--xf-text-100` body copy thanks to the dark wrapper underlay).
+ *
+ * Tunable via the `skylineFilter` prop (e.g. tenants that want full colour back
+ * can pass `none`). Stays inside the 15–30% opacity guidance.
+ */
+const DEFAULT_SKYLINE_FILTER = "grayscale(100%) contrast(0.92) brightness(1.05)";
+const DEFAULT_SKYLINE_OPACITY = 0.22;
+/**
+ * Very light vignette so the dark wrapper colour bleeds through evenly under
+ * the now-watermarked skyline. Without this, edges read pure black; with it,
+ * the city has just enough atmosphere to read as the brand mark.
+ */
+const DEFAULT_OVERLAY_GRADIENT =
+  "linear-gradient(180deg, rgba(5, 5, 5, 0.32) 0%, rgba(5, 5, 5, 0.42) 55%, rgba(5, 5, 5, 0.58) 100%)";
 
 type MarketVeilBackgroundProps = {
   /** Override the global alpha multiplier (clamped 0…0.6); else reads `--veil-opacity` (default `0.09`). */
@@ -50,6 +81,28 @@ type MarketVeilBackgroundProps = {
   className?: string;
   /** Optional accent color override (`hsl()` / `#rrggbb`); else reads `--veil-accent` → `--xf-tenant-accent` → built-in teal. */
   accent?: string;
+  /**
+   * Override the skyline `<img>` source. Pass `null` (or set `--veil-bg-image: none`)
+   * to render only the canvas/overlay (e.g. tenants without a custom skyline).
+   * Defaults to `/branding/atx-skyline.jpg`.
+   */
+  skylineSrc?: string | null;
+  /**
+   * Override the dark overlay above the skyline. Any valid CSS `background`
+   * value; defaults to a top-down 0.55 → 0.78 dim. Pass `null` for none.
+   */
+  overlay?: string | null;
+  /**
+   * Override the CSS `filter` applied to the skyline `<img>`. Default is a
+   * grayscale watermark treatment; pass `none` for full colour, or any valid
+   * `filter` chain (`saturate(0) blur(1px)` etc.).
+   */
+  skylineFilter?: string;
+  /**
+   * Override the skyline `<img>` opacity (0–1). Clamped to 0…1; default `0.22`
+   * (sits inside the 15–30% “quiet watermark” guidance).
+   */
+  skylineOpacity?: number;
 };
 
 type Particle = {
@@ -70,19 +123,26 @@ type ConnectionEdge = {
 
 type ScheduleHandle = { cancel: () => void };
 
-const DEFAULT_OPACITY = 0.09;
+// Bumped from 0.09 to 0.14 so the breathing grid + particles read against the
+// skyline image (previously the network was nearly invisible on dark theme).
+// Auto-throttle still owns the upper bound — never raise this past ~0.22.
+const DEFAULT_OPACITY = 0.14;
 const DEFAULT_GRID_SPEED = 1.0;
 const DEFAULT_PARTICLE_COUNT = 28;
 const PARALLAX_MAX_PX = 5;
 const FPS_THROTTLE_THRESHOLD = 45;
 const FPS_SAMPLE_FRAMES = 60;
 const GRID_BREATHING_SECONDS = 52;
-const TICK_INTERVAL_MIN_MS = 4_000;
-const TICK_INTERVAL_MAX_MS = 7_000;
-const TICK_FLASH_MS = 220;
-const PULSE_INTERVAL_MIN_MS = 8_000;
-const PULSE_INTERVAL_MAX_MS = 14_000;
-const PULSE_DURATION_MS = 180;
+// Cadence calibrated against Grok Imagine reference: ticks fire frequently
+// enough to feel like a live data feed (every 2.4–4.8 s) without becoming
+// distracting. Pulses (network "burst") happen 5–10 s apart with a longer
+// 300 ms lift so the full edge graph reads.
+const TICK_INTERVAL_MIN_MS = 2_400;
+const TICK_INTERVAL_MAX_MS = 4_800;
+const TICK_FLASH_MS = 240;
+const PULSE_INTERVAL_MIN_MS = 5_000;
+const PULSE_INTERVAL_MAX_MS = 10_000;
+const PULSE_DURATION_MS = 300;
 const TICK_GOLD_HEX = "#eab308";
 const FALLBACK_ACCENT_HEX = "#39ff14";
 
@@ -203,7 +263,11 @@ export function MarketVeilBackground({
   gridSpeed,
   particleCount,
   className,
-  accent
+  accent,
+  skylineSrc,
+  overlay,
+  skylineFilter,
+  skylineOpacity
 }: MarketVeilBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -235,20 +299,85 @@ export function MarketVeilBackground({
 
   const merged = ["market-veil-bg", className].filter(Boolean).join(" ");
 
+  // `null` explicitly disables the layer; `undefined` falls back to the
+  // built-in skyline so existing call-sites get the new visual for free.
+  const resolvedSkyline = skylineSrc === null ? null : (skylineSrc ?? DEFAULT_SKYLINE_SRC);
+  const resolvedOverlay = overlay === null ? null : (overlay ?? DEFAULT_OVERLAY_GRADIENT);
+  const resolvedSkylineFilter = skylineFilter ?? DEFAULT_SKYLINE_FILTER;
+  const resolvedSkylineOpacity = clamp(skylineOpacity ?? DEFAULT_SKYLINE_OPACITY, 0, 1);
+
   return (
-    <canvas
-      ref={canvasRef}
+    <div
       aria-hidden="true"
       className={merged}
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: -1,
+        // `z-index: 0` (not negative) so the fixed wrapper paints ABOVE body's
+        // opaque dark gradient (`atxfinance-brand-kit.css` body background).
+        // Product chrome (`workspace-product-sticky-top`, `xchat-body`,
+        // `app-footer`) all establish their own `z-index: 1` stacking contexts
+        // in `xchat.css`, so they remain above the veil. With `-1` the entire
+        // veil was hidden behind body's opaque bg on dark theme.
+        zIndex: 0,
         pointerEvents: "none",
-        width: "100%",
-        height: "100%"
+        overflow: "hidden",
+        backgroundColor: "#050505"
       }}
-    />
+    >
+      {resolvedSkyline ? (
+        // Plain <img> on purpose: we need `fetchPriority="low"` so the skyline
+        // never competes with the LCP candidate, plus a non-wrapped element to
+        // sit cleanly inside the absolute-positioned layered stack. `next/image`
+        // injects its own wrapper + sets eager fetch priority for visible images,
+        // both of which break the perf contract we just measured.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          draggable={false}
+          fetchPriority="low"
+          loading="eager"
+          src={resolvedSkyline}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center 70%",
+            // Subtle B&W watermark — see DEFAULT_SKYLINE_FILTER /
+            // DEFAULT_SKYLINE_OPACITY for the rationale (WCAG AA against body
+            // copy on `--xf-bg-900`, matches Q4 brand-quiet guidance).
+            filter: resolvedSkylineFilter,
+            opacity: resolvedSkylineOpacity,
+            userSelect: "none"
+          }}
+        />
+      ) : null}
+      {resolvedOverlay ? (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: resolvedOverlay,
+            pointerEvents: "none"
+          }}
+        />
+      ) : null}
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%"
+        }}
+      />
+    </div>
   );
 }
 
@@ -365,7 +494,10 @@ function startMarketVeilLoop(
     const breathPhase = (timeSec * gridSpeed) / GRID_BREATHING_SECONDS;
     // 0..1..0 sine envelope for the grid alpha (slow breathing).
     const breath = 0.5 + 0.5 * Math.sin(breathPhase * Math.PI * 2 - Math.PI / 2);
-    const gridAlpha = baseOpacity * (0.55 + breath * 0.45);
+    // 0.85 → 1.40× of base — keeps the grid clearly visible at the breath
+    // valley while letting it lift another ~60% at the crest. Calibrated
+    // against the Grok Imagine reference where the lattice is always readable.
+    const gridAlpha = baseOpacity * (0.85 + breath * 0.55);
     if (gridAlpha < 0.005) {
       return;
     }
@@ -391,12 +523,14 @@ function startMarketVeilLoop(
       return;
     }
     const pulseActive = now < pulseUntil;
-    const lineAlpha = baseOpacity * (pulseActive ? 1.6 : 0.85);
+    // Lift base line alpha and pulse ceiling so the periodic "data exchange"
+    // pulse reads clearly against the skyline.
+    const lineAlpha = baseOpacity * (pulseActive ? 2.0 : 1.1);
     if (lineAlpha < 0.005) {
       return;
     }
-    ctx.strokeStyle = rgbToCssRgba(accent, lineAlpha);
-    ctx.lineWidth = 0.6;
+    ctx.strokeStyle = rgbToCssRgba(accent, Math.min(0.6, lineAlpha));
+    ctx.lineWidth = pulseActive ? 0.9 : 0.65;
     ctx.beginPath();
     for (const edge of edges) {
       const a = particles[edge.from];

@@ -4,15 +4,21 @@ import { useState } from "react";
 
 import { MarketVeilBackground } from "@/components/animations/MarketVeilBackground";
 
-const DEFAULT_OPACITY = 0.09;
+const DEFAULT_OPACITY = 0.14;
 const DEFAULT_GRID_SPEED = 1.0;
 const DEFAULT_PARTICLE_COUNT = 28;
+const DEFAULT_SKYLINE_OPACITY = 0.22;
+const DEFAULT_SKYLINE_FILTER = "grayscale(100%) contrast(0.92) brightness(1.05)";
 
 export function DevVeilClient() {
   const [opacity, setOpacity] = useState(DEFAULT_OPACITY);
   const [gridSpeed, setGridSpeed] = useState(DEFAULT_GRID_SPEED);
   const [particleCount, setParticleCount] = useState(DEFAULT_PARTICLE_COUNT);
   const [accent, setAccent] = useState<string>("");
+  const [skylineOn, setSkylineOn] = useState(true);
+  const [overlayOn, setOverlayOn] = useState(true);
+  const [skylineOpacity, setSkylineOpacity] = useState(DEFAULT_SKYLINE_OPACITY);
+  const [skylineFilter, setSkylineFilter] = useState(DEFAULT_SKYLINE_FILTER);
 
   return (
     <div
@@ -29,7 +35,11 @@ export function DevVeilClient() {
         accent={accent.trim() || undefined}
         gridSpeed={gridSpeed}
         opacity={opacity}
+        overlay={overlayOn ? undefined : null}
         particleCount={particleCount}
+        skylineFilter={skylineFilter.trim() || undefined}
+        skylineOpacity={skylineOpacity}
+        skylineSrc={skylineOn ? undefined : null}
       />
       <div
         style={{
@@ -107,6 +117,50 @@ export function DevVeilClient() {
               type="text"
               value={accent}
               onChange={(e) => setAccent(e.target.value)}
+            />
+          </label>
+          <label style={{ display: "inline-flex", gap: "0.45rem", alignItems: "center", fontSize: "0.85rem" }}>
+            <input checked={skylineOn} type="checkbox" onChange={(e) => setSkylineOn(e.target.checked)} />
+            <span>
+              <strong>skyline image</strong> (Austin <code>/branding/atx-skyline.jpg</code>)
+            </span>
+          </label>
+          <label style={{ display: "inline-flex", gap: "0.45rem", alignItems: "center", fontSize: "0.85rem" }}>
+            <input checked={overlayOn} type="checkbox" onChange={(e) => setOverlayOn(e.target.checked)} />
+            <span>
+              <strong>readability overlay</strong> (top-down 0.32→0.58 dim)
+            </span>
+          </label>
+          <label style={{ display: "grid", gap: "0.25rem", fontSize: "0.85rem" }}>
+            <span>
+              <strong>skyline opacity</strong>: {skylineOpacity.toFixed(2)} (0.15–0.30 = quiet watermark)
+            </span>
+            <input
+              max={0.6}
+              min={0}
+              step={0.01}
+              type="range"
+              value={skylineOpacity}
+              onChange={(e) => setSkylineOpacity(Number(e.target.value))}
+            />
+          </label>
+          <label style={{ display: "grid", gap: "0.25rem", fontSize: "0.85rem" }}>
+            <span>
+              <strong>skyline filter</strong> (any CSS <code>filter</code> chain; default grayscale watermark)
+            </span>
+            <input
+              placeholder="grayscale(100%) contrast(0.92) brightness(1.05)"
+              style={{
+                background: "rgba(0,0,0,0.4)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 6,
+                color: "#f1f5f9",
+                padding: "0.4rem 0.55rem",
+                fontFamily: "monospace"
+              }}
+              type="text"
+              value={skylineFilter}
+              onChange={(e) => setSkylineFilter(e.target.value)}
             />
           </label>
         </div>

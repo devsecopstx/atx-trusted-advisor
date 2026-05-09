@@ -65,7 +65,7 @@ Living backlog for atx app, xChat, admin, and BFF. Historical release details li
 
 ### Shipped
 
-- **Ambient Market Veil background** — `src/components/animations/MarketVeilBackground.tsx` (Canvas2D + RAF, deferred behind `load`+idle, FPS auto-throttle, `prefers-reduced-motion` + `visibilitychange` aware, mouse parallax capped at ±5 px on desktop). Mounted on `/xchat`, `/xoptions`, `/portfolios`. Tenant toggle: `tenantPreferences.ambient_market_veil` (default-on) at **`/admin/tenant-preferences/ambient`**; dev preview at **`/dev/veil`**. CSS knobs `--veil-opacity` / `--veil-grid-speed` / `--veil-particle-count` are author-tunable.
+- **Ambient Market Veil background** — `src/components/animations/MarketVeilBackground.tsx`. Layered backdrop = Austin skyline `<img>` (`/branding/atx-skyline.jpg`) + readability gradient + Canvas2D grid/particles (RAF deferred behind `load`+idle, FPS auto-throttle, `prefers-reduced-motion` + `visibilitychange` aware, mouse parallax capped at ±5 px on desktop). Mounted on `/xchat`, `/xoptions`, `/portfolios`; replaces the `/xchat` `StarfieldBackground`. Tenant toggle: `tenantPreferences.ambient_market_veil` (default-on) at **`/admin/tenant-preferences/ambient`**; dev preview at **`/dev/veil`** (skyline + overlay toggles). Tunables: `--veil-opacity` / `--veil-grid-speed` / `--veil-particle-count`; props `skylineSrc` and `overlay` for white-label override.
 
 ### Open UX work
 
