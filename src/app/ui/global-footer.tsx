@@ -15,14 +15,18 @@ const LEGAL_LINKS: { href: string; label: string }[] = [
 type GlobalFooterProps = {
   /** Optional override for the shared disclaimer row. */
   subline?: ReactNode;
+  /** Extra classes (e.g. portfolios shell `sticky bottom-0 z-50`). */
+  className?: string;
 };
 
-export function GlobalFooter({ subline }: GlobalFooterProps) {
+export function GlobalFooter({ subline, className }: GlobalFooterProps) {
   const year = new Date().getFullYear();
   const effectiveSubline = subline ?? <>{EDUCATIONAL_ONLY_FULL}</>;
 
+  const footerClass = ["app-footer", className?.trim()].filter(Boolean).join(" ");
+
   return (
-    <footer className="app-footer">
+    <footer className={footerClass}>
       <div className="app-footer-bar">
         <nav className="app-footer-nav" aria-label="Legal and security">
           {LEGAL_LINKS.map((item, index) => (

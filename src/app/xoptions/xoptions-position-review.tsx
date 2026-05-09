@@ -124,7 +124,7 @@ export function XoptionsPositionReview({
 
   return (
     <div
-      className="xoptions-position-review rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_32%,transparent)] bg-[color-mix(in_srgb,var(--xf-xoptions-surface)_94%,var(--xf-bg-900))] p-3 shadow-[0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)]"
+      className="xoptions-position-review rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_32%,transparent)] bg-[color-mix(in_srgb,var(--xf-xoptions-surface)_94%,var(--xf-bg-900))] p-3 xf-shadow-hairline-under"
       data-order-text-preview
     >
       <h3 className="xoptions-position-review__title m-0 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--xf-xoptions-accent)_85%,var(--xf-text-100))]">

@@ -17,6 +17,10 @@ export function XchatHeaderBrand({ compact = false }: XchatHeaderBrandProps) {
   const markSize = compact ? HEADER_MARK_SIZE_COMPACT : HEADER_MARK_SIZE;
   const boltSize = compact ? HEADER_BOLT_SIZE_COMPACT : HEADER_BOLT_SIZE;
 
+  /** Compact rail/product headers: slightly smaller wordmark; tagline stays readable (HNWI desks). */
+  const titleSizeClass = compact ? "text-lg" : "text-xl";
+  const taglineSizeClass = compact ? "text-sm font-semibold" : "text-base font-semibold";
+
   return (
     <div
       className={`xf-logo-lockup-inline xf-logo-lockup-inline--header-single${compact ? " xf-logo-lockup-inline--header-compact" : ""}`}
@@ -24,16 +28,20 @@ export function XchatHeaderBrand({ compact = false }: XchatHeaderBrandProps) {
       <div className="xf-logo-row xf-logo-row--header-single">
         <AtxFinanceMark size={markSize} />
         <LightningBolt size={boltSize} />
-        <span className="xf-logo-text xf-logo-text--sm xf-logo-title-phrase xchat-header-brand-wordmark">
+        <span
+          className={`xf-logo-title-phrase xchat-header-brand-wordmark ${titleSizeClass} font-bold tracking-tight`}
+        >
           <span className="xf-logo-title-trusted">Trusted</span>{" "}
           <span className="xf-logo-title-advisor">Advisory</span>
         </span>
-        <span className="xf-logo-text xf-logo-text--sm xf-header-tagline xf-header-tagline--inline">
-          <span className="xf-header-tagline-rest">No </span>
-          <span className="xf-header-tagline-atoms">Atoms</span>
-          <span className="xf-header-tagline-rest"> moved, just </span>
-          <span className="xf-header-tagline-gains">Gains</span>
-          <span className="xf-header-tagline-rest"> earned</span>
+        <span
+          className={`inline-flex items-baseline gap-x-1 whitespace-nowrap tracking-tight ${taglineSizeClass} ${compact ? "ml-1" : "ml-2"}`}
+        >
+          <span className="text-[var(--xf-text-100)]">No </span>
+          <span className="font-bold text-[var(--xf-lightning-yellow)]">Atoms</span>
+          <span className="text-[var(--xf-text-100)]"> moved, just </span>
+          <span className="font-bold text-[var(--xf-gain-green)]">Gains</span>
+          <span className="text-[var(--xf-text-100)]"> earned</span>
         </span>
       </div>
     </div>

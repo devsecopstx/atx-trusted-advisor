@@ -30,6 +30,15 @@ type XchatGuestReadonlyShellProps = {
   rail?: ReactNode;
   /** When `rail` is provided, defaults to `workspace-product` chrome. */
   railChrome?: AppUserRailChromeMode;
+  /**
+   * Use workspace-product rail grid (full-height rail + main scroll region) even when `rail` is the built-in public
+   * resources aside — e.g. `/resources/guides` viewport lock with `mainFooter`.
+   */
+  workspaceProductGrid?: boolean;
+  /** Legal / shared footer under main column only (workspace-product layout). */
+  mainFooter?: ReactNode;
+  /** Passed through to `AppUserCollapsibleRailLayout` when using workspace-product chrome. */
+  workspaceProductShellClassName?: string;
 };
 
 export function XchatGuestReadonlyShell({
@@ -43,7 +52,10 @@ export function XchatGuestReadonlyShell({
   emailPasswordLoginHref,
   hideComposerPreview = false,
   rail,
-  railChrome
+  railChrome,
+  workspaceProductGrid = false,
+  mainFooter,
+  workspaceProductShellClassName
 }: XchatGuestReadonlyShellProps) {
   const defaultRail = (
     <aside aria-label="Public read-only navigation" className="app-user-public-rail xf-widget">
@@ -57,14 +69,21 @@ export function XchatGuestReadonlyShell({
 
   const resolvedRail = rail ?? defaultRail;
   const resolvedChrome: AppUserRailChromeMode =
-    rail != null ? (railChrome ?? "workspace-product") : "default";
+    rail != null ? (railChrome ?? "workspace-product") : workspaceProductGrid ? "workspace-product" : "default";
+
+  const mainClassName =
+    mainFooter != null && resolvedChrome === "workspace-product"
+      ? "app-user-shell-with-rail--padded min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      : "app-user-shell-with-rail--padded";
 
   return (
     <AppUserCollapsibleRailLayout
       allowCollapse={false}
-      mainClassName="app-user-shell-with-rail--padded"
+      mainClassName={mainClassName}
+      mainFooter={mainFooter}
       rail={resolvedRail}
       railChrome={resolvedChrome}
+      workspaceProductShellClassName={workspaceProductShellClassName}
     >
       {showAccessPanel ? (
         <XchatGuestPanel

@@ -1,6 +1,4 @@
-import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
-import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
-import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { GlobalFooter } from "@/app/ui/global-footer";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
 import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
@@ -8,6 +6,7 @@ import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import { canUserLogin } from "@/modules/identity/authorization";
 import { redirect } from "next/navigation";
 
+import { XoptionsWorkspaceProductShell } from "./ui/xoptions-workspace-product-shell";
 import { XoptionsStrategyBuilderMount } from "./xoptions-strategy-builder-mount";
 
 export const dynamic = "force-dynamic";
@@ -26,20 +25,23 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
 
   if (!session || !canUserLogin(session.roles)) {
     return (
-      <ProductGuestShell
-        authDetails={authDetails}
-        authError={authError}
-        blurb={
-          <p className="text-sm leading-relaxed text-[var(--xf-text-300)]">
-            Sign in to open the xOptions strategy builder: pick a symbol, horizon, and{" "}
-            <strong className="text-[var(--xf-text-200)]">Choose contract</strong> for covered calls, cash-secured
-            puts, and other single-leg strategies — without leaving this URL.
-          </p>
-        }
-        nextPath="/xoptions"
-        pendingXHandle={pendingXHandle}
-        session={session}
-      />
+      <>
+        <ProductGuestShell
+          authDetails={authDetails}
+          authError={authError}
+          blurb={
+            <p className="text-sm leading-relaxed text-[var(--xf-text-300)]">
+              Sign in to open the xOptions strategy builder: pick a symbol, horizon, and{" "}
+              <strong className="text-[var(--xf-text-200)]">Choose contract</strong> for covered calls, cash-secured
+              puts, and other single-leg strategies — without leaving this URL.
+            </p>
+          }
+          nextPath="/xoptions"
+          pendingXHandle={pendingXHandle}
+          session={session}
+        />
+        <GlobalFooter />
+      </>
     );
   }
 

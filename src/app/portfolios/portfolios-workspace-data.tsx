@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { GlobalFooter } from "@/app/ui/global-footer";
 import {
     loadAppUserDefaultBook,
     portfolioRefs,
@@ -154,14 +154,10 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
   const visiblePathPrefixes = routePolicy.effectiveRolePolicy.allowedRoutes;
 
   return (
-    <div className="xchat-shell">
-      <AppUserApprovedHeader
-        current="portfolio"
-        feedbackPageLabel="Portfolio desk"
+    <div className="xchat-shell flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--xf-bg-900)]">
+      <PortfoliosWorkspaceClient
         session={session}
         workspaceTenant={workspaceTenant}
-      />
-      <PortfoliosWorkspaceClient
         chosenPortfolioId={chosenPortfolioId}
         deskWatchlistPortfolioId={deskWatchlistPortfolioId}
         accountDetails={{
@@ -186,6 +182,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
         workspaceBook={workspaceBook}
         workspaceDeskHints={workspaceDeskHints}
         visiblePathPrefixes={visiblePathPrefixes}
+        workspaceFooter={<GlobalFooter />}
       />
     </div>
   );

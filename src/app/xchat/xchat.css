@@ -1,9 +1,14 @@
 /* ── xchat layout ───────────────────────────── */
 
 .xchat-layout-root {
+  box-sizing: border-box;
+  /* Viewport lock so nested `.xchat-shell` flex:1 + workspace grid `1fr` get a definite height (rail h-full, main scroll + footer). */
   min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .xchat-shell {
@@ -140,6 +145,42 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.45rem;
+}
+
+.xchat-header-workspace-quick-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-right: 0.15rem;
+}
+
+.xchat-header-workspace-quick-nav__link {
+  flex-shrink: 0;
+  padding: 0.28rem 0.55rem;
+  border-radius: var(--xf-radius-sm, 8px);
+  border: 1px solid var(--xf-border-subtle);
+  background: color-mix(in srgb, var(--xf-surface-800) 88%, transparent);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--xf-text-200);
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    background-color 0.12s ease;
+}
+
+.xchat-header-workspace-quick-nav__link:hover {
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 42%, var(--xf-border-subtle));
+}
+
+.xchat-header-workspace-quick-nav__link--admin {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 28%, var(--xf-border-subtle));
+  color: var(--xf-gain-green);
 }
 
 .xchat-header-tenant-card {
@@ -428,12 +469,12 @@
   cursor: not-allowed;
 }
 
-.xchat-profile-menu__item--logout {
+.xchat-profile-menu__item--signout {
   border-color: color-mix(in srgb, var(--xf-loss-red, #f87171) 25%, transparent);
   color: var(--xf-loss-red, #f87171);
 }
 
-.xchat-profile-menu__item--logout:hover:not(:disabled) {
+.xchat-profile-menu__item--signout:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--xf-loss-red, #f87171) 45%, transparent);
   background: color-mix(in srgb, var(--xf-loss-red, #f87171) 10%, transparent);
 }
@@ -5986,7 +6027,23 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
 
 .app-user-shell-with-rail--workspace-product {
   grid-template-columns: auto minmax(0, 1fr);
+  /* Single row fills flex parent so column scrollports aren’t unbounded by max-content height */
+  grid-template-rows: minmax(0, 1fr);
   align-items: stretch;
+  min-height: 0;
+}
+
+/**
+ * Grid items default to min-height:auto, so tall tab content (Holdings / Activities) stretches the row past the
+ * viewport; ancestors use overflow:hidden and the main column never gains a real scrollport. Pin min-height to 0 so
+ * the rail + main column stay within the shell and app-user-shell-main overflow-y-auto can scroll.
+ */
+.app-user-shell-with-rail--workspace-product > .app-user-shell-main {
+  min-height: 0;
+}
+
+.app-user-shell-with-rail--workspace-product > .app-user-rail-stack--workspace-product {
+  min-height: 0;
 }
 
 .app-user-rail-stack--workspace-product {

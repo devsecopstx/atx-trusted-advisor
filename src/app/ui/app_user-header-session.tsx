@@ -226,7 +226,7 @@ export function AppUserHeaderSession({
                   Submit feedback
                 </button>
                 <button
-                  className="xchat-profile-menu__item xchat-profile-menu__item--logout"
+                  className="xchat-profile-menu__item xchat-profile-menu__item--signout"
                   disabled={isLoggingOut}
                   role="menuitem"
                   type="button"
@@ -235,7 +235,7 @@ export function AppUserHeaderSession({
                     void handleLogout();
                   }}
                 >
-                  {isLoggingOut ? "Logging out…" : "Logout"}
+                  {isLoggingOut ? "Signing out…" : "Sign out"}
                 </button>
               </div>
             </div>

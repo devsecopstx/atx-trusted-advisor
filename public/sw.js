@@ -1,5 +1,6 @@
-const STATIC_CACHE = "xf-static-v2";
-const STATIC_ASSETS = ["/manifest.webmanifest", "/pwa/atx-logo-512.png"];
+const STATIC_CACHE = "xf-static-v3";
+const PWA_ICON_WEBPS = [48, 72, 96, 128, 192, 256, 512].map((s) => `/icons/icon-${s}.webp`);
+const STATIC_ASSETS = ["/manifest.webmanifest", "/pwa/atx-logo-512.png", ...PWA_ICON_WEBPS];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

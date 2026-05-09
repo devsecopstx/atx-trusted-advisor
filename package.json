@@ -1,12 +1,13 @@
 {
   "name": "atxfinance-app",
-  "version": "3.17.9",
+  "version": "3.17.10",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
     "dev": "next dev",
     "dev:frontend": "next dev",
     "cap:sync:ios": "npx cap sync ios",
+    "icons:pwa": "node scripts/generate-pwa-icons.mjs",
     "dev:backend": "docker compose --env-file .env up",
     "dev:stack": "node scripts/dev/start-dev-stack.mjs",
     "dev:stack:fresh": "DEV_WIPE_LOCAL_MONGO=1 node scripts/dev/start-dev-stack.mjs",

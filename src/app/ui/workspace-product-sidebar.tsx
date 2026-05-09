@@ -17,21 +17,16 @@ import {
 } from "react";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
-import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
 import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import {
-    LucideBookOpenIcon,
     LucideChevronLeftIcon,
     LucideChevronRightIcon,
-    LucideClipboardListIcon,
     LucideListBulletsIcon,
     LucideMenuIcon,
     LucideMonitorIcon,
-    LucideSettingsIcon,
     LucideSquarePenIcon,
-    LucideUploadIcon,
     LucideXIcon,
     XoptionsRocketIcon
 } from "@/app/ui/lucide-product-icons";
@@ -39,16 +34,21 @@ import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
 import { useTenantUxPolicy } from "@/app/ui/use-tenant-ux-policy";
 import {
-    WorkspaceMobileDrawerNavProvider,
-    useWorkspaceMobileDrawerClose
+    useWorkspaceMobileDrawerClose,
+    WorkspaceMobileDrawerNavProvider
 } from "@/app/ui/workspace-mobile-drawer-nav-context";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { WorkspaceProductRailProvider } from "@/app/ui/workspace-product-rail-context";
-import { WorkspaceRailLogout } from "@/app/ui/workspace-rail-logout";
+import { WorkspaceProfileFooterMenu } from "@/app/ui/workspace-profile-footer-menu";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { useFocusTrap } from "@/lib/use-focus-trap";
+import {
+    getRailExpandedSnapshot,
+    RAIL_EXPANDED_STORAGE_KEY,
+    WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE
+} from "@/lib/workspace-product-rail-storage";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import {
     isXoptionsStrategyBuilderVisible,
@@ -66,16 +66,10 @@ import {
     setTaxEducationEnabled,
     subscribeXoptionsEducationPrefs
 } from "@/lib/xoptions/xoptions-education-preferences";
-import {
-  getRailExpandedSnapshot,
-  RAIL_EXPANDED_STORAGE_KEY,
-  WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE
-} from "@/lib/workspace-product-rail-storage";
 
 export {
-  WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE,
-  collapseWorkspaceProductRail,
-  expandWorkspaceProductRail
+    collapseWorkspaceProductRail,
+    expandWorkspaceProductRail, WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE
 } from "@/lib/workspace-product-rail-storage";
 
 /** Expanded desktop rail (`lg+`). Was 280px → 140px → +25% (175px) so desk labels (e.g. Portfolio desk) stay on one line. */
@@ -149,21 +143,6 @@ function SidebarLink({
   );
 }
 
-function ResourcesIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M4 6.5c2.2-1 4.7-1 7 0v11c-2.3-1-4.8-1-7 0v-11zm16 0c-2.2-1-4.7-1-7 0v11c2.3-1 4.8-1 7 0v-11z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.75}
-      />
-      <path d="M12 6.5v11" stroke="currentColor" strokeWidth={1.75} />
-    </svg>
-  );
-}
-
 function PersonIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
@@ -173,19 +152,6 @@ function PersonIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.75}
-      />
-    </svg>
-  );
-}
-
-function AdminHubIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 14h7v6H4v-6zm9 0h7v6h-7v-6z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
       />
     </svg>
   );
@@ -250,32 +216,6 @@ function RouteSyncedDetails({
   return (
     <details
       className={className}
-      open={open}
-      onToggle={(e: SyntheticEvent<HTMLDetailsElement>) => {
-        setOpen(e.currentTarget.open);
-      }}
-      suppressHydrationWarning={true}
-    >
-      {children}
-    </details>
-  );
-}
-
-/** Resources → Utilities nested subgroup; collapsed by default, opens when a utility route is active. */
-function UtilitiesSubgroupDetails({
-  routeMatch,
-  children
-}: {
-  routeMatch: boolean;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState(routeMatch);
-  useEffect(() => {
-    setOpen(routeMatch);
-  }, [routeMatch]);
-  return (
-    <details
-      className="portfolios-workspace-sidebar__utilities-details"
       open={open}
       onToggle={(e: SyntheticEvent<HTMLDetailsElement>) => {
         setOpen(e.currentTarget.open);
@@ -409,6 +349,7 @@ type WorkspaceTopChromeBarProps = {
   isPathVisible: (pathPrefix: string) => boolean;
   workspaceBook: AppUserDefaultBook | null;
   accountDetails: AppUserRailAccountPanelDetails | null;
+  isGlobalAdmin: boolean;
 };
 
 function WorkspaceTopChromeBar({
@@ -419,7 +360,8 @@ function WorkspaceTopChromeBar({
   showQuickPills,
   isPathVisible,
   workspaceBook,
-  accountDetails
+  accountDetails,
+  isGlobalAdmin
 }: WorkspaceTopChromeBarProps) {
   const branding = useTenantShellBranding();
   const deskLabel = branding?.displayName?.trim() || null;
@@ -496,6 +438,26 @@ function WorkspaceTopChromeBar({
                 xChat
               </Link>
             ) : null}
+            {isPathVisible("/resources") ? (
+              <Link className="workspace-top-chrome__pill" href="/resources/guides">
+                Resources
+              </Link>
+            ) : null}
+            {isPathVisible("/import-activity") ? (
+              <Link className="workspace-top-chrome__pill" href="/import-activity">
+                Import
+              </Link>
+            ) : null}
+            {isPathVisible("/resources") ? (
+              <Link className="workspace-top-chrome__pill" href="/account/tasks">
+                Tasks
+              </Link>
+            ) : null}
+            {isGlobalAdmin ? (
+              <Link className="workspace-top-chrome__pill workspace-top-chrome__pill--admin" href="/admin">
+                Hub
+              </Link>
+            ) : null}
           </nav>
         ) : null}
         {accountDetails ? (
@@ -559,7 +521,7 @@ export function WorkspaceProductSidebar({
   const isWatchlistRoute = pathname.startsWith("/watchlist");
   const isPortfolioAlertsRoute = pathname.startsWith("/portfolio/alerts");
   const isPortfoliosDeskRoute = pathname.startsWith("/portfolios");
-  /** Same scope as the Account accordion’s `routeMatch` (excludes `/account/tasks` — that lives under Resources). */
+  /** Same scope as the Account accordion’s `routeMatch` (excludes `/account/tasks`). */
   const isAccountOrLegalAppRoute =
     (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
     pathname.startsWith("/legal");
@@ -672,16 +634,6 @@ export function WorkspaceProductSidebar({
 
   const workspaceBrandHref =
     isPathVisible("/portfolios") ? "/portfolios" : isPathVisible("/xchat") ? "/xchat" : "/xchat";
-
-  const resourcesAccordionRouteMatch =
-    pathname.startsWith("/resources") ||
-    pathname.startsWith("/account/tasks") ||
-    pathname.startsWith("/import-activity") ||
-    pathname.startsWith("/account/billing") ||
-    (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
-    pathname.startsWith("/legal") ||
-    pathname.startsWith("/admin/manage_account") ||
-    xchatAttachmentsDeepLinkActive;
 
   const showXoptionsToggle = isXoptionsRoute;
   const xoptionsStrategyBuilderVisible = useSyncExternalStore(
@@ -824,25 +776,8 @@ export function WorkspaceProductSidebar({
       isActive: pathname.startsWith("/xoptions"),
       icon: <XoptionsRocketIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
     }]
-      : []),
-    {
-      key: "resources",
-      href: "/resources/guides",
-      label: "Resources",
-      isActive: resourcesAccordionRouteMatch,
-      icon: <ResourcesIcon className="h-[1.35rem] w-[1.35rem] text-[var(--xf-text-200)]" />
-    }
+      : [])
   ];
-
-  if (isGlobalAdmin) {
-    collapsedIcons.push({
-      key: "admin",
-      href: "/admin",
-      label: "Admin hub",
-      isActive: pathname.startsWith("/admin"),
-      icon: <AdminHubIcon className="h-4 w-4 text-[var(--xf-text-200)]" />
-    });
-  }
 
   const railWidthPx = isDesktopLg
     ? expanded
@@ -855,9 +790,8 @@ export function WorkspaceProductSidebar({
   useFocusTrap(drawerOpen, drawerPanelRef);
 
   /*
-   * BEFORE: Collapse lived in the footer beside the avatar; nav had no explicit “main vs resources” grouping.
-   * AFTER: Institutional header (aTx⚡Finance + obvious chevron toggle), grouped main desk nav, Resources divider,
-   *        account chrome moved to the footer stack (appearance → profile disclosure → logout → legal micro-links).
+   * Resources + Admin hub live in the sticky approved header / mobile top chrome. Rail keeps desk nav +
+   * optional User collections (attachments) for eligible tenants.
    */
   const sidebarHeader = (
     <header className="workspace-product-sidebar__header">
@@ -1054,178 +988,49 @@ export function WorkspaceProductSidebar({
       </RouteSyncedDetails>
       ) : null}
 
-      {isGlobalAdmin ? (
-        <SidebarLink href="/admin" title="Admin Hub">
-          <AdminHubIcon className="portfolios-workspace-sidebar__glyph" />
-          <span>Admin hub</span>
-        </SidebarLink>
-      ) : null}
-      </div>
-
-      <div className="portfolios-workspace-sidebar__spacer" aria-hidden />
-
-      <div className="portfolios-workspace-sidebar__bottom workspace-product-sidebar__nav-secondary">
-      <div className="workspace-product-sidebar__section-rule" aria-hidden />
-      {isPathVisible("/resources") || showAttachmentsRail ? (
-      <RouteSyncedDetails
-        className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--secondary-nav"
-        routeMatch={resourcesAccordionRouteMatch}
-      >
-        <summary
-          className="portfolios-workspace-sidebar__accordion-summary"
-          onClick={preventDetailsToggleForSidebarPrimaryLink}
+      {showAttachmentsRail ? (
+        <RouteSyncedDetails
+          className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--secondary-nav"
+          routeMatch={utilitiesAttachmentsRouteMatch}
         >
-          <SidebarAccordionSummary
-            icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--resources" />}
-            label="Resources"
-            primaryHref={isPathVisible("/resources") ? "/resources/guides" : undefined}
-            primaryNavTitle="Open Resources"
-          />
-        </summary>
-        <div className="portfolios-workspace-sidebar__accordion-body">
-          {showAttachmentsRail ? (
-            <UtilitiesSubgroupDetails routeMatch={utilitiesAttachmentsRouteMatch}>
-              <summary className="portfolios-workspace-sidebar__utilities-summary">
-                <span className="portfolios-workspace-sidebar__utilities-summary-main">
-                  <UtilitiesIcon className="portfolios-workspace-sidebar__glyph" />
-                  <span className="portfolios-workspace-sidebar__utilities-summary-label">Utilities</span>
-                </span>
-                <RailSectionChevron />
-              </summary>
-              <div className="portfolios-workspace-sidebar__utilities-body">
-                <div className="portfolios-workspace-sidebar__collections-block">
-                  <p className="portfolios-workspace-sidebar__collections-label">User Collections</p>
-                  <XchatAttachmentsPanel />
-                </div>
-              </div>
-            </UtilitiesSubgroupDetails>
-          ) : null}
-          {isPathVisible("/resources") ? (
-            <>
-              <SidebarLink href={importHref} nested title="Merrill / Fidelity broker import">
-                <LucideUploadIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
-                Broker import
-              </SidebarLink>
-              <SidebarLink href="/account/tasks" nested title="Scheduled and saved user tasks">
-                <LucideClipboardListIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
-                Tasks
-              </SidebarLink>
-            </>
-          ) : null}
-          {isPathVisible("/resources") ? (
-            <div aria-hidden className="portfolios-workspace-sidebar__collections-rule" />
-          ) : null}
-          {isPathVisible("/resources") ? (
-            <>
-              {isGlobalAdmin ? (
-                <SidebarLink href="/admin/manage_account" nested title="Workspace and profile settings">
-                  <LucideSettingsIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
-                  Settings
-                </SidebarLink>
-              ) : (
-                <XfHoverHint hint="Workspace settings are available from the Admin Hub for tenant admins.">
-                  <span
-                    className="portfolios-workspace-sidebar__link portfolios-workspace-sidebar__link--nested portfolios-workspace-sidebar__link--muted"
-                    role="note"
-                    tabIndex={0}
-                  >
-                    <LucideSettingsIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
-                    Settings
-                  </span>
-                </XfHoverHint>
-              )}
-              <SidebarLink href="/account/billing" nested title="Plans and billing">
-                Plans &amp; billing
-              </SidebarLink>
-              <SidebarLink href="/legal/terms" nested title="Legal terms and policies">
-                Legal
-              </SidebarLink>
-            </>
-          ) : null}
-          {isPathVisible("/resources") ? (
-            <div aria-hidden className="portfolios-workspace-sidebar__collections-rule" />
-          ) : null}
-          {isPathVisible("/resources") ? (
-            <>
-          <SidebarLink href="/resources/guides" nested title="Browse guides and resource articles">
-            <LucideBookOpenIcon className="portfolios-workspace-sidebar__glyph h-[1.05rem] w-[1.05rem]" />
-            Guides
-          </SidebarLink>
-          {showReferenceDocs ? (
-            isGlobalAdmin ? (
-              <SidebarLink href="/admin/api-docs" nested>
-                Reference docs
-              </SidebarLink>
-            ) : (
-              <XfHoverHint hint="Open API reference from Hub when you have admin access">
-                <span
-                  className="portfolios-workspace-sidebar__link portfolios-workspace-sidebar__link--nested portfolios-workspace-sidebar__link--muted"
-                  role="note"
-                  tabIndex={0}
-                >
-                  Reference docs
-                </span>
-              </XfHoverHint>
-            )
-          ) : null}
-            </>
-          ) : null}
-        </div>
-      </RouteSyncedDetails>
+          <summary
+            className="portfolios-workspace-sidebar__accordion-summary"
+            onClick={preventDetailsToggleForSidebarPrimaryLink}
+          >
+            <SidebarAccordionSummary
+              icon={<UtilitiesIcon className="portfolios-workspace-sidebar__glyph" />}
+              label="User collections"
+              primaryHref="/xchat?rail=xchat&item=attachments"
+              primaryNavTitle="Open User collections"
+            />
+          </summary>
+          <div className="portfolios-workspace-sidebar__accordion-body">
+            <div className="portfolios-workspace-sidebar__collections-block">
+              <p className="portfolios-workspace-sidebar__collections-label">User Collections</p>
+              <XchatAttachmentsPanel />
+            </div>
+          </div>
+        </RouteSyncedDetails>
       ) : null}
+
       </div>
     </nav>
   );
-
-  const displayName =
-    accountDetails?.displayName?.trim() ||
-    accountDetails?.username?.trim() ||
-    "Account";
 
   const railFooter = (
     <footer className="workspace-product-sidebar__footer flex shrink-0 flex-col border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_94%,transparent)] transition-all duration-200 ease-out">
       <div className="workspace-product-sidebar__footer-account-rule" aria-hidden />
       {accountDetails ? (
-        <details className="workspace-rail-account-disclosure">
-          <summary
-            className={`workspace-rail-account-disclosure__summary xf-focus-ring--sidebar${showWideSidebarChrome ? "" : " workspace-rail-account-disclosure__summary--icon-only"}`}
-          >
-            <span className="workspace-rail-account-disclosure__avatar-wrap">
-              {accountDetails.avatarUrl?.trim() ? (
-                <Image
-                  alt=""
-                  aria-hidden
-                  className="workspace-rail-account-disclosure__avatar"
-                  height={36}
-                  src={accountDetails.avatarUrl}
-                  unoptimized
-                  width={36}
-                />
-              ) : (
-                <PersonIcon className="workspace-rail-account-disclosure__avatar-fallback" />
-              )}
-            </span>
-            {showWideSidebarChrome ? (
-              <span className="workspace-rail-account-disclosure__identity">
-                <span className="workspace-rail-account-disclosure__name">{displayName}</span>
-                <span className="workspace-rail-account-disclosure__hint">Profile &amp; feedback</span>
-              </span>
-            ) : (
-              <span className="sr-only">Open account menu</span>
-            )}
-            {showWideSidebarChrome ? <RailSectionChevron /> : null}
-          </summary>
-          <div className="workspace-rail-account-disclosure__panel portfolios-workspace-sidebar__accordion-body--account">
-            <AppUserRailAccountPanel
-              details={accountDetails}
-              feedbackPageLabel={accountFeedbackPageLabel}
-              googleLinkHref={googleLinkHref}
-              hideShortcutLinks
-            />
-          </div>
-        </details>
+        <WorkspaceProfileFooterMenu
+          accountDetails={accountDetails}
+          feedbackPageLabel={accountFeedbackPageLabel}
+          googleLinkHref={googleLinkHref}
+          isGlobalAdmin={isGlobalAdmin}
+          isPathVisible={isPathVisible}
+          showReferenceDocs={showReferenceDocs}
+          showWideSidebarChrome={showWideSidebarChrome}
+        />
       ) : null}
-      {accountDetails ? <WorkspaceRailLogout railExpanded={showWideSidebarChrome} /> : null}
     </footer>
   );
 
@@ -1250,6 +1055,7 @@ export function WorkspaceProductSidebar({
           <WorkspaceTopChromeBar
             accountDetails={accountDetails}
             drawerOpen={drawerOpen}
+            isGlobalAdmin={isGlobalAdmin}
             isPathVisible={isPathVisible}
             showQuickPills={belowMd}
             watchlistHref={watchlistHref}

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { GlobalFooter } from "@/app/ui/global-footer";
-
 import "@/app/portfolios/portfolios-dashboard.css";
 
 import "@/app/watchlist/watchlist.css";
@@ -18,10 +16,5 @@ type PortfolioLayoutProps = {
 };
 
 export default function PortfolioLayout({ children }: PortfolioLayoutProps) {
-  return (
-    <div className="xchat-layout-root">
-      {children}
-      <GlobalFooter />
-    </div>
-  );
+  return <div className="xchat-layout-root">{children}</div>;
 }

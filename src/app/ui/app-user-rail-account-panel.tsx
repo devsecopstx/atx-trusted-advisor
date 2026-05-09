@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import { SendIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { BillingAccessAccountRailStatus } from "@/app/ui/billing-access-account-rail-status";
 import { GoogleGIcon } from "@/app/ui/oauth-provider-icons";
 import { PwaInstallAccountPrompt } from "@/app/ui/pwa-install-account-prompt";
+import { RailUserFeedbackDialog } from "@/app/ui/rail-user-feedback-dialog";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { tenantIdHexLastFourUserFacing } from "@/lib/mongo-object-id-hex";
 import { SUBSCRIPTION_PLAN_LABELS, type SubscriptionPlan } from "@/lib/subscription-plan";
@@ -46,67 +45,6 @@ export function AppUserRailAccountPanel({
   const pathname = usePathname() ?? "";
   const pageLabel = feedbackPageLabel?.trim() || pathname || "App";
 
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackText, setFeedbackText] = useState("");
-  const [feedbackStatus, setFeedbackStatus] = useState("");
-  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
-  const feedbackDialogRef = useRef<HTMLDivElement | null>(null);
-
-  async function handleFeedbackSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = feedbackText.trim();
-    if (trimmed.length < 3) {
-      setFeedbackStatus("Please enter at least 3 characters.");
-      return;
-    }
-    setFeedbackStatus("");
-    setIsSendingFeedback(true);
-    try {
-      const response = await fetch("/api/user-feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: trimmed,
-          page: pageLabel
-        })
-      });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Could not send feedback");
-      }
-      setFeedbackText("");
-      setFeedbackOpen(false);
-      setFeedbackStatus("Thanks — feedback received.");
-      window.setTimeout(() => setFeedbackStatus(""), 4000);
-    } catch (error) {
-      setFeedbackStatus(error instanceof Error ? error.message : "Send failed");
-    } finally {
-      setIsSendingFeedback(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!feedbackOpen) {
-      return;
-    }
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setFeedbackOpen(false);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [feedbackOpen]);
-
-  useEffect(() => {
-    function onOpenFeedback() {
-      setFeedbackStatus("");
-      setFeedbackOpen(true);
-    }
-    window.addEventListener(USER_FEEDBACK_OPEN_EVENT, onOpenFeedback);
-    return () => window.removeEventListener(USER_FEEDBACK_OPEN_EVENT, onOpenFeedback);
-  }, []);
-
   const { email, username, displayName, xUserId, mongoConnection, tenantIdHex, subscriptionPlan, isGlobalAdmin } =
     details;
   const mongoHref =
@@ -120,6 +58,8 @@ export function AppUserRailAccountPanel({
 
   return (
     <div className="app-user-rail-account-panel">
+      <RailUserFeedbackDialog pageLabel={pageLabel} />
+
       <div className="app-user-rail-account-panel__identity">
         <div className="app-user-rail-account-panel__identity-text">
           <p className="app-user-rail-account-panel__name">{displayName ?? username}</p>
@@ -205,74 +145,11 @@ export function AppUserRailAccountPanel({
         <button
           className="app-user-rail-account-panel__btn"
           type="button"
-          onClick={() => {
-            setFeedbackStatus("");
-            setFeedbackOpen(true);
-          }}
+          onClick={() => window.dispatchEvent(new CustomEvent(USER_FEEDBACK_OPEN_EVENT))}
         >
           Submit feedback
         </button>
       </div>
-      {feedbackStatus && !feedbackOpen ? (
-        <p className="status-text text-[0.7rem] text-[var(--xf-gain-green)]">{feedbackStatus}</p>
-      ) : null}
-
-      {feedbackOpen ? (
-        <div
-          aria-labelledby="rail-feedback-title"
-          aria-modal="true"
-          className="xchat-feedback-backdrop"
-          onPointerDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setFeedbackOpen(false);
-            }
-          }}
-          role="dialog"
-        >
-          <div className="xchat-feedback-dialog" ref={feedbackDialogRef}>
-            <h2 className="xchat-feedback-title" id="rail-feedback-title">
-              Submit feedback
-            </h2>
-            <p className="xchat-feedback-hint">
-              Tell us what broke, what to improve, or what you need next. Optional Slack delivery when configured
-              server-side.
-            </p>
-            <form className="xchat-feedback-form" onSubmit={(e) => void handleFeedbackSubmit(e)}>
-              <textarea
-                className="xchat-feedback-textarea"
-                maxLength={4000}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder="Your message…"
-                rows={5}
-                value={feedbackText}
-              />
-              {feedbackStatus && feedbackOpen ? (
-                <p className={`status-text${feedbackStatus.includes("Thanks") ? "" : " status-error"}`}>
-                  {feedbackStatus}
-                </p>
-              ) : null}
-              <div className="xchat-feedback-actions">
-                <button
-                  className="cta cta-secondary"
-                  disabled={isSendingFeedback}
-                  onClick={() => {
-                    setFeedbackOpen(false);
-                    setFeedbackStatus("");
-                  }}
-                  type="button"
-                >
-                  <XMarkIcon className="crud-icon" />
-                  Cancel
-                </button>
-                <button className="cta cta-primary" disabled={isSendingFeedback} type="submit">
-                  <SendIcon className="crud-icon" />
-                  {isSendingFeedback ? "Sending…" : "Send"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

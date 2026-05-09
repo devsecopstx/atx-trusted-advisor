@@ -3146,3 +3146,33 @@ html[data-xf-ui="soft"] .xf-symbol-ohlc-chart__range-btn--active {
   border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
   background: color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
 }
+
+/**
+ * Hairline shadows using color-mix — defined in CSS (not Tailwind `shadow-[…]` arbitrary values).
+ * Nested `color-mix()` inside arbitrary shadows breaks PostCSS/Tailwind (`var(--tw-shadow-color)` splice).
+ */
+@layer utilities {
+  .xf-shadow-hairline-inset {
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  }
+
+  .xf-shadow-hairline-inset-6 {
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  }
+
+  .xf-shadow-hairline-inset-10 {
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  }
+
+  .xf-shadow-hairline-inset-12 {
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  }
+
+  .xf-shadow-hairline-under {
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  }
+
+  .xf-shadow-elev-green-soft {
+    box-shadow: 0 8px 28px -10px color-mix(in srgb, var(--xf-gain-green) 18%, transparent);
+  }
+}

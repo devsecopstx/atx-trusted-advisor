@@ -15,6 +15,10 @@ type AppUserCollapsibleRailLayoutProps = {
   children: ReactNode;
   /** Applied to the main column (e.g. `app-user-shell-with-rail--padded`). */
   mainClassName?: string;
+  /** When set with `railChrome="workspace-product"`, renders below scrollable main content only (not under the rail). */
+  mainFooter?: ReactNode;
+  /** Extra classes on the workspace-product outer shell (`min-h-0 overflow-hidden` for viewport-locked desks). */
+  workspaceProductShellClassName?: string;
   /** Set false to keep the rail always expanded. */
   allowCollapse?: boolean;
   /**
@@ -44,14 +48,43 @@ function readStoredCollapsed(): boolean {
 function AppUserWorkspaceProductRailLayout({
   rail,
   children,
-  mainClassName
-}: Pick<AppUserCollapsibleRailLayoutProps, "rail" | "children" | "mainClassName">) {
-  return (
-    <div className="app-user-shell-with-rail app-user-shell-with-rail--workspace-product">
-      <div className="app-user-rail-stack app-user-rail-stack--workspace-product">
-        <div className="app-user-rail-stack__body app-user-rail-stack__body--workspace-product">{rail}</div>
+  mainClassName,
+  mainFooter,
+  workspaceProductShellClassName
+}: Pick<
+  AppUserCollapsibleRailLayoutProps,
+  "rail" | "children" | "mainClassName" | "mainFooter" | "workspaceProductShellClassName"
+>) {
+  const shellExtra = workspaceProductShellClassName?.trim() ?? "";
+  const shellClass = ["app-user-shell-with-rail app-user-shell-with-rail--workspace-product", shellExtra]
+    .filter(Boolean)
+    .join(" ");
+
+  const mainColumn =
+    mainFooter != null ? (
+      <div className="app-user-shell-main flex h-full max-h-full min-h-0 flex-col">
+        <div
+          className={
+            mainClassName?.trim() ??
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain app-user-shell-with-rail--padded"
+          }
+        >
+          {children}
+        </div>
+        <div className="shrink-0">{mainFooter}</div>
       </div>
+    ) : (
       <div className={mainClassName ? `app-user-shell-main ${mainClassName}` : "app-user-shell-main"}>{children}</div>
+    );
+
+  return (
+    <div className={shellClass}>
+      <div className="app-user-rail-stack app-user-rail-stack--workspace-product flex h-full min-h-0 shrink-0 flex-col overflow-hidden">
+        <div className="app-user-rail-stack__body app-user-rail-stack__body--workspace-product h-full min-h-0">
+          {rail}
+        </div>
+      </div>
+      {mainColumn}
     </div>
   );
 }
@@ -149,16 +182,28 @@ function AppUserLegacyCollapsibleRailLayout({
   );
 }
 
-export function AppUserCollapsibleRailLayout({
-  rail,
-  children,
-  mainClassName,
-  allowCollapse = true,
-  preferCollapsed = false,
-  railChrome = "default"
-}: AppUserCollapsibleRailLayoutProps) {
+export function AppUserCollapsibleRailLayout(props: AppUserCollapsibleRailLayoutProps) {
+  const {
+    rail,
+    children,
+    mainClassName,
+    allowCollapse = true,
+    preferCollapsed = false,
+    railChrome = "default",
+    workspaceProductShellClassName
+  } = props;
+
   if (railChrome === "workspace-product") {
-    return <AppUserWorkspaceProductRailLayout mainClassName={mainClassName} rail={rail}>{children}</AppUserWorkspaceProductRailLayout>;
+    return (
+      <AppUserWorkspaceProductRailLayout
+        mainClassName={mainClassName}
+        mainFooter={props.mainFooter}
+        rail={rail}
+        workspaceProductShellClassName={workspaceProductShellClassName}
+      >
+        {children}
+      </AppUserWorkspaceProductRailLayout>
+    );
   }
 
   return (

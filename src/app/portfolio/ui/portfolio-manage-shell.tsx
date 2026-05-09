@@ -201,6 +201,19 @@ export function PortfolioManageShell({
             </p>
           </div>
           <div className="portfolio-manage-head__actions">
+            <Link className="portfolio-footer-nav__link portfolio-manage-head__toolbar-link" href="/portfolios">
+              <HomeIcon className="crud-icon" aria-hidden />
+              Home
+            </Link>
+            {admin ? (
+              <Link
+                className="portfolio-footer-nav__link portfolio-footer-nav__link--emph portfolio-manage-head__toolbar-link"
+                href="/admin/portfolios"
+              >
+                <ExternalLinkIcon className="crud-icon" aria-hidden />
+                Hub
+              </Link>
+            ) : null}
             <SyncDefaultPortfolioButton compact variant="secondary" className="portfolio-head-action-btn" />
             <PortfolioRefreshButton label="Refresh" className="portfolio-head-action-btn" />
           </div>
@@ -263,24 +276,14 @@ export function PortfolioManageShell({
         totalAccounts={totalAccounts}
       />
 
-      <nav className="portfolio-footer-nav" aria-label="Shortcuts">
-        <Link className="portfolio-footer-nav__link" href="/portfolios">
-          <HomeIcon className="crud-icon" aria-hidden />
-          Home
-        </Link>
-        {resolvedSelectedHex ? (
+      {resolvedSelectedHex ? (
+        <nav className="portfolio-footer-nav" aria-label="Account shortcuts">
           <Link className="portfolio-footer-nav__link" href={`/portfolio/accounts/${resolvedSelectedHex}`}>
             <EditIcon className="crud-icon" aria-hidden />
             Selected account
           </Link>
-        ) : null}
-        {admin ? (
-          <Link className="portfolio-footer-nav__link portfolio-footer-nav__link--emph" href="/admin/portfolios">
-            <ExternalLinkIcon className="crud-icon" aria-hidden />
-            Hub
-          </Link>
-        ) : null}
-      </nav>
+        </nav>
+      ) : null}
     </>
   );
 

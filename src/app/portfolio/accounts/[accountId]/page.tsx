@@ -3,9 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-workspace";
 import { serializePositionsForUi } from "@/app/portfolio/lib/serialize-positions";
-import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
-import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
+import { PortfolioWorkspaceProductShell } from "@/app/portfolio/ui/portfolio-workspace-product-shell";
 import {
     isProvisioningPortfolioAccountRef,
     maskAccountXrefForDisplay
@@ -165,31 +163,21 @@ export default async function PortfolioAccountPage({
   ]);
 
   return (
-    <div className="xchat-shell">
-      <AppUserApprovedHeader
-        current="portfolio"
-        feedbackPageLabel="Portfolio"
-        session={session}
-        workspaceTenant={workspaceTenant}
-      />
-
-      <div className="xchat-body portfolio-page-body">
-        <AppUserCollapsibleRailLayout
-          mainClassName="app-user-shell-with-rail--padded"
-          rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
-          railChrome="workspace-product"
-        >
-        <div className="portfolio-account-page portfolio-account-page--edit">
-          <AccountWorkspace
-            portfolioId={portfolioIdHex}
-            portfolioName={portfolio.name?.trim() || "Default portfolio"}
-            account={serializeAccount(account)}
-            portfolioAccountCount={accounts.length}
-            initialPositions={initialPositions}
-          />
-        </div>
-        </AppUserCollapsibleRailLayout>
+    <PortfolioWorkspaceProductShell
+      feedbackPageLabel="Portfolio"
+      session={session}
+      workspaceRailProps={workspaceRailProps}
+      workspaceTenant={workspaceTenant}
+    >
+      <div className="portfolio-account-page portfolio-account-page--edit">
+        <AccountWorkspace
+          portfolioId={portfolioIdHex}
+          portfolioName={portfolio.name?.trim() || "Default portfolio"}
+          account={serializeAccount(account)}
+          portfolioAccountCount={accounts.length}
+          initialPositions={initialPositions}
+        />
       </div>
-    </div>
+    </PortfolioWorkspaceProductShell>
   );
 }

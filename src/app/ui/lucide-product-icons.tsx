@@ -215,6 +215,23 @@ export function LucideLogOutIcon({ className, ...props }: SVGProps<SVGSVGElement
   );
 }
 
+/** Grok-style sign out: bracket on the right, arrow exiting left (workspace profile menu). */
+export function WorkspaceSignOutIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
+      <path
+        d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+      <path d="M10 17 5 12l5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} />
+      <path d="M15 12H5" stroke="currentColor" strokeLinecap="round" strokeWidth={1.75} />
+    </svg>
+  );
+}
+
 export function LucideSquarePenIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>

@@ -15,6 +15,8 @@ export type SidebarDestructiveVariant = "destructive-soft" | "destructive";
 export type SidebarDestructiveActionProps = {
   icon: ReactNode;
   label: string;
+  /** Extra classes on the trigger button (e.g. full-width profile menu row). */
+  triggerClassName?: string;
   /** Icon-only trigger (e.g. collapsed workspace rail). */
   compact?: boolean;
   confirmTitle: string;
@@ -32,6 +34,7 @@ export type SidebarDestructiveActionProps = {
 export function SidebarDestructiveAction({
   icon,
   label,
+  triggerClassName,
   compact = false,
   confirmTitle,
   confirmMessage,
@@ -96,7 +99,8 @@ export function SidebarDestructiveAction({
   const triggerMods = [
     "sidebar-destructive-action__trigger",
     variant === "destructive" ? "sidebar-destructive-action__trigger--strong" : "",
-    compact ? "sidebar-destructive-action__trigger--compact" : ""
+    compact ? "sidebar-destructive-action__trigger--compact" : "",
+    triggerClassName ?? ""
   ]
     .filter(Boolean)
     .join(" ");

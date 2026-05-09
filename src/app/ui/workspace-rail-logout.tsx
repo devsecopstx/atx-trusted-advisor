@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { LucideLogOutIcon } from "@/app/ui/lucide-product-icons";
+import { WorkspaceSignOutIcon } from "@/app/ui/lucide-product-icons";
 import { SidebarDestructiveAction } from "@/app/ui/sidebar-destructive-action";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
@@ -40,23 +40,23 @@ export function WorkspaceRailLogout({ railExpanded }: WorkspaceRailLogoutProps) 
   const performLogout = useCallback(async () => {
     const response = await fetch("/api/auth/logout", { method: "POST" });
     if (!response.ok) {
-      throw new Error("Logout failed");
+      throw new Error("Sign out failed");
     }
     window.location.href = "/xchat";
   }, []);
 
-  const icon = <LucideLogOutIcon className="h-[18px] w-[18px] shrink-0" />;
+  const icon = <WorkspaceSignOutIcon className="h-[18px] w-[18px] shrink-0" />;
 
   const action = (
     <SidebarDestructiveAction
-      ariaLabel="Logout from aTx Finance"
+      ariaLabel="Sign out of aTx Finance"
       cancelLabel="Cancel"
       compact={!railExpanded}
-      confirmActionLabel="Yes, log out"
+      confirmActionLabel="Yes, sign out"
       confirmMessage="You will be signed out of aTx Finance. Any unsaved strategy jobs or xChat turns in this browser session may be lost."
-      confirmTitle="End session?"
+      confirmTitle="Sign out?"
       icon={icon}
-      label="Logout"
+      label="Sign out"
       openSignal={shortcutOpen}
       variant="destructive-soft"
       onConfirm={performLogout}
@@ -67,7 +67,7 @@ export function WorkspaceRailLogout({ railExpanded }: WorkspaceRailLogoutProps) 
   if (!railExpanded) {
     return (
       <div className="workspace-rail-logout workspace-rail-logout--compact">
-        <XfHoverHint hint="Logout">{action}</XfHoverHint>
+        <XfHoverHint hint="Sign out">{action}</XfHoverHint>
       </div>
     );
   }

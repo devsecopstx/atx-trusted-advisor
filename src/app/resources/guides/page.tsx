@@ -11,6 +11,7 @@ import { isGoogleOAuthConfigured } from "@/lib/env";
 import { RESOURCE_GUIDE_SECTIONS } from "@/lib/marketing/resource-guides-catalog";
 import { canUserLogin } from "@/modules/identity/authorization";
 
+import "@/app/portfolios/portfolios-dashboard.css";
 import "../../xchat/xchat.css";
 import "../getting-started/resources-getting-started.css";
 import { ResourceGuidesHubPanels } from "./resource-guides-hub-panels";
@@ -77,23 +78,39 @@ export default async function ResourcesGuidesHubPage() {
   );
 
   return (
-    <div className="xchat-shell">
+    <div className="xchat-shell flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--xf-bg-900)]">
       {approved && session ? (
-        <AppUserApprovedHeader current="xchat" feedbackPageLabel="Resources · Guides" session={session} />
+        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
+          <div className="workspace-product-approved-header-slot">
+            <AppUserApprovedHeader current="xchat" feedbackPageLabel="Resources · Guides" session={session} />
+          </div>
+        </div>
       ) : (
-        <XchatGuestHeader />
+        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
+          <XchatGuestHeader />
+        </div>
       )}
 
-      <div className="xchat-body" style={{ padding: "1rem" }}>
+      <div className="portfolio-page-body xchat-body flex min-h-0 flex-1 flex-col overflow-hidden">
         {approved && session ? (
-          <AppUserCollapsibleRailLayout rail={workspaceProductRail} railChrome="workspace-product">
+          <AppUserCollapsibleRailLayout
+            mainClassName="app-user-shell-with-rail--padded min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            mainFooter={<GlobalFooter />}
+            rail={workspaceProductRail}
+            railChrome="workspace-product"
+            workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"
+          >
             {article}
-            <GlobalFooter />
           </AppUserCollapsibleRailLayout>
         ) : (
-          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref} rail={workspaceProductRail ?? undefined}>
+          <XchatGuestReadonlyShell
+            googleLoginHref={googleLoginHref}
+            mainFooter={<GlobalFooter />}
+            rail={workspaceProductRail ?? undefined}
+            workspaceProductGrid
+            workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"
+          >
             {article}
-            <GlobalFooter />
           </XchatGuestReadonlyShell>
         )}
       </div>

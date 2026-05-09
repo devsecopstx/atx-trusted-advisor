@@ -1,9 +1,14 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
+import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import type { SessionUser } from "@/lib/auth";
 import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
+import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 
 import { PortfoliosAccountsFooter } from "./portfolios-accounts-footer";
 import { PortfoliosDashboardClient, type WorkspacePortfolioRow } from "./portfolios-dashboard-client";
@@ -24,6 +29,8 @@ export type PortfoliosWorkspaceDeskHints = {
 };
 
 type Props = {
+  session: SessionUser;
+  workspaceTenant: WorkspaceTenantHeaderContext | null;
   focusPortfolioId: string | null;
   initialRows: WorkspacePortfolioRow[];
   accountSlices: WorkspaceDashboardAccountSlice[];
@@ -40,9 +47,13 @@ type Props = {
   accountFeedbackPageLabel?: string;
   workspaceDeskHints?: PortfoliosWorkspaceDeskHints | null;
   visiblePathPrefixes?: string[];
+  /** Legal footer rendered only under main column so the workspace rail spans full viewport height. */
+  workspaceFooter?: ReactNode;
 };
 
 export function PortfoliosWorkspaceClient({
+  session,
+  workspaceTenant,
   focusPortfolioId,
   initialRows,
   accountSlices,
@@ -56,7 +67,8 @@ export function PortfoliosWorkspaceClient({
   accountDetails,
   accountFeedbackPageLabel,
   workspaceDeskHints = null,
-  visiblePathPrefixes
+  visiblePathPrefixes,
+  workspaceFooter
 }: Props) {
   const holdingsKey = topHoldings
     .slice(0, 2)
@@ -65,16 +77,27 @@ export function PortfoliosWorkspaceClient({
 
   return (
     <>
-      <PortfoliosWorkspaceHeader
-        deskPortfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
-        topHoldingsKey={holdingsKey}
-        totalBookUsd={totalBookUsd}
-        visiblePathPrefixes={visiblePathPrefixes}
-      />
+      <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
+        <div className="workspace-product-approved-header-slot">
+          <AppUserApprovedHeader
+            current="portfolio"
+            feedbackPageLabel={accountFeedbackPageLabel}
+            session={session}
+            workspaceTenant={workspaceTenant}
+          />
+        </div>
+        <PortfoliosWorkspaceHeader
+          deskPortfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
+          topHoldingsKey={holdingsKey}
+          totalBookUsd={totalBookUsd}
+          visiblePathPrefixes={visiblePathPrefixes}
+        />
+      </div>
 
-      <div className="xchat-body portfolio-page-body">
+      <div className="portfolio-page-body xchat-body flex min-h-0 flex-1 flex-col overflow-hidden">
         <AppUserCollapsibleRailLayout
-          mainClassName="app-user-shell-with-rail--padded"
+          mainClassName="app-user-shell-with-rail--padded min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          mainFooter={workspaceFooter}
           rail={
             <PortfoliosWorkspaceSidebar
               accountDetails={accountDetails}
@@ -86,6 +109,7 @@ export function PortfoliosWorkspaceClient({
             />
           }
           railChrome="workspace-product"
+          workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"
         >
           {/*
            * Branding from Tenant Settings → Branding (tenantPreferences). Updates apply immediately via --xf-tenant-accent + TenantBrandingProvider.

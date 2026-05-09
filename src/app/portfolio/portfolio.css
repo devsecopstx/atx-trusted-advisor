@@ -700,6 +700,13 @@
   align-items: center;
 }
 
+.portfolio-manage-head__toolbar-link {
+  padding: 0.38rem 0.55rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 35%, transparent);
+}
+
 .portfolio-head-action-btn {
   min-width: 5.75rem;
   justify-content: center;

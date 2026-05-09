@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 
-import { GlobalFooter } from "@/app/ui/global-footer";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
 import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
@@ -63,11 +62,8 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
   const focusRaw = singleParam(sp.focus)?.trim() ?? "";
 
   return (
-    <>
-      <Suspense fallback={<PortfoliosWorkspaceSkeleton />}>
-        <PortfoliosWorkspaceData focusRaw={focusRaw} session={session} />
-      </Suspense>
-      <GlobalFooter />
-    </>
+    <Suspense fallback={<PortfoliosWorkspaceSkeleton />}>
+      <PortfoliosWorkspaceData focusRaw={focusRaw} session={session} />
+    </Suspense>
   );
 }

@@ -91,9 +91,11 @@ If X does not expose an email, the UI uses the **link email** step so the user c
 
 ## App user shell (header profile + left rail)
 
-**Signed-in header** (`AppUserHeaderSession`, avatar menu): **Plans & billing** → `/account/billing`, **Legal** → `/legal/terms`, then **Appearance** in a **collapsed** `<details>` (expand for Light / Dark / System via `XfThemePreferenceMenu`). **Submit feedback** and **Logout** stay in the menu actions block.
+**Signed-in header** (`AppUserHeaderSession`, avatar menu): **Plans & billing** → `/account/billing`, **Legal** → `/legal/terms`, then **Appearance** in a **collapsed** `<details>` (expand for Light / Dark / System via `XfThemePreferenceMenu`). **Submit feedback** and **Sign out** stay in the menu actions block.
 
-**Left rail — Account** (`AppUserAccountRailSection`): **Settings** only — **global_admin** links to `/admin/manage_account`; other roles see a muted “Settings” note. **Plans & billing** and **Legal** are **not** duplicated here (use the profile menu). If there is nothing to show (e.g. guest shell with `showSettingsLink={false}`), the Account section is omitted.
+**Workspace product rail — footer profile** (**≥3.17.10**, `WorkspaceProfileFooterMenu` under **`WorkspaceProductSidebar`**): The bottom avatar row opens a **portal** menu anchored **above** the trigger (bottom-up animation). Menu items include **Profile** → `/account/billing`, **Legal**, **Resources** → `/resources/guides` when the tenant route policy allows it, **Feedback** (same modal pattern as the header — `RailUserFeedbackDialog` / `USER_FEEDBACK_OPEN_EVENT`), **Settings** / **Reference docs** / **Admin hub** for **global_admin** when applicable, optional **Link Google**, **Plans & billing** → `/account/billing` (row placed **directly above** **Sign out**), and **Sign out** (destructive confirm + bracket-style icon). **`Ctrl/Cmd+Shift+L`** opens the sign-out confirmation when focus is not in an editable field.
+
+**Left rail — Account** (`AppUserAccountRailSection`): **Settings** only — **global_admin** links to `/admin/manage_account`; other roles see a muted “Settings” note. **Plans & billing** and **Legal** are **not** duplicated here (use the header or workspace footer profile menu). If there is nothing to show (e.g. guest shell with `showSettingsLink={false}`), the Account section is omitted.
 
 **Manage workspace** (`AppUserManageWorkspaceRailSection` on xChat): includes a nested **Default book** disclosure (**collapsed** by default) when `defaultBookLabels` is passed from the page — portfolio name (link to `/portfolio`) and default account label.
 

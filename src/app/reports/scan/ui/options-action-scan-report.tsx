@@ -323,7 +323,7 @@ function BookCell({ row }: { row: OptionsActionReportRow }) {
         {row.portfolioAccountName ?? "Book"}
       </span>
       <Link
-        className="inline-flex w-fit items-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_42%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.65rem] font-bold text-[var(--xf-gain-green)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)]"
+        className="inline-flex w-fit items-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_42%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.65rem] font-bold text-[var(--xf-gain-green)] xf-shadow-hairline-inset hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)]"
         href={toPortfolioAccountHref(row.portfolioAccountId)}
       >
         Open book
@@ -360,7 +360,7 @@ function UrgencyBadge({ urgency }: { urgency: OptionsActionReportRow["urgency"] 
   if (urgency === "high") {
     return (
       <span
-        className={`${base} bg-[color-mix(in_srgb,var(--xf-danger-400)_58%,var(--xf-bg-900))] text-[var(--xf-text-100)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--xf-danger-400)_55%,transparent)]`}
+        className={`${base} bg-[color-mix(in_srgb,var(--xf-danger-400)_58%,var(--xf-bg-900))] text-[var(--xf-text-100)] xf-shadow-hairline-inset-12 ring-1 ring-[color-mix(in_srgb,var(--xf-danger-400)_55%,transparent)]`}
       >
         <UrgencyAlertIcon />
         high
@@ -398,7 +398,7 @@ function ConfidenceBadge({ confidence }: { confidence: OptionsActionReportRow["c
     "h-1 flex-1 rounded-[2px] bg-[color-mix(in_srgb,var(--xf-bg-900)_55%,transparent)]";
   return (
     <span
-      className="inline-flex min-w-[5.75rem] flex-col gap-1 rounded-full border px-2.5 py-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)]"
+      className="inline-flex min-w-[5.75rem] flex-col gap-1 rounded-full border px-2.5 py-1 xf-shadow-hairline-inset"
       style={{
         borderColor: `color-mix(in srgb, ${accent} 34%, transparent)`,
         background: `color-mix(in srgb, ${accent} 12%, var(--xf-bg-900))`
@@ -536,7 +536,7 @@ function WhyCell(props: {
 
 function actionLabelClasses(action: OptionsActionReportRow["recommendedAction"]): string {
   if (action === "STC" || action === "BTC") {
-    return "inline-flex rounded-md bg-[color-mix(in_srgb,var(--xf-danger-400)_24%,transparent)] px-2 py-0.5 text-[0.72rem] font-extrabold tracking-wide text-[var(--xf-danger-400)] ring-1 ring-[color-mix(in_srgb,var(--xf-danger-400)_42%,transparent)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_10%,transparent)]";
+    return "inline-flex rounded-md bg-[color-mix(in_srgb,var(--xf-danger-400)_24%,transparent)] px-2 py-0.5 text-[0.72rem] font-extrabold tracking-wide text-[var(--xf-danger-400)] ring-1 ring-[color-mix(in_srgb,var(--xf-danger-400)_42%,transparent)] xf-shadow-hairline-inset-10";
   }
   if (action === "LET_EXPIRE") {
     return "inline-flex rounded-md bg-[color-mix(in_srgb,var(--xf-warning-400)_18%,transparent)] px-2 py-0.5 text-[0.72rem] font-bold tracking-wide text-[var(--xf-warning-400)] ring-1 ring-[color-mix(in_srgb,var(--xf-warning-400)_35%,transparent)]";
@@ -747,7 +747,7 @@ function OptionsActionScanReportInner({
           </span>
         </div>
         {showHeaderSummary ? (
-          <div className="flex flex-col gap-2 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-tenant-primary)_26%,transparent)] bg-gradient-to-br from-[color-mix(in_srgb,var(--xf-bg-800)_55%,var(--xf-surface-700))] via-[color-mix(in_srgb,var(--xf-tenant-primary)_9%,var(--xf-surface-700))] to-[color-mix(in_srgb,var(--xf-bg-900)_40%,var(--xf-surface-700))] p-3 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] sm:flex-row sm:flex-wrap">
+          <div className="flex flex-col gap-2 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-tenant-primary)_26%,transparent)] bg-gradient-to-br from-[color-mix(in_srgb,var(--xf-bg-800)_55%,var(--xf-surface-700))] via-[color-mix(in_srgb,var(--xf-tenant-primary)_9%,var(--xf-surface-700))] to-[color-mix(in_srgb,var(--xf-bg-900)_40%,var(--xf-surface-700))] p-3 xf-shadow-hairline-inset sm:flex-row sm:flex-wrap">
             <div className="flex min-w-[11rem] flex-1 items-start gap-2.5 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_55%,transparent)] px-3 py-2.5">
               <span aria-hidden className="select-none text-lg leading-none">
                 📉
@@ -1015,7 +1015,7 @@ function ReportTable(props: {
                     </td>
                     <td className="align-top px-3 py-2.5">
                       <Link
-                        className="inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_38%,transparent)] bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_8%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-xoptions-accent)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] hover:bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_16%,transparent)]"
+                        className="inline-flex items-center rounded-md border border-[color-mix(in_srgb,var(--xf-xoptions-accent)_38%,transparent)] bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_8%,transparent)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--xf-xoptions-accent)] xf-shadow-hairline-inset hover:bg-[color-mix(in_srgb,var(--xf-xoptions-accent)_16%,transparent)]"
                         href={toXoptionsHref(row)}
                       >
                         Open in xOptions
@@ -1025,7 +1025,7 @@ function ReportTable(props: {
                       {props.applyEnabled ? (
                         <div className="flex flex-col gap-1">
                           <button
-                            className="inline-flex items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_48%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.65rem] font-bold text-[var(--xf-gain-green)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_48%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] px-2 py-1 text-[0.65rem] font-bold text-[var(--xf-gain-green)] xf-shadow-hairline-inset-10 hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={applyPending}
                             type="button"
                             onClick={() => props.onApplyToWatchlist(row)}
@@ -1092,7 +1092,7 @@ function ReportTable(props: {
             const whyExpanded = expandedWhyId === row.rowId;
             return (
               <article
-                className="rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_5%,var(--xf-surface-700))] p-3 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--xf-text-100)_6%,transparent)]"
+                className="rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_5%,var(--xf-surface-700))] p-3 xf-shadow-hairline-inset-6"
                 key={row.rowId || `${row.source}-${row.symbol}-mobile-${idx}`}
               >
                 <InstrumentStack row={row} />

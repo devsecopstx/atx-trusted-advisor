@@ -8,9 +8,7 @@ import {
     type PortfolioAlertRowVm
 } from "@/app/portfolio/alerts/portfolio-alerts-interactive";
 import type { PriceRuleRowVm } from "@/app/portfolio/alerts/portfolio-alerts-types";
-import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
-import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
+import { PortfolioWorkspaceProductShell } from "@/app/portfolio/ui/portfolio-workspace-product-shell";
 import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -198,21 +196,14 @@ export default async function PortfolioAlertsPage({
   ]);
 
   return (
-    <div className="xchat-shell">
-      <AppUserApprovedHeader
-        current="portfolio"
-        feedbackPageLabel="Alerts"
-        session={session}
-        workspaceTenant={workspaceTenant}
-      />
-
-      <div className="xchat-body portfolio-page-body" style={{ padding: 0 }}>
-        <AppUserCollapsibleRailLayout
-          mainClassName="app-user-shell-with-rail--padded"
-          rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
-          railChrome="workspace-product"
-        >
-          {workspaceError || !portfolioId ? (
+    <PortfolioWorkspaceProductShell
+      bodyStyle={{ padding: 0 }}
+      feedbackPageLabel="Alerts"
+      session={session}
+      workspaceRailProps={workspaceRailProps}
+      workspaceTenant={workspaceTenant}
+    >
+      {workspaceError || !portfolioId ? (
             <div
               className="hero-card xf-noise-overlay"
               style={{ maxWidth: "640px", margin: "1rem auto", padding: "1rem" }}
@@ -272,8 +263,6 @@ export default async function PortfolioAlertsPage({
               />
             </section>
           )}
-        </AppUserCollapsibleRailLayout>
-      </div>
-    </div>
+    </PortfolioWorkspaceProductShell>
   );
 }

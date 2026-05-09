@@ -38,7 +38,7 @@ export function LandingProductScreenshot({
   }
 
   return (
-    <div className="mt-4 overflow-hidden rounded-[var(--xf-radius-md)] border border-white/15 bg-[var(--xf-surface-700)] ring-1 ring-inset ring-white/10 shadow-[0_8px_28px_-10px_color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)]">
+    <div className="mt-4 overflow-hidden rounded-[var(--xf-radius-md)] border border-white/15 bg-[var(--xf-surface-700)] ring-1 ring-inset ring-white/10 xf-shadow-elev-green-soft">
       <div className="relative h-32 w-full sm:h-40 md:h-44">
         <Image
           alt={alt}
