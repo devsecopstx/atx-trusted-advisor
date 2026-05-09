@@ -47,6 +47,7 @@ export type XchatThreadPanelProps = {
   threadId: string;
   onMessageFeedback?: (messageId: string, vote: "up" | "down") => void;
   onRegeneratePrompt?: (pairedPrompt: string) => void;
+  onNewThread?: () => void;
   /** Stop in-flight prompt (same client abort as composer Stop). */
   onCancelAsk?: () => void;
 } & XchatThreadPanelCopyProps;
@@ -81,9 +82,12 @@ export function XchatThreadPanel({
   threadId,
   onMessageFeedback,
   onRegeneratePrompt,
+  onNewThread,
   onCancelAsk
 }: XchatThreadPanelProps) {
   const askWaitSeconds = Math.floor(askElapsedMs / 1000);
+  const latestAssistantMessage = [...messages].reverse().find((msg) => msg.role === "ai");
+  const showRetainedContextBadge = latestAssistantMessage?.contextRetainedFromPriorTurns === true;
   return (
     <div className="xchat-thread-area">
       {threadUiCollapsed && messages.length > 0 && !loading ? (
@@ -117,15 +121,25 @@ export function XchatThreadPanel({
           className={`xchat-messages${threadMainVirtualize ? " xchat-messages--virtual-thread" : ""}`}
         >
           {messages.length > 0 ? (
-            <button
-              aria-expanded
-              className="xchat-thread-minimize"
-              type="button"
-              onClick={() => setThreadUiCollapsed(true)}
-            >
-              <XchatThreadCollapseChevronIcon />
-              <span>Minimize thread</span>
-            </button>
+            <div className="xchat-thread-minimize-row">
+              <button
+                aria-expanded
+                className="xchat-thread-minimize"
+                type="button"
+                onClick={() => setThreadUiCollapsed(true)}
+              >
+                <XchatThreadCollapseChevronIcon />
+                <span>Minimize thread</span>
+              </button>
+              {onNewThread ? (
+                <button className="xchat-thread-minimize" type="button" onClick={onNewThread}>
+                  <span>New thread</span>
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {showRetainedContextBadge ? (
+            <div className="xchat-thread-retained-badge">Context retained from prior turns</div>
           ) : null}
 
           {messages.length === 0 ? (

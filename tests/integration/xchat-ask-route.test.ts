@@ -540,6 +540,107 @@ describe("xchat ask route collection retrieval", () => {
     }
   });
 
+  it("keeps five-turn conservative wheel continuity with portfolio context in-thread", async () => {
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atx_function" }]
+        }
+      })
+    );
+    repositoryMocks.getPersonaById.mockResolvedValue(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atx_function" }]
+        }
+      })
+    );
+
+    const threadId = "thread_hnwi_wheel_5turn";
+    const portfolioId = "507f1f77bcf86cd799439044";
+    const turns = [
+      {
+        message: "Suggest conservative income strategy for this month.",
+        recentMessages: [
+          {
+            role: "assistant" as const,
+            content:
+              "Portfolio snapshot: $279,524 cost basis, 36% cash, account mix TOD/IRA/ROTH/Joint."
+          }
+        ]
+      },
+      {
+        message: "Focus NVDA and TSLA first.",
+        recentMessages: [
+          {
+            role: "assistant" as const,
+            content:
+              "Prior recommendation: covered calls on NVDA and wheel overlay on TSLA with conservative delta."
+          }
+        ]
+      },
+      {
+        message: "Show me downside protection alternatives.",
+        recentMessages: [
+          {
+            role: "assistant" as const,
+            content: "Prior recommendation kept wheel overlay for TSLA and flagged concentration in top 3 names."
+          }
+        ]
+      },
+      {
+        message: "Use expert depth and keep risk conservative.",
+        recentMessages: [
+          {
+            role: "assistant" as const,
+            content: "Last scan favored covered-call income over aggressive call spreads."
+          }
+        ]
+      },
+      {
+        message: "Finalize next actions for this week.",
+        recentMessages: [
+          {
+            role: "assistant" as const,
+            content:
+              "Carry forward: wheel overlay on NVDA with conservative sizing; review concentration before new risk."
+          }
+        ]
+      }
+    ];
+
+    for (const turn of turns) {
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: turn.message,
+            threadId,
+            portfolioId,
+            strategyJobOptOut: true,
+            recentMessages: turn.recentMessages
+          })
+        })
+      );
+      expect(response.status).toBe(200);
+    }
+
+    expect(workspaceSnapshotMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledTimes(5);
+    const allSystemPrompts = xaiMocks.respondWithXaiToolLoop.mock.calls
+      .map((call) => (call[0] as { systemPrompt: string }).systemPrompt)
+      .join("\n");
+    expect(allSystemPrompts).toContain("Recent thread messages");
+    expect(allSystemPrompts).toContain("279,524");
+    expect(allSystemPrompts).toContain("wheel overlay");
+  });
+
   it("uses no RAG context when TEAM collection search returns empty (no mongo fallback)", async () => {
     xaiMocks.searchDocumentsInCollections.mockResolvedValueOnce([]);
 

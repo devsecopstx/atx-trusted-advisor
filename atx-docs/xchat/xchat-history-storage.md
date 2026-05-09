@@ -24,7 +24,14 @@
 
 ## Remote xAI conversation state
 
-- **`XCHAT_USE_REMOTE_HISTORY`** — parsed in **`src/lib/env.ts`** (default **`false`**). When **`true`**, `POST /api/xchat/ask` sets `store_messages` and, when `threadId` + prior `xaiResponseId` exist (same `personaId`), sends `previous_response_id` and omits Mongo recent-turn injection for that continuation. Disabled when `keepXchatHistory` is false on the persona, on vision turns, or without `threadId`. **Persona edits:** xAI does not allow sending `instructions` together with `previous_response_id`; the remote chain keeps the **first** turn’s system prompt. Ask stores **`xchatInstructionsFingerprint`** on each `xchat_logs` row (`computeXchatRemoteChainInstructionsFingerprint` in **`xchat-prompt-build.ts`**) and **starts a fresh chain** (drops `previous_response_id`, uses client `recentMessages` + new `instructions`) when the fingerprint no longer matches—so Mongo-updated persona text and tool/citation flags apply on the next turn.
+- **`XCHAT_USE_REMOTE_HISTORY`** — parsed in **`src/lib/env.ts`** (default **`false`**). When **`true`** and the user has opted into **Keep last 10 messages**, `POST /api/xchat/ask` sets `store_messages` and, when `threadId` + prior `xaiResponseId` exist (same `personaId`), sends `previous_response_id` and omits Mongo recent-turn injection for that continuation. Disabled when keep-last-10 is off (ephemeral mode), when `keepXchatHistory` is false on the persona, or on vision turns. **Persona edits:** xAI does not allow sending `instructions` together with `previous_response_id`; the remote chain keeps the **first** turn’s system prompt. Ask stores **`xchatInstructionsFingerprint`** on each `xchat_logs` row (`computeXchatRemoteChainInstructionsFingerprint` in **`xchat-prompt-build.ts`**) and **starts a fresh chain** (drops `previous_response_id`, uses client `recentMessages` + new `instructions`) when the fingerprint no longer matches—so Mongo-updated persona text and tool/citation flags apply on the next turn.
+
+## Threaded rails + hydration
+
+- `POST /api/xchat/ask` always resolves a `threadId` (request value or server-generated UUID) and echoes it in `data.metadata.threadId`.
+- `GET /api/xchat/threads` returns newest-first thread summaries (title preview, `lastMessageAt`, turn count) for the current app-user tenant scope.
+- `GET /api/xchat/history?threadId=...` hydrates one thread (newest-first turns); `/xchat` uses this for sidebar thread selection and instant thread restore.
+- `DELETE /api/xchat/history?threadId=...` can purge one thread; omitting `threadId` keeps the existing full-history delete behavior.
 
 ## Ask JSON envelope (`data.content` + `data.metadata`)
 

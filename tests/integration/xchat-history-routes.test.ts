@@ -7,6 +7,7 @@ const authMocks = vi.hoisted(() => ({
 
 const repositoryMocks = vi.hoisted(() => ({
   listXChatHistoryByUser: vi.fn(),
+  listXChatThreadsByUser: vi.fn(),
   deleteXChatHistoryByUser: vi.fn(),
   getXChatHistoryStatsByUser: vi.fn(),
   resolveDefaultXchatPersonaForSession: vi.fn()
@@ -32,6 +33,7 @@ vi.mock("@/modules/xchat/user-preferences-repository", () => prefsMocks);
 
 import { DELETE as deleteHistory, GET as getHistory } from "@/app/api/xchat/history/route";
 import { GET as getHistoryStats } from "@/app/api/xchat/history/stats/route";
+import { GET as getThreads } from "@/app/api/xchat/threads/route";
 
 describe("xchat history routes", () => {
   beforeEach(() => {
@@ -64,6 +66,15 @@ describe("xchat history routes", () => {
       lastPromptAt: new Date("2026-03-20T12:00:00.000Z")
     });
     repositoryMocks.deleteXChatHistoryByUser.mockResolvedValue(3);
+    repositoryMocks.listXChatThreadsByUser.mockResolvedValue([
+      {
+        threadId: "thread-hnwi-1",
+        title: "Wheel overlay for NVDA",
+        lastMessageAt: new Date("2026-03-20T12:00:00.000Z"),
+        turnCount: 5,
+        lastMessage: "wheel overlay refresh"
+      }
+    ]);
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue({
       xaiCollection: { collectionId: "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236" }
     });
@@ -135,6 +146,18 @@ describe("xchat history routes", () => {
     );
   });
 
+  it("forwards threadId filter to repository", async () => {
+    const response = await getHistory(
+      new Request("http://127.0.0.1/api/xchat/history?limit=10&threadId=thread-hnwi-1")
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.listXChatHistoryByUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: "thread-hnwi-1"
+      })
+    );
+  });
+
   it("returns 400 for invalid cursorId", async () => {
     const response = await getHistory(
       new Request(
@@ -145,11 +168,27 @@ describe("xchat history routes", () => {
   });
 
   it("deletes history for current user", async () => {
-    const response = await deleteHistory();
+    const response = await deleteHistory(new Request("http://127.0.0.1/api/xchat/history"));
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { data: { ok: boolean; deletedCount: number } };
     expect(payload.data.ok).toBe(true);
     expect(payload.data.deletedCount).toBe(3);
     expect(repositoryMocks.deleteXChatHistoryByUser).toHaveBeenCalled();
+  });
+
+  it("lists thread summaries newest-first", async () => {
+    const response = await getThreads(
+      new Request("http://127.0.0.1/api/xchat/threads?limit=10")
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      data: {
+        items: Array<{ threadId: string; title: string; turnCount: number; lastMessageAt: string }>;
+      };
+    };
+    expect(payload.data.items[0]?.threadId).toBe("thread-hnwi-1");
+    expect(payload.data.items[0]?.title).toContain("Wheel overlay");
+    expect(payload.data.items[0]?.turnCount).toBe(5);
+    expect(payload.data.items[0]?.lastMessageAt).toContain("2026-03-20T12:00:00.000Z");
   });
 });

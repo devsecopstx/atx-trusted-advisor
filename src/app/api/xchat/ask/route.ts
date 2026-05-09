@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
@@ -366,7 +366,7 @@ export async function POST(request: Request) {
   const messageForPersistence = visionImage
     ? `[image:${visionImage.mediaType}] ${messageTrimmed || "(paste)"}`
     : messageRaw;
-  const threadId = parsed.data.threadId?.trim() || undefined;
+  const threadId = parsed.data.threadId?.trim() || randomUUID();
   let workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
   const showWatchlistIntent = isShowWatchlistIntent(messageTrimmed);
   const watchlistPortfolioSlot = collectWatchlistPortfolioIdSlot({
@@ -1361,8 +1361,8 @@ export async function POST(request: Request) {
 
   const useRemoteConversationHistory =
     isXchatRemoteHistoryEnabled() &&
+    shouldPersistHistory &&
     persona?.keepXchatHistory !== false &&
-    Boolean(threadId) &&
     Boolean(userId) &&
     !visionImage;
 
@@ -1505,6 +1505,7 @@ export async function POST(request: Request) {
     modelSelectionSource,
     multiAgentDowngraded,
     effectiveModel,
+    remoteHistoryContinuation: Boolean(useRemoteConversationHistory && previousResponseId),
     limiterRemainingMinute,
     limiterRemainingHour,
     limiterRemainingDay,

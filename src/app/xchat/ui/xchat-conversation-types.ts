@@ -35,6 +35,7 @@ export type Message = {
   interactionMeta?: XchatInteractionMeta;
   /** User prompt that produced this assistant message (regenerate). */
   pairedUserPrompt?: string;
+  contextRetainedFromPriorTurns?: boolean;
   feedbackVote?: "up" | "down" | null;
   /** Token-stream tool indicators; cleared when the turn completes. */
   liveToolStatuses?: XchatLiveToolStatus[];
@@ -42,6 +43,7 @@ export type Message = {
 
 export type HistoryItem = {
   id: string;
+  threadId?: string;
   message: string;
   response: string;
   model: string;
@@ -50,6 +52,14 @@ export type HistoryItem = {
   contextReferenceCount: number;
   toolCallCount: number;
   interactionGenerationMs?: number;
+};
+
+export type ThreadItem = {
+  threadId: string;
+  title: string;
+  lastMessageAt: string;
+  turnCount: number;
+  lastMessage: string;
 };
 
 export type HistoryStats = {

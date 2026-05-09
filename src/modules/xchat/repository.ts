@@ -17,7 +17,8 @@ import type {
     RagSourceFile,
     XChatHistoryItem,
     XChatHistoryStats,
-    XChatSessionLog
+    XChatSessionLog,
+    XChatThreadItem
 } from "@/modules/xchat/types";
 import { getXchatPlatformSettings } from "@/modules/xchat/xchat-platform-settings";
 
@@ -661,6 +662,7 @@ export async function listXChatHistoryByUser(input: {
   userId: ObjectId;
   tenantId?: ObjectId | null;
   limit: number;
+  threadId?: string;
   before?: Date;
   beforeId?: ObjectId;
 }): Promise<XChatHistoryItem[]> {
@@ -669,6 +671,10 @@ export async function listXChatHistoryByUser(input: {
   const query: Record<string, unknown> = {
     userId: input.userId
   };
+  const threadId = input.threadId?.trim();
+  if (threadId) {
+    query.threadId = threadId;
+  }
   if (input.before) {
     if (input.beforeId) {
       query.$or = [
@@ -689,6 +695,7 @@ export async function listXChatHistoryByUser(input: {
 
   return logs.map((log) => ({
     id: log._id?.toHexString() ?? "",
+    threadId: log.threadId,
     message: log.message,
     response: log.response,
     model: log.model,
@@ -703,13 +710,62 @@ export async function listXChatHistoryByUser(input: {
   }));
 }
 
+export async function listXChatThreadsByUser(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+  limit: number;
+}): Promise<XChatThreadItem[]> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const scoped = mongoXchatLogsTenantScope({ userId: input.userId }, input.tenantId, "userTenant");
+  const match: Record<string, unknown> = {
+    $and: [scoped, { threadId: { $type: "string", $gt: "" } }]
+  };
+  const rows = await db
+    .collection<XChatSessionLog>(collections.chatLogs)
+    .aggregate<{
+      _id: string;
+      lastMessageAt: Date;
+      turnCount: number;
+      lastMessage: string;
+    }>([
+      { $match: match },
+      { $sort: { createdAt: -1, _id: -1 } },
+      {
+        $group: {
+          _id: "$threadId",
+          lastMessageAt: { $first: "$createdAt" },
+          turnCount: { $sum: 1 },
+          lastMessage: { $first: "$message" }
+        }
+      },
+      { $sort: { lastMessageAt: -1 } },
+      { $limit: Math.min(200, Math.max(1, input.limit)) }
+    ])
+    .toArray();
+
+  return rows.map((row) => ({
+    threadId: row._id,
+    title: buildThreadTitle(row.lastMessage),
+    lastMessageAt: row.lastMessageAt,
+    turnCount: row.turnCount,
+    lastMessage: row.lastMessage
+  }));
+}
+
 export async function deleteXChatHistoryByUser(input: {
   userId: ObjectId;
   tenantId?: ObjectId | null;
+  threadId?: string;
 }): Promise<number> {
   await ensureXchatLogIndexes();
   const db = await getDb();
-  const scopedQuery = mongoXchatLogsTenantScope({ userId: input.userId }, input.tenantId, "userTenant");
+  const base: Record<string, unknown> = { userId: input.userId };
+  const threadId = input.threadId?.trim();
+  if (threadId) {
+    base.threadId = threadId;
+  }
+  const scopedQuery = mongoXchatLogsTenantScope(base, input.tenantId, "userTenant");
   const result = await db.collection<XChatSessionLog>(collections.chatLogs).deleteMany(scopedQuery);
   return result.deletedCount ?? 0;
 }
@@ -1014,5 +1070,13 @@ export function normalizePersonaNameKey(name: string): string {
 
 function isDuplicateKeyError(error: unknown): boolean {
   return error instanceof MongoServerError && error.code === 11000;
+}
+
+function buildThreadTitle(lastMessageRaw: string): string {
+  const normalized = lastMessageRaw.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "New thread";
+  }
+  return normalized.length > 72 ? `${normalized.slice(0, 72)}...` : normalized;
 }
 

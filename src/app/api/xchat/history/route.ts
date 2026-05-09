@@ -15,7 +15,8 @@ import {
 const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.string().datetime().optional(),
-  cursorId: z.string().optional()
+  cursorId: z.string().optional(),
+  threadId: z.string().trim().min(1).max(128).optional()
 });
 
 export async function GET(request: Request) {
@@ -37,7 +38,8 @@ export async function GET(request: Request) {
   const parsed = historyQuerySchema.safeParse({
     limit: url.searchParams.get("limit") ?? undefined,
     cursor: url.searchParams.get("cursor") ?? undefined,
-    cursorId: url.searchParams.get("cursorId") ?? undefined
+    cursorId: url.searchParams.get("cursorId") ?? undefined,
+    threadId: url.searchParams.get("threadId") ?? undefined
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -61,6 +63,7 @@ export async function GET(request: Request) {
     userId,
     tenantId: tenantOid,
     limit: take + 1,
+    threadId: parsed.data.threadId,
     before: parsed.data.cursor ? new Date(parsed.data.cursor) : undefined,
     beforeId: cursorIdRaw ? new ObjectId(cursorIdRaw) : undefined
   });
@@ -91,7 +94,7 @@ export async function GET(request: Request) {
   });
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   const auth = await requireSessionAndAppTenantObjectId();
   if (auth instanceof NextResponse) {
     return auth;
@@ -103,10 +106,13 @@ export async function DELETE() {
   }
 
   const userId = new ObjectId(session.userId);
+  const url = new URL(request.url);
+  const parsedThreadId = url.searchParams.get("threadId") ?? undefined;
 
   const deletedCount = await deleteXChatHistoryByUser({
     userId,
-    tenantId: tenantOid
+    tenantId: tenantOid,
+    threadId: parsedThreadId
   });
 
   return NextResponse.json({

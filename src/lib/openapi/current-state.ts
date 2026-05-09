@@ -1222,6 +1222,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/xchat/threads",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xchat"
+  },
+  {
     path: "/api/xchat/history/stats",
     operations: [{ method: "GET", auth: "session" }],
     tag: "xchat"

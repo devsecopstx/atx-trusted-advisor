@@ -1753,6 +1753,24 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   cursor: pointer;
 }
 
+.xchat-thread-minimize-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.xchat-thread-retained-badge {
+  align-self: flex-start;
+  margin: 0.2rem 0 0.35rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(57, 255, 20, 0.4);
+  background: rgba(57, 255, 20, 0.1);
+  color: var(--xf-gain-green);
+  font-size: 0.68rem;
+  letter-spacing: 0.01em;
+}
+
 .xchat-thread-minimize:hover {
   border-color: rgba(255, 255, 255, 0.2);
   color: var(--xf-text-100);

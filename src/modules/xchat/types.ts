@@ -306,6 +306,7 @@ export type XChatSessionLog = {
 
 export type XChatHistoryItem = {
   id: string;
+  threadId?: string;
   message: string;
   response: string;
   model: string;
@@ -315,6 +316,14 @@ export type XChatHistoryItem = {
   toolCallCount: number;
   /** Present when the turn was saved after this field shipped (ms). */
   interactionGenerationMs?: number;
+};
+
+export type XChatThreadItem = {
+  threadId: string;
+  title: string;
+  lastMessageAt: Date;
+  turnCount: number;
+  lastMessage: string;
 };
 
 export type XChatHistoryStats = {

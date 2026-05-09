@@ -32,6 +32,7 @@ import type {
     HistoryItem,
     HistoryStats,
     Message,
+    ThreadItem,
     XchatInteractionMeta
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
@@ -146,6 +147,13 @@ const XCHAT_QUOTE_FRESHNESS_STORAGE_KEY = "xchat_quote_freshness_v1";
 const XCHAT_UI_RESPONSE_LIMIT = 3;
 
 const THREAD_MAIN_VIRTUAL_MIN = 18;
+
+function createThreadId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `thread_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function filterRailHistoryItems(items: HistoryItem[], workspaceHistoryMax: number): HistoryItem[] {
   const nowMs = Date.now();
@@ -368,7 +376,7 @@ export function XchatConversation({
     return historyItemsToTranscriptMessages(serverBootstrap.historyItemsNewestFirst as HistoryItem[]);
   });
   const [strategyJobOptOut, setStrategyJobOptOut] = useState(false);
-  const [savedHistory, setSavedHistory] = useState<HistoryItem[]>(() => {
+  const [, setSavedHistory] = useState<HistoryItem[]>(() => {
     if (!serverBootstrap?.keepLastTenMessages) {
       return [];
     }
@@ -408,10 +416,11 @@ export function XchatConversation({
   const [privacyPrefsError, setPrivacyPrefsError] = useState<string | null>(null);
   const [historyDeleteBusy, setHistoryDeleteBusy] = useState(false);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
+  const [threadItems, setThreadItems] = useState<ThreadItem[]>([]);
   /** After send, hide the transcript for a minimal view; user expands to read the thread. */
   /** Default collapsed when a thread exists; expanded while `loading` so replies stay visible (branding). */
   const [threadUiCollapsed, setThreadUiCollapsed] = useState(true);
-  const [threadId] = useState(() => {
+  const [activeThreadId, setActiveThreadId] = useState(() => {
     if (typeof window !== "undefined") {
       try {
         const fromUrl = new URLSearchParams(window.location.search).get("thread")?.trim();
@@ -422,10 +431,7 @@ export function XchatConversation({
         /* ignore */
       }
     }
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-      return crypto.randomUUID();
-    }
-    return `thread_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    return createThreadId();
   });
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -497,14 +503,14 @@ export function XchatConversation({
     }
     try {
       const url = new URL(window.location.href);
-      if (url.searchParams.get("thread") !== threadId) {
-        url.searchParams.set("thread", threadId);
+      if (url.searchParams.get("thread") !== activeThreadId) {
+        url.searchParams.set("thread", activeThreadId);
         window.history.replaceState({}, "", url.toString());
       }
     } catch {
       /* ignore */
     }
-  }, [threadId]);
+  }, [activeThreadId]);
 
   const handleMessageFeedback = useCallback((messageId: string, vote: "up" | "down") => {
     setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, feedbackVote: vote } : m)));
@@ -541,9 +547,9 @@ export function XchatConversation({
     [messages]
   );
 
-  const historyListVirtualize = savedHistory.length > 14;
+  const historyListVirtualize = threadItems.length > 14;
   const historyVirtualizer = useVirtualizer({
-    count: savedHistory.length,
+    count: threadItems.length,
     getScrollElement: () => historyRailScrollRef.current,
     estimateSize: () => 44,
     overscan: 8
@@ -551,17 +557,21 @@ export function XchatConversation({
   const historyMode = historyStats?.historyMode ?? (privacyPrefs?.keepLastTenMessages ? "mongo" : "ephemeral");
   const isEphemeralHistoryMode = historyMode === "ephemeral";
 
-  /** `savedHistory` is newest-first; include the clicked turn and all older stored turns (chronological transcript). */
-  const applyHistoryItemToThread = useCallback(
-    (item: HistoryItem) => {
-      const idx = savedHistory.findIndex((h) => h.id === item.id);
-      if (idx < 0) {
+  const hydrateThread = useCallback(
+    async (threadId: string) => {
+      const res = await fetch(`/api/xchat/history?threadId=${encodeURIComponent(threadId)}&limit=${uiPromptLimit}`);
+      if (!res.ok) {
         return;
       }
-      const subset = savedHistory.slice(idx);
-      const thread = historyItemsToTranscriptMessages(subset);
+      const payload = (await res.json().catch(() => ({}))) as {
+        data?: { items?: HistoryItem[] };
+      };
+      const items = payload.data?.items ?? [];
+      const thread = historyItemsToTranscriptMessages(items);
       const { next } = trimTranscriptToRecentPrompts(thread, uiPromptLimit);
       setMessages(next);
+      setSavedHistory(items);
+      setActiveThreadId(threadId);
       setInput("");
       setStrategyJobOptOut(false);
       setThreadUiCollapsed(false);
@@ -571,8 +581,30 @@ export function XchatConversation({
         composerRef.current?.focus();
       });
     },
-    [savedHistory, uiPromptLimit]
+    [uiPromptLimit]
   );
+
+  const refreshThreadItems = useCallback(async () => {
+    const res = await fetch(`/api/xchat/threads?limit=${Math.max(20, uiPromptLimit * 3)}`);
+    if (!res.ok) {
+      return;
+    }
+    const payload = (await res.json().catch(() => ({}))) as {
+      data?: { items?: ThreadItem[] };
+    };
+    setThreadItems(payload.data?.items ?? []);
+  }, [uiPromptLimit]);
+
+  const startNewThread = useCallback(() => {
+    const nextThreadId = createThreadId();
+    setActiveThreadId(nextThreadId);
+    setMessages([]);
+    setSavedHistory([]);
+    setInput("");
+    setStrategyJobOptOut(false);
+    setThreadUiCollapsed(false);
+    queueMicrotask(() => composerRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -805,7 +837,9 @@ export function XchatConversation({
         return;
       }
       try {
-        const res = await fetch(`/api/xchat/history?limit=${uiPromptLimit}`);
+        const res = await fetch(
+          `/api/xchat/history?threadId=${encodeURIComponent(activeThreadId)}&limit=${uiPromptLimit}`
+        );
         const payload = (await res.json().catch(() => ({}))) as {
           data?: { items?: HistoryItem[] };
         };
@@ -817,6 +851,7 @@ export function XchatConversation({
           return;
         }
         const thread = historyItemsToTranscriptMessages(items);
+        setSavedHistory(items);
         setMessages((prev) => (prev.length > 0 ? prev : thread));
       } catch {
         // non-fatal: empty thread until first send
@@ -826,7 +861,7 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, serverBootstrap, uiPromptLimit]);
+  }, [activeThreadId, privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, serverBootstrap, uiPromptLimit]);
 
   useEffect(() => {
     let active = true;
@@ -988,31 +1023,38 @@ export function XchatConversation({
         const resolvedHistoryMode = statsPayload.data?.historyMode ?? "mongo";
         setHistoryStats(statsPayload.data ?? null);
         if (resolvedHistoryMode === "ephemeral" || !privacyPrefs?.keepLastTenMessages) {
+          setThreadItems([]);
           setSavedHistory([]);
           setHistoryLoaded(true);
           return;
         }
+        const threadsRes = await fetch(`/api/xchat/threads?limit=${Math.max(20, uiPromptLimit * 3)}`);
+        const threadsPayload = (await threadsRes.json().catch(() => ({}))) as {
+          data?: { items?: ThreadItem[] };
+          error?: string;
+        };
+        if (!threadsRes.ok) {
+          throw new Error(threadsPayload.error ?? `Threads request failed (${threadsRes.status})`);
+        }
+        if (!active) {
+          return;
+        }
+        const items = (threadsPayload.data?.items ?? []).slice(0, workspaceChatHistoryMax * 3);
+        setThreadItems(items);
+
         if (skipRailHistoryListFetchOnceRef.current) {
           skipRailHistoryListFetchOnceRef.current = false;
           setHistoryLoaded(true);
           return;
         }
-        const historyRes = await fetch(`/api/xchat/history?limit=${uiPromptLimit}`);
-        const historyPayload = (await historyRes.json().catch(() => ({}))) as {
-          data?: { items?: HistoryItem[] };
-          error?: string;
-        };
-        if (!historyRes.ok) {
-          throw new Error(historyPayload.error ?? `History request failed (${historyRes.status})`);
+
+        const initialThreadId = activeThreadId || items[0]?.threadId;
+        if (initialThreadId) {
+          await hydrateThread(initialThreadId);
+        } else {
+          setSavedHistory([]);
+          setMessages([]);
         }
-        if (!active) {
-          return;
-        }
-        const filteredRecentHistory = filterRailHistoryItems(
-          historyPayload.data?.items ?? [],
-          workspaceChatHistoryMax
-        );
-        setSavedHistory(filteredRecentHistory);
         setHistoryLoaded(true);
       } catch (error) {
         if (!active) {
@@ -1030,7 +1072,15 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [historyLoaded, privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, uiPromptLimit, workspaceChatHistoryMax]);
+  }, [
+    activeThreadId,
+    historyLoaded,
+    hydrateThread,
+    privacyPrefs?.keepLastTenMessages,
+    privacyPrefsLoading,
+    uiPromptLimit,
+    workspaceChatHistoryMax
+  ]);
 
   useEffect(() => {
     try {
@@ -1160,7 +1210,9 @@ export function XchatConversation({
         throw new Error(payload.error ?? `Delete failed (${response.status})`);
       }
       setSavedHistory([]);
+      setThreadItems([]);
       setMessages([]);
+      setActiveThreadId(createThreadId());
       setStrategyJobOptOut(false);
       setHistoryStats((prev) =>
         prev
@@ -1317,7 +1369,7 @@ export function XchatConversation({
       } = {
         message: prompt,
         scope: "global",
-        threadId,
+        threadId: activeThreadId,
         strategyJobOptOut: nextStrategyOptOut,
         recentMessages: buildAskRecentMessages(messages, 10),
         quoteFreshness
@@ -1359,6 +1411,10 @@ export function XchatConversation({
             cachedPromptTokens?: number;
           };
           interactionMeta?: XchatInteractionMeta;
+          contextRetainedFromPriorTurns?: boolean;
+          metadata?: {
+            threadId?: string;
+          };
         };
         error?: string;
         code?: string;
@@ -1396,6 +1452,8 @@ export function XchatConversation({
       const handleAskSuccess = (data: NonNullable<AskPayload["data"]>) => {
         const resolvedName = data.personaName ?? activePersonaName;
         setActivePersonaName(resolvedName);
+        const effectiveThreadId = data.metadata?.threadId?.trim() || activeThreadId;
+        setActiveThreadId(effectiveThreadId);
 
         const logId = typeof data.logId === "string" ? data.logId : undefined;
         const historyItemId = logId || `local-${Date.now()}`;
@@ -1412,6 +1470,7 @@ export function XchatConversation({
               strategyJobOffer: Boolean(data.strategyJobOffer),
               optionsActionScan: data.optionsActionScan,
               interactionMeta: data.interactionMeta,
+              contextRetainedFromPriorTurns: data.contextRetainedFromPriorTurns === true,
               pairedUserPrompt: pairedUserPromptForTurn
             }
           ];
@@ -1421,6 +1480,7 @@ export function XchatConversation({
         setSavedHistory((prev) => {
           const nextItem: HistoryItem = {
             id: historyItemId,
+            threadId: effectiveThreadId,
             message: hasPasteImage && !prompt ? "[Pasted image]" : prompt,
             response: data.content ?? data.response ?? "",
             model: "xchat",
@@ -1432,6 +1492,7 @@ export function XchatConversation({
           const deduped = prev.filter((item) => item.id !== nextItem.id);
           return [nextItem, ...deduped].slice(0, uiPromptLimit);
         });
+        void refreshThreadItems();
         if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
           setInput(strategyStayRestorePromptRef.current);
           strategyStayRestorePromptRef.current = null;
@@ -1533,6 +1594,8 @@ export function XchatConversation({
                       : accumulated;
                 const resolvedName = data.personaName ?? activePersonaName;
                 setActivePersonaName(resolvedName);
+                const effectiveThreadId = data.metadata?.threadId?.trim() || activeThreadId;
+                setActiveThreadId(effectiveThreadId);
                 const logId = typeof data.logId === "string" ? data.logId : undefined;
                 const historyItemId = logId || `local-${Date.now()}`;
                 setMessages((prev) =>
@@ -1546,6 +1609,7 @@ export function XchatConversation({
                           strategyJobOffer: Boolean(data.strategyJobOffer),
                           optionsActionScan: data.optionsActionScan,
                           interactionMeta: data.interactionMeta,
+                          contextRetainedFromPriorTurns: data.contextRetainedFromPriorTurns === true,
                           liveToolStatuses: undefined,
                           pairedUserPrompt: pairedUserPromptForTurn
                         }
@@ -1555,6 +1619,7 @@ export function XchatConversation({
                 setSavedHistory((prev) => {
                   const nextItem: HistoryItem = {
                     id: historyItemId,
+                    threadId: effectiveThreadId,
                     message: hasPasteImage && !prompt ? "[Pasted image]" : prompt,
                     response: finalText,
                     model: "xchat",
@@ -1566,6 +1631,7 @@ export function XchatConversation({
                   const deduped = prev.filter((item) => item.id !== nextItem.id);
                   return [nextItem, ...deduped].slice(0, uiPromptLimit);
                 });
+                void refreshThreadItems();
                 if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
                   setInput(strategyStayRestorePromptRef.current);
                   strategyStayRestorePromptRef.current = null;
@@ -1731,8 +1797,13 @@ export function XchatConversation({
                     title="Chat history"
                   >
                     <div className="xchat-sidebar-privacy-row">
-                      <span className="xchat-sidebar-privacy-row__label">Keep your last 10 messages?</span>
-                      <label className="xchat-sidebar-privacy-row__control" aria-label="Keep your last 10 messages">
+                      <span className="xchat-sidebar-privacy-row__label">
+                        Keep last 10 messages (60-day retention, encrypted at rest). You can delete anytime.
+                      </span>
+                      <label
+                        className="xchat-sidebar-privacy-row__control"
+                        aria-label="Keep last 10 messages with 60-day retention"
+                      >
                         <input
                           checked={privacyPrefs?.keepLastTenMessages === true}
                           disabled={privacyPrefsLoading || privacyPrefsSaving}
@@ -1782,10 +1853,10 @@ export function XchatConversation({
                     ) : null}
                     {!isEphemeralHistoryMode && historyLoading ? <p className="status-text">Loading history...</p> : null}
                     {!isEphemeralHistoryMode && historyError ? <p className="status-text status-error">{historyError}</p> : null}
-                    {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length === 0 ? (
-                      <p className="status-text">No past chat history yet.</p>
+                    {!isEphemeralHistoryMode && !historyLoading && !historyError && threadItems.length === 0 ? (
+                      <p className="status-text">No threads yet.</p>
                     ) : null}
-                    {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length > 0 ? (
+                    {!isEphemeralHistoryMode && !historyLoading && !historyError && threadItems.length > 0 ? (
                       historyListVirtualize ? (
                         <div
                           ref={historyRailScrollRef}
@@ -1801,10 +1872,10 @@ export function XchatConversation({
                             }}
                           >
                             {historyVirtualizer.getVirtualItems().map((vi) => {
-                              const item = savedHistory[vi.index]!;
+                              const item = threadItems[vi.index]!;
                               return (
                                 <div
-                                  key={item.id}
+                                  key={item.threadId}
                                   className="xchat-rail-history-item"
                                   role="listitem"
                                   style={{
@@ -1816,15 +1887,15 @@ export function XchatConversation({
                                     transform: `translateY(${vi.start}px)`
                                   }}
                                 >
-                                  <XfHoverHint hint={item.message}>
+                                  <XfHoverHint hint={item.lastMessage}>
                                     <button
                                       className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
                                       type="button"
                                       onClick={() => {
-                                        applyHistoryItemToThread(item);
+                                        void hydrateThread(item.threadId);
                                       }}
                                     >
-                                      <span className="xchat-rail-link__text">{item.message}</span>
+                                      <span className="xchat-rail-link__text">{item.title}</span>
                                     </button>
                                   </XfHoverHint>
                                 </div>
@@ -1834,17 +1905,17 @@ export function XchatConversation({
                         </div>
                       ) : (
                         <ul className="xchat-rail-history-list">
-                          {savedHistory.map((item) => (
-                            <li className="xchat-rail-history-item" key={item.id}>
-                              <XfHoverHint hint={item.message}>
+                          {threadItems.map((item) => (
+                            <li className="xchat-rail-history-item" key={item.threadId}>
+                              <XfHoverHint hint={item.lastMessage}>
                                 <button
                                   className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
                                   type="button"
                                   onClick={() => {
-                                    applyHistoryItemToThread(item);
+                                    void hydrateThread(item.threadId);
                                   }}
                                 >
-                                  <span className="xchat-rail-link__text">{item.message}</span>
+                                  <span className="xchat-rail-link__text">{item.title}</span>
                                 </button>
                               </XfHoverHint>
                             </li>
@@ -1852,6 +1923,13 @@ export function XchatConversation({
                         </ul>
                       )
                     ) : null}
+                    <button
+                      className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
+                      type="button"
+                      onClick={startNewThread}
+                    >
+                      New thread
+                    </button>
                     <button
                       className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
                       disabled={historyDeleteBusy}
@@ -1963,12 +2041,13 @@ export function XchatConversation({
               onCancelAsk={cancelAskInFlight}
               onMessageFeedback={handleMessageFeedback}
               onRegeneratePrompt={handleRegeneratePrompt}
+              onNewThread={startNewThread}
               messagesEndRef={messagesEndRef}
               onStrategyJobLaunch={onStrategyJobLaunch}
               onStrategyJobStay={onStrategyJobStay}
               setThreadUiCollapsed={setThreadUiCollapsed}
               strategyJobLaunchBusy={strategyJobLaunchBusy}
-              threadId={threadId}
+              threadId={activeThreadId}
               threadMainVirtualize={threadMainVirtualize}
               threadScrollRef={threadScrollRef}
               threadUiCollapsed={threadUiCollapsed}

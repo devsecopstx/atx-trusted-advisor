@@ -35,10 +35,10 @@ export function XchatHeaderBrand({ compact = false }: XchatHeaderBrandProps) {
           <span className="xf-logo-title-advisor">Advisory</span>
         </span>
         <span
-          className={`inline-flex items-baseline gap-x-1 whitespace-nowrap tracking-tight ${taglineSizeClass} ${compact ? "ml-1" : "ml-2"}`}
+          className={`xf-header-tagline inline-flex items-baseline gap-x-1 whitespace-nowrap tracking-tight ${taglineSizeClass} ${compact ? "ml-1" : "ml-2"}`}
         >
           <span className="text-[var(--xf-text-100)]">No </span>
-          <span className="font-bold text-[var(--xf-lightning-yellow)]">Atoms</span>
+          <span className="xf-header-tagline-atoms font-bold text-[var(--xf-lightning-yellow)]">Atoms</span>
           <span className="text-[var(--xf-text-100)]"> moved, just </span>
           <span className="font-bold text-[var(--xf-gain-green)]">Gains</span>
           <span className="text-[var(--xf-text-100)]"> earned</span>

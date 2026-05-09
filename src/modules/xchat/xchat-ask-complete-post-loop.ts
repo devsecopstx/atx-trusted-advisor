@@ -53,6 +53,7 @@ export type XchatAskCompletePostLoopCtx = {
   modelSelectionSource: AskModelSelectionSource;
   multiAgentDowngraded: boolean;
   effectiveModel: string | undefined;
+  remoteHistoryContinuation: boolean;
   limiterRemainingMinute: number | undefined;
   limiterRemainingHour: number | undefined;
   limiterRemainingDay: number | undefined;
@@ -147,6 +148,7 @@ type XchatAskDataWithTiming = {
   multiAgentDowngraded?: true;
   personaModelRequested?: string;
   xaiUsage?: Record<string, unknown>;
+  contextRetainedFromPriorTurns?: boolean;
   interactionMeta: ReturnType<typeof buildXchatAskInteractionMeta>;
 };
 
@@ -352,6 +354,7 @@ export async function completeXchatAskAfterModelLoop(
                 }
               }
             : {}),
+          ...(ctx.remoteHistoryContinuation ? { contextRetainedFromPriorTurns: true } : {}),
           interactionMeta: mainLoopMeta
         },
         { persona: ctx.persona, threadId: ctx.threadId }

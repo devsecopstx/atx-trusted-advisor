@@ -10,6 +10,7 @@ import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-reposi
 /** Serializable for RSC → client (matches `HistoryItem` in xchat-conversation). */
 export type XchatShellHistoryRow = {
   id: string;
+  threadId?: string;
   message: string;
   response: string;
   model: string;
@@ -32,6 +33,7 @@ export type XchatServerShellBootstrap = {
 function serializeRow(row: XChatHistoryItem): XchatShellHistoryRow {
   return {
     id: row.id,
+    threadId: row.threadId,
     message: row.message,
     response: row.response,
     model: row.model,
