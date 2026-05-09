@@ -36,7 +36,6 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
   void props.current;
   void props.feedbackPageLabel;
 
-  const ws = props.workspaceTenant;
   const branding = useTenantShellBranding();
   const { allowedRoutes } = useTenantUxPolicy();
   const isPathVisible = useCallback(
@@ -47,8 +46,7 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
     [allowedRoutes]
   );
 
-  const tenantTitle = props.session.tenantId?.trim() ?? "";
-  const showTenantCard = Boolean(ws || branding?.tagline);
+  const showTenantCard = Boolean(branding?.tagline);
   const showResourcesNav = isPathVisible("/resources");
   const showBrokerImportNav = isPathVisible("/import-activity");
   const showTasksNav = isPathVisible("/resources");
@@ -119,17 +117,8 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
             ) : null}
             <WorkspaceRailAppearance variant="header" />
             {showTenantCard ? (
-              <div className="xchat-header-tenant-card" title={tenantTitle}>
-                {ws ? (
-                  <>
-                    <span className="xchat-header-tenant-card__name">{ws.name}</span>
-                    {branding?.tagline ? (
-                      <span className="xchat-header-tenant-card__tagline">{branding.tagline}</span>
-                    ) : null}
-                  </>
-                ) : branding?.tagline ? (
-                  <span className="xchat-header-tenant-card__tagline">{branding.tagline}</span>
-                ) : null}
+              <div className="xchat-header-tenant-card">
+                <span className="xchat-header-tenant-card__tagline">{branding?.tagline}</span>
               </div>
             ) : null}
           </div>

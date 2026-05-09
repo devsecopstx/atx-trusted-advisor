@@ -16,6 +16,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
+  isolation: isolate;
 }
 
 /** Full-viewport nebula + stars (canvas); sits under header + body. */
@@ -1506,26 +1508,25 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 
 .xchat-welcome-title {
   margin: 0;
-  font-size: clamp(1.35rem, 4vw, 1.85rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--xf-text-100);
 }
 
 .xchat-welcome-title--inline {
-  font-size: clamp(1.1rem, 2vw, 1.35rem);
-  line-height: 1.2;
+  font-size: clamp(1.3125rem, 2.1vw, 1.5rem);
+  line-height: 1.22;
   white-space: nowrap;
   flex: 0 0 auto;
 }
 
 .xchat-welcome-sub {
   margin: 0.35rem 0 0;
-  /* Match `.xchat-templates-strip__footnote` (“Curated + saved prompts …”) */
-  font-size: 0.62rem;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.45;
   color: var(--xf-text-400);
   overflow-wrap: anywhere;
 }
@@ -1861,6 +1862,8 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   flex-direction: column;
   gap: 0.875rem;
   padding: 1rem 0;
+  font-size: 14.5px;
+  line-height: 1.55;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1887,15 +1890,15 @@ html:not([data-xf-ui="soft"]) {
 html:not([data-xf-ui="soft"]) .xchat-messages {
   font-family: var(--xf-font-sans), system-ui, -apple-system, blinkmacsystemfont, "Segoe UI", roboto, "Helvetica Neue",
     arial, sans-serif;
-  font-size: 0.9375rem;
-  line-height: 1.6;
+  font-size: 14.5px;
+  line-height: 1.55;
   letter-spacing: -0.005em;
   font-weight: 400;
 }
 
 @media (max-width: 768px) {
   html:not([data-xf-ui="soft"]) .xchat-messages {
-    font-size: 0.90625rem;
+    font-size: 14.5px;
   }
 }
 
@@ -1975,8 +1978,8 @@ html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
 .xchat-msg {
   border-radius: var(--xf-radius-sm);
   padding: 0.75rem 1rem;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 14.5px;
+  line-height: 1.55;
   max-width: min(100%, 80%);
   min-width: 0;
   box-sizing: border-box;
@@ -3064,10 +3067,10 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 /** Elevated shell for Options Action Scan (xChat + shared report viewer). */
 .options-action-scan-root {
-  width: min(100%, 820px);
-  max-width: 820px;
-  margin: 12px 0;
-  padding: 20px 24px;
+  width: 100%;
+  max-width: 1480px;
+  margin: 12px auto;
+  padding: 0;
   box-shadow:
     var(--xf-shadow-card),
     inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 8%, transparent);
@@ -3593,10 +3596,10 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-templates-strip__library-heading {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 1rem;
+  line-height: 1.25;
   font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
   color: var(--xf-text-200);
   white-space: nowrap;
   min-width: 0;
@@ -3935,7 +3938,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   justify-content: center;
   gap: 0.35rem;
   min-height: 2.35rem;
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 1rem;
   border-radius: 12px;
   scroll-snap-align: start;
   text-align: center;
@@ -3943,8 +3946,8 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 @media (min-width: 768px) {
   .xchat-templates-strip__card--pill {
-    min-height: 2.45rem;
-    padding: 0.5rem 1rem;
+    min-height: 2.55rem;
+    padding: 0.625rem 1rem;
   }
 }
 
@@ -3953,14 +3956,16 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   -webkit-line-clamp: unset;
   -webkit-box-orient: unset;
   overflow: visible;
-  font-size: 0.8125rem;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
   white-space: nowrap;
   line-height: 1.25;
 }
 
 @media (min-width: 768px) {
   .xchat-templates-strip__card--pill .xchat-templates-strip__card-title {
-    font-size: 0.875rem;
+    font-size: 13px;
   }
 }
 
@@ -4315,8 +4320,9 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   border: none;
   margin: 0;
   padding: 0.28rem 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   cursor: pointer;
   color: var(--xf-text-400);
   background: transparent;
@@ -4351,8 +4357,9 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-reasoning-mode--compact .xchat-reasoning-mode__seg {
-  padding: 0.14rem 0.42rem;
-  font-size: 0.62rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 12px;
+  letter-spacing: -0.02em;
 }
 
 .xchat-composer-quote-row--toolbar {
@@ -4662,9 +4669,9 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-composer__textarea--grok {
   min-height: 2.55rem;
-  padding: 0.38rem 0.18rem;
-  font-size: 0.875rem;
-  line-height: 1.38;
+  padding: 0.875rem 0.18rem;
+  font-size: 15px;
+  line-height: 1.375;
 }
 
 .xchat-composer__textarea--grok.xchat-composer__textarea--singleline {
@@ -4674,8 +4681,8 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
-  font-size: 0.9375rem;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.375;
   letter-spacing: -0.005em;
 }
 
@@ -5136,7 +5143,7 @@ html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok.xchat-composer__te
   background: transparent;
   color: var(--xf-text-100);
   font: inherit;
-  font-size: 0.92rem;
+  font-size: 15px;
   padding: 0.45rem 0.35rem;
 }
 
@@ -5155,7 +5162,8 @@ html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok.xchat-composer__te
 }
 
 .xchat-composer__field::placeholder {
-  color: var(--xf-text-400);
+  color: color-mix(in srgb, var(--xf-text-400) 92%, var(--xf-bg-900));
+  font-size: 13px;
 }
 
 .xchat-composer__icon-btn {
@@ -5404,13 +5412,14 @@ html[data-xf-ui="soft"] .xchat-composer-examples__panel {
   display: inline-flex;
   align-items: center;
   gap: 0.32rem;
-  padding: 0.38rem 0.7rem;
+  padding: 0.5rem 1rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(0, 0, 0, 0.2);
   color: var(--xf-text-200, rgba(255, 255, 255, 0.86));
-  font-size: 0.74rem;
+  font-size: 12px;
   font-weight: 500;
+  letter-spacing: -0.2px;
   line-height: 1.2;
   text-decoration: none;
   max-width: 100%;
@@ -5429,8 +5438,8 @@ html[data-xf-ui="soft"] .xchat-composer-examples__panel {
 }
 
 .xchat-composer-nav__icon {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 1rem;
+  height: 1rem;
   flex-shrink: 0;
   opacity: 0.9;
 }
@@ -5635,7 +5644,23 @@ html[data-xf-ui="soft"] .xchat-composer__field {
 }
 
 html[data-xf-ui="soft"] .xchat-composer__field::placeholder {
-  color: var(--xf-text-400);
+  color: color-mix(in srgb, var(--xf-text-400) 64%, var(--xf-bg-900));
+}
+
+html[data-xf-ui="soft"] .xchat-templates-strip__card--scan {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+html[data-xf-ui="soft"] .xchat-reasoning-mode__seg--active {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+html[data-xf-ui="soft"] .xchat-welcome-sub {
+  color: color-mix(in srgb, var(--xf-text-400) 82%, var(--xf-bg-900));
+}
+
+html:not([data-xf-ui="soft"]) .xchat-welcome-sub {
+  color: color-mix(in srgb, var(--xf-text-400) 90%, transparent);
 }
 
 html[data-xf-ui="soft"] .xchat-composer__icon-btn {
@@ -5743,7 +5768,7 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
   .xchat-sjp {
     width: 100%;
     max-width: 100%;
-    padding: 16px;
+    padding: 0;
   }
 
   .xchat-shell > .workspace-product-sticky-top .xchat-header {

@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --font-size-base: 15px;
+  line-height: 1.6;
+  letter-spacing: -0.15px;
+}
+
 /* ── Shell theme (dark-only brand): Light = softer dark, Dark = deep, System = OS ── */
 html[data-xf-ui="soft"] {
   /* Lighten surfaces using the default (light) text token from :root — applied before text overrides below. */
@@ -21,6 +27,170 @@ html[data-xf-ui="soft"] {
   color-scheme: light;
   /** xOptions page shell — follow softened app canvas (see :root --xf-xoptions-surface in brand kit) */
   --xf-xoptions-surface: var(--xf-bg-900);
+}
+
+/* ── Root full-bleed background + transparency contract ── */
+html,
+body {
+  background: transparent !important;
+}
+
+/* Full-bleed skyline coverage */
+.bg-skyline-day,
+.bg-skyline-night {
+  background-position: center 55%;
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+}
+
+.bg-skyline-day {
+  background-image: url("/branding/atx-skyline-day.png");
+}
+
+.bg-skyline-night {
+  background-image: url("/branding/atx-skyline-night.png");
+}
+
+.main-content,
+.xchat-main,
+.workspace-main,
+.xchat-layout-root,
+.xchat-body,
+.app-user-shell-main,
+.portfolios-workspace-main,
+.xchat-main-area,
+.workspace-content {
+  background: transparent !important;
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-rail {
+  background: var(--xf-bg-light, #f8fafc);
+}
+
+.dark .workspace-rail {
+  background: var(--xf-surface-700, #11151c);
+}
+
+.main-content-area,
+.xchat-thread,
+.workspace-grid {
+  background: transparent !important;
+}
+
+.starfield {
+  --star-node-rgb: 148 163 184;
+  --star-node-opacity: 0.1;
+  --star-line-rgb: 203 213 225;
+  --star-line-opacity: 0.06;
+  --star-grid-opacity: 0.06;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(var(--star-node-rgb) / 0.45) 0.11rem, transparent 0.12rem),
+    radial-gradient(circle at 26% 34%, rgb(var(--star-node-rgb) / 0.32) 0.12rem, transparent 0.13rem),
+    radial-gradient(circle at 41% 22%, rgb(var(--star-node-rgb) / 0.38) 0.11rem, transparent 0.12rem),
+    radial-gradient(circle at 56% 16%, rgb(var(--star-node-rgb) / 0.38) 0.12rem, transparent 0.13rem),
+    radial-gradient(circle at 72% 29%, rgb(var(--star-node-rgb) / 0.36) 0.11rem, transparent 0.12rem),
+    radial-gradient(circle at 84% 51%, rgb(var(--star-node-rgb) / 0.4) 0.12rem, transparent 0.13rem),
+    radial-gradient(circle at 64% 68%, rgb(var(--star-node-rgb) / 0.35) 0.11rem, transparent 0.12rem),
+    radial-gradient(circle at 36% 72%, rgb(var(--star-node-rgb) / 0.34) 0.1rem, transparent 0.11rem),
+    radial-gradient(circle at 18% 64%, rgb(var(--star-node-rgb) / 0.32) 0.11rem, transparent 0.12rem),
+    linear-gradient(to right, rgb(var(--star-line-rgb) / var(--star-grid-opacity)) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--star-line-rgb) / var(--star-grid-opacity)) 1px, transparent 1px),
+    linear-gradient(
+      118deg,
+      transparent 8%,
+      rgb(var(--star-line-rgb) / var(--star-line-opacity)) 18%,
+      transparent 31%,
+      transparent 54%,
+      rgb(var(--star-line-rgb) / var(--star-line-opacity)) 62%,
+      transparent 73%,
+      transparent 100%
+    );
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    44px 44px,
+    44px 44px,
+    100% 100%;
+  opacity: 1;
+  transform: translateZ(0);
+  will-change: opacity, background-position;
+  animation:
+    starfield-breathe 10s ease-in-out infinite,
+    starfield-grid-drift 14s linear infinite;
+}
+
+html[data-xf-ui="soft"] .starfield {
+  --star-node-rgb: 148 163 184;
+  --star-line-rgb: 203 213 225;
+  --star-node-opacity: 0.1;
+  --star-line-opacity: 0.06;
+  --star-grid-opacity: 0.06;
+}
+
+html:not([data-xf-ui="soft"]) .starfield {
+  --star-node-rgb: 100 116 139;
+  --star-line-rgb: 71 85 105;
+  --star-node-opacity: 0.12;
+  --star-line-opacity: 0.08;
+  --star-grid-opacity: 0.04;
+}
+
+@keyframes starfield-breathe {
+  0%,
+  100% {
+    opacity: calc(var(--star-node-opacity) + 0.18);
+  }
+  50% {
+    opacity: calc(var(--star-node-opacity) + 0.45);
+  }
+}
+
+@keyframes starfield-grid-drift {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      44px 0,
+      0 0,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .starfield {
+    animation: none !important;
+  }
 }
 
 /* Theme-aware raster icon treatment: dark shell uses lightened mark; soft shell uses original dark mark. */

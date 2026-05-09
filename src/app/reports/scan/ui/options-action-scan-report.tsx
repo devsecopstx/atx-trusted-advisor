@@ -735,79 +735,139 @@ function OptionsActionScanReportInner({
   }
 
   return (
-    <section className="options-action-scan-root rounded-[var(--xf-radius-md)] border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[var(--xf-surface-700)] p-5 sm:p-6 md:p-7">
-      <header className="flex flex-col gap-4 border-b border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] pb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-bold tracking-tight text-[var(--xf-text-100)] sm:text-xl">{title}</h2>
-          <span className="rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[var(--xf-text-300)]">
-            {generatedAtLabel}
-          </span>
-          <span className="rounded-full border border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)] px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-[0.09em] text-[var(--xf-gain-green)]">
-            Advisor
-          </span>
-        </div>
-        {showHeaderSummary ? (
-          <div className="flex flex-col gap-2 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-tenant-primary)_26%,transparent)] bg-gradient-to-br from-[color-mix(in_srgb,var(--xf-bg-800)_55%,var(--xf-surface-700))] via-[color-mix(in_srgb,var(--xf-tenant-primary)_9%,var(--xf-surface-700))] to-[color-mix(in_srgb,var(--xf-bg-900)_40%,var(--xf-surface-700))] p-3 xf-shadow-hairline-inset sm:flex-row sm:flex-wrap">
-            <div className="flex min-w-[11rem] flex-1 items-start gap-2.5 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_55%,transparent)] px-3 py-2.5">
-              <span aria-hidden className="select-none text-lg leading-none">
-                📉
-              </span>
-              <div className="min-w-0">
-                <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--xf-text-400)]">
-                  Close candidates
-                </p>
-                <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--xf-text-100)]">{closeCount}</p>
-                <p className="text-[0.68rem] leading-snug text-[var(--xf-text-400)]">Holdings recommended to close</p>
-              </div>
-            </div>
-            <div className="flex min-w-[11rem] flex-1 items-start gap-2.5 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-600)_55%,transparent)] px-3 py-2.5">
-              <span aria-hidden className="select-none text-lg leading-none">
-                👀
-              </span>
-              <div className="min-w-0">
-                <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--xf-text-400)]">
-                  Watchlist
-                </p>
-                <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--xf-text-100)]">{watchlist.length}</p>
-                <p className="text-[0.68rem] leading-snug text-[var(--xf-text-400)]">Symbols on monitor queue</p>
-              </div>
-            </div>
-            <div className="flex min-w-[11rem] flex-1 items-start gap-2.5 rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-gain-green)_28%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_8%,var(--xf-surface-600))] px-3 py-2.5">
-              <span aria-hidden className="select-none text-lg leading-none">
-                🟢
-              </span>
-              <div className="min-w-0">
-                <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--xf-text-400)]">
-                  Conviction
-                </p>
-                <p className="mt-0.5 break-words text-sm font-bold text-[var(--xf-gain-green)]">
-                  {highConfidenceStc ? highConfidenceStc : "—"}
-                </p>
-                <p className="text-[0.68rem] leading-snug text-[var(--xf-text-400)]">
-                  {highConfidenceStc ? "Highest-confidence lane (STC bias)" : "No HIGH confidence signal yet"}
-                </p>
-              </div>
-            </div>
+    <section className="options-action-scan-root w-full max-w-[1480px] mx-auto px-6 pb-8">
+      <div className="overflow-hidden rounded-2xl border border-slate-700/60 bg-[#0F172A]/95 shadow-2xl backdrop-blur-xl">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/60 px-8 py-5">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold tracking-[-0.2px] text-[var(--xf-text-100)]">{title}</h2>
+            <div className="text-xs text-slate-400">{generatedAtLabel}</div>
           </div>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
+          <div className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium tracking-wider text-emerald-400">
+            ADVISOR
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 gap-6 p-8 text-[14.5px] md:grid-cols-3">
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold text-slate-300">CLOSE CANDIDATES</div>
+              <div className="rounded bg-slate-700 px-2 py-0.5 font-mono text-[10px]">{closeCount}</div>
+            </div>
+            <ReportTable
+              rows={holdings}
+              sort={holdingSort}
+              onSortChange={setHoldingSort}
+              showBookColumn
+              showGenericHelper={false}
+              applyEnabled={rowApplyEnabled}
+              applyCache={applyCache}
+              createAlertByRowId={createAlertByRowId}
+              onCreateAlertChange={(rowId, checked) =>
+                setCreateAlertByRowId((previous) => ({ ...previous, [rowId]: checked }))
+              }
+              onApplyToWatchlist={handleApplyToWatchlist}
+            />
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold text-slate-300">WATCHLIST</div>
+              <div className="rounded bg-slate-700 px-2 py-0.5 font-mono text-[10px]">{watchlist.length}</div>
+            </div>
+            <ReportTable
+              rows={watchlist}
+              sort={watchlistSort}
+              onSortChange={setWatchlistSort}
+              showBookColumn={false}
+              showGenericHelper
+              applyEnabled={rowApplyEnabled}
+              applyCache={applyCache}
+              createAlertByRowId={createAlertByRowId}
+              onCreateAlertChange={(rowId, checked) =>
+                setCreateAlertByRowId((previous) => ({ ...previous, [rowId]: checked }))
+              }
+              onApplyToWatchlist={handleApplyToWatchlist}
+            />
+            {genericWatchlistCount > 0 ? (
+              <p className="text-xs text-[var(--xf-text-400)]">
+                Define entry criteria in xStrategyBuilder for generic monitoring rows.
+              </p>
+            ) : null}
+          </section>
+
+          <aside className="space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-950/60 p-5">
+            {showHeaderSummary ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
+                  <div className="text-sm font-semibold text-emerald-300">CONVICTION</div>
+                </div>
+                <div className="text-3xl font-semibold tracking-tighter text-emerald-400">
+                  {highConfidenceStc ?? "—"}
+                </div>
+                <div className="text-xs text-emerald-400/80">
+                  {highConfidenceStc ? "Highest-confidence lane (STC bias)" : "No HIGH confidence signal yet"}
+                </div>
+              </>
+            ) : null}
+            <div className="rounded-lg border border-[color-mix(in_srgb,var(--xf-lightning-yellow)_25%,transparent)] bg-[color-mix(in_srgb,var(--xf-lightning-yellow)_10%,transparent)] px-4 py-3">
+              <h4 className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--xf-text-100)]">
+                Key Insights
+              </h4>
+              <p className="mt-1 text-xs text-[var(--xf-text-200)]">
+                {closeCount} close candidates across active holdings, {watchlist.length} watchlist symbols still
+                monitoring, and{" "}
+                {highConfidenceStc
+                  ? `strongest conviction currently ${highConfidenceStc}.`
+                  : "no high-confidence conviction ticker yet."}
+              </p>
+              <p className="mt-1 text-[0.68rem] text-[var(--xf-text-400)]">{data.disclaimer}</p>
+            </div>
+            {share ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] px-2.5 py-2 text-xs">
+                <span className="font-medium text-[var(--xf-text-100)]">{share.shareUrl}</span>
+                <button
+                  className="xchat-scan-action-btn xchat-scan-action-btn--compact xchat-scan-action-btn--neutral"
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(share.shareUrl)}
+                >
+                  Copy
+                </button>
+                <span className="text-[var(--xf-text-400)]">Expires {new Date(share.expiresAt).toLocaleString()}</span>
+              </div>
+            ) : null}
+            {shareError ? (
+              <p className="text-xs text-[var(--xf-danger-400)]" role="alert">
+                {shareError}
+              </p>
+            ) : null}
+            {pdfError ? (
+              <p className="text-xs text-[var(--xf-warning-400)]" role="status">
+                Polished report unavailable — downloaded legacy PDF instead. ({pdfError})
+              </p>
+            ) : null}
+          </aside>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-slate-700/60 bg-[#0B0F14] px-8 py-5">
           <button
-            className="xchat-scan-action-btn xchat-scan-action-btn--accent"
+            className="rounded-lg border border-slate-600 px-4 py-2 text-xs font-medium transition hover:bg-slate-800"
             type="button"
             onClick={() => void downloadPdfReport()}
           >
             {pdfBusy ? "Generating PDF…" : "Download PDF Report"}
           </button>
           <button
-            className="xchat-scan-action-btn xchat-scan-action-btn--neutral"
+            className="rounded-lg border border-slate-600 px-4 py-2 text-xs font-medium transition hover:bg-slate-800"
             type="button"
             onClick={() => exportCsv(data)}
           >
             Export CSV
           </button>
+          <div className="flex-1" />
           {shareMode === "enabled" ? (
             <button
-              className="xchat-scan-action-btn xchat-scan-action-btn--gain"
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
               disabled={shareBusy}
               type="button"
               onClick={() => void createShareLink()}
@@ -816,91 +876,6 @@ function OptionsActionScanReportInner({
             </button>
           ) : null}
         </div>
-        {share ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] px-2.5 py-2 text-xs">
-            <span className="font-medium text-[var(--xf-text-100)]">{share.shareUrl}</span>
-            <button
-              className="xchat-scan-action-btn xchat-scan-action-btn--compact xchat-scan-action-btn--neutral"
-              type="button"
-              onClick={() => void navigator.clipboard.writeText(share.shareUrl)}
-            >
-              Copy
-            </button>
-            <span className="text-[var(--xf-text-400)]">Expires {new Date(share.expiresAt).toLocaleString()}</span>
-          </div>
-        ) : null}
-        {shareError ? (
-          <p className="text-xs text-[var(--xf-danger-400)]" role="alert">
-            {shareError}
-          </p>
-        ) : null}
-        {pdfError ? (
-          <p className="text-xs text-[var(--xf-warning-400)]" role="status">
-            Polished report unavailable — downloaded legacy PDF instead. ({pdfError})
-          </p>
-        ) : null}
-      </header>
-
-      <div className="mt-6 space-y-8">
-        <section>
-          <h3 className="mb-4 flex items-center gap-2 border-b border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pb-2 text-[0.8125rem] font-bold uppercase tracking-[0.1em] text-[var(--xf-text-100)]">
-            <span aria-hidden className="text-base opacity-90">
-              📈
-            </span>
-            Holdings — Recommended Close (STC)
-          </h3>
-          <ReportTable
-            rows={holdings}
-            sort={holdingSort}
-            onSortChange={setHoldingSort}
-            showBookColumn
-            showGenericHelper={false}
-            applyEnabled={rowApplyEnabled}
-            applyCache={applyCache}
-            createAlertByRowId={createAlertByRowId}
-            onCreateAlertChange={(rowId, checked) =>
-              setCreateAlertByRowId((previous) => ({ ...previous, [rowId]: checked }))
-            }
-            onApplyToWatchlist={handleApplyToWatchlist}
-          />
-        </section>
-
-        <section>
-          <h3 className="mb-4 flex items-center gap-2 border-b border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pb-2 text-[0.8125rem] font-bold uppercase tracking-[0.1em] text-[var(--xf-text-100)]">
-            <span aria-hidden className="text-base opacity-90">
-              👁️
-            </span>
-            Watchlist — Monitoring Queue
-          </h3>
-          <ReportTable
-            rows={watchlist}
-            sort={watchlistSort}
-            onSortChange={setWatchlistSort}
-            showBookColumn={false}
-            showGenericHelper
-            applyEnabled={rowApplyEnabled}
-            applyCache={applyCache}
-            createAlertByRowId={createAlertByRowId}
-            onCreateAlertChange={(rowId, checked) =>
-              setCreateAlertByRowId((previous) => ({ ...previous, [rowId]: checked }))
-            }
-            onApplyToWatchlist={handleApplyToWatchlist}
-          />
-          {genericWatchlistCount > 0 ? (
-            <p className="mt-2 text-xs text-[var(--xf-text-400)]">
-              Define entry criteria in xStrategyBuilder for generic monitoring rows.
-            </p>
-          ) : null}
-        </section>
-
-        <aside className="rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-lightning-yellow)_25%,transparent)] bg-[color-mix(in_srgb,var(--xf-lightning-yellow)_10%,transparent)] px-4 py-3">
-          <h4 className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--xf-text-100)]">Key Insights</h4>
-          <p className="mt-1 text-xs text-[var(--xf-text-200)]">
-            {closeCount} close candidates across active holdings, {watchlist.length} watchlist symbols still monitoring,
-            and {highConfidenceStc ? ` strongest conviction currently ${highConfidenceStc}.` : " no high-confidence conviction ticker yet."}
-          </p>
-          <p className="mt-1 text-[0.68rem] text-[var(--xf-text-400)]">{data.disclaimer}</p>
-        </aside>
       </div>
     </section>
   );

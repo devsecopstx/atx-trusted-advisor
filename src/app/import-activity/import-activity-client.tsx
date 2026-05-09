@@ -139,6 +139,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
   const [csvZoneFocused, setCsvZoneFocused] = useState(false);
   const [workflowExpanded, setWorkflowExpanded] = useState(false);
+  const [selectedCsvFileName, setSelectedCsvFileName] = useState("");
 
   const previewSectionRef = useRef<HTMLDivElement>(null);
   const previewRowsScrollRef = useRef<HTMLDivElement>(null);
@@ -532,6 +533,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   };
 
   const csvExpanded = csvZoneFocused || brokerCsv.trim().length > 0;
+  const hasSelectedCsvFile = selectedCsvFileName.trim().length > 0;
   const hasPreviewRows = previewSampleRows.length > 0;
   const csvRawPreview = useMemo(() => {
     if (!brokerCsv.trim()) {
@@ -545,6 +547,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const canRunImport =
     !busy &&
     Boolean(
+      hasSelectedCsvFile &&
       portfolioId &&
         brokerPreview?.length &&
         brokerImportSupported &&
@@ -552,94 +555,100 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         somePortfolioAccountEligible &&
         mappingDiagnostics.healthy
     );
-  const canRunPreview = !busy && Boolean(portfolioId) && brokerImportSupported;
+  const canRunPreview =
+    !busy && Boolean(portfolioId) && brokerImportSupported && hasSelectedCsvFile && brokerCsv.trim().length > 0;
 
   return (
     <div className="import-activity import-activity--compact flex w-full min-w-0 flex-col gap-3">
       <div className="import-activity__layout-grid">
         <div className="import-activity__primary flex min-w-0 flex-col gap-2.5">
-          {portfolios.length === 0 ? (
-            <p className="text-xs import-activity__text-secondary mb-2">No portfolios yet — create one from Portfolios first.</p>
-          ) : (
-            <label className="import-activity__inline-field mb-2">
-              <span className="import-activity__section-label">Portfolio</span>
-              <select
-                className="import-activity__select crud-input rounded-md px-2 py-1.5 text-xs"
-                value={portfolioId}
-                onChange={(e) => {
-                  setPortfolioId(e.target.value);
-                  resetPreviewState();
-                  setResults(null);
-                  setTaskOutput(null);
-                }}
-                disabled={busy}
-              >
-                {portfolios.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <section className="import-activity__panel p-2.5 md:p-3" aria-label="Portfolio selection and accounts">
+              {portfolios.length === 0 ? (
+                <p className="text-xs import-activity__text-secondary mb-2">
+                  No portfolios yet — create one from Portfolios first.
+                </p>
+              ) : (
+                <label className="import-activity__inline-field mb-2">
+                  <span className="import-activity__section-label">Portfolio</span>
+                  <select
+                    className="import-activity__select crud-input rounded-md px-2 py-1.5 text-xs"
+                    value={portfolioId}
+                    onChange={(e) => {
+                      setPortfolioId(e.target.value);
+                      resetPreviewState();
+                      setResults(null);
+                      setTaskOutput(null);
+                    }}
+                    disabled={busy}
+                  >
+                    {portfolios.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
-          {portfolioId ? (
-            <div className="import-activity__panel import-activity__panel--tight mb-2">
-              <table className="import-activity__table import-activity__table--compact">
-                <thead className="import-activity__thead">
-                  <tr>
-                    <th className="p-1.5 w-16 text-center text-[0.65rem]" scope="col" title="Use for import">
-                      Use
-                    </th>
-                    <th className="p-1.5 text-[0.65rem]">Account</th>
-                    <th className="p-1.5 font-mono text-[0.65rem]">Broker ref (last 4)</th>
-                  </tr>
-                </thead>
-                <tbody className="import-activity__tbody">
-                  {accounts.length > 0 ? (
-                    accounts.map((a) => {
-                      const aid = a._id?.trim() ?? "";
-                      const eligible = aid ? accountUseForImport[aid] !== false : true;
-                      return (
-                        <tr key={a._id ?? a.name} className="import-activity__tr">
-                          <td className="p-1.5 text-center align-middle">
-                            {aid ? (
-                              <input
-                                type="checkbox"
-                                className="h-3.5 w-3.5 accent-[var(--xf-gain-green)]"
-                                checked={eligible}
-                                onChange={(e) => {
-                                  setAccountUseForImport((prev) => ({ ...prev, [aid]: e.target.checked }));
-                                }}
-                                aria-label={`Use account ${a.name} for broker import mapping`}
-                              />
-                            ) : (
-                              <span className="import-activity__text-tertiary">—</span>
-                            )}
-                          </td>
-                          <td className="p-1.5 text-[0.72rem]">{a.name}</td>
-                          <td
-                            className="p-1.5 font-mono tabular-nums text-[0.68rem]"
-                            title="Matching uses your full external ref; only the last four characters are shown here."
-                          >
-                            {accountRefLastFourOnlyDisplay((a.extAccountId || "").trim())}
+              {portfolioId ? (
+                <div className="import-activity__panel import-activity__panel--tight">
+                  <table className="import-activity__table import-activity__table--compact">
+                    <thead className="import-activity__thead">
+                      <tr>
+                        <th className="p-1.5 w-16 text-center text-[0.65rem]" scope="col" title="Use for import">
+                          Use
+                        </th>
+                        <th className="p-1.5 text-[0.65rem]">Account</th>
+                        <th className="p-1.5 font-mono text-[0.65rem]">Broker ref (last 4)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="import-activity__tbody">
+                      {accounts.length > 0 ? (
+                        accounts.map((a) => {
+                          const aid = a._id?.trim() ?? "";
+                          const eligible = aid ? accountUseForImport[aid] !== false : true;
+                          return (
+                            <tr key={a._id ?? a.name} className="import-activity__tr">
+                              <td className="p-1.5 text-center align-middle">
+                                {aid ? (
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 accent-[var(--xf-gain-green)]"
+                                    checked={eligible}
+                                    onChange={(e) => {
+                                      setAccountUseForImport((prev) => ({ ...prev, [aid]: e.target.checked }));
+                                    }}
+                                    aria-label={`Use account ${a.name} for broker import mapping`}
+                                  />
+                                ) : (
+                                  <span className="import-activity__text-tertiary">—</span>
+                                )}
+                              </td>
+                              <td className="p-1.5 text-[0.72rem]">{a.name}</td>
+                              <td
+                                className="p-1.5 font-mono tabular-nums text-[0.68rem]"
+                                title="Matching uses your full external ref; only the last four characters are shown here."
+                              >
+                                {accountRefLastFourOnlyDisplay((a.extAccountId || "").trim())}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr className="import-activity__tr import-activity__tr--empty">
+                          <td colSpan={3} className="p-1.5 import-activity__text-secondary text-[0.72rem]">
+                            No accounts — add accounts under Portfolio for this book.
                           </td>
                         </tr>
-                      );
-                    })
-                  ) : (
-                    <tr className="import-activity__tr import-activity__tr--empty">
-                      <td colSpan={3} className="p-1.5 import-activity__text-secondary text-[0.72rem]">
-                        No accounts — add accounts under Portfolio for this book.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </section>
 
-          <section className="import-activity__source-panel mb-1.5" aria-label="Broker and CSV import">
+            <section className="import-activity__source-panel mb-1.5" aria-label="Broker and CSV import">
             <label className="import-activity__inline-field import-activity__source-panel-broker">
               <span className="import-activity__section-label">Broker</span>
               <select
@@ -671,23 +680,6 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
               </p>
             ) : null}
 
-            <div className="import-activity__source-panel-replace" aria-label="Replace holdings before import">
-              <label className="import-activity__delete-first-label">
-                <input
-                  type="checkbox"
-                  className="import-activity__delete-first-checkbox"
-                  checked={deleteExistingHoldingsFirst}
-                  onChange={(e) => setDeleteExistingHoldingsFirst(e.target.checked)}
-                  disabled={busy}
-                  aria-describedby="import-delete-first-hint"
-                />
-                <span>{importActivityWorkflowCopy.deleteHoldingsFirstLabel}</span>
-              </label>
-              <p id="import-delete-first-hint" className="import-activity__delete-first-hint">
-                {importActivityWorkflowCopy.deleteHoldingsFirstHint}
-              </p>
-            </div>
-
             <div
               className={`import-activity__csv-zone import-activity__csv-zone--in-panel ${csvExpanded ? "import-activity__csv-zone--expanded" : ""}`}
               onFocusCapture={() => setCsvZoneFocused(true)}
@@ -709,6 +701,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 if (!f || busy) {
                   return;
                 }
+                setSelectedCsvFileName(f.name);
                 void f.text().then((t) => {
                   setBrokerCsv(t);
                   resetPreviewState();
@@ -720,9 +713,9 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 });
               }}
             >
-              <div className="import-activity__csv-zone-head">
+              <div className="import-activity__csv-zone-head flex flex-col items-start gap-2">
                 <span className="import-activity__section-label m-0">CSV file</span>
-                <label className="import-activity__paste-btn">
+                <label className="import-activity__paste-btn w-full md:w-auto">
                   <span className="import-activity__file-shell import-activity__file-shell--inline">
                     <input
                       type="file"
@@ -732,6 +725,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                       onChange={(e) => {
                         const f = e.target.files?.[0];
                         if (!f) return;
+                        setSelectedCsvFileName(f.name);
                         void f.text().then((t) => {
                           setBrokerCsv(t);
                           resetPreviewState();
@@ -745,12 +739,42 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                     />
                   </span>
                 </label>
+                <p className="m-0 text-[0.68rem] leading-snug text-[var(--ia-secondary-text)]">
+                  Choose file, then click <strong className="text-[var(--xf-text-100)]">Run import now</strong> after
+                  selection.
+                </p>
+                {hasSelectedCsvFile ? (
+                  <p className="m-0 text-[0.68rem] leading-snug text-[var(--xf-text-300)]">
+                    Selected file: <span className="font-mono text-[var(--xf-text-100)]">{selectedCsvFileName}</span>
+                  </p>
+                ) : (
+                  <p className="m-0 text-[0.68rem] leading-snug text-[var(--xf-text-400)]">No file selected yet.</p>
+                )}
+                <div className="w-full border-t border-[var(--ia-border)] pt-2" aria-label="Replace holdings before import">
+                  <label className="import-activity__delete-first-label">
+                    <input
+                      type="checkbox"
+                      className="import-activity__delete-first-checkbox"
+                      checked={deleteExistingHoldingsFirst}
+                      onChange={(e) => setDeleteExistingHoldingsFirst(e.target.checked)}
+                      disabled={busy}
+                      aria-describedby="import-delete-first-hint"
+                    />
+                    <span>{importActivityWorkflowCopy.deleteHoldingsFirstLabel}</span>
+                  </label>
+                  <p id="import-delete-first-hint" className="import-activity__delete-first-hint">
+                    {importActivityWorkflowCopy.deleteHoldingsFirstHint}
+                  </p>
+                </div>
               </div>
               <textarea
                 className="import-activity__textarea import-activity__textarea--collapsible"
                 value={brokerCsv}
                 onChange={(e) => {
                   setBrokerCsv(e.target.value);
+                  if (!e.target.value.trim()) {
+                    setSelectedCsvFileName("");
+                  }
                   resetPreviewState();
                 }}
                 disabled={busy}
@@ -770,7 +794,8 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 </div>
               </details>
             </div>
-          </section>
+            </section>
+          </div>
 
           {brokerKind === "fidelity" ? (
             <div className="import-activity__note import-activity__note--tight mb-2" role="note">
@@ -815,7 +840,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
               <button
                 type="button"
                 className="import-activity__btn-secondary min-h-11 text-[0.8rem] py-2.5"
-                disabled={busy}
+                disabled={busy || !hasSelectedCsvFile}
                 onClick={() => {
                   setPreviewSectionOpen(true);
                   previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1087,7 +1112,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
           <button
             type="button"
             className="import-activity__btn-secondary min-h-11 w-full justify-center px-3 py-2.5 text-[0.85rem]"
-            disabled={busy || !brokerPreview?.length}
+            disabled={busy || !hasSelectedCsvFile || !brokerPreview?.length}
             onClick={() => {
               setPreviewSectionOpen(true);
               previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

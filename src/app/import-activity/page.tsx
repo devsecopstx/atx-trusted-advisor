@@ -81,7 +81,7 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
   });
 
   return (
-    <div className="xchat-shell flex min-h-0 flex-col overflow-hidden bg-[var(--xf-bg-900)]">
+    <div className="xchat-shell flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--xf-bg-900)]">
       <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
         <div className="workspace-product-approved-header-slot">
           <AppUserApprovedHeader

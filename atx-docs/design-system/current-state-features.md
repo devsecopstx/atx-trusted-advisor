@@ -14,7 +14,7 @@ Values below track **`package.json`** and **`services/atxfinance-backend/gradle/
 | Layer | Stack |
 |--------|--------|
 | **Frontend (core app)** | **Next.js 16.x** (App Router), **React 19.2.x**, **TypeScript 5.9.x**, **Tailwind CSS 3.4.x**, **ESLint 9.x** + `eslint-config-next` |
-| **UI / data viz** | **ApexCharts 5.x** + `react-apexcharts`, **Framer Motion**, **TanStack React Virtual**, **react-markdown** + **rehype-sanitize** / **remark-gfm**, **Ambient Market Veil** (`src/components/animations/MarketVeilBackground.tsx`) — Austin-skyline `<img>` (`/branding/atx-skyline.jpg`, `fetchpriority="low"`, `decoding="async"`, **B&W watermark** via `filter: grayscale(100%) contrast(0.92) brightness(1.05)` + opacity `0.22`) + readability gradient + Canvas2D grid/particle layer on `/xchat`, `/xoptions`, `/portfolios` (deferred behind `load`+idle, FPS auto-throttle, `prefers-reduced-motion`/`visibilitychange`-aware). Gated by `core_tenants.tenantPreferences.ambient_market_veil` (default-on; admin toggle at `/admin/tenant-preferences/ambient`; dev preview `/dev/veil` with skyline + overlay + opacity + filter sliders). Replaces the `/xchat` `StarfieldBackground` so the city becomes the unified product backdrop without competing for attention with chat content (WCAG AA preserved against `--xf-text-100`). |
+| **UI / data viz** | **ApexCharts 5.x** + `react-apexcharts`, **Framer Motion**, **TanStack React Virtual**, **react-markdown** + **rehype-sanitize** / **remark-gfm**, **Workspace Starfield** (`src/components/StarfieldBackground.tsx`) — full-bleed fixed layer (`z-index: -20`) on `/xchat`, `/xoptions`, `/portfolios`, under header/footer/rail, with theme-aware base fill, subtle center radial depth, 1px grid, low-density node/line constellation animation (CSS-only, reduced-motion safe), and static Austin skyline anchor (`/branding/atx-skyline-light.png`) at the lower viewport band. |
 | **Next runtime libs** | **MongoDB** Node driver **7.x**, **Zod 4.x**, **Stripe** SDK **17.x**, **yahoo-finance2** **3.14.x** (batch/single quote paths use **`yahooQuoteWithValidationFallback`** when schema validation fails), **nodemailer** **8.x** (desk SMTP + credential-invite / reset mail), optional **redis** client **4.x**, **@google-cloud/pubsub** **4.x**, **yaml**, **cronstrue** / **rrule** |
 | **API docs (Next)** | **swagger-ui-react** / **swagger-ui-dist** **5.32.x** — admin **`/admin/api-docs`** backed by **`GET /api/openapi`** |
 | **Tests (Next)** | **Vitest 3.2.x**, **tsx**; integration + OpenAPI parity under **`tests/integration/**`** |
@@ -449,26 +449,25 @@ Captured after the xChat hot-path optimization pass landed (`npm run lh:local:pe
 - IBKR snapshot panel and watchlist quote refresh are not LHCI-monitored yet (they live behind app interactions); add Lighthouse user-flows or Sentry web-vitals when they become a perceived hot path.
 - Live prod re-measurement (`npm run lh:prod:perf`) should happen post-deploy of this optimization pass to confirm the local 1.00 maps to prod (current prod still shows `/xchat` at 0.96 because these fixes have not shipped yet).
 
-#### Ambient Market Veil — perf check (2026-05-09 LHCI, perf-only, desktop preset, guest)
+#### Workspace starfield backdrop — perf check (2026-05-09 LHCI, perf-only, desktop preset, guest)
 
-After mounting **`MarketVeilBackground`** on `/xchat`, `/xoptions`, and `/portfolios` (default-on via `tenantPreferences.ambient_market_veil`). The veil layers a 175 KB Austin-skyline `<img>` (`/branding/atx-skyline.jpg`, `fetchpriority="low"`) under a soft top-down vignette and the Canvas2D grid/particle layer; it replaced `StarfieldBackground` on `/xchat`.
+Replaced route-level **`MarketVeilBackground`** mounts on `/xchat`, `/xoptions`, and `/portfolios` with a shared **`StarfieldBackground`** component (`src/components/StarfieldBackground.tsx`). The layer is fixed full-bleed with `z-index: -20`, mounted inside `xchat-shell` (which now uses `position: relative; isolation: isolate`) so it paints behind header/footer/rail and stays above the document base paint.
 
-**Stacking-context fix (2026-05-09):** the veil wrapper paints at `z-index: 0` (not `-1`) so it sits **above** body's opaque dark gradient (`atxfinance-brand-kit.css`) but **below** product chrome (`workspace-product-sticky-top` / `xchat-body` / `app-footer` are pinned at `z-index: 1` in `xchat.css`). The xoptions shell drops its `bg-[color:var(--xf-xoptions-surface)]` wrapper class while the veil is enabled, so the skyline shows through dark theme.
+**Visual contract (theme-aware, CSS-only):**
 
-**B&W watermark treatment (2026-05-09 update):** the skyline `<img>` now ships with `filter: grayscale(100%) contrast(0.92) brightness(1.05)` and `opacity: 0.22` so the city reads as a quiet brand watermark — not a competing focal point — across soft + deep + tenant themes (single dark JPG, zero new image bytes; CSS-only). Readability vignette opened up to `0.32 → 0.42 → 0.58` (top→bottom) to compensate for the dimmer skyline so the dark wrapper still bleeds through evenly. New props on `MarketVeilBackground`: `skylineFilter` and `skylineOpacity` (both clamped to 0–1) for tenant overrides.
-
-**Animation cadence** (calibrated against the Grok Imagine reference): grid breathes over 52 s; tick highlights fire every 2.4–4.8 s (240 ms gold flash on a random node); connection-pulse bursts every 5–10 s (300 ms). Default canvas alpha bumped from `0.09` → `0.14` so the network reads against the skyline.
+- Base fill + subtle radial depth (`#FAFBFC` light / `#0B0F14` dark).
+- 22-node constellation with 1px links (slow twinkle / connect animations; reduced-motion off switch).
+- 1px global grid with low-opacity 14s drift.
+- Static skyline anchor (`/branding/atx-skyline-light.png`) at bottom 35% viewport, lower opacity on dark.
 
 | Route        | Run #1 perf | Run #2 perf | TBT (#1/#2)  | LCP (#1/#2) | CLS  |
 |--------------|------------:|------------:|-------------:|------------:|-----:|
-| `/xoptions`  |        1.00 |        1.00 |     0/0 ms   | 740/690 ms  | 0.00 |
-| `/xchat`     |        1.00 |        0.99 |     0/101 ms | 720/730 ms  | 0.00 |
-| `/portfolios`|        1.00 |        1.00 |     0/0 ms   | 740/740 ms  | 0.00 |
-| `/portfolio` |        1.00 |        1.00 |     0/0 ms   | 740/750 ms  | 0.00 |
+| `/xoptions`  |        1.00 |        1.00 |     0/0 ms   | 700/699 ms  | 0.00 |
+| `/xchat`     |        0.98 |        0.99 |     0/0 ms   | 1073/1028 ms | 0.00 |
+| `/portfolios`|        1.00 |        1.00 |     0/0 ms   | 745/740 ms  | 0.00 |
+| `/portfolio` |        1.00 |        1.00 |     0/0 ms   | 745/743 ms  | 0.00 |
 
-> Re-measured **2026-05-09 13:32 CT** after dialing the skyline back to a B&W watermark (`filter: grayscale(100%) contrast(0.92) brightness(1.05)` + opacity `0.22`) and lightening the readability vignette. Numbers are unchanged vs the pre-watermark run — CSS `filter`/`opacity` are GPU-cheap, no extra script work, no new bytes shipped. The single-run 0.99 on `/xchat` is sample noise (TBT 101 ms one run, 0 ms the other); LCP held at 0.72 s either way.
-
-Acceptance criterion (≤ +2 perf points delta on `/xoptions`) still holds — delta is **0** even after lifting visibility, tightening cadence, and dialing the skyline back to a B&W watermark. The skyline `<img>` rides at `fetchpriority="low"`, so it never competes with critical chrome for early bandwidth; CSS `filter`/`opacity` are GPU-cheap (no extra paint cycles, no script work). Canvas init still defers behind `window.load` + idle so it never enters the FCP→TTI window. CLS stays 0 because every layer is `position: fixed` inside the wrapper.
+Representative run scores hold the hot-path target (>= 0.98 performance) with no CLS regressions while keeping all ambient animation on GPU-friendly CSS transforms/opacities.
 
 #### Lighthouse production baseline (2026-04-08)
 

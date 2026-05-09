@@ -1,6 +1,7 @@
 import { PwaBootstrapClient } from "@/app/ui/pwa-bootstrap-client";
 import { TenantBrandingProvider } from "@/app/ui/tenant-branding-context";
 import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
+import { FullBleedBackground } from "@/components/FullBleedBackground";
 import { getSessionUser } from "@/lib/auth";
 import { getGa4MeasurementId } from "@/lib/env";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
@@ -91,6 +92,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <link href="/pwa/atx-logo-512.png" rel="apple-touch-icon" />
       </head>
       <body>
+        <FullBleedBackground />
         <TenantBrandingProvider value={tenantShellBranding}>
           {ga4MeasurementId ? <Ga4Analytics measurementId={ga4MeasurementId} /> : null}
           <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} userTheme={userUiTheme} />
