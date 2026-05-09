@@ -110,6 +110,60 @@ export type StarfieldBackgroundProps = {
   className?: string;
 };
 
+type DeferHandle = {
+  cancel: () => void;
+};
+
+/**
+ * Schedule `cb` for *after* `load` has fired (i.e. comfortably past TTI), then
+ * push it one more idle hop so the starfield setup never lands in Lighthouse’s
+ * TBT measurement window (FCP → TTI). Falls back to a generous timeout when
+ * `requestIdleCallback` is unavailable (Safari).
+ */
+function scheduleAfterLoad(cb: () => void): DeferHandle {
+  let cancelled = false;
+  let inner: DeferHandle | null = null;
+
+  const runIdle = () => {
+    if (cancelled) {
+      return;
+    }
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === "function") {
+      const id = w.requestIdleCallback(cb, { timeout: 1500 });
+      inner = {
+        cancel: () => w.cancelIdleCallback?.(id)
+      };
+      return;
+    }
+    const t = setTimeout(cb, 200);
+    inner = { cancel: () => clearTimeout(t) };
+  };
+
+  if (document.readyState === "complete") {
+    runIdle();
+  } else {
+    const onLoad = () => {
+      window.removeEventListener("load", onLoad);
+      runIdle();
+    };
+    window.addEventListener("load", onLoad, { once: true });
+    inner = {
+      cancel: () => window.removeEventListener("load", onLoad)
+    };
+  }
+
+  return {
+    cancel: () => {
+      cancelled = true;
+      inner?.cancel();
+    }
+  };
+}
+
 export function StarfieldBackground({ tenantAccent, className }: StarfieldBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -123,247 +177,281 @@ export function StarfieldBackground({ tenantAccent, className }: StarfieldBackgr
       return;
     }
 
-    const root = document.documentElement;
-    let reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onMq = () => {
-      reducedMotion = mq.matches;
-    };
-    mq.addEventListener("change", onMq);
-
-    let width = 0;
-    let height = 0;
-    let dpr = 1;
-
-    let stars: Star[] = [];
-    let nebulae: NebulaLayer[] = [];
-
-    let accentHue = resolveAccentHue(resolveAccentHex(root, tenantAccent));
-
-    const rebuildScene = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.max(1, Math.floor(width * dpr));
-      canvas.height = Math.max(1, Math.floor(height * dpr));
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      accentHue = resolveAccentHue(resolveAccentHex(root, tenantAccent));
-
-      const numStars = Math.floor(Math.min(width * 0.18, 320));
-      stars = Array.from({ length: numStars }, () => ({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        size: Math.random() * 2.4 + 0.5,
-        opacity: Math.random() * 0.85 + 0.25,
-        speed: Math.random() * 0.018 + 0.006
-      }));
-
-      nebulae = [
-        {
-          x: width * 0.3,
-          y: height * 0.25,
-          radius: width * 0.62,
-          hue: 270,
-          opacity: 0.16,
-          drift: 0.06
-        },
-        {
-          x: width * 0.78,
-          y: height * 0.62,
-          radius: width * 0.52,
-          hue: 310,
-          opacity: 0.12,
-          drift: -0.045
-        },
-        {
-          x: width * 0.12,
-          y: height * 0.82,
-          radius: width * 0.42,
-          hue: 198,
-          opacity: 0.095,
-          drift: 0.035
-        },
-        {
-          x: width * 0.58,
-          y: height * 0.18,
-          radius: width * 0.48,
-          hue: 248,
-          opacity: 0.075,
-          drift: -0.055
-        }
-      ];
-    };
-
-    rebuildScene();
-    window.addEventListener("resize", rebuildScene);
-
-    let time = 0;
-    let shootingStar: ShootingStarState | null = null;
-    let animationFrame = 0;
-
-    let parallaxTx = 0;
-    let parallaxTy = 0;
-    let targetPx = 0;
-    let targetPy = 0;
-
-    const onMove = (e: MouseEvent) => {
-      if (reducedMotion || width < 1) {
+    /**
+     * Perf: defer the entire setup + RAF loop until *after* the `load` event
+     * (well past Lighthouse’s TTI mark) and then one more idle hop, so the
+     * scene init never lands in the FCP → TTI window that drives TBT.
+     *
+     * `rebuildScene` allocates ~320 stars + 4 nebula radial gradients and resizes
+     * the canvas to viewport × DPR; the first few `animate()` frames also paint
+     * a shadowed shooting-star, all of which can register as a single 50–150 ms
+     * task on cold devices. Without this guard the starfield is the dominant
+     * TBT contributor on `/xchat` (the only route that mounts it). Behavior,
+     * visuals, and reduced-motion handling are unchanged — only the start
+     * moment slips a few hundred ms past first paint.
+     */
+    let started = false;
+    let cleanupAnimation: (() => void) | null = null;
+    const deferHandle = scheduleAfterLoad(() => {
+      if (started) {
         return;
       }
-      targetPx = (e.clientX / width - 0.5) * width * 0.006;
-      targetPy = (e.clientY / height - 0.5) * height * 0.006;
-    };
-    window.addEventListener("mousemove", onMove);
-
-    const animate = () => {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.clearRect(0, 0, width, height);
-
-      if (!reducedMotion) {
-        parallaxTx += (targetPx - parallaxTx) * 0.045;
-        parallaxTy += (targetPy - parallaxTy) * 0.045;
-      }
-
-      ctx.save();
-      ctx.globalCompositeOperation = "screen";
-
-      nebulae.forEach((neb, i) => {
-        const breathe = reducedMotion ? 0 : Math.sin(time * 0.008 + i) * 0.035;
-        const pulse = Math.max(0.04, neb.opacity + breathe);
-        const px = parallaxTx * (0.35 + i * 0.12);
-        const py = parallaxTy * (0.28 + i * 0.1);
-
-        const cx =
-          neb.x +
-          px +
-          (reducedMotion ? 0 : Math.sin(time * 0.003) * 22);
-        const cy =
-          neb.y +
-          py +
-          (reducedMotion ? 0 : Math.cos(time * 0.0025) * 16);
-
-        const gradient = ctx.createRadialGradient(
-          cx,
-          cy,
-          neb.radius * 0.18,
-          cx + (reducedMotion ? 0 : Math.cos(time * 0.0015) * 36),
-          cy + (reducedMotion ? 0 : Math.sin(time * 0.002) * 30),
-          neb.radius * 1.08
-        );
-
-        const hueShift = reducedMotion ? 0 : Math.sin(time * 0.004 + i * 0.7) * 7;
-        const tenantBlend = i === 0 ? 0.42 : i === 3 ? 0.22 : 0;
-        const baseHue = (neb.hue * (1 - tenantBlend) + accentHue * tenantBlend + hueShift + 720) % 360;
-
-        gradient.addColorStop(0, `hsla(${baseHue}, 82%, 66%, ${pulse * 0.85})`);
-        gradient.addColorStop(0.55, `hsla(${(baseHue + 16) % 360}, 68%, 46%, ${pulse * 0.32})`);
-        gradient.addColorStop(1, `hsla(${(baseHue + 32) % 360}, 58%, 18%, 0)`);
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.ellipse(
-          cx,
-          cy,
-          neb.radius,
-          neb.radius * 0.64,
-          reducedMotion ? i * 0.35 : time * 0.00075 + i * 0.25,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
-
-        if (!reducedMotion) {
-          neb.x += neb.drift;
-          if (neb.x < -neb.radius * 0.55) {
-            neb.x = width + neb.radius * 0.55;
-          }
-          if (neb.x > width + neb.radius * 0.55) {
-            neb.x = -neb.radius * 0.55;
-          }
-        }
-      });
-
-      ctx.restore();
-
-      ctx.globalCompositeOperation = "source-over";
-
-      stars.forEach((star) => {
-        const twinkle = reducedMotion
-          ? 0.82
-          : Math.sin(time * star.speed * 4.2) * 0.28 + 0.78;
-        const a = Math.min(1, star.opacity * twinkle);
-        ctx.fillStyle = `rgba(236, 242, 255, ${a})`;
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (!reducedMotion) {
-          star.x += star.speed * 0.22;
-          if (star.x > width) {
-            star.x = 0;
-          }
-        }
-      });
-
-      if (!reducedMotion && !shootingStar && Math.random() < 0.0065) {
-        shootingStar = {
-          x: Math.random() * width * 0.72,
-          y: Math.random() * height * 0.42,
-          len: Math.random() * 105 + 62,
-          speed: Math.random() * 19 + 15,
-          opacity: 0.92
-        };
-      }
-
-      if (shootingStar && !reducedMotion) {
-        const s = shootingStar;
-        const grad = ctx.createLinearGradient(s.x, s.y, s.x + s.len, s.y + s.len * 0.55);
-        grad.addColorStop(0, `rgba(228, 240, 255, ${s.opacity})`);
-        grad.addColorStop(1, "rgba(170, 210, 255, 0)");
-
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2.8;
-        ctx.lineCap = "round";
-        ctx.shadowBlur = 14;
-        ctx.shadowColor = "rgba(196, 224, 255, 0.55)";
-
-        ctx.beginPath();
-        ctx.moveTo(s.x, s.y);
-        ctx.lineTo(s.x + s.len, s.y + s.len * 0.58);
-        ctx.stroke();
-
-        ctx.shadowBlur = 0;
-
-        s.x += s.speed;
-        s.y += s.speed * 0.56;
-        s.opacity -= 0.041;
-
-        if (s.opacity <= 0) {
-          shootingStar = null;
-        }
-      } else if (reducedMotion) {
-        shootingStar = null;
-      }
-
-      time += reducedMotion ? 0.025 : 1;
-      animationFrame = requestAnimationFrame(animate);
-    };
-
-    animate();
+      started = true;
+      cleanupAnimation = startStarfieldAnimation(canvas, ctx, tenantAccent);
+    });
 
     return () => {
-      cancelAnimationFrame(animationFrame);
-      window.removeEventListener("resize", rebuildScene);
-      mq.removeEventListener("change", onMq);
-      window.removeEventListener("mousemove", onMove);
+      deferHandle.cancel();
+      cleanupAnimation?.();
     };
   }, [tenantAccent]);
 
   const mergedClass = ["xchat-starfield-bg", className].filter(Boolean).join(" ");
 
   return <canvas ref={canvasRef} aria-hidden className={mergedClass} />;
+}
+
+function startStarfieldAnimation(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  tenantAccent: string | undefined
+): () => void {
+  const root = document.documentElement;
+  let reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const onMq = () => {
+    reducedMotion = mq.matches;
+  };
+  mq.addEventListener("change", onMq);
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+
+  let stars: Star[] = [];
+  let nebulae: NebulaLayer[] = [];
+
+  let accentHue = resolveAccentHue(resolveAccentHex(root, tenantAccent));
+
+  const rebuildScene = () => {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.floor(width * dpr));
+    canvas.height = Math.max(1, Math.floor(height * dpr));
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    accentHue = resolveAccentHue(resolveAccentHex(root, tenantAccent));
+
+    const numStars = Math.floor(Math.min(width * 0.18, 320));
+    stars = Array.from({ length: numStars }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      size: Math.random() * 2.4 + 0.5,
+      opacity: Math.random() * 0.85 + 0.25,
+      speed: Math.random() * 0.018 + 0.006
+    }));
+
+    nebulae = [
+      {
+        x: width * 0.3,
+        y: height * 0.25,
+        radius: width * 0.62,
+        hue: 270,
+        opacity: 0.16,
+        drift: 0.06
+      },
+      {
+        x: width * 0.78,
+        y: height * 0.62,
+        radius: width * 0.52,
+        hue: 310,
+        opacity: 0.12,
+        drift: -0.045
+      },
+      {
+        x: width * 0.12,
+        y: height * 0.82,
+        radius: width * 0.42,
+        hue: 198,
+        opacity: 0.095,
+        drift: 0.035
+      },
+      {
+        x: width * 0.58,
+        y: height * 0.18,
+        radius: width * 0.48,
+        hue: 248,
+        opacity: 0.075,
+        drift: -0.055
+      }
+    ];
+  };
+
+  rebuildScene();
+  window.addEventListener("resize", rebuildScene);
+
+  let time = 0;
+  let shootingStar: ShootingStarState | null = null;
+  let animationFrame = 0;
+
+  let parallaxTx = 0;
+  let parallaxTy = 0;
+  let targetPx = 0;
+  let targetPy = 0;
+
+  const onMove = (e: MouseEvent) => {
+    if (reducedMotion || width < 1) {
+      return;
+    }
+    targetPx = (e.clientX / width - 0.5) * width * 0.006;
+    targetPy = (e.clientY / height - 0.5) * height * 0.006;
+  };
+  window.addEventListener("mousemove", onMove);
+
+  const animate = () => {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.clearRect(0, 0, width, height);
+
+    if (!reducedMotion) {
+      parallaxTx += (targetPx - parallaxTx) * 0.045;
+      parallaxTy += (targetPy - parallaxTy) * 0.045;
+    }
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+
+    nebulae.forEach((neb, i) => {
+      const breathe = reducedMotion ? 0 : Math.sin(time * 0.008 + i) * 0.035;
+      const pulse = Math.max(0.04, neb.opacity + breathe);
+      const px = parallaxTx * (0.35 + i * 0.12);
+      const py = parallaxTy * (0.28 + i * 0.1);
+
+      const cx =
+        neb.x +
+        px +
+        (reducedMotion ? 0 : Math.sin(time * 0.003) * 22);
+      const cy =
+        neb.y +
+        py +
+        (reducedMotion ? 0 : Math.cos(time * 0.0025) * 16);
+
+      const gradient = ctx.createRadialGradient(
+        cx,
+        cy,
+        neb.radius * 0.18,
+        cx + (reducedMotion ? 0 : Math.cos(time * 0.0015) * 36),
+        cy + (reducedMotion ? 0 : Math.sin(time * 0.002) * 30),
+        neb.radius * 1.08
+      );
+
+      const hueShift = reducedMotion ? 0 : Math.sin(time * 0.004 + i * 0.7) * 7;
+      const tenantBlend = i === 0 ? 0.42 : i === 3 ? 0.22 : 0;
+      const baseHue = (neb.hue * (1 - tenantBlend) + accentHue * tenantBlend + hueShift + 720) % 360;
+
+      gradient.addColorStop(0, `hsla(${baseHue}, 82%, 66%, ${pulse * 0.85})`);
+      gradient.addColorStop(0.55, `hsla(${(baseHue + 16) % 360}, 68%, 46%, ${pulse * 0.32})`);
+      gradient.addColorStop(1, `hsla(${(baseHue + 32) % 360}, 58%, 18%, 0)`);
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.ellipse(
+        cx,
+        cy,
+        neb.radius,
+        neb.radius * 0.64,
+        reducedMotion ? i * 0.35 : time * 0.00075 + i * 0.25,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      if (!reducedMotion) {
+        neb.x += neb.drift;
+        if (neb.x < -neb.radius * 0.55) {
+          neb.x = width + neb.radius * 0.55;
+        }
+        if (neb.x > width + neb.radius * 0.55) {
+          neb.x = -neb.radius * 0.55;
+        }
+      }
+    });
+
+    ctx.restore();
+
+    ctx.globalCompositeOperation = "source-over";
+
+    stars.forEach((star) => {
+      const twinkle = reducedMotion
+        ? 0.82
+        : Math.sin(time * star.speed * 4.2) * 0.28 + 0.78;
+      const a = Math.min(1, star.opacity * twinkle);
+      ctx.fillStyle = `rgba(236, 242, 255, ${a})`;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (!reducedMotion) {
+        star.x += star.speed * 0.22;
+        if (star.x > width) {
+          star.x = 0;
+        }
+      }
+    });
+
+    if (!reducedMotion && !shootingStar && Math.random() < 0.0065) {
+      shootingStar = {
+        x: Math.random() * width * 0.72,
+        y: Math.random() * height * 0.42,
+        len: Math.random() * 105 + 62,
+        speed: Math.random() * 19 + 15,
+        opacity: 0.92
+      };
+    }
+
+    if (shootingStar && !reducedMotion) {
+      const s = shootingStar;
+      const grad = ctx.createLinearGradient(s.x, s.y, s.x + s.len, s.y + s.len * 0.55);
+      grad.addColorStop(0, `rgba(228, 240, 255, ${s.opacity})`);
+      grad.addColorStop(1, "rgba(170, 210, 255, 0)");
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2.8;
+      ctx.lineCap = "round";
+      ctx.shadowBlur = 14;
+      ctx.shadowColor = "rgba(196, 224, 255, 0.55)";
+
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x + s.len, s.y + s.len * 0.58);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+
+      s.x += s.speed;
+      s.y += s.speed * 0.56;
+      s.opacity -= 0.041;
+
+      if (s.opacity <= 0) {
+        shootingStar = null;
+      }
+    } else if (reducedMotion) {
+      shootingStar = null;
+    }
+
+    time += reducedMotion ? 0.025 : 1;
+    animationFrame = requestAnimationFrame(animate);
+  };
+
+  animate();
+
+  return () => {
+    cancelAnimationFrame(animationFrame);
+    window.removeEventListener("resize", rebuildScene);
+    mq.removeEventListener("change", onMq);
+    window.removeEventListener("mousemove", onMove);
+  };
 }

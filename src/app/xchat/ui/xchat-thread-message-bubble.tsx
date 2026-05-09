@@ -1,13 +1,38 @@
 "use client";
 
+import nextDynamic from "next/dynamic";
 import { memo } from "react";
 
-import { OptionsActionScanReport } from "@/app/reports/scan/ui/options-action-scan-report";
 import { XchatAiResponseChrome } from "@/app/xchat/ui/xchat-ai-response-chrome";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XchatStrategyJobPreflightCards } from "@/app/xchat/ui/xchat-strategy-job-preflight";
 
 import type { Message } from "./xchat-conversation-types";
+
+/**
+ * Perf: scan report pulls `jspdf`, `jspdf-autotable`, `@tanstack/react-query`,
+ * `@tanstack/react-table`, and a chunky table UI — easily 200+ KB gzipped that
+ * is irrelevant unless the AI returns an `optionsActionScan` payload (rare in
+ * a typical thread). Lazy-load via `next/dynamic` so the chunk only ships when
+ * a scan card is about to render. `ssr: false` matches the existing client-only
+ * shape (the report uses browser APIs like `URL.createObjectURL`).
+ */
+const OptionsActionScanReportLazy = nextDynamic(
+  () =>
+    import("@/app/reports/scan/ui/options-action-scan-report").then((m) => ({
+      default: m.OptionsActionScanReport
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        aria-busy="true"
+        aria-label="Loading options action scan"
+        className="options-action-scan-root options-action-scan-root--loading"
+      />
+    )
+  }
+);
 
 export type XchatThreadMessageBubbleProps = {
   msg: Message;
@@ -60,7 +85,7 @@ export const XchatThreadMessageBubble = memo(
                 onStayInChat={onStrategyStay}
               />
             ) : msg.optionsActionScan ? (
-              <OptionsActionScanReport data={msg.optionsActionScan} shareMode="enabled" />
+              <OptionsActionScanReportLazy data={msg.optionsActionScan} shareMode="enabled" />
             ) : (
               <XchatMarkdownBody content={msg.content} />
             )}

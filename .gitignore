@@ -30,6 +30,8 @@ test-results/
 .lighthouseci/*
 !.lighthouseci/config.cjs
 !.lighthouseci/config.prod-remote.cjs
+!.lighthouseci/config.auth.cjs
+!.lighthouseci/config.prod-remote.auth.cjs
 
 # nyc test coverage
 .nyc_output

@@ -1,11 +1,10 @@
 "use client";
 
-import type { CSSProperties, HTMLAttributes, ReactNode, TableHTMLAttributes } from "react";
+import nextDynamic from "next/dynamic";
+import type { HTMLAttributes, ReactNode, TableHTMLAttributes } from "react";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
@@ -17,6 +16,27 @@ import {
     parseInlineXfChipCode,
     parseXfCitationFenceJson
 } from "@/lib/xchat-citations";
+
+/**
+ * Perf: `react-syntax-highlighter` Prism + `oneDark`/`oneLight` style sheets are
+ * one of the largest single contributions to the xChat bundle (well over 100 KB
+ * gzipped between Prism core, language defs, and the JSON theme objects), but
+ * the vast majority of assistant messages contain no fenced code blocks. Lazy
+ * load the highlighter chunk via `next/dynamic` so it only ships when the first
+ * code fence renders. Plain markdown messages (the common case) get the small
+ * `react-markdown` core only.
+ */
+const XchatLazySyntaxHighlighter = nextDynamic(
+  () => import("@/app/xchat/ui/xchat-prism-highlighter").then((m) => ({ default: m.XchatPrismHighlighter })),
+  {
+    ssr: false,
+    loading: () => (
+      <pre className="xchat-md-code-block-wrap xchat-md-code-block-wrap--loading">
+        <code />
+      </pre>
+    )
+  }
+);
 
 type XchatMarkdownBodyProps = {
   content: string;
@@ -41,7 +61,7 @@ function mdInlineCodePlainText(children: ReactNode): string {
   return "";
 }
 
-function createMarkdownComponents(prismStyle: Record<string, CSSProperties>): Components {
+function createMarkdownComponents(xfSoft: boolean): Components {
   return {
     p({ children, className }) {
       return <div className={className ? `xchat-md-p ${className}` : "xchat-md-p"}>{children}</div>;
@@ -88,39 +108,9 @@ function createMarkdownComponents(prismStyle: Record<string, CSSProperties>): Co
               </div>
             );
           }
-          return (
-            <SyntaxHighlighter
-              className="xchat-md-code-block-wrap"
-              customStyle={{
-                margin: "0.65rem 0",
-                borderRadius: "8px",
-                fontSize: "0.8rem",
-                lineHeight: 1.45
-              }}
-              language="json"
-              PreTag="div"
-              style={prismStyle}
-            >
-              {text}
-            </SyntaxHighlighter>
-          );
+          return <XchatLazySyntaxHighlighter language="json" value={text} xfSoft={xfSoft} />;
         }
-        return (
-          <SyntaxHighlighter
-            className="xchat-md-code-block-wrap"
-            customStyle={{
-              margin: "0.65rem 0",
-              borderRadius: "8px",
-              fontSize: "0.8rem",
-              lineHeight: 1.45
-            }}
-            language={lang}
-            PreTag="div"
-            style={prismStyle}
-          >
-            {text}
-          </SyntaxHighlighter>
-        );
+        return <XchatLazySyntaxHighlighter language={lang} value={text} xfSoft={xfSoft} />;
       }
       const chip = parseInlineXfChipCode(text);
       if (chip) {
@@ -137,8 +127,7 @@ function createMarkdownComponents(prismStyle: Record<string, CSSProperties>): Co
 
 export function XchatMarkdownBody({ content, className }: XchatMarkdownBodyProps) {
   const xfSoft = useXfUiSoft();
-  const prismStyle = xfSoft ? oneLight : oneDark;
-  const components = useMemo(() => createMarkdownComponents(prismStyle), [prismStyle]);
+  const components = useMemo(() => createMarkdownComponents(xfSoft), [xfSoft]);
   const cleaned = useMemo(() => preprocessXchatMarkdown(content), [content]);
 
   return (

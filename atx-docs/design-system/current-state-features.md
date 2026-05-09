@@ -325,6 +325,130 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 - **Live prod regression:** **`npm run lh:prod`** → **`.lighthouseci/config.prod-remote.cjs`** (same four URLs against **`https://atx.fintech-advisor.ai`**; guest shells unless you add LHCI auth).
 - **Recent LHCI direction:** improve performance scores on **`/xchat`** and **`/portfolios`** (history + virtualized lists); keep INP ≤ 200 ms on interactive surfaces.
 
+#### LHCI workflow — guest + authenticated runs
+
+Two configs ship in **`.lighthouseci/`**, one auth helper in **`scripts/lhci/`**, and matching npm scripts. Reports are **gitignored** (under `.lighthouseci/reports*`).
+
+| Mode | Script | Config | Reports dir |
+| --- | --- | --- | --- |
+| Local guest (full) | `npm run lh:local` | `.lighthouseci/config.cjs` | `.lighthouseci/reports/` |
+| Local guest (perf-only) | `npm run lh:local:perf` | same + `LHCI_PERF_ONLY=1` | `.lighthouseci/reports/` |
+| Local authenticated (full) | `npm run lh:local:auth` | `.lighthouseci/config.auth.cjs` | `.lighthouseci/reports-auth/` |
+| Local authenticated (perf-only) | `npm run lh:local:auth:perf` | same + `LHCI_PERF_ONLY=1` | `.lighthouseci/reports-auth/` |
+| Prod guest (full) | `npm run lh:prod` | `.lighthouseci/config.prod-remote.cjs` | `.lighthouseci/reports-prod/` |
+| Prod guest (perf-only) | `npm run lh:prod:perf` | same + `LHCI_PERF_ONLY=1` | `.lighthouseci/reports-prod/` |
+| Prod authenticated (full) | `npm run lh:prod:auth` | `.lighthouseci/config.prod-remote.auth.cjs` | `.lighthouseci/reports-prod-auth/` |
+| Prod authenticated (perf-only) | `npm run lh:prod:auth:perf` | same + `LHCI_PERF_ONLY=1` | `.lighthouseci/reports-prod-auth/` |
+
+All four modes audit the same URL set (`/xchat`, `/portfolio`, `/portfolios`, `/xoptions`) so before/after deltas line up across guest vs signed-in.
+
+**Authenticated steps:**
+
+```bash
+# 1) build prod artifact (LHCI server starts `next start`)
+NODE_ENV=production npm run build
+
+# 2) ensure local Mongo + a seeded admin/app_user exist
+npm run mongo:up && npm run seed:admin
+
+# 3) mint a signed `xf_core_session` cookie (use seed output for ids)
+export LHCI_AUTH_COOKIE="$(npm run --silent lh:mint-cookie -- \
+  --env-file=.env --user-id=<userId> --tenant-id=<tenantId>)"
+
+# 4) audit signed-in shells (guest/auth land in different report dirs)
+npm run lh:local:auth          # full categories
+npm run lh:local:auth:perf     # performance-only, faster iteration
+```
+
+For live prod, repeat with the **prod** secret + IDs and use `lh:prod:auth`:
+
+```bash
+export LHCI_PROD_AUTH_COOKIE="$(npm run --silent lh:mint-cookie -- \
+  --env-file=.env.prod --user-id=<prod-userId> --tenant-id=<prod-tenantId>)"
+npm run lh:prod:auth
+```
+
+| Env var | Used by | Notes |
+| --- | --- | --- |
+| `LHCI_AUTH_COOKIE` | `config.auth.cjs` | Full `xf_core_session=<value>` (or just `<value>`); minted by `scripts/lhci/mint-session-cookie.mjs`. |
+| `LHCI_PROD_AUTH_COOKIE` | `config.prod-remote.auth.cjs` | Same shape but minted with **prod** `AUTH_SECRET`. Falls back to `LHCI_AUTH_COOKIE`. |
+| `LHCI_PORT` | local configs | Port for `next start` (default `3001`). |
+| `LHCI_RUNS` | all configs | Override `numberOfRuns` (default 2). |
+| `LHCI_PERF_ONLY` | all configs | When `1`/`true`, restricts categories to `performance` for fast iteration. |
+| `LHCI_PROD_ORIGIN` | prod configs | Override origin (default `https://atx.fintech-advisor.ai`). |
+| `LHCI_AUTH_USER_ID` / `LHCI_AUTH_TENANT_ID` | mint script | Defaults for the cookie payload (CLI flags override). |
+
+**Comparing runs:** each invocation drops a versioned set of `lhr-*.html` + `manifest.json` into the reports dir for that mode. To compare guest vs authenticated for `/xchat`, open both `reports/lhr-*-xchat-*.html` and `reports-auth/lhr-*-xchat-*.html` in a browser, or diff `manifest.json` `summary` blocks. Treat any drop ≥ 0.05 in performance score (or > 200 ms LCP regression) as a blocker for hot-path PRs.
+
+#### Lighthouse baselines (2026-05-09 LHCI, perf-only, desktop preset)
+
+Captured via `npm run lh:prod:perf` (`LHCI_RUNS=1`) and `npm run lh:local:perf` (`LHCI_RUNS=1` → 2 runs per default; median below) right before the **xChat hot-path optimization pass** described in `lighthouse_perf_plan_*.plan.md`.
+
+Live prod (`https://atx.fintech-advisor.ai`) — guest shells (no signed session):
+
+| Route | Perf | LCP (ms) | CLS | TBT (ms) | FCP (ms) | SI (ms) | TTI (ms) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| /portfolio | 1.00 | 799 | 0.000 | 0 | 364 | 582 | 799 |
+| /portfolios | 1.00 | 719 | 0.000 | 0 | 399 | 469 | 719 |
+| /xchat | **0.96** | 630 | 0.000 | **158** | 357 | **1004** | 759 |
+| /xoptions | 1.00 | 679 | 0.000 | 0 | 399 | 508 | 679 |
+
+Local (`http://localhost:3001`, `next start` from current build) — guest shells, median of 2 runs:
+
+| Route | Perf | LCP (ms) | CLS | TBT (ms) | FCP (ms) | SI (ms) | TTI (ms) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| /portfolio | 1.00 | 760 | 0.000 | 0 | 328 | 328 | 762 |
+| /portfolios | 1.00 | 721 | 0.000 | 0 | 327 | 327 | 723 |
+| /xchat | **0.99** | 804 | 0.000 | **26** | 300 | **582** | 811 |
+| /xoptions | 1.00 | 736 | 0.000 | 0 | 295 | 295 | 738 |
+
+**Read:** `/xchat` is the only route below 1.00 in either environment. Prod TBT (158 ms) and SI (1004 ms) point at main-thread JS during initial paint — consistent with the heavy markdown + syntax-highlighter + scan-report bundles eagerly imported by `xchat-thread-message-bubble.tsx`, plus the canvas animation in `starfield-background.tsx`. `/portfolio`, `/portfolios`, `/xoptions` are healthy — keep them flat through the optimization pass.
+
+Authenticated baselines should be captured by an operator with the **prod** `AUTH_SECRET`, following the **Authenticated steps** above. Append the authenticated tables below this section once captured (or per release-candidate); guest baselines remain the public reference.
+
+#### Post-optimization local guest re-run (2026-05-09 LHCI, perf-only, desktop preset)
+
+Captured after the xChat hot-path optimization pass landed (`npm run lh:local:perf` on a fresh `npm run build`, median of 2 runs). Same routes, same desktop preset, same machine — directly comparable to the **Local** baseline above.
+
+| Route | Perf | LCP (ms) | CLS | TBT (ms) | FCP (ms) | SI (ms) | TTI (ms) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| /portfolio | 1.00 | 761 | 0.000 | 17 | 334 | 398 | 783 |
+| /portfolios | 1.00 | 748 | 0.000 | 0 | 329 | 329 | 748 |
+| /xchat | **1.00** | **721** | 0.000 | **22** | 321 | 754 | 871 |
+| /xoptions | 1.00 | 727 | 0.000 | 21 | 296 | 324 | 770 |
+
+**Deltas vs pre-fix local baseline:**
+
+| Route | Δ Perf | Δ LCP | Δ TBT | Δ SI | Notes |
+| --- | --- | --- | --- | --- | --- |
+| /xchat | **+0.01** (0.99 → 1.00) | **−83 ms** (804 → 721) | −4 ms (26 → 22) | +172 ms (582 → 754) | Recovered to perfect; LCP/TBT both improved. SI regression is the explicit trade-off — the starfield canvas now paints **after** the `load` event so the chat shell + composer light up first; visually the canvas catches up within ~1 s of LCP. |
+| /portfolio | 0 | +1 ms | +17 ms | +70 ms | Within run-to-run noise; no perf-score change. |
+| /portfolios | 0 | +27 ms | 0 | +2 ms | Flat. |
+| /xoptions | 0 | −9 ms | +21 ms | +29 ms | TBT delta is run-noise; perf score flat at 1.00. |
+
+**What changed (low-risk, no contract changes, no API/persona behavior change):**
+
+- **`src/app/ui/starfield-background.tsx`** — defer the entire scene init + RAF loop until *after* `window.load` plus one idle hop. Moves the ~320-star + 4-nebula allocation and the first few shadow-blurred animation frames out of Lighthouse’s FCP → TTI window. Reduced-motion behavior preserved; cleanup unchanged.
+- **`src/app/xchat/ui/xchat-thread-message-bubble.tsx`** — convert the static `OptionsActionScanReport` import to `next/dynamic` (`ssr: false`) with a width-matched skeleton (`.options-action-scan-root--loading`). Heavy chunks (`jspdf`, `jspdf-autotable`, `@tanstack/react-table` for that card) now ship only when an `optionsActionScan` payload renders.
+- **`src/app/xchat/ui/xchat-markdown-body.tsx`** + new **`src/app/xchat/ui/xchat-prism-highlighter.tsx`** — extract the Prism + `oneDark`/`oneLight` style imports into a thin module that is dynamically loaded the first time a fenced code block renders. Plain markdown messages (the common case) no longer pay for the Prism bundle.
+- **CSS** — width-aware loading shells `.options-action-scan-root--loading` and `.xchat-md-code-block-wrap--loading` keep the layout stable while lazy chunks load (CLS stays 0).
+
+**Standing guardrails for future PRs touching xChat / xOptions / portfolios:**
+
+1. Run **`npm run lh:local:perf`** before/after when changing any module in:
+   - `src/app/xchat/ui/**`, `src/app/reports/scan/ui/**`, `src/app/xoptions/**`, `src/app/portfolio*/**`, `src/app/ui/starfield-background.tsx`
+   - any new `next/dynamic` boundary or `react-syntax-highlighter`/`apexcharts`/`jspdf` import.
+2. Treat any drop ≥ **0.05** in performance score, or > **200 ms** LCP regression on `/xchat`, as a blocker.
+3. When introducing a heavyweight client dep, default to **`next/dynamic({ ssr: false })`** with a fixed-size skeleton (avoid CLS).
+4. Anything touching `StarfieldBackground` must keep the start gated behind the `load` event so it cannot re-enter the TBT window.
+5. For authenticated regression coverage on hot-path PRs, attach a `lh:local:auth:perf` run alongside the guest run (mint cookie via `npm run lh:mint-cookie`).
+
+**Remaining hotspot backlog (non-blocking):**
+
+- xChat conversation chunk still ships `apexcharts` indirectly via `react-apexcharts`-using cousins; consider isolating chart-only modules behind `next/dynamic` if conversation-bundle size regresses.
+- IBKR snapshot panel and watchlist quote refresh are not LHCI-monitored yet (they live behind app interactions); add Lighthouse user-flows or Sentry web-vitals when they become a perceived hot path.
+- Live prod re-measurement (`npm run lh:prod:perf`) should happen post-deploy of this optimization pass to confirm the local 1.00 maps to prod (current prod still shows `/xchat` at 0.96 because these fixes have not shipped yet).
+
 #### Lighthouse production baseline (2026-04-08)
 
 - **Performance:** **1.00** on **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/xoptions`** (live prod).

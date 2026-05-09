@@ -2699,6 +2699,16 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   max-width: 100%;
 }
 
+/* Skeleton placeholder rendered while the lazy `react-syntax-highlighter`
+ * chunk loads (see `XchatLazySyntaxHighlighter` in `xchat-markdown-body.tsx`). */
+.xchat-md-code-block-wrap--loading {
+  margin: 0.65rem 0;
+  border-radius: 8px;
+  min-height: 56px;
+  background: color-mix(in srgb, var(--xf-surface-700) 80%, transparent);
+  border: 1px solid var(--xf-border-subtle);
+}
+
 .xchat-markdown blockquote {
   margin: 0.45rem 0;
   padding-left: 0.65rem;
@@ -3061,6 +3071,45 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   box-shadow:
     var(--xf-shadow-card),
     inset 0 1px 0 color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+/* Skeleton shell for `next/dynamic` loading state — preserves layout while the
+ * heavy scan-report chunk (jspdf, react-table, etc.) downloads. */
+.options-action-scan-root--loading {
+  min-height: 220px;
+  background: color-mix(in srgb, var(--xf-surface-700) 75%, transparent);
+  border-radius: 12px;
+  border: 1px solid var(--xf-border-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+.options-action-scan-root--loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--xf-text-100) 6%, transparent) 50%,
+    transparent 100%
+  );
+  animation: xchat-scan-skel-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes xchat-scan-skel-shimmer {
+  0% {
+    transform: translateX(-60%);
+  }
+  100% {
+    transform: translateX(60%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .options-action-scan-root--loading::after {
+    animation: none;
+  }
 }
 
 .xchat-sjp {
