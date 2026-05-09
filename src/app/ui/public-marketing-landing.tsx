@@ -48,9 +48,9 @@ export function PublicMarketingLanding() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--xf-bg-900)] text-[var(--xf-text-100)]">
+    <div className="min-h-screen bg-transparent text-[var(--xf-text-100)]">
       <nav
-        className="sticky top-0 z-50 border-b border-white/10 bg-[var(--xf-bg-900)]/85 backdrop-blur-lg"
+        className="sticky top-0 z-50 border-b border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_82%,transparent)] backdrop-blur-lg"
         aria-label="Primary"
       >
         <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-3 px-4 sm:px-8">

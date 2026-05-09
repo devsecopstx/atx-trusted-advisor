@@ -78,15 +78,15 @@ export default async function ResourcesGuidesHubPage() {
   );
 
   return (
-    <div className="xchat-shell flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--xf-bg-900)]">
+    <div className="xchat-shell flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-transparent">
       {approved && session ? (
-        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
+        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[color-mix(in_srgb,var(--xf-bg-800)_82%,transparent)] backdrop-blur-md">
           <div className="workspace-product-approved-header-slot">
             <AppUserApprovedHeader current="xchat" feedbackPageLabel="Resources · Guides" session={session} />
           </div>
         </div>
       ) : (
-        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
+        <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[color-mix(in_srgb,var(--xf-bg-800)_82%,transparent)] backdrop-blur-md">
           <XchatGuestHeader />
         </div>
       )}

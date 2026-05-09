@@ -38,8 +38,8 @@ body {
 /* Full-bleed skyline coverage */
 .bg-skyline-day,
 .bg-skyline-night {
-  background-position: center 55%;
-  background-size: 100% auto;
+  background-position: center 58%;
+  background-size: cover;
   background-repeat: no-repeat;
 }
 
