@@ -113,6 +113,19 @@ export function expandWorkspaceProductRail(): void {
   window.dispatchEvent(new Event(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE));
 }
 
+/** Collapse the workspace product rail and persist (e.g. default xChat entry after login). */
+export function collapseWorkspaceProductRail(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    localStorage.setItem(RAIL_EXPANDED_STORAGE_KEY, "0");
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new Event(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE));
+}
+
 function pathKeyFromHref(href: string): string {
   const beforeHash = href.split("#")[0] ?? href;
   const beforeQuery = beforeHash.split("?")[0] ?? beforeHash;

@@ -20,7 +20,11 @@ import { BillingAccessStateBanner } from "@/app/ui/billing-access-state-banner";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import { LucideListBulletsIcon, LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
-import { expandWorkspaceProductRail, WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
+import {
+    collapseWorkspaceProductRail,
+    expandWorkspaceProductRail,
+    WorkspaceProductSidebar
+} from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type {
@@ -1060,6 +1064,14 @@ export function XchatConversation({
       el.style.height = "auto";
       el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
     });
+  }, [initialXchatItem]);
+
+  /** Normal xChat opens (e.g. post-login `/xchat`, `/xchat?thread=…`): start with rail collapsed; deep links keep expand above. */
+  useEffect(() => {
+    if (initialXchatItem) {
+      return;
+    }
+    collapseWorkspaceProductRail();
   }, [initialXchatItem]);
 
   const setKeepLastTenMessages = useCallback(async (enabled: boolean) => {

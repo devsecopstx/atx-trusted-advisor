@@ -449,6 +449,64 @@ function formatDistToTarget(row: WatchlistRow): string {
   return `${sign}${pct.toFixed(1)}%`;
 }
 
+function riskPctNumeric(targetNotional: number | null, portfolioTotal: number): number | null {
+  if (
+    targetNotional == null ||
+    !Number.isFinite(targetNotional) ||
+    !Number.isFinite(portfolioTotal) ||
+    portfolioTotal <= 0
+  ) {
+    return null;
+  }
+  return (targetNotional / portfolioTotal) * 100;
+}
+
+function riskPctToneClass(pct: number | null): string {
+  if (pct == null) {
+    return "";
+  }
+  if (pct >= 8) {
+    return "xf-watchlist-risk-pct--high";
+  }
+  if (pct >= 4) {
+    return "xf-watchlist-risk-pct--mid";
+  }
+  return "xf-watchlist-risk-pct--low";
+}
+
+/** Left accent on mobile cards: option leg vs equity. */
+function watchlistLegAccentClass(row: WatchlistRow): string {
+  const lt = (row.lineType ?? "").toLowerCase();
+  if (lt.includes("put")) {
+    return "xf-watchlist-mobile-card--put";
+  }
+  if (lt.includes("call")) {
+    return "xf-watchlist-mobile-card--call";
+  }
+  const cg = row.chainGlance?.contractType;
+  if (cg === "put") {
+    return "xf-watchlist-mobile-card--put";
+  }
+  if (cg === "call") {
+    return "xf-watchlist-mobile-card--call";
+  }
+  return "xf-watchlist-mobile-card--equity";
+}
+
+function rsiToneClass(row: WatchlistRow): string {
+  const rsi = row.technicals?.rsi14;
+  if (rsi == null || !Number.isFinite(rsi)) {
+    return "";
+  }
+  if (rsi < 30) {
+    return "xf-watchlist-rsi--oversold";
+  }
+  if (rsi > 70) {
+    return "xf-watchlist-rsi--overbought";
+  }
+  return "";
+}
+
 function getOptionVolumeSortValue(row: WatchlistRow): number | null {
   const vol = row.chainGlance?.optionVolume;
   return vol != null && Number.isFinite(vol) ? vol : null;
@@ -486,7 +544,7 @@ function quickScore(row: WatchlistRow): number | null {
   return Math.round(score01 * 100);
 }
 
-const WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX = 64;
+const WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX = 76;
 const WATCHLIST_VIRTUAL_MIN_ROWS = 10;
 
 function useWatchlistViewportAllowsVirtualize(): boolean {
@@ -522,7 +580,6 @@ type WatchlistRowTrProps = {
   rowClassName?: string;
   rowStyle?: CSSProperties;
   portfolioTotalUsd: number;
-  listLoadedAtLabel: string;
   patchRowMeta: (symbol: string, partial: { rationale?: string; rowStatus?: WatchlistRowStatus }) => Promise<void>;
   patchRowEntryPrice: (symbol: string, entryPrice: number) => Promise<void>;
   aiSuggestBusy: boolean;
@@ -531,46 +588,13 @@ type WatchlistRowTrProps = {
   onXchatPreflight?: (row: WatchlistRow) => void;
 };
 
-const WatchlistRowTr = memo(function WatchlistRowTr({
-  row,
-  editMode,
-  mutating,
-  removingThisSymbol,
-  updateDraftRow,
-  onRemoveSymbol,
-  rowClassName,
-  rowStyle,
-  portfolioTotalUsd,
-  listLoadedAtLabel,
-  patchRowMeta,
-  patchRowEntryPrice,
-  aiSuggestBusy,
-  onAiSuggest,
-  onShowQuote,
-  onXchatPreflight
-}: WatchlistRowTrProps) {
-  const te = getTargetEntryNumeric(row);
-  const riskPct = formatPortfolioRiskPct(te, portfolioTotalUsd);
-  const ivRank = getIvRankSortValue(row);
-  const optionsVolume = getOptionVolumeSortValue(row);
-  const distToTargetDisplay = formatDistToTarget(row);
-  const quickScoreValue = quickScore(row);
-  const lastPrim = formatLastUpdateCell(row);
-  const companyFull = row.quote?.companyName?.trim() ?? "";
-  const companyBlurb = companyFull ? truncateCompanyBlurb(companyFull, 52) : "";
-  const wkLo = row.quote?.fiftyTwoWeekLow;
-  const wkHi = row.quote?.fiftyTwoWeekHigh;
-  const has52w =
-    typeof wkLo === "number" &&
-    Number.isFinite(wkLo) &&
-    typeof wkHi === "number" &&
-    Number.isFinite(wkHi);
-  const lastTitle =
-    lastPrim !== "—"
-      ? undefined
-      : listLoadedAtLabel
-        ? `Last refreshed: ${listLoadedAtLabel}`
-        : undefined;
+function WatchlistRationaleBlock(
+  props: Pick<
+    WatchlistRowTrProps,
+    "row" | "editMode" | "mutating" | "aiSuggestBusy" | "updateDraftRow" | "patchRowMeta" | "onAiSuggest"
+  > & { wrapClassName?: string }
+) {
+  const { row, editMode, mutating, aiSuggestBusy, updateDraftRow, patchRowMeta, onAiSuggest, wrapClassName } = props;
   const [rationaleDialogOpen, setRationaleDialogOpen] = useState(false);
   const [rationaleDialogEditing, setRationaleDialogEditing] = useState(false);
   const [rationaleDraft, setRationaleDraft] = useState(row.rationale ?? "");
@@ -593,6 +617,304 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   };
 
   return (
+    <div className={wrapClassName ?? "xf-watchlist-rationale-cell"}>
+      {editMode ? (
+        <textarea
+          aria-label={`${row.symbol} rationale`}
+          className="xf-watchlist-rationale-input"
+          placeholder="Thesis (required for Active)"
+          rows={2}
+          value={row.rationale ?? ""}
+          onChange={(e) => updateDraftRow(row.symbol, { rationale: e.target.value })}
+        />
+      ) : (
+        <div
+          className={`xf-watchlist-rationale-preview${!rationaleHasValue ? " xf-watchlist-rationale-preview--empty" : ""}`}
+        >
+          {rationaleHasValue ? rationalePreview : "No rationale yet. Add one before marking Active."}
+        </div>
+      )}
+      <div className="xf-watchlist-rationale-actions">
+        {!editMode ? (
+          <button
+            className="xf-watchlist-rationale-expand-link"
+            disabled={mutating}
+            type="button"
+            onClick={() => {
+              setRationaleDraft(row.rationale ?? "");
+              setRationaleDialogEditing(false);
+              setRationaleDialogOpen(true);
+            }}
+          >
+            Expand
+          </button>
+        ) : null}
+        <button
+          className="xf-watchlist-ai-suggest"
+          disabled={mutating || aiSuggestBusy}
+          type="button"
+          onClick={() => onAiSuggest(row)}
+        >
+          ✦ AI Suggest
+        </button>
+      </div>
+      {!editMode && rationaleDialogOpen ? (
+        <div className="xf-watchlist-rationale-modal-backdrop" role="presentation" onClick={closeRationaleDialog}>
+          <div
+            aria-label={`${row.symbol} rationale`}
+            aria-modal="true"
+            className="xf-watchlist-rationale-modal"
+            role="dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="xf-watchlist-rationale-modal__title">{row.symbol} rationale</h3>
+            {rationaleDialogEditing ? (
+              <textarea
+                aria-label={`${row.symbol} rationale editor`}
+                className="xf-watchlist-rationale-editor"
+                placeholder="One-line thesis"
+                rows={8}
+                value={rationaleDraft}
+                onChange={(e) => setRationaleDraft(e.target.value)}
+              />
+            ) : (
+              <div className="xf-watchlist-rationale-modal__content">
+                {rationaleDraft.trim().length > 0
+                  ? rationaleDraft
+                  : "No rationale set yet. Click Edit to add one."}
+              </div>
+            )}
+            <div className="xf-watchlist-rationale-modal__actions">
+              <button className="xf-watchlist-rationale-modal__btn" type="button" onClick={closeRationaleDialog}>
+                Close
+              </button>
+              {rationaleDialogEditing ? (
+                <>
+                  <button
+                    className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--secondary"
+                    type="button"
+                    onClick={() => {
+                      setRationaleDraft(row.rationale ?? "");
+                      setRationaleDialogEditing(false);
+                    }}
+                  >
+                    Cancel edit
+                  </button>
+                  <button
+                    className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--primary"
+                    disabled={mutating}
+                    type="button"
+                    onClick={() => void saveRationaleDialog()}
+                  >
+                    Save
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--primary"
+                  disabled={mutating}
+                  type="button"
+                  onClick={() => setRationaleDialogEditing(true)}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function WatchlistRowActionsInner(
+  props: Pick<
+    WatchlistRowTrProps,
+    | "row"
+    | "editMode"
+    | "mutating"
+    | "removingThisSymbol"
+    | "patchRowMeta"
+    | "patchRowEntryPrice"
+    | "onShowQuote"
+    | "onRemoveSymbol"
+    | "onXchatPreflight"
+  >
+) {
+  const {
+    row,
+    editMode,
+    mutating,
+    removingThisSymbol,
+    patchRowMeta,
+    patchRowEntryPrice,
+    onShowQuote,
+    onRemoveSymbol,
+    onXchatPreflight
+  } = props;
+  return (
+    <div className="xf-watchlist-row-actions-inline">
+      <button
+        aria-label={`Review ${row.symbol} leg`}
+        className="xf-watchlist-row-action-btn"
+        disabled={mutating}
+        title="Review leg"
+        type="button"
+        onClick={() => void patchRowMeta(row.symbol, { rowStatus: "review", rationale: row.rationale })}
+      >
+        <ReviewListIcon />
+      </button>
+      <button
+        aria-label={`Show quote details for ${row.symbol}`}
+        className="xf-watchlist-row-action-btn"
+        disabled={mutating}
+        title="View quote"
+        type="button"
+        onClick={() => onShowQuote(row)}
+      >
+        <ActivityPulseIcon className="crud-icon" />
+      </button>
+      <button
+        aria-label={`Increase target entry for ${row.symbol}`}
+        className="xf-watchlist-row-action-btn"
+        disabled={mutating}
+        title="Increase target entry"
+        type="button"
+        onClick={() => {
+          const basis =
+            typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice) && row.entryPrice > 0
+              ? row.entryPrice
+              : typeof row.quote?.price === "number" && Number.isFinite(row.quote.price) && row.quote.price > 0
+                ? row.quote.price
+                : null;
+          if (basis == null) {
+            return;
+          }
+          const next = Math.round(basis * 1.01 * 100) / 100;
+          void patchRowEntryPrice(row.symbol, next);
+        }}
+      >
+        <UpArrowIcon />
+      </button>
+      <button
+        aria-label={`Decrease target entry for ${row.symbol}`}
+        className="xf-watchlist-row-action-btn"
+        disabled={mutating}
+        title="Decrease target entry"
+        type="button"
+        onClick={() => {
+          const basis =
+            typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice) && row.entryPrice > 0
+              ? row.entryPrice
+              : typeof row.quote?.price === "number" && Number.isFinite(row.quote.price) && row.quote.price > 0
+                ? row.quote.price
+                : null;
+          if (basis == null) {
+            return;
+          }
+          const next = Math.round(Math.max(0.01, basis * 0.99) * 100) / 100;
+          void patchRowEntryPrice(row.symbol, next);
+        }}
+      >
+        <DownArrowIcon />
+      </button>
+      <button
+        aria-label={`Open ${row.symbol} in xOptions preflight`}
+        className="xf-watchlist-row-action-link"
+        title="Add to xOptions preflight"
+        type="button"
+        onClick={() => {
+          const params = new URLSearchParams({
+            symbol: row.symbol,
+            step: "4"
+          });
+          if (row.chainGlance?.expirationDate) {
+            params.set("expiration", row.chainGlance.expirationDate);
+          }
+          if (
+            row.chainGlance?.strike != null &&
+            Number.isFinite(row.chainGlance.strike) &&
+            row.chainGlance.strike > 0
+          ) {
+            params.set("strike", row.chainGlance.strike.toFixed(2));
+            params.set("contractType", row.chainGlance.contractType);
+          }
+          window.location.assign(`/xoptions?${params.toString()}`);
+        }}
+      >
+        <ExternalLinkIcon className="crud-icon" />
+      </button>
+      {onXchatPreflight ? (
+        <button
+          aria-label={`Open xChat preflight for ${row.symbol}`}
+          className="xf-watchlist-row-action-btn"
+          disabled={mutating}
+          title="xChat preflight — symbol and desk rationale in composer"
+          type="button"
+          onClick={() => onXchatPreflight(row)}
+        >
+          <svg aria-hidden className="crud-icon" fill="none" height="16" viewBox="0 0 24 24" width="16">
+            <path
+              d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
+          </svg>
+        </button>
+      ) : null}
+      <button
+        aria-label={`Delete ${row.symbol} from watchlist`}
+        className="xf-watchlist-row-delete-btn"
+        disabled={(mutating && !editMode) || removingThisSymbol}
+        title="Remove from watchlist"
+        type="button"
+        onClick={() => void onRemoveSymbol(row.symbol)}
+      >
+        <DeleteIcon className="crud-icon" />
+      </button>
+    </div>
+  );
+}
+
+const WatchlistRowTr = memo(function WatchlistRowTr({
+  row,
+  editMode,
+  mutating,
+  removingThisSymbol,
+  updateDraftRow,
+  onRemoveSymbol,
+  rowClassName,
+  rowStyle,
+  portfolioTotalUsd,
+  patchRowMeta,
+  patchRowEntryPrice,
+  aiSuggestBusy,
+  onAiSuggest,
+  onShowQuote,
+  onXchatPreflight
+}: WatchlistRowTrProps) {
+  const te = getTargetEntryNumeric(row);
+  const riskPct = formatPortfolioRiskPct(te, portfolioTotalUsd);
+  const riskNum = riskPctNumeric(te, portfolioTotalUsd);
+  const ivRank = getIvRankSortValue(row);
+  const optionsVolume = getOptionVolumeSortValue(row);
+  const distToTargetDisplay = formatDistToTarget(row);
+  const quickScoreValue = quickScore(row);
+  const companyFull = row.quote?.companyName?.trim() ?? "";
+  const companyBlurb = companyFull ? truncateCompanyBlurb(companyFull, 44) : "";
+  const wkLo = row.quote?.fiftyTwoWeekLow;
+  const wkHi = row.quote?.fiftyTwoWeekHigh;
+  const has52w =
+    typeof wkLo === "number" &&
+    Number.isFinite(wkLo) &&
+    typeof wkHi === "number" &&
+    Number.isFinite(wkHi);
+  const quickDistTitle =
+    distToTargetDisplay !== "—" ? `Dist to target: ${distToTargetDisplay}` : "Dist to target: —";
+
+  return (
     <tr className={rowClassName} style={rowStyle}>
       <td className="xf-watchlist-table-icon-cell">
         <WatchlistIconBadge logoUrl={row.quote?.logoUrl} symbol={row.symbol} />
@@ -601,6 +923,9 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
         <div className="xf-watchlist-sym-cell">
           <div className="xf-watchlist-sym-cell__row">
             <span className="xf-watchlist-sym-cell__label">{row.symbol}</span>
+          </div>
+          <div className="xf-watchlist-sym-cell__leg xf-watchlist-table-mono" title="Contract leg">
+            {formatLegCell(row)}
           </div>
           {companyBlurb ? (
             <div className="xf-watchlist-sym-cell__company" title={companyFull}>
@@ -621,28 +946,26 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
           </div>
         ) : null}
       </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
+      <td className="xf-watchlist-table-mono xf-watchlist-stack-cell">
         <span className="xf-watchlist-iv-wrap">
-          <span>{row.chainGlance?.impliedVolatilityPercent != null ? `${row.chainGlance.impliedVolatilityPercent.toFixed(1)}%` : "—"}</span>
+          {row.chainGlance?.impliedVolatilityPercent != null
+            ? `${row.chainGlance.impliedVolatilityPercent.toFixed(1)}% IV`
+            : "—"}
         </span>
-      </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
         <span
-          className={`xf-watchlist-iv-rank-badge${ivRank != null && ivRank >= 85 ? " xf-watchlist-iv-rank-badge--hot" : ivRank != null && ivRank >= 70 ? " xf-watchlist-iv-rank-badge--elevated" : ""}`}
+          className={`xf-watchlist-iv-rank-badge xf-watchlist-stack-cell__sub${ivRank != null && ivRank >= 85 ? " xf-watchlist-iv-rank-badge--hot" : ivRank != null && ivRank >= 70 ? " xf-watchlist-iv-rank-badge--elevated" : ""}`}
           title="Heuristic IV rank percentile"
         >
-          {ivRank != null ? `${ivRank}%` : "—"}
+          {ivRank != null ? `Rank ${ivRank}%` : "—"}
         </span>
       </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
-        {optionsVolume != null ? formatOiCell(optionsVolume) : "—"}
+      <td className="xf-watchlist-table-mono xf-watchlist-stack-cell">
+        <span>{optionsVolume != null ? formatOiCell(optionsVolume) : "—"} vol</span>
+        <span className="xf-watchlist-stack-cell__sub">
+          {row.chainGlance != null ? `${formatOiCell(row.chainGlance.openInterest)} OI` : "—"}
+        </span>
       </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
-        {row.chainGlance != null ? formatOiCell(row.chainGlance.openInterest) : "—"}
-      </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatLegCell(row)}</td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatCatalystCell(row)}</td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatRsiCell(row)}</td>
+      <td className={`xf-watchlist-table-mono xf-watchlist-table-nowrap ${rsiToneClass(row)}`}>{formatRsiCell(row)}</td>
       <td className="xf-watchlist-table-mono">
         {editMode ? (
           <div className="xf-watchlist-edit-stack">
@@ -694,117 +1017,29 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
           formatTargetEntryCell(row)
         )}
       </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{riskPct}</td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{distToTargetDisplay}</td>
-      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{quickScoreValue != null ? quickScoreValue : "—"}</td>
-      <td className="xf-watchlist-rationale-cell">
-        {editMode ? (
-          <textarea
-            aria-label={`${row.symbol} rationale`}
-            className="xf-watchlist-rationale-input"
-            placeholder="Thesis (required for Active)"
-            rows={2}
-            value={row.rationale ?? ""}
-            onChange={(e) => updateDraftRow(row.symbol, { rationale: e.target.value })}
-          />
+      <td className={`xf-watchlist-table-mono xf-watchlist-table-nowrap ${riskPctToneClass(riskNum)}`}>{riskPct}</td>
+      <td
+        className="xf-watchlist-table-mono xf-watchlist-table-nowrap xf-watchlist-quick-score-cell"
+        title={quickDistTitle}
+      >
+        {quickScoreValue != null ? (
+          <span className="xf-watchlist-quick-score-pill">{quickScoreValue}</span>
         ) : (
-          <div
-            className={`xf-watchlist-rationale-preview${!rationaleHasValue ? " xf-watchlist-rationale-preview--empty" : ""}`}
-          >
-            {rationaleHasValue ? rationalePreview : "No rationale yet. Add one before marking Active."}
-          </div>
+          "—"
         )}
-        <div className="xf-watchlist-rationale-actions">
-          {!editMode ? (
-            <button
-              className="xf-watchlist-rationale-expand-link"
-              disabled={mutating}
-              type="button"
-              onClick={() => {
-                setRationaleDraft(row.rationale ?? "");
-                setRationaleDialogEditing(false);
-                setRationaleDialogOpen(true);
-              }}
-            >
-              Expand
-            </button>
-          ) : null}
-          <button
-            className="xf-watchlist-ai-suggest"
-            disabled={mutating || aiSuggestBusy}
-            type="button"
-            onClick={() => onAiSuggest(row)}
-          >
-            ✦ AI Suggest
-          </button>
-        </div>
-        {!editMode && rationaleDialogOpen ? (
-          <div className="xf-watchlist-rationale-modal-backdrop" role="presentation" onClick={closeRationaleDialog}>
-            <div
-              aria-label={`${row.symbol} rationale`}
-              aria-modal="true"
-              className="xf-watchlist-rationale-modal"
-              role="dialog"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="xf-watchlist-rationale-modal__title">{row.symbol} rationale</h3>
-              {rationaleDialogEditing ? (
-                <textarea
-                  aria-label={`${row.symbol} rationale editor`}
-                  className="xf-watchlist-rationale-editor"
-                  placeholder="One-line thesis"
-                  rows={8}
-                  value={rationaleDraft}
-                  onChange={(e) => setRationaleDraft(e.target.value)}
-                />
-              ) : (
-                <div className="xf-watchlist-rationale-modal__content">
-                  {rationaleDraft.trim().length > 0
-                    ? rationaleDraft
-                    : "No rationale set yet. Click Edit to add one."}
-                </div>
-              )}
-              <div className="xf-watchlist-rationale-modal__actions">
-                <button className="xf-watchlist-rationale-modal__btn" type="button" onClick={closeRationaleDialog}>
-                  Close
-                </button>
-                {rationaleDialogEditing ? (
-                  <>
-                    <button
-                      className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--secondary"
-                      type="button"
-                      onClick={() => {
-                        setRationaleDraft(row.rationale ?? "");
-                        setRationaleDialogEditing(false);
-                      }}
-                    >
-                      Cancel edit
-                    </button>
-                    <button
-                      className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--primary"
-                      disabled={mutating}
-                      type="button"
-                      onClick={() => void saveRationaleDialog()}
-                    >
-                      Save
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--primary"
-                    disabled={mutating}
-                    type="button"
-                    onClick={() => setRationaleDialogEditing(true)}
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : null}
       </td>
-      <td className="xf-watchlist-table-mono">
+      <td className="xf-watchlist-rationale-cell">
+        <WatchlistRationaleBlock
+          aiSuggestBusy={aiSuggestBusy}
+          editMode={editMode}
+          mutating={mutating}
+          patchRowMeta={patchRowMeta}
+          row={row}
+          updateDraftRow={updateDraftRow}
+          onAiSuggest={onAiSuggest}
+        />
+      </td>
+      <td className="xf-watchlist-table-mono xf-watchlist-status-catalyst-cell">
         {editMode ? (
           <select
             aria-label={`${row.symbol} row status`}
@@ -839,135 +1074,234 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             <option value="review">Review</option>
           </select>
         )}
-      </td>
-      <td className="xf-watchlist-actions-cell">
-        <div className="xf-watchlist-row-actions-inline">
-          <button
-            aria-label={`Review ${row.symbol} leg`}
-            className="xf-watchlist-row-action-btn"
-            disabled={mutating}
-            title="Review leg"
-            type="button"
-            onClick={() => void patchRowMeta(row.symbol, { rowStatus: "review", rationale: row.rationale })}
-          >
-            <ReviewListIcon />
-          </button>
-          <button
-            aria-label={`Show quote details for ${row.symbol}`}
-            className="xf-watchlist-row-action-btn"
-            disabled={mutating}
-            title="View quote"
-            type="button"
-            onClick={() => onShowQuote(row)}
-          >
-            <ActivityPulseIcon className="crud-icon" />
-          </button>
-          <button
-            aria-label={`Increase target entry for ${row.symbol}`}
-            className="xf-watchlist-row-action-btn"
-            disabled={mutating}
-            title="Increase target entry"
-            type="button"
-            onClick={() => {
-              const basis =
-                typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice) && row.entryPrice > 0
-                  ? row.entryPrice
-                  : typeof row.quote?.price === "number" && Number.isFinite(row.quote.price) && row.quote.price > 0
-                    ? row.quote.price
-                    : null;
-              if (basis == null) {
-                return;
-              }
-              const next = Math.round(basis * 1.01 * 100) / 100;
-              void patchRowEntryPrice(row.symbol, next);
-            }}
-          >
-            <UpArrowIcon />
-          </button>
-          <button
-            aria-label={`Decrease target entry for ${row.symbol}`}
-            className="xf-watchlist-row-action-btn"
-            disabled={mutating}
-            title="Decrease target entry"
-            type="button"
-            onClick={() => {
-              const basis =
-                typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice) && row.entryPrice > 0
-                  ? row.entryPrice
-                  : typeof row.quote?.price === "number" && Number.isFinite(row.quote.price) && row.quote.price > 0
-                    ? row.quote.price
-                    : null;
-              if (basis == null) {
-                return;
-              }
-              const next = Math.round(Math.max(0.01, basis * 0.99) * 100) / 100;
-              void patchRowEntryPrice(row.symbol, next);
-            }}
-          >
-            <DownArrowIcon />
-          </button>
-          <button
-            aria-label={`Open ${row.symbol} in xOptions preflight`}
-            className="xf-watchlist-row-action-link"
-            title="Add to xOptions preflight"
-            type="button"
-            onClick={() => {
-              const params = new URLSearchParams({
-                symbol: row.symbol,
-                step: "4"
-              });
-              if (row.chainGlance?.expirationDate) {
-                params.set("expiration", row.chainGlance.expirationDate);
-              }
-              if (
-                row.chainGlance?.strike != null &&
-                Number.isFinite(row.chainGlance.strike) &&
-                row.chainGlance.strike > 0
-              ) {
-                params.set("strike", row.chainGlance.strike.toFixed(2));
-                params.set("contractType", row.chainGlance.contractType);
-              }
-              window.location.assign(`/xoptions?${params.toString()}`);
-            }}
-          >
-            <ExternalLinkIcon className="crud-icon" />
-          </button>
-          {onXchatPreflight ? (
-            <button
-              aria-label={`Open xChat preflight for ${row.symbol}`}
-              className="xf-watchlist-row-action-btn"
-              disabled={mutating}
-              title="xChat preflight — symbol and desk rationale in composer"
-              type="button"
-              onClick={() => onXchatPreflight(row)}
-            >
-              <svg aria-hidden className="crud-icon" fill="none" height="16" viewBox="0 0 24 24" width="16">
-                <path
-                  d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                />
-              </svg>
-            </button>
-          ) : null}
-          <button
-            aria-label={`Delete ${row.symbol} from watchlist`}
-            className="xf-watchlist-row-delete-btn"
-            disabled={(mutating && !editMode) || removingThisSymbol}
-            title="Remove from watchlist"
-            type="button"
-            onClick={() => void onRemoveSymbol(row.symbol)}
-          >
-            <DeleteIcon className="crud-icon" />
-          </button>
+        <div className="xf-watchlist-catalyst-sub xf-watchlist-table-mono" title="Expiry / timing">
+          {formatCatalystCell(row)}
         </div>
       </td>
-      <td className="xf-watchlist-table-mono xf-watchlist-last-up xf-watchlist-table-cell--wrap" title={lastTitle}>
-        {lastPrim}
+      <td className="xf-watchlist-actions-cell">
+        <WatchlistRowActionsInner
+          editMode={editMode}
+          mutating={mutating}
+          patchRowEntryPrice={patchRowEntryPrice}
+          patchRowMeta={patchRowMeta}
+          removingThisSymbol={removingThisSymbol}
+          row={row}
+          onRemoveSymbol={onRemoveSymbol}
+          onShowQuote={onShowQuote}
+          onXchatPreflight={onXchatPreflight}
+        />
       </td>
     </tr>
+  );
+});
+
+const WatchlistMobileCard = memo(function WatchlistMobileCard(props: WatchlistRowTrProps) {
+  const {
+    row,
+    editMode,
+    mutating,
+    removingThisSymbol,
+    updateDraftRow,
+    onRemoveSymbol,
+    portfolioTotalUsd,
+    patchRowMeta,
+    patchRowEntryPrice,
+    aiSuggestBusy,
+    onAiSuggest,
+    onShowQuote,
+    onXchatPreflight
+  } = props;
+  const te = getTargetEntryNumeric(row);
+  const riskPct = formatPortfolioRiskPct(te, portfolioTotalUsd);
+  const riskNum = riskPctNumeric(te, portfolioTotalUsd);
+  const ivRank = getIvRankSortValue(row);
+  const optionsVolume = getOptionVolumeSortValue(row);
+  const distToTargetDisplay = formatDistToTarget(row);
+  const quickScoreValue = quickScore(row);
+  const companyFull = row.quote?.companyName?.trim() ?? "";
+
+  return (
+    <article
+      className={`xf-watchlist-mobile-card ${watchlistLegAccentClass(row)}`}
+      aria-label={`${row.symbol} watchlist row`}
+    >
+      <div className="xf-watchlist-mobile-card__head">
+        <div className="xf-watchlist-mobile-card__identity">
+          <WatchlistIconBadge logoUrl={row.quote?.logoUrl} symbol={row.symbol} />
+          <div className="xf-watchlist-mobile-card__titles">
+            <div className="xf-watchlist-mobile-card__sym-row">
+              <span className="xf-watchlist-mobile-card__symbol">{row.symbol}</span>
+              <span className="xf-watchlist-mobile-card__leg xf-watchlist-table-mono">{formatLegCell(row)}</span>
+            </div>
+            {companyFull ? (
+              <p className="xf-watchlist-mobile-card__company">{truncateCompanyBlurb(companyFull, 56)}</p>
+            ) : null}
+            <p className="xf-watchlist-mobile-card__catalyst xf-watchlist-table-mono">{formatCatalystCell(row)}</p>
+          </div>
+        </div>
+        <div
+          className="xf-watchlist-mobile-card__score-wrap"
+          title={distToTargetDisplay !== "—" ? `Dist to target: ${distToTargetDisplay}` : undefined}
+        >
+          {quickScoreValue != null ? (
+            <span className="xf-watchlist-quick-score-pill xf-watchlist-quick-score-pill--large">{quickScoreValue}</span>
+          ) : (
+            <span className="xf-watchlist-mobile-card__score-empty">—</span>
+          )}
+        </div>
+      </div>
+
+      <div className="xf-watchlist-mobile-card__grid">
+        <div>
+          <span className="xf-watchlist-mobile-card__k">Spot</span>
+          <span className="xf-watchlist-mobile-card__v xf-watchlist-table-mono">{formatSpotCell(row)}</span>
+        </div>
+        <div>
+          <span className="xf-watchlist-mobile-card__k">Target</span>
+          <span className="xf-watchlist-mobile-card__v xf-watchlist-table-mono">
+            {editMode ? (
+              <input
+                aria-label={`${row.symbol} entry price`}
+                className="xf-watchlist-table-input xf-watchlist-mobile-card__inline-input"
+                inputMode="decimal"
+                placeholder="Entry"
+                type="text"
+                value={row.entryPrice === undefined ? "" : String(row.entryPrice)}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  if (v === "") {
+                    updateDraftRow(row.symbol, { entryPrice: undefined });
+                    return;
+                  }
+                  const n = Number(v);
+                  updateDraftRow(row.symbol, {
+                    entryPrice: Number.isFinite(n) ? n : undefined
+                  });
+                }}
+              />
+            ) : (
+              formatTargetEntryCell(row)
+            )}
+          </span>
+        </div>
+        <div>
+          <span className="xf-watchlist-mobile-card__k">Vol / OI</span>
+          <span className="xf-watchlist-mobile-card__v xf-watchlist-table-mono">
+            {optionsVolume != null ? formatOiCell(optionsVolume) : "—"} /{" "}
+            {row.chainGlance != null ? formatOiCell(row.chainGlance.openInterest) : "—"}
+          </span>
+        </div>
+        <div>
+          <span className="xf-watchlist-mobile-card__k">RSI</span>
+          <span className={`xf-watchlist-mobile-card__v xf-watchlist-table-mono ${rsiToneClass(row)}`}>
+            {formatRsiCell(row)}
+          </span>
+        </div>
+        <div>
+          <span className="xf-watchlist-mobile-card__k">IV · rank</span>
+          <span className="xf-watchlist-mobile-card__v xf-watchlist-table-mono">
+            {row.chainGlance?.impliedVolatilityPercent != null
+              ? `${row.chainGlance.impliedVolatilityPercent.toFixed(1)}%`
+              : "—"}{" "}
+            · {ivRank != null ? `${ivRank}%` : "—"}
+          </span>
+        </div>
+        <div>
+          <span className="xf-watchlist-mobile-card__k">% book</span>
+          <span className={`xf-watchlist-mobile-card__v xf-watchlist-table-mono ${riskPctToneClass(riskNum)}`}>
+            {riskPct}
+          </span>
+        </div>
+      </div>
+
+      {editMode ? (
+        <label className="xf-watchlist-mobile-card__qty">
+          <span className="xf-watchlist-mobile-card__k">Qty</span>
+          <input
+            aria-label={`${row.symbol} quantity`}
+            className="xf-watchlist-table-input"
+            inputMode="decimal"
+            placeholder="Quantity"
+            type="text"
+            value={row.quantity === undefined ? "" : String(row.quantity)}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              if (v === "") {
+                updateDraftRow(row.symbol, { quantity: undefined });
+                return;
+              }
+              const n = Number(v);
+              updateDraftRow(row.symbol, {
+                quantity: Number.isFinite(n) ? n : undefined
+              });
+            }}
+          />
+        </label>
+      ) : null}
+
+      <WatchlistRationaleBlock
+        aiSuggestBusy={aiSuggestBusy}
+        editMode={editMode}
+        mutating={mutating}
+        patchRowMeta={patchRowMeta}
+        row={row}
+        updateDraftRow={updateDraftRow}
+        wrapClassName="xf-watchlist-rationale-cell xf-watchlist-mobile-card__rationale"
+        onAiSuggest={onAiSuggest}
+      />
+
+      <div className="xf-watchlist-mobile-card__footer">
+        <div className="xf-watchlist-mobile-card__status">
+          {editMode ? (
+            <select
+              aria-label={`${row.symbol} row status`}
+              className="xf-watchlist-status-select"
+              value={row.rowStatus ?? "draft"}
+              onChange={(e) => {
+                updateDraftRow(row.symbol, { rowStatus: rowStatusFromSelectValue(e.target.value) });
+              }}
+            >
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+              <option value="review">Review</option>
+            </select>
+          ) : (
+            <select
+              aria-label={`${row.symbol} row status`}
+              className="xf-watchlist-status-select"
+              value={row.rowStatus ?? "draft"}
+              disabled={mutating}
+              onChange={(e) => {
+                const v = rowStatusFromSelectValue(e.target.value);
+                const rationale = (row.rationale ?? "").trim();
+                if (v === "active" && rationale.length === 0) {
+                  window.alert("Add a rationale before marking this row Active.");
+                  return;
+                }
+                void patchRowMeta(row.symbol, { rowStatus: v, rationale: row.rationale });
+              }}
+            >
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+              <option value="review">Review</option>
+            </select>
+          )}
+        </div>
+        <div className="xf-watchlist-mobile-card__actions">
+          <WatchlistRowActionsInner
+            editMode={editMode}
+            mutating={mutating}
+            patchRowEntryPrice={patchRowEntryPrice}
+            patchRowMeta={patchRowMeta}
+            removingThisSymbol={removingThisSymbol}
+            row={row}
+            onRemoveSymbol={onRemoveSymbol}
+            onShowQuote={onShowQuote}
+            onXchatPreflight={onXchatPreflight}
+          />
+        </div>
+      </div>
+    </article>
   );
 });
 
@@ -1015,20 +1349,6 @@ function WatchlistIconBadge({ logoUrl, symbol }: { logoUrl?: string | null; symb
       ) : null}
     </div>
   );
-}
-
-function formatLastUpdateCell(row: WatchlistRow): string {
-  if (row.lastUpdatedAt) {
-    try {
-      const d = new Date(row.lastUpdatedAt);
-      if (!Number.isNaN(d.getTime())) {
-        return d.toLocaleString();
-      }
-    } catch {
-      /* keep — */
-    }
-  }
-  return "—";
 }
 
 function toCsv(rows: WatchlistRow[]): string {
@@ -1843,6 +2163,13 @@ ${bodyRows}
   );
   const execMetrics = useMemo(() => computeExecutiveMetrics(metricRowsForExec), [metricRowsForExec]);
 
+  const capitalAtRiskPctOfBook = useMemo(() => {
+    if (portfolioTotalUsd <= 0 || execMetrics.capitalAtRiskSum <= 0) {
+      return null;
+    }
+    return (execMetrics.capitalAtRiskSum / portfolioTotalUsd) * 100;
+  }, [portfolioTotalUsd, execMetrics.capitalAtRiskSum]);
+
   const showRationaleBanner = useMemo(
     () => displayRows.length > 0 && displayRows.some((r) => !(r.rationale ?? "").trim()),
     [displayRows]
@@ -1950,20 +2277,32 @@ ${bodyRows}
                   </div>
                   <div className="xf-watchlist-exec__card">
                     <span className="xf-watchlist-exec__label">Est. capital at risk (target entries)</span>
-                    <span className="xf-watchlist-exec__value">{execMetrics.capitalAtRiskDisplay}</span>
+                    <span className="xf-watchlist-exec__value">
+                      {execMetrics.capitalAtRiskDisplay}
+                      {capitalAtRiskPctOfBook != null ? (
+                        <span className="xf-watchlist-exec__pct-book">
+                          {" "}
+                          · {capitalAtRiskPctOfBook.toFixed(1)}% of book
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
                 </div>
+              </section>
+            ) : null}
+
+            {!loading && rows.length > 0 && (showRationaleBanner || (execMetrics.hasIvData && execMetrics.highIvAllOver150)) ? (
+              <div className="xf-watchlist-sticky-alerts">
                 {execMetrics.hasIvData && execMetrics.highIvAllOver150 ? (
                   <p className="xf-watchlist-exec__warn">
                     High-IV warning: all legs &gt;150% IV — premium-selling territory, not buying.
                   </p>
                 ) : null}
-              </section>
-            ) : null}
-
-            {showRationaleBanner ? (
-              <div className="xf-watchlist-rationale-banner" role="status">
-                Add rationale + target % risk before execution — prevents emotional sizing.
+                {showRationaleBanner ? (
+                  <div className="xf-watchlist-rationale-banner" role="status">
+                    Add rationale + target % risk before execution — prevents emotional sizing.
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -2133,262 +2472,230 @@ ${bodyRows}
             ) : null}
 
             {!loading && rows.length > 0 ? (
-              <div
-                ref={tableScrollParentRef}
-                className={`xf-watchlist-table-wrap w-full max-w-full overflow-x-auto${watchlistVirtualize ? " xf-watchlist-table-wrap--virtual" : ""}`}
-              >
-                <table className={`xf-watchlist-table w-full max-w-full${watchlistVirtualize ? " xf-watchlist-table--virtual" : ""}`}>
-                  <thead>
-                    <tr>
-                      <th scope="col">Icon</th>
-                      <th
-                        aria-sort={
-                          sort.column === "instrument"
-                            ? sort.dir === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none"
-                        }
-                        scope="col"
-                      >
-                        <button
-                          className="xf-watchlist-sort-btn"
-                          type="button"
-                          onClick={() => toggleWatchlistSort("instrument")}
+              <>
+                <div className="w-full max-w-full space-y-3 px-3 pb-3 md:hidden">
+                  {filteredSortedRows.map((row, rowIndex) => (
+                    <WatchlistMobileCard
+                      key={`wl-m-${rowIndex}-${row.addedAt}-${row.symbol}`}
+                      aiSuggestBusy={aiSuggestSymbol === row.symbol}
+                      editMode={editMode}
+                      mutating={mutating}
+                      patchRowEntryPrice={patchRowEntryPrice}
+                      patchRowMeta={patchRowMeta}
+                      portfolioTotalUsd={portfolioTotalUsd}
+                      removingThisSymbol={removingSymbol === row.symbol}
+                      row={row}
+                      updateDraftRow={updateDraftRow}
+                      onAiSuggest={onAiSuggestRow}
+                      onRemoveSymbol={onRemoveSymbol}
+                      onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
+                      onXchatPreflight={handleXchatPreflightForRow}
+                    />
+                  ))}
+                </div>
+                <div
+                  ref={tableScrollParentRef}
+                  className={`xf-watchlist-table-wrap hidden w-full max-w-full overflow-x-auto md:block${watchlistVirtualize ? " xf-watchlist-table-wrap--virtual" : ""}`}
+                >
+                  <table className={`xf-watchlist-table w-full max-w-full${watchlistVirtualize ? " xf-watchlist-table--virtual" : ""}`}>
+                    <thead>
+                      <tr>
+                        <th scope="col">Icon</th>
+                        <th
+                          aria-sort={
+                            sort.column === "instrument"
+                              ? sort.dir === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                          scope="col"
                         >
-                          SYMBOL
-                          <span aria-hidden className="xf-watchlist-sort-indicator">
-                            {sort.column === "instrument" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
-                          </span>
-                        </button>
-                      </th>
-                      <th scope="col">Spot</th>
-                      <th
-                        aria-sort={
-                          sort.column === "iv"
-                            ? sort.dir === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none"
-                        }
-                        scope="col"
-                      >
-                        <button
-                          className="xf-watchlist-sort-btn"
-                          type="button"
-                          onClick={() => toggleWatchlistSort("iv")}
+                          <button
+                            className="xf-watchlist-sort-btn"
+                            type="button"
+                            onClick={() => toggleWatchlistSort("instrument")}
+                          >
+                            Symbol + leg
+                            <span aria-hidden className="xf-watchlist-sort-indicator">
+                              {sort.column === "instrument" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                            </span>
+                          </button>
+                        </th>
+                        <th scope="col">Spot</th>
+                        <th className="xf-watchlist-th--split" scope="col">
+                          <div className="xf-watchlist-th-split" role="group" aria-label="Sort by IV or IV rank">
+                            <button
+                              aria-label="Sort by implied volatility"
+                              className="xf-watchlist-sort-btn"
+                              type="button"
+                              onClick={() => toggleWatchlistSort("iv")}
+                            >
+                              IV
+                              <span aria-hidden className="xf-watchlist-sort-indicator">
+                                {sort.column === "iv" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                              </span>
+                            </button>
+                            <button
+                              aria-label="Sort by IV rank"
+                              className="xf-watchlist-sort-btn"
+                              type="button"
+                              onClick={() => toggleWatchlistSort("ivRank")}
+                            >
+                              Rank
+                              <span aria-hidden className="xf-watchlist-sort-indicator">
+                                {sort.column === "ivRank" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                              </span>
+                            </button>
+                          </div>
+                        </th>
+                        <th className="xf-watchlist-th--split" scope="col">
+                          <div className="xf-watchlist-th-split" role="group" aria-label="Sort by volume or open interest">
+                            <button
+                              aria-label="Sort by option volume"
+                              className="xf-watchlist-sort-btn"
+                              type="button"
+                              onClick={() => toggleWatchlistSort("optionsVolume")}
+                            >
+                              Vol
+                              <span aria-hidden className="xf-watchlist-sort-indicator">
+                                {sort.column === "optionsVolume" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                              </span>
+                            </button>
+                            <button
+                              aria-label="Sort by open interest"
+                              className="xf-watchlist-sort-btn"
+                              type="button"
+                              onClick={() => toggleWatchlistSort("oi")}
+                            >
+                              OI
+                              <span aria-hidden className="xf-watchlist-sort-indicator">
+                                {sort.column === "oi" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                              </span>
+                            </button>
+                          </div>
+                        </th>
+                        <th scope="col">RSI(14)</th>
+                        <th
+                          aria-sort={
+                            sort.column === "targetEntry"
+                              ? sort.dir === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                          scope="col"
                         >
-                          IV
-                          <span aria-hidden className="xf-watchlist-sort-indicator">
-                            {sort.column === "iv" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
-                          </span>
-                        </button>
-                      </th>
-                      <th
-                        aria-sort={
-                          sort.column === "ivRank"
-                            ? sort.dir === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none"
-                        }
-                        scope="col"
-                      >
-                        <button
-                          className="xf-watchlist-sort-btn"
-                          type="button"
-                          onClick={() => toggleWatchlistSort("ivRank")}
+                          <button
+                            className="xf-watchlist-sort-btn"
+                            type="button"
+                            onClick={() => toggleWatchlistSort("targetEntry")}
+                          >
+                            Target entry
+                            <span aria-hidden className="xf-watchlist-sort-indicator">
+                              {sort.column === "targetEntry" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                            </span>
+                          </button>
+                        </th>
+                        <th scope="col">% book risk</th>
+                        <th
+                          aria-sort={
+                            sort.column === "quickScore"
+                              ? sort.dir === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                          scope="col"
+                          title="Distance to target shown on hover per row"
                         >
-                          IV Rank
-                          <span aria-hidden className="xf-watchlist-sort-indicator">
-                            {sort.column === "ivRank" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
-                          </span>
-                        </button>
-                      </th>
-                      <th
-                        aria-sort={
-                          sort.column === "optionsVolume"
-                            ? sort.dir === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none"
-                        }
-                        scope="col"
+                          <button
+                            className="xf-watchlist-sort-btn"
+                            type="button"
+                            onClick={() => toggleWatchlistSort("quickScore")}
+                          >
+                            Quick score
+                            <span aria-hidden className="xf-watchlist-sort-indicator">
+                              {sort.column === "quickScore" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                            </span>
+                          </button>
+                        </th>
+                        <th scope="col">Rationale</th>
+                        <th scope="col">Status + catalyst</th>
+                        <th scope="col">Actions</th>
+                      </tr>
+                    </thead>
+                    {watchlistVirtualize ? (
+                      <tbody
+                        style={{
+                          display: "block",
+                          height: rowVirtualizer.getTotalSize(),
+                          position: "relative",
+                          width: "100%"
+                        }}
                       >
-                        <button
-                          className="xf-watchlist-sort-btn"
-                          type="button"
-                          onClick={() => toggleWatchlistSort("optionsVolume")}
-                        >
-                          Opt Vol
-                          <span aria-hidden className="xf-watchlist-sort-indicator">
-                            {sort.column === "optionsVolume" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
-                          </span>
-                        </button>
-                      </th>
-                      <th
-                        aria-sort={
-                          sort.column === "oi"
-                            ? sort.dir === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none"
-                        }
-                        scope="col"
-                      >
-                        <button
-                          className="xf-watchlist-sort-btn"
-                          type="button"
-                          onClick={() => toggleWatchlistSort("oi")}
-                        >
-                          OI
-                          <span aria-hidden className="xf-watchlist-sort-indicator">
-                            {sort.column === "oi" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
-                          </span>
-                        </button>
-                      </th>
-                      <th scope="col">Leg</th>
-                      <th scope="col">Catalyst</th>
-                      <th scope="col">RSI(14)</th>
-                      <th
-                        aria-sort={
-                          sort.column === "targetEntry"
-                            ? sort.dir === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none"
-                        }
-                        scope="col"
-                      >
-                        <button
-                          className="xf-watchlist-sort-btn"
-                          type="button"
-                          onClick={() => toggleWatchlistSort("targetEntry")}
-                        >
-                          Target entry
-                          <span aria-hidden className="xf-watchlist-sort-indicator">
-                            {sort.column === "targetEntry" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
-                          </span>
-                        </button>
-                      </th>
-                      <th scope="col">% book risk</th>
-                      <th
-                        aria-sort={
-                          sort.column === "distToTarget"
-                            ? sort.dir === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none"
-                        }
-                        scope="col"
-                      >
-                        <button
-                          className="xf-watchlist-sort-btn"
-                          type="button"
-                          onClick={() => toggleWatchlistSort("distToTarget")}
-                        >
-                          Dist target
-                          <span aria-hidden className="xf-watchlist-sort-indicator">
-                            {sort.column === "distToTarget" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
-                          </span>
-                        </button>
-                      </th>
-                      <th
-                        aria-sort={
-                          sort.column === "quickScore"
-                            ? sort.dir === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none"
-                        }
-                        scope="col"
-                      >
-                        <button
-                          className="xf-watchlist-sort-btn"
-                          type="button"
-                          onClick={() => toggleWatchlistSort("quickScore")}
-                        >
-                          Quick score
-                          <span aria-hidden className="xf-watchlist-sort-indicator">
-                            {sort.column === "quickScore" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
-                          </span>
-                        </button>
-                      </th>
-                      <th scope="col">Rationale</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Actions</th>
-                      <th scope="col">Last update</th>
-                    </tr>
-                  </thead>
-                  {watchlistVirtualize ? (
-                    <tbody
-                      style={{
-                        display: "block",
-                        height: rowVirtualizer.getTotalSize(),
-                        position: "relative",
-                        width: "100%"
-                      }}
-                    >
-                      {rowVirtualizer.getVirtualItems().map((vr) => {
-                        const row = filteredSortedRows[vr.index]!;
-                        return (
-                          <WatchlistRowTr
-                            key={`wl-${vr.index}-${row.addedAt}-${row.symbol}`}
-                            aiSuggestBusy={aiSuggestSymbol === row.symbol}
-                            editMode={editMode}
-                            listLoadedAtLabel={listLoadedAtLabel}
-                            mutating={mutating}
-                            patchRowMeta={patchRowMeta}
-                            patchRowEntryPrice={patchRowEntryPrice}
-                            portfolioTotalUsd={portfolioTotalUsd}
-                            removingThisSymbol={removingSymbol === row.symbol}
-                            row={row}
-                            rowClassName="xf-watchlist-table__data-row"
-                            rowStyle={{
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              width: "100%",
-                              display: "grid",
-                              height: `${vr.size}px`,
-                              transform: `translateY(${vr.start}px)`
-                            }}
-                            updateDraftRow={updateDraftRow}
-                            onAiSuggest={onAiSuggestRow}
-                            onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
-                            onRemoveSymbol={onRemoveSymbol}
-                            onXchatPreflight={handleXchatPreflightForRow}
-                          />
-                        );
-                      })}
-                    </tbody>
-                  ) : (
-                    <tbody>
-                      {filteredSortedRows.map((row, rowIndex) => {
-                        return (
-                          <WatchlistRowTr
-                            key={`wl-${rowIndex}-${row.addedAt}-${row.symbol}`}
-                            aiSuggestBusy={aiSuggestSymbol === row.symbol}
-                            editMode={editMode}
-                            listLoadedAtLabel={listLoadedAtLabel}
-                            mutating={mutating}
-                            patchRowMeta={patchRowMeta}
-                            patchRowEntryPrice={patchRowEntryPrice}
-                            portfolioTotalUsd={portfolioTotalUsd}
-                            removingThisSymbol={removingSymbol === row.symbol}
-                            row={row}
-                            updateDraftRow={updateDraftRow}
-                            onAiSuggest={onAiSuggestRow}
-                            onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
-                            onRemoveSymbol={onRemoveSymbol}
-                            onXchatPreflight={handleXchatPreflightForRow}
-                          />
-                        );
-                      })}
-                    </tbody>
-                  )}
-                </table>
-              </div>
+                        {rowVirtualizer.getVirtualItems().map((vr) => {
+                          const row = filteredSortedRows[vr.index]!;
+                          return (
+                            <WatchlistRowTr
+                              key={`wl-${vr.index}-${row.addedAt}-${row.symbol}`}
+                              aiSuggestBusy={aiSuggestSymbol === row.symbol}
+                              editMode={editMode}
+                              mutating={mutating}
+                              patchRowMeta={patchRowMeta}
+                              patchRowEntryPrice={patchRowEntryPrice}
+                              portfolioTotalUsd={portfolioTotalUsd}
+                              removingThisSymbol={removingSymbol === row.symbol}
+                              row={row}
+                              rowClassName="xf-watchlist-table__data-row"
+                              rowStyle={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                display: "grid",
+                                height: `${vr.size}px`,
+                                transform: `translateY(${vr.start}px)`
+                              }}
+                              updateDraftRow={updateDraftRow}
+                              onAiSuggest={onAiSuggestRow}
+                              onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
+                              onRemoveSymbol={onRemoveSymbol}
+                              onXchatPreflight={handleXchatPreflightForRow}
+                            />
+                          );
+                        })}
+                      </tbody>
+                    ) : (
+                      <tbody>
+                        {filteredSortedRows.map((row, rowIndex) => {
+                          return (
+                            <WatchlistRowTr
+                              key={`wl-${rowIndex}-${row.addedAt}-${row.symbol}`}
+                              aiSuggestBusy={aiSuggestSymbol === row.symbol}
+                              editMode={editMode}
+                              mutating={mutating}
+                              patchRowMeta={patchRowMeta}
+                              patchRowEntryPrice={patchRowEntryPrice}
+                              portfolioTotalUsd={portfolioTotalUsd}
+                              removingThisSymbol={removingSymbol === row.symbol}
+                              row={row}
+                              updateDraftRow={updateDraftRow}
+                              onAiSuggest={onAiSuggestRow}
+                              onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
+                              onRemoveSymbol={onRemoveSymbol}
+                              onXchatPreflight={handleXchatPreflightForRow}
+                            />
+                          );
+                        })}
+                      </tbody>
+                    )}
+                  </table>
+                </div>
+                <p className="xf-watchlist-table-footer hidden px-3 pb-3 md:block">
+                  Desk quotes refreshed · {listLoadedAtLabel || "—"}
+                </p>
+              </>
             ) : null}
           </div>
 
