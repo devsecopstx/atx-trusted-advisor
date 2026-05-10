@@ -60,4 +60,14 @@ No OpenAPI gap for xChat routes.
 
 ---
 
+## 6. Thread Rendering Regression Guardrails (May 2026)
+
+- [ ] User prompt bubbles stay vertically aligned with readable text at `0.72rem` / `1.3` line-height.
+- [ ] Options Action Scan turns render the formatted scan card only when structured rows exist (no duplicate markdown + card).
+- [ ] When structured scan payload is empty, xChat shows deterministic fallback text instead of a blank card.
+- [ ] Default collapsed-history window keeps latest prompt/response visible together (compact cap = 6 turns unless user expands history).
+- [ ] New turn submission collapses expanded history (`setThreadHistoryExpanded(false)`) so newest advisor response has room.
+
+---
+
 *Pre-release check; update when contract or security posture changes.*
