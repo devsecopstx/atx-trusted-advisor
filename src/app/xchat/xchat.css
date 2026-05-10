@@ -2238,6 +2238,8 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
 
 .xchat-msg-user {
   align-self: flex-end;
+  display: flex;
+  align-items: center;
   width: fit-content;
   max-width: min(100%, 80%);
   padding-top: 0.5rem;
@@ -2255,8 +2257,9 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
 }
 
 .xchat-msg-user-body {
-  display: block;
-  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  width: auto;
   max-width: 100%;
   min-width: 0;
   text-align: left;
@@ -2265,15 +2268,16 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
 .xchat-msg-user-body--with-image {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
   align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
 }
 
 .xchat-msg-user-body__text {
   display: block;
   font-size: 0.72rem;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.25;
   min-height: 0.94rem;
   white-space: pre-wrap;
   word-break: break-word;
