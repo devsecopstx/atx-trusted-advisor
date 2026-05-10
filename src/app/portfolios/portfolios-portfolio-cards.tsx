@@ -87,8 +87,7 @@ export function PortfoliosPortfolioCards({ initialRows, accountSlices }: Props) 
     }
     const q = new URLSearchParams({
       portfolioId: row.id,
-      rail: "xchat",
-      item: "composer"
+      rail: "xchat"
     });
     router.push(`/xchat?${q.toString()}`);
   }, [router]);

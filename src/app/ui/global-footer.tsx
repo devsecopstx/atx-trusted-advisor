@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { APP_VERSION_LABEL } from "@/lib/app-version";
-import { EDUCATIONAL_ONLY_FULL } from "@/lib/legal-disclaimers";
+import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
 const LEGAL_LINKS: { href: string; label: string }[] = [
   { href: "/legal/imprint", label: "Imprint" },
@@ -21,14 +21,14 @@ type GlobalFooterProps = {
 
 export function GlobalFooter({ subline, className }: GlobalFooterProps) {
   const year = new Date().getFullYear();
-  const effectiveSubline = subline ?? <>{EDUCATIONAL_ONLY_FULL}</>;
+  const effectiveSubline = subline ?? <>{EDUCATIONAL_ONLY_SHORT}</>;
 
   const footerClass = ["app-footer", className?.trim()].filter(Boolean).join(" ");
 
   return (
     <footer className={footerClass}>
-      <div className="app-footer-bar">
-        <nav className="app-footer-nav" aria-label="Legal and security">
+      <div className="app-footer-bar flex items-center text-xs text-slate-500">
+        <nav className="app-footer-nav flex-none" aria-label="Legal and security">
           {LEGAL_LINKS.map((item, index) => (
             <span className="app-footer-nav-item" key={item.href}>
               {index > 0 ? (
@@ -42,7 +42,10 @@ export function GlobalFooter({ subline, className }: GlobalFooterProps) {
             </span>
           ))}
         </nav>
-        <div className="app-footer-meta" aria-label="Copyright">
+        <div className="app-footer-subline flex-1 text-center" aria-label="Disclaimer">
+          {effectiveSubline}
+        </div>
+        <div className="app-footer-meta flex-none" aria-label="Copyright">
           <span className="app-footer-brand-stack">
             <span className="app-footer-copy">© {year} aTx Trusted Advisory</span>
           </span>
@@ -55,9 +58,6 @@ export function GlobalFooter({ subline, className }: GlobalFooterProps) {
           </span>
           <span className="app-footer-version">{APP_VERSION_LABEL}</span>
         </div>
-      </div>
-      <div className="app-footer-subline-stack">
-        <div className="app-footer-subline">{effectiveSubline}</div>
       </div>
     </footer>
   );

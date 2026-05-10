@@ -1144,9 +1144,8 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
 
 .app-footer-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem 1.25rem;
   max-width: 100%;
 }
@@ -1234,10 +1233,6 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   margin: 0;
   padding: 0;
   border: none;
-  width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  text-align: center;
   font-size: 0.7rem;
   line-height: 1.45;
   color: var(--xf-text-300);
@@ -1256,14 +1251,14 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
 }
 
 @media (max-width: 768px) {
-  .app-footer-subline-stack,
-  .app-footer-subline {
+  .app-footer-subline-stack {
     width: 100%;
     display: block;
     text-align: center;
     margin-left: auto;
     margin-right: auto;
   }
+  /* subline now participates in single-row flex; allow wrap via parent if needed */
 }
 
 .app-footer-watermark {

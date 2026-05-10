@@ -2,14 +2,14 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-  FormEvent,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode
+    FormEvent,
+    Suspense,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type ReactNode
 } from "react";
 
 import dynamic from "next/dynamic";
@@ -22,20 +22,20 @@ import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import { LucideListBulletsIcon, LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import {
-  collapseWorkspaceProductRail,
-  expandWorkspaceProductRail,
-  WorkspaceProductSidebar
+    collapseWorkspaceProductRail,
+    expandWorkspaceProductRail,
+    WorkspaceProductSidebar
 } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatUsageMeter } from "@/app/xchat/ui/usage-meter";
 import { XchatAdvisorWorkingOverlay } from "@/app/xchat/ui/xchat-advisor-working-overlay";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type {
-  HistoryItem,
-  HistoryStats,
-  Message,
-  ThreadItem,
-  XchatInteractionMeta
+    HistoryItem,
+    HistoryStats,
+    Message,
+    ThreadItem,
+    XchatInteractionMeta
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
 import { XchatSidebarTokenStats } from "@/app/xchat/ui/xchat-sidebar-token-stats";
@@ -43,27 +43,27 @@ import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { isRetailPaidSubscriptionPlan } from "@/lib/subscription-plan";
 import {
-  dispatchWorkspaceAccountChanged,
-  writeStoredWorkspaceAccountId
+    dispatchWorkspaceAccountChanged,
+    writeStoredWorkspaceAccountId
 } from "@/lib/workspace-account-selection";
 import {
-  consumeXchatAskSseResponse,
-  mergeLiveToolStatusRow
+    consumeXchatAskSseResponse,
+    mergeLiveToolStatusRow
 } from "@/lib/xchat-live-sse-client";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
 import {
-  XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
-  XCHAT_PENDING_PROMPT_STORAGE_KEY
+    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
+    XCHAT_PENDING_PROMPT_STORAGE_KEY
 } from "@/lib/xchat/xchat-pending-prompt";
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
 import {
-  XCHAT_REASONING_MODE_STORAGE_KEY,
-  type XchatReasoningMode
+    XCHAT_REASONING_MODE_STORAGE_KEY,
+    type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
 
 const XCHAT_LIVE_SSE =
@@ -148,7 +148,7 @@ const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const XCHAT_QUOTE_FRESHNESS_STORAGE_KEY = "xchat_quote_freshness_v1";
 
 /** Collapsed thread UI: show only the last N chat rows until the user expands. */
-const XCHAT_UI_VISIBLE_MESSAGE_CAP = 5;
+const XCHAT_UI_VISIBLE_MESSAGE_CAP = 6;
 
 const THREAD_MAIN_VIRTUAL_MIN = 18;
 
@@ -528,6 +528,22 @@ export function XchatConversation({
     }
     scrollToLatestMessage("smooth");
   }, [messages, threadUiCollapsed, scrollToLatestMessage]);
+
+  /**
+   * Rich cards (Options Action Scan) can inflate after lazy chunk mount.
+   * Re-anchor to latest turn once layout settles so prompt/response stay paired.
+   */
+  useEffect(() => {
+    if (threadUiCollapsed) {
+      return;
+    }
+    const t1 = window.setTimeout(() => scrollToLatestMessage("smooth"), 140);
+    const t2 = window.setTimeout(() => scrollToLatestMessage("smooth"), 420);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [messages.length, loading, threadUiCollapsed, scrollToLatestMessage]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1278,6 +1294,8 @@ export function XchatConversation({
 
     // Keep thread expanded while a response is in flight so users can read it immediately.
     setThreadUiCollapsed(false);
+    // Collapse older turns behind "Previous turns" so latest prompt/response stay together.
+    setThreadHistoryExpanded(false);
 
     const userMsg: Message = {
       id: `user-${Date.now()}`,

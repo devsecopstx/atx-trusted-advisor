@@ -60,6 +60,8 @@ export const XchatThreadMessageBubble = memo(
     onMessageFeedback,
     onRegeneratePrompt
   }: XchatThreadMessageBubbleProps) {
+    const hasScanRows = Boolean(msg.optionsActionScan && msg.optionsActionScan.rows.length > 0);
+    const hasAssistantText = msg.content.trim().length > 0;
     const shouldUseLongResponseViewport =
       msg.role === "ai" &&
       !msg.strategyJobOffer &&
@@ -104,14 +106,26 @@ export const XchatThreadMessageBubble = memo(
                   onStayInChat={onStrategyStay}
                 />
               ) : msg.optionsActionScan ? (
-                <div className="xchat-msg-ai-body xchat-msg-ai-body--scan">
-                  <OptionsActionScanReportLazy
-                    data={msg.optionsActionScan}
-                    embeddedInThread
-                    shareMode="enabled"
-                    workspacePortfolioId={workspacePortfolioId}
-                  />
-                </div>
+                hasScanRows ? (
+                  <div className="xchat-msg-ai-body xchat-msg-ai-body--scan">
+                    <OptionsActionScanReportLazy
+                      data={msg.optionsActionScan}
+                      embeddedInThread
+                      shareMode="enabled"
+                      workspacePortfolioId={workspacePortfolioId}
+                    />
+                  </div>
+                ) : hasAssistantText ? (
+                  <div
+                    className={`xchat-msg-ai-body xchat-msg-ai-body--markdown${shouldUseLongResponseViewport ? " xchat-msg-ai-body--long-response" : ""}`}
+                  >
+                    <XchatMarkdownBody content={msg.content} />
+                  </div>
+                ) : (
+                  <div className="xchat-msg-ai-body xchat-msg-ai-body--markdown">
+                    <p className="status-text status-error">No content received from advisor for this scan.</p>
+                  </div>
+                )
               ) : (
                 <div
                   className={`xchat-msg-ai-body xchat-msg-ai-body--markdown${shouldUseLongResponseViewport ? " xchat-msg-ai-body--long-response" : ""}`}
@@ -136,7 +150,7 @@ export const XchatThreadMessageBubble = memo(
             </div>
           </div>
         ) : (
-          <div className="xchat-msg-user-body">
+          <div className={`xchat-msg-user-body${msg.attachmentPreviewUrl ? " xchat-msg-user-body--with-image" : ""}`}>
             {msg.attachmentPreviewUrl ? (
               <div className="xchat-msg-user-body__image-wrap">
                 {/* eslint-disable-next-line @next/next/no-img-element -- thread shows data-URL paste only */}

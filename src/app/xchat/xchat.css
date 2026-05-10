@@ -1568,17 +1568,17 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 }
 
 .xchat-welcome-header {
-  padding: 0.15rem 0 0.85rem;
+  padding: 0.02rem 0 0.25rem;
   border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
 }
 
 .xchat-welcome-header--inline {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.4rem;
   flex-wrap: nowrap;
   min-width: 0;
-  padding-bottom: 0.55rem;
+  padding-bottom: 0.35rem;
 }
 
 .xchat-welcome-title {
@@ -1591,8 +1591,8 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 }
 
 .xchat-welcome-title--inline {
-  font-size: clamp(1.3125rem, 2.1vw, 1.5rem);
-  line-height: 1.22;
+  font-size: clamp(1.1rem, 1.65vw, 1.28rem);
+  line-height: 1.15;
   white-space: nowrap;
   flex: 0 0 auto;
 }
@@ -1608,11 +1608,13 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 
 .xchat-welcome-sub--inline {
   margin: 0 0 0 auto;
-  max-width: min(48%, 920px);
+  max-width: min(52%, 920px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: right;
+  font-size: 0.72rem;
+  line-height: 1.15;
 }
 
 .xchat-welcome-tenant {
@@ -1953,6 +1955,7 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   scroll-behavior: smooth;
   padding-bottom: 32px;
   position: relative;
+  min-height: 0;
 }
 
 .xchat-thread-expand-earlier {
@@ -2023,11 +2026,11 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   grid-template-areas:
     "sticky-label sticky-time"
     "sticky-text sticky-text";
-  column-gap: 0.65rem;
-  row-gap: 0.28rem;
+  column-gap: 0.45rem;
+  row-gap: 0.15rem;
   align-items: center;
-  margin: 0.15rem 0 0.35rem;
-  padding: 0.42rem 0.65rem;
+  margin: 0.02rem 0 0.12rem;
+  padding: 0.22rem 0.45rem;
   border-radius: var(--xf-radius-sm);
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
   background: color-mix(in srgb, var(--xf-bg-900) 88%, transparent);
@@ -2036,7 +2039,7 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 
 .xchat-thread-sticky-prompt__label {
   grid-area: sticky-label;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2046,9 +2049,9 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 .xchat-thread-sticky-prompt__text {
   grid-area: sticky-text;
   min-width: 0;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--xf-text-200);
-  line-height: 1.35;
+  line-height: 1.3;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -2237,27 +2240,47 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
   align-self: flex-end;
   width: fit-content;
   max-width: min(100%, 80%);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--xf-text-100);
 }
 
+.xchat-msg-ai {
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
 .xchat-msg-user-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: stretch;
+  display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   text-align: left;
 }
 
+.xchat-msg-user-body--with-image {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
 .xchat-msg-user-body__text {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.3;
+  min-height: 0.94rem;
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: break-word;
   width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .xchat-msg-user-body__image-wrap {
@@ -5022,15 +5045,17 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-composer__textarea--grok {
-  min-height: 2.4rem;
-  padding-bottom: 0.45rem;
-  padding-left: 0.18rem;
-  padding-right: 0.18rem;
+  min-height: 2.55rem;
+  padding-top: 0.52rem;
+  padding-bottom: 0.52rem;
+  padding-left: 0.22rem;
+  padding-right: 0.22rem;
   letter-spacing: -0.1px;
+  line-height: 1.35;
 }
 
 .xchat-composer__textarea--grok.xchat-composer__textarea--singleline {
-  min-height: 2.4rem;
+  min-height: 2.55rem;
   max-height: min(55vh, 35rem);
 }
 
@@ -5492,8 +5517,9 @@ html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
   background: transparent;
   color: var(--xf-text-100);
   font: inherit;
-  font-size: 15px;
-  padding: 0.45rem 0.35rem;
+  font-size: 14.5px;
+  padding: 0.55rem 0.4rem;
+  line-height: 1.3;
 }
 
 .xchat-composer__textarea {

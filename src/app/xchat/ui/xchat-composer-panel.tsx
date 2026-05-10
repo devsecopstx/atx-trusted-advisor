@@ -1,15 +1,15 @@
 "use client";
 
 import {
-  useEffect,
-  useRef,
-  useState,
-  type ClipboardEvent,
-  type FocusEvent,
-  type FormEvent,
-  type KeyboardEvent,
-  type MutableRefObject,
-  type RefObject
+    useEffect,
+    useRef,
+    useState,
+    type ClipboardEvent,
+    type FocusEvent,
+    type FormEvent,
+    type KeyboardEvent,
+    type MutableRefObject,
+    type RefObject
 } from "react";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -18,17 +18,17 @@ import Link from "next/link";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 import {
-  XchatComposerArrowUpIcon,
-  XchatComposerAttachIcon,
-  XchatComposerMicIcon,
-  XchatComposerSourcesGridIcon,
-  XchatComposerStopIcon,
-  XchatComposerWaveformIcon
+    XchatComposerArrowUpIcon,
+    XchatComposerAttachIcon,
+    XchatComposerMicIcon,
+    XchatComposerSourcesGridIcon,
+    XchatComposerStopIcon,
+    XchatComposerWaveformIcon
 } from "@/app/xchat/ui/xchat-composer-icons";
 import {
-  canUseNativeXaiStt,
-  startNativeXaiSttSession,
-  type NativeXaiSttSessionControls
+    canUseNativeXaiStt,
+    startNativeXaiSttSession,
+    type NativeXaiSttSessionControls
 } from "@/app/xchat/ui/xchat-native-stt-client";
 import { VoiceModeSession } from "@/app/xchat/voice/VoiceModeSession";
 
@@ -524,8 +524,11 @@ export function XchatComposerPanel({
           <p className="status-text xchat-composer-attach-note xchat-composer-inline-msg">{attachNote}</p>
         ) : null}
       </motion.form>
-      <div className="xchat-composer-shortcuts">
-        <div className="xchat-composer-shortcuts__row xchat-composer-shortcuts__row--split">
+      <div className="xchat-composer-shortcuts xchat-composer-shortcuts--unified">
+        <div className="xchat-composer-shortcuts__row xchat-composer-shortcuts__row--unified">
+          <div className="xchat-composer-shortcuts__left text-xs text-[#64748b]">
+            Enter: Send · Shift+Enter: Newline · Paste: Vision · Mic: Dictation · 📎: Uploads
+          </div>
           <div className="xchat-composer-shortcuts__split-nav">
             <XchatComposerNav />
           </div>
@@ -575,10 +578,6 @@ export function XchatComposerPanel({
           </div>
         </div>
       </div>
-      <p className="xchat-composer-hint xchat-composer-hint--collapse-narrow" role="note">
-        Enter send · Shift+Enter newline · Paste screenshot (Ctrl/Cmd+V) for vision · Waveform voice chat · Mic dictation (xAI STT)
-        {tenantFileUploadEnabled ? " · Paperclip uploads to your tenant collection" : ""}
-      </p>
 
       <VoiceModeSession
         disabled={loading}
