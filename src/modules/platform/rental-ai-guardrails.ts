@@ -7,11 +7,14 @@ import {
     getRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
 import {
-    releaseRentalAiInflight,
-    tryAcquireRentalAiInflight
+    acquireRentalAiConcurrencySlot,
+    releaseRentalAiConcurrencySlot,
+    type RentalAiConcurrencySlot
 } from "@/modules/platform/rental-ai-concurrency";
 import { getRentalAiTokensUsedToday } from "@/modules/platform/rental-ai-token-meter";
 import type { TenantRentalApiKeyScope } from "@/modules/platform/tenant-rental-types";
+
+export type { RentalAiConcurrencySlot } from "@/modules/platform/rental-ai-concurrency";
 
 const MAX_CONCURRENT_PER_TENANT = 8;
 /** Conservative pre-flight reservation before xAI calls (stub routes use a small estimate). */
@@ -85,25 +88,33 @@ export async function enforceRentalAiTokenBudget(input: {
   return null;
 }
 
-export function tryAcquireRentalAiConcurrencyOr429(tenantIdHex: string): RentalAiGuardFailure | null {
-  if (tryAcquireRentalAiInflight(tenantIdHex, MAX_CONCURRENT_PER_TENANT)) {
-    return null;
-  }
-  return {
-    response: new Response(
-      JSON.stringify({
-        error: "Too Many Requests",
-        code: "concurrency_limited",
-        message: "Tenant rental concurrency limit reached"
-      }),
-      {
-        status: 429,
-        headers: { "content-type": "application/json", "retry-after": "2" }
+export async function tryAcquireRentalAiConcurrencyOr429(
+  tenantIdHex: string
+): Promise<{ failure: RentalAiGuardFailure } | { slot: RentalAiConcurrencySlot }> {
+  const slot = await acquireRentalAiConcurrencySlot(tenantIdHex, MAX_CONCURRENT_PER_TENANT);
+  if (!slot) {
+    return {
+      failure: {
+        response: new Response(
+          JSON.stringify({
+            error: "Too Many Requests",
+            code: "concurrency_limited",
+            message: "Tenant rental concurrency limit reached"
+          }),
+          {
+            status: 429,
+            headers: { "content-type": "application/json", "retry-after": "2" }
+          }
+        )
       }
-    )
-  };
+    };
+  }
+  return { slot };
 }
 
-export function releaseRentalAiConcurrencySafe(tenantIdHex: string): void {
-  releaseRentalAiInflight(tenantIdHex);
+export async function releaseRentalAiConcurrencySafe(
+  tenantIdHex: string,
+  slot: RentalAiConcurrencySlot
+): Promise<void> {
+  await releaseRentalAiConcurrencySlot(tenantIdHex, slot);
 }

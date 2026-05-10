@@ -14,6 +14,12 @@ const config: Config = {
   },
   theme: {
     extend: {
+      colors: {
+        /** Semantic greens from `atxfinance-brand-kit.css` — nav vs CTA (tenant accent is separate). */
+        "xf-nav-green": "var(--xf-nav-green)",
+        "xf-nav-green-hover": "var(--xf-nav-green-hover)",
+        "xf-accent-cta": "var(--xf-accent-cta)"
+      },
       /** Align with `atx-docs/design-system/atxfinance-brand-kit.css` (--xf-font-sans / --xf-font-mono) */
       fontFamily: {
         sans: ["var(--xf-font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],

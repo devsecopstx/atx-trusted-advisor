@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 /** Locks workspace rail copy + structure; Resources/Admin hub moved to sticky header + mobile top chrome. */
 describe("WorkspaceProductSidebar rail contract", () => {
   const src = readFileSync(join(process.cwd(), "src/app/ui/workspace-product-sidebar.tsx"), "utf8");
+  const dashboardCss = readFileSync(
+    join(process.cwd(), "src/app/portfolios/portfolios-dashboard.css"),
+    "utf8"
+  );
   const approvedHeaderSrc = readFileSync(join(process.cwd(), "src/app/ui/app_user-approved-header.tsx"), "utf8");
 
   it("uses Find xOptions for the primary xOptions workspace link", () => {
@@ -45,6 +49,11 @@ describe("WorkspaceProductSidebar rail contract", () => {
     expect(src).toContain('aria-label="Toggle sidebar"');
     expect(src).toContain("workspace-product-sidebar__header");
     expect(src).toContain('aria-controls="workspace-product-sidebar-scroll"');
+  });
+
+  it("uses glass rail shell (admin Hub xf-widget parity over FullBleedBackground)", () => {
+    expect(src).toContain("workspace-product-sidebar--rail-glass");
+    expect(dashboardCss).toContain(".workspace-product-sidebar--rail-glass");
   });
 
   it("renders WorkspaceProfileFooterMenu in the workspace footer (profile popover)", () => {

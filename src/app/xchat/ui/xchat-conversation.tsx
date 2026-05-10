@@ -27,6 +27,7 @@ import {
   WorkspaceProductSidebar
 } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { XchatUsageMeter } from "@/app/xchat/ui/usage-meter";
 import { XchatAdvisorWorkingOverlay } from "@/app/xchat/ui/xchat-advisor-working-overlay";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type {
@@ -369,6 +370,7 @@ export function XchatConversation({
   const [quoteFreshness, setQuoteFreshness] = useState<"cached_first" | "live">("cached_first");
   const [pendingPasteImage, setPendingPasteImage] = useState<XchatPendingPasteImage | null>(null);
   const [pasteImageError, setPasteImageError] = useState<string | null>(null);
+  const [promptUsageRefreshKey, setPromptUsageRefreshKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
   const [personaPickerRows, setPersonaPickerRows] = useState<
@@ -1441,23 +1443,37 @@ export function XchatConversation({
         code?: string;
         dailyLimit?: number;
         hourlyLimit?: number;
-        xchatLimitSource?: "tenant_plan_effective";
+        xchatLimitSource?: "tenant_plan_effective" | "per_minute_burst";
       };
 
       const handleAskFailure = (response: Response, payload: AskPayload) => {
         const limitSuffix =
           payload.code === "xchat_daily_limit_exceeded" && typeof payload.dailyLimit === "number"
-            ? ` Workspace daily cap: ${payload.dailyLimit} prompts per UTC day (effective tenant+plan limit from Admin → Tenant workspace, including plan overrides when configured).`
+            ? `\n\nWorkspace daily cap: **${payload.dailyLimit}** prompts per UTC day (effective tenant + plan limit; Admin → Tenant workspace limits).`
             : payload.code === "xchat_hourly_limit_exceeded" && typeof payload.hourlyLimit === "number"
-              ? ` Workspace hourly cap: ${payload.hourlyLimit} prompts per UTC hour (effective tenant+plan limit).`
+              ? `\n\nWorkspace hourly cap: **${payload.hourlyLimit}** prompts per UTC clock hour (effective tenant + plan limit).`
               : "";
+        const codePrefix =
+          payload.code === "xchat_daily_limit_exceeded"
+            ? "**`xchat_daily_limit_exceeded`** — daily prompt cap (UTC calendar day).\n\n"
+            : payload.code === "xchat_hourly_limit_exceeded"
+              ? "**`xchat_hourly_limit_exceeded`** — hourly prompt cap (UTC clock hour).\n\n"
+              : payload.code === "xchat_rate_limit_exceeded"
+                ? "**`xchat_rate_limit_exceeded`** — per-minute send throttle (burst protection).\n\n"
+                : payload.code
+                  ? `**\`${payload.code}\`**\n\n`
+                  : "";
+        const base = payload.error ?? `Request failed (${response.status})`;
+        const upgrade =
+          "\n\n---\n\n**Upgrade / compare plans:** [Account → Billing](/account/billing).";
+        setPromptUsageRefreshKey((k) => k + 1);
         setMessages((prev) => {
           const added = [
             ...prev,
             {
               id: `error-${Date.now()}`,
               role: "error" as const,
-              content: `${payload.error ?? `Request failed (${response.status})`}${limitSuffix}`,
+              content: `${codePrefix}${base}${limitSuffix}${upgrade}`,
               timestamp: Date.now()
             }
           ];
@@ -1514,6 +1530,7 @@ export function XchatConversation({
           return [nextItem, ...deduped].slice(0, uiPromptLimit);
         });
         void refreshThreadItems();
+        setPromptUsageRefreshKey((k) => k + 1);
         if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
           setInput(strategyStayRestorePromptRef.current);
           strategyStayRestorePromptRef.current = null;
@@ -1653,6 +1670,7 @@ export function XchatConversation({
                   return [nextItem, ...deduped].slice(0, uiPromptLimit);
                 });
                 void refreshThreadItems();
+                setPromptUsageRefreshKey((k) => k + 1);
                 if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
                   setInput(strategyStayRestorePromptRef.current);
                   strategyStayRestorePromptRef.current = null;
@@ -1807,6 +1825,7 @@ export function XchatConversation({
                       Focus composer
                     </button>
                     <p className="status-text">Shortcuts: Enter send · Shift+Enter newline</p>
+                    <XchatUsageMeter refreshSignal={promptUsageRefreshKey} variant="rail" />
                     <XchatSidebarTokenStats />
                   </RailDisclosure>
                 </div>
@@ -2079,6 +2098,7 @@ export function XchatConversation({
           onStop={cancelAskInFlight}
         />
 
+        <XchatUsageMeter refreshSignal={promptUsageRefreshKey} variant="composer" />
         <Suspense fallback={<XchatChatSkeleton variant="composer" />}>
           <XchatComposerPanelLazy
             askProgressPhaseIndex={askProgressPhaseIndex}

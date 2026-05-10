@@ -7,7 +7,10 @@ import {
     clampTopK,
     clampTurns,
     getPlanLimits,
-    resolveModel
+    mergeXchatPromptLimitsForWorkspace,
+    resolveModel,
+    shouldShowXchatPromptSoftLimitBanner,
+    xchatPromptUsageMeterFillVar
 } from "@/modules/xchat/plan-limits";
 
 describe("plan tier limits", () => {
@@ -161,5 +164,61 @@ describe("multi-agent plan clamp", () => {
     });
     expect(clampMultiAgentParallelismForPlan(highParallelism, "basic")).toBeUndefined();
     expect(clampMultiAgentParallelismForPlan(highParallelism, undefined)).toBeUndefined();
+  });
+});
+
+describe("xChat merged workspace + plan limits (meter helpers)", () => {
+  it("merge uses tenant userChatLimit with plan soft percent", () => {
+    const merged = mergeXchatPromptLimitsForWorkspace("premium", {
+      userChatLimit: 50,
+      userChatHourlyLimit: 12,
+      userXoptionsLimit: 10,
+      tenantPortfolioLimit: 1,
+      portfolioAccountLimit: 1,
+      changePersonaEnabled: true,
+      chatHistoryMax: 10,
+      maxUsersPerTenant: 5,
+      userTasksMax: 5
+    });
+    expect(merged.dailyCap).toBe(50);
+    expect(merged.hourlyCap).toBe(12);
+    expect(merged.softLimitPercent).toBe(80);
+    expect(merged.subscriptionPlan).toBe("premium");
+  });
+
+  it("merge falls back to plan maxPromptsPerDay when workspace missing", () => {
+    const merged = mergeXchatPromptLimitsForWorkspace("basic", undefined);
+    expect(merged.dailyCap).toBe(5);
+    expect(merged.hourlyCap).toBe(0);
+  });
+
+  it("soft-limit banner at 80%+ daily utilization (threshold capped at 80)", () => {
+    expect(
+      shouldShowXchatPromptSoftLimitBanner({
+        usedToday: 8,
+        dailyCap: 10,
+        planSoftLimitPercent: 100
+      })
+    ).toBe(true);
+    expect(
+      shouldShowXchatPromptSoftLimitBanner({
+        usedToday: 8,
+        dailyCap: 10,
+        planSoftLimitPercent: 80
+      })
+    ).toBe(true);
+    expect(
+      shouldShowXchatPromptSoftLimitBanner({
+        usedToday: 6,
+        dailyCap: 10,
+        planSoftLimitPercent: 80
+      })
+    ).toBe(false);
+  });
+
+  it("meter fill ramps green → warn → danger by utilization", () => {
+    expect(xchatPromptUsageMeterFillVar({ usedToday: 3, dailyCap: 10 })).toBe("var(--xf-meter-fill)");
+    expect(xchatPromptUsageMeterFillVar({ usedToday: 8, dailyCap: 10 })).toBe("var(--xf-meter-warn)");
+    expect(xchatPromptUsageMeterFillVar({ usedToday: 10, dailyCap: 10 })).toBe("var(--xf-meter-danger)");
   });
 });

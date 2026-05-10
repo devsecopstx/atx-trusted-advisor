@@ -194,6 +194,15 @@ function logTenantUxPolicyFetchError(payload: Record<string, unknown>): void {
   );
 }
 
+function logTenantUxMetric(payload: Record<string, unknown>): void {
+  console.warn(
+    JSON.stringify({
+      type: "tenant_ux_metric",
+      ...payload
+    })
+  );
+}
+
 async function resolveTenantUxPolicyDecision(
   request: NextRequest,
   policyPath: string
@@ -207,6 +216,7 @@ async function resolveTenantUxPolicyDecision(
   const url = new URL("/api/internal/tenant-ux/policy", request.url);
   url.searchParams.set("pathname", policyPath);
   try {
+    const fetchStarted = Date.now();
     const res = await fetch(url, {
       method: "GET",
       headers: {
@@ -214,6 +224,13 @@ async function resolveTenantUxPolicyDecision(
       },
       cache: "no-store",
       signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
+    });
+    logTenantUxMetric({
+      metric: "tenant_ux_policy_fetch_latency_ms",
+      policyPath,
+      ms: Date.now() - fetchStarted,
+      httpStatus: res.status,
+      ok: res.ok
     });
     if (!res.ok) {
       logTenantUxPolicyFetchError({
@@ -266,6 +283,13 @@ async function resolveTenantUxPolicyDecision(
     }
     return decision;
   } catch (err) {
+    logTenantUxMetric({
+      metric: "tenant_ux_policy_fetch_latency_ms",
+      policyPath,
+      ms: -1,
+      ok: false,
+      error: err instanceof Error ? err.message : String(err)
+    });
     logTenantUxPolicyFetchError({
       policyPath,
       ok: false,
@@ -293,6 +317,13 @@ async function enforceTenantUxV2(request: NextRequest, pathname: string): Promis
   }
   if (pathname.startsWith("/api/")) {
     if (decision.policyUnavailable) {
+      if (isTenantUxPolicyFailClosedEnabled()) {
+        logTenantUxMetric({
+          metric: "tenant_ux_policy_unavailable_total",
+          pathname,
+          policyPath
+        });
+      }
       return NextResponse.json(
         {
           error: "Tenant policy temporarily unavailable",
@@ -302,6 +333,11 @@ async function enforceTenantUxV2(request: NextRequest, pathname: string): Promis
         { status: 503 }
       );
     }
+    logTenantUxMetric({
+      metric: "tenant_ux_route_forbidden_total",
+      pathname,
+      policyPath
+    });
     return NextResponse.json(
       {
         error: "Forbidden",
@@ -316,6 +352,19 @@ async function enforceTenantUxV2(request: NextRequest, pathname: string): Promis
   redirectUrl.searchParams.set("redirect", decision.redirectPath);
   if (decision.policyUnavailable) {
     redirectUrl.searchParams.set("code", "tenant_ux_policy_unavailable");
+    if (isTenantUxPolicyFailClosedEnabled()) {
+      logTenantUxMetric({
+        metric: "tenant_ux_policy_unavailable_total",
+        pathname,
+        policyPath
+      });
+    }
+  } else {
+    logTenantUxMetric({
+      metric: "tenant_ux_route_forbidden_total",
+      pathname,
+      policyPath
+    });
   }
   return NextResponse.redirect(redirectUrl);
 }

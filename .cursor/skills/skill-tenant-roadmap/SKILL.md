@@ -18,7 +18,7 @@ This skill holds **short shipped summaries** that were trimmed from `PLAN.md` so
 - Edge **V2** hook in **`src/proxy.ts`** when **`TENANT_UX_ENFORCEMENT_V2`** (policy fetch; fail-open log **`tenant_ux_policy_fetch_error`**; optional **`TENANT_UX_POLICY_FAIL_CLOSED`**).
 - Policy path module (includes **`/xcoach`**); xChat tenant block in prompts/welcome; **`--xf-tenant-primary` / `--xf-tenant-secondary`** via branding provider + brand kit.
 
-**Still open (keep in `PLAN.md`):** V2 soak staging→prod, metrics/alerts, Redis policy cache, `/api/*` mapping audit, PWA manifest. Runbook: `atx-docs/sre-ops/tenant-ux-enforcement.md`.
+**Still open (keep in `PLAN.md`):** V2 soak staging→prod, metrics/alerts dashboards, `/api/*` mapping audit, PWA manifest, optional Redis bust on roles/catalog **`PATCH`**. **Redis policy keys** `tenant-ux:policy:v2:*` ship with **`REDIS_URL`** (dev/prod). Runbooks: `atx-docs/sre-ops/tenant-ux-enforcement.md`, `atx-docs/sre-ops/redis-cache-next.md` § Tenant UX policy.
 
 ---
 

@@ -80,6 +80,9 @@ export async function authenticateRentalAiApiKey(
   if (!matched?.keyHash) {
     return { ok: false, status: 401, code: "unknown_key", message: "Invalid credentials" };
   }
+  if (matched.revokedAt instanceof Date) {
+    return { ok: false, status: 401, code: "key_revoked", message: "API key revoked" };
+  }
 
   const scopes = normalizeScopes(matched.scopes);
   if (!scopes?.includes(requiredScope)) {

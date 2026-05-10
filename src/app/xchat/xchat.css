@@ -187,25 +187,25 @@
 }
 
 .xchat-header-workspace-quick-nav__link:hover {
-  color: var(--xf-gain-green);
-  border-color: color-mix(in srgb, var(--xf-gain-green) 42%, var(--xf-border-subtle));
+  color: var(--xf-nav-green-hover);
+  border-color: color-mix(in srgb, var(--xf-nav-green) 42%, var(--xf-border-subtle));
 }
 
 .xchat-header-workspace-quick-nav__link:hover .xchat-header-workspace-quick-nav__glyph {
-  color: var(--xf-gain-green);
+  color: var(--xf-nav-green-hover);
 }
 
 .xchat-header-workspace-quick-nav__link--admin {
-  border-color: color-mix(in srgb, var(--xf-gain-green) 28%, var(--xf-border-subtle));
-  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-nav-green) 28%, var(--xf-border-subtle));
+  color: var(--xf-nav-green);
 }
 
 .xchat-header-workspace-quick-nav__link--admin .xchat-header-workspace-quick-nav__glyph {
-  color: color-mix(in srgb, var(--xf-gain-green) 82%, var(--xf-text-400));
+  color: color-mix(in srgb, var(--xf-nav-green) 82%, var(--xf-text-400));
 }
 
 .xchat-header-workspace-quick-nav__link--admin:hover .xchat-header-workspace-quick-nav__glyph {
-  color: var(--xf-gain-green);
+  color: var(--xf-nav-green-hover);
 }
 
 .xchat-header-tenant-card {
@@ -1360,6 +1360,76 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   color: var(--xf-text-400);
 }
 
+.xchat-usage-meter {
+  margin: 0.45rem 0 0;
+  padding: 0.42rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 58%, transparent);
+}
+
+.xchat-usage-meter--rail {
+  margin-top: 0.35rem;
+}
+
+.xchat-usage-meter__line {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.xchat-usage-meter__line--muted {
+  margin-top: 0.22rem;
+  color: var(--xf-text-400);
+  font-size: 0.66rem;
+}
+
+.xchat-usage-meter__value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--xf-text-100);
+}
+
+.xchat-usage-meter__track {
+  margin-top: 0.35rem;
+  height: 6px;
+  border-radius: 6px;
+  background: var(--xf-meter-bg);
+  overflow: hidden;
+}
+
+.xchat-usage-meter__fill {
+  height: 100%;
+  border-radius: 6px;
+  transition:
+    width 0.25s ease,
+    background-color 0.25s ease;
+}
+
+.xchat-usage-meter__banner {
+  margin-bottom: 0.35rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-meter-warn) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-meter-warn) 35%, transparent);
+}
+
+.xchat-usage-meter__banner-link {
+  color: var(--xf-gain-green);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.xchat-usage-meter__fallback,
+.xchat-usage-meter__admin-note {
+  margin: 0 0 0.35rem;
+  font-size: 0.65rem;
+  color: var(--xf-text-400);
+}
+
 .xchat-rail-history-item {
   margin: 0;
   padding: 0;
@@ -1899,6 +1969,85 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   color: var(--xf-text-300);
 }
 
+.xchat-thread-previous-turns {
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 22%, var(--xf-surface-700));
+}
+
+.xchat-thread-previous-turns__summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--xf-text-400) 88%, transparent);
+  padding: 0.42rem 1rem;
+}
+
+.xchat-thread-previous-turns__summary::-webkit-details-marker {
+  display: none;
+}
+
+.xchat-thread-previous-turns:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+}
+
+.xchat-thread-previous-turns__summary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.xchat-thread-sticky-prompt {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  margin: 0.15rem 0 0.35rem;
+  padding: 0.42rem 0.65rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.xchat-thread-sticky-prompt__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xchat-thread-sticky-prompt__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-size: 0.78rem;
+  color: var(--xf-text-200);
+  line-height: 1.35;
+}
+
+.xchat-thread-sticky-prompt__time {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--xf-text-400);
+  white-space: nowrap;
+}
+
+html[data-xf-ui="soft"] .xchat-thread-sticky-prompt {
+  background: color-mix(in srgb, var(--xf-surface-700) 92%, transparent);
+  border-color: var(--xf-border-subtle);
+}
+
 /** Extra scroll pad while fixed “Advisor is working” overlay sits above the composer */
 .xchat-messages-container.xchat-messages-container--advisor-working {
   padding-bottom: 11rem;
@@ -2025,6 +2174,41 @@ html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
   padding-right: 1.5rem;
   box-sizing: border-box;
   min-width: 0;
+}
+
+/** One assistant turn: elevated body (.xchat-msg-ai-inner) + full-width toolbar below the card. */
+.xchat-msg-ai-turn {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.xchat-msg-ai-toolbar {
+  width: 100%;
+  max-width: 1480px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  box-sizing: border-box;
+  margin-top: 0.5rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+}
+
+.xchat-msg-ai-toolbar > .xchat-ai-response-chrome {
+  margin-top: 0;
+}
+
+html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
+  border-top-color: var(--xf-border-subtle);
+}
+
+/** Keeps very short replies from visually colliding with the external toolbar. */
+.xchat-msg-ai-inner--markdown-turn .xchat-msg-ai-body--markdown {
+  min-height: 7.25rem;
 }
 
 .xchat-msg-user {
@@ -2196,15 +2380,10 @@ html[data-xf-ui="soft"] .xchat-msg-ai-body--markdown {
   min-width: 0;
 }
 
-/** Thin utilities strip below the response card (markdown / strategy job paths). */
-.xchat-msg-ai-inner > .xchat-ai-response-chrome--meta-strip {
-  margin-top: 0.75rem;
-  padding-top: 0.55rem;
-  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
-}
-
-html[data-xf-ui="soft"] .xchat-msg-ai-inner > .xchat-ai-response-chrome--meta-strip {
-  border-top-color: #e2e8f0;
+/** Meta strip sits in `.xchat-msg-ai-toolbar` (sibling below inner), not inside the memo card. */
+.xchat-msg-ai-toolbar > .xchat-ai-response-chrome--meta-strip {
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .xchat-ai-response-chrome--meta-strip {
@@ -5901,6 +6080,11 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
   }
 
   .xchat-msg-ai-inner {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .xchat-msg-ai-toolbar {
     padding-left: 1rem;
     padding-right: 1rem;
   }

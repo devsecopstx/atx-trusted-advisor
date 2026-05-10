@@ -40,8 +40,8 @@
 | **Staging V2 soak** | `TENANT_UX_ENFORCEMENT_V2=true` for **48–72h**; zero unexpected **`tenant_ux_route_forbidden`** for allowed roles; support playbook exercised. |
 | **API family coverage** | Every product **`/api/...`** used by gated HTML has a non-null **`resolvePolicyPathForRequest`** mapping or explicit exemption doc. |
 | **Nav/header parity** | `app_user-product-nav` (and any orphaned links) hide disallowed routes client-side; edge still authoritative. |
-| **Observability** | Counters: **`tenant_ux_route_forbidden_total`**, policy latency; alert on spike + **`tenant_ux_policy_fetch_error`** rate. |
-| **Policy cache** | Optional **Redis** cache + invalidation on **`tenant_roles`** / route-catalog PATCH (multi-instance freshness). |
+| **Observability** | Counters: **`tenant_ux_route_forbidden_total`**, **`tenant_ux_policy_fetch_latency_ms`**, **`tenant_ux_policy_unavailable_total`** (fail-closed); alert on spike + **`tenant_ux_policy_fetch_error`** rate. See [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md). |
+| **Policy cache** | **Shipped:** Redis **`tenant-ux:policy:v2:{userId}:{tenantId}`** (**60s** TTL) + memory tier when **`REDIS_URL`** is set — **dev + prod** mount Redis. **Backlog:** explicit invalidation / shorter TTL on **`tenant_roles`** / route-catalog **`PATCH`** if operators need instant multi-instance freshness (today TTL-only). [redis-cache-next.md](../sre-ops/redis-cache-next.md). |
 | **PWA manifest** | Per-tenant name/icon when product requires “Add to Home Screen” white-label (today static **`public/manifest.webmanifest`**). |
 | **Denial audit (optional)** | High-volume; prefer metrics first — sampled **`admin_audit_events`** only if compliance mandates. |
 

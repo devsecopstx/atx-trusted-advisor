@@ -28,7 +28,7 @@ export default async function AdminOptionsStrategyPage() {
           <strong> filters</strong> JSON per strategy.
         </p>
         <p className="hero-copy" style={{ marginTop: "0.5rem" }}>
-          <Link className="text-emerald-400 hover:underline" href="/admin">
+          <Link className="text-xf-nav-green transition-colors hover:text-xf-nav-green-hover hover:underline" href="/admin">
             ← Hub
           </Link>
         </p>

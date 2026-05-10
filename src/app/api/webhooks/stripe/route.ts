@@ -6,6 +6,7 @@ import { getStripePriceIdForPlan, getStripeSecretKey } from "@/lib/stripe-config
 import { strictParseSubscriptionPlan, type SubscriptionPlan } from "@/lib/subscription-plan";
 import { updateCoreUserStripeBilling } from "@/modules/identity/repository";
 import type { CoreUserStripeSubscriptionStatus } from "@/modules/identity/types";
+import { syncCoreTenantRentalFromStripeSubscription } from "@/modules/platform/rental-ai-stripe-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -143,6 +144,40 @@ export async function POST(request: Request) {
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      const subscriptionRef =
+        typeof session.subscription === "string" ? session.subscription.trim() : "";
+      if (subscriptionRef.length > 0) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(subscriptionRef);
+          const hintRaw =
+            session.metadata?.atx_rental_tenant_id?.trim() ||
+            session.metadata?.atx_tenant_id?.trim() ||
+            null;
+          const rental = await syncCoreTenantRentalFromStripeSubscription(sub, {
+            fallbackTenantHex:
+              hintRaw && ObjectId.isValid(hintRaw) ? new ObjectId(hintRaw).toHexString() : null
+          });
+          if (rental.updated) {
+            console.info("[webhooks/stripe] handled checkout.session.completed rental", {
+              id: event.id,
+              tenantId: rental.tenantIdHex,
+              subscriptionId: sub.id
+            });
+            return NextResponse.json({
+              received: true,
+              rentalUpdated: true,
+              tenantId: rental.tenantIdHex
+            });
+          }
+        } catch (error) {
+          console.warn("[webhooks/stripe] rental checkout sync skipped", {
+            id: event.id,
+            detail: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
       const userId = resolveUserIdFromMetadata(session.metadata, session.client_reference_id);
       if (!userId) {
         console.warn("[webhooks/stripe] ignored checkout.session.completed missing user id", {
@@ -195,6 +230,23 @@ export async function POST(request: Request) {
 
     if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object as Stripe.Subscription;
+
+      const rentalUpdated = await syncCoreTenantRentalFromStripeSubscription(subscription);
+      if (rentalUpdated.updated) {
+        console.info("[webhooks/stripe] handled customer.subscription.updated rental", {
+          id: event.id,
+          tenantId: rentalUpdated.tenantIdHex,
+          subscriptionId: subscription.id,
+          status: subscription.status
+        });
+        return NextResponse.json({
+          received: true,
+          rentalUpdated: true,
+          tenantId: rentalUpdated.tenantIdHex,
+          status: subscription.status
+        });
+      }
+
       const userId = resolveUserIdFromMetadata(subscription.metadata);
       if (!userId) {
         console.warn("[webhooks/stripe] ignored customer.subscription.updated missing user id", {
@@ -238,6 +290,22 @@ export async function POST(request: Request) {
 
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
+
+      const rentalDeleted = await syncCoreTenantRentalFromStripeSubscription(subscription);
+      if (rentalDeleted.updated) {
+        console.info("[webhooks/stripe] handled customer.subscription.deleted rental", {
+          id: event.id,
+          tenantId: rentalDeleted.tenantIdHex,
+          subscriptionId: subscription.id
+        });
+        return NextResponse.json({
+          received: true,
+          rentalUpdated: true,
+          tenantId: rentalDeleted.tenantIdHex,
+          status: "canceled"
+        });
+      }
+
       const userId = resolveUserIdFromMetadata(subscription.metadata);
       if (!userId) {
         console.warn("[webhooks/stripe] ignored customer.subscription.deleted missing user id", {

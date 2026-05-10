@@ -1,7 +1,7 @@
 "use client";
 
 import type { Virtualizer } from "@tanstack/virtual-core";
-import type { RefObject } from "react";
+import { useMemo, type RefObject } from "react";
 
 import { XchatThreadMessageBubble } from "@/app/xchat/ui/xchat-thread-message-bubble";
 
@@ -26,6 +26,17 @@ function XchatThreadCollapseChevronIcon() {
       <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14l-6-6z" />
     </svg>
   );
+}
+
+function trimStickyUserPrompt(text: string, maxChars: number): string {
+  const t = text.trim();
+  if (t.length === 0) {
+    return "";
+  }
+  if (t.length <= maxChars) {
+    return t;
+  }
+  return `${t.slice(0, maxChars)}…`;
 }
 
 export type XchatThreadPanelProps = {
@@ -80,6 +91,51 @@ export function XchatThreadPanel({
 }: XchatThreadPanelProps) {
   const latestAssistantMessage = [...messages].reverse().find((msg) => msg.role === "ai");
   const showRetainedContextBadge = latestAssistantMessage?.contextRetainedFromPriorTurns === true;
+  const latestUserForSticky = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i]!;
+      if (m.role === "user") {
+        return m;
+      }
+    }
+    return null;
+  }, [messages]);
+  const stickyUserPreview = useMemo(() => {
+    if (!latestUserForSticky) {
+      return "";
+    }
+    if (latestUserForSticky.attachmentPreviewUrl) {
+      const t = latestUserForSticky.content.trim();
+      const base = t.length > 0 ? trimStickyUserPrompt(t, 140) : "";
+      return base.length > 0 ? `${base} · [Image]` : "[Image]";
+    }
+    return trimStickyUserPrompt(latestUserForSticky.content, 140);
+  }, [latestUserForSticky]);
+  const stickyUserTimeIso = useMemo(() => {
+    if (!latestUserForSticky) {
+      return "";
+    }
+    try {
+      return new Date(latestUserForSticky.timestamp).toISOString();
+    } catch {
+      return "";
+    }
+  }, [latestUserForSticky]);
+  const stickyUserTimeLabel = useMemo(() => {
+    if (!latestUserForSticky) {
+      return "";
+    }
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+        month: "short",
+        day: "numeric"
+      }).format(new Date(latestUserForSticky.timestamp));
+    } catch {
+      return "";
+    }
+  }, [latestUserForSticky]);
   return (
     <div className="xchat-thread-area">
       {threadUiCollapsed && messages.length > 0 && !loading ? (
@@ -115,18 +171,23 @@ export function XchatThreadPanel({
           className={`xchat-messages xchat-messages-container${threadMainVirtualize ? " xchat-messages--virtual-thread" : ""}${loading ? " xchat-messages-container--advisor-working" : ""}`}
         >
           {hiddenEarlierMessageCount > 0 && onExpandEarlierMessages ? (
-            <button
-              className="xchat-thread-expand-earlier"
-              type="button"
-              onClick={() => {
+            <details
+              className="xchat-thread-previous-turns"
+              onToggle={(e) => {
+                const el = e.currentTarget;
+                if (!el.open || !onExpandEarlierMessages) {
+                  return;
+                }
                 onExpandEarlierMessages();
                 queueMicrotask(() =>
                   messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
                 );
               }}
             >
-              Show earlier messages ({hiddenEarlierMessageCount} hidden)
-            </button>
+              <summary className="xchat-thread-previous-turns__summary">
+                Previous turns ({hiddenEarlierMessageCount} hidden) — expand full thread
+              </summary>
+            </details>
           ) : null}
           {messages.length > 0 ? (
             <div className="xchat-thread-minimize-row">
@@ -143,6 +204,19 @@ export function XchatThreadPanel({
                 <button className="xchat-thread-minimize" type="button" onClick={onNewThread}>
                   <span>New thread</span>
                 </button>
+              ) : null}
+            </div>
+          ) : null}
+          {messages.length > 0 && latestUserForSticky ? (
+            <div className="xchat-thread-sticky-prompt">
+              <span className="xchat-thread-sticky-prompt__label">Latest prompt</span>
+              <span className="xchat-thread-sticky-prompt__text">
+                {stickyUserPreview.length > 0 ? stickyUserPreview : "[Empty prompt]"}
+              </span>
+              {stickyUserTimeLabel ? (
+                <time className="xchat-thread-sticky-prompt__time" dateTime={stickyUserTimeIso}>
+                  {stickyUserTimeLabel}
+                </time>
               ) : null}
             </div>
           ) : null}

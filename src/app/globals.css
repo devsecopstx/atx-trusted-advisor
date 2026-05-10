@@ -709,10 +709,10 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
 }
 
 .admin-topbar-icon-link:hover {
-  color: var(--xf-gain-green);
-  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
-  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--xf-gain-green) 28%, transparent);
+  color: var(--xf-nav-green-hover);
+  border-color: color-mix(in srgb, var(--xf-nav-green) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-nav-green) 12%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--xf-nav-green) 28%, transparent);
 }
 
 .admin-topbar-icon-link__glyph {
@@ -979,39 +979,32 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
 }
 
 .admin-left-rail__link:hover {
-  color: var(--xf-gain-green) !important;
+  color: var(--xf-nav-green-hover) !important;
   border-color: transparent;
-  background: color-mix(in srgb, var(--xf-gain-green) 8%, transparent);
+  background: color-mix(in srgb, var(--xf-nav-green) 8%, transparent);
 }
 
 .admin-left-rail__link--active {
-  color: var(--xf-gain-green) !important;
-  border-color: color-mix(in srgb, var(--xf-gain-green) 28%, transparent);
-  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  color: var(--xf-nav-green) !important;
+  border-color: color-mix(in srgb, var(--xf-nav-green) 28%, transparent);
+  background: color-mix(in srgb, var(--xf-nav-green) 12%, transparent);
   box-shadow: none;
 }
 
-/* Admin content links: force readable brand-green across themes */
+/* Admin content links: semantic nav green (soft = WCAG emerald-700; deep = neon gain-green) */
 .admin-layout-content a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link) {
-  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
-  text-decoration-color: color-mix(in srgb, var(--xf-gain-green) 56%, transparent);
+  color: color-mix(in srgb, var(--xf-nav-green) 88%, var(--xf-text-100));
+  text-decoration-color: color-mix(in srgb, var(--xf-nav-green) 56%, transparent);
   text-underline-offset: 2px;
 }
 
 .admin-layout-content a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link):visited {
-  color: color-mix(in srgb, var(--xf-gain-green) 78%, var(--xf-text-100));
+  color: color-mix(in srgb, var(--xf-nav-green) 78%, var(--xf-text-100));
 }
 
 .admin-layout-content a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link):hover {
-  color: var(--xf-gain-green);
-  text-decoration-color: var(--xf-gain-green);
-}
-
-html[data-xf-ui="soft"]
-  .admin-layout-content
-  a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link) {
-  color: color-mix(in srgb, var(--xf-gain-green) 70%, var(--xf-text-100));
-  text-decoration-color: color-mix(in srgb, var(--xf-gain-green) 50%, transparent);
+  color: var(--xf-nav-green-hover);
+  text-decoration-color: var(--xf-nav-green-hover);
 }
 
 @media (max-width: 1080px) {

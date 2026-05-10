@@ -32,7 +32,7 @@ Rent a **logically isolated** branded workspace: dedicated `rentalProfile`, hash
 
 ## Authentication
 
-- **Per-tenant API keys** (plaintext shown only at mint time — admin delivery path is backlog).
+- **Per-tenant API keys** (plaintext shown only at mint time — **`global_admin`** **`GET`/`POST /api/admin/tenants/{tenantId}/rental-api-keys`**, revoke **`DELETE …/rental-api-keys/{keyId}`**, rotate **`POST …/{keyId}/rotate`**).
 - **Header:** `Authorization: Bearer atxr_<16-hex id>_<64-hex secret>`
 - **Scopes:** each key has `chat`, `strategy`, and/or `analyze`; routes enforce the matching scope.
 - **Tenant binding:** resolver loads `core_tenants` by key id; all data and jobs are scoped to that tenant.
@@ -47,7 +47,7 @@ Rent a **logically isolated** branded workspace: dedicated `rentalProfile`, hash
 |------|-----------|
 | **Risk posture** | Default bias **conservative** when using spec defaults; `balanced` / `aggressive` per `rentalProfile.strategyBias`. |
 | **Daily token budget** | Default **200,000** tokens / UTC day (`maxDailyTokens`); chat increments `rental_ai_token_usage` + mirror buckets; failed guardrails do not burn tokens. |
-| **Security** | Tenant isolation, safety headers, distributed rate limits when Redis configured, in-process concurrency cap (**8**/tenant in MVP — Redis semaphore backlog for strict multi-instance fairness). |
+| **Security** | Tenant isolation, safety headers, distributed rate limits when Redis configured, rental concurrency cap (**8**/tenant) via Redis **`xf:rental-ai:inflight:*`** when **`REDIS_URL`** is connected, otherwise in-process counting. |
 | **Branding** | Display via `tenantPreferences` (accent, logo, tagline, etc.) on the core app; rental **API** responses are JSON/SSE, not HTML chrome. |
 | **Data sources** | Yahoo-backed quotes via xChat tools; workspace snapshot from tenant sample user / portfolio; persona RAG when enabled on the rental persona. Optional IBKR snapshots apply to connected **app_user** flows — rental chat uses the **sample** workspace unless an owned `portfolioId` is supplied and valid in scope. |
 | **Audit** | `admin_audit_events` with `entityType: rental_ai`, `actor.userId: rental_key:<key id>`, route actions such as `rental_ai_chat_request`, `rental_ai_strategy_request`, etc. |
@@ -92,7 +92,7 @@ You are a white-labeled **xFinance rental advisor** for one tenant workspace. Ke
 
 1. Define **`tenant.rentalProfile`** in YAML (tier, `expiresAt`, bias, limits) — see **`tenant-specs/README.md`**.
 2. `npm run seed:tenant -- --file tenant-specs/<slug>.yaml` — provisions rental persona + sample portfolio/watchlist.
-3. Mint keys: **`npm run ops:rental:mint-key -- --tenant=<slug>`** (or `node --env-file=.env.prod --import tsx scripts/ops/mint-rental-api-key.ts --tenantId=…`) — prints **`atxr_*` once**; only **`keyHash`** is stored in Mongo. See **`atx-docs/sre-ops/rental-ai-platform.md`** § Minting API keys. **Admin console UX** for list/revoke is backlog **`PLAN.md` #41**.
+3. Mint keys: **Admin API** (preferred for operators) **`POST /api/admin/tenants/{tenantId}/rental-api-keys`** with optional **`scopes`** / **`label`**, or CLI **`npm run ops:rental:mint-key -- --tenant=<slug>`** / `mint-rental-api-key.ts` — plaintext **`atxr_*` once**; Mongo stores **`keyHash`** only. Revoke/rotate via **`DELETE`** / **`POST …/rotate`**. See **`atx-docs/sre-ops/rental-ai-platform.md`** § Minting API keys. Stripe **`customer.subscription.*`** / Checkout completes with rental price id refresh **`rentalExpiresAt`** when subscription metadata includes **`atx_rental_tenant_id`** (or **`atx_tenant_id`**) or the tenant row already stores **`rentalStripeSubscriptionId`**.
 4. Integrate via **raw HTTPS** to the Next deployment origin (`POST`/`GET` above).
 
 ---
@@ -106,4 +106,4 @@ You are a white-labeled **xFinance rental advisor** for one tenant workspace. Ke
 | **Integration tests** | `tests/integration/rental-ai-routes.test.ts` |
 | **OpenAPI** | `/api/openapi` · `/admin/api-docs` |
 
-**Status:** Phase 1 **execution paths live** (chat JSON + SSE, strategy/analyze poll, metering, audit). **Next:** Stripe-linked expiry, admin key UX, optional embed/CORS allow-list — see **`atx-docs/PLAN.md`**.
+**Status:** Phase 1 **execution paths live** (chat JSON + SSE, strategy/analyze poll, metering, audit). **Shipped (v3.18+):** admin rental API key routes + webhook-driven **`rentalExpiresAt`** for configured rental Stripe price + optional Redis-backed rental concurrency. **Next:** product Checkout wiring for rental SKU (**`ENABLE_RENTAL_AI_BILLING`**), optional embed/CORS allow-list — **`atx-docs/PLAN.md`** #41.

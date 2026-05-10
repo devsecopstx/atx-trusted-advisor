@@ -1,4 +1,5 @@
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
+import type { TenantWorkspaceLimits } from "@/modules/identity/tenant-workspace-limits";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 
 /** Parallelism payload for `grok-4.20-multi-agent` (xAI `agent_count` + `reasoning.effort`). */
@@ -78,6 +79,71 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
 
 export function getPlanLimits(plan?: SubscriptionPlan | string): PlanTierLimits {
   return PLAN_LIMITS[normalizeSubscriptionPlan(plan)];
+}
+
+/** Effective xChat prompt caps for UI + metering (matches ask route: tenant workspace first, plan tier for soft %). */
+export type XchatMergedPromptLimits = {
+  subscriptionPlan: SubscriptionPlan;
+  dailyCap: number;
+  /** `0` when hourly enforcement is off (`userChatHourlyLimit` absent or 0). */
+  hourlyCap: number;
+  softLimitPercent: number;
+};
+
+/**
+ * Merge subscription tier (`getPlanLimits`) with resolved tenant workspace limits (base + planOverrides).
+ * When workspace limits cannot be loaded, pass `undefined` — daily cap falls back to the tier
+ * `maxPromptsPerDay` (same pattern as the ask limiter).
+ */
+export function mergeXchatPromptLimitsForWorkspace(
+  plan: SubscriptionPlan | string | undefined,
+  effectiveWorkspace: TenantWorkspaceLimits | null | undefined
+): XchatMergedPromptLimits {
+  const subscriptionPlan = normalizeSubscriptionPlan(plan);
+  const tierLimits = getPlanLimits(subscriptionPlan);
+  const ws = effectiveWorkspace;
+  const dailyFromWs =
+    ws && typeof ws.userChatLimit === "number" && Number.isFinite(ws.userChatLimit)
+      ? Math.max(1, Math.floor(ws.userChatLimit))
+      : tierLimits.maxPromptsPerDay;
+  const hourlyRaw = ws?.userChatHourlyLimit;
+  const hourlyCap =
+    typeof hourlyRaw === "number" && hourlyRaw > 0 ? Math.max(1, Math.floor(hourlyRaw)) : 0;
+  return {
+    subscriptionPlan,
+    dailyCap: dailyFromWs,
+    hourlyCap,
+    softLimitPercent: tierLimits.softLimitPercent
+  };
+}
+
+/** In-product soft banner when daily prompt usage crosses the high-utilization threshold (plan soft % floor at 80%). */
+export function shouldShowXchatPromptSoftLimitBanner(input: {
+  usedToday: number;
+  dailyCap: number;
+  planSoftLimitPercent: number;
+}): boolean {
+  const cap = Math.max(1, input.dailyCap);
+  const used = Math.max(0, input.usedToday);
+  const ratio = used / cap;
+  const thresholdPct = Math.min(80, Math.max(1, input.planSoftLimitPercent));
+  return ratio >= thresholdPct / 100;
+}
+
+/** Progress fill token: green → amber (≥80% of daily cap) → red at/near hard cap. */
+export function xchatPromptUsageMeterFillVar(input: {
+  usedToday: number;
+  dailyCap: number;
+}): "var(--xf-meter-fill)" | "var(--xf-meter-warn)" | "var(--xf-meter-danger)" {
+  const cap = Math.max(1, input.dailyCap);
+  const ratio = Math.max(0, input.usedToday) / cap;
+  if (ratio >= 1) {
+    return "var(--xf-meter-danger)";
+  }
+  if (ratio >= 0.8) {
+    return "var(--xf-meter-warn)";
+  }
+  return "var(--xf-meter-fill)";
 }
 
 /** Desk NL price alerts (xChat tool + branded email): Premium+ and advisor or global_admin. */

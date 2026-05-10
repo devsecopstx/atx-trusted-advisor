@@ -62,24 +62,34 @@ export const XchatThreadMessageBubble = memo(
   }: XchatThreadMessageBubbleProps) {
     return (
       <div className={`xchat-msg xchat-msg-${msg.role}`}>
-        {msg.role === "ai" ? (
-          <div className="xchat-msg-ai-inner">
-            {msg.persona ? <small className="xchat-msg-ai__persona">{msg.persona}</small> : null}
-            {msg.liveToolStatuses && msg.liveToolStatuses.length > 0 ? (
-              <div className="xchat-live-tools" aria-live="polite">
-                {msg.liveToolStatuses.map((t, i) => (
-                  <span
-                    key={`${t.name}-${t.phase}-${i}`}
-                    className="xchat-live-tools__chip"
-                    title={t.detail ?? undefined}
-                  >
-                    {t.name} · {t.phase}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            {msg.strategyJobOffer ? (
-              <>
+        {msg.role === "error" ? (
+          <div className="xchat-msg-error-body xchat-msg-ai-body--markdown">
+            <XchatMarkdownBody content={msg.content} />
+          </div>
+        ) : msg.role === "ai" ? (
+          <div className="xchat-msg-ai-turn">
+            <div
+              className={
+                msg.strategyJobOffer || msg.optionsActionScan
+                  ? "xchat-msg-ai-inner"
+                  : "xchat-msg-ai-inner xchat-msg-ai-inner--markdown-turn"
+              }
+            >
+              {msg.persona ? <small className="xchat-msg-ai__persona">{msg.persona}</small> : null}
+              {msg.liveToolStatuses && msg.liveToolStatuses.length > 0 ? (
+                <div className="xchat-live-tools" aria-live="polite">
+                  {msg.liveToolStatuses.map((t, i) => (
+                    <span
+                      key={`${t.name}-${t.phase}-${i}`}
+                      className="xchat-live-tools__chip"
+                      title={t.detail ?? undefined}
+                    >
+                      {t.name} · {t.phase}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {msg.strategyJobOffer ? (
                 <XchatStrategyJobPreflightCards
                   emphasizePrimary={emphasizeStrategyJobPrimary}
                   launchBusy={strategyJobLaunchBusy}
@@ -87,59 +97,33 @@ export const XchatThreadMessageBubble = memo(
                   onLaunch={onStrategyLaunch}
                   onStayInChat={onStrategyStay}
                 />
-                <XchatAiResponseChrome
-                  bodyText={msg.content}
-                  feedbackVote={msg.feedbackVote}
-                  interactionMeta={msg.interactionMeta}
-                  messageId={msg.id}
-                  pairedUserPrompt={msg.pairedUserPrompt}
-                  serverLogId={msg.serverLogId}
-                  threadId={threadId}
-                  variant="metaStrip"
-                  onFeedbackChange={onMessageFeedback}
-                  onRegenerate={onRegeneratePrompt}
+              ) : msg.optionsActionScan ? (
+                <OptionsActionScanReportLazy
+                  data={msg.optionsActionScan}
+                  embeddedInThread
+                  shareMode="enabled"
+                  workspacePortfolioId={workspacePortfolioId}
                 />
-              </>
-            ) : msg.optionsActionScan ? (
-              <OptionsActionScanReportLazy
-                data={msg.optionsActionScan}
-                embeddedInThread
-                responseMetaSlot={
-                  <XchatAiResponseChrome
-                    bodyText={msg.content}
-                    feedbackVote={msg.feedbackVote}
-                    interactionMeta={msg.interactionMeta}
-                    messageId={msg.id}
-                    pairedUserPrompt={msg.pairedUserPrompt}
-                    serverLogId={msg.serverLogId}
-                    threadId={threadId}
-                    variant="metaStrip"
-                    onFeedbackChange={onMessageFeedback}
-                    onRegenerate={onRegeneratePrompt}
-                  />
-                }
-                shareMode="enabled"
-                workspacePortfolioId={workspacePortfolioId}
-              />
-            ) : (
-              <>
+              ) : (
                 <div className="xchat-msg-ai-body xchat-msg-ai-body--markdown">
                   <XchatMarkdownBody content={msg.content} />
                 </div>
-                <XchatAiResponseChrome
-                  bodyText={msg.content}
-                  feedbackVote={msg.feedbackVote}
-                  interactionMeta={msg.interactionMeta}
-                  messageId={msg.id}
-                  pairedUserPrompt={msg.pairedUserPrompt}
-                  serverLogId={msg.serverLogId}
-                  threadId={threadId}
-                  variant="metaStrip"
-                  onFeedbackChange={onMessageFeedback}
-                  onRegenerate={onRegeneratePrompt}
-                />
-              </>
-            )}
+              )}
+            </div>
+            <div className="xchat-msg-ai-toolbar">
+              <XchatAiResponseChrome
+                bodyText={msg.content}
+                feedbackVote={msg.feedbackVote}
+                interactionMeta={msg.interactionMeta}
+                messageId={msg.id}
+                pairedUserPrompt={msg.pairedUserPrompt}
+                serverLogId={msg.serverLogId}
+                threadId={threadId}
+                variant="metaStrip"
+                onFeedbackChange={onMessageFeedback}
+                onRegenerate={onRegeneratePrompt}
+              />
+            </div>
           </div>
         ) : (
           <div className="xchat-msg-user-body">

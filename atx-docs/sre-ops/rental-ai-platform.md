@@ -1,6 +1,6 @@
 # Rental AI platform (white-label API)
 
-**Status:** Phase 1 — **execution paths live** on Next (`/api/ai/rent/*`): Bearer API keys, scopes, distributed rate limits, in-process concurrency cap (**8**/tenant; Redis semaphore backlog for multi-instance), UTC-day token budget vs **`rentalProfile.maxDailyTokens`**, audit **`admin_audit_events`** (`entityType` **`rental_ai`**). **Billing:** base **$99/mo** + **$0.0008 / 1k tokens** overage is **documented / internal metering only** until Stripe Meters ship — mirror notes on invoices; do not auto-report usage to Stripe yet.
+**Status:** Phase 1 — **execution paths live** on Next (`/api/ai/rent/*`): Bearer API keys, scopes, distributed rate limits, **8**/tenant concurrent requests via Redis **`xf:rental-ai:inflight:*`** when **`REDIS_URL`** connects (otherwise in-process), UTC-day token budget vs **`rentalProfile.maxDailyTokens`**, audit **`admin_audit_events`** (`entityType` **`rental_ai`**). **Admin:** **`GET`/`POST /api/admin/tenants/{tenantId}/rental-api-keys`**, **`DELETE …/{keyId}`**, **`POST …/{keyId}/rotate`**. **Stripe webhook:** rental recurring **`price_…`** (see env below) updates **`rentalExpiresAt`** / **`rentalStripeSubscription*`** / **`rentalProfile.expiresAt`** when tenant mapping exists. **Billing:** base **$99/mo** + **$0.0008 / 1k tokens** overage is **documented / internal metering only** until Stripe Meters ship — mirror notes on invoices; do not auto-report usage to Stripe yet.
 
 ## Tenant fields (`core_tenants`)
 
@@ -8,7 +8,9 @@
 |--------|---------|
 | `rentalProfile` | Tier metadata: `tier`, `strategyBias` (`conservative` \| `balanced` \| `aggressive`), `maxPortfolios`, `maxDailyTokens` (default **200000** when parsed via `parseTenantRentalProfile`), optional `xaiModelOverride`, `expiresAt`, `apiKeyEnabled`, optional `defaultPersonaId`, optional `sampleUserId` / `samplePortfolioId` (sample workspace for rental chat context). |
 | `rentalExpiresAt` | Sparse-indexed copy of `rentalProfile.expiresAt` for suspension scheduling queries. |
-| `apiKeys` | Hashed rental integration keys (`keyHash` scrypt via `hashPassword` / `verifyPassword`), `id` (16-hex segment inside `atxr_*` prefix), `scopes[]` (`chat` \| `strategy` \| `analyze`), optional `label`, timestamps. **Never log plaintext keys.** |
+| `rentalStripeSubscriptionId` | Optional Stripe **`sub_…`** stored when webhook sync runs for the rental SKU — enables subscription lifecycle updates without Checkout session metadata. |
+| `rentalStripeSubscriptionStatus` | Last Stripe subscription **`status`** string written by webhook sync (e.g. **`active`**, **`canceled`**). |
+| `apiKeys` | Hashed rental integration keys (`keyHash` scrypt via `hashPassword` / `verifyPassword`), `id` (16-hex segment inside `atxr_*` prefix), `scopes[]` (`chat` \| `strategy` \| `analyze`), optional `label`, timestamps, optional **`revokedAt`** (revoked keys fail auth). **Never log plaintext keys.** |
 
 Legacy docs may reference **`rentalAiApiKeys`** — field name is **`apiKeys`** (migration complete in app code + seed indexes).
 
@@ -22,11 +24,20 @@ On `npm run seed:tenant`, a **published** rental persona is upserted (`nameNorma
 
 **Auth:** `Authorization: Bearer atxr_<16-hex id>_<64-hex secret>` (structure enforced in `rental-ai-auth.ts`).
 
-### Minting API keys (ops)
+### Minting API keys (admin API + ops script)
 
-**You cannot “look up” a lost key** — Mongo only stores `keyHash`. If a partner loses the secret, mint a new key (or delete the old `apiKeys` element) and revoke the old id in your records.
+**You cannot “look up” a lost key** — Mongo only stores `keyHash`. If a partner loses the secret, **rotate** (**`POST /api/admin/tenants/{tenantId}/rental-api-keys/{keyId}/rotate`**) or mint a new key and **revoke** the old id (**`DELETE …/rental-api-keys/{keyId}`**).
 
-**Script (recommended):** from repo root with **`MONGODB_URI`** pointed at the target cluster (e.g. `--env-file=.env.prod`):
+**Admin HTTP (global_admin session):**
+
+- **`GET /api/admin/tenants/{tenantId}/rental-api-keys`** — list keys (**no** `keyHash`; includes **`revokedAt`** / **`status`**).
+- **`POST /api/admin/tenants/{tenantId}/rental-api-keys`** — body optional **`scopes`** (default all three) + **`label`**; **`201`** returns **`plaintextKey`** once + **`warning`** string.
+- **`DELETE /api/admin/tenants/{tenantId}/rental-api-keys/{keyId}`** — sets **`revokedAt`**.
+- **`POST /api/admin/tenants/{tenantId}/rental-api-keys/{keyId}/rotate`** — revokes old row; **`200`** returns new **`plaintextKey`** once.
+
+Audit: **`admin_audit_events`** actions **`rental_ai.api_key.mint|revoke|rotate`** on **`entityType` `tenant`**.
+
+**Script (break-glass / automation):** from repo root with **`MONGODB_URI`** pointed at the target cluster (e.g. `--env-file=.env.prod`):
 
 ```bash
 npm run ops:rental:mint-key -- --tenant=<tenant-slug>
@@ -36,8 +47,6 @@ node --env-file=.env.prod --import tsx scripts/ops/mint-rental-api-key.ts --tena
 ```
 
 The script prints `export KEY='atxr_…'` **once**; store it in a secrets manager / vault, not in chat logs.
-
-**Admin UI:** mint/list/revoke for `core_tenants.apiKeys` is backlog (**`PLAN.md`** #41) — script + Mongo are the supported paths today.
 
 ### Chat
 
@@ -50,7 +59,7 @@ The script prints `export KEY='atxr_…'` **once**; store it in a secrets manage
 - **`POST /api/ai/rent/analyze`** — scope **`analyze`**. Body: `{ jobId?, deepRun? }`. **`202`** + poll URL pattern as strategy.
 - **`GET /api/ai/rent/analyze?jobId=`** — same scope; job lookup.
 
-**Limits:** `checkDistributedRateLimit` (Redis when configured), max **8** concurrent requests per tenant (in-process — replace with Redis semaphore when strict multi-instance fairness is required).
+**Limits:** `checkDistributedRateLimit` (Redis when configured), max **8** concurrent requests per tenant (**Redis counter** **`xf:rental-ai:inflight:{tenantHex}`** with short TTL when **`REDIS_URL`** works; otherwise in-process map — single-instance honest).
 
 **Token metering:** Each chat completion increments **`rental_ai_token_usage`** (UTC day) and **`xchat_usage_limits`** rows keyed **`rental_tokens_day:<tenantHex>:<yyyy-mm-dd>`** with **`rentalTokensUsed`**. Failed guardrails do not burn tokens.
 
@@ -88,7 +97,7 @@ gcloud run services update "${CLOUD_RUN_SERVICE_PROD}" \
 
 Use **`--update-env-vars`** (merges keys). Do **not** use **`--set-env-vars`** alone unless you pass the full env map — it can replace all literals.
 
-Webhook handlers should extend subscription lifecycle to **`rentalExpiresAt`** when the rental SKU is integrated (**backlog**).
+Webhook **`POST /api/webhooks/stripe`** calls **`syncCoreTenantRentalFromStripeSubscription`** when the subscription includes **`getRentalAiStripeBasePriceId()`**. Tenant resolution order: Stripe metadata **`atx_rental_tenant_id`** (preferred) or **`atx_tenant_id`**, optional Checkout **`session.metadata`** fallback on **`checkout.session.completed`**, else lookup **`core_tenants.rentalStripeSubscriptionId`**. Requires existing **`rentalProfile`** on the tenant row.
 
 ### Deployment checklist (operator)
 

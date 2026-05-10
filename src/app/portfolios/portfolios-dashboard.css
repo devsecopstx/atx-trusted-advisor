@@ -1335,6 +1335,38 @@ html[data-xf-workspace-top-chrome] .workspace-product-approved-header-slot {
   backdrop-filter: blur(8px);
 }
 
+/**
+ * Workspace product rail — glass shell parity with admin Hub `aside.admin-left-rail.xf-widget`
+ * (`atxfinance-brand-kit.css` `.xf-widget` gradient) over root `FullBleedBackground`.
+ */
+.workspace-product-sidebar--rail-glass {
+  background: linear-gradient(160deg, rgba(18, 28, 48, 0.82), rgba(10, 15, 29, 0.86));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+html[data-xf-ui="soft"] .workspace-product-sidebar--rail-glass {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--xf-xchat-rail-bg) 76%, transparent),
+    color-mix(in srgb, var(--xf-bg-900) 52%, transparent)
+  );
+}
+
+.workspace-product-sidebar--rail-glass .workspace-product-sidebar__footer {
+  background: linear-gradient(180deg, transparent, rgba(8, 12, 22, 0.42));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+html[data-xf-ui="soft"] .workspace-product-sidebar--rail-glass .workspace-product-sidebar__footer {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--xf-xchat-rail-bg) 58%, transparent)
+  );
+}
+
 @keyframes workspace-rail-drawer-in {
   from {
     transform: translateX(-100%);

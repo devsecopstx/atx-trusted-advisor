@@ -35,4 +35,6 @@ export type TenantRentalAiKeyStored = {
   label?: string;
   createdAt: Date;
   lastUsedAt?: Date;
+  /** When set, key must not authenticate (`authenticateRentalAiApiKey`). */
+  revokedAt?: Date;
 };

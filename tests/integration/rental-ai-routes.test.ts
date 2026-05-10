@@ -145,8 +145,10 @@ describe("rental ai routes", () => {
     jobStore.clear();
     guardMocks.enforceRentalAiRateLimit.mockResolvedValue(null);
     guardMocks.enforceRentalAiTokenBudget.mockResolvedValue(null);
-    guardMocks.tryAcquireRentalAiConcurrencyOr429.mockReturnValue(null);
-    guardMocks.releaseRentalAiConcurrencySafe.mockImplementation(() => {});
+    guardMocks.tryAcquireRentalAiConcurrencyOr429.mockResolvedValue({
+      slot: { backend: "memory" }
+    });
+    guardMocks.releaseRentalAiConcurrencySafe.mockResolvedValue(undefined);
     workspaceMocks.buildWorkspaceServerSnapshotBlock.mockResolvedValue("Workspace: OK");
     xaiMocks.respondWithXaiToolLoop.mockResolvedValue({
       outputText: "**Hello** from rental",
@@ -166,6 +168,28 @@ describe("rental ai routes", () => {
       })
     );
     expect(res.status).toBe(401);
+  });
+
+  it("POST chat returns 401 when key revoked", async () => {
+    const { fullKey, doc } = await buildTenant();
+    const row = (doc.apiKeys as Array<{ revokedAt?: Date }>)[0];
+    if (row) {
+      row.revokedAt = new Date();
+    }
+    wireMongo({ tenantDoc: doc, jobStore });
+    const res = await postRentChat(
+      new Request("http://test/api/ai/rent/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${fullKey}`
+        },
+        body: JSON.stringify({ message: "Hi" })
+      })
+    );
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("key_revoked");
   });
 
   it("POST chat returns 403 when rental expired", async () => {

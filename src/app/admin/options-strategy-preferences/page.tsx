@@ -28,7 +28,7 @@ export default async function AdminOptionsStrategyPreferencesPage() {
           <strong>document</strong> is the full file body (markdown). Re-seed overwrites description and name from disk.
         </p>
         <p className="hero-copy" style={{ marginTop: "0.5rem" }}>
-          <Link className="text-emerald-400 hover:underline" href="/admin">
+          <Link className="text-xf-nav-green transition-colors hover:text-xf-nav-green-hover hover:underline" href="/admin">
             ← Hub
           </Link>
         </p>

@@ -25,7 +25,10 @@ export default async function EditOptionsStrategyPage({ params }: PageProps) {
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <p className="eyebrow">
-          <Link className="text-emerald-400 hover:underline" href="/admin/options-strategy">
+          <Link
+            className="text-xf-nav-green transition-colors hover:text-xf-nav-green-hover hover:underline"
+            href="/admin/options-strategy"
+          >
             Options strategy
           </Link>
           <span aria-hidden> · </span>

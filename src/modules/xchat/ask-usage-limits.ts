@@ -75,6 +75,13 @@ export async function enforceDistributedAskUsageLimit(
   const remainingMinute = Math.max(0, input.perMinuteLimit - minuteBucket.count);
 
   if (!input.enforceDailyLimit) {
+    /**
+     * Admins / sessions without workspace caps: still record UTC hour + day buckets so
+     * `GET /api/app-user/xchat/prompt-usage` and the rail/composer meter match real send volume.
+     * Enforcement against caps remains off (`workspaceCapsEnforced: false` in the API).
+     */
+    await incrementUsageBucket({ kind: "hour", userId: input.userId, tenantId: input.tenantId, now });
+    await incrementUsageBucket({ kind: "day", userId: input.userId, tenantId: input.tenantId, now });
     return {
       allowed: true,
       remainingMinute
@@ -140,6 +147,51 @@ export async function enforceDistributedAskUsageLimit(
     hourlyLimit: hourlyCap > 0 ? hourlyCap : undefined,
     remainingDay: Math.max(0, dailyLimit - dayBucket.count),
     dailyLimit
+  };
+}
+
+/** Read current UTC minute/hour/day buckets without incrementing (prompt usage meter). */
+export async function peekXchatAskUsageCounts(input: {
+  userId: string;
+  tenantId?: string;
+  now?: Date;
+}): Promise<{
+  minuteCount: number;
+  hourCount: number;
+  dayCount: number;
+}> {
+  await ensureUsageIndexes();
+  const now = input.now ?? new Date();
+  const minuteStart = getBucketStart("minute", now);
+  const hourStart = getBucketStart("hour", now);
+  const dayStart = getBucketStart("day", now);
+  const keys = [
+    buildUsageKey({
+      kind: "minute",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      bucketStart: minuteStart
+    }),
+    buildUsageKey({
+      kind: "hour",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      bucketStart: hourStart
+    }),
+    buildUsageKey({
+      kind: "day",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      bucketStart: dayStart
+    })
+  ];
+  const coll = (await getDb()).collection<UsageBucketDocument>(XCHAT_USAGE_COLLECTION);
+  const docs = await coll.find({ key: { $in: keys } }).project({ key: 1, count: 1 }).toArray();
+  const map = new Map(docs.map((d) => [d.key, d.count]));
+  return {
+    minuteCount: map.get(keys[0]) ?? 0,
+    hourCount: map.get(keys[1]) ?? 0,
+    dayCount: map.get(keys[2]) ?? 0
   };
 }
 

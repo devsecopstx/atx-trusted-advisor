@@ -117,11 +117,15 @@ export async function POST(request: Request) {
     return new Response(budget.response.body, { status: budget.response.status, headers });
   }
 
-  const conc = tryAcquireRentalAiConcurrencyOr429(tenantHex);
-  if (conc) {
-    const headers = mergeRentalAiHeaders(base, conc.response.headers);
-    return new Response(conc.response.body, { status: conc.response.status, headers });
+  const conc = await tryAcquireRentalAiConcurrencyOr429(tenantHex);
+  if ("failure" in conc) {
+    const headers = mergeRentalAiHeaders(base, conc.failure.response.headers);
+    return new Response(conc.failure.response.body, {
+      status: conc.failure.response.status,
+      headers
+    });
   }
+  const { slot } = conc;
 
   try {
     const jobId = await createCompletedRentalAiJob({
@@ -165,6 +169,6 @@ export async function POST(request: Request) {
       202
     );
   } finally {
-    releaseRentalAiConcurrencySafe(tenantHex);
+    await releaseRentalAiConcurrencySafe(tenantHex, slot);
   }
 }

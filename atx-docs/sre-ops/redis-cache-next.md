@@ -59,6 +59,15 @@ Grant the Cloud Run runtime service account **Secret Manager Secret Accessor** o
 - **Env:** `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` (30–900; try **30–60** when Redis/TLS is healthy and Mongo snapshot cost matters).
 - **Docs:** [mongo-indexing-guide.md](./mongo-indexing-guide.md) §7.5.
 
+## Tenant UX policy (`tenant_ux`)
+
+- **Purpose:** Cross-instance reuse of resolved route visibility + landing for **`GET /api/internal/tenant-ux/policy`** (`getCachedTenantUxPolicyForSession`).
+- **Keys:** `tenant-ux:policy:v2:<userId>:<tenantId>` (JSON payload mirroring **`CachedTenantUxPolicy`**).
+- **TTL:** **60s** (`POLICY_TTL_SECONDS` in **`src/modules/platform/tenant-ux-policy-cache.ts`**). Same TTL applies to the in-memory tier; Redis extends freshness across Cloud Run instances when **`REDIS_URL`** is set.
+- **Operational:** Dev and production Next deployments mount **`REDIS_URL`** from env / Secret Manager — policy cache **does** use Redis there. On Redis read/write errors the module falls back to memory + Mongo (warns **`[tenant-ux] redis read failed`** / **`redis write failed`**).
+- **Invalidation:** TTL-only today; route-catalog **`PATCH`** / **`tenant_roles`** updates can take up to **~60s** to propagate across instances via natural expiry (see backlog in [tenant-ux-plan.md](../design-system/tenant-ux-plan.md)).
+- **Runbook:** [tenant-ux-enforcement.md](./tenant-ux-enforcement.md).
+
 ## GitHub
 
 - **No** new GitHub Secrets for Redis.

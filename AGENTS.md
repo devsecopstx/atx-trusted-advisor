@@ -278,12 +278,10 @@ Then write the decoded `mongodb+srv://...` URI into `.env` and `unset MONGODB_UR
 - Phase 5: Access workflow UI — status step indicator (new→triaged→pending→approved), SLA countdown, policy violation display, full state machine filter.
 - Phase 6: Docs sync — persona governance routes, plan limits table, access request state machine, tool cache documented.
 
-**Deferred — plan limits UI (connect runtime limits to branding):**
+**Deferred — plan limits UI (remaining):**
 
 - Drive plans landing feature bullets from `getPlanLimits()` instead of static text.
-- Add usage meter component to xchat UI showing prompts used / daily limit.
-- Add soft-limit warning banner when `softLimitReached` is true.
-- CSS tokens: `--xf-meter-fill`, `--xf-meter-bg`, `--xf-meter-warn`.
+- **Shipped:** xChat composer + rail **`XchatUsageMeter`**, **`GET /api/app-user/xchat/prompt-usage`**, soft-limit banner (≥80% daily), `--xf-meter-*` tokens in brand kit.
 
 **Deferred — persona version history viewer:**
 

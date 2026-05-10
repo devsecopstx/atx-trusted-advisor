@@ -428,6 +428,9 @@ export async function POST(request: Request) {
           error: limitError,
           code: usageCheck.code,
           retryAfterSeconds: usageCheck.retryAfterSeconds ?? 60,
+          ...(usageCheck.code === "xchat_rate_limit_exceeded"
+            ? { xchatLimitSource: "per_minute_burst" as const }
+            : {}),
           ...(usageCheck.code === "xchat_daily_limit_exceeded" &&
           typeof usageCheck.dailyLimit === "number"
             ? {
@@ -437,7 +440,10 @@ export async function POST(request: Request) {
             : {}),
           ...(usageCheck.code === "xchat_hourly_limit_exceeded" &&
           typeof usageCheck.hourlyLimit === "number"
-            ? { hourlyLimit: usageCheck.hourlyLimit }
+            ? {
+                hourlyLimit: usageCheck.hourlyLimit,
+                xchatLimitSource: "tenant_plan_effective" as const
+              }
             : {})
         },
         { status: 429, headers: limiterHeaders }

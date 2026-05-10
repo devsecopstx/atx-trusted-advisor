@@ -1,16 +1,16 @@
 import { APP_VERSION } from "@/lib/app-version";
 import { ATX_CLUSTER_OPENAPI_SCHEMAS } from "@/lib/openapi/cluster-schemas";
 import {
-    CURRENT_STATE_COMPONENT_SCHEMAS,
-    getCurrentStateOperationOverride
+  CURRENT_STATE_COMPONENT_SCHEMAS,
+  getCurrentStateOperationOverride
 } from "@/lib/openapi/current-state-overrides";
 import type {
-    HttpMethod,
-    OpenApiDocument,
-    OpenApiOperation,
-    OpenApiParameter,
-    OpenApiPathItem,
-    OpenApiResponse
+  HttpMethod,
+  OpenApiDocument,
+  OpenApiOperation,
+  OpenApiParameter,
+  OpenApiPathItem,
+  OpenApiResponse
 } from "@/lib/openapi/types";
 
 type AuthScope = "public" | "session" | "admin";
@@ -194,6 +194,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/app-user/xchat/token-stats",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xchat"
+  },
+  {
+    path: "/api/app-user/xchat/prompt-usage",
     operations: [{ method: "GET", auth: "session" }],
     tag: "xchat"
   },
@@ -822,6 +827,24 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tenants"
   },
   {
+    path: "/api/admin/tenants/{tenantId}/rental-api-keys",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/rental-api-keys/{keyId}",
+    operations: [{ method: "DELETE", auth: "admin" }],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/rental-api-keys/{keyId}/rotate",
+    operations: [{ method: "POST", auth: "admin" }],
+    tag: "admin-tenants"
+  },
+  {
     path: "/api/admin/tenants/{tenantId}/memberships",
     operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
     tag: "admin-tenants"
@@ -1305,7 +1328,10 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "strategy-jobs":
     "Hardcore multi-slot strategy jobs: Spring `StrategyJobService` (Mongo `strategy_jobs`) behind Next BFF (`src/app/api/strategy-jobs/*`). Slot turns through `slots_complete`, then async LLM artifact (Markdown + fenced JSON v1). Rate limits, idempotency, TTL: see `atxfinance-backend-http-api.md` and `atx-docs/xchat/atx-multi-agent.md`.",
   rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",
-  xchat: "xChat sync and async ask/batch workflows."
+  reports:
+    "Options scan / wheel report helpers: `POST /api/reports/create` (short-lived share token), `POST /api/reports/options-scan` (polished PDF when service available), `POST /api/reports/scan/apply-watchlist` / wheel apply-watchlist, public `GET /api/reports/scan/{token}` + wheel `{token}` for shared viewers. Consumed from xChat embedded Options Action Scan card + `/reports/*` pages.",
+  xchat:
+    "Product xChat: **`POST /api/xchat/ask`** (+ optional **`POST /api/xchat/ask/stream`**), history/threads/preferences, **`POST /api/xchat/message-feedback`**, workspace warm, persona **`GET /api/xchat/collections`**, admin **`/api/xchat/batch*`**. Satellite **`/api/app-user/xchat/*`**: tenant attachments, voice transcribe + realtime token, saved prompt templates, **`GET /api/app-user/xchat/token-stats`** (rolling usage — advisor working overlay + sidebar), **`GET /api/app-user/xchat/prompt-usage`** (UTC day/hour prompt meter + caps — composer + rail). Next-authoritative unless BFF notes apply; consolidation backlog in `api-consolidation-spring-backend.md`."
 };
 
 function inferTag(path: string): string {

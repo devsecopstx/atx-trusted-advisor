@@ -1037,7 +1037,7 @@ export function WorkspaceProductSidebar({
   );
 
   const railFooter = (
-    <footer className="workspace-product-sidebar__footer flex shrink-0 flex-col border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_94%,transparent)] transition-all duration-200 ease-out">
+    <footer className="workspace-product-sidebar__footer flex shrink-0 flex-col border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] transition-all duration-200 ease-out">
       <div className="workspace-product-sidebar__footer-account-rule" aria-hidden />
       {accountDetails ? (
         <WorkspaceProfileFooterMenu
@@ -1054,7 +1054,7 @@ export function WorkspaceProductSidebar({
   );
 
   const sidebarShellClassName =
-    "workspace-product-sidebar--desktop-rail flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-[width] duration-200 ease-out dark:shadow-md";
+    "workspace-product-sidebar--desktop-rail workspace-product-sidebar--rail-glass flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] shadow-sm transition-[width] duration-200 ease-out dark:shadow-md";
 
   const sidebarShellStyle = {
     width: `${railWidthPx}px`,
@@ -1096,7 +1096,7 @@ export function WorkspaceProductSidebar({
               ref={drawerPanelRef}
               aria-labelledby="workspace-drawer-title"
               aria-modal="true"
-              className={`workspace-product-sidebar__drawer-panel workspace-rail-drawer-panel fixed bottom-0 left-0 top-0 z-[1045] flex min-h-0 flex-col border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] pt-[calc(env(safe-area-inset-top)+3.25rem)] pl-[env(safe-area-inset-left)] shadow-xl backdrop-blur-md max-[767px]:rounded-r-xl ${drawerTransitionClass}`}
+              className={`workspace-product-sidebar__drawer-panel workspace-product-sidebar--rail-glass workspace-rail-drawer-panel fixed bottom-0 left-0 top-0 z-[1045] flex min-h-0 flex-col border border-[var(--xf-xchat-rail-border)] pt-[calc(env(safe-area-inset-top)+3.25rem)] pl-[env(safe-area-inset-left)] shadow-xl max-[767px]:rounded-r-xl ${drawerTransitionClass}`}
               id="workspace-drawer-panel"
               role="dialog"
               style={{

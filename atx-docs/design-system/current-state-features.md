@@ -1,9 +1,9 @@
 # xFinance monorepo — technical architecture & current state
 
-Last updated: 2026-05-07  
-App semver (canonical): root **`package.json`** (currently **3.16.5**; runtime label via `src/lib/app-version.ts` → **`APP_VERSION`** reads the same semver).
+Last updated: 2026-05-09  
+App semver (canonical): root **`package.json`** (currently **3.18.0**; runtime label via `src/lib/app-version.ts` → **`APP_VERSION`** reads the same semver).
 
-This file is the **single consolidated technical architecture** reference for the monorepo: runtime topology, responsibilities, shipped product surfaces, CI/test matrix, pre-production gates, and **known gaps**. Topic deep dives stay in linked **`atx-docs/*`** pages; **open backlog only** in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
+This file is the **single consolidated technical architecture** reference: runtime topology, responsibilities, product surface map (what exists in repo today), CI/test matrix, pre-production gates, **known gaps**, and **baseline contracts** teams must not regress without review. Topic deep dives stay in linked **`atx-docs/*`** pages; **prioritized next work** lives in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change — update **this doc** when architecture or baseline contracts change.
 
 ---
 
@@ -14,7 +14,7 @@ Values below track **`package.json`** and **`services/atxfinance-backend/gradle/
 | Layer | Stack |
 |--------|--------|
 | **Frontend (core app)** | **Next.js 16.x** (App Router), **React 19.2.x**, **TypeScript 5.9.x**, **Tailwind CSS 3.4.x**, **ESLint 9.x** + `eslint-config-next` |
-| **UI / data viz** | **ApexCharts 5.x** + `react-apexcharts`, **Framer Motion**, **TanStack React Virtual**, **react-markdown** + **rehype-sanitize** / **remark-gfm**, **Workspace Starfield** (`src/components/StarfieldBackground.tsx`) — full-bleed fixed layer (`z-index: -20`) on `/xchat`, `/xoptions`, `/portfolios`, under header/footer/rail, with theme-aware base fill, subtle center radial depth, 1px grid, low-density node/line constellation animation (CSS-only, reduced-motion safe), and static Austin skyline anchor (`/branding/atx-skyline-light.png`) at the lower viewport band. |
+| **UI / data viz** | **ApexCharts 5.x** + `react-apexcharts`, **Framer Motion**, **TanStack React Virtual**, **react-markdown** + **rehype-sanitize** / **remark-gfm**, **Workspace Starfield** (`src/app/ui/starfield-background.tsx`) — full-bleed fixed layer (`z-index: -20`) on `/xchat`, `/xoptions`, `/portfolios`, under header/footer/rail, with theme-aware base fill, subtle center radial depth, 1px grid, low-density node/line constellation animation (CSS-only, reduced-motion safe), and static Austin skyline anchor (`/branding/atx-skyline-light.png`) at the lower viewport band. |
 | **Next runtime libs** | **MongoDB** Node driver **7.x**, **Zod 4.x**, **Stripe** SDK **17.x**, **yahoo-finance2** **3.14.x** (batch/single quote paths use **`yahooQuoteWithValidationFallback`** when schema validation fails), **nodemailer** **8.x** (desk SMTP + credential-invite / reset mail), optional **redis** client **4.x**, **@google-cloud/pubsub** **4.x**, **yaml**, **cronstrue** / **rrule** |
 | **API docs (Next)** | **swagger-ui-react** / **swagger-ui-dist** **5.32.x** — admin **`/admin/api-docs`** backed by **`GET /api/openapi`** |
 | **Tests (Next)** | **Vitest 3.2.x**, **tsx**; integration + OpenAPI parity under **`tests/integration/**`** |
@@ -81,9 +81,9 @@ flowchart TB
 
 **Purpose:** Per-tenant **platform role** route allowlists + default landing paths for app users; **display-only** branding (names, accent, logo URL, tagline, `xf_ui_theme` default) via `core_tenants.tenantPreferences` — **not** a different regulatory story per tenant.
 
-| Area | Shipped |
-|------|---------|
-| **Provisioning / bootstrap** | **≥3.12.6:** **`ensureTenantBootstrapForUser`** (login + optional approve-time when **`bootstrap_on_approve`**); structured **`bootstrap_policy`** per role; **`watchlist_seed_symbols`** + desk defaults; **`seed:tenant`** + **`tenant-specs/*.yaml`** (**`tenant.bootstrapPolicy`**, **`tenant.bootstrapOnApprove`**). See **`auth-and-access.md`** § Admin approval → default book. |
+| Area | Notes |
+|------|-------|
+| **Provisioning / bootstrap** | **`ensureTenantBootstrapForUser`** (login + optional approve-time when **`bootstrap_on_approve`**); structured **`bootstrap_policy`** per role; **`watchlist_seed_symbols`** + desk defaults; **`seed:tenant`** + **`tenant-specs/*.yaml`** (**`tenant.bootstrapPolicy`**, **`tenant.bootstrapOnApprove`**). See **`auth-and-access.md`** § Admin approval → default book. |
 | **Catalog + drift tests** | `data/platform/app-user-route-catalog.json`, `getAppUserRouteCatalog()`, `assertCatalogMatchesWorkspaceProductPrefixes()` |
 | **Admin read/write** | `GET /api/admin/platform/route-catalog`, `GET/PATCH /api/admin/platform/route-catalog/{tenantId}` (PATCH emits **`admin_audit_events`** `tenant_ux.route_catalog.patch`); optional overrides in `tenantPreferences` |
 | **Role matrix** | `GET/PUT /api/admin/tenants/{tenantId}/roles`, `PATCH .../roles/{role}`; UI `/admin/tenants/{tenantId}/roles`; **`PUT` writes** `tenant_roles` + audit |
@@ -93,7 +93,7 @@ flowchart TB
 | **xChat branding context** | System prompt + approved-shell welcome line include **tenant desk label** (`formatTenantWorkspaceContextBlockForXchat`); fingerprint includes tenant block for remote history |
 | **CSS tokens** | `--xf-tenant-primary` / `--xf-tenant-secondary` in **`atxfinance-brand-kit.css`**; `layout` + **`TenantBrandingProvider`** set accent-derived vars |
 
-**Soak / backlog:** Staging-first V2 rollout; expand API↔policy mapping for any remaining direct **`/api/...`** bypasses; optional Redis-backed policy cache; PWA **per-tenant** `manifest` (today static `manifest.webmanifest`); nav/header parity beyond workspace rail; metrics (`tenant_ux_route_forbidden_total`, policy latency). Runbook: **`atx-docs/sre-ops/tenant-ux-enforcement.md`**.
+**Soak / backlog:** Staging-first V2 rollout (**`.env.example`** soak note); expand API↔policy mapping for any remaining direct **`/api/...`** bypasses; **policy cache:** proxy memory TTL **+ Redis** (**`tenant-ux:policy:v2:*`**, **60s**) — **active in dev + prod** with mounted **`REDIS_URL`**; PWA **per-tenant** `manifest` (today static `manifest.webmanifest`); nav/header parity beyond workspace rail; structured metrics (**`tenant_ux_route_forbidden_total`**, **`tenant_ux_policy_fetch_latency_ms`**, **`tenant_ux_policy_unavailable_total`** when fail-closed). Runbook: **`atx-docs/sre-ops/tenant-ux-enforcement.md`** · **`atx-docs/sre-ops/redis-cache-next.md`** § Tenant UX policy.
 
 ---
 
@@ -120,7 +120,7 @@ Before approving a **production** release, the **reviewer / operator** checklist
 Authors should confirm in the PR (or thread) where relevant:
 
 1. **Perf impact:** For **UI-heavy** changes, large dependencies, or **hot paths** (**xChat**, **xOptions**, **`/portfolios`**, **`/portfolio`**, route-level **`loading`** on those surfaces), attach **Lighthouse delta** and **React Profiler** screenshot or trace link — or state **N/A** with reason. **`ci:gate` alone** is not a substitute for that evidence when reviewer scope applies.
-2. **This doc:** If the PR **materially** changes shipped stack, product surfaces, or a **Known gap** row below, update **`current-state-features.md`** or **`PLAN.md`** in the same PR (or link a tracked follow-up with owner).
+2. **This doc:** If the PR **materially** changes runtime topology, product surfaces, **baseline contracts**, or a **Known gap** row below, update **`current-state-features.md`** or **`PLAN.md`** in the same PR (or link a tracked follow-up with owner).
 
 Cross-check **[`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/test-commit-push/SKILL.md)** for commit conventions and release-notes line when bumping semver ([`sre-ops/release-notes.md`](../sre-ops/release-notes.md)).
 
@@ -130,23 +130,35 @@ Cross-check **[`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/
 
 | Topic | Where |
 |--------|--------|
-| **This doc (architecture + shipped state)** | *You are here* — [`current-state-features.md`](./current-state-features.md) |
-| Backlog (open items only) | [`PLAN.md`](../PLAN.md) |
+| **This doc (architecture + baselines + gaps)** | *You are here* — [`current-state-features.md`](./current-state-features.md) |
+| **What to build next** | [`PLAN.md`](../PLAN.md) |
 | IBKR integration (phases, compliance) | [`ibkr-automation.md`](./ibkr-automation.md) · module [`src/modules/ibkr-integration/README.md`](../../src/modules/ibkr-integration/README.md) |
 | Next API inventory | [`guides/api-endpoints.md`](../guides/api-endpoints.md) |
 | Spring HTTP contract | [`sre-ops/atxfinance-backend-http-api.md`](../sre-ops/atxfinance-backend-http-api.md) |
 | BFF / consolidation | [`sre-ops/api-consolidation-spring-backend.md`](../sre-ops/api-consolidation-spring-backend.md) |
 | Deploy, secrets, desk SMTP | [`guides/deploy-and-ops.md`](../guides/deploy-and-ops.md) |
 | Tenant workspace limits (xChat day/hour, xOptions copy, plan overrides) | [`sre-ops/tenant-workspace-limits.md`](../sre-ops/tenant-workspace-limits.md) |
-| OptionsStrategyEngine (shipped scoring path) | [`xStrategyBuilder/strategy-engine.md`](./xStrategyBuilder/strategy-engine.md) |
+| OptionsStrategyEngine (scoring path) | [`xStrategyBuilder/strategy-engine.md`](./xStrategyBuilder/strategy-engine.md) |
 | xOptions UI, find-options + strategy APIs | [`xchat/xoptions-strategy-builder.md`](../xchat/xoptions-strategy-builder.md) · [`guides/api-endpoints.md`](../guides/api-endpoints.md) § xOptions |
 | OpenAPI inventory (admin Swagger) | `GET /api/openapi` · `src/lib/openapi/current-state.ts` (`CURRENT_STATE_ROUTES`) |
 | Charts (Apex) | [`charts-apex.md`](./charts-apex.md) |
 | Release history (semver, newest first) | [`sre-ops/release-notes.md`](../sre-ops/release-notes.md) |
 | Reviewer / prod gate | [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md) |
 | Ship checklist (secrets, BFF) | [`.cursor/skills/test-commit-push/CHECKLIST.md`](../../.cursor/skills/test-commit-push/CHECKLIST.md) |
-| Scheduled scanners (Phase 3 shipped) | [`scheduled-task/scanners-phase3-plan.md`](./scheduled-task/scanners-phase3-plan.md) |
+| Scheduled scanners (Phase 3) | [`scheduled-task/scanners-phase3-plan.md`](./scheduled-task/scanners-phase3-plan.md) |
 | Tenant workspace automations (`ownerKind: tenant_user`) | [`scheduled-task/user-tasks.md`](./scheduled-task/user-tasks.md) |
+
+### What's next (engineering)
+
+Prioritized backlog — detail and IDs in [`PLAN.md`](../PLAN.md):
+
+| Theme | Next moves |
+| --- | --- |
+| **Tenant & access** | **`tenant_ux` V2** soak, metrics, Redis policy cache (**operational** with **`REDIS_URL`**), `/api`↔policy audit, PWA manifest (**PLAN 11**); multi-tenant provisioning UX + Spring book parity (**PLAN 10**). |
+| **Monetization / platforms** | Rental AI billing + admin key UX (**PLAN 41**); **xMoney** parallel checkout + crypto book phases (**PLAN 704**); Stripe usage-meter gaps (billing §). |
+| **Execution & data** | IBKR CP refresh + paper harness → sync → orders (**PLAN 200**); automated verified trades only after custodian path (**PLAN 900**). |
+| **Automation** | User tasks → strategy / scan handoff (**PLAN 705**); tenant automations NL schedule + fairness (**PLAN 706**). |
+| **Core product** | xChat plan meter + vision policy + JVM ask consolidation (**PLAN.md** xChat Hardcore); OptionsStrategyEngine extensions; watchlist freshness / scan share hardening (deferred TODOs). |
 
 ---
 
@@ -167,9 +179,21 @@ Cross-check **[`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/
 
 **Shell themes (soft vs deep):** See **[`shell-theme-guidelines.md`](./shell-theme-guidelines.md)** — contrast rules for all user-facing pages; Tailwind **`dark:`** aligns with deep shell in **`tailwind.config.ts`**. Tenant default **`xf_ui_theme`** (`light` \| `dark` \| `system`) is applied on boot via **`XfThemeBootClient`**; when the stored preference is **`system`**, the document follows **`prefers-color-scheme`** (including after OS theme changes).
 
-**Per-tenant workspace rail branding:** **`core_tenants.name`** plus **`tenantPreferences`** **`xf_accent_color`**, **`xf_tenant_logo_url`**, **`xf_tenant_tagline`** feed **`getTenantShellBrandingForHex`** → **`TenantBrandingProvider`** (root layout sets **`--xf-tenant-accent`** on **`html`** for first paint). **`WorkspaceProductSidebar`** shows a tenant header (logo / **aTx** fallback, name, tagline) and uses the accent for active links, **Find xOptions**, toggles/checkboxes, and collapsed-icon states — CSS fallbacks use **`--xf-xoptions-accent`** when the CSS variable is unset. **Footer profile menu (≥3.17.10):** **`WorkspaceProfileFooterMenu`** — bottom avatar opens a portaled, bottom-anchored panel (**Plans & billing**, **Sign out**, **Feedback**, **Resources** when allowed, global_admin hub links, etc.); see **`auth-and-access.md`**. The **Resources** accordion nests a collapsible **Utilities** subgroup (default closed; opens on import / tasks / attachments routes): **User Collections** (Premium+ xAI uploads), broker import, and **`/account/tasks`**. Guide articles are consolidated behind **`/resources/guides`** (jump chips + icon-led panels: platform / **xChat** / wheel / playbooks; catalog **`resource-guides-catalog.ts`** — platform includes **`/resources/onboarding-checklist`**). Nested links under Resources: **Guides**, optional **Reference docs** (global_admin); collapsed Resources icon targets **`/resources/guides`**. **`/portfolios`** (**`PortfoliosWorkspaceHeader`** + **`.portfolios-workspace-tenant-chrome`**) applies the same tokens to the sticky header (total book, market-open pill), book cards, manage table, edit panel, accounts footer, and compact watchlist/news links. Subtitle fallback when tagline is omitted: **`PORTFOLIOS_WORKSPACE_FALLBACK_TAGLINE`**. Provisioning copy: **`tenant-specs/README.md`**, admin create tenant UI.
+**Per-tenant workspace rail branding:** **`core_tenants.name`** plus **`tenantPreferences`** **`xf_accent_color`**, **`xf_tenant_logo_url`**, **`xf_tenant_tagline`** feed **`getTenantShellBrandingForHex`** → **`TenantBrandingProvider`** (root layout sets **`--xf-tenant-accent`** on **`html`** for first paint). **`WorkspaceProductSidebar`** shows a tenant header (logo / **aTx** fallback, name, tagline) and uses the accent for active links, **Find xOptions**, toggles/checkboxes, and collapsed-icon states — CSS fallbacks use **`--xf-xoptions-accent`** when the CSS variable is unset. **Glass rail (≥3.18):** desktop shell + drawer use **`workspace-product-sidebar--rail-glass`** in **`portfolios-dashboard.css`** — same gradient language as admin **`xf-widget`**, **`backdrop-filter`**, and a **`soft`**-theme variant over root **`FullBleedBackground`** (skyline reads through the rail). **Footer profile menu (≥3.17.10):** **`WorkspaceProfileFooterMenu`** — bottom avatar opens a portaled, bottom-anchored panel (**Plans & billing**, **Sign out**, **Feedback**, **Resources** when allowed, global_admin hub links, etc.); see **`auth-and-access.md`**. The **Resources** accordion nests a collapsible **Utilities** subgroup (default closed; opens on import / tasks / attachments routes): **User Collections** (Premium+ xAI uploads), broker import, and **`/account/tasks`**. Guide articles are consolidated behind **`/resources/guides`** (jump chips + icon-led panels: platform / **xChat** / wheel / playbooks; catalog **`resource-guides-catalog.ts`** — platform includes **`/resources/onboarding-checklist`**). Nested links under Resources: **Guides**, optional **Reference docs** (global_admin); collapsed Resources icon targets **`/resources/guides`**. **`/portfolios`** (**`PortfoliosWorkspaceHeader`** + **`.portfolios-workspace-tenant-chrome`**) applies the same tokens to the sticky header (total book, market-open pill), book cards, manage table, edit panel, accounts footer, and compact watchlist/news links. Subtitle fallback when tagline is omitted: **`PORTFOLIOS_WORKSPACE_FALLBACK_TAGLINE`**. Provisioning copy: **`tenant-specs/README.md`**, admin create tenant UI.
 
 Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_PATH_PREFIXES`** ([`surface-policy.ts`](../../src/modules/surface-policy.ts)): **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/import-activity`**, **`/watchlist`**, **`/account`**, **`/workspace/tasks`** (tenant automations row; nested under **`/workspace`**), **`/workspace`**, **`/xoptions`**. Other user routes (e.g. **`/xcoach`**) exist but are not in that rail list unless extended there.
+
+#### xChat workspace — baseline contract
+
+Regression guardrails for **`/xchat`** (change only with design-system + LHCI review). Runtime behavior and version history: [`release-notes.md`](../sre-ops/release-notes.md), [`xchat-debug-logging.md`](../xchat/xchat-debug-logging.md), [`xchat-history-storage.md`](../xchat/xchat-history-storage.md), [`xchat-token-usage-sidebar.md`](../xchat/xchat-token-usage-sidebar.md), [`xchat-voice-mode.md`](../xchat/xchat-voice-mode.md).
+
+| Area | Contract |
+| --- | --- |
+| **Layout rail** | **`.xchat-msg-ai-inner`** — **`max-width: 1480px`**, **`1.5rem`** gutters; markdown memo **`.xchat-msg-ai-body--markdown`**; scan / strategy-job cards own elevated shells. |
+| **Themes** | **Deep** vs **`html[data-xf-ui="soft"]`** — **`src/app/xchat/xchat.css`**. |
+| **Advisor working** | Overlay **`bottom: 108px`**, **`z-index: 80`**; **`GET /api/app-user/xchat/token-stats`**; **`xchat-advisor-working-overlay.tsx`**; thread pad **`.xchat-messages-container--advisor-working`**. |
+| **Action hierarchy** | Scan ends at disclaimer; **`options-action-scan-advisory-strip`** (primary CTAs + **`responseMetaSlot`**); **`XchatAiResponseChrome`** **`variant="metaStrip"`** under memo/card. |
+| **Bundles** | **`OptionsActionScanReport`** via **`next/dynamic`** in **`xchat-thread-message-bubble.tsx`**; Prism via **`xchat-prism-highlighter.tsx`** on first fenced block; Starfield init after **`window.load`** — § UX performance below. |
 
 **Representative capabilities (non-exhaustive — see `api-endpoints.md`):**
 
@@ -294,7 +318,7 @@ When SMTP + **`DESK_EMAIL_FROM`** are configured (see **`.env.example`** / `src/
 
 ## 5) Known gaps — tests & docs (reviewer-style, consolidated)
 
-These are **documented** backlog items or **conscious** holes; do not treat as shipped.
+These are **documented** backlog items or **conscious** holes — not a feature checklist.
 
 | Gap | Pointer |
 |-----|---------|
@@ -306,9 +330,10 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 | **Pub/Sub consumer** on Spring | This doc §2 · `PLAN.md` / release notes |
 | **IBKR** — no broker OAuth/token refresh in-app; no order placement | `ibkr-automation.md` |
 | **Multi-tenant provisioning** — Admin bootstrap log / replay; Spring book parity for **`bootstrap_policy`** | `PLAN.md` **10** · `skill-tenant-roadmap/SKILL.md` |
-| **Tenant UX (`tenant_ux`)** — soak + hardening | Deep narrative: **§ Tenant UX** above. **Open:** metrics/alerts, Redis policy cache, exhaustive `/api/*`↔policy map, per-tenant PWA manifest, broader product-nav parity. **Env:** **`TENANT_UX_ENFORCEMENT_V2`**, **`TENANT_UX_POLICY_FAIL_CLOSED`** (`.env.example`). | [tenant-ux-plan.md](./tenant-ux-plan.md) · [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md) · `PLAN.md` **11** |
-| **Plan limits UI** — usage meter / soft-limit banner wired to **`getPlanLimits()`** + live workspace counters (429 headers exist; in-chat meter still deferred) | `PLAN.md` (deferred) · branding TODO in `AGENTS.md` |
-| **xChat** — vision paste **shipped** (follow-ups: scan/EXIF/dims/batch — `PLAN.md` deferred); structured **`[xchat/debug]`** gated tenant-only (**app ≥3.6.16**, `xchat-debug-logging.md`); **Grok-style composer + dictation + tenant attach** shipped **3.9.0** (`release-notes.md`); **HNWI Templates** (single row: **Templates** + **Workspace library** status **`≥3.16.5`**) + saved user prompts + **Depth** (Expert/Heavy → **`grok-4.3`** **`reasoning.effort`**, `context-routing-multi-agent-policy.md`) (`xchat-hnwi-templates-ui.md`, **`707` closed**); **Composer rail token usage** (**app ≥3.16.4**) — **`GET /api/app-user/xchat/token-stats`**, sidebar **`XchatSidebarTokenStats`** (`xchat-token-usage-sidebar.md`); voice — **xAI STT only** (**MediaRecorder** → **`/voice-transcribe`**); **Voice Mode** — **`POST /api/app-user/xchat/voice-realtime/token`** (optional **`workspace_voice_context`**) + **`wss://…/v1/realtime`** (`xchat-voice-mode.md`); voice stack **703** documented in **`release-notes`** / **`xchat-voice-mode.md`** (`PLAN.md` tracks open backlog only); **xMoney billing + crypto book (704)** — phased roadmap: [`PLAN.md`](../PLAN.md) § **xMoney & crypto portfolio (704)** | `PLAN.md`; **701** privacy history **shipped** (`xchat-history-storage.md`) |
+| **Tenant UX (`tenant_ux`)** — soak + hardening | Deep narrative: **§ Tenant UX** above. **Open:** metrics/alerts, exhaustive `/api/*`↔policy map, per-tenant PWA manifest, broader product-nav parity, optional **explicit** cache bust on roles/catalog **`PATCH`**. **Redis policy cache:** shipped (**`tenant-ux:policy:v2:*`**) — live with **`REDIS_URL`** in dev/prod. **Env:** **`TENANT_UX_ENFORCEMENT_V2`**, **`TENANT_UX_POLICY_FAIL_CLOSED`** (`.env.example`). | [tenant-ux-plan.md](./tenant-ux-plan.md) · [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md) · [redis-cache-next.md](../sre-ops/redis-cache-next.md) · `PLAN.md` **11** |
+| **Plan limits UI** — **shipped:** composer + rail **`XchatUsageMeter`** + UTC reset copy; soft-limit banner ≥80% daily use; **`GET /api/app-user/xchat/prompt-usage`**; 429 thread errors surface codes + billing CTA (`usage-meter.tsx`, `plan-limits.ts` merge helpers) | `PLAN.md` · `AGENTS.md` branding TODO (CSS tokens now in brand kit) |
+| **xChat — open gaps** | Vision paste policy (virus scan, max dims, EXIF, batch harness); JVM-authoritative ask + BFF consolidation (`PLAN.md`, `api-consolidation-spring-backend.md`). **Thread layout (backlog):** short replies obscure prompt + in-card action links — target external per-turn action toolbar, collapsible “previous turns”, sticky prompt summary (`PLAN.md` Design UX). Baseline UI/API: § **xChat workspace — baseline contract** above; capability history: `release-notes.md`. |
+| **Light / soft shell polish** | Tenant/user **`xf_ui_theme`** resolves to **`html[data-xf-ui=\"soft\"]`** (“soft” density today). Full light palette (high-contrast marketing light, navy accent, workspace-library hover states) is **not** fully tokenized in brand kit — backlog; coordinate with `tenant-ux-plan.md` before overriding historical dark-first positioning. |
 | **OptionsStrategyEngine** — extend scoring / desk notification providers | `PLAN.md` · `reviewer.md` §245 |
 | **Lighthouse / perf in default CI** | **`npm run ci:gate`** does **not** run Lighthouse; hot-path PRs attach local LHCI or manual Lighthouse per **`reviewer.md`**; optional repo **`.lighthouseci/`** config for local regression |
 
@@ -380,58 +405,22 @@ npm run lh:prod:auth
 
 **Comparing runs:** each invocation drops a versioned set of `lhr-*.html` + `manifest.json` into the reports dir for that mode. To compare guest vs authenticated for `/xchat`, open both `reports/lhr-*-xchat-*.html` and `reports-auth/lhr-*-xchat-*.html` in a browser, or diff `manifest.json` `summary` blocks. Treat any drop ≥ 0.05 in performance score (or > 200 ms LCP regression) as a blocker for hot-path PRs.
 
-#### Lighthouse baselines (2026-05-09 LHCI, perf-only, desktop preset)
+#### Reference snapshot — hot routes (local guest, perf-only, desktop)
 
-Captured via `npm run lh:prod:perf` (`LHCI_RUNS=1`) and `npm run lh:local:perf` (`LHCI_RUNS=1` → 2 runs per default; median below) right before the **xChat hot-path optimization pass** described in `lighthouse_perf_plan_*.plan.md`.
+Median of two runs (`npm run lh:local:perf`, fresh **`NODE_ENV=production npm run build`**). **Re-run** whenever you touch **`src/app/xchat/**`**, **`src/app/reports/scan/**`**, **`starfield-background.tsx`**, or other heavy client paths.
 
-Live prod (`https://atx.fintech-advisor.ai`) — guest shells (no signed session):
+| Route | Perf | LCP (ms) | CLS | TBT (ms) |
+| --- | --- | --- | --- | --- |
+| /portfolio | 1.00 | 761 | 0.000 | 17 |
+| /portfolios | 1.00 | 748 | 0.000 | 0 |
+| /xchat | **1.00** | **721** | 0.000 | **22** |
+| /xoptions | 1.00 | 727 | 0.000 | 21 |
 
-| Route | Perf | LCP (ms) | CLS | TBT (ms) | FCP (ms) | SI (ms) | TTI (ms) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| /portfolio | 1.00 | 799 | 0.000 | 0 | 364 | 582 | 799 |
-| /portfolios | 1.00 | 719 | 0.000 | 0 | 399 | 469 | 719 |
-| /xchat | **0.96** | 630 | 0.000 | **158** | 357 | **1004** | 759 |
-| /xoptions | 1.00 | 679 | 0.000 | 0 | 399 | 508 | 679 |
+**Prod guest:** After each prod deploy that affects those bundles, run **`npm run lh:prod:perf`** and record dated numbers in [`release-notes.md`](../sre-ops/release-notes.md) (avoid stale static prod tables in this doc).
 
-Local (`http://localhost:3001`, `next start` from current build) — guest shells, median of 2 runs:
+**Regression anchors:** Starfield init waits for **`window.load`** + idle; scan card **`next/dynamic`**; Prism on demand via **`xchat-prism-highlighter`**.
 
-| Route | Perf | LCP (ms) | CLS | TBT (ms) | FCP (ms) | SI (ms) | TTI (ms) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| /portfolio | 1.00 | 760 | 0.000 | 0 | 328 | 328 | 762 |
-| /portfolios | 1.00 | 721 | 0.000 | 0 | 327 | 327 | 723 |
-| /xchat | **0.99** | 804 | 0.000 | **26** | 300 | **582** | 811 |
-| /xoptions | 1.00 | 736 | 0.000 | 0 | 295 | 295 | 738 |
-
-**Read:** `/xchat` is the only route below 1.00 in either environment. Prod TBT (158 ms) and SI (1004 ms) point at main-thread JS during initial paint — consistent with the heavy markdown + syntax-highlighter + scan-report bundles eagerly imported by `xchat-thread-message-bubble.tsx`, plus the canvas animation in `starfield-background.tsx`. `/portfolio`, `/portfolios`, `/xoptions` are healthy — keep them flat through the optimization pass.
-
-Authenticated baselines should be captured by an operator with the **prod** `AUTH_SECRET`, following the **Authenticated steps** above. Append the authenticated tables below this section once captured (or per release-candidate); guest baselines remain the public reference.
-
-#### Post-optimization local guest re-run (2026-05-09 LHCI, perf-only, desktop preset)
-
-Captured after the xChat hot-path optimization pass landed (`npm run lh:local:perf` on a fresh `npm run build`, median of 2 runs). Same routes, same desktop preset, same machine — directly comparable to the **Local** baseline above.
-
-| Route | Perf | LCP (ms) | CLS | TBT (ms) | FCP (ms) | SI (ms) | TTI (ms) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| /portfolio | 1.00 | 761 | 0.000 | 17 | 334 | 398 | 783 |
-| /portfolios | 1.00 | 748 | 0.000 | 0 | 329 | 329 | 748 |
-| /xchat | **1.00** | **721** | 0.000 | **22** | 321 | 754 | 871 |
-| /xoptions | 1.00 | 727 | 0.000 | 21 | 296 | 324 | 770 |
-
-**Deltas vs pre-fix local baseline:**
-
-| Route | Δ Perf | Δ LCP | Δ TBT | Δ SI | Notes |
-| --- | --- | --- | --- | --- | --- |
-| /xchat | **+0.01** (0.99 → 1.00) | **−83 ms** (804 → 721) | −4 ms (26 → 22) | +172 ms (582 → 754) | Recovered to perfect; LCP/TBT both improved. SI regression is the explicit trade-off — the starfield canvas now paints **after** the `load` event so the chat shell + composer light up first; visually the canvas catches up within ~1 s of LCP. |
-| /portfolio | 0 | +1 ms | +17 ms | +70 ms | Within run-to-run noise; no perf-score change. |
-| /portfolios | 0 | +27 ms | 0 | +2 ms | Flat. |
-| /xoptions | 0 | −9 ms | +21 ms | +29 ms | TBT delta is run-noise; perf score flat at 1.00. |
-
-**What changed (low-risk, no contract changes, no API/persona behavior change):**
-
-- **`src/app/ui/starfield-background.tsx`** — defer the entire scene init + RAF loop until *after* `window.load` plus one idle hop. Moves the ~320-star + 4-nebula allocation and the first few shadow-blurred animation frames out of Lighthouse’s FCP → TTI window. Reduced-motion behavior preserved; cleanup unchanged.
-- **`src/app/xchat/ui/xchat-thread-message-bubble.tsx`** — convert the static `OptionsActionScanReport` import to `next/dynamic` (`ssr: false`) with a width-matched skeleton (`.options-action-scan-root--loading`). Heavy chunks (`jspdf`, `jspdf-autotable`, `@tanstack/react-table` for that card) now ship only when an `optionsActionScan` payload renders.
-- **`src/app/xchat/ui/xchat-markdown-body.tsx`** + new **`src/app/xchat/ui/xchat-prism-highlighter.tsx`** — extract the Prism + `oneDark`/`oneLight` style imports into a thin module that is dynamically loaded the first time a fenced code block renders. Plain markdown messages (the common case) no longer pay for the Prism bundle.
-- **CSS** — width-aware loading shells `.options-action-scan-root--loading` and `.xchat-md-code-block-wrap--loading` keep the layout stable while lazy chunks load (CLS stays 0).
+Authenticated baselines: mint cookie per **Authenticated steps** above; attach **`lh:local:auth:perf`** / prod auth runs to hot-path PRs when reviewer asks.
 
 **Standing guardrails for future PRs touching xChat / xOptions / portfolios:**
 
@@ -443,49 +432,16 @@ Captured after the xChat hot-path optimization pass landed (`npm run lh:local:pe
 4. Anything touching `StarfieldBackground` must keep the start gated behind the `load` event so it cannot re-enter the TBT window.
 5. For authenticated regression coverage on hot-path PRs, attach a `lh:local:auth:perf` run alongside the guest run (mint cookie via `npm run lh:mint-cookie`).
 
-**Remaining hotspot backlog (non-blocking):**
+**Remaining perf backlog (non-blocking):**
 
-- xChat conversation chunk still ships `apexcharts` indirectly via `react-apexcharts`-using cousins; consider isolating chart-only modules behind `next/dynamic` if conversation-bundle size regresses.
-- IBKR snapshot panel and watchlist quote refresh are not LHCI-monitored yet (they live behind app interactions); add Lighthouse user-flows or Sentry web-vitals when they become a perceived hot path.
-- Live prod re-measurement (`npm run lh:prod:perf`) should happen post-deploy of this optimization pass to confirm the local 1.00 maps to prod (current prod still shows `/xchat` at 0.96 because these fixes have not shipped yet).
-
-#### Workspace starfield backdrop — perf check (2026-05-09 LHCI, perf-only, desktop preset, guest)
-
-Replaced route-level **`MarketVeilBackground`** mounts on `/xchat`, `/xoptions`, and `/portfolios` with a shared **`StarfieldBackground`** component (`src/components/StarfieldBackground.tsx`). The layer is fixed full-bleed with `z-index: -20`, mounted inside `xchat-shell` (which now uses `position: relative; isolation: isolate`) so it paints behind header/footer/rail and stays above the document base paint.
-
-**Visual contract (theme-aware, CSS-only):**
-
-- Base fill + subtle radial depth (`#FAFBFC` light / `#0B0F14` dark).
-- 22-node constellation with 1px links (slow twinkle / connect animations; reduced-motion off switch).
-- 1px global grid with low-opacity 14s drift.
-- Static skyline anchor (`/branding/atx-skyline-light.png`) at bottom 35% viewport, lower opacity on dark.
-
-| Route        | Run #1 perf | Run #2 perf | TBT (#1/#2)  | LCP (#1/#2) | CLS  |
-|--------------|------------:|------------:|-------------:|------------:|-----:|
-| `/xoptions`  |        1.00 |        1.00 |     0/0 ms   | 700/699 ms  | 0.00 |
-| `/xchat`     |        0.98 |        0.99 |     0/0 ms   | 1073/1028 ms | 0.00 |
-| `/portfolios`|        1.00 |        1.00 |     0/0 ms   | 745/740 ms  | 0.00 |
-| `/portfolio` |        1.00 |        1.00 |     0/0 ms   | 745/743 ms  | 0.00 |
-
-Representative run scores hold the hot-path target (>= 0.98 performance) with no CLS regressions while keeping all ambient animation on GPU-friendly CSS transforms/opacities.
-
-#### Lighthouse production baseline (2026-04-08)
-
-- **Performance:** **1.00** on **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/xoptions`** (live prod).
-- **LCP:** **0.6–0.7 s** on live prod.
-- **Goal met:** Instant UX for HNWI users managing real-money portfolios and options income.
-- **Infra:** Cloud Run sizing locked in — frontend **min=1**, backend **min=0**, **CPU boost** (`--cpu-boost`) on both — **`atx-docs/sre-ops/gcp-prod-two-service-model.md`**.
-
-#### xChat & Portfolios targets (2026-04-08 LHCI)
-
-- **All critical routes (local + prod baselines above):** Performance **1.00** (LCP ≤ **0.7** s; prod observed **0.6–0.7** s).
-- **`/xoptions`:** Accessibility **1.00** target (horizon chips: explicit **`aria-label`** + **`aria-pressed`** on target-expiration pills in **`xoptions-choose-contract.tsx`**).
-- **High-risk surfaces** (ApexCharts, IBKR snapshot, long chat history): passing under seeded data.
+- Isolate **`apexcharts`** / **`react-apexcharts`** behind **`next/dynamic`** if the xChat conversation bundle regresses.
+- IBKR snapshot panel and watchlist quote refresh are interaction-gated — add Lighthouse user flows or web-vitals when they become hot paths.
 
 #### Quick remaining gaps (non-blocking)
 
+- **Workspace backdrop:** **`StarfieldBackground`** (`src/app/ui/starfield-background.tsx`) — full-bleed behind chrome (`z-index: -20`), theme-aware CSS fill, constellation + skyline anchor, reduced-motion safe; must stay **`load`**-gated (see guardrails above).
 - **Best-practices ≈ 0.96 on every route:** Almost always **back/forward cache** audit failures because dynamic API responses use **`Cache-Control: no-store`** (normal and correct for live portfolios, watchlists, and IBKR snapshots). **Do not change** this in dev or prod — it would break freshness for real-money data.
-- **`/xoptions` accessibility (historical):** Horizon chip buttons lacked explicit names; fixed with **`aria-label`** / **`aria-pressed`**. If Lighthouse regresses, re-check **bid-price** chain cells (price-only text) and **stepper** labels under **`max-width: 640px`** (CSS hides step titles; add **`aria-label`** on step buttons if needed).
+- **`/xoptions` a11y:** Horizon chips use **`aria-label`** / **`aria-pressed`** (**`xoptions-choose-contract.tsx`**). On regression, re-check bid-price cells and stepper labels under **`max-width: 640px`**.
 
 ---
 

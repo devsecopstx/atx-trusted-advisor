@@ -24,6 +24,14 @@
   --xf-destructive-surface-hover: color-mix(in srgb, var(--xf-danger-400) 16%, transparent);
   --xf-warning-400: #dfc78d;
   --xf-gain-green: #39ff14;
+  /** Emerald-500 — primary CTAs only (e.g. Open xOptions, strategy launch). Nav chrome uses `--xf-nav-green`. */
+  --xf-accent-cta: #10b981;
+  /**
+   * Header / admin rail nav link green — global (not `--xf-tenant-accent`).
+   * Deep shell: neon advisory green; soft/light shell: darker emerald for WCAG on #f8fafc / white (see `html[data-xf-ui="soft"]`).
+   */
+  --xf-nav-green: var(--xf-gain-green);
+  --xf-nav-green-hover: var(--xf-gain-green);
   /** Wordmark lightning bolt (between aTx and Finance) — branding “lightning yellow” */
   --xf-lightning-yellow: #eab308;
   --xf-gain-green-muted: #00cc00;
@@ -32,6 +40,11 @@
   --xf-chart-bar-hi: #d4d9e0;
   --xf-chart-gain: #39ff14;
   --xf-chart-loss: #f5a0ad;
+  /** xChat plan usage meter (prompts / UTC day) */
+  --xf-meter-bg: color-mix(in srgb, var(--xf-text-400) 28%, transparent);
+  --xf-meter-fill: var(--xf-gain-green);
+  --xf-meter-warn: var(--xf-warning-400);
+  --xf-meter-danger: var(--xf-danger-400);
   /** ApexCharts / canvas APIs need resolved rgb(); read via `resolveDesignTokenColor` in app code */
   --xf-chart-apex-grid: color-mix(in srgb, var(--xf-text-400) 22%, transparent);
   --xf-chart-apex-volume: color-mix(in srgb, var(--xf-xoptions-accent) 58%, transparent);
@@ -303,4 +316,10 @@ body {
     justify-self: center;
     width: min(84%, 340px);
   }
+}
+
+/** Light shell: readable nav / header greens (~8:1 on soft backgrounds). CTAs still use `--xf-accent-cta`. */
+html[data-xf-ui="soft"] {
+  --xf-nav-green: #166534;
+  --xf-nav-green-hover: #14532d;
 }

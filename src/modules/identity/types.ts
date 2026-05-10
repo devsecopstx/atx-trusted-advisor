@@ -155,7 +155,11 @@ export type Tenant = {
   rentalProfile?: TenantRentalProfile | null;
   /** Mirror of `rentalProfile.expiresAt` for sparse indexing and suspension jobs (set by provisioning). */
   rentalExpiresAt?: Date | null;
-  /** Hashed rental integration keys; plaintext shown once at issuance (admin path — future). */
+  /** Stripe subscription id when rental SKU Checkout is used (`sub_…`). */
+  rentalStripeSubscriptionId?: string | null;
+  /** Stripe subscription status string at last webhook sync (e.g. `active`, `canceled`). */
+  rentalStripeSubscriptionStatus?: string | null;
+  /** Hashed rental integration keys; plaintext shown once at issuance (admin API or ops script). */
   apiKeys?: TenantRentalAiKeyStored[] | null;
 };
 
