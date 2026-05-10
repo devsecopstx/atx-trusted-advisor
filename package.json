@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.18.2",
+  "version": "3.18.3",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -26,6 +26,8 @@
     "lh:prod:auth": "npx @lhci/cli@latest autorun --config=./.lighthouseci/config.prod-remote.auth.cjs",
     "lh:prod:auth:perf": "LHCI_PERF_ONLY=1 npx @lhci/cli@latest autorun --config=./.lighthouseci/config.prod-remote.auth.cjs",
     "lh:mint-cookie": "node scripts/lhci/mint-session-cookie.mjs",
+    "lh:summary:auth:median": "node scripts/lhci/summarize-lhci-median.mjs --manifest=.lighthouseci/reports-auth/manifest.json --out=.lighthouseci/reports-auth/summary-median.json",
+    "lh:local:auth:perf:median": "LHCI_PERF_ONLY=1 LHCI_RUNS=${LHCI_RUNS:-5} npx @lhci/cli@latest autorun --config=./.lighthouseci/config.auth.cjs && npm run lh:summary:auth:median",
     "start": "next start",
     "lint": "eslint .",
     "ci:gate": "npm run lint && npm run typecheck && npm run docs:links && npm run test",

@@ -12,6 +12,7 @@ import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
+import { logXchatPerfDebug } from "@/lib/xchat-debug";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
@@ -40,40 +41,82 @@ export async function XchatApprovedShell({
   requestedPortfolioId,
   requestedAccountId
 }: XchatApprovedShellProps) {
-  const defaultPersona = await loadDefaultXchatPersonaForSessionDeduped(session.roles);
+  const shellStartedAt = Date.now();
+  const isAdminSession = isGlobalAdmin(session.roles);
+  const markPerf = (stage: string, startedAt: number, details?: Record<string, unknown>) => {
+    logXchatPerfDebug({
+      surface: "xchat_page",
+      stage,
+      durationMs: Date.now() - startedAt,
+      details
+    });
+  };
 
-  let workspaceBook: AppUserDefaultBook | null = null;
-  let workspacePortfolioId: string | null = null;
-  let syncWorkspacePortfolioCookie = false;
-  if (requestedPortfolioId && ObjectId.isValid(requestedPortfolioId)) {
-    const book = await loadAppUserDefaultBookForPortfolioId(session, requestedPortfolioId);
-    if (book) {
-      workspaceBook = book;
-      workspacePortfolioId = book.portfolioId?.trim() ? book.portfolioId.trim() : null;
-      syncWorkspacePortfolioCookie = true;
-    }
-  }
-  if (!workspaceBook) {
-    const book = await loadAppUserDefaultBook(session);
-    if (book) {
-      workspaceBook = book;
-      workspacePortfolioId = book.portfolioId?.trim() ? book.portfolioId.trim() : null;
-    }
-  }
+  const defaultPersonaPromise = loadDefaultXchatPersonaForSessionDeduped(session.roles);
 
-  const wl = await getEffectiveWorkspaceLimitsForUser({
+  const workspaceBookStartedAt = Date.now();
+  const workspaceBookPromise = (async (): Promise<{
+    workspaceBook: AppUserDefaultBook | null;
+    workspacePortfolioId: string | null;
+    syncWorkspacePortfolioCookie: boolean;
+  }> => {
+    if (requestedPortfolioId && ObjectId.isValid(requestedPortfolioId)) {
+      const requestedBook = await loadAppUserDefaultBookForPortfolioId(session, requestedPortfolioId);
+      if (requestedBook) {
+        return {
+          workspaceBook: requestedBook,
+          workspacePortfolioId: requestedBook.portfolioId?.trim() ? requestedBook.portfolioId.trim() : null,
+          syncWorkspacePortfolioCookie: true
+        };
+      }
+    }
+    const fallbackBook = await loadAppUserDefaultBook(session);
+    return {
+      workspaceBook: fallbackBook,
+      workspacePortfolioId: fallbackBook?.portfolioId?.trim() ? fallbackBook.portfolioId.trim() : null,
+      syncWorkspacePortfolioCookie: false
+    };
+  })();
+
+  const workspaceLimitsPromise = getEffectiveWorkspaceLimitsForUser({
     tenantId: session.tenantId,
     userId: session.userId
   });
-  const workspaceChangePersonaEnabled = wl.changePersonaEnabled;
-  const workspaceChatHistoryMax = wl.chatHistoryMax;
-
-  const serverBootstrap = await getXchatServerShellBootstrap(session, workspaceChatHistoryMax);
-
-  const entitlements = await resolveXoptionsEntitlements({
+  const entitlementsPromise = resolveXoptionsEntitlements({
     userId: session.userId,
     roles: session.roles
   });
+  const routePolicyPromise = getTenantRoutePolicyForSession(session);
+  const tenantShellPromise =
+    session.tenantId && ObjectId.isValid(session.tenantId)
+      ? getTenantShellBrandingForHex(session.tenantId)
+      : Promise.resolve(null);
+
+  const [defaultPersona, workspaceBookState, wl, entitlements, routePolicy, tenantShell] =
+    await Promise.all([
+      defaultPersonaPromise,
+      workspaceBookPromise,
+      workspaceLimitsPromise,
+      entitlementsPromise,
+      routePolicyPromise,
+      tenantShellPromise
+    ]);
+  markPerf("parallel_bootstrap", workspaceBookStartedAt, {
+    usedRequestedPortfolio: workspaceBookState.syncWorkspacePortfolioCookie
+  });
+
+  const workspaceBook = workspaceBookState.workspaceBook;
+  const workspacePortfolioId = workspaceBookState.workspacePortfolioId;
+  const syncWorkspacePortfolioCookie = workspaceBookState.syncWorkspacePortfolioCookie;
+  const workspaceChangePersonaEnabled = wl.changePersonaEnabled;
+  const workspaceChatHistoryMax = wl.chatHistoryMax;
+  const bootstrapStartedAt = Date.now();
+  const serverBootstrap = await getXchatServerShellBootstrap(session, workspaceChatHistoryMax);
+  markPerf("server_bootstrap", bootstrapStartedAt, {
+    workspaceChatHistoryMax,
+    hasHistory: Boolean(serverBootstrap?.historyItemsNewestFirst?.length)
+  });
+
   const fileAttachmentsEnabled = canAccessPremiumTenantAttachments(
     entitlements.subscriptionPlan,
     session.roles
@@ -87,14 +130,12 @@ export async function XchatApprovedShell({
     : null;
   const googleLinkHrefForApproved = googleLoginHrefApproved ? googleLoginHrefApproved : null;
 
-  const routePolicy = await getTenantRoutePolicyForSession(session);
   const visiblePathPrefixes = routePolicy.effectiveRolePolicy.allowedRoutes;
-
-  const tenantShell =
-    session.tenantId && ObjectId.isValid(session.tenantId)
-      ? await getTenantShellBrandingForHex(session.tenantId)
-      : null;
   const tenantWorkspaceSessionLabel = tenantShell?.displayName?.trim() || null;
+  markPerf("render_ready", shellStartedAt, {
+    workspaceChatHistoryMax,
+    fileAttachmentsEnabled
+  });
 
   return (
     <XchatConversationMount
@@ -109,13 +150,13 @@ export async function XchatApprovedShell({
         mongoConnection,
         tenantIdHex: session.tenantId?.trim() || undefined,
         subscriptionPlan: entitlements.subscriptionPlan,
-        isGlobalAdmin: isGlobalAdmin(session.roles)
+        isGlobalAdmin: isAdminSession
       }}
       accountFeedbackPageLabel="xChat"
       defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
-      includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
+      includeSuperAgentInPersonaPicker={isAdminSession}
       initialXchatItem={resolvedInitialXchatItem}
-      isGlobalAdmin={isGlobalAdmin(session.roles)}
+      isGlobalAdmin={isAdminSession}
       serverBootstrap={serverBootstrap}
       welcomeName={appUserPrimaryDisplayName(session)}
       workspaceBook={workspaceBook}

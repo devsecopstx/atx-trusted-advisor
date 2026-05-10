@@ -15,9 +15,15 @@ vi.mock("@/lib/mongodb", () => mongoMocks);
 const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn().mockResolvedValue({ _id: "audit1" })
 }));
+const policyCacheMocks = vi.hoisted(() => ({
+  bustTenantUxPolicyCacheForTenant: vi.fn()
+}));
 
 vi.mock("@/modules/audit/repository", () => ({
   createAuditEvent: auditMocks.createAuditEvent
+}));
+vi.mock("@/modules/platform/tenant-ux-policy-cache", () => ({
+  bustTenantUxPolicyCacheForTenant: policyCacheMocks.bustTenantUxPolicyCacheForTenant
 }));
 
 import {
@@ -68,6 +74,10 @@ describe("admin tenant route catalog overrides", () => {
         findOneAndUpdate
       })
     });
+    policyCacheMocks.bustTenantUxPolicyCacheForTenant.mockResolvedValue({
+      redisDeleted: 4,
+      memoryDeleted: 2
+    });
   });
 
   it("returns tenant overrides with catalog", async () => {
@@ -114,7 +124,11 @@ describe("admin tenant route catalog overrides", () => {
     expect(body.data.overrides.xoptions).toBe(true);
     expect(body.data.defaultLandingPathByRole.viewer).toBe("/portfolios");
     expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
-    expect(auditMocks.createAuditEvent).toHaveBeenCalledTimes(1);
+    expect(policyCacheMocks.bustTenantUxPolicyCacheForTenant).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439022",
+      "route_catalog_patch"
+    );
+    expect(auditMocks.createAuditEvent).toHaveBeenCalledTimes(2);
     expect(auditMocks.createAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: "tenant",

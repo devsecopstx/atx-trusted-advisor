@@ -19,6 +19,10 @@ function policyKey(userId: string, tenantId: string): string {
   return `tenant-ux:policy:v2:${userId.trim()}:${tenantId.trim()}`;
 }
 
+function tenantPolicyPattern(tenantId: string): string {
+  return `tenant-ux:policy:v2:*:${tenantId.trim()}`;
+}
+
 function fromMemory(userId: string, tenantId: string): CachedTenantUxPolicy | null {
   const key = policyKey(userId, tenantId);
   const hit = memoryPolicyCache.get(key);
@@ -89,6 +93,62 @@ export async function getCachedTenantUxPolicyForSession(session: SessionUser): P
   }
 
   return payload;
+}
+
+async function deleteTenantPolicyKeysFromRedis(tenantId: string): Promise<number> {
+  const redis = await getRedisClientForPlane("control");
+  if (!redis) {
+    return 0;
+  }
+  const pattern = tenantPolicyPattern(tenantId);
+  let cursor = "0";
+  let deleted = 0;
+  do {
+    const chunk = await redis.scan(cursor, {
+      MATCH: pattern,
+      COUNT: 200
+    });
+    cursor = chunk.cursor;
+    if (chunk.keys.length > 0) {
+      deleted += await redis.del(chunk.keys);
+    }
+  } while (cursor !== "0");
+  return deleted;
+}
+
+function deleteTenantPolicyKeysFromMemory(tenantId: string): number {
+  const suffix = `:${tenantId.trim()}`;
+  let deleted = 0;
+  for (const key of memoryPolicyCache.keys()) {
+    if (!key.endsWith(suffix)) {
+      continue;
+    }
+    memoryPolicyCache.delete(key);
+    deleted += 1;
+  }
+  return deleted;
+}
+
+export async function bustTenantUxPolicyCacheForTenant(
+  tenantId: string,
+  trigger: "roles_update" | "route_catalog_patch" | "manual_bust"
+): Promise<{ redisDeleted: number; memoryDeleted: number }> {
+  const safeTenantId = tenantId.trim();
+  const memoryDeleted = deleteTenantPolicyKeysFromMemory(safeTenantId);
+  let redisDeleted = 0;
+  try {
+    redisDeleted = await deleteTenantPolicyKeysFromRedis(safeTenantId);
+  } catch (error) {
+    console.warn(
+      "[tenant-ux] policy cache bust redis failed",
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+  console.info(
+    `[tenant-ux] explicit policy bust for tenant ${safeTenantId} on roles/catalog change`,
+    JSON.stringify({ trigger, memoryDeleted, redisDeleted })
+  );
+  return { redisDeleted, memoryDeleted };
 }
 
 export function resetTenantUxPolicyMemoryCacheForTests(): void {

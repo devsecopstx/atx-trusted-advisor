@@ -8,9 +8,13 @@ const authMocks = vi.hoisted(() => ({
 const policyCacheMocks = vi.hoisted(() => ({
   getCachedTenantUxPolicyForSession: vi.fn()
 }));
+const observabilityMocks = vi.hoisted(() => ({
+  appendTenantUxObservabilityEvent: vi.fn()
+}));
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/platform/tenant-ux-policy-cache", () => policyCacheMocks);
+vi.mock("@/modules/platform/tenant-ux-observability-repository", () => observabilityMocks);
 
 import { GET } from "@/app/api/internal/tenant-ux/policy/route";
 
@@ -67,5 +71,12 @@ describe("internal tenant ux policy route", () => {
     );
     const res = await GET(new Request("http://test/api/internal/tenant-ux/policy?pathname=/xchat"));
     expect(res.status).toBe(401);
+  });
+
+  it("returns 503 when policy resolver throws", async () => {
+    policyCacheMocks.getCachedTenantUxPolicyForSession.mockRejectedValueOnce(new Error("redis down"));
+    const res = await GET(new Request("http://test/api/internal/tenant-ux/policy?pathname=/xchat"));
+    expect(res.status).toBe(503);
+    expect(observabilityMocks.appendTenantUxObservabilityEvent).toHaveBeenCalled();
   });
 });

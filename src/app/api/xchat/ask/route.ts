@@ -31,7 +31,8 @@ import {
     logXchatAskPreRequestDebug,
     logXchatAskProviderErrorDebug,
     logXchatAskStreamDebug,
-    logXchatAskToolBatchDebug
+    logXchatAskToolBatchDebug,
+    logXchatPerfDebug
 } from "@/lib/xchat-debug";
 import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
 import {
@@ -325,6 +326,19 @@ export async function POST(request: Request) {
   const tenantWorkspaceContextFingerprint = tenantWorkspaceContextBlock?.trim() ?? "";
 
   return runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
+  const askRequestStartedAt = Date.now();
+  const markPerf = (
+    stage: string,
+    stageStartedAt: number,
+    details?: Record<string, unknown>
+  ): void => {
+    logXchatPerfDebug({
+      surface: "xchat_ask",
+      stage,
+      durationMs: Date.now() - stageStartedAt,
+      details
+    });
+  };
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(contentLength) && contentLength > MAX_XCHAT_ASK_JSON_BYTES) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
@@ -398,6 +412,7 @@ export async function POST(request: Request) {
     const h = xchatAskWorkspaceLimits.userChatHourlyLimit;
     hourlyPromptCap = typeof h === "number" && h > 0 ? h : undefined;
   }
+  const usageLimitStartedAt = Date.now();
   try {
     const usageCheck = await enforceDistributedAskUsageLimit({
       userId: session.userId,
@@ -454,6 +469,11 @@ export async function POST(request: Request) {
     limiterRemainingDay = usageCheck.remainingDay;
     limiterHourlyLimit = usageCheck.hourlyLimit;
     limiterDailyLimit = usageCheck.dailyLimit;
+    markPerf("usage_limit_check", usageLimitStartedAt, {
+      isAdminSession,
+      hasDailyCap: typeof dailyPromptCap === "number",
+      hasHourlyCap: typeof hourlyPromptCap === "number"
+    });
   } catch (error) {
     console.error("[xchat/ask] distributed usage limit check failed", {
       userId: session.userId,
@@ -468,6 +488,7 @@ export async function POST(request: Request) {
     );
   }
 
+  const personaResolveStartedAt = Date.now();
   const defaultPersona = await loadDefaultXchatPersonaForSessionDeduped(session.roles);
   if (!defaultPersona) {
     return NextResponse.json(
@@ -542,6 +563,11 @@ export async function POST(request: Request) {
     resolvedPersonaIdOverride = candidatePersonaId;
     break;
   }
+  markPerf("persona_resolution", personaResolveStartedAt, {
+    hasRequestedPersonaId: Boolean(requestedPersonaId),
+    hasAssignedPersonaId: Boolean(assignedPersonaId),
+    resolvedPersonaIdOverride: Boolean(resolvedPersonaIdOverride)
+  });
 
   const askProcessingStartedAt = Date.now();
   const personaDeclaredCollectionCount = resolveXchatPersonaDeclaredCollectionIds(persona).length;
@@ -928,6 +954,11 @@ export async function POST(request: Request) {
     reasoningEffort: parsed.data.reasoningEffort,
     clientQuoteFreshness: parsed.data.quoteFreshness
   });
+  const likelyDirectWorkspaceToolPath =
+    !visionImage &&
+    (showWatchlistIntent || shouldRunOptionsActionScan(messageTrimmed));
+  const shouldEagerWorkspacePreload = hasXfinanceTool && likelyDirectWorkspaceToolPath;
+  const ragAndPreloadStartedAt = Date.now();
 
   const [ragBundle, eagerWorkspacePreload] = await Promise.all([
     (async (): Promise<{
@@ -1033,12 +1064,17 @@ export async function POST(request: Request) {
         collectionSearchNonReadyFileCount
       };
     })(),
-    hasXfinanceTool
+    shouldEagerWorkspacePreload
       ? loadWorkspaceSnapshotPreload(workspaceSnapshotCtx, {
           snapshotQuoteNetwork: workspaceSnapshotQuoteNetwork
         })
       : Promise.resolve(null)
   ]);
+  markPerf("rag_and_workspace_prefetch", ragAndPreloadStartedAt, {
+    hasXfinanceTool,
+    shouldEagerWorkspacePreload,
+    workspaceSnapshotQuoteNetwork
+  });
 
   const {
     contextSource,
@@ -1542,6 +1578,10 @@ export async function POST(request: Request) {
   };
 
   const handleToolLoopFailure = (error: unknown): NextResponse => {
+    markPerf("ask_request_total", askRequestStartedAt, {
+      mode: "failed",
+      aborted: request.signal.aborted
+    });
     const aborted =
       request.signal.aborted ||
       (error instanceof DOMException && error.name === "AbortError") ||
@@ -1608,6 +1648,7 @@ export async function POST(request: Request) {
           phase: "live_tool_loop"
         });
         let loopResult: XaiToolLoopResult;
+        const toolLoopStartedAt = Date.now();
         try {
           loopResult = await respondWithXaiToolLoop({
             ...toolLoopShared,
@@ -1730,6 +1771,14 @@ export async function POST(request: Request) {
           return;
         }
         emit.done(data as Record<string, unknown>);
+        markPerf("sse_tool_loop_total", toolLoopStartedAt, {
+          turnsUsed: loopResult.turnsUsed,
+          outputChars: loopResult.outputText.length
+        });
+        markPerf("ask_request_total", askRequestStartedAt, {
+          mode: "sse",
+          turnsUsed: loopResult.turnsUsed
+        });
         logXchatAskStreamDebug({
           sseEvent: "done",
           requestId,
@@ -1748,6 +1797,7 @@ export async function POST(request: Request) {
     return new NextResponse(stream, { headers: sseHeaders });
   }
 
+  const toolLoopStartedAt = Date.now();
   try {
     const loopResult = await respondWithXaiToolLoop({
       ...toolLoopShared,
@@ -1758,6 +1808,14 @@ export async function POST(request: Request) {
           ...payload
         });
       }
+    });
+    markPerf("tool_loop_total", toolLoopStartedAt, {
+      turnsUsed: loopResult.turnsUsed,
+      outputChars: loopResult.outputText.length
+    });
+    markPerf("ask_request_total", askRequestStartedAt, {
+      mode: "json",
+      turnsUsed: loopResult.turnsUsed
     });
     return completeXchatAskAfterModelLoop(loopResult, askCompleteCtx());
   } catch (error) {

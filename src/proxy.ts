@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
+import { TENANT_UX_FAIL_CLOSED_DRILL_COOKIE } from "@/modules/platform/tenant-ux-flags";
 import { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
 
 const protectedPathPrefixes = [
@@ -176,6 +177,23 @@ export function isTenantUxPolicyFailClosedEnabled(raw = process.env.TENANT_UX_PO
   return normalized === "1" || normalized === "true" || normalized === "yes";
 }
 
+function isTenantUxPolicyFailClosedDrillCookieEnabled(raw: string | undefined): boolean {
+  if (!raw) {
+    return false;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function isTenantUxPolicyFailClosedEnabledForRequest(request: NextRequest): boolean {
+  return (
+    isTenantUxPolicyFailClosedEnabled() ||
+    isTenantUxPolicyFailClosedDrillCookieEnabled(
+      request.cookies.get(TENANT_UX_FAIL_CLOSED_DRILL_COOKIE)?.value
+    )
+  );
+}
+
 /** @deprecated Import from `@/modules/platform/tenant-ux-proxy-policy-path` instead. */
 export { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
 
@@ -238,7 +256,7 @@ async function resolveTenantUxPolicyDecision(
         httpStatus: res.status,
         ok: false
       });
-      if (isTenantUxPolicyFailClosedEnabled()) {
+      if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
         return {
           allowed: false,
           redirectPath: "/xchat",
@@ -257,7 +275,7 @@ async function resolveTenantUxPolicyDecision(
         error: parseErr instanceof Error ? parseErr.message : String(parseErr),
         reason: "tenant_ux_policy_invalid_json"
       });
-      if (isTenantUxPolicyFailClosedEnabled()) {
+      if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
         return {
           allowed: false,
           redirectPath: "/xchat",
@@ -295,7 +313,7 @@ async function resolveTenantUxPolicyDecision(
       ok: false,
       error: err instanceof Error ? err.message : String(err)
     });
-    if (isTenantUxPolicyFailClosedEnabled()) {
+    if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
       return {
         allowed: false,
         redirectPath: "/xchat",
@@ -317,7 +335,7 @@ async function enforceTenantUxV2(request: NextRequest, pathname: string): Promis
   }
   if (pathname.startsWith("/api/")) {
     if (decision.policyUnavailable) {
-      if (isTenantUxPolicyFailClosedEnabled()) {
+      if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
         logTenantUxMetric({
           metric: "tenant_ux_policy_unavailable_total",
           pathname,
@@ -352,7 +370,7 @@ async function enforceTenantUxV2(request: NextRequest, pathname: string): Promis
   redirectUrl.searchParams.set("redirect", decision.redirectPath);
   if (decision.policyUnavailable) {
     redirectUrl.searchParams.set("code", "tenant_ux_policy_unavailable");
-    if (isTenantUxPolicyFailClosedEnabled()) {
+    if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
       logTenantUxMetric({
         metric: "tenant_ux_policy_unavailable_total",
         pathname,

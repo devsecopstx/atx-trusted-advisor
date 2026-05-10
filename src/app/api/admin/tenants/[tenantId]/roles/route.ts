@@ -13,6 +13,7 @@ import {
     type TenantRoleFlags,
     type TenantRolesByRole
 } from "@/modules/platform/tenant-route-policy";
+import { bustTenantUxPolicyCacheForTenant } from "@/modules/platform/tenant-ux-policy-cache";
 
 type RouteContext = {
   params: Promise<{ tenantId: string }>;
@@ -249,6 +250,21 @@ export async function PUT(request: Request, context: RouteContext) {
     details: {
       mode: "replace_all",
       roles: normalized
+    }
+  });
+  const bust = await bustTenantUxPolicyCacheForTenant(tenantId, "roles_update");
+  await createAuditEvent({
+    entityType: "tenant",
+    entityId: tenantId,
+    action: "tenant_ux.policy_cache_bust",
+    actor: {
+      userId: session.userId,
+      email: session.email,
+      username: session.username
+    },
+    details: {
+      trigger: "roles_update",
+      ...bust
     }
   });
 

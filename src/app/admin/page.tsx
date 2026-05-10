@@ -5,6 +5,8 @@ import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repo
 
 import { ADMIN_FUNCTION_GROUPS } from "./ui/admin-hub-sections";
 import { AdminOpsSummaryPanel } from "./ui/admin-ops-summary-panel";
+import { TenantUxFailClosedDrillToggle } from "./ui/tenant-ux-fail-closed-drill-toggle";
+import { TenantUxObservabilityPanel } from "./ui/tenant-ux-observability-panel";
 
 export default async function AdminPage() {
   const session = await getSessionUser();
@@ -60,6 +62,16 @@ export default async function AdminPage() {
       </section>
 
       <AdminOpsSummaryPanel />
+      <section className="panel stack-gap">
+        <div className="panel-header">
+          <h2>Tenant UX enforcement drills</h2>
+          <p>
+            Keep production fail-open defaults for soak while allowing targeted fail-closed simulation from admin.
+          </p>
+        </div>
+        <TenantUxFailClosedDrillToggle />
+      </section>
+      <TenantUxObservabilityPanel />
 
       <section className="panel stack-gap">
         <div className="panel-header">

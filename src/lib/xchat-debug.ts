@@ -45,6 +45,7 @@ export const XCHAT_DEBUG_LOG_TYPES = [
   "xchat_ask_provider_error",
   "xchat_ask_stream",
   "xchat_ask_tool_batch",
+  "xchat_perf",
   "xchat_batch",
   "xchat_history_list",
   "xchat_history_stats",
@@ -165,6 +166,31 @@ export function logXchatAskToolBatchDebug(payload: {
   };
 
   console.info(LOG_PREFIX, JSON.stringify(safe));
+}
+
+/** Request-scope perf slices for xChat SSR/API (tenant opt-in only). */
+export function logXchatPerfDebug(payload: {
+  surface: "xchat_page" | "xchat_ask";
+  stage: string;
+  durationMs: number;
+  requestId?: string;
+  correlationId?: string;
+  details?: Record<string, unknown>;
+}): void {
+  if (!isXchatDebugEnabled()) return;
+  console.info(
+    LOG_PREFIX,
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      type: "xchat_perf" satisfies XchatDebugLogType,
+      surface: payload.surface,
+      stage: payload.stage,
+      durationMs: Math.max(0, Math.round(payload.durationMs)),
+      ...(payload.requestId ? { requestId: payload.requestId } : {}),
+      ...(payload.correlationId ? { correlationId: payload.correlationId } : {}),
+      ...(payload.details ? { details: payload.details } : {})
+    })
+  );
 }
 
 export function logXchatAskDebug(payload: {

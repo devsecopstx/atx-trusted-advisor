@@ -93,6 +93,7 @@ export function TenantRolesMatrixConsole({ tenantId }: Props) {
   const [tenantSlug, setTenantSlug] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busting, setBusting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -180,6 +181,25 @@ export function TenantRolesMatrixConsole({ tenantId }: Props) {
       setBusy(false);
     }
   }, [rolePolicies, tenantId]);
+
+  const bustPolicyCache = useCallback(async () => {
+    setBusting(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const res = await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}/policy-cache`, {
+        method: "POST"
+      });
+      const payload = await parseJson<{ data: { redisDeleted: number; memoryDeleted: number } }>(res);
+      setStatus(
+        `Policy cache busted (memory ${payload.data.memoryDeleted}, redis ${payload.data.redisDeleted}).`
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Policy cache bust failed");
+    } finally {
+      setBusting(false);
+    }
+  }, [tenantId]);
 
   const saveRole = useCallback(
     async (role: PlatformRole) => {
@@ -269,6 +289,14 @@ export function TenantRolesMatrixConsole({ tenantId }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            className="cta cta-secondary text-sm"
+            type="button"
+            disabled={busy || busting}
+            onClick={() => void bustPolicyCache()}
+          >
+            {busting ? "Busting…" : "Bust policy cache"}
+          </button>
           <button className="cta cta-secondary text-sm" type="button" disabled={busy} onClick={() => void applyToAllTenants()}>
             Apply to all tenants
           </button>

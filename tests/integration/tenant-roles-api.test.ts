@@ -12,10 +12,14 @@ const mongoMocks = vi.hoisted(() => ({
 const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
+const policyCacheMocks = vi.hoisted(() => ({
+  bustTenantUxPolicyCacheForTenant: vi.fn()
+}));
 
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/lib/mongodb", () => mongoMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/platform/tenant-ux-policy-cache", () => policyCacheMocks);
 
 import { PATCH as patchRole } from "@/app/api/admin/tenants/[tenantId]/roles/[role]/route";
 import { GET as getRoles, PUT as putRoles } from "@/app/api/admin/tenants/[tenantId]/roles/route";
@@ -59,6 +63,10 @@ describe("admin tenant roles api", () => {
       })
     });
     auditMocks.createAuditEvent.mockResolvedValue({ _id: "1" });
+    policyCacheMocks.bustTenantUxPolicyCacheForTenant.mockResolvedValue({
+      redisDeleted: 2,
+      memoryDeleted: 1
+    });
   });
 
   it("returns tenant role policy matrix", async () => {
@@ -125,7 +133,11 @@ describe("admin tenant roles api", () => {
     );
     expect(res.status).toBe(200);
     expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
-    expect(auditMocks.createAuditEvent).toHaveBeenCalledTimes(1);
+    expect(policyCacheMocks.bustTenantUxPolicyCacheForTenant).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439022",
+      "roles_update"
+    );
+    expect(auditMocks.createAuditEvent).toHaveBeenCalledTimes(2);
   });
 
   it("rejects invalid viewer mutate privileges on patch", async () => {

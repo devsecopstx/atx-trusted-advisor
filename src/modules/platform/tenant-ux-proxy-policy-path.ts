@@ -18,15 +18,18 @@ export function resolvePolicyPathForRequest(pathname: string): string | null {
   }
   if (p.startsWith("/api/xchat")) return "/xchat";
   if (p.startsWith("/api/app-user/xchat")) return "/xchat";
+  if (p.startsWith("/api/strategy-options")) return "/xoptions";
   if (p.startsWith("/api/app-user/find-options")) return "/xoptions";
   /** OHLC chart: watchlist quote drawer + xOptions chain — gate on watchlist (HNWI tape) not xOptions-only. */
   if (p.startsWith("/api/app-user/symbol-chart")) return "/watchlist";
   if (p.startsWith("/api/app-user/xoptions")) return "/xoptions";
   if (p.startsWith("/api/user/watchlist")) return "/watchlist";
   if (p.startsWith("/api/user/workspace-portfolio")) return "/workspace";
+  if (p.startsWith("/api/portfolios/") && p.includes("/alerts")) return "/portfolio";
   if (p.startsWith("/api/portfolios")) return "/portfolio";
   if (p.startsWith("/api/positions")) return "/portfolio";
   if (p.startsWith("/api/import")) return "/import-activity";
+  if (p.startsWith("/api/integrations/ibkr")) return "/account";
   if (p.startsWith("/api/integrations")) return "/account";
   if (p.startsWith("/api/tenant-tasks")) return "/workspace";
   return null;
