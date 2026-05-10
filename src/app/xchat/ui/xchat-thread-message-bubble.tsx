@@ -60,6 +60,12 @@ export const XchatThreadMessageBubble = memo(
     onMessageFeedback,
     onRegeneratePrompt
   }: XchatThreadMessageBubbleProps) {
+    const shouldUseLongResponseViewport =
+      msg.role === "ai" &&
+      !msg.strategyJobOffer &&
+      !msg.optionsActionScan &&
+      msg.content.trim().length >= 2500;
+
     return (
       <div className={`xchat-msg xchat-msg-${msg.role}`}>
         {msg.role === "error" ? (
@@ -105,7 +111,9 @@ export const XchatThreadMessageBubble = memo(
                   workspacePortfolioId={workspacePortfolioId}
                 />
               ) : (
-                <div className="xchat-msg-ai-body xchat-msg-ai-body--markdown">
+                <div
+                  className={`xchat-msg-ai-body xchat-msg-ai-body--markdown${shouldUseLongResponseViewport ? " xchat-msg-ai-body--long-response" : ""}`}
+                >
                   <XchatMarkdownBody content={msg.content} />
                 </div>
               )}

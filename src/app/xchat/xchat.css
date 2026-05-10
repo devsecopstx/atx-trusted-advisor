@@ -2052,9 +2052,6 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
-  max-height: min(36vh, calc(1.35em * 12));
-  overflow-x: hidden;
-  overflow-y: auto;
 }
 
 .xchat-thread-sticky-prompt__time {
@@ -2188,6 +2185,8 @@ html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
 }
 
 .xchat-msg-ai-inner {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 1480px;
   margin-left: auto;
@@ -2196,6 +2195,7 @@ html:not([data-xf-ui="soft"]) .xchat-msg-ai__persona {
   padding-right: 1.5rem;
   box-sizing: border-box;
   min-width: 0;
+  min-height: auto;
 }
 
 /** One assistant turn: elevated body (.xchat-msg-ai-inner) + full-width toolbar below the card. */
@@ -2349,11 +2349,22 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 1.25rem 1.35rem;
+  padding: 1.5rem;
   border-radius: 14px;
   border: 1px solid rgb(51 65 85 / 0.6);
   background: #0f172a;
   color: rgb(226 232 240);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: visible;
+}
+
+.xchat-msg-ai-body--long-response {
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 html[data-xf-ui="soft"] .xchat-msg-ai-body--markdown {
