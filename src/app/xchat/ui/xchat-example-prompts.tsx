@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
 
 /** HNWI / multi-book advisor prompts — single source for the xChat rail “Example prompts” list. */
 export const hnwiComposerSuggestions = [
@@ -33,7 +34,7 @@ export function applyExamplePromptToComposer(
     }
     el.focus();
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
   });
 }
 

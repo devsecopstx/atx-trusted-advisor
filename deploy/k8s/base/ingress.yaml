@@ -1,0 +1,25 @@
+# Public edge: Next.js (frontend). Spring backend stays ClusterIP; set ATXFINANCE_BACKEND_ORIGIN
+# (or equivalent) on the frontend to http://atxfinance-backend.atxfinance-prod.svc.cluster.local:8080
+# unless you expose the JVM API through a separate Ingress/Gateway.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: atxfinance-web
+  labels:
+    app.kubernetes.io/name: atxfinance-frontend
+  annotations:
+    # kubernetes.io/ingress.global-static-ip-name: "atxfinance-prod-ip"
+    # networking.gke.io/managed-certificates: "atxfinance-prod-cert"
+spec:
+  ingressClassName: gce
+  rules:
+    - host: atx.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: atxfinance-frontend
+                port:
+                  name: http

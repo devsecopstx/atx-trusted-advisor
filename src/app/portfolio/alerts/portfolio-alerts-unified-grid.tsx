@@ -147,6 +147,7 @@ export function PortfolioAlertsUnifiedGrid({
     };
   }, [filtered, portfolioId]);
 
+  /* eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual */
   const rowVirtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => parentRef.current,

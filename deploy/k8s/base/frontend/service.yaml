@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: atxfinance-frontend
+  labels:
+    app.kubernetes.io/name: atxfinance-frontend
+  annotations:
+    cloud.google.com/backend-config: '{"default": "atxfinance-frontend-bc"}'
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: atxfinance-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

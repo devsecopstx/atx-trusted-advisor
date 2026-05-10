@@ -872,7 +872,7 @@ function OptionsActionScanReportInner({
               </p>
             </div>
             {share ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] px-2.5 py-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-[color-mix(in_srgb,var(--xf-accent-cta)_30%,transparent)] bg-[color-mix(in_srgb,var(--xf-accent-cta)_12%,transparent)] px-2.5 py-2 text-xs">
                 <span className="font-medium text-[var(--xf-text-100)]">{share.shareUrl}</span>
                 <button
                   className="xchat-scan-action-btn xchat-scan-action-btn--compact xchat-scan-action-btn--neutral"
@@ -912,14 +912,14 @@ function OptionsActionScanReportInner({
           <div className="flex flex-wrap items-center gap-2">
             {closeCount > 0 ? (
               <a
-                className="inline-flex items-center rounded-lg border border-emerald-500/45 bg-emerald-500/[0.12] px-3 py-2 text-center text-[12px] font-semibold leading-tight text-emerald-400 shadow-sm transition hover:bg-emerald-500/20"
+                className="inline-flex items-center rounded-lg border border-[color-mix(in_srgb,var(--xf-accent-cta)_45%,transparent)] bg-[color-mix(in_srgb,var(--xf-accent-cta)_12%,transparent)] px-3 py-2 text-center text-[12px] font-semibold leading-tight text-xf-accent-cta shadow-sm transition hover:bg-[color-mix(in_srgb,var(--xf-accent-cta)_20%,transparent)]"
                 href="#options-scan-stc-candidates"
               >
                 Recommend STC review · {closeCount} candidate{closeCount === 1 ? "" : "s"}
               </a>
             ) : null}
             <Link
-              className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-[12px] font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-700/90"
+              className="inline-flex items-center rounded-lg border border-[color-mix(in_srgb,var(--xf-accent-cta)_40%,transparent)] bg-[color-mix(in_srgb,var(--xf-accent-cta)_08%,transparent)] px-3 py-2 text-[12px] font-semibold text-xf-accent-cta shadow-sm transition hover:bg-[color-mix(in_srgb,var(--xf-accent-cta)_14%,transparent)] dark:border-[color-mix(in_srgb,var(--xf-accent-cta)_32%,transparent)] dark:bg-[color-mix(in_srgb,var(--xf-accent-cta)_10%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--xf-accent-cta)_16%,transparent)]"
               href={xoptionsScannerHref}
               title={xoptionsScannerTitle}
             >
@@ -947,7 +947,7 @@ function OptionsActionScanReportInner({
               <>
                 <span className="min-w-2 flex-1 basis-8 max-md:hidden" aria-hidden />
                 <button
-                  className="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-[12px] font-semibold text-white shadow-md transition hover:bg-emerald-500 disabled:opacity-60 max-md:w-full"
+                  className="inline-flex shrink-0 items-center justify-center rounded-lg bg-xf-accent-cta px-4 py-2 text-[12px] font-semibold text-white shadow-md transition hover:brightness-95 disabled:opacity-60 max-md:w-full"
                   disabled={shareBusy}
                   type="button"
                   onClick={() => void createShareLink()}

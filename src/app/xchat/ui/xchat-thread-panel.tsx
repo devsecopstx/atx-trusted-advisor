@@ -28,15 +28,12 @@ function XchatThreadCollapseChevronIcon() {
   );
 }
 
-function trimStickyUserPrompt(text: string, maxChars: number): string {
-  const t = text.trim();
-  if (t.length === 0) {
-    return "";
+function stickyLatestUserPromptText(msg: Message): string {
+  if (msg.attachmentPreviewUrl) {
+    const t = msg.content.trim();
+    return t.length > 0 ? `${t} · [Image]` : "[Image]";
   }
-  if (t.length <= maxChars) {
-    return t;
-  }
-  return `${t.slice(0, maxChars)}…`;
+  return msg.content.trim();
 }
 
 export type XchatThreadPanelProps = {
@@ -104,12 +101,7 @@ export function XchatThreadPanel({
     if (!latestUserForSticky) {
       return "";
     }
-    if (latestUserForSticky.attachmentPreviewUrl) {
-      const t = latestUserForSticky.content.trim();
-      const base = t.length > 0 ? trimStickyUserPrompt(t, 140) : "";
-      return base.length > 0 ? `${base} · [Image]` : "[Image]";
-    }
-    return trimStickyUserPrompt(latestUserForSticky.content, 140);
+    return stickyLatestUserPromptText(latestUserForSticky);
   }, [latestUserForSticky]);
   const stickyUserTimeIso = useMemo(() => {
     if (!latestUserForSticky) {
@@ -247,13 +239,14 @@ export function XchatThreadPanel({
                 return (
                   <div
                     key={msg.id}
+                    ref={threadVirtualizer.measureElement}
                     className="xchat-msg-virtual-row"
+                    data-index={vi.index}
                     style={{
                       position: "absolute",
                       top: 0,
                       left: 0,
                       width: "100%",
-                      minHeight: vi.size,
                       transform: `translateY(${vi.start}px)`
                     }}
                   >

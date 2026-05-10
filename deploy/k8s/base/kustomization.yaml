@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: atxfinance-prod
+
+resources:
+  - namespace.yaml
+  - frontend/serviceaccount.yaml
+  - frontend/configmap.yaml
+  - frontend/backendconfig.yaml
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+  - frontend/hpa.yaml
+  - backend/serviceaccount.yaml
+  - backend/deployment.yaml
+  - backend/service.yaml
+  - backend/hpa.yaml
+  - pdb-frontend.yaml
+  - pdb-backend.yaml
+  - ingress.yaml

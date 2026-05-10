@@ -94,7 +94,7 @@ export function XchatAdvisorWorkingOverlay({
       <div className="w-[380px] max-w-[min(380px,calc(100vw-1.5rem))] rounded-2xl border border-slate-600 bg-[#1E293B] px-5 py-3 shadow-2xl">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-emerald-400" />
+            <div className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-xf-accent-cta" />
             <span className="truncate text-sm font-medium text-slate-200">Advisor is working...</span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -116,7 +116,7 @@ export function XchatAdvisorWorkingOverlay({
 
         <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-slate-700">
           <div
-            className="h-full bg-emerald-400 transition-all duration-300 ease-out"
+            className="h-full bg-xf-accent-cta transition-all duration-300 ease-out"
             style={{ width: `${progressPct}%` }}
           />
         </div>

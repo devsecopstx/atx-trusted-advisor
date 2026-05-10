@@ -1024,7 +1024,7 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 
 /* Fills space between chrome and composer; thread scrolls inside */
 .xchat-thread-area {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
   min-width: 0;
   display: flex;
@@ -1032,16 +1032,21 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   align-items: stretch;
 }
 
+/**
+ * Workspace transcript + composer grid.
+ * Fill `.xchat-body` only — do not subtract `100dvh` again (sticky header already sits above `xchat-body`).
+ * `grid-template-rows: minmax(0,1fr)` keeps the row within the parent flex budget so the transcript scrollport gets height.
+ */
 .xchat-main-shell {
-  flex: 1;
+  flex: 1 1 0%;
+  align-self: stretch;
   min-height: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 0.85rem;
   padding: 0.65rem 0.85rem 0;
   align-items: stretch;
-  height: min(100%, calc(100dvh - 160px));
-  min-height: calc(100dvh - 180px);
 }
 
 .xchat-left-rail {
@@ -1795,7 +1800,7 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 
 .xchat-thread-collapsed-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.55rem;
   width: 100%;
   margin: 0.25rem 0 0.65rem;
@@ -1835,6 +1840,7 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   display: flex;
   flex-shrink: 0;
   opacity: 0.9;
+  margin-top: 0.18rem;
 }
 
 .xchat-thread-collapsed-bar__meta {
@@ -1853,10 +1859,14 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 
 .xchat-thread-collapsed-bar__preview {
   font-size: 0.72rem;
+  line-height: 1.35;
   color: var(--xf-text-400);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-height: min(32vh, calc(1.35em * 10));
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .xchat-thread-collapsed-bar__action {
@@ -1923,7 +1933,7 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 }
 
 .xchat-messages {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
   min-width: 0;
   overflow-y: auto;
@@ -1938,7 +1948,7 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 }
 
 .xchat-messages-container {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   overflow-y: auto;
   scroll-behavior: smooth;
   padding-bottom: 32px;
@@ -2008,10 +2018,14 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   position: sticky;
   top: 0;
   z-index: 6;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 0.65rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "sticky-label sticky-time"
+    "sticky-text sticky-text";
+  column-gap: 0.65rem;
+  row-gap: 0.28rem;
+  align-items: center;
   margin: 0.15rem 0 0.35rem;
   padding: 0.42rem 0.65rem;
   border-radius: var(--xf-radius-sm);
@@ -2021,6 +2035,7 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 }
 
 .xchat-thread-sticky-prompt__label {
+  grid-area: sticky-label;
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -2029,15 +2044,22 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
 }
 
 .xchat-thread-sticky-prompt__text {
-  flex: 1 1 12rem;
+  grid-area: sticky-text;
   min-width: 0;
   font-size: 0.78rem;
   color: var(--xf-text-200);
   line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-height: min(36vh, calc(1.35em * 12));
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .xchat-thread-sticky-prompt__time {
-  margin-left: auto;
+  grid-area: sticky-time;
+  justify-self: end;
   font-size: 0.68rem;
   color: var(--xf-text-400);
   white-space: nowrap;
@@ -2562,6 +2584,8 @@ html:not([data-xf-ui="soft"]) .xchat-ai-response-chrome__stat-pill {
 .xchat-markdown {
   width: 100%;
   min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .xchat-markdown :first-child {
@@ -2699,7 +2723,7 @@ html:not([data-xf-ui="soft"]) .xchat-ai-response-chrome__stat-pill {
   opacity: 1;
 }
 
-/* Guided strategy job — card layout (deep + soft shells). Primary accent: institutional violet (--xf-xoptions-accent). */
+/* Guided strategy job — card layout (deep + soft shells). Primary CTA chrome: `--xf-accent-cta` (emerald-500); xOptions pages keep violet separately. */
 .xchat-sjp {
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
@@ -2757,12 +2781,12 @@ html:not([data-xf-ui="soft"]) .xchat-sjp {
 }
 
 .xchat-sjp__card--primary {
-  border-color: color-mix(in srgb, var(--xf-xoptions-accent) 42%, transparent);
+  border-color: color-mix(in srgb, var(--xf-accent-cta) 42%, transparent);
 }
 
 .xchat-sjp__card--suggested {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--xf-xoptions-accent) 45%, transparent);
-  border-color: color-mix(in srgb, var(--xf-xoptions-accent) 38%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--xf-accent-cta) 45%, transparent);
+  border-color: color-mix(in srgb, var(--xf-accent-cta) 38%, transparent);
 }
 
 .xchat-sjp__card-head {
@@ -2827,14 +2851,16 @@ html:not([data-xf-ui="soft"]) .xchat-sjp {
   outline-offset: 2px;
 }
 
+/** Primary strategy handoff — product CTA emerald (`--xf-accent-cta`), distinct from nav (`--xf-nav-green`) and xOptions violet. */
 .xchat-sjp__btn--primary {
-  background: color-mix(in srgb, var(--xf-xoptions-accent) 88%, var(--xf-surface-900));
-  border-color: color-mix(in srgb, var(--xf-xoptions-accent) 70%, transparent);
-  color: var(--xf-text-100);
+  background: var(--xf-accent-cta);
+  border-color: color-mix(in srgb, var(--xf-accent-cta) 52%, transparent);
+  color: #fff;
 }
 
 .xchat-sjp__btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--xf-xoptions-accent) 100%, var(--xf-surface-900));
+  background: color-mix(in srgb, var(--xf-accent-cta) 82%, var(--xf-bg-900));
+  border-color: color-mix(in srgb, var(--xf-accent-cta) 62%, transparent);
 }
 
 .xchat-sjp__btn--outline {
@@ -2921,7 +2947,7 @@ html:not([data-xf-ui="soft"]) .xchat-sjp {
   border: none;
   padding: 0;
   font: inherit;
-  color: color-mix(in srgb, var(--xf-xoptions-accent) 85%, var(--xf-text-300));
+  color: color-mix(in srgb, var(--xf-accent-cta) 82%, var(--xf-text-300));
   text-decoration: underline;
   cursor: pointer;
 }
@@ -4914,7 +4940,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-composer__input-shell {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.06rem;
   min-width: 0;
   width: 100%;
@@ -4933,7 +4959,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   display: flex;
   flex: 1 1 0%;
   min-width: 0;
-  align-items: center;
+  align-items: stretch;
 }
 
 .xchat-composer__input-shell .xchat-composer__field {
@@ -4945,11 +4971,11 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-composer__sources--embed {
   position: relative;
-  align-self: center;
+  align-self: flex-start;
   flex-shrink: 0;
   gap: 0;
   padding: 0.26rem;
-  margin: 0.06rem 0;
+  margin: 0.12rem 0 0;
   border-radius: 10px;
   border: 1px solid transparent;
   color: var(--xf-text-300);
@@ -4994,7 +5020,7 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-composer__textarea--grok.xchat-composer__textarea--singleline {
   min-height: 2.4rem;
-  max-height: 9rem;
+  max-height: min(55vh, 35rem);
 }
 
 html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
@@ -5464,9 +5490,12 @@ html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
   resize: none;
   overflow-y: auto;
   min-height: 2.5rem;
-  max-height: 320px;
+  max-height: min(55vh, 35rem);
   line-height: 1.45;
   box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .xchat-composer__field:focus {
@@ -6042,12 +6071,11 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
     flex-direction: column;
     align-items: stretch;
     flex: 1 1 0%;
+    align-self: stretch;
     min-height: 0;
     gap: 0.55rem;
     padding-inline: 0.45rem;
     padding-bottom: 0;
-    height: min(100%, calc(100dvh - 150px));
-    min-height: calc(100dvh - 170px);
   }
 
   .xchat-left-rail {

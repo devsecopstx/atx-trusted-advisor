@@ -14,6 +14,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 
 import { applyXchatScanOptionsPrompt } from "@/app/xchat/ui/xchat-templates-workspace-bar";
+import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
 import {
     filterXchatPromptTemplates,
     XCHAT_HNWI_PROMPT_TEMPLATES,
@@ -163,7 +164,7 @@ export function XchatTemplatesStrip({
       if (el) {
         el.focus();
         el.style.height = "auto";
-        el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+        el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
       }
     });
   }

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: atxfinance-frontend-runtime
+  labels:
+    app.kubernetes.io/name: atxfinance-frontend
+data:
+  # In-cluster BFF — browser-facing URLs still come from public Ingress + PROD_BASE_URL-style secrets.
+  ATXFINANCE_BACKEND_ORIGIN: "http://atxfinance-backend.atxfinance-prod.svc.cluster.local:8080"

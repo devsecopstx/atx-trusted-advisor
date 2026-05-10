@@ -199,6 +199,14 @@ Phased, production-grade delivery with **zero downtime** for existing Stripe sub
 
 **Baseline:** BFF registry `[bff-proxy-routes.ts](../src/lib/bff-proxy-routes.ts)` + `tests/unit/bff-proxy-registry-next-handlers.test.ts`; JVM `./gradlew test` in `services/atxfinance-backend`; deploy: `.github/workflows/deploy-cloud-run.yml`, `AGENTS.md`.
 
+### GKE scale-out path (future prod migration)
+
+- **Today:** Cloud Run remains canonical (`deploy-cloud-run.yml`, `deploy-cloud-run-from-env.sh`).
+- **When:** Sustained load **past ~50 concurrent users** (or equivalent) — confirm with Cloud Run metrics before committing cluster cost.
+- **Stubs:** [`deploy/k8s/`](../deploy/k8s/) — Kustomize base with **frontend + backend Deployments**, **HPA CPU 60%**, **PDB**, **GKE Ingress + BackendConfig**, **ConfigMap** for in-cluster **`ATXFINANCE_BACKEND_ORIGIN`**, **PodMonitoring** (Spring Prometheus).
+- **Runbook:** [`atx-docs/sre-ops/k8s-deploy.md`](./sre-ops/k8s-deploy.md) — prerequisites, apply order, observability, cutover checklist.
+- **Open:** Wire **GitOps / Cloud Deploy**, Secret Manager **CSI** mounts from [`deploy/k8s/samples/`](../deploy/k8s/samples/), staging soak + alert policies.
+
 ### Deploy reliability (GH-first)
 
 - Async `gcloud builds submit` + `gcloud builds describe` polling (avoid log-stream permission false failures).

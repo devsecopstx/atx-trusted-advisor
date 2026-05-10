@@ -2,6 +2,8 @@
 
 import type { RefObject } from "react";
 
+import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
+
 /** Matches `shouldRunOptionsActionScan` routing — natural language trigger for options scan. */
 export const XCHAT_SCAN_OPTIONS_PROMPT =
   "Scan my options from holdings + watchlist.";
@@ -16,7 +18,7 @@ export function applyXchatScanOptionsPrompt(
     if (el) {
       el.focus();
       el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+      el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
     }
   });
 }

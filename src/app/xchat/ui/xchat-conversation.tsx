@@ -52,6 +52,7 @@ import {
 } from "@/lib/xchat-live-sse-client";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
+import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
 import {
   XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
   XCHAT_PENDING_PROMPT_STORAGE_KEY
@@ -464,8 +465,7 @@ export function XchatConversation({
     if (last?.attachmentPreviewUrl) {
       preview = preview.length > 0 ? `${preview} · [Image]` : "[Image]";
     }
-    const clipped = preview.length > 64 ? `${preview.slice(0, 64)}…` : preview;
-    return { userTurnCount: n, preview: clipped };
+    return { userTurnCount: n, preview };
   }, [messages]);
   const hiddenEarlierMessageCount = useMemo(() => {
     if (threadHistoryExpanded || messages.length <= XCHAT_UI_VISIBLE_MESSAGE_CAP) {
@@ -484,8 +484,20 @@ export function XchatConversation({
   const threadVirtualizer = useVirtualizer({
     count: visibleThreadMessages.length,
     getScrollElement: () => threadScrollRef.current,
-    estimateSize: () => 108,
-    overscan: 4
+    estimateSize: (index) => {
+      const row = visibleThreadMessages[index];
+      if (!row) {
+        return 160;
+      }
+      if (row.role === "ai") {
+        return 320;
+      }
+      if (row.role === "user") {
+        return 140;
+      }
+      return 120;
+    },
+    overscan: 6
   });
   const scrollToLatestMessage = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
@@ -671,8 +683,7 @@ export function XchatConversation({
       return;
     }
     el.style.height = "auto";
-    const maxPx = 320;
-    el.style.height = `${Math.min(el.scrollHeight, maxPx)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
   }, []);
 
   useEffect(() => {
@@ -1138,7 +1149,7 @@ export function XchatConversation({
       }
       el.focus();
       el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+      el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
     });
   }, [initialXchatItem]);
 
@@ -1817,7 +1828,7 @@ export function XchatConversation({
                           if (el) {
                             el.focus();
                             el.style.height = "auto";
-                            el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+                            el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
                           }
                         });
                       }}

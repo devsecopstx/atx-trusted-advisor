@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: atxfinance-backend
+  labels:
+    app.kubernetes.io/name: atxfinance-backend
+    app.kubernetes.io/component: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: atxfinance-backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: atxfinance-backend
+        app.kubernetes.io/component: api
+    spec:
+      serviceAccountName: atxfinance-backend
+      containers:
+        - name: backend
+          image: REGION-docker.pkg.dev/PROJECT_ID/atxfinance-core-app/atxfinance-backend:IMAGE_TAG
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "production"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "768Mi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"

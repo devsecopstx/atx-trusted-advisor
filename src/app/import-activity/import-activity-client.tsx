@@ -144,7 +144,6 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const previewSectionRef = useRef<HTMLDivElement>(null);
   const previewRowsScrollRef = useRef<HTMLDivElement>(null);
 
-  /* eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual */
   const previewRowsVirtualizer = useVirtualizer({
     count: previewSampleRows.length,
     getScrollElement: () => previewRowsScrollRef.current,
