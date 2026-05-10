@@ -309,15 +309,23 @@ function normalizePositionPayload(
   }
 
   const qty =
-    typeof shares === "number" && Number.isFinite(shares) && shares > 0
-      ? shares
-      : typeof contracts === "number" && Number.isFinite(contracts) && contracts > 0
+    type === "stock"
+      ? typeof shares === "number" && Number.isFinite(shares) && shares > 0
+        ? shares
+        : undefined
+      : // option: non-zero contracts (or legacy shares field); negative = short
+        typeof contracts === "number" && Number.isFinite(contracts) && contracts !== 0
         ? contracts
-        : undefined;
+        : typeof shares === "number" && Number.isFinite(shares) && shares !== 0
+          ? shares
+          : undefined;
   if (!qty) {
     return {
       ok: false,
-      error: type === "option" ? "option positions require shares or contracts" : "shares is required"
+      error:
+        type === "option"
+          ? "option positions require non-zero contracts (positive = long, negative = short)"
+          : "shares is required"
     };
   }
 

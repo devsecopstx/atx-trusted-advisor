@@ -131,7 +131,7 @@ export function collectBrokerImportPreviewWarnings(accounts: ParsedBrokerAccount
   }
   if (negativeOptionContracts) {
     warnings.push(
-      "Short option contracts appear in this file; net-short legs are skipped until short modeling is enabled."
+      "Negative option quantities indicate short premium; they import as negative contract counts (long = positive)."
     );
   }
   return warnings;

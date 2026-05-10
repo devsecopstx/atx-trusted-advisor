@@ -72,8 +72,9 @@ export type FidelityHoldingsResult = {
   parseError?: string;
 };
 
-/** OPRA-style compact option symbol (root + yy mm dd + C|P + strike), aligned with activities parser. */
-const FIDELITY_OSI_BODY_RE = /^([A-Z]{1,5})(\d{2})(\d{2})(\d{2})([CP])(\d+(?:\.\d+)?)$/i;
+/** OPRA-style compact option symbol (root + yy mm dd + C|P + strike). */
+const FIDELITY_OSI_STRIKE_8_RE = /^([A-Z]{1,6})(\d{2})(\d{2})(\d{2})([CP])(\d{8})$/i;
+const FIDELITY_OSI_STRIKE_DECIMAL_RE = /^([A-Z]{1,6})(\d{2})(\d{2})(\d{2})([CP])(\d+(?:\.\d+)?)$/i;
 
 function utcCalendarYmd(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -88,19 +89,58 @@ export function fidelityOptionExpiredOnOrBeforeAsOf(expirationYmd: string, asOf:
   return ymd <= utcCalendarYmd(asOf);
 }
 
-function parseFidelityOptionSymbol(
+/**
+ * Parse Fidelity / OCC compact option ticker (Symbol column).
+ * Supports standard **8-digit strike** encoding (strike × 1000, e.g. `00150000` → $150),
+ * optional **decimal** strike exports (e.g. `…P12.50`), **1–6 letter** roots.
+ * Dots are removed **only from the underlying root** (before `YYMMDD[C|P]`) so `BRK.B` → `BRKB`
+ * without turning `…P12.50` into `…P1250` / `…P125`.
+ */
+export function parseFidelityOptionSymbol(
   symbol: string
 ): { underlying: string; expiration: string; optionType: "call" | "put"; strike: number } | null {
-  const sym = symbol.trim().replace(/^\uFEFF/, "").replace(/^-/, "").trim();
-  const m = sym.match(FIDELITY_OSI_BODY_RE);
-  if (!m) return null;
+  let sym = symbol
+    .trim()
+    .replace(/^\uFEFF/, "")
+    .replace(/^-/, "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  if (!sym) {
+    return null;
+  }
+  const dateCpMatch = sym.match(/\d{6}[CP]/i);
+  if (dateCpMatch !== null && dateCpMatch.index !== undefined && dateCpMatch.index > 0) {
+    const i = dateCpMatch.index;
+    sym = `${sym.slice(0, i).replace(/\./g, "")}${sym.slice(i)}`;
+  }
+
+  const occ8 = sym.match(FIDELITY_OSI_STRIKE_8_RE);
+  if (occ8) {
+    const [, underlying, yy, mm, dd, cp, strikeStr] = occ8;
+    const y = parseInt(yy!, 10);
+    const year = y >= 50 ? 1900 + y : 2000 + y;
+    const expiration = `${year}-${mm}-${dd}`;
+    const optionType = cp!.toUpperCase() === "P" ? "put" : "call";
+    const strike = parseInt(strikeStr!, 10) / 1000;
+    if (!Number.isFinite(strike) || strike <= 0) {
+      return null;
+    }
+    return { underlying: underlying!.toUpperCase(), expiration, optionType, strike };
+  }
+
+  const m = sym.match(FIDELITY_OSI_STRIKE_DECIMAL_RE);
+  if (!m) {
+    return null;
+  }
   const [, underlying, yy, mm, dd, cp, strikeStr] = m;
   const y = parseInt(yy!, 10);
   const year = y >= 50 ? 1900 + y : 2000 + y;
   const expiration = `${year}-${mm}-${dd}`;
   const optionType = cp!.toUpperCase() === "P" ? "put" : "call";
   const strike = parseFloat(strikeStr!);
-  if (!Number.isFinite(strike) || strike <= 0) return null;
+  if (!Number.isFinite(strike) || strike <= 0) {
+    return null;
+  }
   return { underlying: underlying!.toUpperCase(), expiration, optionType, strike };
 }
 

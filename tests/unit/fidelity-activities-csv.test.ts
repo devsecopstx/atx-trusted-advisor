@@ -51,6 +51,21 @@ Run Date,Account,Account Number,Action,Symbol,Description,Type,Exchange Quantity
     expect(expiredLeg).toBeUndefined();
   });
 
+  it("emits net short options as negative contract counts", () => {
+    const csv = `
+Run Date,Account,Account Number,Action,Symbol,Description,Type,Exchange Quantity,Exchange Currency,Currency,Price,Quantity,Exchange Rate,Commission,Fees,Accrued Interest,Amount,Settlement Date
+04/01/2026,"ROTH IRA","269138837","YOU SOLD OPENING","-TSLA260515P00300000","OPT","",,,USD,5.10,-3,,,,,,
+"The data and information in this spreadsheet is provided to you solely for your use"
+`;
+    const { accounts, parseError } = parseFidelityActivitiesAccounts(csv);
+    expect(parseError).toBeUndefined();
+    const opt = accounts[0]!.positions.find((p) => p.type === "option");
+    expect(opt?.ticker).toBe("TSLA");
+    expect(opt?.contracts).toBe(-3);
+    expect(opt?.optionType).toBe("put");
+    expect(opt?.strike).toBe(300);
+  });
+
   it("replays activities on top of existing holdings seed (merge)", () => {
     const seed = fidelityActivityReplaySeedFromBrokerPositions([
       { type: "stock", symbol: "RDW", qty: 50, avgCost: 8 },

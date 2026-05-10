@@ -1,13 +1,18 @@
 /**
  * Fidelity "Accounts History" / activity CSV: Run Date, Account Number, Symbol, Quantity, …
  * Groups rows by Account Number, skips disclaimer/footer lines, replays chronologically into
- * net stock lots and net long option legs (short/flat option nets are omitted).
+ * net stock lots and net option legs (**signed** contract counts: positive = long, negative = short).
  *
  * **Apply / import:** activity rows are replayed **on top of existing app holdings** (portfolio
  * snapshot baseline). Preview still shows net positions from the file alone (no DB merge).
  */
 
-import { parseCsvLine, parseNum, type FidelityHoldingsPosition } from "@/modules/portfolio-import/fidelity-holdings-csv";
+import {
+    parseCsvLine,
+    parseFidelityOptionSymbol,
+    parseNum,
+    type FidelityHoldingsPosition
+} from "@/modules/portfolio-import/fidelity-holdings-csv";
 
 export type FidelityActivitiesAccount = {
   accountRef: string;
@@ -58,31 +63,6 @@ export type BrokerPositionSeedInput = {
 };
 
 const RUN_DATE_RE = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-const OSI_BODY_RE = /^([A-Z]{1,5})(\d{2})(\d{2})(\d{2})([CP])(\d+(?:\.\d+)?)$/i;
-
-function normalizeOsiSymbol(raw: string): string {
-  return raw.trim().replace(/^\uFEFF/, "").replace(/^-/, "").trim().toUpperCase();
-}
-
-function parseOsiSymbol(
-  raw: string
-): { underlying: string; expiration: string; optionType: "call" | "put"; strike: number } | null {
-  const sym = normalizeOsiSymbol(raw);
-  const m = sym.match(OSI_BODY_RE);
-  if (!m) {
-    return null;
-  }
-  const [, und, yy, mm, dd, cp, strikeStr] = m;
-  const y = parseInt(yy!, 10);
-  const year = y >= 50 ? 1900 + y : 2000 + y;
-  const expiration = `${year}-${mm}-${dd}`;
-  const optionType = cp!.toUpperCase() === "P" ? "put" : "call";
-  const strike = parseFloat(strikeStr!);
-  if (!Number.isFinite(strike) || strike <= 0) {
-    return null;
-  }
-  return { underlying: und!.toUpperCase(), expiration, optionType, strike };
-}
 
 function isPlainEquityTicker(sym: string): boolean {
   const s = sym.trim().toUpperCase();
@@ -173,7 +153,7 @@ export function emptyFidelityActivityReplaySeed(): FidelityActivityReplaySeed {
 }
 
 /**
- * Build initial replay state from current portfolio positions (stocks, long options, cash).
+ * Build initial replay state from current portfolio positions (stocks, options incl. shorts, cash).
  * Used so Accounts History applies **on top of** holdings from a prior portfolio snapshot import.
  */
 export function fidelityActivityReplaySeedFromBrokerPositions(
@@ -219,14 +199,15 @@ export function fidelityActivityReplaySeedFromBrokerPositions(
     const ymd = exp.toISOString().slice(0, 10);
     const key = `${und}|${ymd}|${ot}|${strike}`;
     const contracts = Math.round(p.qty);
-    if (contracts <= 0) {
+    if (contracts === 0) {
       continue;
     }
     seed.optMeta.set(key, { underlying: und, expiration: ymd, optionType: ot, strike });
     seed.optNet.set(key, (seed.optNet.get(key) ?? 0) + contracts);
     const prem = Number.isFinite(p.avgCost) ? Math.max(0, p.avgCost) : 0;
-    seed.optPremNum.set(key, (seed.optPremNum.get(key) ?? 0) + contracts * prem);
-    seed.optPremDen.set(key, (seed.optPremDen.get(key) ?? 0) + contracts);
+    const w = Math.abs(contracts);
+    seed.optPremNum.set(key, (seed.optPremNum.get(key) ?? 0) + w * prem);
+    seed.optPremDen.set(key, (seed.optPremDen.get(key) ?? 0) + w);
   }
   return seed;
 }
@@ -259,7 +240,7 @@ function applyActivityRowToState(r: FidelityActivityRawRow, state: MutableReplay
     return;
   }
 
-  const osi = parseOsiSymbol(sym);
+  const osi = parseFidelityOptionSymbol(sym);
   if (osi) {
     const key = `${osi.underlying}|${osi.expiration}|${osi.optionType}|${osi.strike}`;
     state.optMeta.set(key, osi);
@@ -331,7 +312,7 @@ function buildPositionsFromReplayState(
   }
 
   for (const [key, net] of state.optNet) {
-    if (net <= 0) {
+    if (net === 0) {
       continue;
     }
     const meta = state.optMeta.get(key);
@@ -339,7 +320,7 @@ function buildPositionsFromReplayState(
       continue;
     }
     const contracts = Math.round(net);
-    if (contracts <= 0) {
+    if (contracts === 0) {
       continue;
     }
     if (latestRunIsoYmd && optionExpiredForActivitiesImport(meta.expiration, latestRunIsoYmd)) {

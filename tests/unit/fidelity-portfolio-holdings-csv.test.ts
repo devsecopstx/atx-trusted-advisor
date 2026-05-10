@@ -7,6 +7,7 @@ import {
 } from "@/modules/portfolio-import/broker-holdings-import";
 import {
     detectFidelityPortfolioHoldingsCsv,
+    parseFidelityOptionSymbol,
     parseFidelityPortfolioHoldingsCsv
 } from "@/modules/portfolio-import/fidelity-holdings-csv";
 
@@ -26,7 +27,79 @@ Z06276930,Cash Management (Joint WROS - TOD),Pending activity,,,,,-$65.47,,,,,,,
 "The data and information in this spreadsheet is provided to you solely for your use"
 `;
 
+/** OCC 8-digit strike (×1000) — common Fidelity Portfolio export; previously parsed as equity and skipped options apply. */
+const SAMPLE_WITH_OPTION_OCC = `
+Account Number,Account Name,Symbol,Description,Quantity,Last Price,Average Cost Basis,Current Value,Type
+221238941,Rollover IRA,TSLA 260515C00350000,TESLA INC CALL 05/15/2026 $350.00,2,$12.34,$10.00,$2468.00,Margin
+221238941,Rollover IRA,TSLA260515P00320000,TESLA INC PUT 05/15/2026 $320.00,-4,$2.10,$2.50,$840.00,Margin
+`;
+
 describe("fidelity-portfolio-holdings-csv", () => {
+  it("parses OCC option symbols with 8-digit strike encoding and embedded spaces", () => {
+    expect(parseFidelityOptionSymbol("TSLA260515C00350000")).toEqual({
+      underlying: "TSLA",
+      expiration: "2026-05-15",
+      optionType: "call",
+      strike: 350
+    });
+    expect(parseFidelityOptionSymbol("TSLA 260515C00350000")).toEqual({
+      underlying: "TSLA",
+      expiration: "2026-05-15",
+      optionType: "call",
+      strike: 350
+    });
+    expect(parseFidelityOptionSymbol("ABCDEF260620P00180000")).toEqual({
+      underlying: "ABCDEF",
+      expiration: "2026-06-20",
+      optionType: "put",
+      strike: 180
+    });
+  });
+
+  it("preserves decimal strike after C/P (e.g. VELO $12.50 put) — dots only stripped from root", () => {
+    expect(parseFidelityOptionSymbol("VELO260515P12.50")).toMatchObject({
+      underlying: "VELO",
+      expiration: "2026-05-15",
+      optionType: "put",
+      strike: 12.5
+    });
+    expect(parseFidelityOptionSymbol("VELO 260515P12.50")).toMatchObject({
+      underlying: "VELO",
+      strike: 12.5
+    });
+    expect(parseFidelityOptionSymbol("BRK.B260515C00150000")).toMatchObject({
+      underlying: "BRKB",
+      optionType: "call",
+      strike: 150
+    });
+  });
+
+  it("parses Portfolio CSV option row into option position", () => {
+    const asOf = new Date("2026-05-10T12:00:00Z");
+    const { accounts, parseError } = parseFidelityPortfolioHoldingsCsv(SAMPLE_WITH_OPTION_OCC, asOf);
+    expect(parseError).toBeUndefined();
+    const acc = accounts.find((a) => a.accountRef === "221238941");
+    expect(acc).toBeDefined();
+    const opt = acc!.positions.find((p) => p.type === "option");
+    expect(opt).toMatchObject({
+      type: "option",
+      ticker: "TSLA",
+      contracts: 2,
+      optionType: "call",
+      strike: 350,
+      expiration: "2026-05-15"
+    });
+    const shortPut = acc!.positions.find((p) => p.type === "option" && p.optionType === "put");
+    expect(shortPut).toMatchObject({
+      type: "option",
+      ticker: "TSLA",
+      contracts: -4,
+      optionType: "put",
+      strike: 320,
+      expiration: "2026-05-15"
+    });
+  });
+
   it("detects Portfolio / multi-account positions layout and rejects Accounts History", () => {
     expect(detectFidelityPortfolioHoldingsCsv(SAMPLE)).toBe(true);
     expect(

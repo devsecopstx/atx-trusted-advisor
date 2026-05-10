@@ -308,7 +308,7 @@ function dbPositionToBrokerSeedInput(p: Position): BrokerPositionSeedInput | nul
       avgCost: Number.isFinite(avgCost) && avgCost >= 0 ? avgCost : 0
     };
   }
-  if (!symbol || !Number.isFinite(qty) || qty <= 0) {
+  if (!symbol || !Number.isFinite(qty) || qty === 0) {
     return null;
   }
   return {
@@ -444,7 +444,7 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
           continue;
         }
         const contracts = Math.round(Number(op.contracts ?? 0));
-        if (!Number.isFinite(contracts) || contracts <= 0) {
+        if (!Number.isFinite(contracts) || contracts === 0) {
           skippedNonStock += 1;
           continue;
         }

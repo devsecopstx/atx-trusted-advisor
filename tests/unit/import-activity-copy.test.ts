@@ -17,7 +17,8 @@ describe("import-activity copy", () => {
     );
     expect(importActivityWorkflowCopy.howToSteps).toHaveLength(3);
     expect(importActivityWorkflowCopy.howToSteps.some((s) => s.toLowerCase().includes("broker ref"))).toBe(true);
-    expect(importActivityWorkflowCopy.optionsBody.toLowerCase()).toContain("net-long");
+    expect(importActivityWorkflowCopy.optionsBody.toLowerCase()).toContain("positive");
+    expect(importActivityWorkflowCopy.optionsBody.toLowerCase()).toContain("negative");
     expect(importActivityWorkflowCopy.deleteHoldingsFirstHint.toLowerCase()).toContain("default");
     expect(importActivityWorkflowCopy.deleteHoldingsFirstLabel.toLowerCase()).toContain("delete");
   });

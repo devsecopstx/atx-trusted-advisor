@@ -4263,8 +4263,11 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
     if (!normalizedUnderlying) {
       throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Option requires an underlying symbol");
     }
-    if (!Number.isFinite(input.qty) || input.qty <= 0) {
-      throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Option requires a positive contract count");
+    if (!Number.isFinite(input.qty) || input.qty === 0) {
+      throw new PositionValidationError(
+        "POSITION_FIELDS_INCOMPLETE",
+        "Option requires a non-zero contract count (positive = long, negative = short)",
+      );
     }
     if (!Number.isFinite(input.avgCost) || input.avgCost < 0) {
       throw new PositionValidationError(

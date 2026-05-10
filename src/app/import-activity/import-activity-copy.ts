@@ -24,7 +24,7 @@ export const importActivityWorkflowCopy = {
   ],
   optionsHeading: "Options note",
   optionsBody:
-    "Only net-long option legs are imported right now. Net-short legs are skipped until short modeling is enabled.",
+    "Option quantity sign is preserved: positive contracts = long, negative = short (e.g. covered calls, CSPs). Scanners use this sign for close/hold logic.",
   deleteHoldingsFirstLabel: "Delete existing holdings before import",
   deleteHoldingsFirstHint:
     "When checked (default), all current positions in this portfolio are removed and prior broker-import jobs cleared immediately before your CSV is applied — a clean replace. Accounts and watchlists stay. Uncheck only if you intend to merge into positions already in the book."
