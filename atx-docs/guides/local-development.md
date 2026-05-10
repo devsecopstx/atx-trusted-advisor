@@ -81,7 +81,7 @@ The product header, Hub top bar, and xChat guest header include a **moon** contr
 
 ## 7) PWA install prompt (QA)
 
-- Manifest: `public/manifest.webmanifest` with standalone display and PWA icons.
+- Manifest: **`src/app/manifest.ts`** → **`/manifest.webmanifest`** (standalone + icons; tenant **`name`/`theme_color`/logo** when session has **`tenantId`**).
 - Service worker: `public/sw.js` (registered by `src/app/ui/pwa-bootstrap-client.tsx` in root layout).
 - Account rail manual trigger: **Account -> Install App** (`src/app/ui/pwa-install-account-prompt.tsx`).
 - iOS fallback: manual **Add to Home Screen** steps appear in-app when native install prompt is unavailable.

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { isPathAllowedByTenantUxRoutes } from "@/app/ui/tenant-ux-nav-visibility";
+
 export type MacroTapeDeskNavProps = {
   visiblePathPrefixes?: string[];
   deskPortfolioId?: string | null;
@@ -11,19 +13,17 @@ export function MacroTapeDeskNav({ visiblePathPrefixes, deskPortfolioId }: Macro
   const pid = deskPortfolioId?.trim() || null;
   const q = (prefix: string) => (pid ? `${prefix}?portfolioId=${encodeURIComponent(pid)}` : prefix);
 
-  const isPathVisible = (pathPrefix: string) =>
-    pathPrefix === "/resources" ||
-    !visiblePathPrefixes ||
-    visiblePathPrefixes.some((allowed) => allowed === pathPrefix);
+  const canNavigate = (href: string) =>
+    !visiblePathPrefixes || isPathAllowedByTenantUxRoutes(href, visiblePathPrefixes);
 
   const navItems: Array<{ href: string; label: string }> = [];
-  if (isPathVisible("/watchlist")) {
+  if (canNavigate("/watchlist")) {
     navItems.push({ href: q("/watchlist"), label: "Watchlist" });
   }
-  if (isPathVisible("/xoptions")) {
+  if (canNavigate("/xoptions")) {
     navItems.push({ href: "/xoptions", label: "xOptions" });
   }
-  if (isPathVisible("/portfolio")) {
+  if (canNavigate("/portfolio/alerts")) {
     navItems.push({ href: q("/portfolio/alerts"), label: "Alerts" });
   }
 

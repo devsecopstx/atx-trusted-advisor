@@ -17,6 +17,9 @@ describe("tenant ux proxy policy path audit", () => {
       ["/api/integrations/ibkr/accounts", "/account"],
       ["/api/tasks", "/workspace/tasks"],
       ["/api/tasks/task-1/runs", "/workspace/tasks"],
+      ["/api/strategy-jobs/job-1/status", "/xoptions"],
+      ["/api/recommendations", "/portfolio"],
+      ["/api/recommendations/rec-1", "/portfolio"],
       ["/api/user/workspace-portfolio", "/workspace"],
       ["/api/import/broker", "/import-activity"],
       ["/api/user/watchlist", "/watchlist"]

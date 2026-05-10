@@ -36,7 +36,7 @@ import {
 } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
-import { useTenantUxPolicy } from "@/app/ui/use-tenant-ux-policy";
+import { useTenantUxNavVisibility } from "@/app/ui/use-tenant-ux-nav-visibility";
 import {
     useWorkspaceMobileDrawerClose,
     WorkspaceMobileDrawerNavProvider
@@ -461,7 +461,7 @@ function WorkspaceTopChromeBar({
                 </Link>
               </XfHoverHint>
             ) : null}
-            {isPathVisible("/resources") ? (
+            {isAccountTasksVisible() ? (
               <XfHoverHint hint="Scheduled workspace tasks, reminders, and automation runs." showDelayMs={260}>
                 <Link className="workspace-top-chrome__pill" href="/account/tasks">
                   <LucideClipboardListIcon aria-hidden className="workspace-top-chrome__pill-glyph" />
@@ -516,15 +516,8 @@ export function WorkspaceProductSidebar({
   visiblePathPrefixes,
   xchatSection
 }: WorkspaceProductSidebarProps) {
-  const { allowedRoutes } = useTenantUxPolicy();
-  const effectiveVisiblePathPrefixes = visiblePathPrefixes ?? allowedRoutes ?? undefined;
-  const isPathVisible = useCallback(
-    (pathPrefix: string) =>
-      pathPrefix === "/resources" ||
-      !effectiveVisiblePathPrefixes ||
-      effectiveVisiblePathPrefixes.some((allowed) => allowed === pathPrefix),
-    [effectiveVisiblePathPrefixes]
-  );
+  const { isPathVisible, resolvePreferredHomeHref, isAccountTasksVisible, isWorkspaceAutomationsVisible } =
+    useTenantUxNavVisibility(visiblePathPrefixes);
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const belowLg = useSyncExternalStore(subscribeMaxWidth1023, getMaxWidth1023Snapshot, () => false);
@@ -651,8 +644,7 @@ export function WorkspaceProductSidebar({
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded, persistExpanded]);
 
-  const workspaceBrandHref =
-    isPathVisible("/portfolios") ? "/portfolios" : isPathVisible("/xchat") ? "/xchat" : "/xchat";
+  const workspaceBrandHref = resolvePreferredHomeHref();
 
   const showXoptionsToggle = isXoptionsRoute;
   const xoptionsStrategyBuilderVisible = useSyncExternalStore(
@@ -708,7 +700,7 @@ export function WorkspaceProductSidebar({
     (isPathVisible("/portfolio") && pathname.startsWith("/portfolio")) ||
     (isPathVisible("/watchlist") && pathname.startsWith("/watchlist")) ||
     (isPathVisible("/import-activity") && pathname.startsWith("/import-activity")) ||
-    (isPathVisible("/workspace") && pathname.startsWith("/workspace/tasks"));
+    (isWorkspaceAutomationsVisible() && pathname.startsWith("/workspace/tasks"));
 
   /** Books hub: keep "Portfolio desk" accordion closed on first paint; other desk routes still expand it. */
   const portfolioDeskAccordionSyncedOpen = portfolioRouteMatch && pathname !== "/portfolios";
@@ -765,7 +757,7 @@ export function WorkspaceProductSidebar({
       icon: <RailSidebarZapIcon className="text-[var(--xf-lightning-yellow)]" size="disclosure" />
     }]
       : []),
-    ...(isXchatRoute
+    ...(isPathVisible("/xchat") && isXchatRoute
       ? ([
           {
             key: "xchat-history",
@@ -866,7 +858,11 @@ export function WorkspaceProductSidebar({
   const expandedNav = (
     <nav className="portfolios-workspace-sidebar portfolios-workspace-sidebar--rail-fill" aria-label="Workspace">
       <div className="workspace-product-sidebar__nav-main">
-      {isPathVisible("/portfolios") || isPathVisible("/portfolio") || isPathVisible("/watchlist") || isPathVisible("/import-activity") ? (
+      {isPathVisible("/portfolios") ||
+      isPathVisible("/portfolio") ||
+      isPathVisible("/watchlist") ||
+      isPathVisible("/import-activity") ||
+      isWorkspaceAutomationsVisible() ? (
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion portfolios-workspace-sidebar__accordion--core-action"
         routeMatch={portfolioDeskAccordionSyncedOpen}
@@ -901,7 +897,7 @@ export function WorkspaceProductSidebar({
             Alerts
           </SidebarLink>
           ) : null}
-          {isPathVisible("/workspace") ? (
+          {isWorkspaceAutomationsVisible() ? (
             <SidebarLink href="/workspace/tasks" nested title="Tenant automations (scheduled scanners)">
               Automations
             </SidebarLink>
@@ -910,7 +906,7 @@ export function WorkspaceProductSidebar({
       </RouteSyncedDetails>
       ) : null}
 
-      {xchatSection ?? fallbackXchatSection}
+      {isPathVisible("/xchat") ? (xchatSection ?? fallbackXchatSection) : null}
 
       {isPathVisible("/xoptions") ? (
       <RouteSyncedDetails

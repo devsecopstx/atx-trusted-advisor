@@ -33,5 +33,7 @@ export function resolvePolicyPathForRequest(pathname: string): string | null {
   if (p.startsWith("/api/integrations")) return "/account";
   if (p.startsWith("/api/tasks")) return "/workspace/tasks";
   if (p.startsWith("/api/tenant-tasks")) return "/workspace";
+  if (p.startsWith("/api/strategy-jobs")) return "/xoptions";
+  if (p.startsWith("/api/recommendations")) return "/portfolio";
   return null;
 }

@@ -14,6 +14,7 @@ import {
     LucideUploadIcon
 } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
+import { useTenantUxNavVisibility } from "@/app/ui/use-tenant-ux-nav-visibility";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 
@@ -263,6 +264,8 @@ export function AppUserManageWorkspaceRailSection({
   /** When true, show xChat/xOptions under Manage Workspace. */
   includeProductLinks?: boolean;
 }) {
+  const { isPathVisible } = useTenantUxNavVisibility();
+
   return (
     <section className="app-user-rail-section" aria-label="Manage Workspace">
       <RailDisclosure
@@ -288,26 +291,35 @@ export function AppUserManageWorkspaceRailSection({
                 </div>
               ) : (
                 <p className="app-user-rail-workspace-hint">
-                  Default portfolio isn&apos;t available yet.{" "}
-                  <Link className="app-user-rail-workspace-hint-link" href="/portfolios">
-                    Portfolios
-                  </Link>{" "}
-                  to add a portfolio, or use <span className="text-[var(--xf-text-200)]">Portfolio</span> in the nav
-                  for positions.
+                  Default portfolio isn&apos;t available yet.
+                  {isPathVisible("/portfolios") ? (
+                    <>
+                      {" "}
+                      Open{" "}
+                      <Link className="app-user-rail-workspace-hint-link" href="/portfolios">
+                        Books overview
+                      </Link>{" "}
+                      to add a portfolio, or use the workspace rail for positions when enabled.
+                    </>
+                  ) : (
+                    <> Use the workspace rail for positions when your tenant enables portfolio desk routes.</>
+                  )}
                 </p>
               )}
             </div>
           ) : null}
           <nav className="app-user-rail-sublinks" aria-label="Workspace administration">
-            <RailNavLink href="/portfolios" title="Books overview — workspace, accounts, allocation">
-              Books Overview
-            </RailNavLink>
-            {includeProductLinks ? (
+            {isPathVisible("/portfolios") ? (
+              <RailNavLink href="/portfolios" title="Books overview — workspace, accounts, allocation">
+                Books Overview
+              </RailNavLink>
+            ) : null}
+            {includeProductLinks && isPathVisible("/xchat") ? (
               <RailNavLink href="/xchat" title="Open xChat">
                 xChat
               </RailNavLink>
             ) : null}
-            {includeProductLinks ? (
+            {includeProductLinks && isPathVisible("/xoptions") ? (
               <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
                 xOptions
               </RailNavLink>
@@ -329,12 +341,16 @@ export function AppUserManageWorkspaceRailSection({
                   <div className="xchat-rail-book-row">
                     <span className="xchat-rail-book-k">Portfolio</span>
                     <XfHoverHint hint="Open portfolio">
-                      <Link
-                        className="xchat-rail-book-v xchat-rail-book-v--link"
-                        href="/portfolio"
-                      >
-                        {defaultBookLabels.portfolioName}
-                      </Link>
+                      {isPathVisible("/portfolio") ? (
+                        <Link
+                          className="xchat-rail-book-v xchat-rail-book-v--link"
+                          href="/portfolio"
+                        >
+                          {defaultBookLabels.portfolioName}
+                        </Link>
+                      ) : (
+                        <span className="xchat-rail-book-v">{defaultBookLabels.portfolioName}</span>
+                      )}
                     </XfHoverHint>
                   </div>
                   <div className="xchat-rail-book-row">

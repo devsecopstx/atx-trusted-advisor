@@ -32,6 +32,7 @@ See repo **`.env.example`** for canonical comments. **Staging soak:** enable **`
 
 - **Proxy (session × pathname):** in-memory **`Map`** TTL **60s** (`TENANT_UX_PROXY_POLICY_TTL_MS` in **`src/proxy.ts`**) — avoids hammering the internal route on navigation bursts.
 - **Policy resolver (`getCachedTenantUxPolicyForSession`):** memory TTL **60s** + **Redis** (`tenant-ux:policy:v2:{userId}:{tenantId}`, **60s** TTL) when **`REDIS_URL`** is configured (`src/modules/platform/tenant-ux-policy-cache.ts`). **Dev and prod** Next services mount **`REDIS_URL`** — Redis is **in use** for tenant UX policy there; if Redis is down or unset, the resolver falls back to memory-only + Mongo on miss. Full key/TTL notes: **[redis-cache-next.md](./redis-cache-next.md)** § Tenant UX policy.
+- **Explicit invalidation:** **`PUT /api/admin/tenants/{tenantId}/roles`**, **`PATCH …/roles/{role}`**, and **`PATCH /api/admin/platform/route-catalog/{tenantId}`** call **`bustTenantUxPolicyCacheForTenant`** (pattern-delete **`tenant-ux:policy:v2:*:{tenantId}`** in Redis + in-memory sweep) and emit **`admin_audit_events`** **`tenant_ux.policy_cache_bust`**. Operators may also **`POST /api/admin/tenants/{tenantId}/policy-cache`** from **Admin → Tenants → Roles** (“Bust policy cache”).
 
 ## Internal policy contract
 
@@ -67,6 +68,10 @@ Logs are **JSON one-liners** suitable for Cloud Logging metric filters.
 | **`type: tenant_ux_metric`**, **`metric: tenant_ux_route_forbidden_total`**, **`pathname`**, **`policyPath`** | User/API denied because policy returned **`allowed: false`** |
 | **`type: tenant_ux_metric`**, **`metric: tenant_ux_policy_unavailable_total`**, **`pathname`**, **`policyPath`** | Denied with **503** / **`tenant_ux_policy_unavailable`** — emitted **only when** **`TENANT_UX_POLICY_FAIL_CLOSED`** is **on** (HTML + API paths) |
 | **`type: tenant_ux_policy_fetch_error`** | Fail-open path diagnostics (existing); keep alerting on spikes |
+
+**Mongo (admin visibility):** Internal **`GET /api/internal/tenant-ux/policy`** appends **`tenant_ux_observability_events`** (`tenant_ux_metric` / `tenant_ux_policy_fetch_error`). **`global_admin`**: **`GET /api/admin/platform/tenant-ux/observability`** — recent rows, aggregate counters, optional **`replayTenantId`** (last 24h read-only replay). Hub: **Tenant UX observability** panel on **`/admin`**.
+
+**Fail-closed drill:** **`GET`/`POST /api/admin/platform/tenant-ux/fail-closed-drill`** sets httpOnly **`xf_tenant_ux_fail_closed`** for session-scoped fail-closed simulation (additive to env **`TENANT_UX_POLICY_FAIL_CLOSED`**).
 
 ## Operator checklist (misconfig)
 

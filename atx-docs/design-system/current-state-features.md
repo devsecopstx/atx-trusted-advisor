@@ -93,7 +93,7 @@ flowchart TB
 | **xChat branding context** | System prompt + approved-shell welcome line include **tenant desk label** (`formatTenantWorkspaceContextBlockForXchat`); fingerprint includes tenant block for remote history |
 | **CSS tokens** | `--xf-tenant-primary` / `--xf-tenant-secondary` in **`atxfinance-brand-kit.css`**; `layout` + **`TenantBrandingProvider`** set accent-derived vars |
 
-**Soak / backlog:** Staging-first V2 rollout (**`.env.example`** soak note); expand API↔policy mapping for any remaining direct **`/api/...`** bypasses; **policy cache:** proxy memory TTL **+ Redis** (**`tenant-ux:policy:v2:*`**, **60s**) — **active in dev + prod** with mounted **`REDIS_URL`**; PWA **per-tenant** `manifest` (today static `manifest.webmanifest`); nav/header parity beyond workspace rail; structured metrics (**`tenant_ux_route_forbidden_total`**, **`tenant_ux_policy_fetch_latency_ms`**, **`tenant_ux_policy_unavailable_total`** when fail-closed). Runbook: **`atx-docs/sre-ops/tenant-ux-enforcement.md`** · **`atx-docs/sre-ops/redis-cache-next.md`** § Tenant UX policy.
+**Soak / backlog:** Staging-first **48–72h** V2 rollout before prod (**`.env.example`** soak note); **policy cache:** proxy memory TTL **+ Redis** (**`tenant-ux:policy:v2:*`**, **60s**) with **explicit bust** on role/catalog mutations; **PWA:** dynamic **`src/app/manifest.ts`** at **`/manifest.webmanifest`** (tenant branding when signed in); nav/header parity beyond workspace rail; **GCP** log/metric filters + alerts for stderr **`tenant_ux_*`** lines (optional Mongo **`tenant_ux_observability_events`** via admin API). Runbook: **`atx-docs/sre-ops/tenant-ux-enforcement.md`** · **`atx-docs/sre-ops/redis-cache-next.md`** § Tenant UX policy.
 
 ---
 

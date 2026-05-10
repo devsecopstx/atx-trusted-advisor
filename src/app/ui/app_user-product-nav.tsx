@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LucideMonitorIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
+import { useTenantUxNavVisibility } from "@/app/ui/use-tenant-ux-nav-visibility";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 /** Which product icon is active; use `null` on secondary surfaces (e.g. `/account/billing`) so none are highlighted. */
@@ -82,9 +83,16 @@ const NAV: NavDef[] = [
  * Legacy **`/xstrategybuilder`** redirects to **`/xoptions`**.
  */
 export function AppUserProductNav({ current }: AppUserProductNavProps) {
+  const { isPathVisible } = useTenantUxNavVisibility();
+  const items = NAV.filter((item) => isPathVisible(item.href));
+
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <nav className="xchat-header-nav" aria-label="Product">
-      {NAV.map((item) => (
+      {items.map((item) => (
         <XfHoverHint key={item.id} hint={item.hint}>
           <Link
             aria-current={item.id === current ? "page" : undefined}

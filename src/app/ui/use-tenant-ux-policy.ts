@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from "react";
 
+import { normalizePathnameForPolicy } from "@/modules/platform/app-user-product-prefixes";
+
 type TenantUxPolicyPayload = {
   data: {
     allowedRoutes: string[];
-    defaultLanding: string;
+    defaultLanding?: string;
   };
 };
 
 export function useTenantUxPolicy() {
   const [allowedRoutes, setAllowedRoutes] = useState<string[] | null>(null);
+  const [defaultLanding, setDefaultLanding] = useState("/xchat");
 
   useEffect(() => {
     let cancelled = false;
@@ -27,6 +30,12 @@ export function useTenantUxPolicy() {
             // Keep /resources in sync with server merge (tenant policy + education routes).
             setAllowedRoutes([...new Set([...next, "/resources"])].sort());
           }
+          const dl = payload?.data?.defaultLanding;
+          setDefaultLanding(
+            typeof dl === "string" && dl.trim().startsWith("/")
+              ? normalizePathnameForPolicy(dl.trim())
+              : "/xchat"
+          );
         }
       } catch {
         // Best-effort nav hint only.
@@ -37,5 +46,5 @@ export function useTenantUxPolicy() {
     };
   }, []);
 
-  return { allowedRoutes };
+  return { allowedRoutes, defaultLanding };
 }

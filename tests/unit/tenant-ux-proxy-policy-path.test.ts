@@ -21,6 +21,9 @@ describe("resolvePolicyPathForRequest", () => {
     expect(resolvePolicyPathForRequest("/api/portfolios/x")).toBe("/portfolio");
     expect(resolvePolicyPathForRequest("/api/tasks")).toBe("/workspace/tasks");
     expect(resolvePolicyPathForRequest("/api/tasks/abc/runs")).toBe("/workspace/tasks");
+    expect(resolvePolicyPathForRequest("/api/strategy-jobs/x/status")).toBe("/xoptions");
+    expect(resolvePolicyPathForRequest("/api/recommendations")).toBe("/portfolio");
+    expect(resolvePolicyPathForRequest("/api/recommendations/abc")).toBe("/portfolio");
     expect(resolvePolicyPathForRequest("/api/tenant-tasks/x")).toBe("/workspace");
     expect(resolvePolicyPathForRequest("/workspace/tasks")).toBe("/workspace/tasks");
     expect(resolvePolicyPathForRequest("/workspace/desk")).toBe("/workspace");

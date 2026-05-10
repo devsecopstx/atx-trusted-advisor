@@ -72,7 +72,7 @@ export type ApiError = {
 
 Required pieces:
 
-- `manifest.webmanifest` with icons, theme, start URL, display mode
+- App Router `app/manifest.ts` (and/or `public/manifest.webmanifest` fallback) — icons, theme, start URL, display mode
 - service worker registration with versioned cache strategy
 - offline fallback route for critical onboarding/read-only surfaces
 - runtime cache policy tuned by asset type (static vs API)

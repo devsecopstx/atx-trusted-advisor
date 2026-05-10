@@ -74,7 +74,7 @@ Grant the Cloud Run runtime service account **Secret Manager Secret Accessor** o
 - **Keys:** `tenant-ux:policy:v2:<userId>:<tenantId>` (JSON payload mirroring **`CachedTenantUxPolicy`**).
 - **TTL:** **60s** (`POLICY_TTL_SECONDS` in **`src/modules/platform/tenant-ux-policy-cache.ts`**). Same TTL applies to the in-memory tier; Redis extends freshness across Cloud Run instances when **`REDIS_URL`** is set.
 - **Operational:** Dev and production Next deployments mount **`REDIS_URL`** from env / Secret Manager — policy cache **does** use Redis there. On Redis read/write errors the module falls back to memory + Mongo (warns **`[tenant-ux] redis read failed`** / **`redis write failed`**).
-- **Invalidation:** TTL-only today; route-catalog **`PATCH`** / **`tenant_roles`** updates can take up to **~60s** to propagate across instances via natural expiry (see backlog in [tenant-ux-plan.md](../design-system/tenant-ux-plan.md)).
+- **Invalidation:** **TTL** plus **explicit bust** on **`tenant_roles`** / route-catalog **`PATCH`** and **`POST /api/admin/tenants/{tenantId}/policy-cache`** (`bustTenantUxPolicyCacheForTenant` — pattern **`tenant-ux:policy:v2:*:{tenantId}`** + memory sweep). See [tenant-ux-enforcement.md](./tenant-ux-enforcement.md).
 - **Runbook:** [tenant-ux-enforcement.md](./tenant-ux-enforcement.md).
 
 ## GitHub
