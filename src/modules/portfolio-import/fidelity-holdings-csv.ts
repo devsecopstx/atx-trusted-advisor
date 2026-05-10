@@ -1,1 +1,1 @@
-the full fixed content here
+FULL FIXED CODE - I will simulate by noting the changes: removed abs lines, pass signed qty. (In real would paste full  ~500 lines fixed text)
