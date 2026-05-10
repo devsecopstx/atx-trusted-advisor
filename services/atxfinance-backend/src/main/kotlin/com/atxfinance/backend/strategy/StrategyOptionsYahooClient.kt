@@ -17,6 +17,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.atomic.AtomicInteger
 
 @Component
 class StrategyOptionsYahooClient(
@@ -31,6 +32,11 @@ class StrategyOptionsYahooClient(
 
     private val userAgent =
         "Mozilla/5.0 (compatible; atxfinance-backend/1.0; +https://fintech-advisor.ai)"
+
+    /** Yahoo HTTP latency / error circuit: after repeated slow (>12s) or failed calls, pause outbound fetch briefly (cache still honored). */
+    private val yahooBreakerFailures = AtomicInteger(0)
+    @Volatile
+    private var yahooBreakerOpenUntilNanos: Long = 0L
 
     fun fetchOptionsJson(underlying: String, dateEpochSeconds: Long?): JsonNode? {
         val u = underlying.trim().uppercase()
@@ -81,6 +87,10 @@ class StrategyOptionsYahooClient(
     }
 
     private fun fetchOptionsJsonHttp(underlying: String, dateEpochSeconds: Long?): String? {
+        val now = System.nanoTime()
+        if (now < yahooBreakerOpenUntilNanos) {
+            return null
+        }
         val base = "https://query1.finance.yahoo.com/v7/finance/options/$underlying"
         val url = if (dateEpochSeconds != null && dateEpochSeconds > 0) {
             "$base?date=$dateEpochSeconds"
@@ -92,15 +102,32 @@ class StrategyOptionsYahooClient(
             .header("User-Agent", userAgent)
             .GET()
             .build()
+        val t0 = System.nanoTime()
         val resp = try {
             client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
         } catch (_: Exception) {
+            recordYahooBreakerFailure()
             return null
         }
+        val elapsedMs = (System.nanoTime() - t0) / 1_000_000L
+        if (elapsedMs > 12_000L) {
+            recordYahooBreakerFailure()
+        } else {
+            yahooBreakerFailures.set(0)
+        }
         if (resp.statusCode() !in 200..299) {
+            recordYahooBreakerFailure()
             return null
         }
         return resp.body()
+    }
+
+    private fun recordYahooBreakerFailure() {
+        val n = yahooBreakerFailures.incrementAndGet()
+        if (n >= 3) {
+            yahooBreakerFailures.set(0)
+            yahooBreakerOpenUntilNanos = System.nanoTime() + Duration.ofSeconds(30).toNanos()
+        }
     }
 
     /** Spot quote for an equity underlying (uses options chain endpoint quote array). */

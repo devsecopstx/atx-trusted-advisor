@@ -8,7 +8,6 @@ import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import type { AppUserProductNavCurrent } from "./app_user-product-nav";
-import { isPathAllowedByTenantUxRoutes } from "./tenant-ux-nav-visibility";
 import {
     LucideBookOpenIcon,
     LucideClipboardListIcon,
@@ -17,6 +16,7 @@ import {
 } from "./lucide-product-icons";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "./product-brand-constants";
 import { useTenantShellBranding } from "./tenant-branding-context";
+import { isPathAllowedByTenantUxRoutes } from "./tenant-ux-nav-visibility";
 import { useTenantUxNavVisibility } from "./use-tenant-ux-nav-visibility";
 import { WorkspaceRailAppearance } from "./workspace-rail-appearance";
 import { XchatHeaderBrand } from "./xchat-header-brand";

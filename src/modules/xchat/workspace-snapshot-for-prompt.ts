@@ -75,6 +75,12 @@ function createPortfolioAllocationChart(positions: Array<{ symbol: string; qty: 
 
 import type { Portfolio, PositionType, WatchlistSymbol } from "@/modules/core-admin/types";
 import { normalizePositionType } from "@/modules/core-admin/types";
+import {
+    type BookTailRiskSummaryJson,
+    computeBookTailRiskMonteCarlo,
+    isEquitySymbolForTailRisk,
+    mapWatchlistRiskProfileToMcTier
+} from "@/modules/strategy-options/monte-carlo-tail-risk";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import {
     findPortfolioWorkspaceSnapshot,
@@ -183,6 +189,8 @@ export type WorkspaceSnapshotPromptJson = {
         symbols: ReturnType<typeof watchlistSymbolToPromptJson>[];
       }
     | { error: "no_watchlist" };
+  /** Monte Carlo book-level tail metrics (fat-tail + jumps); optional when equity book empty or compute skipped. */
+  bookTailRisk?: BookTailRiskSummaryJson | null;
 };
 
 /** Same-request preload for atx_function short-circuit (includes full positions; not in prompt JSON). */
@@ -299,6 +307,33 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
   const quoteMap = fetchedQuotes instanceof Map ? fetchedQuotes : new Map();
 
   const loadedAt = new Date().toISOString();
+  let bookTailRisk: BookTailRiskSummaryJson | null = null;
+  const equityRows = positions.filter((p) => isEquitySymbolForTailRisk(p.symbol));
+  const equityNotional = equityRows.reduce((sum, p) => sum + Math.abs(p.qty * p.avgCost), 0);
+  if (equityNotional > 1e-6 && equityRows.length > 0) {
+    const wlRisk =
+      watchlist && !("error" in watchlist) ? (watchlist.riskProfile ?? null) : null;
+    const tier = mapWatchlistRiskProfileToMcTier(wlRisk);
+    const holdings = equityRows.map((p) => ({
+      symbol: p.symbol.trim().toUpperCase(),
+      weight: Math.abs(p.qty * p.avgCost) / equityNotional
+    }));
+    try {
+      const rawPaths = Number.parseInt(process.env.WORKSPACE_TAIL_RISK_PATHS ?? "12000", 10);
+      const pathCount = Number.isFinite(rawPaths)
+        ? Math.min(50_000, Math.max(5000, rawPaths))
+        : 12_000;
+      bookTailRisk = await computeBookTailRiskMonteCarlo({
+        tier,
+        holdings,
+        chainsByTicker: {},
+        pathCount
+      });
+    } catch {
+      bookTailRisk = null;
+    }
+  }
+
   const promptJson: WorkspaceSnapshotPromptJson = {
     loadedAt,
     workspaceContentRev: rev,
@@ -333,11 +368,12 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
           name: watchlist.name,
           riskProfile: watchlist.riskProfile ?? null,
           outlook: watchlist.outlook ?? null,
-          symbols: wlSymbols.map((s) =>
-            watchlistSymbolToPromptJson(s, quoteMap.get(s.symbol)?.price)
-          )
-        }
-      : { error: "no_watchlist" as const }
+        symbols: wlSymbols.map((s) =>
+          watchlistSymbolToPromptJson(s, quoteMap.get(s.symbol)?.price)
+        )
+      }
+      : { error: "no_watchlist" as const },
+    ...(bookTailRisk ? { bookTailRisk } : {})
   };
 
   const positionsFull = positions.map((p) => ({
@@ -563,6 +599,7 @@ export function portfolioSummaryFromWorkspacePreload(p: WorkspaceSnapshotPreload
     accountCount: j.accounts.length,
     totalPositionCount: j.portfolio.totalPositionCount,
     totalValue: totalPortfolioValue,
+    ...(j.bookTailRisk ? { bookTailRisk: j.bookTailRisk } : {}),
     allocationChart,
     accounts: j.accounts.map((a) => ({
       name: a.name,

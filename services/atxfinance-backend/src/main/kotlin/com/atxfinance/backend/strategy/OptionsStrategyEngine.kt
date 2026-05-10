@@ -84,6 +84,8 @@ class OptionsStrategyEngine {
         val legs: List<OptionLeg>,
         val riskReward: RiskRewardMetrics,
         val rationale: String,
+        /** Book-level Monte Carlo tail snapshot when the caller supplies holdings + engine output. */
+        val tailRiskSummary: TailRiskSummary? = null,
     )
 
     fun filterEligibleStrategies(context: UserOptionsContext): List<StrategyKind> {
@@ -234,6 +236,7 @@ class OptionsStrategyEngine {
         context: UserOptionsContext,
         chainsByTicker: Map<String, OptionChainSnapshot>,
         prompt: OptionsScanPrompt,
+        tailRiskSummary: TailRiskSummary? = null,
     ): List<StrategyRecommendation> {
         val eligible = filterEligibleStrategies(context)
         val pref = prompt.preferredStrategies
@@ -247,6 +250,7 @@ class OptionsStrategyEngine {
                 val legs = buildOptionLegs(strat, chain, c)
                 val mids = legs.map { legMid(chain, it) }
                 val rr = calculateRiskRewardMetrics(legs, mids)
+                val baseRationale = generateRationale(strat, score, br)
                 out.add(
                     StrategyRecommendation(
                         strategy = strat,
@@ -256,7 +260,8 @@ class OptionsStrategyEngine {
                         scoreBreakdown = br,
                         legs = legs,
                         riskReward = rr,
-                        rationale = generateRationale(strat, score, br),
+                        rationale = MonteCarloTailRiskEngine.appendTailRiskToRationale(baseRationale, tailRiskSummary, context.risk),
+                        tailRiskSummary = tailRiskSummary,
                     ),
                 )
             }
