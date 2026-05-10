@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
-import { buildTenantSpecV1YamlPreview } from "@/lib/tenant-create-spec-preview";
 import { DEFAULT_TENANT_ACCENT_HEX, normalizeXfAccentColor } from "@/lib/tenant-accent-color";
 import { XF_BRAND_PALETTE_IDS, XF_BRAND_PALETTE_LABELS, type XfBrandPaletteId } from "@/lib/tenant-branding-palette";
+import { buildTenantSpecV1YamlPreview } from "@/lib/tenant-create-spec-preview";
 
 const MAX_LOGO_FILE_BYTES = 2 * 1024 * 1024;
 const ACCEPT_IMAGE = "image/png,image/jpeg,image/jpg,image/svg+xml,image/webp,image/gif";

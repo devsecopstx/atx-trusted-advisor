@@ -107,7 +107,7 @@ describe("/api/admin/tenants/[tenantId]/bootstrap-audit", () => {
     });
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
-      data: { events: { trigger?: string }[] };
+      data: { events: { details: { trigger?: string } }[] };
     };
     expect(json.data.events).toHaveLength(1);
     expect(json.data.events[0]?.details.trigger).toBe("oauth_login");

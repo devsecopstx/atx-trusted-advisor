@@ -351,6 +351,7 @@ type WorkspaceTopChromeBarProps = {
   /** `<768px`: show xOptions · Watchlist · xChat pills */
   showQuickPills: boolean;
   isPathVisible: (pathPrefix: string) => boolean;
+  isAccountTasksVisible: () => boolean;
   workspaceBook: AppUserDefaultBook | null;
   accountDetails: AppUserRailAccountPanelDetails | null;
   isGlobalAdmin: boolean;
@@ -363,6 +364,7 @@ function WorkspaceTopChromeBar({
   watchlistHref,
   showQuickPills,
   isPathVisible,
+  isAccountTasksVisible,
   workspaceBook,
   accountDetails,
   isGlobalAdmin
@@ -1070,6 +1072,7 @@ export function WorkspaceProductSidebar({
           <WorkspaceTopChromeBar
             accountDetails={accountDetails}
             drawerOpen={drawerOpen}
+            isAccountTasksVisible={isAccountTasksVisible}
             isGlobalAdmin={isGlobalAdmin}
             isPathVisible={isPathVisible}
             showQuickPills={belowMd}
