@@ -104,12 +104,14 @@ export const XchatThreadMessageBubble = memo(
                   onStayInChat={onStrategyStay}
                 />
               ) : msg.optionsActionScan ? (
-                <OptionsActionScanReportLazy
-                  data={msg.optionsActionScan}
-                  embeddedInThread
-                  shareMode="enabled"
-                  workspacePortfolioId={workspacePortfolioId}
-                />
+                <div className="flex-1 overflow-y-auto xchat-msg-ai-body--scan">
+                  <OptionsActionScanReportLazy
+                    data={msg.optionsActionScan}
+                    embeddedInThread
+                    shareMode="enabled"
+                    workspacePortfolioId={workspacePortfolioId}
+                  />
+                </div>
               ) : (
                 <div
                   className={`xchat-msg-ai-body xchat-msg-ai-body--markdown${shouldUseLongResponseViewport ? " xchat-msg-ai-body--long-response" : ""}`}
@@ -118,7 +120,7 @@ export const XchatThreadMessageBubble = memo(
                 </div>
               )}
             </div>
-            <div className="xchat-msg-ai-toolbar">
+            <div className="xchat-msg-ai-toolbar" key={`chrome-${msg.id}`}>
               <XchatAiResponseChrome
                 bodyText={msg.content}
                 feedbackVote={msg.feedbackVote}
