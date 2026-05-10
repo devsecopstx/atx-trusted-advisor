@@ -104,7 +104,7 @@ export const XchatThreadMessageBubble = memo(
                   onStayInChat={onStrategyStay}
                 />
               ) : msg.optionsActionScan ? (
-                <div className="flex-1 overflow-y-auto xchat-msg-ai-body--scan">
+                <div className="xchat-msg-ai-body xchat-msg-ai-body--scan">
                   <OptionsActionScanReportLazy
                     data={msg.optionsActionScan}
                     embeddedInThread
@@ -120,7 +120,7 @@ export const XchatThreadMessageBubble = memo(
                 </div>
               )}
             </div>
-            <div className="xchat-msg-ai-toolbar" key={`chrome-${msg.id}`}>
+            <div className="xchat-msg-ai-toolbar">
               <XchatAiResponseChrome
                 bodyText={msg.content}
                 feedbackVote={msg.feedbackVote}
