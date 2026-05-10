@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
-    getRedisClient,
+    getRedisClientForPlane,
     getRedisQuoteCacheTtlSeconds
 } from "@/lib/redis-client";
 import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
@@ -32,7 +32,7 @@ export async function getYahooBatchQuotes(
   try {
     const uniqueSymbols = [...new Set(symbols.map((s) => s.trim().toUpperCase()))].sort();
     const cacheKey = batchQuoteCacheKey(uniqueSymbols);
-    const redis = await getRedisClient();
+    const redis = await getRedisClientForPlane("cache");
     if (redis) {
       try {
         const cached = await redis.get(cacheKey);

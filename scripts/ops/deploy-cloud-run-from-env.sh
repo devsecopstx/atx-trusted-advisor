@@ -244,6 +244,14 @@ if [[ -n "${SMTP_HOST:-}" && -n "${SMTP_USER:-}" && -n "${SMTP_PASS:-}" && -n "$
 fi
 
 SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest,REDIS_URL=REDIS_URL:latest,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:latest,STRIPE_PUBLIC_KEY=STRIPE_PUBLIC_KEY:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest"
+if gcloud secrets describe REDIS_URL_CONTROL --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},REDIS_URL_CONTROL=REDIS_URL_CONTROL:latest"
+  echo "deploy-cloud-run-from-env: binding REDIS_URL_CONTROL"
+fi
+if gcloud secrets describe REDIS_URL_CACHE --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},REDIS_URL_CACHE=REDIS_URL_CACHE:latest"
+  echo "deploy-cloud-run-from-env: binding REDIS_URL_CACHE"
+fi
 if gcloud secrets describe GOOGLE_CLIENT_ID --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
   gcloud secrets describe GOOGLE_CLIENT_SECRET --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
   SECRETS="${SECRETS},GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest"
@@ -318,7 +326,9 @@ done
 STARTUP_PROBE='initialDelaySeconds=30,tcpSocket.port=8080,timeoutSeconds=5,periodSeconds=10,failureThreshold=60'
 SCALING_FLAGS=()
 if [[ "${TARGET}" == "production" ]]; then
-  SCALING_FLAGS=(--min-instances=1 --max-instances=50)
+  NEXT_MIN_INSTANCES_PROD="${NEXT_MIN_INSTANCES_PROD:-1}"
+  NEXT_MAX_INSTANCES_PROD="${NEXT_MAX_INSTANCES_PROD:-12}"
+  SCALING_FLAGS=(--min-instances="${NEXT_MIN_INSTANCES_PROD}" --max-instances="${NEXT_MAX_INSTANCES_PROD}")
 fi
 
 # Cloud Run forbids changing an env name from secret-backed to plain text (or the reverse) in one step — drop GSM bindings first.

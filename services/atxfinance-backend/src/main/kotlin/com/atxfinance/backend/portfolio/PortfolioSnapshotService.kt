@@ -5,6 +5,7 @@ import com.atxfinance.backend.session.ResolvedSession
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -24,6 +25,7 @@ import java.time.Instant
  */
 @Service
 class PortfolioSnapshotService(
+    @Qualifier("cacheRedisTemplate")
     private val redisProvider: ObjectProvider<StringRedisTemplate>,
     private val workspaceSnapshotService: PortfolioWorkspaceSnapshotService,
     private val props: AtxfinanceProperties,
@@ -33,9 +35,10 @@ class PortfolioSnapshotService(
         session: ResolvedSession,
         portfolioIdHex: String,
         workspaceContentRev: Int,
+        cacheVersion: String = "1",
     ): String {
         val t = session.tenantId.trim().ifEmpty { "_" }
-        return "xf:wsnap:v1:$t:${session.userId.trim()}:$portfolioIdHex:$workspaceContentRev"
+        return "xf:wsnap:v1:$t:${session.userId.trim()}:$portfolioIdHex:$workspaceContentRev:v$cacheVersion"
     }
 
     fun resolveSnapshotTtlSeconds(now: Instant): Long {
@@ -56,7 +59,8 @@ class PortfolioSnapshotService(
         session: ResolvedSession,
     ): Pair<Map<String, Any?>, Map<String, Any?>>? {
         val redis = redisProvider.ifAvailable
-        val key = buildWorkspaceSnapshotCacheKey(session, portfolioIdHex, workspaceContentRev)
+        val cacheVersion = redis?.let { resolveCacheVersion(it, session, portfolioIdHex) } ?: "1"
+        val key = buildWorkspaceSnapshotCacheKey(session, portfolioIdHex, workspaceContentRev, cacheVersion)
         val now = Instant.now()
         val ttl = resolveSnapshotTtlSeconds(now)
         val marketWindow = if (UsEquitiesRegularSession.isRegularSessionLikelyOpen(now)) "open" else "closed"
@@ -108,15 +112,32 @@ class PortfolioSnapshotService(
         portfolioIdHex: String,
     ) {
         val redis = redisProvider.ifAvailable ?: return
-        val t = session.tenantId.trim().ifEmpty { "_" }
-        val pattern = "xf:wsnap:v1:$t:${session.userId.trim()}:$portfolioIdHex:*"
         try {
-            val keys = redis.keys(pattern)
-            if (keys.isNotEmpty()) {
-                redis.delete(keys)
-            }
+            val versionKey = cacheVersionKey(session, portfolioIdHex)
+            redis.opsForValue().increment(versionKey)
+            redis.expire(versionKey, Duration.ofDays(14))
         } catch (_: Exception) {
             /* non-fatal */
+        }
+    }
+
+    private fun cacheVersionKey(session: ResolvedSession, portfolioIdHex: String): String {
+        val t = session.tenantId.trim().ifEmpty { "_" }
+        return "xf:wsnap:v1:cv:$t:${session.userId.trim()}:$portfolioIdHex"
+    }
+
+    private fun resolveCacheVersion(redis: StringRedisTemplate, session: ResolvedSession, portfolioIdHex: String): String {
+        val versionKey = cacheVersionKey(session, portfolioIdHex)
+        return try {
+            val raw = redis.opsForValue().get(versionKey)?.trim()
+            if (!raw.isNullOrEmpty()) {
+                raw
+            } else {
+                redis.opsForValue().set(versionKey, "1", Duration.ofDays(14))
+                "1"
+            }
+        } catch (_: Exception) {
+            "1"
         }
     }
 }

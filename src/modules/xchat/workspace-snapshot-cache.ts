@@ -8,7 +8,7 @@
  *
  * **TTL:** `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` (30–900s, default 60). Tune per environment.
  */
-import { getRedisClient } from "@/lib/redis-client";
+import { getRedisClientForPlane } from "@/lib/redis-client";
 
 const MEMORY_MAX = 150;
 const memory = new Map<string, { expiresAt: number; value: string }>();
@@ -46,7 +46,7 @@ export function buildWorkspaceSnapshotCacheKey(input: {
 }
 
 export async function readWorkspaceSnapshotCache(key: string): Promise<string | null> {
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("cache");
   if (redis) {
     try {
       const v = await redis.get(key);
@@ -71,7 +71,7 @@ export async function writeWorkspaceSnapshotCache(
   json: string,
   ttlSeconds: number
 ): Promise<void> {
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("cache");
   if (redis) {
     try {
       await redis.set(key, json, { EX: ttlSeconds });

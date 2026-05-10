@@ -55,14 +55,23 @@ class StrategyJobService(
 
         val quota = strategyJobRedisQuota.ifAvailable
         val since = Date(System.currentTimeMillis() - HOUR_MS)
-        val softWarn: Boolean
-        val jobsInLastHourAfterCreate: Int
+        var softWarn: Boolean
+        var jobsInLastHourAfterCreate: Int
         if (quota != null) {
-            val after = quota.tryReserveSlot(session.tenantId, session.userId, emailAccountId)
-                ?: return CreateJobOutcome.RateLimited
-            val mongoCount = countJobsSince(session, emailAccountId, since)
-            softWarn = mongoCount >= props.strategySoftWarnJobsHourly
-            jobsInLastHourAfterCreate = maxOf(after, mongoCount + 1L).toInt()
+            try {
+                val after = quota.tryReserveSlot(session.tenantId, session.userId, emailAccountId)
+                    ?: return CreateJobOutcome.RateLimited
+                val mongoCount = countJobsSince(session, emailAccountId, since)
+                softWarn = mongoCount >= props.strategySoftWarnJobsHourly
+                jobsInLastHourAfterCreate = maxOf(after, mongoCount + 1L).toInt()
+            } catch (_: Exception) {
+                val count = countJobsSince(session, emailAccountId, since)
+                if (count >= props.strategyMaxJobsHourly) {
+                    return CreateJobOutcome.RateLimited
+                }
+                softWarn = count >= props.strategySoftWarnJobsHourly
+                jobsInLastHourAfterCreate = count + 1
+            }
         } else {
             val count = countJobsSince(session, emailAccountId, since)
             if (count >= props.strategyMaxJobsHourly) {

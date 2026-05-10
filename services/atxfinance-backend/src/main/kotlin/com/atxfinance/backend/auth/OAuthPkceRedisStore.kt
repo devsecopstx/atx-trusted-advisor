@@ -2,6 +2,7 @@ package com.atxfinance.backend.auth
 
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.config.RedisEnabledCondition
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Conditional
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -13,6 +14,7 @@ import java.time.Duration
 @Service
 @Conditional(RedisEnabledCondition::class)
 class OAuthPkceRedisStore(
+    @Qualifier("controlRedisTemplate")
     private val redis: org.springframework.data.redis.core.StringRedisTemplate,
     private val props: AtxfinanceProperties,
 ) {

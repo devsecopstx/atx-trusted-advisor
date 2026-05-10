@@ -19,7 +19,8 @@ on:
         required: false
         type: string
       image_ref:
-        description: "Optional immutable image reference (…@sha256:…) to promote without
+        description:
+          "Optional immutable image reference (…@sha256:…) to promote without
           rebuilding"
         required: false
         type: string
@@ -285,6 +286,14 @@ jobs:
           set -euo pipefail
           PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
           SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest,REDIS_URL=REDIS_URL:latest,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:latest,STRIPE_PUBLIC_KEY=STRIPE_PUBLIC_KEY:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest"
+          if gcloud secrets describe REDIS_URL_CONTROL --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+            SECRETS="${SECRETS},REDIS_URL_CONTROL=REDIS_URL_CONTROL:latest"
+            echo "::notice::Redis control-plane secret found — binding REDIS_URL_CONTROL"
+          fi
+          if gcloud secrets describe REDIS_URL_CACHE --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+            SECRETS="${SECRETS},REDIS_URL_CACHE=REDIS_URL_CACHE:latest"
+            echo "::notice::Redis cache-plane secret found — binding REDIS_URL_CACHE"
+          fi
           if gcloud secrets describe GOOGLE_CLIENT_ID --project="$PROJECT" --format='value(name)' >/dev/null 2>&1 && \
             gcloud secrets describe GOOGLE_CLIENT_SECRET --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
             SECRETS="${SECRETS},GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest"
@@ -324,7 +333,7 @@ jobs:
             --memory=1Gi \
             --startup-probe=initialDelaySeconds=30,tcpSocket.port=8080,timeoutSeconds=5,periodSeconds=10,failureThreshold=60 \
             --min-instances=1 \
-            --max-instances=50 \
+            --max-instances=12 \
             --set-env-vars "${ENV_VARS}" \
             --set-secrets "${SECRETS}" \
             --quiet

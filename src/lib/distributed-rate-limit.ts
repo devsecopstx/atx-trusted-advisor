@@ -1,6 +1,6 @@
 import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { getRedisClient } from "@/lib/redis-client";
+import { getRedisClientForPlane } from "@/lib/redis-client";
 
 type DistributedRateLimitInput = {
   key: string;
@@ -113,7 +113,7 @@ export async function checkDistributedRateLimit(
   const key = `ratelimit:${baseKey}`;
 
   try {
-    const redis = await getRedisClient();
+    const redis = await getRedisClientForPlane("control");
     if (redis) {
       const count = await redis.incr(key);
       if (count === 1) {

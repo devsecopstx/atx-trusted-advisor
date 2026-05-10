@@ -1,5 +1,5 @@
 import type { SessionUser } from "@/lib/auth";
-import { getRedisClient } from "@/lib/redis-client";
+import { getRedisClientForPlane } from "@/lib/redis-client";
 import { getTenantRoutePolicyForSession, type TenantRoleFlags } from "@/modules/platform/tenant-route-policy";
 
 export type CachedTenantUxPolicy = {
@@ -60,7 +60,7 @@ export async function getCachedTenantUxPolicyForSession(session: SessionUser): P
 
   const key = policyKey(userId, tenantId);
   try {
-    const redis = await getRedisClient();
+    const redis = await getRedisClientForPlane("control");
     if (redis) {
       const raw = await redis.get(key);
       if (raw) {
@@ -80,7 +80,7 @@ export async function getCachedTenantUxPolicyForSession(session: SessionUser): P
   writeMemory(payload);
 
   try {
-    const redis = await getRedisClient();
+    const redis = await getRedisClientForPlane("control");
     if (redis) {
       await redis.set(key, JSON.stringify(payload), { EX: POLICY_TTL_SECONDS });
     }

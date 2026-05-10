@@ -27,7 +27,7 @@ Values below track **`package.json`** and **`services/atxfinance-backend/gradle/
 
 **Production shape:** two primary deployables on **GCP Cloud Run** — the **Next.js** core app (UI + most `/api/*` route handlers + BFF) and **`atxfinance-backend`** (Kotlin/Spring worker with HTTP parity for migrated slices). Both share **one MongoDB** (tenant data, portfolios, personas, jobs, audit, xChat history when opted in). Optional **Redis** (strategy-job hourly caps, future cache), **Google Pub/Sub** (recommendation events when configured), **Stripe** (billing webhooks + Checkout on Next), and **xAI** (chat + management APIs from Next).
 
-**Cloud Run prod sizing (operator baseline):** **Next** — 1 vCPU, 1Gi, concurrency 100, min 1 / max 50, CPU boost on; **Spring** — 1 vCPU, 1Gi, concurrency 80, min 0 / max 30, CPU boost on. Tables + `gcloud` examples: **`atx-docs/sre-ops/gcp-prod-two-service-model.md`**.
+**Cloud Run prod sizing (operator baseline):** **Next** — 1 vCPU, 1Gi, concurrency 100, min 1 / max 12, CPU boost on; **Spring** — 1 vCPU, 1Gi, concurrency 80, min 1 / max 8, CPU boost on (Redis-budget profile). Tables + `gcloud` examples: **`atx-docs/sre-ops/gcp-prod-two-service-model.md`**.
 
 ```mermaid
 flowchart TB

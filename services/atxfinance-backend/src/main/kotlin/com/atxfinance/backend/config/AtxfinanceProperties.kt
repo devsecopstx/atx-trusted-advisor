@@ -95,11 +95,35 @@ data class AtxfinanceProperties(
 data class RedisProps(
     /** `redis://` or `rediss://` (same as Next `REDIS_URL`). */
     val url: String = "",
+    /** Dedicated control-plane URL (auth/PKCE/rate/quota). Falls back to [url]. */
+    val controlUrl: String = "",
+    /** Dedicated cache-plane URL (workspace snapshots, option-chain cache). Falls back to [url]. */
+    val cacheUrl: String = "",
     /**
      * When true, a `rediss://` URL is dialed as plain TCP (matches Next when `REDIS_TLS=false`
      * against a non-TLS port).
      */
     val tlsPlainWithRediss: Boolean = false,
+    /** Low command timeout keeps Redis hiccups from stalling HTTP/Scheduler threads. */
+    val commandTimeoutMs: Long = 750,
+    /** Connect timeout for socket dialing/reconnect attempts. */
+    val connectTimeoutMs: Long = 750,
+    /** Pool max active connections per Cloud Run instance. */
+    val poolMaxActive: Int = 6,
+    /** Pool max idle connections retained. */
+    val poolMaxIdle: Int = 6,
+    /** Pool min idle connections retained. */
+    val poolMinIdle: Int = 1,
+    /** Max wait for a pooled connection before failing fast. */
+    val poolMaxWaitMs: Long = 300,
+    /** Idle connections older than this are evicted proactively. */
+    val poolMinEvictableIdleMs: Long = 60_000,
+    /** Periodic idle-eviction sweep interval. */
+    val poolEvictionRunIntervalMs: Long = 30_000,
+    /** Adaptive reconnect backoff lower bound (ms). */
+    val reconnectBackoffMinMs: Long = 200,
+    /** Adaptive reconnect backoff upper bound (ms). */
+    val reconnectBackoffMaxMs: Long = 10_000,
     /** OAuth PKCE verifier row TTL (seconds). */
     val pkceTtlSeconds: Long = 600,
     /** Max GET `/api/auth/x/login` per client IP per rolling minute (0 = disable). */

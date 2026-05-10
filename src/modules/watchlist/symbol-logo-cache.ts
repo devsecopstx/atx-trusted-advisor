@@ -1,4 +1,4 @@
-import { getRedisClient } from "@/lib/redis-client";
+import { getRedisClientForPlane } from "@/lib/redis-client";
 
 import { defaultWatchlistLogoUrl, equityLogoKeyRoot } from "@/modules/watchlist/equity-logo-url";
 
@@ -40,7 +40,7 @@ export async function resolveCachedEquityLogoUrl(normalizedSymbolUpper: string):
     return mem.url;
   }
 
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("cache");
   if (redis) {
     try {
       const hit = await redis.get(`${REDIS_KEY_PREFIX}${root}`);

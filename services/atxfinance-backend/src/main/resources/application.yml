@@ -73,7 +73,19 @@ app:
     portfolio-workspace-snapshot-purge-interval-ms: ${PORTFOLIO_WORKSPACE_SNAPSHOT_PURGE_INTERVAL_MS:21600000}
     redis:
       url: ${REDIS_URL:}
+      control-url: ${REDIS_URL_CONTROL:${REDIS_URL:}}
+      cache-url: ${REDIS_URL_CACHE:${REDIS_URL:}}
       tls-plain-with-rediss: ${REDIS_TLS_PLAIN_WITH_REDISS:false}
+      command-timeout-ms: ${REDIS_COMMAND_TIMEOUT_MS:750}
+      connect-timeout-ms: ${REDIS_CONNECT_TIMEOUT_MS:750}
+      pool-max-active: ${REDIS_POOL_MAX_ACTIVE:6}
+      pool-max-idle: ${REDIS_POOL_MAX_IDLE:6}
+      pool-min-idle: ${REDIS_POOL_MIN_IDLE:1}
+      pool-max-wait-ms: ${REDIS_POOL_MAX_WAIT_MS:300}
+      pool-min-evictable-idle-ms: ${REDIS_POOL_MIN_EVICTABLE_IDLE_MS:60000}
+      pool-eviction-run-interval-ms: ${REDIS_POOL_EVICTION_RUN_INTERVAL_MS:30000}
+      reconnect-backoff-min-ms: ${REDIS_RECONNECT_BACKOFF_MIN_MS:200}
+      reconnect-backoff-max-ms: ${REDIS_RECONNECT_BACKOFF_MAX_MS:10000}
       pkce-ttl-seconds: ${OAUTH_PKCE_REDIS_TTL_SECONDS:600}
       auth-login-limit-per-minute: ${AUTH_RATE_LIMIT_LOGIN_PER_MINUTE:30}
       auth-callback-limit-per-minute: ${AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE:60}

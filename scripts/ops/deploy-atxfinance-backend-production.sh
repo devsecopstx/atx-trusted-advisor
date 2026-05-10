@@ -14,6 +14,8 @@ REGION="${CLOUD_RUN_REGION:-us-central1}"
 # Default matches .github/workflows/deploy-cloud-run-production.yml (atxfinance-core-app).
 REPO="${ARTIFACT_REGISTRY_REPO:-atxfinance-core-app}"
 SERVICE="${ATXFINANCE_BACKEND_CLOUD_RUN_SERVICE:-atxfinance-backend-prod}"
+BACKEND_MIN_INSTANCES_PROD="${BACKEND_MIN_INSTANCES_PROD:-1}"
+BACKEND_MAX_INSTANCES_PROD="${BACKEND_MAX_INSTANCES_PROD:-8}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TAG="${DEPLOY_TAG:-$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo manual)}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/atxfinance-backend-prod:${TAG}"
@@ -32,6 +34,14 @@ if gcloud secrets describe REDIS_URL --project="${PROJECT}" --format='value(name
   SECRETS="${SECRETS},REDIS_URL=REDIS_URL:latest"
   echo "==> Binding REDIS_URL secret (present in project)"
 fi
+if gcloud secrets describe REDIS_URL_CONTROL --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},REDIS_URL_CONTROL=REDIS_URL_CONTROL:latest"
+  echo "==> Binding REDIS_URL_CONTROL secret (present in project)"
+fi
+if gcloud secrets describe REDIS_URL_CACHE --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},REDIS_URL_CACHE=REDIS_URL_CACHE:latest"
+  echo "==> Binding REDIS_URL_CACHE secret (present in project)"
+fi
 if gcloud secrets describe ATX_SCHEDULER_INTERNAL_SECRET --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
   gcloud secrets describe ATX_SCHEDULER_NEXT_BASE_URL --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
   SECRETS="${SECRETS},ATX_SCHEDULER_INTERNAL_SECRET=ATX_SCHEDULER_INTERNAL_SECRET:latest,ATX_SCHEDULER_NEXT_BASE_URL=ATX_SCHEDULER_NEXT_BASE_URL:latest"
@@ -48,8 +58,8 @@ gcloud run deploy "${SERVICE}" \
   --port=8080 \
   --cpu=1 \
   --memory=1Gi \
-  --min-instances=1 \
-  --max-instances=30 \
+  --min-instances="${BACKEND_MIN_INSTANCES_PROD}" \
+  --max-instances="${BACKEND_MAX_INSTANCES_PROD}" \
   --set-secrets="${SECRETS}" \
   --quiet
 

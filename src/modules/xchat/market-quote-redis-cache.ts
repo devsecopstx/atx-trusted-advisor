@@ -1,5 +1,5 @@
 import {
-    getRedisClient,
+    getRedisClientForPlane,
     getRedisQuoteCacheTtlClosedSeconds,
     getRedisQuoteCacheTtlSeconds
 } from "@/lib/redis-client";
@@ -36,7 +36,7 @@ export async function tryGetRedisMarketQuote(symbol: string): Promise<MarketQuot
   if (!sym) {
     return null;
   }
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("cache");
   if (!redis) {
     return null;
   }
@@ -64,7 +64,7 @@ export async function setRedisMarketQuote(
   if (!sym) {
     return;
   }
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("cache");
   if (!redis) {
     return;
   }

@@ -2,6 +2,7 @@ package com.atxfinance.backend.strategy
 
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.config.RedisEnabledCondition
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Conditional
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
@@ -19,6 +20,7 @@ import java.time.format.DateTimeFormatter
 @Component
 @Conditional(RedisEnabledCondition::class)
 class StrategyJobRedisQuota(
+    @Qualifier("controlRedisTemplate")
     private val redis: StringRedisTemplate,
     private val props: AtxfinanceProperties,
 ) {

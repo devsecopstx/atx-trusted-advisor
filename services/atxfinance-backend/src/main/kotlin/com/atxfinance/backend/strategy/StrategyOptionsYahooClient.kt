@@ -5,6 +5,7 @@ import com.atxfinance.backend.portfolio.UsEquitiesRegularSession
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -20,6 +21,7 @@ import java.time.format.DateTimeFormatter
 @Component
 class StrategyOptionsYahooClient(
     private val objectMapper: ObjectMapper,
+    @Qualifier("cacheRedisTemplate")
     private val redisProvider: ObjectProvider<StringRedisTemplate>,
     private val propsProvider: ObjectProvider<AtxfinanceProperties>,
 ) {

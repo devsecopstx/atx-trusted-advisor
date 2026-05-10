@@ -8,6 +8,7 @@ import jakarta.servlet.ServletRequest
 import jakarta.servlet.ServletResponse
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Conditional
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
@@ -23,6 +24,7 @@ import java.time.Duration
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Conditional(RedisEnabledCondition::class)
 class AuthPathRateLimitFilter(
+    @Qualifier("controlRedisTemplate")
     private val redis: StringRedisTemplate,
     private val props: AtxfinanceProperties,
 ) : Filter {
@@ -47,9 +49,15 @@ class AuthPathRateLimitFilter(
         val kind = if (uri.contains("/login")) "login" else "cb"
         val bucket = System.currentTimeMillis() / 60_000L
         val key = "xf:rl:auth:$kind:$ip:$bucket"
-        val n = redis.opsForValue().increment(key) ?: 1L
-        if (n == 1L) {
-            redis.expire(key, Duration.ofMinutes(2))
+        val n = try {
+            val next = redis.opsForValue().increment(key) ?: 1L
+            if (next == 1L) {
+                redis.expire(key, Duration.ofMinutes(2))
+            }
+            next
+        } catch (_: Exception) {
+            chain.doFilter(request, response)
+            return
         }
         if (n > limit) {
             res.status = 429

@@ -7,8 +7,25 @@ export type RedisHealth =
 
 type AtxRedisClient = ReturnType<typeof createClient>;
 
-let client: AtxRedisClient | undefined;
-let connectFailed = false;
+type RedisPlane = "control" | "cache";
+type RedisPlaneState = {
+  client: AtxRedisClient | undefined;
+  consecutiveFailures: number;
+  nextRetryAtMs: number;
+};
+
+const planeState: Record<RedisPlane, RedisPlaneState> = {
+  control: {
+    client: undefined,
+    consecutiveFailures: 0,
+    nextRetryAtMs: 0
+  },
+  cache: {
+    client: undefined,
+    consecutiveFailures: 0,
+    nextRetryAtMs: 0
+  }
+};
 
 /** OpenSSL / Node TLS when the server speaks plain Redis on the same port (wrong scheme). */
 export function isLikelyRedisTlsPlainMismatch(message: string): boolean {
@@ -40,7 +57,19 @@ async function destroyRedisAttempt(c: AtxRedisClient): Promise<void> {
  * `REDIS_URL` — `rediss://` against a plain endpoint causes TLS parse errors and reconnect spam.
  */
 export function getRedisConnectionUrl(): string | undefined {
-  const raw = process.env.REDIS_URL?.trim();
+  return getRedisConnectionUrlForPlane("control");
+}
+
+function getRawRedisUrlForPlane(plane: RedisPlane): string | undefined {
+  const candidates =
+    plane === "control"
+      ? [process.env.REDIS_URL_CONTROL, process.env.REDIS_CONTROL_URL, process.env.REDIS_URL]
+      : [process.env.REDIS_URL_CACHE, process.env.REDIS_CACHE_URL, process.env.REDIS_URL];
+  return candidates.map((v) => v?.trim()).find((v) => Boolean(v));
+}
+
+export function getRedisConnectionUrlForPlane(plane: RedisPlane): string | undefined {
+  const raw = getRawRedisUrlForPlane(plane);
   if (!raw) {
     return undefined;
   }
@@ -100,15 +129,27 @@ export function getRedisConnectTimeoutMs(): number {
 }
 
 export async function getRedisClient(): Promise<AtxRedisClient | null> {
-  const url = getRedisConnectionUrl();
+  return getRedisClientForPlane("control");
+}
+
+function resolveBackoffMs(consecutiveFailures: number): number {
+  // 250ms, 500ms, 1s, 2s, 4s ... up to 60s
+  const exp = Math.max(0, Math.min(8, consecutiveFailures));
+  return Math.min(60_000, 250 * 2 ** exp);
+}
+
+export async function getRedisClientForPlane(plane: RedisPlane): Promise<AtxRedisClient | null> {
+  const url = getRedisConnectionUrlForPlane(plane);
   if (!url) {
     return null;
   }
-  if (connectFailed) {
+  const state = planeState[plane];
+  const now = Date.now();
+  if (state.nextRetryAtMs > now) {
     return null;
   }
-  if (client) {
-    return client;
+  if (state.client) {
+    return state.client;
   }
 
   const attempts: string[] =
@@ -128,12 +169,14 @@ export async function getRedisClient(): Promise<AtxRedisClient | null> {
       // Attach only after connect — a failed rediss:// attempt can emit async TLS errors on the
       // socket; logging those from a discarded client caused terminal spam.
       c.on("error", (err) => {
-        console.warn("[redis] client error", err instanceof Error ? err.message : String(err));
+        console.warn(`[redis/${plane}] client error`, err instanceof Error ? err.message : String(err));
       });
-      client = c;
+      state.client = c;
+      state.consecutiveFailures = 0;
+      state.nextRetryAtMs = 0;
       if (i > 0) {
         console.info(
-          "[redis] connected with redis:// — endpoint uses plain TCP; set REDIS_URL to redis://… to match redis-cli and skip TLS retry"
+          `[redis/${plane}] connected with redis:// — endpoint uses plain TCP; set Redis URL to redis://… to match redis-cli and skip TLS retry`
         );
       }
       return c;
@@ -151,7 +194,7 @@ export async function getRedisClient(): Promise<AtxRedisClient | null> {
         isLikelyRedisTlsPlainMismatch(msg);
       if (tryPlain) {
         console.warn(
-          "[redis] TLS handshake failed on rediss:// (server likely speaks plain Redis). Retrying with redis:// …"
+          `[redis/${plane}] TLS handshake failed on rediss:// (server likely speaks plain Redis). Retrying with redis:// …`
         );
         continue;
       }
@@ -159,22 +202,28 @@ export async function getRedisClient(): Promise<AtxRedisClient | null> {
     }
   }
 
-  connectFailed = true;
+  state.consecutiveFailures += 1;
+  const backoffMs = resolveBackoffMs(state.consecutiveFailures);
+  state.nextRetryAtMs = Date.now() + backoffMs;
   console.warn(
-    "[redis] connect failed",
+    `[redis/${plane}] connect failed; next retry in ${String(backoffMs)}ms`,
     lastError instanceof Error ? lastError.message : String(lastError)
   );
   return null;
 }
 
 export async function checkRedisHealth(): Promise<RedisHealth> {
-  const url = getRedisConnectionUrl();
+  return checkRedisHealthForPlane("control");
+}
+
+export async function checkRedisHealthForPlane(plane: RedisPlane): Promise<RedisHealth> {
+  const url = getRedisConnectionUrlForPlane(plane);
   if (!url) {
     return { status: "skipped", reason: "REDIS_URL unset or invalid" };
   }
   const started = Date.now();
   try {
-    const c = await getRedisClient();
+    const c = await getRedisClientForPlane(plane);
     if (!c) {
       return { status: "error", message: "connect_failed" };
     }
@@ -190,36 +239,42 @@ export async function checkRedisHealth(): Promise<RedisHealth> {
  * Does not throw; Redis remains optional when `REDIS_URL` is unset.
  */
 export async function logRedisStartupHealthCheck(): Promise<void> {
-  const url = getRedisConnectionUrl();
-  if (!url) {
-    console.info("[startup/redis] skipped — REDIS_URL unset or invalid");
-    return;
+  for (const plane of ["control", "cache"] as const) {
+    const url = getRedisConnectionUrlForPlane(plane);
+    if (!url) {
+      console.info(`[startup/redis/${plane}] skipped — REDIS_URL unset or invalid`);
+      continue;
+    }
+    const h = await checkRedisHealthForPlane(plane);
+    if (h.status === "ok") {
+      console.info(`[startup/redis/${plane}] ok ping latencyMs=${String(h.latencyMs)}`);
+      continue;
+    }
+    if (h.status === "skipped") {
+      console.info(`[startup/redis/${plane}] skipped — ${h.reason}`);
+      continue;
+    }
+    console.warn(`[startup/redis/${plane}] unhealthy — ${h.message}`);
   }
-  const h = await checkRedisHealth();
-  if (h.status === "ok") {
-    console.info(`[startup/redis] ok ping latencyMs=${String(h.latencyMs)}`);
-    return;
-  }
-  if (h.status === "skipped") {
-    console.info(`[startup/redis] skipped — ${h.reason}`);
-    return;
-  }
-  console.warn(`[startup/redis] unhealthy — ${h.message}`);
 }
 
 /** Vitest-only: reset process-local singleton + failure flag. */
 export async function resetRedisClientForTests(): Promise<void> {
-  connectFailed = false;
-  if (client) {
-    try {
-      await client.quit();
-    } catch {
+  for (const plane of ["control", "cache"] as const) {
+    const state = planeState[plane];
+    state.consecutiveFailures = 0;
+    state.nextRetryAtMs = 0;
+    if (state.client) {
       try {
-        await client.disconnect();
+        await state.client.quit();
       } catch {
-        /* ignore */
+        try {
+          await state.client.disconnect();
+        } catch {
+          /* ignore */
+        }
       }
+      state.client = undefined;
     }
-    client = undefined;
   }
 }

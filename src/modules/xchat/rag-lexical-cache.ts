@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { getRedisClient } from "@/lib/redis-client";
+import { getRedisClientForPlane } from "@/lib/redis-client";
 import type { XaiCollectionSearchSnippet } from "@/lib/xai";
 
 const MEMORY_MAX = 200;
@@ -79,7 +79,7 @@ function parseSnippets(raw: string): XaiCollectionSearchSnippet[] | null {
 }
 
 export async function tryGetRagLexicalCache(key: string): Promise<XaiCollectionSearchSnippet[] | null> {
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("cache");
   if (redis) {
     try {
       const raw = await redis.get(key);
@@ -111,7 +111,7 @@ export async function setRagLexicalCache(
     return;
   }
   const json = JSON.stringify(snippets);
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("cache");
   if (redis) {
     try {
       await redis.set(key, json, { EX: ttlSeconds });

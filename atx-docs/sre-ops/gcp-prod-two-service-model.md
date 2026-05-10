@@ -19,7 +19,7 @@ Legacy duplicate Next services (`fintech-advisor-prod`, etc.) should receive **n
 
 ## Recommended Cloud Run capacity (production baseline)
 
-Operator-chosen defaults for **prod** (April 2026). Apply in **GCP Console → Cloud Run → service → Edit & deploy new revision**, or mirror with `gcloud run deploy` / `gcloud run services update`. **Production** Next deploys (**`deploy-cloud-run-from-env.sh`**, **`Deploy Cloud Run`**, **`Deploy Cloud Run Production`**) pass **`--min-instances=1`** and **`--max-instances=50`**; **`deploy-atxfinance-backend-production.sh`** passes **`--min-instances=1`** and **`--max-instances=30`**. CPU, memory, concurrency, and CPU boost are still **not** set by those commands unless you add flags — a deploy that omits them **leaves existing values**; set capacity in Console when you need explicit control.
+Operator-chosen defaults for **prod** (May 2026, Redis-budget profile). Apply in **GCP Console → Cloud Run → service → Edit & deploy new revision**, or mirror with `gcloud run deploy` / `gcloud run services update`. **Production** Next deploys (**`deploy-cloud-run-from-env.sh`**, **`Deploy Cloud Run`**, **`Deploy Cloud Run Production`**) now default to **`--min-instances=1`** and **`--max-instances=12`**; **`deploy-atxfinance-backend-production.sh`** now defaults to **`--min-instances=1`** and **`--max-instances=8`**. CPU, memory, concurrency, and CPU boost are still **not** set by those commands unless you add flags — a deploy that omits them **leaves existing values**; set capacity in Console when you need explicit control.
 
 Use the **Next.js** row for whichever service serves **`PROD_BASE_URL`** today (**`fintech-advisor-prod`** until cutover to **`xfinance-core-prod`**, per §3–§4).
 
@@ -31,7 +31,7 @@ Use the **Next.js** row for whichever service serves **`PROD_BASE_URL`** today (
 | Memory | **1Gi** | Safer than 512Mi for Apex charts + large payloads |
 | Max concurrent requests per instance | **100** | `containerConcurrency` |
 | Min instances | **1** | Warm instance; fewer cold starts for HNWI-style traffic |
-| Max instances | **50** | |
+| Max instances | **12** | Redis-budget profile (shared plan cap) |
 | CPU boost | **On** | `gcloud … --cpu-boost` — extra CPU during **container startup** (cold starts) |
 | Startup CPU boost | **On** | Same capability in Console wording; align with **CPU boost** / `--cpu-boost` |
 
@@ -41,7 +41,7 @@ Use the **Next.js** row for whichever service serves **`PROD_BASE_URL`** today (
 gcloud run services update fintech-advisor-prod \
   --project fintech-advisor-prod --region us-central1 \
   --cpu=1 --memory=1Gi --concurrency=100 \
-  --min-instances=1 --max-instances=50 \
+  --min-instances=1 --max-instances=12 \
   --cpu-boost --quiet
 ```
 
@@ -53,7 +53,7 @@ gcloud run services update fintech-advisor-prod \
 | Memory | **1Gi** | Bump to **2Gi** only if you see OOM on heavy strategy jobs |
 | Max concurrent requests per instance | **80** | I/O + Mongo |
 | Min instances | **1** | Warm floor for BFF latency to Next and strategy jobs |
-| Max instances | **30** | |
+| Max instances | **8** | Redis-budget profile (shared plan cap) |
 | CPU boost | **On** | `--cpu-boost` |
 | Startup CPU boost | **On** | Same as frontend |
 
@@ -63,7 +63,7 @@ gcloud run services update fintech-advisor-prod \
 gcloud run services update atxfinance-backend-prod \
   --project fintech-advisor-prod --region us-central1 \
   --cpu=1 --memory=1Gi --concurrency=80 \
-  --min-instances=1 --max-instances=30 \
+  --min-instances=1 --max-instances=8 \
   --cpu-boost --quiet
 ```
 

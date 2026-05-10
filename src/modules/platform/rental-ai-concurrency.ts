@@ -3,7 +3,7 @@
  * When `REDIS_URL` resolves and Redis accepts commands, uses a short-TTL counter key per tenant.
  * Otherwise falls back to an in-process map (honest for single-instance only).
  */
-import { getRedisClient } from "@/lib/redis-client";
+import { getRedisClientForPlane } from "@/lib/redis-client";
 
 type SlotMap = Map<string, number>;
 
@@ -64,7 +64,7 @@ async function tryAcquireRentalAiInflightRedis(
   maxConcurrent: number,
   ttlSeconds: number
 ): Promise<boolean | null> {
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("control");
   if (!redis) {
     return null;
   }
@@ -77,7 +77,7 @@ async function tryAcquireRentalAiInflightRedis(
 }
 
 async function releaseRentalAiInflightRedis(tenantIdHex: string): Promise<void> {
-  const redis = await getRedisClient();
+  const redis = await getRedisClientForPlane("control");
   if (!redis) {
     return;
   }

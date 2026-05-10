@@ -17,8 +17,11 @@
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `REDIS_URL` | No | Full connection URL. Examples: `redis://default:PASSWORD@host:14617` or `rediss://default:PASSWORD@host:14617` (Redis Cloud often requires TLS). |
+| `REDIS_URL` | No | Backward-compatible single URL used by both planes when split vars are unset. |
+| `REDIS_URL_CONTROL` / `REDIS_CONTROL_URL` | No | **Control plane** URL for distributed rate limits + rental concurrency + tenant-ux policy cache. Falls back to `REDIS_URL`. |
+| `REDIS_URL_CACHE` / `REDIS_CACHE_URL` | No | **Cache plane** URL for market quote, logo, lexical RAG, and workspace snapshot caches. Falls back to `REDIS_URL`. |
 | `REDIS_TLS` | No | Set to **`false`**, **`0`**, **`off`**, or **`no`** to treat a `rediss://` URL as **plain** `redis://` (fixes TLS parse errors when the port is not actually TLS). |
+| `REDIS_CONNECT_TIMEOUT_MS` | No | Connect timeout for each plane client (100–10000; default 750). |
 | `REDIS_QUOTE_CACHE_TTL_SECONDS` | No | **Only** Yahoo batch quote cache TTL in seconds (clamped **5–3600**, default **30**). Does **not** affect connection or TLS. |
 | `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` | No | xChat **full workspace snapshot** JSON TTL (clamped **30–900**, default **120**). Keys: `buildWorkspaceSnapshotCacheKey` in `src/modules/xchat/workspace-snapshot-cache.ts`. Invalidated via `workspaceContentRev` bump on book writes. See [mongo-indexing-guide.md](./mongo-indexing-guide.md) §7.5. |
 
@@ -45,6 +48,12 @@ printf '%s' 'rediss://...' | gcloud secrets versions add REDIS_URL --data-file=-
 ```
 
 Grant the Cloud Run runtime service account **Secret Manager Secret Accessor** on `REDIS_URL`, then redeploy (workflow auto-binds when the secret exists).
+
+## Plane split strategy (HNWI-safe default)
+
+- **Control plane keys**: `ratelimit:*`, `xf:rental-ai:inflight:*`, `tenant-ux:policy:v2:*`
+- **Cache plane keys**: `xchat:market_quote:*`, `xf:yahoo:batch:v1:*`, `xf:equity:logo:*`, `xf:wsnap:v1:*`, `xf:rag:lexical:*`
+- Keep these on separate Redis instances (or at least DB indexes + ACL users) so cache churn cannot starve control-path reliability.
 
 ## TTL policy (v1)
 

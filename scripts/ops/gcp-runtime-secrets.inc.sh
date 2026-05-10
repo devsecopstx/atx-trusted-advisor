@@ -33,6 +33,9 @@ GCP_RUNTIME_SECRETS_GOOGLE_OAUTH=(
 GCP_RUNTIME_SECRETS_OPTIONAL=(
   "GOOGLE_CLIENT_ID"
   "GOOGLE_CLIENT_SECRET"
+  # Optional Redis plane split (control vs cache). Falls back to REDIS_URL when unset.
+  "REDIS_URL_CONTROL"
+  "REDIS_URL_CACHE"
   # JVM → Next `POST /api/internal/scheduler/execute-task` (Spring Cloud Run). Sync: sync-scheduler-delegate-secrets-from-env.sh
   "ATX_SCHEDULER_INTERNAL_SECRET"
   "ATX_SCHEDULER_NEXT_BASE_URL"
