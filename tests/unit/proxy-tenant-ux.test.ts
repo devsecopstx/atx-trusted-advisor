@@ -28,6 +28,7 @@ describe("proxy tenant ux helpers", () => {
     expect(resolvePolicyPathForRequest("/api/user/watchlist")).toBe("/watchlist");
     expect(resolvePolicyPathForRequest("/api/portfolios/abc/alerts")).toBe("/portfolio");
     expect(resolvePolicyPathForRequest("/api/integrations/ibkr/accounts")).toBe("/account");
+    expect(resolvePolicyPathForRequest("/api/tasks")).toBe("/workspace/tasks");
     expect(resolvePolicyPathForRequest("/api/portfolios/default")).toBe("/portfolio");
     expect(resolvePolicyPathForRequest("/workspace/portfolios")).toBe("/workspace");
     expect(resolvePolicyPathForRequest("/workspace/tasks")).toBe("/workspace/tasks");

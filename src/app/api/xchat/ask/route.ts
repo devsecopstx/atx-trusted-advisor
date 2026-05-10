@@ -954,9 +954,13 @@ export async function POST(request: Request) {
     reasoningEffort: parsed.data.reasoningEffort,
     clientQuoteFreshness: parsed.data.quoteFreshness
   });
+  const workspacePortfolioScoped =
+    typeof workspacePortfolioId === "string" && workspacePortfolioId.trim().length > 0;
   const likelyDirectWorkspaceToolPath =
     !visionImage &&
-    (showWatchlistIntent || shouldRunOptionsActionScan(messageTrimmed));
+    (showWatchlistIntent ||
+      shouldRunOptionsActionScan(messageTrimmed) ||
+      workspacePortfolioScoped);
   const shouldEagerWorkspacePreload = hasXfinanceTool && likelyDirectWorkspaceToolPath;
   const ragAndPreloadStartedAt = Date.now();
 

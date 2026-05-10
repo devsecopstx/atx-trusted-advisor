@@ -1,16 +1,16 @@
 import { APP_VERSION } from "@/lib/app-version";
 import { ATX_CLUSTER_OPENAPI_SCHEMAS } from "@/lib/openapi/cluster-schemas";
 import {
-  CURRENT_STATE_COMPONENT_SCHEMAS,
-  getCurrentStateOperationOverride
+    CURRENT_STATE_COMPONENT_SCHEMAS,
+    getCurrentStateOperationOverride
 } from "@/lib/openapi/current-state-overrides";
 import type {
-  HttpMethod,
-  OpenApiDocument,
-  OpenApiOperation,
-  OpenApiParameter,
-  OpenApiPathItem,
-  OpenApiResponse
+    HttpMethod,
+    OpenApiDocument,
+    OpenApiOperation,
+    OpenApiParameter,
+    OpenApiPathItem,
+    OpenApiResponse
 } from "@/lib/openapi/types";
 
 type AuthScope = "public" | "session" | "admin";
@@ -686,6 +686,19 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-platform"
   },
   {
+    path: "/api/admin/platform/tenant-ux/fail-closed-drill",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-platform"
+  },
+  {
+    path: "/api/admin/platform/tenant-ux/observability",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-platform"
+  },
+  {
     path: "/api/admin/portfolios",
     operations: [
       { method: "GET", auth: "admin" },
@@ -860,6 +873,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   {
     path: "/api/admin/tenants/{tenantId}/roles/{role}",
     operations: [{ method: "PATCH", auth: "admin", hasRequestBody: true }],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/policy-cache",
+    operations: [{ method: "POST", auth: "admin" }],
     tag: "admin-tenants"
   },
   {

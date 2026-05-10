@@ -19,6 +19,8 @@ describe("resolvePolicyPathForRequest", () => {
     expect(resolvePolicyPathForRequest("/api/portfolios/abc/alerts/def/narrative")).toBe("/portfolio");
     expect(resolvePolicyPathForRequest("/api/integrations/ibkr/accounts")).toBe("/account");
     expect(resolvePolicyPathForRequest("/api/portfolios/x")).toBe("/portfolio");
+    expect(resolvePolicyPathForRequest("/api/tasks")).toBe("/workspace/tasks");
+    expect(resolvePolicyPathForRequest("/api/tasks/abc/runs")).toBe("/workspace/tasks");
     expect(resolvePolicyPathForRequest("/api/tenant-tasks/x")).toBe("/workspace");
     expect(resolvePolicyPathForRequest("/workspace/tasks")).toBe("/workspace/tasks");
     expect(resolvePolicyPathForRequest("/workspace/desk")).toBe("/workspace");

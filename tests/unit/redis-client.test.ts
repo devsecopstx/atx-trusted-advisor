@@ -137,7 +137,9 @@ describe("redis-client", () => {
     } as never);
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     await logRedisStartupHealthCheck();
-    expect(info).toHaveBeenCalledWith(expect.stringMatching(/\[startup\/redis\] ok ping latencyMs=\d+/));
+    expect(info).toHaveBeenCalledWith(
+      expect.stringMatching(/\[startup\/redis\/(control|cache)\] ok ping latencyMs=\d+/)
+    );
     info.mockRestore();
   });
 
@@ -145,7 +147,13 @@ describe("redis-client", () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     await logRedisStartupHealthCheck();
     expect(info).toHaveBeenCalledWith(
-      expect.stringContaining("[startup/redis] skipped — REDIS_URL unset or invalid")
+      expect.stringContaining("skipped — REDIS_URL unset or invalid")
+    );
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining("[startup/redis/control]")
+    );
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining("[startup/redis/cache]")
     );
     info.mockRestore();
   });
