@@ -42,7 +42,7 @@ export function GlobalFooter({ subline, className }: GlobalFooterProps) {
             </span>
           ))}
         </nav>
-        <div className="app-footer-subline flex-1 text-center" aria-label="Disclaimer">
+        <div className="app-footer-subline-stack app-footer-subline flex-1 text-center" aria-label="Disclaimer">
           {effectiveSubline}
         </div>
         <div className="app-footer-meta flex-none" aria-label="Copyright">
