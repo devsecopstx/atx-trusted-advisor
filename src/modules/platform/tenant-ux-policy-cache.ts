@@ -101,7 +101,7 @@ async function deleteTenantPolicyKeysFromRedis(tenantId: string): Promise<number
     return 0;
   }
   const pattern = tenantPolicyPattern(tenantId);
-  let cursor = "0";
+  let cursor = 0;
   let deleted = 0;
   do {
     const chunk = await redis.scan(cursor, {
@@ -112,7 +112,7 @@ async function deleteTenantPolicyKeysFromRedis(tenantId: string): Promise<number
     if (chunk.keys.length > 0) {
       deleted += await redis.del(chunk.keys);
     }
-  } while (cursor !== "0");
+  } while (cursor !== 0);
   return deleted;
 }
 

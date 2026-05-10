@@ -12,17 +12,17 @@ type ManifestIcon = {
   src: string;
   type: string;
   sizes: string;
-  purpose?: string;
+  purpose?: "any" | "maskable" | "monochrome";
 };
 
 const DEFAULT_ICONS: ManifestIcon[] = [
-  { src: "/icons/icon-48.webp", type: "image/webp", sizes: "48x48", purpose: "any maskable" },
-  { src: "/icons/icon-72.webp", type: "image/webp", sizes: "72x72", purpose: "any maskable" },
-  { src: "/icons/icon-96.webp", type: "image/webp", sizes: "96x96", purpose: "any maskable" },
-  { src: "/icons/icon-128.webp", type: "image/webp", sizes: "128x128", purpose: "any maskable" },
-  { src: "/icons/icon-192.webp", type: "image/webp", sizes: "192x192", purpose: "any maskable" },
-  { src: "/icons/icon-256.webp", type: "image/webp", sizes: "256x256", purpose: "any maskable" },
-  { src: "/icons/icon-512.webp", type: "image/webp", sizes: "512x512", purpose: "any maskable" }
+  { src: "/icons/icon-48.webp", type: "image/webp", sizes: "48x48", purpose: "maskable" },
+  { src: "/icons/icon-72.webp", type: "image/webp", sizes: "72x72", purpose: "maskable" },
+  { src: "/icons/icon-96.webp", type: "image/webp", sizes: "96x96", purpose: "maskable" },
+  { src: "/icons/icon-128.webp", type: "image/webp", sizes: "128x128", purpose: "maskable" },
+  { src: "/icons/icon-192.webp", type: "image/webp", sizes: "192x192", purpose: "maskable" },
+  { src: "/icons/icon-256.webp", type: "image/webp", sizes: "256x256", purpose: "maskable" },
+  { src: "/icons/icon-512.webp", type: "image/webp", sizes: "512x512", purpose: "maskable" }
 ];
 
 function normalizeShortName(name: string): string {
@@ -58,9 +58,13 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const tenantLogo = String(tenant?.tenantPreferences?.xf_tenant_logo_url ?? "").trim();
   const accent = branding?.accentColor?.trim() || DEFAULT_THEME_COLOR;
   const tenantTagline = String(tenant?.tenantPreferences?.xf_tenant_tagline ?? "").trim();
-  const icons = tenantLogo
-    ? [{ src: tenantLogo, type: "image/png", sizes: "512x512", purpose: "any maskable" }, ...DEFAULT_ICONS]
-    : DEFAULT_ICONS;
+  const tenantLogoIcon: ManifestIcon = {
+    src: tenantLogo,
+    type: "image/png",
+    sizes: "512x512",
+    purpose: "maskable"
+  };
+  const icons = tenantLogo ? [tenantLogoIcon, ...DEFAULT_ICONS] : DEFAULT_ICONS;
 
   return {
     name: tenantName,

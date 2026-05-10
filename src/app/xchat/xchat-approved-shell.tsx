@@ -41,20 +41,18 @@ export async function XchatApprovedShell({
   requestedPortfolioId,
   requestedAccountId
 }: XchatApprovedShellProps) {
-  const shellStartedAt = Date.now();
   const isAdminSession = isGlobalAdmin(session.roles);
-  const markPerf = (stage: string, startedAt: number, details?: Record<string, unknown>) => {
+  const markPerf = (stage: string, details?: Record<string, unknown>) => {
     logXchatPerfDebug({
       surface: "xchat_page",
       stage,
-      durationMs: Date.now() - startedAt,
+      durationMs: 0,
       details
     });
   };
 
   const defaultPersonaPromise = loadDefaultXchatPersonaForSessionDeduped(session.roles);
 
-  const workspaceBookStartedAt = Date.now();
   const workspaceBookPromise = (async (): Promise<{
     workspaceBook: AppUserDefaultBook | null;
     workspacePortfolioId: string | null;
@@ -101,7 +99,7 @@ export async function XchatApprovedShell({
       routePolicyPromise,
       tenantShellPromise
     ]);
-  markPerf("parallel_bootstrap", workspaceBookStartedAt, {
+  markPerf("parallel_bootstrap", {
     usedRequestedPortfolio: workspaceBookState.syncWorkspacePortfolioCookie
   });
 
@@ -110,9 +108,8 @@ export async function XchatApprovedShell({
   const syncWorkspacePortfolioCookie = workspaceBookState.syncWorkspacePortfolioCookie;
   const workspaceChangePersonaEnabled = wl.changePersonaEnabled;
   const workspaceChatHistoryMax = wl.chatHistoryMax;
-  const bootstrapStartedAt = Date.now();
   const serverBootstrap = await getXchatServerShellBootstrap(session, workspaceChatHistoryMax);
-  markPerf("server_bootstrap", bootstrapStartedAt, {
+  markPerf("server_bootstrap", {
     workspaceChatHistoryMax,
     hasHistory: Boolean(serverBootstrap?.historyItemsNewestFirst?.length)
   });
@@ -132,7 +129,7 @@ export async function XchatApprovedShell({
 
   const visiblePathPrefixes = routePolicy.effectiveRolePolicy.allowedRoutes;
   const tenantWorkspaceSessionLabel = tenantShell?.displayName?.trim() || null;
-  markPerf("render_ready", shellStartedAt, {
+  markPerf("render_ready", {
     workspaceChatHistoryMax,
     fileAttachmentsEnabled
   });
