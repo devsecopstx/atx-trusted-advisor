@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
+import { buildTenantSpecV1YamlPreview } from "@/lib/tenant-create-spec-preview";
 import { DEFAULT_TENANT_ACCENT_HEX, normalizeXfAccentColor } from "@/lib/tenant-accent-color";
 import { XF_BRAND_PALETTE_IDS, XF_BRAND_PALETTE_LABELS, type XfBrandPaletteId } from "@/lib/tenant-branding-palette";
 
@@ -106,6 +107,44 @@ export function CreateTenantConsole() {
 
   const previewName = name.trim() || "Your organization";
   const previewTagline = tagline.trim() || null;
+
+  const yamlPreview = useMemo(
+    () =>
+      buildTenantSpecV1YamlPreview({
+        slug,
+        name,
+        accentHex,
+        xfUiTheme,
+        xfBrandPalette,
+        tagline,
+        bootstrapDefaultPortfolioWatchlist,
+        initialAdminEmail,
+        initialAdminXUserId,
+        initialAdminPlatformRole,
+        setAsDefaultSessionTenant,
+        workspaceLimitsJson,
+        allowWorkspaceLimitsOverride,
+        routeOverridesJson,
+        defaultLandingJson
+      }),
+    [
+      slug,
+      name,
+      accentHex,
+      xfUiTheme,
+      xfBrandPalette,
+      tagline,
+      bootstrapDefaultPortfolioWatchlist,
+      initialAdminEmail,
+      initialAdminXUserId,
+      initialAdminPlatformRole,
+      setAsDefaultSessionTenant,
+      workspaceLimitsJson,
+      allowWorkspaceLimitsOverride,
+      routeOverridesJson,
+      defaultLandingJson
+    ]
+  );
 
   const onLogoFile = useCallback((fileList: FileList | null) => {
     setLogoError(null);
@@ -607,6 +646,23 @@ export function CreateTenantConsole() {
                 </span>
               </label>
             </div>
+          </details>
+
+          <details className="rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-800)_40%,transparent)] p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-[var(--xf-text-100)]">
+              6 · Tenant spec YAML preview (read-only)
+            </summary>
+            <p className="status-text mt-3 text-xs">
+              Mirrors v1 <code className="font-mono">tenant-specs/*.yaml</code> shape from fields above — compare with{" "}
+              <strong>npm run generate:tenant-spec</strong> output before apply.
+            </p>
+            <textarea
+              readOnly
+              className={`${fieldClass} mt-2 min-h-[14rem] w-full font-mono text-xs leading-relaxed`}
+              spellCheck={false}
+              value={yamlPreview}
+              aria-label="Tenant spec YAML preview"
+            />
           </details>
 
           <button

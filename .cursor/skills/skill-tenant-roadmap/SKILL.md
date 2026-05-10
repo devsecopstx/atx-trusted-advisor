@@ -18,7 +18,7 @@ This skill holds **short shipped summaries** that were trimmed from `PLAN.md` so
 - Edge **V2** hook in **`src/proxy.ts`** when **`TENANT_UX_ENFORCEMENT_V2`** (policy fetch; fail-open log **`tenant_ux_policy_fetch_error`**; optional **`TENANT_UX_POLICY_FAIL_CLOSED`**).
 - Policy path module (includes **`/xcoach`**); xChat tenant block in prompts/welcome; **`--xf-tenant-primary` / `--xf-tenant-secondary`** via branding provider + brand kit.
 
-**Still open (keep in `PLAN.md`):** V2 soak staging→prod (**48–72h**), GCP metrics/alerts on stderr JSON lines. **Shipped:** Redis bust on roles/catalog **`PATCH`** + manual policy-cache POST; dynamic **`manifest.ts`**; admin observability API + hub panel; fail-closed drill cookie API; expanded **`resolvePolicyPathForRequest`**. **Redis policy keys** `tenant-ux:policy:v2:*` ship with **`REDIS_URL`** (dev/prod). Runbooks: `atx-docs/sre-ops/tenant-ux-enforcement.md`, `atx-docs/sre-ops/redis-cache-next.md` § Tenant UX policy.
+**PLAN 11 — dev closed:** V2 feature set shipped; **ops-only** remainder is env soak (**48–72h**) + GCP metrics/alerts on stderr JSON lines (`tenant-ux-enforcement.md`). **Shipped:** Redis bust on roles/catalog **`PATCH`** + manual policy-cache POST; dynamic **`manifest.ts`**; admin observability API + hub panel; fail-closed drill cookie API; expanded **`resolvePolicyPathForRequest`**. **Redis policy keys** `tenant-ux:policy:v2:*` ship with **`REDIS_URL`** (dev/prod). Runbooks: `atx-docs/sre-ops/tenant-ux-enforcement.md`, `atx-docs/sre-ops/redis-cache-next.md` § Tenant UX policy.
 
 ---
 
@@ -58,7 +58,7 @@ This skill holds **short shipped summaries** that were trimmed from `PLAN.md` so
 - **Branding v1** — logo remains **URL-only** on **`xf_tenant_logo_url`** (see `tenant-logo-url` validation); no tenant file upload in this slice.
 - **Tests:** **`tenant-bootstrap-policy`** unit; **`access-request-item-crud-route`** (approve + **`bootstrap_on_approve`**); **`tenant-spec-schema`** (YAML mirror).
 
-**Backlog (stay in `PLAN.md` row 10):** Admin **Bootstrap log** / replay button; Spring **`DefaultPortfolioProvisionService`** parity for new fields; optional Admin **YAML preview** on tenant edit.
+**PLAN 10 — shipped in-repo slice:** Admin bootstrap **audit + replay** APIs + workspace panel; Spring **`provisionForUser`** reads tenant **`bootstrap_policy`** / **`watchlist_seed_symbols`** (Next parity); create-tenant **YAML preview**. Remaining optional items stay in `PLAN.md` row **10** (spec export, CSV).
 
 ---
 

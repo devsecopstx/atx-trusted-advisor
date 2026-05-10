@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { TenantWorkspaceLimitsPanel } from "@/app/admin/tenant-preferences/ui/tenant-workspace-limits-panel";
+import { TenantBootstrapAuditPanel } from "@/app/admin/tenant-register/ui/tenant-bootstrap-audit-panel";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
@@ -56,6 +57,7 @@ export default async function AdminTenantRegisterWorkspaceLimitsPage(props: Page
 
       <div className="admin-page-stack admin-tenant-pref-page">
         <TenantWorkspaceLimitsPanel tenantId={id} />
+        <TenantBootstrapAuditPanel tenantId={id} />
       </div>
     </div>
   );

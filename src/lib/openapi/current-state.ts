@@ -840,6 +840,16 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tenants"
   },
   {
+    path: "/api/admin/tenants/{tenantId}/bootstrap-audit",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/bootstrap-replay",
+    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    tag: "admin-tenants"
+  },
+  {
     path: "/api/admin/tenants/{tenantId}/rental-api-keys",
     operations: [
       { method: "GET", auth: "admin" },

@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.Date
 
@@ -21,6 +22,8 @@ class DefaultPortfolioProvisionService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
     private val coreTenantsCollection = "core_tenants"
     private val defaultTenantSlug = "atxfinance-core"
 
@@ -409,24 +412,48 @@ class DefaultPortfolioProvisionService(
         return Triple(portfolio, account, watchlist)
     }
 
-    /** Same as [provision] for an arbitrary user id (access-request approval path). */
-    fun provisionForUser(userId: String, tenantId: String): Triple<Document, Document, Document> {
+    /**
+     * Same as [provision] for an arbitrary user id, respecting tenant `tenantPreferences` bootstrap
+     * policy (aligned with Next `ensureTenantBootstrapForUser`). Returns null when policy skips portfolio
+     * or user has no viewer/operator/advisor role.
+     */
+    fun provisionForUser(userId: String, tenantId: String): Triple<Document, Document, Document>? {
+        val uid = userId.trim()
+        val tid = tenantId.trim()
+        if (!ObjectId.isValid(uid) || !ObjectId.isValid(tid)) {
+            error("Invalid userId or tenantId for provisionForUser")
+        }
+        val userDoc =
+            mongoTemplate.findById(ObjectId(uid), Document::class.java, props.coreUsersCollection)
+                ?: error("User not found for provisionForUser")
+        val tenantDoc =
+            mongoTemplate.findById(ObjectId(tid), Document::class.java, coreTenantsCollection)
+        val roles =
+            (userDoc["roles"] as? List<*>)?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }
+                ?: emptyList()
+        val prefs = tenantDoc?.get("tenantPreferences", Document::class.java)
+        val decision = TenantBootstrapPolicyResolver.resolve(roles, prefs)
+        if (!decision.provisionPortfolio) {
+            log.info("[provision] skipped by tenant bootstrap policy userId={} tenantId={}", uid, tid)
+            return null
+        }
+        val seeds = decision.watchlistSeedList ?: listOf(defaultWatchlistSymbol)
         val session =
             ResolvedSession(
-                userId = userId,
-                tenantId = tenantId,
-                roles = emptyList(),
-                email = null,
+                userId = uid,
+                tenantId = tid,
+                roles = roles,
+                email = userDoc.getString("email"),
                 username = null,
             )
-        return provision(session)
+        return provision(session, seeds)
     }
 
     /**
      * Access-request approval: provision the applicant's default book under **their** default tenant
      * membership (or platform default tenant), never the approving admin's session tenant.
      */
-    fun provisionForAccessRequestApprovedUser(userId: String): Triple<Document, Document, Document> {
+    fun provisionForAccessRequestApprovedUser(userId: String): Triple<Document, Document, Document>? {
         val tenantHex = resolveTenantIdForApprovedUserPortfolio(userId)
         return provisionForUser(userId, tenantHex)
     }

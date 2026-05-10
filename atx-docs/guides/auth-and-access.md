@@ -75,7 +75,7 @@ When a global admin **approves** an access request (`PATCH`/`PUT` `/api/admin/ac
 3. **Email/password invite:** If the approved user has no **`passwordHash`**, **`issueCredentialInviteForUser`** + desk SMTP (**`sendAccessApprovedPasswordInviteEmail`**) runs; else **`sendAccessApprovedSignInEmail`**. Ordered so xAI quota errors on later bootstrap do **not** block the credential path.
 4. **Async xAI bootstrap:** **`enqueueAccessRequestBootstrap`** + microtask **`runAccessRequestBootstrap`** (per-user collection path) — separate from Mongo book provisioning.
 
-**Spring BFF path:** JVM **`DefaultPortfolioProvisionService`** handles its own approve-time book rules; keep policy fields aligned over time — **Next** remains **v1 source of truth** for **`bootstrap_policy`** / **`bootstrap_on_approve`** persistence from **`seed:tenant`** and admin tenant APIs.
+**Spring BFF path:** JVM **`DefaultPortfolioProvisionService.provisionForUser`** reads the same tenant **`bootstrap_policy`** / **`watchlist_seed_symbols`** / legacy **`bootstrap_default_portfolio_watchlist`** as Next **`ensureTenantBootstrapForUser`** (skips portfolio when policy denies that platform role). **`bootstrap_on_approve`** and persistence remain Next-first from **`seed:tenant`** and admin tenant APIs.
 
 If X does not expose an email, the UI uses the **link email** step so the user can tie their X identity to the same email they registered with.
 

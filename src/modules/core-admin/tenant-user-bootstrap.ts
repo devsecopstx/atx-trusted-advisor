@@ -28,7 +28,8 @@ export type EnsureTenantBootstrapTrigger =
   | "seed_tenant"
   | "run_access_request_bootstrap"
   | "link_email"
-  | "page_shell";
+  | "page_shell"
+  | "admin_replay";
 
 export type EnsureTenantBootstrapResult =
   | {

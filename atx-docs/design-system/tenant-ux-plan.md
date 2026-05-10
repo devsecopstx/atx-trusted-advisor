@@ -1,6 +1,6 @@
 # Tenant UX (`tenant_ux`) — per-role routes, landing, white-label chrome
 
-**Status:** **Shipped** in repo for core flows; **soak** for edge V2 (`TENANT_UX_ENFORCEMENT_V2`). **Compliance:** Branding is **display-only** — do not imply different regulatory posture per tenant (`AGENTS.md`, multi-tenant roadmap **10**).
+**Status:** **Shipped** in repo for core flows. **PLAN 11 (dev): closed** — edge V2 remains an **ops toggle** (`TENANT_UX_ENFORCEMENT_V2`) with soak + GCP alerts per [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md). **Compliance:** Branding is **display-only** — do not imply different regulatory posture per tenant (`AGENTS.md`, multi-tenant roadmap **10**).
 
 **Related:** [PLAN.md](../PLAN.md) priorities **10** (provisioning / bootstrap v1) **11** (tenant_ux soak); consolidated architecture: [current-state-features.md](./current-state-features.md) § Tenant UX; ops runbook: [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md).
 
@@ -36,6 +36,8 @@
 ---
 
 ## Soak backlog (ops — metrics owners TBD)
+
+Engineering backlog for **11** is **closed**; treat the rows below as **runbook / SRE** tasks when enabling V2 in each environment.
 
 | Item | Success signal |
 |------|----------------|
