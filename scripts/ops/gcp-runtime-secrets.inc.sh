@@ -31,6 +31,7 @@ GCP_RUNTIME_SECRETS_GOOGLE_OAUTH=(
 
 # Google OAuth: compared with diff-local-env --include-optional when each secret exists in GCP (prod may omit until enabled).
 GCP_RUNTIME_SECRETS_OPTIONAL=(
+  "XAI_FINANCE_COLLECTION_ID"
   "GOOGLE_CLIENT_ID"
   "GOOGLE_CLIENT_SECRET"
   # Optional Redis plane split (control vs cache). Falls back to REDIS_URL when unset.

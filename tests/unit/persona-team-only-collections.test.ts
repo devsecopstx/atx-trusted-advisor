@@ -6,6 +6,7 @@ const teamMocks = vi.hoisted(() => ({
 
 vi.mock("@/modules/xchat/team-xai-collection", () => teamMocks);
 
+import { getXaiFinanceCollectionId } from "@/lib/xai-finance-collection";
 import {
     MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
     resolveXchatPersonaDeclaredCollectionIds,
@@ -13,19 +14,21 @@ import {
 } from "@/modules/xchat/persona-linked-collections";
 
 describe("resolveXchatPersonaDeclaredCollectionIds", () => {
-  it("returns empty when persona has no collection links", () => {
-    expect(resolveXchatPersonaDeclaredCollectionIds({})).toEqual([]);
+  it("returns canonical Finance collection when persona has no collection links", () => {
+    expect(resolveXchatPersonaDeclaredCollectionIds({})).toEqual([getXaiFinanceCollectionId()]);
   });
 
-  it("includes xaiCollection and teamCollection and dedupes", () => {
+  it("prepends Finance id and dedupes persona collections", () => {
+    const financeId = getXaiFinanceCollectionId();
     const ids = resolveXchatPersonaDeclaredCollectionIds({
-      xaiCollection: { collectionId: "col_a" },
-      teamCollection: { collectionId: "col_a" }
+      xaiCollection: { collectionId: financeId },
+      teamCollection: { collectionId: "col_extra" }
     });
-    expect(ids).toEqual(["col_a"]);
+    expect(ids).toEqual([financeId, "col_extra"]);
   });
 
   it("caps at MAX_XCHAT_TEAM_KB_COLLECTION_IDS", () => {
+    const financeId = getXaiFinanceCollectionId();
     const ids = resolveXchatPersonaDeclaredCollectionIds({
       xaiCollection: { collectionId: "c1" },
       teamCollection: { collectionId: "c2" },
@@ -37,6 +40,7 @@ describe("resolveXchatPersonaDeclaredCollectionIds", () => {
       }
     });
     expect(ids).toHaveLength(MAX_XCHAT_TEAM_KB_COLLECTION_IDS);
+    expect(ids[0]).toBe(financeId);
   });
 });
 

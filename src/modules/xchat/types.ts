@@ -139,6 +139,8 @@ export type PersonaConfig = {
    * Use when the persona should search two distinct xAI collections (e.g. curated + team).
    */
   teamCollection?: PersonaCollectionRef;
+  /** Optional explicit collection ids beyond the canonical Finance KB. */
+  collectionIds?: string[];
   /** Last admin verification of persona-bound xAI collection (optional). */
   xaiCollectionVerification?: PersonaCollectionVerification;
   model: string;

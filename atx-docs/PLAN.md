@@ -31,6 +31,8 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 **Track:** **707**. Reliability, grounding, and parity across Next xChat modules and the JVM strategy pipeline. Ask latency follow-ups: [#xchat-latency-perf](#xchat-latency-perf).
 
+**Shipped (May 2026):** canonical shared **Finance** xAI collection for all tenants (`XAI_FINANCE_COLLECTION_ID`); single-collection RAG on finance/options turns; admin **`POST /api/admin/rag/refresh-finance`** + **`npm run seed:finance-xai-collection`**; no per-persona Mongo **`xchat_rag_chunks`** duplication for options narratives. **Long-term xAI memory:** **`PUT /api/xchat/preferences`** persists **`enableLongTermXaiMemory`**; ask wires capped thread history into the Responses tool loop and optional **`store_messages` / `previous_response_id`** continuity.
+
 - **Vision paste:** Policy (scan bounds, EXIF strip, optional max dimensions), batch/admin harness parity — backlog detail in [Deferred product TODOs](#deferred-product-todos).
 - **Limits & metering:** Optional plans-copy alignment with `getPlanLimits()` (meter + caps contract: [current-state-features.md](./design-system/current-state-features.md)).
 - **BFF / JVM ask:** Phase 1 in progress on `feature/spring-xchat-parity-phase1` — Spring `POST /api/xchat/ask/stream` skeleton (direct `options_action_scan` / `watchlist_snapshot`, SSE shape); full xAI tool loop + limits in Phase 2 — [xchat-bffparity.md](./sre-ops/xchat-bffparity.md), [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md).

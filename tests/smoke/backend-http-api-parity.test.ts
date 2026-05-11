@@ -110,7 +110,8 @@ describe("atxfinance-backend HTTP API parity (docs ↔ Kotlin)", () => {
   it("Kotlin controllers expose BFF @*Mapping paths (portfolios + personas + access-requests)", () => {
     const files = readTreeFiles(BACKEND_KOTLIN_MAIN);
     const combined = files.map((f) => readFileSync(f, "utf8")).join("\n");
-    for (const needle of REQUIRED_PORTFOLIO_BFF_MAPPINGS) {
+    for (const route of BFF_PROXY_ROUTES) {
+      const needle = `@${route.method === "GET" ? "Get" : route.method === "POST" ? "Post" : route.method === "PATCH" ? "Patch" : route.method === "PUT" ? "Put" : "Delete"}Mapping("${route.path}"`;
       expect(combined.includes(needle), `Missing ${needle} under services/atxfinance-backend/src/main/kotlin`).toBe(
         true
       );

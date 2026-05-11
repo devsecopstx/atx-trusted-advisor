@@ -25,6 +25,7 @@ import {
     type XaiToolLoopResult
 } from "@/lib/xai";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
+import { getXaiFinanceCollectionId } from "@/lib/xai-finance-collection";
 import { summarizeToolLikeStreamEvent } from "@/lib/xai-responses-stream";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import {
@@ -120,11 +121,16 @@ import {
     type XchatAskCompletePostLoopCtx
 } from "@/modules/xchat/xchat-ask-complete-post-loop";
 import {
+    buildFullHistoryMessages,
+    buildInputWithHistory,
+} from "@/modules/xchat/xchat-ask-history-input";
+import {
     collectWatchlistPortfolioIdSlot,
     heavySynthesisIntent,
     isShowWatchlistIntent,
     shouldEagerWorkspaceSnapshotPreloadForMessage,
     shouldOfferStrategyJobPreflight,
+    shouldPinFinanceCollectionForMessage,
     shouldRunOptionsActionScan,
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
@@ -840,6 +846,8 @@ export async function POST(request: Request) {
     getXchatPlatformSettings()
   ]);
   const shouldPersistHistory = userPrefs?.keepLastTenMessages === true;
+  const enableLongTermXaiMemory =
+    shouldPersistHistory && userPrefs?.enableLongTermXaiMemory === true;
   const retentionExpiresAt = shouldPersistHistory
     ? new Date(Date.now() + XCHAT_OPT_IN_RETENTION_DAYS * 24 * 60 * 60 * 1000)
     : undefined;
@@ -1047,8 +1055,10 @@ export async function POST(request: Request) {
     );
   }
 
-  /** RAG / collection tools: persona-declared ids only (no env team KB merge). */
-  const linkedCollectionIds = resolveXchatPersonaDeclaredCollectionIds(persona);
+  /** RAG / collection tools: canonical Finance KB first; finance/options asks pin to Finance only. */
+  const linkedCollectionIds = shouldPinFinanceCollectionForMessage(messageTrimmed)
+    ? [getXaiFinanceCollectionId()]
+    : resolveXchatPersonaDeclaredCollectionIds(persona);
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
@@ -1276,6 +1286,17 @@ export async function POST(request: Request) {
     collectionSearchStatus,
     collectionSearchNonReadyFileCount
   } = ragBundle;
+
+  if (collectionContextReferences.length > 0 && linkedCollectionIds.length > 0) {
+    const ragCollectionId = linkedCollectionIds[0];
+    const topDocumentIds = collectionContextReferences
+      .map((row) => row.documentId?.trim())
+      .filter((id): id is string => Boolean(id))
+      .slice(0, 8);
+    console.warn(
+      `[xchat/ask] RAG collection=${ragCollectionId} documentIds=${topDocumentIds.join(",") || "(none)"}`
+    );
+  }
 
   const incomeIdeasOptimization =
     incomeIdeasOptimizationCandidate && Boolean(eagerWorkspacePreload) && hasXfinanceTool;
@@ -1629,7 +1650,7 @@ export async function POST(request: Request) {
 
   const useRemoteConversationHistory =
     isXchatRemoteHistoryEnabled() &&
-    shouldPersistHistory &&
+    enableLongTermXaiMemory &&
     persona?.keepXchatHistory !== false &&
     Boolean(userId) &&
     !visionImage;
@@ -1672,8 +1693,8 @@ export async function POST(request: Request) {
 
   const teamKbMetaLine =
     linkedCollectionIds.length > 0
-      ? `xChat linked xAI collection ids (persona-declared; max ${MAX_XCHAT_TEAM_KB_COLLECTION_IDS}): ${linkedCollectionIds.join(", ")}`
-      : "xChat linked xAI collection ids: (none — link collections on the persona or declare file_search/collections_search collection_ids)";
+      ? `xChat linked xAI collection ids (Finance KB first; max ${MAX_XCHAT_TEAM_KB_COLLECTION_IDS}): ${linkedCollectionIds.join(", ")}`
+      : "xChat linked xAI collection ids: (none — Finance KB env missing or RAG disabled)";
 
   const recentThreadMessages: XchatRecentThreadMessage[] = (
     parsed.data.recentMessages ?? []
@@ -1687,11 +1708,13 @@ export async function POST(request: Request) {
   const recentHistoryBlock =
     useRemoteConversationHistory && previousResponseId
       ? ""
-      : resolveRecentThreadMessagesPromptBlock({
-          messages: recentThreadMessages,
-          executionModel,
-          grok43MaxPriorThreadMessages: xchatPlatformSettings?.xchatGrok43MaxPriorThreadMessages
-        }) ?? "";
+      : enableLongTermXaiMemory
+        ? ""
+        : resolveRecentThreadMessagesPromptBlock({
+            messages: recentThreadMessages,
+            executionModel,
+            grok43MaxPriorThreadMessages: xchatPlatformSettings?.xchatGrok43MaxPriorThreadMessages
+          }) ?? "";
 
   const sessionToolCopyMode =
     useRemoteConversationHistory && previousResponseId
@@ -1754,6 +1777,25 @@ export async function POST(request: Request) {
     );
   }
 
+  const toolLoopConversationInput: unknown = visionImage
+    ? undefined
+    : enableLongTermXaiMemory
+      ? (() => {
+          const messages = buildFullHistoryMessages(recentThreadMessages, captionForPrompt);
+          const last = messages[messages.length - 1];
+          if (last?.role === "user") {
+            last.content = userPrompt;
+          }
+          return messages;
+        })()
+      : buildInputWithHistory(recentThreadMessages, userPrompt);
+
+  if (enableLongTermXaiMemory || previousResponseId) {
+    console.warn(
+      `[xchat/ask] memory enableLongTermXaiMemory=${enableLongTermXaiMemory} previous_response_id=${previousResponseId ?? ""}`
+    );
+  }
+
   const wireTools = buildWireToolsForXaiResponses(xapiConfig.tools);
   logXchatAskPreRequestDebug({
     personaId: persona?._id?.toHexString(),
@@ -1810,6 +1852,8 @@ export async function POST(request: Request) {
     multiAgentDowngraded,
     effectiveModel,
     remoteHistoryContinuation: Boolean(useRemoteConversationHistory && previousResponseId),
+    enableLongTermXaiMemory,
+    xaiPreviousResponseIdUsed: previousResponseId,
     limiterRemainingMinute,
     limiterRemainingHour,
     limiterRemainingDay,
@@ -1828,6 +1872,7 @@ export async function POST(request: Request) {
     model: executionModel,
     systemPrompt,
     userPrompt,
+    conversationInput: toolLoopConversationInput,
     userImageDataUrl: visionImage?.dataUrl,
     tools: xaiTools,
     toolChoice: xapiConfig.toolChoice,

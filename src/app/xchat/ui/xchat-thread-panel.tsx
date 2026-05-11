@@ -61,6 +61,7 @@ export type XchatThreadPanelProps = {
   onStrategyJobStay: () => void;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   threadScrollRef: RefObject<HTMLDivElement | null>;
+  stickyLatestPromptRef?: RefObject<HTMLDivElement | null>;
   threadUiSummary: { userTurnCount: number; preview: string };
   threadId: string;
   onMessageFeedback?: (messageId: string, vote: "up" | "down") => void;
@@ -90,6 +91,7 @@ export function XchatThreadPanel({
   onStrategyJobStay,
   messagesEndRef,
   threadScrollRef,
+  stickyLatestPromptRef,
   threadUiSummary,
   activePersonaName,
   threadId,
@@ -221,7 +223,7 @@ export function XchatThreadPanel({
               </div>
             ) : null}
             {messages.length > 0 && latestUserForSticky ? (
-              <div className="xchat-thread-sticky-prompt">
+              <div ref={stickyLatestPromptRef} className="xchat-thread-sticky-prompt">
                 <span className="xchat-thread-sticky-prompt__label">Latest prompt</span>
                 <span className="xchat-thread-sticky-prompt__text">
                   {stickyUserPreview.length > 0 ? stickyUserPreview : "[Empty prompt]"}

@@ -26,7 +26,7 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 | **Agent skills** | [`.cursor/skills/skill-*/SKILL.md`](../../../../.cursor/skills/skill-wheel-strategy/SKILL.md) (example) | Full playbooks for Cursor — strikes, rolls, assignment, checks. |
 | **This index** | [`options-coreskills.md`](./options-coreskills.md) | Strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ automation id ↔ Cursor skill. |
 
-**Mongo:** `seed:admin` / `seed:options-strategy-*` sync this tree into **`options_strategy`** (and prefs). **xAI:** `seed:admin` does **not** upload; use **`scripts/lib/seed-xai-rag-ingest.mjs`** only from a custom script if you need the trusted-advisor **`options-strategy`** segment in xAI. **Doc entry:** [`atx-docs/README.md`](../../../README.md) § *Options (RAG + seed)*.
+**Mongo:** `seed:admin` / `seed:options-strategy-*` sync this tree into **`options_strategy`** (and prefs). **xAI:** canonical **Finance** collection (`XAI_FINANCE_COLLECTION_ID`, default `collection_b75e188e-e7e6-4aa8-8e01-23caf0946236`) — sync via **`npm run seed:finance-xai-collection`** or **Admin → Personas → Sync Finance Collection to xAI**; do not duplicate full narrative MD into Mongo **`xchat_rag_chunks`**. **Doc entry:** [`atx-docs/README.md`](../../../README.md) § *Options (RAG + seed)*.
 
 ---
 

@@ -705,6 +705,8 @@ export async function respondWithXaiToolLoop(input: {
   model?: string;
   systemPrompt: string;
   userPrompt: string;
+  /** When set, used as the first Responses `input` instead of `userPrompt` (multi-turn history arrays). */
+  conversationInput?: unknown;
   /** When set, first request uses vision `input` shape (image + text); see xAI [image analysis](https://docs.x.ai/developers/quickstart#step-5-analyze-an-image). */
   userImageDataUrl?: string;
   tools: Array<Record<string, unknown>>;
@@ -751,7 +753,7 @@ export async function respondWithXaiToolLoop(input: {
   let conversationInput: unknown =
     trimmedImageUrl && trimmedImageUrl.length > 0
       ? buildXaiResponsesVisionUserTurn(input.userPrompt, trimmedImageUrl)
-      : input.userPrompt;
+      : (input.conversationInput ?? input.userPrompt);
   let turnsUsed = 0;
   let lastPayload: Record<string, unknown> = {};
   /** Required for follow-up `/responses` turns (tool outputs + hosted tools like web_search). */

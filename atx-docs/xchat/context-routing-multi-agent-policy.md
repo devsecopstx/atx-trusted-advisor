@@ -2,9 +2,9 @@
 
 Short policy for how `POST /api/xchat/ask` should combine **pre-call retrieval**, **built-in / custom tools**, and **parallel multi-agent** (`grok-4.20-multi-agent` + `agent_count`). Use this when tuning personas, plans, or prompts.
 
-## Phase 1: xAI collections (TEAM only)
+## Phase 1: xAI collections (canonical Finance KB)
 
-New work: **`XAI_TEAM_ID`** per tenant; TEAM append/retrieval; chat-history collections under that team only. No new reliance on per-user bootstrap or legacy default merges — details and locked decisions in [`atx-multi-agent.md`](./atx-multi-agent.md).
+**Shipped:** one shared **Finance** xAI collection (`XAI_FINANCE_COLLECTION_ID`, default `collection_b75e188e-e7e6-4aa8-8e01-23caf0946236`) for all tenants. xChat ask pins finance/options/portfolio/strategy prompts to that id (single retrieval call). Persona rows still edit prompts/tools; optional per-persona extras remain capped at two ids. **`XAI_TEAM_ID`** remains for admin discovery and legacy segment ingest — not merged into ask unless declared on the persona. **Long-term memory:** when **`enableLongTermXaiMemory`** is on, ask includes capped thread history in the Responses tool loop and may continue via **`previous_response_id`** when **`XCHAT_USE_REMOTE_HISTORY`** is enabled. Details: [`atx-multi-agent.md`](./atx-multi-agent.md).
 
 ## Decision table (intent → path)
 

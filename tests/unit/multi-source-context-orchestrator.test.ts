@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getXaiFinanceCollectionId } from "@/lib/xai-finance-collection";
+
 const xaiMocks = vi.hoisted(() => ({
   searchDocumentsInCollections: vi.fn(),
   respondWithXai: vi.fn()
@@ -130,7 +132,7 @@ describe("gatherMultiSourceWorkspaceContext", () => {
     });
     expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
       expect.objectContaining({
-        collectionIds: ["col_test"],
+        collectionIds: [getXaiFinanceCollectionId(), "col_test"],
         query: "TSLA outlook?"
       })
     );

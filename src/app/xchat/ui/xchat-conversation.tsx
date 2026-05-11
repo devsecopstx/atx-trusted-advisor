@@ -63,6 +63,10 @@ import {
     XCHAT_PENDING_PROMPT_STORAGE_KEY
 } from "@/lib/xchat/xchat-pending-prompt";
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
+import {
+    anchorXchatThreadViewportAfterTurn,
+    clearXchatComposerDraft
+} from "@/lib/xchat/xchat-thread-viewport-anchor";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
@@ -429,7 +433,9 @@ export function XchatConversation({
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const composerFormRef = useRef<HTMLFormElement | null>(null);
   const historyRailScrollRef = useRef<HTMLDivElement | null>(null);
+  const mainChatScrollRef = useRef<HTMLDivElement | null>(null);
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
+  const stickyLatestPromptRef = useRef<HTMLDivElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
   const skipRailHistoryListFetchOnceRef = useRef(
     Boolean(
@@ -509,59 +515,62 @@ export function XchatConversation({
     },
     overscan: 6
   });
-  const scrollToLatestMessage = useCallback(
+  const anchorThreadViewportToLatestTurn = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
-      const end = messagesEndRef.current;
-      if (!end) {
-        return;
-      }
-      requestAnimationFrame(() => {
-        end.scrollIntoView({
-          behavior,
-          block: "end",
-          inline: "nearest"
-        });
-      });
+      anchorXchatThreadViewportAfterTurn(
+        {
+          mainChatScrollEl: mainChatScrollRef.current,
+          threadScrollEl: threadScrollRef.current,
+          stickyLatestPromptEl: stickyLatestPromptRef.current,
+          messagesEndEl: messagesEndRef.current,
+          threadVirtualized: threadMainVirtualize,
+          lastVisibleMessageIndex: Math.max(0, visibleThreadMessages.length - 1),
+          scrollToVirtualIndex: (index, scrollBehavior) => {
+            threadVirtualizer.scrollToIndex(index, { align: "start", behavior: scrollBehavior });
+          }
+        },
+        behavior
+      );
     },
-    []
+    [threadMainVirtualize, threadVirtualizer, visibleThreadMessages.length]
   );
 
   const expandFullThreadHistory = useCallback(() => {
     setThreadHistoryExpanded(true);
-    queueMicrotask(() => scrollToLatestMessage("smooth"));
-  }, [scrollToLatestMessage]);
+    queueMicrotask(() => anchorThreadViewportToLatestTurn("smooth"));
+  }, [anchorThreadViewportToLatestTurn]);
 
-  /** Smooth scroll to transcript bottom when a new assistant turn lands or streams. */
+  const dismissThreadSystemBanner = useCallback(() => {
+    setThreadSystemBanner(null);
+  }, []);
+
+  /** After assistant integration, keep Latest prompt chrome in primary viewport. */
   useEffect(() => {
-    if (threadUiCollapsed) {
+    if (threadUiCollapsed || messages.length === 0 || loading) {
       return;
     }
     const last = messages[messages.length - 1];
     if (!last || last.role !== "ai") {
       return;
     }
-    scrollToLatestMessage("smooth");
-  }, [messages, threadUiCollapsed, scrollToLatestMessage]);
-
-  const dismissThreadSystemBanner = useCallback(() => {
-    setThreadSystemBanner(null);
-  }, []);
+    anchorThreadViewportToLatestTurn("smooth");
+  }, [messages, loading, threadUiCollapsed, anchorThreadViewportToLatestTurn]);
 
   /**
    * Rich cards (Options Action Scan) can inflate after lazy chunk mount.
-   * Re-anchor to latest turn once layout settles so prompt/response stay paired.
+   * Re-anchor once layout settles so prompt/response stay paired above the composer.
    */
   useEffect(() => {
     if (threadUiCollapsed) {
       return;
     }
-    const t1 = window.setTimeout(() => scrollToLatestMessage("smooth"), 140);
-    const t2 = window.setTimeout(() => scrollToLatestMessage("smooth"), 420);
+    const t1 = window.setTimeout(() => anchorThreadViewportToLatestTurn("smooth"), 140);
+    const t2 = window.setTimeout(() => anchorThreadViewportToLatestTurn("smooth"), 420);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [messages.length, loading, threadUiCollapsed, scrollToLatestMessage]);
+  }, [messages.length, loading, threadUiCollapsed, anchorThreadViewportToLatestTurn]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -644,11 +653,11 @@ export function XchatConversation({
       setThreadUiCollapsed(false);
       expandWorkspaceProductRail();
       queueMicrotask(() => {
-        scrollToLatestMessage("smooth");
+        anchorThreadViewportToLatestTurn("smooth");
         composerRef.current?.focus();
       });
     },
-    [scrollToLatestMessage, uiPromptLimit]
+    [anchorThreadViewportToLatestTurn, uiPromptLimit]
   );
 
   const refreshThreadItems = useCallback(async () => {
@@ -719,6 +728,36 @@ export function XchatConversation({
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
   }, []);
+
+  const priorComposerContextRef = useRef<{
+    personaId: string;
+    reasoningMode: XchatReasoningMode;
+    workspacePortfolioId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (loading || sendSubmittingRef.current) {
+      return;
+    }
+    const nextContext = {
+      personaId: selectedPersonaId.trim(),
+      reasoningMode,
+      workspacePortfolioId: workspacePortfolioId?.trim() ?? ""
+    };
+    const priorContext = priorComposerContextRef.current;
+    priorComposerContextRef.current = nextContext;
+    if (!priorContext) {
+      return;
+    }
+    const contextChanged =
+      priorContext.personaId !== nextContext.personaId ||
+      priorContext.reasoningMode !== nextContext.reasoningMode ||
+      priorContext.workspacePortfolioId !== nextContext.workspacePortfolioId;
+    if (!contextChanged) {
+      return;
+    }
+    clearXchatComposerDraft(setInput, composerRef.current, resizeComposer);
+  }, [reasoningMode, resizeComposer, selectedPersonaId, workspacePortfolioId]);
 
   useEffect(() => {
     try {
@@ -810,8 +849,8 @@ export function XchatConversation({
   }, [input, resizeComposer]);
 
   useEffect(() => {
-    queueMicrotask(() => scrollToLatestMessage("smooth"));
-  }, [activeThreadId, scrollToLatestMessage]);
+    queueMicrotask(() => anchorThreadViewportToLatestTurn("smooth"));
+  }, [activeThreadId, anchorThreadViewportToLatestTurn]);
 
   const askProgressPhaseIndex = useMemo(() => {
     if (!loading) {
@@ -1335,7 +1374,8 @@ export function XchatConversation({
       const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
       return next;
     });
-    setInput("");
+    clearXchatComposerDraft(setInput, composerRef.current, resizeComposer, { blur: true });
+    queueMicrotask(() => anchorThreadViewportToLatestTurn("smooth"));
     setLoading(true);
     const askController = new AbortController();
     askAbortRef.current = askController;
@@ -2082,7 +2122,7 @@ export function XchatConversation({
       </aside>
 
       <div className="xchat-main">
-        <div className="xchat-main__chat-scroll">
+        <div ref={mainChatScrollRef} className="xchat-main__chat-scroll">
           <details className="xchat-mobile-workspace-info md:hidden">
             <summary className="xchat-mobile-workspace-info__summary">Workspace info · billing</summary>
             <div className="xchat-mobile-workspace-info__body">
@@ -2152,6 +2192,7 @@ export function XchatConversation({
               strategyJobLaunchBusy={strategyJobLaunchBusy}
               threadId={activeThreadId}
               threadMainVirtualize={threadMainVirtualize}
+              stickyLatestPromptRef={stickyLatestPromptRef}
               threadScrollRef={threadScrollRef}
               threadUiCollapsed={threadUiCollapsed}
               threadUiSummary={threadUiSummary}
@@ -2170,6 +2211,11 @@ export function XchatConversation({
         />
 
         <XchatUsageMeter refreshSignal={promptUsageRefreshKey} variant="composer" />
+        {privacyPrefs?.enableLongTermXaiMemory === true ? (
+          <p className="status-text xchat-long-term-memory-banner" role="status">
+            Personalized strategy memory enabled — history will be included in all tool calls.
+          </p>
+        ) : null}
         <Suspense fallback={<XchatChatSkeleton variant="composer" />}>
           <XchatComposerPanelLazy
             askProgressPhaseIndex={askProgressPhaseIndex}

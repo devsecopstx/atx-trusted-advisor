@@ -433,6 +433,13 @@ export function PersonaEditorPage({
                   />
                 </div>
               </div>
+              <div className="surface-card stack-gap" style={{ padding: "0.75rem 1rem" }}>
+                <strong>Canonical Finance KB</strong>
+                <p className="status-text" style={{ margin: 0 }}>
+                  All tenants retrieve finance and options playbooks from the shared Finance xAI collection
+                  (read-only at runtime). Persona prompts and tools remain editable here.
+                </p>
+              </div>
               <div>
                 <label className="status-text" htmlFor="persona-collection-id">
                   Linked collection ID

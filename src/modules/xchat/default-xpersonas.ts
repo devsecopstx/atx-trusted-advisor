@@ -4,8 +4,11 @@
  * - atx-trusted-advisor → fallback when platform default is unset/cleared, with at least one collection
  * Collection ids/names may change over time; operators update them in Admin → Personas or via `XAI_TEAM_ID` (collection id or team UUID).
  */
+import {
+    getXaiFinanceCollectionId,
+    XAI_FINANCE_COLLECTION_DISPLAY_NAME
+} from "@/lib/xai-finance-collection";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection";
 import type { PersonaConfig, PersonaXapiToolDefinition } from "@/modules/xchat/types";
 import { DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
@@ -38,10 +41,10 @@ export type DefaultTrustedAdvisorPersonaInsert = Omit<
   "_id" | "createdAt" | "updatedAt" | "nameNormalized"
 >;
 
-/** Default RAG collection name for non-admin fallback persona; may change over time. */
-export const DEFAULT_TRUSTED_ADVISOR_COLLECTION_NAME = "atx-trusted-advisor";
+/** Default RAG collection name for non-admin fallback persona; canonical Finance KB. */
+export const DEFAULT_TRUSTED_ADVISOR_COLLECTION_NAME = XAI_FINANCE_COLLECTION_DISPLAY_NAME;
 export function buildDefaultTrustedAdvisorPersonaPayload(): DefaultTrustedAdvisorPersonaInsert {
-  const cid = getTeamXaiKbCollectionIdSync();
+  const cid = getXaiFinanceCollectionId();
   const tools: PersonaXapiToolDefinition[] = [
     { type: "atx_function" },
     ...(cid ? [{ type: "collections_search", collection_ids: [cid] } as PersonaXapiToolDefinition] : []),

@@ -45,6 +45,8 @@ const envSchema = z.object({
   XAI_API_KEY: z.string().min(1),
   XAI_MANAGEMENT_API_KEY: z.string().min(1),
   XAI_TEAM_ID: optionalNonEmptyString,
+  /** Canonical shared Finance KB collection id for xChat RAG (all tenants). */
+  XAI_FINANCE_COLLECTION_ID: optionalNonEmptyString,
   /** Logical org key stored on portfolio docs (`tenantPortfolioOrgKey`); default `org-atx-finance`. */
   TENANT_PORTFOLIO_ORG_KEY: optionalNonEmptyString,
   X_OAUTH_CLIENT_ID: z.string().min(1),

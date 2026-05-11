@@ -230,3 +230,40 @@ You are asking for a **structured options-income workflow**. The product can col
 Reply **"launch strategy job"** (or **"yes"**) to start that workflow, or **"stay in chat"** to keep a high-level, educational conversation here without the formal package.
 
 _Not investment advice. Options involve substantial risk; review suitability, liquidity, assignment risk, and tax impact before execution._`;
+
+/** Finance/options/portfolio asks pin RAG to the canonical Finance collection (single retrieval call). */
+export function shouldPinFinanceCollectionForMessage(message: string): boolean {
+  const lower = message.trim().toLowerCase();
+  if (lower.length < 4) {
+    return false;
+  }
+  const terms = [
+    "option",
+    "options",
+    "covered call",
+    "cash secured put",
+    "cash-secured put",
+    "iron condor",
+    "credit spread",
+    "debit spread",
+    "wheel",
+    "straddle",
+    "strangle",
+    "calendar spread",
+    "diagonal spread",
+    "portfolio",
+    "watchlist",
+    "strategy",
+    "finance",
+    "premium",
+    "assignment",
+    "strike",
+    "expir",
+    "theta",
+    "delta",
+    "volatility",
+    "iv ",
+    " implied vol"
+  ];
+  return terms.some((term) => lower.includes(term));
+}

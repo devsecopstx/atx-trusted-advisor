@@ -816,6 +816,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-portfolios"
   },
   {
+    path: "/api/admin/rag/refresh-finance",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin" }
+    ],
+    tag: "admin-rag"
+  },
+  {
     path: "/api/admin/tasks/{taskId}/run",
     operations: [{ method: "POST", auth: "admin" }],
     tag: "admin-tasks"

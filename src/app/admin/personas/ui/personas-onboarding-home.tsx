@@ -65,6 +65,44 @@ export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [financeKbLastSyncAt, setFinanceKbLastSyncAt] = useState<string | null>(null);
+
+  async function loadFinanceKbStatus() {
+    try {
+      const payload = await parseJson<{ data: { lastSyncAt: string | null } }>(
+        await fetch("/api/admin/rag/refresh-finance")
+      );
+      setFinanceKbLastSyncAt(payload.data.lastSyncAt);
+    } catch {
+      setFinanceKbLastSyncAt(null);
+    }
+  }
+
+  async function handleSyncFinanceKb() {
+    setActionLoading("sync-finance-kb");
+    setStatus("Syncing Finance collection to xAI…");
+    try {
+      const payload = await parseJson<{
+        data: {
+          collectionId: string;
+          filesUploaded: number;
+          fileCandidates: number;
+          errors: Array<{ source: string; message: string }>;
+        };
+      }>(await fetch("/api/admin/rag/refresh-finance", { method: "POST" }));
+      const d = payload.data;
+      const errHint =
+        d.errors.length > 0 ? ` · ${d.errors.length} file(s) failed (see server logs)` : "";
+      setStatus(
+        `Finance KB → xAI: ${d.filesUploaded}/${d.fileCandidates} uploaded (${d.collectionId})${errHint}`
+      );
+      await loadFinanceKbStatus();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Finance KB sync failed");
+    } finally {
+      setActionLoading(null);
+    }
+  }
 
   async function handleSyncFromXai() {
     setActionLoading("sync-xai");
@@ -141,6 +179,7 @@ export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }
 
   useEffect(() => {
     void refresh();
+    void loadFinanceKbStatus();
   }, [refresh]);
 
   const filtered = filter === "all" ? personas : personas.filter((p) => p.status === filter);
@@ -223,7 +262,19 @@ export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }
         >
           Sync from xAI → DB
         </button>
-        <p className="status-text">{status}</p>
+        <button
+          className="cta cta-secondary"
+          disabled={loading || actionLoading === "sync-finance-kb"}
+          onClick={() => void handleSyncFinanceKb()}
+          title="Upload options-strategy and finance markdown from the repo into the canonical shared Finance xAI collection."
+          type="button"
+        >
+          Sync Finance Collection to xAI
+        </button>
+        <p className="status-text">
+          {status}
+          {financeKbLastSyncAt ? ` · Finance KB last sync: ${new Date(financeKbLastSyncAt).toLocaleString()}` : ""}
+        </p>
       </div>
 
       <div className="tool-row">

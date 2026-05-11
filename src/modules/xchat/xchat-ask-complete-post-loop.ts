@@ -54,6 +54,8 @@ export type XchatAskCompletePostLoopCtx = {
   multiAgentDowngraded: boolean;
   effectiveModel: string | undefined;
   remoteHistoryContinuation: boolean;
+  enableLongTermXaiMemory: boolean;
+  xaiPreviousResponseIdUsed?: string;
   limiterRemainingMinute: number | undefined;
   limiterRemainingHour: number | undefined;
   limiterRemainingDay: number | undefined;
@@ -247,6 +249,8 @@ export async function completeXchatAskAfterModelLoop(
         model: xaiResponse.model,
         scope: ctx.scope,
         historyPolicy: ctx.shouldPersistHistory ? "opt_in_keep_last_10" : "ephemeral_only",
+        enableLongTermXaiMemory: ctx.enableLongTermXaiMemory,
+        xaiPreviousResponseId: ctx.xaiPreviousResponseIdUsed ?? null,
         note: ctx.shouldPersistHistory
           ? "Turn stored in xchat_logs with rolling last-10 policy and 60-day TTL."
           : "No xchat_logs persistence; continuity comes from recent thread messages in the request."

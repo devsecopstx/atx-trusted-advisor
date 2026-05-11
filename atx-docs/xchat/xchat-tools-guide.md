@@ -22,7 +22,7 @@ flowchart TD
 ```
 
 - **Effective tools:** ask uses the persona tool config plus `ensureSuperAgentDefaultTools` where applicable. `mergeXchatHostedToolBaseline` is compatibility glue and must not be treated as an unconditional hosted-tool injector.
-- **Runtime TEAM KB:** ask and batch wire only persona-declared collection IDs (`xaiCollection`, `teamCollection`, or tool `collection_ids`; max 2). The deploy default resolved from `XAI_TEAM_ID` is visible for admin/discovery flows but is not auto-merged into ask grounding.
+- **Runtime Finance KB:** ask and batch prepend the canonical **Finance** collection (`XAI_FINANCE_COLLECTION_ID`; finance/options/portfolio/strategy prompts pin to that id only). Persona-declared extras (`xaiCollection`, `teamCollection`, tool `collection_ids`) may add at most one additional id (max 2 total). `XAI_TEAM_ID` remains for admin discovery; it is not auto-merged into ask grounding.
 - **Ask execution:** Always `respondWithXaiToolLoop` (not chat-completions). Batch stays **single-turn** xAI Batch JSONL — same **prompt** builders, different **transport**.
 
 ---

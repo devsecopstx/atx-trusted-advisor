@@ -2,6 +2,8 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getXaiFinanceCollectionId } from "@/lib/xai-finance-collection";
+
 const authMocks = vi.hoisted(() => ({
   requireSessionUser: vi.fn()
 }));
@@ -234,7 +236,8 @@ describe("xchat ask route collection retrieval", () => {
       nonReadyFiles: []
     });
     prefsMocks.getXchatUserPreferences.mockResolvedValue({
-      keepLastTenMessages: true
+      keepLastTenMessages: true,
+      enableLongTermXaiMemory: false
     });
     platformSettingsMocks.getXchatPlatformSettings.mockResolvedValue(null);
     workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
@@ -446,11 +449,13 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.headers.get("x-xchat-limit-remaining-minute")).toBe("19");
     expect(payload.data.contextSource).toBe("xai_collection");
     expect(payload.data.contextCount).toBe(1);
+    const financeCollectionId = getXaiFinanceCollectionId();
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith(financeCollectionId);
     expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_ops-global");
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledTimes(1);
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledTimes(2);
     expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
       expect.objectContaining({
-        collectionIds: ["collection_ops-global"]
+        collectionIds: [financeCollectionId, "collection_ops-global"]
       })
     );
     expect(repositoryMocks.listXChatHistoryByUser).not.toHaveBeenCalled();
@@ -464,7 +469,10 @@ describe("xchat ask route collection retrieval", () => {
           expect.objectContaining({
             type: "file_search",
             name: "file_search",
-            vector_store_ids: expect.arrayContaining(["collection_ops-global"])
+            vector_store_ids: expect.arrayContaining([
+              getXaiFinanceCollectionId(),
+              "collection_ops-global"
+            ])
           })
         ]),
         userPrompt: expect.stringMatching(
@@ -512,8 +520,45 @@ describe("xchat ask route collection retrieval", () => {
     );
   });
 
+  it("includes full thread history in the Responses tool loop when long-term xAI memory is enabled", async () => {
+    prefsMocks.getXchatUserPreferences.mockResolvedValueOnce({
+      keepLastTenMessages: true,
+      enableLongTermXaiMemory: true
+    });
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "Continue the same wheel on NVDA",
+          recentMessages: [
+            { role: "user", content: "Build a wheel on NVDA" },
+            { role: "assistant", content: "Use 45-dte puts around 0.30 delta." }
+          ],
+          topK: 4
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationInput: expect.arrayContaining([
+          expect.objectContaining({ role: "user", content: "Build a wheel on NVDA" }),
+          expect.objectContaining({ role: "assistant", content: "Use 45-dte puts around 0.30 delta." })
+        ])
+      })
+    );
+  });
+
   it("when XCHAT_USE_REMOTE_HISTORY and prior xaiResponseId, sends previous_response_id and omits client recent thread block", async () => {
     vi.stubEnv("XCHAT_USE_REMOTE_HISTORY", "true");
+    prefsMocks.getXchatUserPreferences.mockResolvedValueOnce({
+      keepLastTenMessages: true,
+      enableLongTermXaiMemory: true
+    });
     try {
       repositoryMocks.getLatestXchatLogByThread.mockImplementation(
         async (input: { personaId?: ObjectId }) => {
@@ -712,7 +757,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextCount).toBe(0);
   });
 
-  it("skips xAI collection search when persona has no linked collection ids", async () => {
+  it("searches canonical Finance collection when persona has no linked collection ids", async () => {
     teamKbMocks.resolveTeamKbCollectionId.mockResolvedValueOnce("collection_env_only_not_merged");
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
@@ -742,8 +787,14 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(payload.data.contextSource).toBe("none");
     expect(payload.data.contextCount).toBe(0);
-    expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).not.toHaveBeenCalled();
+    expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collectionIds: [getXaiFinanceCollectionId()]
+      })
+    );
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith(
+      getXaiFinanceCollectionId()
+    );
   });
 
   it("replaces file_search vector stores with persona-linked ids (replace mode)", async () => {
@@ -775,7 +826,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: ["collection_ops-global", "collection_extra"]
+            vector_store_ids: [getXaiFinanceCollectionId(), "collection_ops-global"]
           }
         ])
       })
@@ -816,7 +867,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: ["collection_ops-global", "collection_extra"]
+            vector_store_ids: [getXaiFinanceCollectionId(), "collection_ops-global"]
           },
           { type: "web_search", name: "web_search" },
           { type: "x_search", name: "x_search" }

@@ -1,3 +1,4 @@
+import { getXaiFinanceCollectionId } from "@/lib/xai-finance-collection";
 import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 import {
     isAtxFunctionToolType,
@@ -10,6 +11,8 @@ import {
 export type PersonaLinkedIdSource = {
   xaiCollection?: { collectionId?: string; collectionName?: string };
   teamCollection?: { collectionId?: string; collectionName?: string };
+  /** Optional explicit extras beyond the canonical Finance KB. */
+  collectionIds?: string[];
   xapi?: unknown;
 };
 
@@ -26,6 +29,13 @@ export function collectionIdsDeclaredOnPersona(
   const team = persona?.teamCollection?.collectionId?.trim();
   if (team) {
     ids.push(team);
+  }
+  if (Array.isArray(persona?.collectionIds)) {
+    for (const id of persona.collectionIds) {
+      if (typeof id === "string" && id.trim()) {
+        ids.push(id.trim());
+      }
+    }
   }
   for (const tool of xapi.tools) {
     if (tool.type === "collections_search" && Array.isArray(tool.collection_ids)) {
@@ -86,7 +96,10 @@ export const MAX_XCHAT_TEAM_KB_COLLECTION_IDS = 2;
 export function resolveXchatPersonaDeclaredCollectionIds(
   persona: PersonaLinkedIdSource | null | undefined
 ): string[] {
-  const unique = Array.from(new Set(getPersonaLinkedCollectionIds(persona)));
+  const financeId = getXaiFinanceCollectionId();
+  const declared = getPersonaLinkedCollectionIds(persona);
+  const extras = declared.filter((id) => id !== financeId);
+  const unique = Array.from(new Set([financeId, ...extras]));
   return unique.slice(0, MAX_XCHAT_TEAM_KB_COLLECTION_IDS);
 }
 

@@ -12,10 +12,16 @@ import {
     upsertXchatUserPreferences
 } from "@/modules/xchat/user-preferences-repository";
 
-const updateSchema = z.object({
-  keepLastTenMessages: z.boolean(),
-  enableLongTermXaiMemory: z.boolean().optional()
-});
+const updateSchema = z
+  .object({
+    keepLastTenMessages: z.boolean(),
+    enableLongTermXaiMemory: z.boolean().optional(),
+    useLongTermXaiMemory: z.boolean().optional()
+  })
+  .transform((body) => ({
+    keepLastTenMessages: body.keepLastTenMessages,
+    enableLongTermXaiMemory: body.enableLongTermXaiMemory ?? body.useLongTermXaiMemory
+  }));
 
 function prefsPayload(row: {
   keepLastTenMessages: boolean;

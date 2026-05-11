@@ -1,0 +1,169 @@
+import { existsSync } from "node:fs";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { join } from "node:path";
+
+import { addFileToXaiCollection, uploadFileToXai } from "@/lib/xai";
+import {
+    getXaiFinanceCollectionId,
+    XAI_FINANCE_COLLECTION_DISPLAY_NAME
+} from "@/lib/xai-finance-collection";
+
+const INGEST_EXTENSIONS = new Set([".md", ".markdown", ".yaml", ".yml"]);
+const SKIP_FILE_NAMES = new Set(["readme.md", ".ds_store"]);
+
+export type FinanceKbSyncError = {
+  source: string;
+  message: string;
+};
+
+export type FinanceKbSyncResult = {
+  collectionId: string;
+  collectionDisplayName: string;
+  filesUploaded: number;
+  fileCandidates: number;
+  errors: FinanceKbSyncError[];
+};
+
+type WalkedFile = {
+  abs: string;
+  rel: string;
+  source: string;
+};
+
+function inferRiskProfile(relativePath: string): string | undefined {
+  const slug = relativePath.split("/").filter(Boolean)[0]?.toLowerCase() ?? "";
+  const conservative = new Set([
+    "cash-secured-puts",
+    "covered-calls",
+    "wheel",
+    "poor-mans-covered-call"
+  ]);
+  const balanced = new Set([
+    "iron-condor",
+    "calendar-spread",
+    "bull-put-credit-spread",
+    "bull-call-debit-spread",
+    "jade-lizard"
+  ]);
+  const aggressive = new Set(["ratio-spread", "zebra", "diagonal-spread", "broken-wing-butterfly"]);
+  if (conservative.has(slug)) {
+    return "conservative";
+  }
+  if (balanced.has(slug)) {
+    return "balanced";
+  }
+  if (aggressive.has(slug)) {
+    return "aggressive";
+  }
+  return undefined;
+}
+
+function normalizeLogicalUploadName(source: string, relativePosixPath: string): string {
+  const raw = relativePosixPath.replace(/\\/g, "/").replace(/^\/+/, "");
+  const safe = raw.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_+/g, "_");
+  const prefix = source.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return `${prefix}__${safe}`;
+}
+
+async function walkIngestFiles(rootDir: string, source: string): Promise<WalkedFile[]> {
+  const out: WalkedFile[] = [];
+  async function walk(absDir: string, rel = ""): Promise<void> {
+    const entries = await readdir(absDir, { withFileTypes: true });
+    for (const ent of entries) {
+      if (ent.name.startsWith(".")) {
+        continue;
+      }
+      const abs = join(absDir, ent.name);
+      const r = rel ? `${rel}/${ent.name}` : ent.name;
+      if (ent.isDirectory()) {
+        await walk(abs, r);
+      } else if (ent.isFile()) {
+        const low = ent.name.toLowerCase();
+        if (SKIP_FILE_NAMES.has(low)) {
+          continue;
+        }
+        const ext = low.slice(low.lastIndexOf("."));
+        if (!INGEST_EXTENSIONS.has(ext)) {
+          continue;
+        }
+        out.push({ abs, rel: r.replace(/\\/g, "/"), source });
+      }
+    }
+  }
+  await walk(rootDir);
+  return out;
+}
+
+function resolveFinanceKbRoots(repoRoot: string): Array<{ dir: string; source: string }> {
+  const roots: Array<{ dir: string; source: string }> = [];
+  const candidates: Array<{ segments: string[]; source: string }> = [
+    { segments: ["atx-docs", "rag-collection", "options-strategy"], source: "options-strategy" },
+    { segments: ["atx-docs", "rag-collection", "finance"], source: "finance" },
+    { segments: ["atx-docs", "rag-collection", "finance-reference-docs"], source: "finance-reference-docs" }
+  ];
+  for (const row of candidates) {
+    const dir = join(repoRoot, ...row.segments);
+    if (existsSync(dir)) {
+      roots.push({ dir, source: row.source });
+    }
+  }
+  return roots;
+}
+
+export async function syncFinanceKnowledgeBaseToXai(input: {
+  repoRoot: string;
+  maxFileBytes?: number;
+}): Promise<FinanceKbSyncResult> {
+  const maxBytes = input.maxFileBytes ?? 24 * 1024 * 1024;
+  const collectionId = getXaiFinanceCollectionId();
+  const errors: FinanceKbSyncError[] = [];
+  const roots = resolveFinanceKbRoots(input.repoRoot);
+  const files: WalkedFile[] = [];
+  for (const root of roots) {
+    files.push(...(await walkIngestFiles(root.dir, root.source)));
+  }
+
+  let filesUploaded = 0;
+  for (const file of files) {
+    try {
+      const st = await stat(file.abs);
+      if (st.size > maxBytes) {
+        errors.push({
+          source: file.rel,
+          message: `skip: file exceeds ${maxBytes} bytes`
+        });
+        continue;
+      }
+      const bytes = await readFile(file.abs);
+      const riskProfile = inferRiskProfile(file.rel);
+      const metadata = {
+        source: file.source,
+        slug: file.rel.replace(/\.[^.]+$/, ""),
+        ...(riskProfile ? { risk_profile: riskProfile } : {}),
+        category: file.source,
+        last_updated: new Date().toISOString()
+      };
+      const logicalFilename = normalizeLogicalUploadName(file.source, file.rel);
+      const payload = Buffer.concat([
+        bytes,
+        Buffer.from(`\n\n<!-- xfinance-kb-metadata: ${JSON.stringify(metadata)} -->\n`, "utf8")
+      ]);
+      const uploaded = await uploadFileToXai(logicalFilename, Uint8Array.from(payload));
+      await addFileToXaiCollection({ collectionId, fileId: uploaded.fileId });
+      filesUploaded += 1;
+    } catch (error) {
+      errors.push({
+        source: file.rel,
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  return {
+    collectionId,
+    collectionDisplayName: XAI_FINANCE_COLLECTION_DISPLAY_NAME,
+    filesUploaded,
+    fileCandidates: files.length,
+    errors
+  };
+}
