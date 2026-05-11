@@ -50,17 +50,13 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
   },
   {
     title: "People & access",
-    blurb: "User lifecycle, roles, and access requests.",
+    blurb: "User lifecycle, roles, open access requests, and per-user defaults — unified on Manage users.",
     items: [
       {
-        href: "/admin/access-requests",
-        title: "Access",
-        description: "Access requests: review pending items, approve or reject, and submit new role requests."
-      },
-      {
         href: "/admin/manage-users",
-        title: "Manage users",
-        description: "Browse approved users, adjust roles and plans, and edit per-user broker, portfolio, and notification defaults."
+        title: "Manage users & access",
+        description:
+          "Directory of users plus open access requests (approve/reject), add user, sortable table, and per-user broker, portfolio, billing, and xChat defaults. Legacy /admin/access-requests redirects here."
       }
     ]
   },

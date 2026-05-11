@@ -1,0 +1,129 @@
+/* Compact admin directory: xAI/Grok-style dense table + two-column shell */
+.admin-users-directory {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .admin-users-directory {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-users-directory__main {
+  min-width: 0;
+}
+
+.admin-users-directory__rail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 0.75rem;
+}
+
+.admin-users-directory__rail .surface-card h3 {
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+}
+
+.admin-users-dir-table-wrap {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid var(--xf-surface-600, rgba(148, 163, 184, 0.18));
+  background: var(--xf-surface-800, rgba(15, 23, 42, 0.45));
+}
+
+.admin-users-dir-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: var(--xf-text-muted, var(--xf-fg-muted, #94a3b8));
+}
+
+.admin-users-dir-table th,
+.admin-users-dir-table td {
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--xf-surface-600, rgba(148, 163, 184, 0.12));
+}
+
+.admin-users-dir-table th {
+  font-weight: 600;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--xf-fg-subtle, #cbd5e1);
+  background: rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.admin-users-dir-table th button {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.admin-users-dir-table th button:hover {
+  color: var(--xf-gain-green, #39ff14);
+}
+
+.admin-users-dir-table tbody tr:hover td {
+  background: rgba(57, 255, 20, 0.04);
+}
+
+.admin-users-dir-table tr.row-selected td {
+  background: rgba(57, 255, 20, 0.08);
+}
+
+.admin-users-dir-table .col-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.7rem;
+}
+
+.admin-users-dir-table .col-actions .tool-row {
+  gap: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.admin-users-dir-table .status-pill {
+  display: inline-block;
+  padding: 0.12rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--xf-fg-subtle, #e2e8f0);
+}
+
+.admin-users-dir-table .status-pill--ar {
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--xf-lightning-yellow, #eab308);
+}
+
+.admin-users-dir-table .status-pill--pending {
+  background: rgba(249, 115, 22, 0.12);
+  color: var(--xf-warning-amber, #fb923c);
+}
+
+.admin-users-dir-table .status-pill--suspended {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--xf-loss-red, #f87171);
+}

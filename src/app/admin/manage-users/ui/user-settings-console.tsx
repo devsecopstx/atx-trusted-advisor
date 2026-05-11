@@ -1,16 +1,36 @@
 "use client";
 
-import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
+import {
+    AddIcon,
+    CopyIcon,
+    DeleteIcon,
+    EditIcon,
+    RefreshIcon,
+    SaveIcon,
+    SendIcon,
+    SyncArrowsIcon,
+    XMarkIcon
+} from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { ACCESS_REQUEST_PLAN_OPTIONS } from "@/lib/access-request-plans";
+import { type AdminAccessRequest, isAdminAccessRequestActionable } from "@/lib/admin/admin-access-request";
+import {
+    filterAccessRequestsForDirectory,
+    sortUsersDirectoryRows,
+    type UsersDirectoryRow,
+    type UsersDirectorySortDir,
+    type UsersDirectorySortKey
+} from "@/lib/admin/users-directory";
 import {
     normalizeSubscriptionPlan,
     SUBSCRIPTION_PLAN_SELECT_OPTIONS,
     type SubscriptionPlan
 } from "@/lib/subscription-plan";
+import { formatUserFacingIdentityLabel } from "@/lib/x-identity-email";
 
 type BrokerSettings = {
   provider: "alpaca" | "interactive-brokers" | "paper";
@@ -98,6 +118,7 @@ type ApprovedUser = {
   email: string;
   /** True when core user has no platform roles yet (e.g. onboarding test pending approve). */
   pendingAccess: boolean;
+  userStatus: "active" | "suspended";
   role: "global_admin" | "advisor" | "operator" | "viewer";
   subscriptionPlan: SubscriptionPlan;
   tenantMemberships: UserTenantMembershipRow[];
@@ -178,6 +199,19 @@ function shortMongoObjectIdHex(id: string | null | undefined): string {
   return `${trimmed.slice(0, 8)}…${trimmed.slice(-4)}`;
 }
 
+function primaryTenantIdForUser(user: ApprovedUser): string {
+  const membership =
+    user.tenantMemberships.find((m) => m.isDefaultSessionTenant) ?? user.tenantMemberships[0];
+  return membership?.tenantId ?? "";
+}
+
+function userDirectoryStatusLabel(user: ApprovedUser): string {
+  if (user.pendingAccess) {
+    return `pending access · ${user.userStatus}`;
+  }
+  return user.userStatus;
+}
+
 const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
   assignedPersonaId: "",
   finraLicenseUploadUrl: "",
@@ -216,8 +250,17 @@ async function writeTextToClipboard(text: string): Promise<void> {
 export function UserSettingsConsole() {
   const [status, setStatus] = useState("Ready");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedAccessRequestId, setSelectedAccessRequestId] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [approvedUsers, setApprovedUsers] = useState<ApprovedUser[]>([]);
+  const [openAccessRequests, setOpenAccessRequests] = useState<AdminAccessRequest[]>([]);
+  const [arEmailEdits, setArEmailEdits] = useState<Record<string, string>>({});
+  const [arPlanEdits, setArPlanEdits] = useState<Record<string, SubscriptionPlan>>({});
+  const [arRoleEdits, setArRoleEdits] = useState<Record<string, ApprovedUser["role"]>>({});
+  const [arTenantEdits, setArTenantEdits] = useState<Record<string, string>>({});
+  const [arReviewNoteEdits, setArReviewNoteEdits] = useState<Record<string, string>>({});
+  const [sortKey, setSortKey] = useState<UsersDirectorySortKey>("name");
+  const [sortDir, setSortDir] = useState<UsersDirectorySortDir>("asc");
   const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
   const [roleEdits, setRoleEdits] = useState<Record<string, ApprovedUser["role"]>>({});
   const [planEdits, setPlanEdits] = useState<Record<string, ApprovedUser["subscriptionPlan"]>>({});
@@ -240,17 +283,63 @@ export function UserSettingsConsole() {
   const [billingOverrideEdits, setBillingOverrideEdits] = useState<
     Record<string, BillingOverrideEditState>
   >({});
+  const [copiedClipboardKey, setCopiedClipboardKey] = useState<string | null>(null);
 
-  const refreshApprovedUsers = useCallback(async () => {
+  const refreshDirectory = useCallback(async () => {
     try {
-      const payload = await parseJson<{ data: ApiUser[] }>(
-        await fetch("/api/admin/users?limit=200")
-      );
+      const [usersRes, accessRes] = await Promise.all([
+        fetch("/api/admin/users?limit=200"),
+        fetch("/api/admin/access-requests?status=open", { cache: "no-store" })
+      ]);
+      const payload = await parseJson<{ data: ApiUser[] }>(usersRes);
+      const arPayload = await parseJson<{ data: AdminAccessRequest[] }>(accessRes);
       const normalizedUsers = payload.data
         .filter((user): user is ApiUser & { _id: string } => Boolean(user._id))
         .map((user) => toApprovedUser(user));
 
       setApprovedUsers(normalizedUsers);
+      setOpenAccessRequests(arPayload.data);
+      setArEmailEdits((previous) => {
+        const next = { ...previous };
+        for (const item of arPayload.data) {
+          next[item.userId] = previous[item.userId] ?? item.user?.email ?? "";
+        }
+        return next;
+      });
+      setArPlanEdits((previous) => {
+        const next = { ...previous };
+        for (const item of arPayload.data) {
+          if (!item._id) continue;
+          next[item._id] = normalizeSubscriptionPlan(
+            previous[item._id] ?? (item.requestedPlan as SubscriptionPlan) ?? "basic"
+          );
+        }
+        return next;
+      });
+      setArRoleEdits((previous) => {
+        const next = { ...previous };
+        for (const item of arPayload.data) {
+          if (!item._id) continue;
+          next[item._id] = previous[item._id] ?? item.requestedRole ?? "operator";
+        }
+        return next;
+      });
+      setArTenantEdits((previous) => {
+        const next = { ...previous };
+        for (const item of arPayload.data) {
+          if (!item._id) continue;
+          next[item._id] = previous[item._id] ?? item.tenantId ?? "";
+        }
+        return next;
+      });
+      setArReviewNoteEdits((previous) => {
+        const next = { ...previous };
+        for (const item of arPayload.data) {
+          if (!item._id) continue;
+          next[item._id] = previous[item._id] ?? "";
+        }
+        return next;
+      });
       setEmailEdits((previous) => {
         const next = { ...previous };
         for (const user of normalizedUsers) {
@@ -325,8 +414,9 @@ export function UserSettingsConsole() {
         linkedCollectionsRecord[entry.userId] = entry.linkedCollections;
       }
       setLinkedCollectionsByUserId(linkedCollectionsRecord);
+      setStatus("Directory synced");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to load approved users");
+      setStatus(error instanceof Error ? error.message : "Failed to load directory");
     }
   }, []);
 
@@ -477,7 +567,7 @@ export function UserSettingsConsole() {
           })
         })
       );
-      await refreshApprovedUsers();
+      await refreshDirectory();
       setEditingUserId(null);
       setStatus("User changes saved");
     } catch (error) {
@@ -529,7 +619,7 @@ export function UserSettingsConsole() {
         ? new Date(payload.data.credentialInviteExpiresAt).toLocaleString()
         : "unknown";
       setStatus(`Password invite sent to ${payload.data.emailedTo} (link expires ${exp}).`);
-      await refreshApprovedUsers();
+      await refreshDirectory();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to resend invite");
     }
@@ -561,9 +651,9 @@ export function UserSettingsConsole() {
         setNewUserRole("operator");
         setNewUserPlan("basic");
         setOnboardingTestPendingAccess(false);
-        await refreshApprovedUsers();
+        await refreshDirectory();
         setStatus(
-          "Pending access request created — open Access Requests to approve, then the user can sign in."
+          "Pending access request created — approve the user from this directory (table or access panel), then they can sign in."
         );
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Failed to create access request");
@@ -587,7 +677,7 @@ export function UserSettingsConsole() {
       setNewUserEmail("");
       setNewUserRole("operator");
       setNewUserPlan("basic");
-      await refreshApprovedUsers();
+      await refreshDirectory();
       setStatus("User created");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to create user");
@@ -625,7 +715,7 @@ export function UserSettingsConsole() {
         setSelectedUserId(null);
         setEditingUserId(null);
       }
-      await refreshApprovedUsers();
+      await refreshDirectory();
       setStatus("User deleted");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to delete user");
@@ -661,7 +751,7 @@ export function UserSettingsConsole() {
         })
       );
 
-      await refreshApprovedUsers();
+      await refreshDirectory();
       setStatus("Settings and billing override saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to save settings");
@@ -669,20 +759,157 @@ export function UserSettingsConsole() {
   }
 
   function selectUser(userId: string) {
+    setSelectedAccessRequestId(null);
     setSelectedUserId(userId);
     void loadUserSettings(userId);
   }
 
+  function selectAccessRequest(requestId: string) {
+    setSelectedAccessRequestId(requestId);
+    setSelectedUserId(null);
+    setEditingUserId(null);
+  }
+
+  function toggleDirectorySort(key: UsersDirectorySortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  async function reviewAccessRequest(requestId: string, statusValue: "approved" | "rejected") {
+    const row = openAccessRequests.find((r) => r._id === requestId);
+    const tenant = (arTenantEdits[requestId]?.trim() || row?.tenantId?.trim() || "").trim();
+    const plan = arPlanEdits[requestId] ?? row?.requestedPlan;
+    const role = arRoleEdits[requestId] ?? row?.requestedRole;
+    const reviewNoteRaw = arReviewNoteEdits[requestId]?.trim() ?? "";
+    if (statusValue === "approved") {
+      if (!tenant) {
+        setStatus("Select a tenant before approving.");
+        return;
+      }
+      if (!plan) {
+        setStatus("Select a plan before approving.");
+        return;
+      }
+      if (!role) {
+        setStatus("Select a role before approving.");
+        return;
+      }
+    }
+    setStatus(statusValue === "approved" ? "Approving…" : "Rejecting…");
+    try {
+      const body: Record<string, unknown> = { status: statusValue };
+      if (statusValue === "approved") {
+        body.requestedRole = role;
+        body.requestedPlan = plan;
+        body.targetTenantId = tenant;
+      }
+      if (reviewNoteRaw) {
+        body.reviewNote = reviewNoteRaw;
+      }
+      await parseJson(
+        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
+          method: "PUT",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        })
+      );
+      setSelectedAccessRequestId(null);
+      await refreshDirectory();
+      setStatus(statusValue === "approved" ? "Access request approved" : "Access request rejected");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update request");
+    }
+  }
+
+  async function updateArUserEmail(userId: string) {
+    const email = arEmailEdits[userId]?.trim().toLowerCase() ?? "";
+    if (!email) {
+      setStatus("Email is required.");
+      return;
+    }
+    setStatus("Updating user email…");
+    try {
+      await parseJson(
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/email`, {
+          method: "PATCH",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
+        })
+      );
+      await refreshDirectory();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update email");
+    }
+  }
+
+  async function updateAccessRequestPlanOnly(requestId: string) {
+    setStatus("Updating plan…");
+    try {
+      await parseJson(
+        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
+          method: "PUT",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestedPlan: arPlanEdits[requestId] ?? "basic" })
+        })
+      );
+      await refreshDirectory();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update plan");
+    }
+  }
+
+  async function updateAccessRequestTenantOnly(requestId: string) {
+    setStatus("Updating tenant…");
+    try {
+      await parseJson(
+        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
+          method: "PUT",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetTenantId: arTenantEdits[requestId] ?? "" })
+        })
+      );
+      await refreshDirectory();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update tenant");
+    }
+  }
+
+  async function deleteAccessRequestRow(requestId: string) {
+    setStatus("Deleting request…");
+    try {
+      await parseJson(
+        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
+          method: "DELETE",
+          cache: "no-store"
+        })
+      );
+      if (selectedAccessRequestId === requestId) {
+        setSelectedAccessRequestId(null);
+      }
+      await refreshDirectory();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to delete");
+    }
+  }
+
   useEffect(() => {
     const refreshTimer = window.setTimeout(() => {
-      void refreshApprovedUsers();
+      void refreshDirectory();
       void refreshTenants();
       void refreshPersonaOptions();
     }, 0);
     return () => {
       window.clearTimeout(refreshTimer);
     };
-  }, [refreshApprovedUsers, refreshPersonaOptions, refreshTenants]);
+  }, [refreshDirectory, refreshPersonaOptions, refreshTenants]);
 
   const selectedLinkedCollections = selectedUserId
     ? linkedCollectionsByUserId[selectedUserId] ?? []
@@ -690,428 +917,917 @@ export function UserSettingsConsole() {
   const selectedUserRow = selectedUserId
     ? approvedUsers.find((u) => u.userId === selectedUserId)
     : undefined;
+  const selectedAccessRequest = selectedAccessRequestId
+    ? openAccessRequests.find((r) => r._id === selectedAccessRequestId)
+    : undefined;
 
-  const copyMongoUserId = useCallback(async (userId: string) => {
+  const directoryRows: UsersDirectoryRow[] = useMemo(() => {
+    const usersPart: UsersDirectoryRow[] = approvedUsers.map((u) => ({
+      kind: "user",
+      userId: u.userId,
+      name: u.name,
+      email: u.email,
+      tenantId: primaryTenantIdForUser(u),
+      roleLabel: u.pendingAccess ? "pending" : u.role,
+      planLabel: u.subscriptionPlan,
+      statusLabel: userDirectoryStatusLabel(u),
+      pendingAccess: u.pendingAccess,
+      userStatus: u.userStatus
+    }));
+    const filteredAr = filterAccessRequestsForDirectory(
+      approvedUsers.map((u) => ({ userId: u.userId, pendingAccess: u.pendingAccess })),
+      openAccessRequests
+    );
+    const arPart: UsersDirectoryRow[] = filteredAr
+      .filter((r): r is AdminAccessRequest & { _id: string } => Boolean(r._id))
+      .map((r) => ({
+        kind: "access_request",
+        requestId: r._id,
+        userId: r.userId,
+        name: formatUserFacingIdentityLabel(r.user, r.userId),
+        email: r.user?.email ?? arEmailEdits[r.userId] ?? "—",
+        tenantId: (arTenantEdits[r._id] ?? r.tenantId ?? "").trim(),
+        roleLabel: arRoleEdits[r._id] ?? r.requestedRole,
+        planLabel: String(arPlanEdits[r._id] ?? r.requestedPlan ?? "basic"),
+        statusLabel: r.status,
+        arStatus: r.status
+      }));
+    return sortUsersDirectoryRows([...usersPart, ...arPart], sortKey, sortDir);
+  }, [
+    approvedUsers,
+    openAccessRequests,
+    arEmailEdits,
+    arTenantEdits,
+    arRoleEdits,
+    arPlanEdits,
+    sortKey,
+    sortDir
+  ]);
+
+  const copyMongoObjectId = useCallback(async (key: string, id: string, label: string) => {
     try {
-      await writeTextToClipboard(userId);
-      setStatus(`Copied user id (${userId})`);
+      await writeTextToClipboard(id);
+      setCopiedClipboardKey(key);
+      setStatus(`Copied ${label} (${id})`);
+      window.setTimeout(() => {
+        setCopiedClipboardKey((current) => (current === key ? null : current));
+      }, 2000);
     } catch {
-      setStatus("Could not copy — select the User ID text manually.");
+      setStatus(`Could not copy ${label} — select the id text manually.`);
     }
   }, []);
+
+  const SortHeader = ({ col, label }: { col: UsersDirectorySortKey; label: string }) => (
+    <th scope="col">
+      <button type="button" onClick={() => toggleDirectorySort(col)}>
+        {label}
+        {sortKey === col ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+      </button>
+    </th>
+  );
 
   return (
     <section className="panel stack-gap">
       <div className="tool-row">
-        <button className="cta cta-secondary" onClick={() => void refreshApprovedUsers()} type="button">
-          <RefreshIcon className="crud-icon" /> Refresh users
+        <button className="cta cta-secondary" onClick={() => void refreshDirectory()} type="button">
+          <RefreshIcon className="crud-icon" /> Refresh directory
         </button>
         <p className="status-text">{status}</p>
       </div>
 
-      <article className="surface-card xf-widget section-card">
-        <h3>Users</h3>
-        <form className="stack-form" onSubmit={createUser}>
-          <input
-            onChange={(event) => setNewUserEmail(event.target.value)}
-            placeholder="new user email"
-            required
-            type="email"
-            value={newUserEmail}
-          />
-          <select
-            onChange={(event) => setNewUserRole(event.target.value as ApprovedUser["role"])}
-            value={newUserRole}
-            aria-label={
-              onboardingTestPendingAccess
-                ? "Requested role (applied when access request is approved)"
-                : "Default role for new user"
-            }
-          >
-            {ROLE_SELECT_OPTIONS.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
-          <select
-            onChange={(event) => setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])}
-            value={newUserPlan}
-            aria-label={
-              onboardingTestPendingAccess
-                ? "Requested plan (applied when access request is approved)"
-                : "Subscription plan for new user"
-            }
-          >
-            {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <label className="flex cursor-pointer items-start gap-2 text-sm leading-snug">
-            <input
-              checked={onboardingTestPendingAccess}
-              className="mt-1 shrink-0"
-              onChange={(event) => setOnboardingTestPendingAccess(event.target.checked)}
-              type="checkbox"
-            />
-            <span>
-              <strong>Onboarding test:</strong> create a{" "}
-              <strong>pending access request</strong> only (no login until approved in{" "}
-              <Link className="underline" href="/admin/access-requests">
-                Access Requests
-              </Link>
-              ). Leave off to provision the user immediately (normal Add user).
-            </span>
-          </label>
-          <button className="cta cta-primary" type="submit">
-            <AddIcon className="crud-icon" />{" "}
-            {onboardingTestPendingAccess ? "Create pending access request" : "Add user"}
-          </button>
-        </form>
-        <details className="mt-3 text-sm opacity-90">
-          <summary className="cursor-pointer select-none font-medium">Onboarding test loop</summary>
-          <ol className="mt-2 ml-4 list-decimal space-y-1">
-            <li>
-              Check <strong>Onboarding test</strong>, enter email + requested role/plan, submit — user row
-              appears with no login role until approval.
-            </li>
-            <li>
-              Open{" "}
-              <Link className="underline" href="/admin/access-requests">
-                Access Requests
-              </Link>{" "}
-              and approve — user gains roles and can sign in.
-            </li>
-            <li>
-              Use <strong>Delete</strong> on the row to wipe the user and related rows (including access
-              requests).
-            </li>
-            <li>Repeat with the same email — delete clears state so you can re-run the flow.</li>
-          </ol>
-        </details>
-        <div className="crud-table-wrap">
-          <table className="crud-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th title="core_users._id — 24-character Mongo ObjectId hex (APIs, session mint, scripting)">
-                  User ID
-                </th>
-                <th>Email</th>
-                <th title="Each user is linked to at most one tenant; duplicates are merged on refresh.">
-                  Tenant
-                </th>
-                <th>Role</th>
-                <th>Plan</th>
-                <th title="Admin billing override (treats subscription as active for product access)">
-                  Override
-                </th>
-                <th>xPersona</th>
-                <th>Audit</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {approvedUsers.map((user) => (
-                <tr key={user.userId} className={selectedUserId === user.userId ? "row-selected" : ""}>
-                  <td>{user.name}</td>
-                  <td className="align-top" style={{ maxWidth: 220 }}>
-                    <div className="flex flex-col gap-1">
-                      <div
-                        className="font-mono text-xs opacity-90"
-                        title={`core_users._id: ${user.userId}`}
-                      >
-                        <span className="opacity-70">user</span> {shortMongoObjectIdHex(user.userId)}
-                      </div>
-                      <button
-                        className="tiny-button self-start"
-                        onClick={() => void copyMongoUserId(user.userId)}
-                        type="button"
-                      >
-                        Copy full id
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    <input
-                      disabled={editingUserId !== user.userId}
-                      onChange={(event) =>
-                        setEmailEdits((previous) => ({ ...previous, [user.userId]: event.target.value }))
+      <div className="admin-users-directory">
+        <div className="admin-users-directory__main">
+          <article className="surface-card xf-widget section-card">
+            <h3>
+              People ({approvedUsers.length} users · {directoryRows.filter((r) => r.kind === "access_request").length}{" "}
+              standalone access requests)
+            </h3>
+            <div className="admin-users-dir-table-wrap">
+              <table className="admin-users-dir-table">
+                <thead>
+                  <tr>
+                    <SortHeader col="name" label="Name" />
+                    <SortHeader col="email" label="Email" />
+                    <SortHeader col="userId" label="User ID" />
+                    <SortHeader col="tenantId" label="Tenant ID" />
+                    <SortHeader col="role" label="Role" />
+                    <SortHeader col="plan" label="Plan" />
+                    <SortHeader col="status" label="Status" />
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {directoryRows.map((row) => {
+                    if (row.kind === "user") {
+                      const user = approvedUsers.find((u) => u.userId === row.userId);
+                      if (!user) {
+                        return null;
                       }
-                      placeholder="update user email"
-                      type="email"
-                      value={emailEdits[user.userId] ?? ""}
-                    />
-                  </td>
-                  <td className="align-top" style={{ maxWidth: 220 }}>
-                    {user.tenantMemberships.length > 0 ? (
-                      <ul className="m-0 list-none space-y-2 p-0">
-                        {user.tenantMemberships.map((m) => (
-                          <li key={m.tenantId}>
-                            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
-                              {m.isDefaultSessionTenant ? (
-                                <span
-                                  className="shrink-0"
-                                  style={{ color: "var(--xf-gain-green)" }}
-                                  title="Default session tenant"
-                                  aria-label="Default session tenant"
+                      const rowSelected = selectedUserId === row.userId && selectedAccessRequestId == null;
+                      return (
+                        <tr
+                          key={`u-${row.userId}`}
+                          className={rowSelected ? "row-selected" : ""}
+                        >
+                          <td>{row.name}</td>
+                          <td>{row.email}</td>
+                          <td className="col-mono">
+                            <div className="flex items-center gap-1">
+                              <span>{shortMongoObjectIdHex(row.userId)}</span>
+                              <XfHoverHint
+                                hint={
+                                  copiedClipboardKey === `user:${row.userId}`
+                                    ? "Copied user id"
+                                    : "Copy user id"
+                                }
+                              >
+                                <button
+                                  aria-label="Copy user id"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() =>
+                                    void copyMongoObjectId(`user:${row.userId}`, row.userId, "user id")
+                                  }
+                                  type="button"
                                 >
-                                  ●
-                                </span>
-                              ) : null}
-                              <span className="font-semibold text-sm">{m.slug}</span>
-                              {m.name ? (
-                                <span className="status-text text-xs opacity-80">· {m.name}</span>
-                              ) : null}
+                                  <CopyIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
                             </div>
-                            <div
-                              className="font-mono text-xs opacity-80"
-                              title={`core_tenants._id: ${m.tenantId}`}
-                            >
-                              <span className="opacity-70">tenant</span> {shortMongoObjectIdHex(m.tenantId)}
-                            </div>
-                            {m.tenantId === user.userId ? (
-                              <div className="text-xs" style={{ color: "var(--xf-loss-red)" }}>
-                                Data issue: tenant id matches user id
+                          </td>
+                          <td className="col-mono">
+                            {row.tenantId ? (
+                              <div className="flex items-center gap-1">
+                                <span>{shortMongoObjectIdHex(row.tenantId)}</span>
+                                <XfHoverHint
+                                  hint={
+                                    copiedClipboardKey === `tenant:${row.tenantId}`
+                                      ? "Copied tenant id"
+                                      : "Copy tenant id"
+                                  }
+                                >
+                                  <button
+                                    aria-label="Copy tenant id"
+                                    className="tiny-button xf-icon-edit-btn--icon-only"
+                                    onClick={() =>
+                                      void copyMongoObjectId(
+                                        `tenant:${row.tenantId}`,
+                                        row.tenantId,
+                                        "tenant id"
+                                      )
+                                    }
+                                    type="button"
+                                  >
+                                    <CopyIcon className="crud-icon" />
+                                  </button>
+                                </XfHoverHint>
                               </div>
-                            ) : null}
-                            <div className="text-xs opacity-70">{m.tenantRole}</div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span className="status-text text-xs">No tenant membership</span>
-                    )}
-                    <div className="mt-2 flex flex-col gap-1">
-                      <select
-                        disabled={editingUserId !== user.userId}
-                        onChange={(event) =>
-                          setTenantEdits((previous) => ({
-                            ...previous,
-                            [user.userId]: event.target.value
-                          }))
-                        }
-                        value={tenantEdits[user.userId] ?? ""}
-                        aria-label={`Tenant for ${user.email}`}
-                      >
-                        <option value="">(no tenant)</option>
-                        {tenantOptions.map((tenant) => (
-                          <option key={tenant.tenantId} value={tenant.tenantId}>
-                            {tenant.slug}
-                            {tenant.name ? ` - ${tenant.name}` : ""} · {shortMongoObjectIdHex(tenant.tenantId)}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        disabled={editingUserId !== user.userId}
-                        onChange={(event) =>
-                          setTenantRoleEdits((previous) => ({
-                            ...previous,
-                            [user.userId]: event.target.value as "tenant_admin" | "member"
-                          }))
-                        }
-                        value={tenantRoleEdits[user.userId] ?? "member"}
-                        aria-label={`Tenant role for ${user.email}`}
-                      >
-                        <option value="member">member</option>
-                        <option value="tenant_admin">tenant_admin</option>
-                      </select>
-                    </div>
-                  </td>
-                  <td>
-                    {user.pendingAccess ? (
-                      <span
-                        className="text-xs leading-snug opacity-80"
-                        title="Approve the matching row under Admin → Access Requests to grant this role."
-                      >
-                        Pending —{" "}
-                        <Link className="underline" href="/admin/access-requests">
-                          approve in Access Requests
-                        </Link>
-                      </span>
-                    ) : (
-                      <select
-                        disabled={editingUserId !== user.userId}
-                        onChange={(event) =>
-                          setRoleEdits((previous) => ({
-                            ...previous,
-                            [user.userId]: event.target.value as ApprovedUser["role"]
-                          }))
-                        }
-                        value={roleEdits[user.userId] ?? user.role}
-                        aria-label={`Role for ${user.email}`}
-                      >
-                        {ROLE_SELECT_OPTIONS.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
-                  <td>
-                    <select
-                      disabled={editingUserId !== user.userId}
-                      onChange={(event) =>
-                        setPlanEdits((previous) => ({
-                          ...previous,
-                          [user.userId]: event.target.value as ApprovedUser["subscriptionPlan"]
-                        }))
-                      }
-                      value={planEdits[user.userId] ?? user.subscriptionPlan}
-                      aria-label={`Subscription plan for ${user.email}`}
-                    >
-                      {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="align-top">
-                    {user.pendingAccess ? (
-                      <span
-                        className="status-text text-xs opacity-70"
-                        title="Approve access before editing billing override."
-                      >
-                        —
-                      </span>
-                    ) : (
-                      <select
-                        disabled={editingUserId !== user.userId}
-                        aria-label={`Billing override for ${user.email}`}
-                        value={
-                          (billingOverrideEdits[user.userId]?.enabled ??
-                            user.billing?.override?.enabled ??
-                            false)
-                            ? "on"
-                            : "off"
-                        }
-                        onChange={(event) => {
-                          const enabled = event.target.value === "on";
-                          setBillingOverrideEdits((previous) => ({
-                            ...previous,
-                            [user.userId]: {
-                              enabled,
-                              reason:
-                                previous[user.userId]?.reason ?? user.billing?.override?.reason ?? "",
-                              expiresAtLocal:
-                                previous[user.userId]?.expiresAtLocal ??
-                                (user.billing?.override?.expiresAt
-                                  ? isoToDatetimeLocalValue(user.billing.override.expiresAt)
-                                  : "")
-                            }
-                          }));
-                        }}
-                      >
-                        <option value="off">Off</option>
-                        <option value="on">On</option>
-                      </select>
-                    )}
-                  </td>
-                  <td>
-                    <select
-                      disabled={editingUserId !== user.userId}
-                      onChange={(event) =>
-                        setPersonaByUserId((previous) => ({
-                          ...previous,
-                          [user.userId]: event.target.value
-                        }))
-                      }
-                      value={personaByUserId[user.userId] ?? ""}
-                    >
-                      <option value="">(default persona)</option>
-                      {personaOptions.map((persona) => (
-                        <option key={persona.id} value={persona.id}>
-                          {persona.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    {user.latestAuditEvent
-                      ? `${user.latestAuditEvent.action} by ${
-                          user.latestAuditEvent.actor.email ??
-                          user.latestAuditEvent.actor.username ??
-                          user.latestAuditEvent.actor.userId
-                        } at ${new Date(user.latestAuditEvent.createdAt).toLocaleString()}`
-                      : user.approvedAt
-                        ? new Date(user.approvedAt).toLocaleString()
-                        : "unknown"}
-                  </td>
-                  <td>
-                    <div className="tool-row">
-                      <button className="tiny-button" onClick={() => selectUser(user.userId)} type="button">
-                        <EditIcon className="crud-icon" /> Select
-                      </button>
-                      <IconEditButton
-                        label="Edit user"
-                        variant="tiny"
-                        onClick={() => {
-                          selectUser(user.userId);
-                          setEditingUserId(user.userId);
-                        }}
-                      />
-                      <button
-                        className="tiny-button"
-                        disabled={editingUserId !== user.userId || selectedUserId !== user.userId}
-                        onClick={() => void saveUserEdits(user.userId)}
-                        type="button"
-                      >
-                        <SaveIcon className="crud-icon" /> Save
-                      </button>
-                      <button
-                        className="tiny-button"
-                        onClick={() => void resetUserMeteredUsage(user.userId, user.email)}
-                        title="Clears xChat usage_limits and app_feature_daily_usage for this user"
-                        type="button"
-                      >
-                        Reset usage
-                      </button>
-                      <button
-                        className="tiny-button"
-                        disabled={!user.resendPasswordInviteAvailable}
-                        onClick={() => void resendCredentialInvite(user.userId, user.email)}
-                        title={
-                          user.resendPasswordInviteAvailable
-                            ? "Reissue a fresh password-setup link (7-day expiry) and email it"
-                            : (user.resendPasswordInviteBlockedReason ??
-                              "Password invite resend is not available for this user")
-                        }
-                        type="button"
-                      >
-                        Resend invite
-                      </button>
-                      <button className="tiny-button" onClick={() => void deleteUser(user.userId)} type="button">
-                        <DeleteIcon className="crud-icon" /> Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </article>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td>{row.roleLabel}</td>
+                          <td>{row.planLabel}</td>
+                          <td>
+                            <span
+                              className={`status-pill${
+                                user.pendingAccess ? " status-pill--pending" : ""
+                              }${user.userStatus === "suspended" ? " status-pill--suspended" : ""}`}
+                            >
+                              {row.statusLabel}
+                            </span>
+                          </td>
+                          <td className="col-actions">
+                            <div className="tool-row">
+                              <XfHoverHint hint="Open in side panel">
+                                <button
+                                  aria-label="Open user"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() => selectUser(user.userId)}
+                                  type="button"
+                                >
+                                  <EditIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <IconEditButton
+                                label="Edit user"
+                                variant="tiny"
+                                onClick={() => {
+                                  selectUser(user.userId);
+                                  setEditingUserId(user.userId);
+                                }}
+                              />
+                              <XfHoverHint hint="Save email, role, plan, tenant, persona, billing">
+                                <button
+                                  aria-label="Save user row"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  disabled={
+                                    editingUserId !== user.userId || selectedUserId !== user.userId
+                                  }
+                                  onClick={() => void saveUserEdits(user.userId)}
+                                  type="button"
+                                >
+                                  <SaveIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <XfHoverHint hint="Clears xChat usage limits and app feature daily usage for this user (Mongo, today)">
+                                <button
+                                  aria-label="Reset usage"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() => void resetUserMeteredUsage(user.userId, user.email)}
+                                  type="button"
+                                >
+                                  <SyncArrowsIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <XfHoverHint
+                                hint={
+                                  user.resendPasswordInviteAvailable
+                                    ? "Reissue password-setup email (7-day link; prior links invalidate)"
+                                    : (user.resendPasswordInviteBlockedReason ??
+                                      "Password invite not available")
+                                }
+                              >
+                                <button
+                                  aria-label="Resend password invite"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  disabled={!user.resendPasswordInviteAvailable}
+                                  onClick={() => void resendCredentialInvite(user.userId, user.email)}
+                                  type="button"
+                                >
+                                  <SendIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <XfHoverHint hint="Permanently delete user and related data">
+                                <button
+                                  aria-label="Delete user"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() => void deleteUser(user.userId)}
+                                  type="button"
+                                >
+                                  <DeleteIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
 
-      {selectedUserId ? (
-        <article className="surface-card xf-widget section-card">
+                    const ar = openAccessRequests.find((r) => r._id === row.requestId);
+                    if (!ar?._id) {
+                      return null;
+                    }
+                    const actionable = isAdminAccessRequestActionable(ar.status);
+                    const tenantOk =
+                      (arTenantEdits[ar._id]?.trim() || ar.tenantId?.trim() || "").trim().length > 0;
+                    const rowSelected = selectedAccessRequestId === ar._id;
+                    return (
+                      <tr key={`ar-${ar._id}`} className={rowSelected ? "row-selected" : ""}>
+                        <td>{row.name}</td>
+                        <td>{row.email}</td>
+                        <td className="col-mono">
+                          <div className="flex items-center gap-1">
+                            <span>{shortMongoObjectIdHex(row.userId)}</span>
+                            <XfHoverHint
+                              hint={
+                                copiedClipboardKey === `user:${row.userId}`
+                                  ? "Copied user id"
+                                  : "Copy user id"
+                              }
+                            >
+                              <button
+                                aria-label="Copy user id"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                onClick={() => void copyMongoObjectId(`user:${row.userId}`, row.userId, "user id")}
+                                type="button"
+                              >
+                                <CopyIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                          </div>
+                        </td>
+                        <td className="col-mono">
+                          {row.tenantId ? (
+                            <div className="flex items-center gap-1">
+                              <span>{shortMongoObjectIdHex(row.tenantId)}</span>
+                              <XfHoverHint
+                                hint={
+                                  copiedClipboardKey === `tenant:${row.tenantId}`
+                                    ? "Copied tenant id"
+                                    : "Copy tenant id"
+                                }
+                              >
+                                <button
+                                  aria-label="Copy tenant id"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() =>
+                                    void copyMongoObjectId(
+                                      `tenant:${row.tenantId}`,
+                                      row.tenantId,
+                                      "tenant id"
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  <CopyIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td>{row.roleLabel}</td>
+                        <td>{row.planLabel}</td>
+                        <td>
+                          <span className="status-pill status-pill--ar">{row.statusLabel}</span>
+                        </td>
+                        <td className="col-actions">
+                          <div className="tool-row">
+                            <XfHoverHint hint="Review access request in side panel">
+                              <button
+                                aria-label="Open access request"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                onClick={() => selectAccessRequest(ar._id as string)}
+                                type="button"
+                              >
+                                <EditIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                            <IconEditButton
+                              label="Update requester email"
+                              variant="tiny"
+                              onClick={() => void updateArUserEmail(ar.userId)}
+                            />
+                            <XfHoverHint
+                              hint={
+                                !actionable || !tenantOk
+                                  ? "Approve requires tenant (pick in side panel)"
+                                  : "Approve and assign tenant, role, plan"
+                              }
+                            >
+                              <button
+                                aria-label="Approve access request"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                disabled={!actionable || !tenantOk}
+                                onClick={() => void reviewAccessRequest(ar._id as string, "approved")}
+                                type="button"
+                              >
+                                <SaveIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                            <XfHoverHint hint="Reject this access request">
+                              <button
+                                aria-label="Reject access request"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                disabled={!actionable}
+                                onClick={() => void reviewAccessRequest(ar._id as string, "rejected")}
+                                type="button"
+                              >
+                                <XMarkIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                            <XfHoverHint hint="Delete access request record">
+                              <button
+                                aria-label="Delete access request"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                onClick={() => void deleteAccessRequestRow(ar._id as string)}
+                                type="button"
+                              >
+                                <DeleteIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+
+        <aside className="admin-users-directory__rail">
+          <article className="surface-card xf-widget section-card">
+            <h3>Add user</h3>
+            <form className="stack-form" onSubmit={createUser}>
+              <input
+                onChange={(event) => setNewUserEmail(event.target.value)}
+                placeholder="new user email"
+                required
+                type="email"
+                value={newUserEmail}
+              />
+              <select
+                onChange={(event) => setNewUserRole(event.target.value as ApprovedUser["role"])}
+                value={newUserRole}
+                aria-label={
+                  onboardingTestPendingAccess
+                    ? "Requested role (applied when access request is approved)"
+                    : "Default role for new user"
+                }
+              >
+                {ROLE_SELECT_OPTIONS.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+              <select
+                onChange={(event) =>
+                  setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])
+                }
+                value={newUserPlan}
+                aria-label={
+                  onboardingTestPendingAccess
+                    ? "Requested plan (applied when access request is approved)"
+                    : "Subscription plan for new user"
+                }
+              >
+                {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <label className="flex cursor-pointer items-start gap-2 text-sm leading-snug">
+                <input
+                  checked={onboardingTestPendingAccess}
+                  className="mt-1 shrink-0"
+                  onChange={(event) => setOnboardingTestPendingAccess(event.target.checked)}
+                  type="checkbox"
+                />
+                <span>
+                  <strong>Onboarding test:</strong> create a <strong>pending access request</strong> only
+                  (no login until approved in this directory). Leave off to provision the user immediately.
+                </span>
+              </label>
+              <button className="cta cta-primary" type="submit">
+                <AddIcon className="crud-icon" />{" "}
+                {onboardingTestPendingAccess ? "Create pending access request" : "Add user"}
+              </button>
+            </form>
+            <details className="mt-3 text-sm opacity-90">
+              <summary className="cursor-pointer select-none font-medium">Onboarding test loop</summary>
+              <ol className="mt-2 ml-4 list-decimal space-y-1">
+                <li>
+                  Check <strong>Onboarding test</strong>, enter email + requested role/plan, submit — user row
+                  appears with no login role until approval.
+                </li>
+                <li>
+                  Approve from the <strong>access request</strong> row or the side panel — user gains roles and
+                  can sign in.
+                </li>
+                <li>
+                  Use <strong>Delete</strong> on the row to wipe the user and related rows (including access
+                  requests).
+                </li>
+                <li>Repeat with the same email — delete clears state so you can re-run the flow.</li>
+              </ol>
+            </details>
+          </article>
+
+          {selectedAccessRequest && selectedAccessRequestId ? (
+            <article className="surface-card xf-widget section-card">
+              <h3>Access request</h3>
+              <p className="status-text text-xs opacity-90">
+                Status: <span className="status-pill status-pill--ar">{selectedAccessRequest.status}</span>
+              </p>
+              <p className="status-text font-mono text-xs break-all">{selectedAccessRequest.reason}</p>
+              {selectedAccessRequest.policyViolations &&
+              selectedAccessRequest.policyViolations.length > 0 ? (
+                <p className="status-text status-error text-xs">
+                  {selectedAccessRequest.policyViolations.map((v) => v.message).join("; ")}
+                </p>
+              ) : null}
+              <label className="stack-form">
+                Requester email
+                <input
+                  onChange={(event) =>
+                    setArEmailEdits((p) => ({
+                      ...p,
+                      [selectedAccessRequest.userId]: event.target.value
+                    }))
+                  }
+                  type="email"
+                  value={arEmailEdits[selectedAccessRequest.userId] ?? ""}
+                />
+              </label>
+              <label className="stack-form">
+                Tenant (required to approve)
+                <select
+                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
+                  onChange={(event) =>
+                    setArTenantEdits((p) => ({
+                      ...p,
+                      [selectedAccessRequestId]: event.target.value
+                    }))
+                  }
+                  value={arTenantEdits[selectedAccessRequestId] ?? selectedAccessRequest.tenantId ?? ""}
+                >
+                  <option value="">Select tenant…</option>
+                  {tenantOptions.map((t) => (
+                    <option key={t.tenantId} value={t.tenantId}>
+                      {t.name || t.slug} ({t.slug})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="stack-form">
+                Role on approve
+                <select
+                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
+                  onChange={(event) =>
+                    setArRoleEdits((p) => ({
+                      ...p,
+                      [selectedAccessRequestId]: event.target.value as ApprovedUser["role"]
+                    }))
+                  }
+                  value={arRoleEdits[selectedAccessRequestId] ?? selectedAccessRequest.requestedRole}
+                >
+                  <option value="global_admin">global_admin (elevated)</option>
+                  <option value="advisor">advisor</option>
+                  <option value="operator">operator</option>
+                  <option value="viewer">viewer</option>
+                </select>
+              </label>
+              <label className="stack-form">
+                Plan on approve
+                <select
+                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
+                  onChange={(event) =>
+                    setArPlanEdits((p) => ({
+                      ...p,
+                      [selectedAccessRequestId]: normalizeSubscriptionPlan(event.target.value)
+                    }))
+                  }
+                  value={arPlanEdits[selectedAccessRequestId] ?? selectedAccessRequest.requestedPlan}
+                >
+                  {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="stack-form">
+                Review note (optional)
+                <textarea
+                  className="min-h-[4rem] w-full"
+                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
+                  onChange={(event) =>
+                    setArReviewNoteEdits((p) => ({ ...p, [selectedAccessRequestId]: event.target.value }))
+                  }
+                  value={arReviewNoteEdits[selectedAccessRequestId] ?? ""}
+                />
+              </label>
+              <div className="tool-row flex-wrap">
+                <button
+                  className="cta cta-secondary"
+                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
+                  onClick={() => void updateAccessRequestTenantOnly(selectedAccessRequestId)}
+                  type="button"
+                >
+                  Save tenant
+                </button>
+                <button
+                  className="cta cta-secondary"
+                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
+                  onClick={() => void updateAccessRequestPlanOnly(selectedAccessRequestId)}
+                  type="button"
+                >
+                  Save plan
+                </button>
+                <button
+                  className="cta cta-secondary"
+                  onClick={() => void updateArUserEmail(selectedAccessRequest.userId)}
+                  type="button"
+                >
+                  Save email
+                </button>
+              </div>
+              <div className="tool-row flex-wrap">
+                <button
+                  className="cta cta-primary"
+                  disabled={
+                    !isAdminAccessRequestActionable(selectedAccessRequest.status) ||
+                    !(arTenantEdits[selectedAccessRequestId]?.trim() ||
+                      selectedAccessRequest.tenantId?.trim() ||
+                      "").trim()
+                  }
+                  onClick={() => void reviewAccessRequest(selectedAccessRequestId, "approved")}
+                  type="button"
+                >
+                  Approve
+                </button>
+                <button
+                  className="cta cta-secondary"
+                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
+                  onClick={() => void reviewAccessRequest(selectedAccessRequestId, "rejected")}
+                  type="button"
+                >
+                  Reject
+                </button>
+                <button
+                  className="tiny-button"
+                  onClick={() => void deleteAccessRequestRow(selectedAccessRequestId)}
+                  type="button"
+                >
+                  <DeleteIcon className="crud-icon" /> Delete request
+                </button>
+              </div>
+            </article>
+          ) : null}
+
+          {selectedUserRow && selectedUserId && !selectedAccessRequestId ? (
+            <article className="surface-card xf-widget section-card">
+              <h3>Profile &amp; access</h3>
+              <p className="status-text text-xs">
+                Edit when <strong>Edit user</strong> is active, then <strong>Save profile</strong>.
+              </p>
+              <div className="stack-form">
+                <label>
+                  Email
+                  <input
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setEmailEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value
+                      }))
+                    }
+                    type="email"
+                    value={emailEdits[selectedUserId] ?? ""}
+                  />
+                </label>
+                <div>
+                  <p className="status-text mb-1 text-xs">Tenant membership</p>
+                  {selectedUserRow.tenantMemberships.length > 0 ? (
+                    <ul className="m-0 list-none space-y-2 p-0">
+                      {selectedUserRow.tenantMemberships.map((m) => (
+                        <li key={m.tenantId}>
+                          <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
+                            {m.isDefaultSessionTenant ? (
+                              <span
+                                className="shrink-0"
+                                style={{ color: "var(--xf-gain-green)" }}
+                                aria-label="Default session tenant"
+                              >
+                                ●
+                              </span>
+                            ) : null}
+                            <span className="font-semibold text-sm">{m.slug}</span>
+                            {m.name ? (
+                              <span className="status-text text-xs opacity-80">· {m.name}</span>
+                            ) : null}
+                          </div>
+                          {m.tenantId === selectedUserRow.userId ? (
+                            <div className="text-xs" style={{ color: "var(--xf-loss-red)" }}>
+                              Data issue: tenant id matches user id
+                            </div>
+                          ) : null}
+                          <div className="text-xs opacity-70">{m.tenantRole}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="status-text text-xs">No tenant membership</span>
+                  )}
+                  <select
+                    className="mt-2 w-full"
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setTenantEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value
+                      }))
+                    }
+                    value={tenantEdits[selectedUserId] ?? ""}
+                  >
+                    <option value="">(no tenant)</option>
+                    {tenantOptions.map((tenant) => (
+                      <option key={tenant.tenantId} value={tenant.tenantId}>
+                        {tenant.slug}
+                        {tenant.name ? ` - ${tenant.name}` : ""} ·{" "}
+                        {shortMongoObjectIdHex(tenant.tenantId)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="mt-2 w-full"
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setTenantRoleEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value as "tenant_admin" | "member"
+                      }))
+                    }
+                    value={tenantRoleEdits[selectedUserId] ?? "member"}
+                  >
+                    <option value="member">member</option>
+                    <option value="tenant_admin">tenant_admin</option>
+                  </select>
+                </div>
+                <label>
+                  Role
+                  {selectedUserRow.pendingAccess ? (
+                    <p className="status-text text-xs opacity-80">
+                      Pending — approve a matching access above or in the table.
+                    </p>
+                  ) : (
+                    <select
+                      disabled={editingUserId !== selectedUserId}
+                      onChange={(event) =>
+                        setRoleEdits((previous) => ({
+                          ...previous,
+                          [selectedUserId]: event.target.value as ApprovedUser["role"]
+                        }))
+                      }
+                      value={roleEdits[selectedUserId] ?? selectedUserRow.role}
+                    >
+                      {ROLE_SELECT_OPTIONS.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+                <label>
+                  Plan
+                  <select
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setPlanEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value as ApprovedUser["subscriptionPlan"]
+                      }))
+                    }
+                    value={planEdits[selectedUserId] ?? selectedUserRow.subscriptionPlan}
+                  >
+                    {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Billing override
+                  {selectedUserRow.pendingAccess ? (
+                    <p className="status-text text-xs opacity-70">—</p>
+                  ) : (
+                    <select
+                      disabled={editingUserId !== selectedUserId}
+                      value={
+                        (billingOverrideEdits[selectedUserId]?.enabled ??
+                          selectedUserRow.billing?.override?.enabled ??
+                          false)
+                          ? "on"
+                          : "off"
+                      }
+                      onChange={(event) => {
+                        const enabled = event.target.value === "on";
+                        setBillingOverrideEdits((previous) => ({
+                          ...previous,
+                          [selectedUserId]: {
+                            enabled,
+                            reason:
+                              previous[selectedUserId]?.reason ??
+                              selectedUserRow.billing?.override?.reason ??
+                              "",
+                            expiresAtLocal:
+                              previous[selectedUserId]?.expiresAtLocal ??
+                              (selectedUserRow.billing?.override?.expiresAt
+                                ? isoToDatetimeLocalValue(selectedUserRow.billing.override.expiresAt)
+                                : "")
+                          }
+                        }));
+                      }}
+                    >
+                      <option value="off">Off</option>
+                      <option value="on">On</option>
+                    </select>
+                  )}
+                </label>
+                <label>
+                  xPersona (row assignment)
+                  <select
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setPersonaByUserId((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value
+                      }))
+                    }
+                    value={personaByUserId[selectedUserId] ?? ""}
+                  >
+                    <option value="">(default persona)</option>
+                    {personaOptions.map((persona) => (
+                      <option key={persona.id} value={persona.id}>
+                        {persona.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="status-text text-xs opacity-80">
+                  {selectedUserRow.latestAuditEvent
+                    ? `${selectedUserRow.latestAuditEvent.action} · ${new Date(
+                        selectedUserRow.latestAuditEvent.createdAt
+                      ).toLocaleString()}`
+                    : selectedUserRow.approvedAt
+                      ? new Date(selectedUserRow.approvedAt).toLocaleString()
+                      : "No audit row"}
+                </p>
+                <div className="tool-row flex-wrap">
+                  <IconEditButton
+                    label="Edit user"
+                    variant="secondary-cta"
+                    onClick={() => setEditingUserId(selectedUserId)}
+                  />
+                  <button
+                    className="cta cta-primary"
+                    disabled={editingUserId !== selectedUserId}
+                    onClick={() => void saveUserEdits(selectedUserId)}
+                    type="button"
+                  >
+                    <SaveIcon className="crud-icon" /> Save profile
+                  </button>
+                </div>
+              </div>
+            </article>
+          ) : null}
+
+          {selectedUserId && !selectedAccessRequestId ? (
+            <article className="surface-card xf-widget section-card">
           <h3>
             Settings for {approvedUsers.find((u) => u.userId === selectedUserId)?.name ?? selectedUserId}
           </h3>
           <p className="status-text flex flex-wrap items-center gap-2">
             <span className="opacity-80">core_users._id</span>
             <span className="font-mono text-xs break-all">{selectedUserId}</span>
-            <button
-              className="tiny-button shrink-0"
-              onClick={() => void copyMongoUserId(selectedUserId)}
-              type="button"
+            <XfHoverHint
+              hint={copiedClipboardKey === `user:${selectedUserId}` ? "Copied user id" : "Copy user id"}
             >
-              Copy id
-            </button>
+              <button
+                aria-label={
+                  copiedClipboardKey === `user:${selectedUserId}`
+                    ? "User id copied to clipboard"
+                    : `Copy user id ${selectedUserId}`
+                }
+                className="tiny-button xf-icon-edit-btn--icon-only shrink-0"
+                onClick={() =>
+                  void copyMongoObjectId(`user:${selectedUserId}`, selectedUserId, "user id")
+                }
+                type="button"
+              >
+                <CopyIcon className="crud-icon" />
+              </button>
+            </XfHoverHint>
           </p>
+          {selectedUserRow?.tenantMemberships.length ? (
+            <ul className="status-text m-0 list-none space-y-2 p-0">
+              {selectedUserRow.tenantMemberships.map((membership) => (
+                <li className="flex flex-wrap items-center gap-2" key={membership.tenantId}>
+                  <span className="opacity-80">core_tenants._id</span>
+                  <span className="font-mono text-xs break-all">{membership.tenantId}</span>
+                  {membership.slug ? (
+                    <span className="text-xs opacity-80">
+                      ({membership.slug}
+                      {membership.name ? ` · ${membership.name}` : ""})
+                    </span>
+                  ) : null}
+                  <XfHoverHint
+                    hint={
+                      copiedClipboardKey === `tenant:${membership.tenantId}`
+                        ? "Copied tenant id"
+                        : "Copy tenant id"
+                    }
+                  >
+                    <button
+                      aria-label={
+                        copiedClipboardKey === `tenant:${membership.tenantId}`
+                          ? "Tenant id copied to clipboard"
+                          : `Copy tenant id ${membership.tenantId}`
+                      }
+                      className="tiny-button xf-icon-edit-btn--icon-only shrink-0"
+                      onClick={() =>
+                        void copyMongoObjectId(
+                          `tenant:${membership.tenantId}`,
+                          membership.tenantId,
+                          "tenant id"
+                        )
+                      }
+                      type="button"
+                    >
+                      <CopyIcon className="crud-icon" />
+                    </button>
+                  </XfHoverHint>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {settingsLastSaved ? (
             <p className="status-text">Last saved: {new Date(settingsLastSaved).toLocaleString()}</p>
           ) : null}
@@ -1498,15 +2214,16 @@ export function UserSettingsConsole() {
             </form>
           )}
         </article>
-      ) : (
+      ) : !selectedAccessRequestId ? (
         <article className="surface-card xf-widget section-card">
-          <h3>User Admin Settings</h3>
+          <h3>User settings</h3>
           <p className="status-text">
-            Select a user from the table above to load and edit their broker, portfolio, account, and
-            notification settings.
+            Select a user row to edit profile, broker, portfolio, and notification defaults.
           </p>
         </article>
-      )}
+      ) : null}
+        </aside>
+      </div>
     </section>
   );
 }
@@ -1519,6 +2236,7 @@ function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
     name: user.xAccount?.displayName ?? user.xAccount?.username ?? user.email,
     email: user.email,
     pendingAccess,
+    userStatus: user.status,
     role,
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     tenantMemberships: user.tenantMemberships ?? [],

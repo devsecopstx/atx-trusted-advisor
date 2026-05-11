@@ -180,11 +180,11 @@ export function CopyIcon({ className }: IconProps) {
         stroke="currentColor"
         strokeWidth="2"
         width="13"
-        x="8"
-        y="8"
+        x="9"
+        y="9"
       />
       <path
-        d="M4 16V6a2 2 0 0 1 2-2h10"
+        d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
