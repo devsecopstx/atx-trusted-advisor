@@ -8,6 +8,7 @@ import { normalizeScannerSymbol } from "@/modules/scanner/phase3-scanner-shared"
 import { fetchYahooOptionChainForScanner } from "@/modules/scanner/yahoo-option-chain-scanner";
 import type { OptionContractData } from "@/modules/strategy-options/options-chain";
 import { getYahooBatchQuotes } from "@/modules/watchlist/yahoo-batch-quotes";
+import { invalidateAccountOutlookContextCache } from "@/modules/xchat/account-outlook-context-cache";
 
 export const INVESTMENT_OUTLOOKS_COLLECTION = "investment_outlooks";
 
@@ -84,6 +85,13 @@ async function bumpWorkspaceRevAfterOutlookChange(input: {
     },
     { skipInvestmentOutlookInvalidate: true }
   ).catch(() => {
+    /* scanner context — non-fatal */
+  });
+  void invalidateAccountOutlookContextCache({
+    userId: uid,
+    portfolioIdHex: input.portfolioId.toHexString(),
+    tenantId: input.tenantId.toHexString()
+  }).catch(() => {
     /* scanner context — non-fatal */
   });
 }

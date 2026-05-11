@@ -14,6 +14,7 @@ import {
     refreshPortfolioAccountInvestmentOutlookForUser
 } from "@/modules/core-admin/repository";
 import { getCoreUserById } from "@/modules/identity/repository";
+import { invalidateAccountOutlookContextCache } from "@/modules/xchat/account-outlook-context-cache";
 
 /**
  * Shared POST handler for manual investment outlook refresh (timestamp + audit).
@@ -66,6 +67,14 @@ export async function handlePortfolioAccountOutlookRefreshPost(input: {
   if (!updated?._id) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
+
+  void invalidateAccountOutlookContextCache({
+    userId: session.userId,
+    portfolioIdHex: portfolioId,
+    tenantId: session.tenantId
+  }).catch(() => {
+    /* ignore */
+  });
 
   await createAuditEvent({
     entityType: "portfolio_account",

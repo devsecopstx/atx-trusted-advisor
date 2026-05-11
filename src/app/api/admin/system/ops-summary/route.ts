@@ -8,6 +8,7 @@ import { getDb } from "@/lib/mongodb";
 import { checkRedisHealth } from "@/lib/redis-client";
 import { collectPlatformOpsMetrics } from "@/modules/admin/platform-ops-metrics";
 import { createAuditEvent } from "@/modules/audit/repository";
+import { getAccountOutlookContextCacheStats } from "@/modules/xchat/account-outlook-context-cache";
 
 const BACKEND_HEALTH_TIMEOUT_MS = 6000;
 
@@ -113,6 +114,7 @@ export async function GET() {
   }
 
   const redis = await checkRedisHealth();
+  const outlookContextCache = await getAccountOutlookContextCacheStats();
   const backendOrigin = getAtxfinanceBackendOrigin();
 
   const platformOps = await collectPlatformOpsMetrics({
@@ -160,7 +162,8 @@ export async function GET() {
         name: nextDatabaseName,
         error: nextDbError
       },
-      redis
+      redis,
+      outlookContextCache
     },
     backend,
     platformOps

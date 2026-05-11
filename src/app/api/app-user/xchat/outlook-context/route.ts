@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
+import { SENSITIVE_APP_USER_CACHE_HEADERS } from "@/lib/sensitive-api-cache-control";
 import { getDefaultPortfolio } from "@/modules/core-admin/repository";
 import { resolveAccountOutlookContextForXchat } from "@/modules/xchat/account-outlook-context";
 
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
     },
     {
       headers: {
+        ...SENSITIVE_APP_USER_CACHE_HEADERS,
         "Server-Timing": `outlook-context-fetch;dur=${fetchMs}`
       }
     }

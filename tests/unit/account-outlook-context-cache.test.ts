@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AccountOutlookContextForXchat } from "@/modules/xchat/account-outlook-context";
 import {
     buildAccountOutlookContextCacheKey,
+    getAccountOutlookContextCacheStats,
     getAccountOutlookContextCacheTtlSeconds,
     invalidateAccountOutlookContextCache,
     readAccountOutlookContextCache,
@@ -65,5 +66,26 @@ describe("account-outlook-context-cache", () => {
     expect(getAccountOutlookContextCacheTtlSeconds()).toBe(30);
     vi.stubEnv("REDIS_OUTLOOK_CONTEXT_TTL_SECONDS", "1200");
     expect(getAccountOutlookContextCacheTtlSeconds()).toBe(900);
+  });
+
+  it("tracks hit rate counters for in-memory cache", async () => {
+    const key = buildAccountOutlookContextCacheKey({
+      userId: "user-stats",
+      portfolioIdHex: "507f1f77bcf86cd799439099"
+    });
+    await writeAccountOutlookContextCache(key, sampleCtx, 60);
+    await readAccountOutlookContextCache(key);
+    await readAccountOutlookContextCache("outlook:ctx:_::missing");
+    const stats = await getAccountOutlookContextCacheStats();
+    expect(stats.hits).toBeGreaterThanOrEqual(1);
+    expect(stats.misses).toBeGreaterThanOrEqual(1);
+    expect(stats.hitRate).not.toBeNull();
+    expect(stats.storageBackend).toBe("memory");
+    await invalidateAccountOutlookContextCache({
+      userId: "user-stats",
+      portfolioIdHex: "507f1f77bcf86cd799439099"
+    });
+    const afterInvalidate = await getAccountOutlookContextCacheStats();
+    expect(afterInvalidate.invalidations).toBeGreaterThanOrEqual(1);
   });
 });

@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+    formatOutlookFreshnessLabel,
+    type XchatInitialOutlookDesk
+} from "@/lib/xchat/xchat-outlook-desk";
 
 type OutlookContextPayload = {
   portfolioId: string | null;
@@ -9,104 +14,99 @@ type OutlookContextPayload = {
   fetchMs?: number;
 };
 
-type FetchState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "ok"; data: OutlookContextPayload }
-  | { status: "error" };
-
-function formatOutlookAgeLabel(iso: string | null): string | null {
-  if (!iso) {
-    return null;
-  }
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) {
-    return null;
-  }
-  const minutes = Math.max(0, Math.floor((Date.now() - at.getTime()) / 60_000));
-  if (minutes < 1) {
-    return "just now";
-  }
-  if (minutes < 60) {
-    return `${minutes} min ago`;
-  }
-  const hours = Math.floor(minutes / 60);
-  if (hours < 48) {
-    return `${hours} hr ago`;
-  }
-  const days = Math.floor(hours / 24);
-  return `${days} d ago`;
-}
+type FetchedOutlook = {
+  portfolioId: string;
+  data: OutlookContextPayload;
+};
 
 export type XchatOutlookFreshnessBadgeProps = {
   workspacePortfolioId: string | null | undefined;
+  /** When set (SSR / parent), skip the first client fetch for this portfolio. */
+  initialOutlookDesk?: XchatInitialOutlookDesk | null;
 };
 
-export function XchatOutlookFreshnessBadge({ workspacePortfolioId }: XchatOutlookFreshnessBadgeProps) {
-  const [state, setState] = useState<FetchState>({ status: "idle" });
+export function XchatOutlookFreshnessBadge({
+  workspacePortfolioId,
+  initialOutlookDesk = null
+}: XchatOutlookFreshnessBadgeProps) {
   const portfolioId = workspacePortfolioId?.trim() || "";
+  const initialMatchesPortfolio =
+    Boolean(initialOutlookDesk) &&
+    Boolean(portfolioId) &&
+    initialOutlookDesk?.portfolioId === portfolioId;
 
-  const load = useCallback(async () => {
-    if (!portfolioId) {
-      setState({ status: "idle" });
+  const seededDesk = useMemo<OutlookContextPayload | null>(() => {
+    if (!initialMatchesPortfolio || !initialOutlookDesk) {
+      return null;
+    }
+    return {
+      portfolioId: initialOutlookDesk.portfolioId,
+      marketOutlookLabel: initialOutlookDesk.marketOutlookLabel,
+      lastOutlookRefreshAt: initialOutlookDesk.lastOutlookRefreshAt
+    };
+  }, [initialMatchesPortfolio, initialOutlookDesk]);
+
+  const [fetchedDesk, setFetchedDesk] = useState<FetchedOutlook | null>(null);
+
+  useEffect(() => {
+    if (!portfolioId || initialMatchesPortfolio) {
       return;
     }
-    setState({ status: "loading" });
+
+    let cancelled = false;
     const startedAt = performance.now();
-    try {
-      performance.mark("xchat-outlook-context-fetch-start");
-      const url = new URL("/api/app-user/xchat/outlook-context", window.location.origin);
-      url.searchParams.set("portfolioId", portfolioId);
-      const res = await fetch(url.toString(), { credentials: "include", cache: "no-store" });
-      const body = (await res.json().catch(() => ({}))) as { data?: OutlookContextPayload };
-      if (!res.ok || !body.data) {
-        setState({ status: "error" });
-        return;
-      }
-      const fetchMs = Math.max(0, Math.round(performance.now() - startedAt));
+
+    void (async () => {
       try {
-        performance.mark("xchat-outlook-context-fetch-end");
-        performance.measure(
-          "outlook-context-fetch-ms",
-          "xchat-outlook-context-fetch-start",
-          "xchat-outlook-context-fetch-end"
-        );
+        performance.mark("xchat-outlook-context-fetch-start");
+        const url = new URL("/api/app-user/xchat/outlook-context", window.location.origin);
+        url.searchParams.set("portfolioId", portfolioId);
+        const res = await fetch(url.toString(), { credentials: "include", cache: "no-store" });
+        const body = (await res.json().catch(() => ({}))) as { data?: OutlookContextPayload };
+        if (cancelled || !res.ok || !body.data) {
+          return;
+        }
+        const fetchMs = Math.max(0, Math.round(performance.now() - startedAt));
+        try {
+          performance.mark("xchat-outlook-context-fetch-end");
+          performance.measure(
+            "outlook-context-fetch-ms",
+            "xchat-outlook-context-fetch-start",
+            "xchat-outlook-context-fetch-end"
+          );
+        } catch {
+          /* ignore */
+        }
+        setFetchedDesk({
+          portfolioId,
+          data: {
+            ...body.data,
+            fetchMs: body.data.fetchMs ?? fetchMs
+          }
+        });
       } catch {
         /* ignore */
       }
-      setState({
-        status: "ok",
-        data: {
-          ...body.data,
-          fetchMs: body.data.fetchMs ?? fetchMs
-        }
-      });
-    } catch {
-      setState({ status: "error" });
-    }
-  }, [portfolioId]);
+    })();
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+    return () => {
+      cancelled = true;
+    };
+  }, [initialMatchesPortfolio, portfolioId]);
+
+  const activeDesk =
+    seededDesk ??
+    (fetchedDesk?.portfolioId === portfolioId ? fetchedDesk.data : null);
 
   const label = useMemo(() => {
-    if (state.status !== "ok") {
+    if (!activeDesk) {
       return null;
     }
-    const age = formatOutlookAgeLabel(state.data.lastOutlookRefreshAt);
-    const outlook = state.data.marketOutlookLabel?.trim();
-    if (!age && !outlook) {
-      return null;
-    }
-    if (age && outlook) {
-      return `Outlook ${outlook} · refreshed ${age}`;
-    }
-    if (age) {
-      return `Outlook refreshed ${age}`;
-    }
-    return outlook ? `Outlook ${outlook}` : null;
-  }, [state]);
+    return formatOutlookFreshnessLabel({
+      marketOutlookLabel: activeDesk.marketOutlookLabel,
+      lastOutlookRefreshAt: activeDesk.lastOutlookRefreshAt
+    });
+  }, [activeDesk]);
 
   if (!label) {
     return null;

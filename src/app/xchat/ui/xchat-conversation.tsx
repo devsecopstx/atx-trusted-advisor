@@ -42,7 +42,6 @@ import type {
     XchatInteractionMeta
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
-import { XchatOutlookFreshnessBadge } from "@/app/xchat/ui/xchat-outlook-freshness-badge";
 import { XchatSidebarTokenStats } from "@/app/xchat/ui/xchat-sidebar-token-stats";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
@@ -2170,7 +2169,6 @@ export function XchatConversation({
           onStop={cancelAskInFlight}
         />
 
-        <XchatOutlookFreshnessBadge workspacePortfolioId={workspacePortfolioId} />
         <XchatUsageMeter refreshSignal={promptUsageRefreshKey} variant="composer" />
         <Suspense fallback={<XchatChatSkeleton variant="composer" />}>
           <XchatComposerPanelLazy

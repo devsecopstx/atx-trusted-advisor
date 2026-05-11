@@ -11,6 +11,13 @@ function badgeClassForHealth(ok: boolean, skipped?: boolean): string {
   return ok ? "status-badge status-live" : "status-badge status-error";
 }
 
+function formatHitRate(hitRate: number | null): string {
+  if (hitRate === null) {
+    return "—";
+  }
+  return `${Math.round(hitRate * 1000) / 10}%`;
+}
+
 function redisLabel(redis: AdminOpsSummaryResponse["nextApp"]["redis"]): { text: string; ok: boolean; skipped: boolean } {
   if (redis.status === "skipped") {
     return { text: redis.reason, ok: true, skipped: true };
@@ -51,6 +58,7 @@ export function AdminOpsSummaryPanel() {
   }, [load]);
 
   const nextRedis = data ? redisLabel(data.nextApp.redis) : null;
+  const outlookCache = data?.nextApp.outlookContextCache;
   const backend = data?.backend;
 
   const backendSummary = (() => {
@@ -131,6 +139,22 @@ export function AdminOpsSummaryPanel() {
                   <span className={badgeClassForHealth(nextRedis.ok, nextRedis.skipped)}>{nextRedis.text}</span>
                 ) : null}
               </li>
+              {outlookCache ? (
+                <li className="text-[var(--xf-text-300)]">
+                  <span>Outlook desk cache</span>
+                  <div className="mt-1 font-mono text-xs text-[var(--xf-text-200)]">
+                    hit {formatHitRate(outlookCache.hitRate)} · {outlookCache.hits}/
+                    {outlookCache.hits + outlookCache.misses} lookups · {outlookCache.storageBackend} · TTL{" "}
+                    {outlookCache.ttlSeconds}s
+                  </div>
+                  <div className="mt-0.5 text-xs text-[var(--xf-text-400)]">
+                    writes {outlookCache.writes} · invalidations {outlookCache.invalidations}
+                    {outlookCache.storageBackend === "memory"
+                      ? ` · in-memory entries ${outlookCache.inMemoryEntries}`
+                      : null}
+                  </div>
+                </li>
+              ) : null}
             </ul>
             <p className="mt-3 text-xs text-[var(--xf-text-400)]">Checked {data.generatedAt}</p>
           </div>

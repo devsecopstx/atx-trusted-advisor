@@ -170,6 +170,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/app-user/xchat/outlook-context",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xchat"
+  },
+  {
     path: "/api/app-user/xchat/voice-transcribe",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "xchat"

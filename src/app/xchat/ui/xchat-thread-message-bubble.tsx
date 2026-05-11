@@ -1,7 +1,7 @@
 "use client";
 
 import nextDynamic from "next/dynamic";
-import { memo, useEffect, useState } from "react";
+import { memo, useState } from "react";
 
 import { XchatAiResponseChrome } from "@/app/xchat/ui/xchat-ai-response-chrome";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
@@ -18,6 +18,29 @@ import type { Message } from "./xchat-conversation-types";
  * shape (the report uses browser APIs like `URL.createObjectURL`).
  */
 const XCHAT_ASSISTANT_COLLAPSE_CHAR_THRESHOLD = 800;
+
+function XchatCollapsibleAssistantMarkdown({ content }: { content: string }) {
+  const [markdownExpanded, setMarkdownExpanded] = useState(true);
+
+  return (
+    <>
+      <div
+        className={
+          !markdownExpanded ? "xchat-msg-ai-body__markdown-preview" : undefined
+        }
+      >
+        <XchatMarkdownBody content={content} />
+      </div>
+      <button
+        className="xchat-msg-ai-body__toggle"
+        type="button"
+        onClick={() => setMarkdownExpanded((prev) => !prev)}
+      >
+        {markdownExpanded ? "Collapse response" : "Expand response"}
+      </button>
+    </>
+  );
+}
 
 const OptionsActionScanReportLazy = nextDynamic(
   () =>
@@ -69,34 +92,12 @@ export const XchatThreadMessageBubble = memo(
       !msg.strategyJobOffer &&
       !msg.optionsActionScan &&
       msg.content.trim().length > XCHAT_ASSISTANT_COLLAPSE_CHAR_THRESHOLD;
-    const [markdownExpanded, setMarkdownExpanded] = useState(true);
-
-    useEffect(() => {
-      setMarkdownExpanded(true);
-    }, [msg.id]);
-
-    const renderMarkdownBody = (content: string) => (
-      <>
-        <div
-          className={
-            isCollapsibleMarkdown && !markdownExpanded
-              ? "xchat-msg-ai-body__markdown-preview"
-              : undefined
-          }
-        >
-          <XchatMarkdownBody content={content} />
-        </div>
-        {isCollapsibleMarkdown ? (
-          <button
-            className="xchat-msg-ai-body__toggle"
-            type="button"
-            onClick={() => setMarkdownExpanded((prev) => !prev)}
-          >
-            {markdownExpanded ? "Collapse response" : "Expand response"}
-          </button>
-        ) : null}
-      </>
-    );
+    const renderMarkdownBody = (content: string) =>
+      isCollapsibleMarkdown ? (
+        <XchatCollapsibleAssistantMarkdown key={msg.id} content={content} />
+      ) : (
+        <XchatMarkdownBody content={content} />
+      );
 
     return (
       <div className={`xchat-msg xchat-msg-${msg.role}`}>

@@ -11,6 +11,7 @@ import {
 import { requireSessionUser } from "@/lib/auth";
 import { getEnv, isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
 import { getInvestmentOutlookRefreshEnabled } from "@/lib/feature-flags";
+import { SENSITIVE_APP_USER_CACHE_HEADERS } from "@/lib/sensitive-api-cache-control";
 import {
     getPersonaByIdCached,
     getTenantByHexIdCached,
@@ -1090,10 +1091,7 @@ export async function POST(request: Request) {
       workspacePortfolioScoped ||
       workspaceIncomeIdeasPreload);
   const shouldEagerWorkspacePreload = hasXfinanceTool && likelyDirectWorkspaceToolPath;
-  const portfolioHexForOutlook =
-    workspacePortfolioId?.trim() ||
-    (await getDefaultPortfolio(session.userId, { tenantId: session.tenantId }))?._id?.toHexString() ||
-    "";
+  const workspacePortfolioIdTrimmed = workspacePortfolioId?.trim() ?? "";
   const ragAndPreloadStartedAt = Date.now();
 
   const [ragBundle, eagerWorkspacePreload, outlookCtx, limitsForOutlook] = await Promise.all([
@@ -1225,13 +1223,20 @@ export async function POST(request: Request) {
           snapshotQuoteNetwork: workspaceSnapshotQuoteNetwork
         })
       : Promise.resolve(null),
-    portfolioHexForOutlook
-      ? resolveAccountOutlookContextForXchat({
-          userId: session.userId,
-          tenantId: session.tenantId,
-          portfolioIdHex: portfolioHexForOutlook
-        })
-      : Promise.resolve(null),
+    (async () => {
+      const portfolioHexForOutlook =
+        workspacePortfolioIdTrimmed ||
+        (await getDefaultPortfolio(session.userId, { tenantId: session.tenantId }))?._id?.toHexString() ||
+        "";
+      if (!portfolioHexForOutlook) {
+        return null;
+      }
+      return resolveAccountOutlookContextForXchat({
+        userId: session.userId,
+        tenantId: session.tenantId,
+        portfolioIdHex: portfolioHexForOutlook
+      });
+    })(),
     effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan)
   ]);
   const accountOutlookAugment = outlookCtx
@@ -2308,7 +2313,7 @@ function buildLimiterHeaders(input: {
   dailyLimit?: number;
   retryAfterSeconds?: number;
 }): HeadersInit {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...SENSITIVE_APP_USER_CACHE_HEADERS };
   if (typeof input.remainingMinute === "number") {
     headers["x-xchat-limit-remaining-minute"] = String(Math.max(0, input.remainingMinute));
   }

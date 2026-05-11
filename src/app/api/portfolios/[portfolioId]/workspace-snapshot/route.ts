@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend, releaseUnusedProxyResponse } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
+import { SENSITIVE_APP_USER_CACHE_HEADERS } from "@/lib/sensitive-api-cache-control";
 import { findPortfolioWorkspaceSnapshotRow } from "@/modules/xchat/portfolio-workspace-snapshot-repository";
 
 type RouteContext = {
@@ -59,12 +60,15 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "snapshot_not_found" }, { status: 404 });
   }
 
-  return NextResponse.json({
-    data: {
-      preload: row.preload,
-      workspaceContentRev: row.workspaceContentRev,
-      materializedAt: row.materializedAt.toISOString(),
-      source: row.source
-    }
-  });
+  return NextResponse.json(
+    {
+      data: {
+        preload: row.preload,
+        workspaceContentRev: row.workspaceContentRev,
+        materializedAt: row.materializedAt.toISOString(),
+        source: row.source
+      }
+    },
+    { headers: SENSITIVE_APP_USER_CACHE_HEADERS }
+  );
 }

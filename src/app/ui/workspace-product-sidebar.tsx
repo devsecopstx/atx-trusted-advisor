@@ -400,7 +400,9 @@ function WorkspaceTopChromeBar({
             <img
               alt=""
               className="workspace-top-chrome__tenant-logo"
+              fetchPriority="high"
               height={28}
+              loading="eager"
               src={branding.logoUrl}
               width={28}
             />

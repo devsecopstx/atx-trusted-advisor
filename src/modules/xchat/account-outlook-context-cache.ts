@@ -5,6 +5,39 @@ import type { AccountOutlookContextForXchat } from "@/modules/xchat/account-outl
 const MEMORY_MAX = 200;
 const memory = new Map<string, { expiresAt: number; value: string }>();
 
+export type AccountOutlookContextCacheStats = {
+  hits: number;
+  misses: number;
+  writes: number;
+  invalidations: number;
+  /** Share of lookups that hit cache on this Node process; null when no lookups yet. */
+  hitRate: number | null;
+  storageBackend: "redis" | "memory";
+  ttlSeconds: number;
+  inMemoryEntries: number;
+};
+
+let cacheHits = 0;
+let cacheMisses = 0;
+let cacheWrites = 0;
+let cacheInvalidations = 0;
+
+function recordCacheHit(): void {
+  cacheHits += 1;
+}
+
+function recordCacheMiss(): void {
+  cacheMisses += 1;
+}
+
+function recordCacheWrite(): void {
+  cacheWrites += 1;
+}
+
+function recordCacheInvalidation(): void {
+  cacheInvalidations += 1;
+}
+
 type CachedAccountOutlookContextPayload = Omit<
   AccountOutlookContextForXchat,
   "lastOutlookRefreshAt"
@@ -81,8 +114,14 @@ export async function readAccountOutlookContextCache(
   if (redis) {
     try {
       const v = await redis.get(key);
-      return v ? deserializeOutlookContext(v) : null;
+      if (v) {
+        recordCacheHit();
+        return deserializeOutlookContext(v);
+      }
+      recordCacheMiss();
+      return null;
     } catch {
+      recordCacheMiss();
       return null;
     }
   }
@@ -92,8 +131,10 @@ export async function readAccountOutlookContextCache(
     if (e) {
       memory.delete(key);
     }
+    recordCacheMiss();
     return null;
   }
+  recordCacheHit();
   return deserializeOutlookContext(e.value);
 }
 
@@ -107,6 +148,7 @@ export async function writeAccountOutlookContextCache(
   if (redis) {
     try {
       await redis.set(key, json, { EX: ttlSeconds });
+      recordCacheWrite();
     } catch {
       /* ignore */
     }
@@ -120,6 +162,7 @@ export async function writeAccountOutlookContextCache(
     }
   }
   memory.set(key, { value: json, expiresAt: Date.now() + ttlSeconds * 1000 });
+  recordCacheWrite();
 }
 
 export async function invalidateAccountOutlookContextCache(input: {
@@ -137,4 +180,21 @@ export async function invalidateAccountOutlookContextCache(input: {
     }
   }
   memory.delete(key);
+  recordCacheInvalidation();
+}
+
+/** Process-local counters for Admin ops summary (per Cloud Run instance). */
+export async function getAccountOutlookContextCacheStats(): Promise<AccountOutlookContextCacheStats> {
+  const redis = await getRedisClientForPlane("cache");
+  const lookups = cacheHits + cacheMisses;
+  return {
+    hits: cacheHits,
+    misses: cacheMisses,
+    writes: cacheWrites,
+    invalidations: cacheInvalidations,
+    hitRate: lookups > 0 ? cacheHits / lookups : null,
+    storageBackend: redis ? "redis" : "memory",
+    ttlSeconds: getAccountOutlookContextCacheTtlSeconds(),
+    inMemoryEntries: memory.size
+  };
 }

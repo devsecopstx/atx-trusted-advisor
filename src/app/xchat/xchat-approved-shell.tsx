@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
+import { XchatOutlookDeskFreshnessLabel } from "@/app/xchat/ui/xchat-outlook-desk-freshness-label";
 import { XchatConversationMount } from "@/app/xchat/xchat-conversation-mount";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import {
@@ -14,10 +15,15 @@ import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-c
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { logXchatPerfDebug } from "@/lib/xchat-debug";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
+import {
+    serializeOutlookDeskForXchatShell,
+    type XchatInitialOutlookDesk
+} from "@/lib/xchat/xchat-outlook-desk";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getTenantShellBrandingForHex } from "@/modules/identity/repository";
 import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
+import { resolveAccountOutlookContextForXchat } from "@/modules/xchat/account-outlook-context";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 type XchatApprovedShellProps = {
@@ -108,10 +114,21 @@ export async function XchatApprovedShell({
   const syncWorkspacePortfolioCookie = workspaceBookState.syncWorkspacePortfolioCookie;
   const workspaceChangePersonaEnabled = wl.changePersonaEnabled;
   const workspaceChatHistoryMax = wl.chatHistoryMax;
-  const serverBootstrap = await getXchatServerShellBootstrap(session, workspaceChatHistoryMax);
+  const portfolioHexForOutlook = workspacePortfolioId?.trim() ?? "";
+  const [serverBootstrap, initialOutlookDesk] = await Promise.all([
+    getXchatServerShellBootstrap(session, workspaceChatHistoryMax),
+    portfolioHexForOutlook
+      ? resolveAccountOutlookContextForXchat({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          portfolioIdHex: portfolioHexForOutlook
+        }).then((ctx) => serializeOutlookDeskForXchatShell(portfolioHexForOutlook, ctx))
+      : Promise.resolve(null as XchatInitialOutlookDesk | null)
+  ]);
   markPerf("server_bootstrap", {
     workspaceChatHistoryMax,
-    hasHistory: Boolean(serverBootstrap?.historyItemsNewestFirst?.length)
+    hasHistory: Boolean(serverBootstrap?.historyItemsNewestFirst?.length),
+    hasOutlookDesk: Boolean(initialOutlookDesk)
   });
 
   const fileAttachmentsEnabled = canAccessPremiumTenantAttachments(
@@ -135,7 +152,9 @@ export async function XchatApprovedShell({
   });
 
   return (
-    <XchatConversationMount
+    <div className="xchat-approved-shell flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} />
+      <XchatConversationMount
       googleLinkHref={googleLinkHrefForApproved}
       mainFooter={<GlobalFooter />}
       accountDetails={{
@@ -165,5 +184,6 @@ export async function XchatApprovedShell({
       tenantWorkspaceSessionLabel={tenantWorkspaceSessionLabel}
       visiblePathPrefixes={visiblePathPrefixes}
     />
+    </div>
   );
 }

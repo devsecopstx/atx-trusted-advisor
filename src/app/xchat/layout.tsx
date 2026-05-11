@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+/** Rail + desk chrome (import before route CSS so composer/thread rules paint earlier). */
 import "@/app/portfolios/portfolios-dashboard.css";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
+/** xChat composer, thread, and workspace rail surfaces. */
 import "./xchat.css";
 
 /** Avoid stale RSC/HTML at CDN/LB after deploys; footer embeds APP_VERSION. */

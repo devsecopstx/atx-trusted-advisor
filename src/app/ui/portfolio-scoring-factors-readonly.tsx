@@ -32,7 +32,7 @@ export function PortfolioScoringFactorsReadonlyTable({
           : "Portfolio scoring factors weight how recommendations are ranked for this book (read-only). Workspace admins can adjust weights in the admin console."}
       </p>
       <div className="portfolio-scoring-readonly__scroll">
-        <table className="portfolio-scoring-readonly__table">
+        <table className="portfolio-scoring-readonly__table" data-lcp-candidate="portfolio-scoring">
           <thead>
             <tr>
               <th scope="col">Factor</th>

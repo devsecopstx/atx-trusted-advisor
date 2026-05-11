@@ -24,7 +24,7 @@ export function WorkspacePortfolioAccountPickerCard({ book }: WorkspacePortfolio
   }
 
   return (
-    <div className="app-user-rail-workspace-card">
+    <div className="app-user-rail-workspace-card" data-lcp-candidate="workspace-portfolio-card">
       <AppUserWorkspacePortfolioPicker
         portfolios={book.workspacePortfolios}
         selectedPortfolioId={book.portfolioId}

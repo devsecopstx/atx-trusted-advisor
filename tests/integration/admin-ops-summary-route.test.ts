@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
   requirePlatformOpsSession: vi.fn()
@@ -24,6 +24,10 @@ const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
 
+const outlookCacheMocks = vi.hoisted(() => ({
+  getAccountOutlookContextCacheStats: vi.fn()
+}));
+
 vi.mock("@/lib/api-auth", () => ({
   requirePlatformOpsSession: authMocks.requirePlatformOpsSession
 }));
@@ -37,12 +41,26 @@ vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/admin/platform-ops-metrics", () => ({
   collectPlatformOpsMetrics: platformOpsMocks.collectPlatformOpsMetrics
 }));
+vi.mock("@/modules/xchat/account-outlook-context-cache", () => ({
+  getAccountOutlookContextCacheStats: outlookCacheMocks.getAccountOutlookContextCacheStats
+}));
 
 import { GET as getOpsSummary } from "@/app/api/admin/system/ops-summary/route";
 import { APP_VERSION } from "@/lib/app-version";
 import { NextResponse } from "next/server";
 
 describe("GET /api/admin/system/ops-summary", () => {
+  const stubOutlookCache = {
+    hits: 4,
+    misses: 1,
+    writes: 2,
+    invalidations: 1,
+    hitRate: 0.8,
+    storageBackend: "memory" as const,
+    ttlSeconds: 120,
+    inMemoryEntries: 1
+  };
+
   const stubPlatformOps = {
     scope: "platform" as const,
     tenantsActive: 0,
@@ -65,6 +83,10 @@ describe("GET /api/admin/system/ops-summary", () => {
       notes: []
     }
   };
+
+  beforeEach(() => {
+    outlookCacheMocks.getAccountOutlookContextCacheStats.mockResolvedValue(stubOutlookCache);
+  });
 
   it("returns 401-shaped response when admin session missing", async () => {
     authMocks.requirePlatformOpsSession.mockResolvedValueOnce(
@@ -110,7 +132,12 @@ describe("GET /api/admin/system/ops-summary", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       sessionTenantId: string;
-      nextApp: { version: string; database: { ok: boolean; name: string }; redis: { status: string } };
+      nextApp: {
+        version: string;
+        database: { ok: boolean; name: string };
+        redis: { status: string };
+        outlookContextCache: { hitRate: number | null };
+      };
       backend: { configured: boolean; skippedReason?: string };
       platformOps: { scope: string; tenantsActive: number };
     };
@@ -119,6 +146,7 @@ describe("GET /api/admin/system/ops-summary", () => {
     expect(body.nextApp.database.ok).toBe(true);
     expect(body.nextApp.database.name).toBe("atxfinance-test");
     expect(body.nextApp.redis.status).toBe("skipped");
+    expect(body.nextApp.outlookContextCache.hitRate).toBe(0.8);
     expect(body.backend.configured).toBe(false);
     expect(body.backend.skippedReason).toMatch(/ATXFINANCE_BACKEND_ORIGIN unset/);
     expect(body.platformOps.scope).toBe("platform");
