@@ -12,17 +12,20 @@ import {
     useSyncExternalStore
 } from "react";
 
+import type { AppUserDefaultBook, AppUserWorkspaceAccountRef } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex, normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import {
     dispatchWorkspaceAccountChanged,
     writeStoredWorkspaceAccountId
 } from "@/lib/workspace-account-selection";
+import { WORKSPACE_PORTFOLIO_CHANGED_EVENT } from "@/lib/workspace-portfolio-selection";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 import { isValidXoptionsUnderlyingSymbol, normalizeXoptionsUnderlyingSymbol } from "@/lib/xoptions/xoptions-desk-deep-link";
 
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { outlookIconClassForSlug, OutlookIconFor } from "@/app/ui/outlook-icons";
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
+import { XoptionsWorkspaceDeskControls } from "@/app/xoptions/ui/xoptions-workspace-desk-controls";
 import {
     XoptionsChooseContract,
     type XoptionsSelectedOptionMeta
@@ -253,7 +256,11 @@ function xoptionsScenarioUploadFilename(displayName: string, symbol: string): st
   return `xoptions-${sym}-${slug}-${ts}.txt`;
 }
 
-export function XoptionsStrategyBuilderWorkspace() {
+type XoptionsStrategyBuilderWorkspaceProps = {
+  workspaceBook: AppUserDefaultBook | null;
+};
+
+export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStrategyBuilderWorkspaceProps) {
   const [ctx, setCtx] = useState<ContextPayload | null>(null);
   const [ctxErr, setCtxErr] = useState<string | null>(null);
   const [holdings, setHoldings] = useState<HoldingRow[]>([]);
@@ -282,6 +289,7 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [outlookOverride, setOutlookOverride] = useState<"" | AccountOutlook>("");
   const [riskOverride, setRiskOverride] = useState<"" | "conservative" | "balanced" | "growth">("");
   const [factorWeights, setFactorWeights] = useState(buildDefaultFactorWeights);
+  const [deskBook, setDeskBook] = useState(workspaceBook);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -323,6 +331,19 @@ export function XoptionsStrategyBuilderWorkspace() {
     accountIds,
     ctx?.account?.id ?? null
   );
+  const deskAccounts = useMemo((): AppUserWorkspaceAccountRef[] => {
+    if (ctx?.accounts?.length) {
+      return ctx.accounts.map((row) => ({
+        id: row.id,
+        name: row.name,
+        isDefault: row.isDefault
+      }));
+    }
+    return deskBook?.accounts ?? [];
+  }, [ctx?.accounts, deskBook?.accounts]);
+  const deskPortfolioId = ctx?.portfolio?.id ?? deskBook?.portfolioId ?? null;
+  const deskPortfolioName = ctx?.portfolio?.name ?? deskBook?.portfolioName ?? null;
+  const deskServerDefaultAccountId = ctx?.account?.id ?? deskBook?.accountId ?? null;
 
   const handleAskXchat = useCallback(() => {
     const t = reviewOrderPlainText?.trim();
@@ -511,6 +532,18 @@ export function XoptionsStrategyBuilderWorkspace() {
       cancelled = true;
     };
   }, [loadWorkspace, urlBootstrapKey]);
+
+  useEffect(() => {
+    setDeskBook(workspaceBook);
+  }, [workspaceBook]);
+
+  useEffect(() => {
+    const onPortfolioChanged = () => {
+      void loadWorkspace(null);
+    };
+    window.addEventListener(WORKSPACE_PORTFOLIO_CHANGED_EVENT, onPortfolioChanged);
+    return () => window.removeEventListener(WORKSPACE_PORTFOLIO_CHANGED_EVENT, onPortfolioChanged);
+  }, [loadWorkspace]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -908,34 +941,16 @@ export function XoptionsStrategyBuilderWorkspace() {
         </h1>
       </div>
 
-      <section className="xoptions-workspace-topbar" aria-label="Selected workspace">
-        <p className="xoptions-workspace-topbar__line text-sm">
-          <span className="text-[var(--xf-text-400)]">Portfolio</span>{" "}
-          <span className="font-semibold text-[var(--xf-text-200)]">{ctx?.portfolio?.name ?? "—"}</span>
-          <span className="mx-2 text-[var(--xf-text-500)]" aria-hidden>
-            ·
-          </span>
-          <span className="text-[var(--xf-text-400)]">Account</span>{" "}
-          <span className="font-semibold text-[var(--xf-text-200)]">
-            {workspaceDeskAccount?.name ?? ctx?.account?.name ?? "—"}
-          </span>
-        </p>
-        <p className="xoptions-workspace-topbar__glance text-xs text-[var(--xf-text-400)]">
-          At a glance: {holdings.length} holdings
-          {typeof ctx?.account?.cashBalance === "number" && Number.isFinite(ctx.account.cashBalance) ? (
-            <>
-              {" "}
-              · Cash $
-              {ctx.account.cashBalance.toLocaleString("en-US", {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-              })}
-            </>
-          ) : null}
-          {" "}
-          · {hot.length} hot symbols
-        </p>
-      </section>
+      <XoptionsWorkspaceDeskControls
+        accounts={deskAccounts}
+        cashBalance={ctx?.account?.cashBalance ?? null}
+        holdingsCount={holdings.length}
+        hotCount={hot.length}
+        portfolioId={deskPortfolioId}
+        portfolioName={deskPortfolioName}
+        serverDefaultAccountId={deskServerDefaultAccountId}
+        workspaceBook={deskBook}
+      />
 
       {showStrategyBuilderJobs ? (
         <Suspense fallback={null}>

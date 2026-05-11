@@ -7,6 +7,7 @@ import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     ensureUserWatchlistForSessionUser,
     getDefaultPortfolio,
+    getPortfolioByIdForSessionUser,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
@@ -120,11 +121,26 @@ async function resolveDefaultPortfolio(session: SessionUser): Promise<Portfolio 
   return portfolio;
 }
 
+async function resolveWorkspacePortfolio(session: SessionUser): Promise<Portfolio | null> {
+  const book = await loadAppUserDefaultBook(session);
+  if (book?.portfolioId) {
+    const fromBook = await getPortfolioByIdForSessionUser({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      portfolioId: book.portfolioId
+    });
+    if (fromBook?._id) {
+      return fromBook;
+    }
+  }
+  return resolveDefaultPortfolio(session);
+}
+
 export async function getFindOptionsContext(
   session: SessionUser,
   input?: { accountId?: string | null }
 ): Promise<FindOptionsContextPayload> {
-  const portfolio = await resolveDefaultPortfolio(session);
+  const portfolio = await resolveWorkspacePortfolio(session);
   const book = await loadAppUserDefaultBook(session);
   const assumeAllApproved = getEnv().XOPTIONS_ASSUME_OPTIONS_APPROVED;
 
@@ -303,7 +319,7 @@ export async function getTopStockHoldingsByValue(
   input?: { accountId?: string | null },
   opts?: { coordinatingRequest?: Request }
 ): Promise<{ holdings: TopHoldingRow[] }> {
-  const portfolio = await resolveDefaultPortfolio(session);
+  const portfolio = await resolveWorkspacePortfolio(session);
   if (!portfolio?._id) {
     return { holdings: [] };
   }

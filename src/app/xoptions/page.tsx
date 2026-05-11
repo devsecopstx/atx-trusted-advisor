@@ -1,5 +1,6 @@
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
+import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
@@ -51,6 +52,7 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
   }
 
   const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
+  const workspaceBook = await loadAppUserDefaultBook(session);
 
   return (
     <XoptionsWorkspaceProductShell
@@ -58,7 +60,7 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
       session={session}
       workspaceTenant={workspaceTenant}
     >
-      <XoptionsStrategyBuilderMount />
+      <XoptionsStrategyBuilderMount workspaceBook={workspaceBook} />
     </XoptionsWorkspaceProductShell>
   );
 }

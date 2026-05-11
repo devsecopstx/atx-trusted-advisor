@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { AppUserWorkspacePortfolioRef } from "@/lib/app-user-default-book";
+import { dispatchWorkspacePortfolioChanged } from "@/lib/workspace-portfolio-selection";
 
 type AppUserWorkspacePortfolioPickerProps = {
   portfolios: AppUserWorkspacePortfolioRef[];
@@ -34,6 +35,7 @@ export function AppUserWorkspacePortfolioPicker({
         window.alert(body.error ?? "Could not switch portfolio");
         return;
       }
+      dispatchWorkspacePortfolioChanged({ portfolioId });
       router.refresh();
     } finally {
       setPending(false);
