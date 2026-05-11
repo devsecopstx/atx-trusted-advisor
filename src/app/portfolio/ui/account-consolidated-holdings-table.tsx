@@ -5,9 +5,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ActivityPulseIcon, DeleteIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
+import {
+    computeHoldingsRowMetrics,
+    optionQuoteLookupKey,
+    underlyingQuoteLookupKey
+} from "@/app/portfolio/lib/holdings-row-metrics";
+import { HoldingsFiftyTwoWeekRange } from "@/app/portfolio/ui/holdings-fifty-two-week-range";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
-import { parseOccOptionSymbol, underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
+import {
+    isValidXoptionsUnderlyingSymbol,
+    normalizeXoptionsUnderlyingSymbol
+} from "@/lib/xoptions/xoptions-desk-deep-link";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 function fmtUsd(n: number): string {
@@ -18,46 +27,20 @@ function fmtPct(n: number): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 }
 
-/** Equity root for Yahoo batch quotes + equity logos (OCC option lines → underlying). */
-function underlyingQuoteLookupKey(p: SerializablePosition): string | null {
-  if (p.type === "stock" || p.type === "option") {
-    return underlyingForYahooOptionsChain(p.symbol);
+function fmtSignedUsd(n: number): string {
+  if (n > 0) {
+    return `+${fmtUsd(n)}`;
   }
-  return null;
+  return fmtUsd(n);
 }
 
-/** Option contract quote key for Last/Day on option rows. */
-function normalizeOptionContractQuoteKey(raw: string): string | null {
-  const upper = raw.trim().toUpperCase();
-  if (!upper) {
-    return null;
+function gainLossClass(n: number | null): string {
+  if (n == null || !Number.isFinite(n) || n === 0) {
+    return "value-neutral portfolio-consolidated-holdings__mono";
   }
-  const withoutPrefix = upper.startsWith("O:") ? upper.slice(2) : upper;
-  return parseOccOptionSymbol(withoutPrefix) ? withoutPrefix : null;
-}
-
-/** Option contract quote key for Last/Day on option rows. */
-function optionQuoteLookupKey(p: SerializablePosition): string | null {
-  if (p.type !== "option") {
-    return null;
-  }
-  const explicitYahooRef = normalizeOptionContractQuoteKey(p.yahooRef);
-  if (explicitYahooRef) {
-    return explicitYahooRef;
-  }
-  const occInSymbol = normalizeOptionContractQuoteKey(p.symbol);
-  if (occInSymbol) {
-    return occInSymbol;
-  }
-  const upperSymbol = p.symbol.trim().toUpperCase();
-  const underlying = underlyingForYahooOptionsChain(upperSymbol).trim().toUpperCase();
-  if (!underlying || !/^\d{4}-\d{2}-\d{2}$/.test(p.expiration) || !Number.isFinite(p.strike) || p.strike <= 0) {
-    return null;
-  }
-  const expCompact = p.expiration.replaceAll("-", "").slice(2);
-  const typeChar = p.optionType === "put" ? "P" : "C";
-  const strikeCompact = String(Math.round(p.strike * 1000)).padStart(8, "0");
-  return `${underlying}${expCompact}${typeChar}${strikeCompact}`;
+  return n > 0
+    ? "value-gain portfolio-consolidated-holdings__mono"
+    : "value-loss portfolio-consolidated-holdings__mono";
 }
 
 function optionLegLabel(p: SerializablePosition & { type: "option" }): string {
@@ -107,25 +90,6 @@ function defaultDeskAlertBody(
   }
   lines.push("Compare Last vs Avg cost for scanner baselines or manual review.");
   return lines.join("\n");
-}
-
-/** Mark-to-model for one row (stocks use live last when available; options use book; cash = notional). */
-function rowMarkUsd(p: SerializablePosition, quotes: Record<string, SymbolLookupResult | null>): number {
-  if (p.type === "cash") {
-    return Math.max(0, p.amount);
-  }
-  if (p.type === "stock") {
-    const u = underlyingQuoteLookupKey(p);
-    if (!u) {
-      return p.shares * p.purchasePrice;
-    }
-    const last = quotes[u]?.price;
-    if (last != null && Number.isFinite(last)) {
-      return p.shares * last;
-    }
-    return p.shares * p.purchasePrice;
-  }
-  return Math.abs(p.contracts) * 100 * p.premiumPerContract;
 }
 
 type HoldingsSortColumn = "symbol" | "dayChange" | "qty";
@@ -208,6 +172,10 @@ type AccountConsolidatedHoldingsTableProps = {
   /** When set with `portfolioIdHex`, rows get a **Desk alert** action (POST `/api/portfolios/.../alerts`). */
   accountIdHex?: string;
   onDeskAlertSaved?: () => void;
+  /** Broker-style account caption above the grid (e.g. custodian account name). */
+  accountLabel?: string | null;
+  deskFocusSymbol?: string | null;
+  onDeskFocusSymbolChange?: (symbol: string | null) => void;
 };
 
 type HoldingsSortState = { col: HoldingsSortColumn; dir: "asc" | "desc" };
@@ -265,8 +233,15 @@ export function AccountConsolidatedHoldingsTable({
   onRemove,
   portfolioIdHex,
   accountIdHex,
-  onDeskAlertSaved
+  onDeskAlertSaved,
+  accountLabel = null,
+  deskFocusSymbol = null,
+  onDeskFocusSymbolChange
 }: AccountConsolidatedHoldingsTableProps) {
+  const normalizedDeskFocusSymbol = useMemo(() => {
+    const sym = normalizeXoptionsUnderlyingSymbol(deskFocusSymbol ?? "");
+    return isValidXoptionsUnderlyingSymbol(sym) ? sym : null;
+  }, [deskFocusSymbol]);
   const quoteSymbols = useMemo(() => {
     const s = new Set<string>();
     for (const p of positions) {
@@ -378,37 +353,67 @@ export function AccountConsolidatedHoldingsTable({
     return [...positions].sort((a, b) => mult * compareHoldingsRows(a, b, sort.col, quotes));
   }, [positions, sort, quotes]);
 
-  const totalMark = useMemo(() => {
-    let t = 0;
+  const accountTotals = useMemo(() => {
+    let currentValueUsd = 0;
+    let dayGainUsd = 0;
+    let totalGainUsd = 0;
+    let hasDayGain = false;
+    let hasTotalGain = false;
     for (const p of positions) {
-      t += rowMarkUsd(p, quotes);
+      const metrics = computeHoldingsRowMetrics(p, quotes);
+      currentValueUsd += metrics.currentValueUsd;
+      if (metrics.dayGainUsd != null && Number.isFinite(metrics.dayGainUsd)) {
+        dayGainUsd += metrics.dayGainUsd;
+        hasDayGain = true;
+      }
+      if (metrics.totalGainUsd != null && Number.isFinite(metrics.totalGainUsd)) {
+        totalGainUsd += metrics.totalGainUsd;
+        hasTotalGain = true;
+      }
     }
-    return t;
+    return {
+      currentValueUsd,
+      dayGainUsd: hasDayGain ? dayGainUsd : null,
+      totalGainUsd: hasTotalGain ? totalGainUsd : null
+    };
   }, [positions, quotes]);
 
   const showDeskAlertCol = Boolean(portfolioIdHex && accountIdHex);
 
   return (
     <>
+      {accountLabel?.trim() ? (
+        <p className="portfolio-consolidated-holdings__account-caption">{accountLabel.trim()}</p>
+      ) : null}
       <div className="portfolio-consolidated-holdings__scroll">
         <table className="portfolio-consolidated-holdings">
           <thead>
             <tr>
               <HoldingsSortHeader col="symbol" label="Symbol" sort={sort} onSort={setSortColumn} />
-              <th scope="col">Position</th>
               <th scope="col" className="portfolio-consolidated-holdings__num">
-                Last
-                <span className="portfolio-consolidated-holdings__th-sub">quote</span>
+                Last price
+              </th>
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                Last chg
               </th>
               <HoldingsSortHeader
                 alignEnd
                 col="dayChange"
-                label="Day Δ"
+                label="Today $"
                 sort={sort}
                 onSort={setSortColumn}
               />
               <th scope="col" className="portfolio-consolidated-holdings__num">
-                Value
+                Today %
+              </th>
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                Total $
+              </th>
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                Total %
+              </th>
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                Current value
               </th>
               <th scope="col" className="portfolio-consolidated-holdings__num">
                 % acct
@@ -416,6 +421,12 @@ export function AccountConsolidatedHoldingsTable({
               <HoldingsSortHeader alignEnd col="qty" label="Qty" sort={sort} onSort={setSortColumn} />
               <th scope="col" className="portfolio-consolidated-holdings__num">
                 Avg cost
+              </th>
+              <th scope="col" className="portfolio-consolidated-holdings__num">
+                Cost basis
+              </th>
+              <th scope="col" className="portfolio-consolidated-holdings__range-col">
+                52-week range
               </th>
               {showDeskAlertCol ? (
                 <th scope="col" className="portfolio-consolidated-holdings__th-desk">
@@ -426,169 +437,212 @@ export function AccountConsolidatedHoldingsTable({
               <th scope="col" aria-label="Remove" />
             </tr>
           </thead>
-        <tbody>
-          {sortedPositions.map((p) => {
-            const u = underlyingQuoteLookupKey(p);
-            const q = u ? quotes[u] ?? null : null;
-            const optionQuoteKey = optionQuoteLookupKey(p);
-            const optionQuote = optionQuoteKey ? quotes[optionQuoteKey] ?? null : null;
-            const displayQuote = p.type === "option" ? optionQuote : q;
-            const showQuote = p.type === "stock" || p.type === "option";
-            const mark = rowMarkUsd(p, quotes);
-            const pct = totalMark > 0 ? (mark / totalMark) * 100 : 0;
+          <tbody>
+            {sortedPositions.map((p) => {
+              const u = underlyingQuoteLookupKey(p);
+              const q = u ? quotes[u] ?? null : null;
+              const metrics = computeHoldingsRowMetrics(p, quotes);
+              const showQuote = p.type === "stock" || p.type === "option";
+              const pct =
+                accountTotals.currentValueUsd > 0
+                  ? (metrics.currentValueUsd / accountTotals.currentValueUsd) * 100
+                  : 0;
+              const wkLo = q?.fiftyTwoWeekLow;
+              const wkHi = q?.fiftyTwoWeekHigh;
+              const has52w =
+                p.type === "stock" &&
+                typeof wkLo === "number" &&
+                Number.isFinite(wkLo) &&
+                typeof wkHi === "number" &&
+                Number.isFinite(wkHi);
 
-            const lastCell =
-              showQuote && u ? (
-                loading && !displayQuote ? (
-                  <span className="portfolio-consolidated-holdings__muted">…</span>
-                ) : displayQuote?.price != null && Number.isFinite(displayQuote.price) ? (
-                  <span className="portfolio-consolidated-holdings__mono">
-                    {fmtUsd(displayQuote.price)}
-                  </span>
+              const symCell =
+                p.type === "cash" ? (
+                  <div className="portfolio-consolidated-holdings__sym-stack">
+                    <span className="portfolio-consolidated-holdings__sym-ticker">{p.label}</span>
+                    <span className="portfolio-consolidated-holdings__sym-sub">Cash / sweep</span>
+                  </div>
+                ) : showQuote && u ? (
+                  <div className="portfolio-consolidated-holdings__sym-stack">
+                    <div className="portfolio-consolidated-holdings__sym">
+                      <PortfolioSymbolMark logoUrl={q?.logoUrl} symbol={u} title={q?.companyName ?? u} size={22} />
+                      {onDeskFocusSymbolChange ? (
+                        <button
+                          type="button"
+                          className={`portfolio-consolidated-holdings__sym-focus${
+                            normalizedDeskFocusSymbol === u ? " portfolio-consolidated-holdings__sym-focus--active" : ""
+                          }`}
+                          onClick={() => onDeskFocusSymbolChange(u)}
+                          title={`Use ${u} for xOptions and xChat handoff`}
+                        >
+                          {p.type === "option"
+                            ? `${u} ${p.strike} ${p.optionType === "put" ? "Put" : "Call"}`
+                            : u}
+                        </button>
+                      ) : (
+                        <span className="portfolio-consolidated-holdings__sym-ticker">
+                          {p.type === "option"
+                            ? `${u} ${p.strike} ${p.optionType === "put" ? "Put" : "Call"}`
+                            : u}
+                        </span>
+                      )}
+                    </div>
+                    {p.type === "option" ? (
+                      <span className="portfolio-consolidated-holdings__sym-sub">{optionLegLabel(p)}</span>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__sym-sub">{q?.companyName ?? "—"}</span>
+                    )}
+                  </div>
                 ) : (
-                  <span className="portfolio-consolidated-holdings__muted">—</span>
-                )
-              ) : (
-                <span className="portfolio-consolidated-holdings__muted">—</span>
-              );
+                  <span className="portfolio-consolidated-holdings__mono">{p.symbol}</span>
+                );
 
-            const dayCell =
-              showQuote && u ? (
-                loading && !displayQuote ? (
-                  <span className="portfolio-consolidated-holdings__muted">…</span>
-                ) : displayQuote?.change != null && Number.isFinite(displayQuote.change) ? (
-                  <span
-                    className={
-                      displayQuote.change > 0
-                        ? "value-gain portfolio-consolidated-holdings__mono"
-                        : displayQuote.change < 0
-                          ? "value-loss portfolio-consolidated-holdings__mono"
-                          : "value-neutral portfolio-consolidated-holdings__mono"
-                    }
-                  >
-                    {fmtUsd(displayQuote.change)}
-                    {displayQuote.changePercent != null && Number.isFinite(displayQuote.changePercent) ? (
-                      <span className="portfolio-consolidated-holdings__day-pct">
-                        {" "}
-                        ({fmtPct(displayQuote.changePercent)})
-                      </span>
-                    ) : null}
-                  </span>
-                ) : (
-                  <span className="portfolio-consolidated-holdings__muted">—</span>
-                )
-              ) : (
-                <span className="portfolio-consolidated-holdings__muted">—</span>
-              );
-
-            const qtyCell =
-              p.type === "stock" ? (
-                <span className="portfolio-consolidated-holdings__mono">{p.shares}</span>
-              ) : p.type === "option" ? (
-                <span className="portfolio-consolidated-holdings__mono">{p.contracts}</span>
-              ) : (
-                <span className="portfolio-consolidated-holdings__muted">1</span>
-              );
-
-            const avgCell =
-              p.type === "stock" ? (
-                <span className="portfolio-consolidated-holdings__mono">{fmtUsd(p.purchasePrice)}</span>
-              ) : p.type === "option" ? (
-                <span className="portfolio-consolidated-holdings__mono">{fmtUsd(p.premiumPerContract)}/ct</span>
-              ) : (
-                <span className="portfolio-consolidated-holdings__mono">{fmtUsd(p.amount)}</span>
-              );
-
-            const symCell =
-              showQuote && u ? (
-                <div className="portfolio-consolidated-holdings__sym">
-                  <PortfolioSymbolMark logoUrl={q?.logoUrl} symbol={u} title={q?.companyName ?? u} size={28} />
-                  <span className="portfolio-consolidated-holdings__sym-ticker">{u}</span>
-                </div>
-              ) : (
-                <span className="portfolio-consolidated-holdings__mono">{p.type === "cash" ? p.label : p.symbol}</span>
-              );
-
-            const posCell =
-              p.type === "option" ? (
-                <div className="portfolio-consolidated-holdings__leg">
-                  <span className="portfolio-consolidated-holdings__leg-main">{optionLegLabel(p)}</span>
-                  {p.yahooRef ? (
-                    <span className="portfolio-consolidated-holdings__leg-ref">{p.yahooRef}</span>
-                  ) : null}
-                </div>
-              ) : p.type === "stock" ? (
-                <span className="portfolio-consolidated-holdings__muted">{q?.companyName ?? "—"}</span>
-              ) : (
-                <span className="portfolio-consolidated-holdings__muted">Cash / sweep</span>
-              );
-
-            return (
-              <tr key={p._id}>
-                <td>{symCell}</td>
-                <td>{posCell}</td>
-                <td className="portfolio-consolidated-holdings__num">{lastCell}</td>
-                <td className="portfolio-consolidated-holdings__num">{dayCell}</td>
-                <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">
-                  {fmtUsd(mark)}
-                  {p.type === "option" ? (
-                    <span className="portfolio-consolidated-holdings__foot"> book</span>
-                  ) : null}
-                </td>
-                <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">
-                  {totalMark > 0 ? `${pct.toFixed(1)}%` : "—"}
-                </td>
-                <td className="portfolio-consolidated-holdings__num">{qtyCell}</td>
-                <td className="portfolio-consolidated-holdings__num">{avgCell}</td>
-                {showDeskAlertCol ? (
-                  <td className="portfolio-consolidated-holdings__desk">
-                    {showQuote && u ? (
-                      <button
-                        type="button"
-                        className="cta cta-secondary portfolio-consolidated-holdings__desk-btn"
-                        disabled={pending}
-                        onClick={() => openDeskDialog(p, u, q, mark)}
-                        aria-label={`Create desk alert for ${u}`}
-                      >
-                        <ActivityPulseIcon className="crud-icon" aria-hidden />
-                      </button>
+              return (
+                <tr key={p._id}>
+                  <td>{symCell}</td>
+                  <td className="portfolio-consolidated-holdings__num">
+                    {loading && showQuote && metrics.lastPrice == null ? (
+                      <span className="portfolio-consolidated-holdings__muted">…</span>
+                    ) : metrics.lastPrice != null ? (
+                      <span className="portfolio-consolidated-holdings__mono">{fmtUsd(metrics.lastPrice)}</span>
                     ) : (
                       <span className="portfolio-consolidated-holdings__muted">—</span>
                     )}
                   </td>
-                ) : null}
-                <td>
-                  <button
-                    type="button"
-                    className="cta cta-secondary portfolio-consolidated-holdings__remove"
-                    disabled={pending}
-                    onClick={() => onRemove(p._id)}
-                  >
-                    <DeleteIcon className="crud-icon" aria-hidden />
-                    <span className="sr-only">Remove</span>
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
+                  <td className="portfolio-consolidated-holdings__num">
+                    {metrics.lastChange != null ? (
+                      <span className={gainLossClass(metrics.lastChange)}>{fmtSignedUsd(metrics.lastChange)}</span>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num">
+                    {metrics.dayGainUsd != null ? (
+                      <span className={gainLossClass(metrics.dayGainUsd)}>{fmtSignedUsd(metrics.dayGainUsd)}</span>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num">
+                    {metrics.dayGainPct != null ? (
+                      <span className={gainLossClass(metrics.dayGainPct)}>{fmtPct(metrics.dayGainPct)}</span>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num">
+                    {metrics.totalGainUsd != null ? (
+                      <span className={gainLossClass(metrics.totalGainUsd)}>{fmtSignedUsd(metrics.totalGainUsd)}</span>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num">
+                    {metrics.totalGainPct != null ? (
+                      <span className={gainLossClass(metrics.totalGainPct)}>{fmtPct(metrics.totalGainPct)}</span>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">
+                    {fmtUsd(metrics.currentValueUsd)}
+                    {metrics.usesOptionBookMark ? (
+                      <span className="portfolio-consolidated-holdings__foot"> book</span>
+                    ) : null}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">
+                    {accountTotals.currentValueUsd > 0 ? `${pct.toFixed(2)}%` : "—"}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num">
+                    <span className="portfolio-consolidated-holdings__mono">{metrics.qty.toLocaleString("en-US")}</span>
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num">
+                    {metrics.avgCost != null ? (
+                      <span className="portfolio-consolidated-holdings__mono">
+                        {p.type === "option" ? `${fmtUsd(metrics.avgCost)}/ct` : fmtUsd(metrics.avgCost)}
+                      </span>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num">
+                    <span className="portfolio-consolidated-holdings__mono">{fmtUsd(metrics.costBasisUsd)}</span>
+                  </td>
+                  <td className="portfolio-consolidated-holdings__range-col">
+                    {has52w ? (
+                      <HoldingsFiftyTwoWeekRange low={wkLo} high={wkHi} last={metrics.lastPrice} />
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  {showDeskAlertCol ? (
+                    <td className="portfolio-consolidated-holdings__desk">
+                      {showQuote && u ? (
+                        <button
+                          type="button"
+                          className="cta cta-secondary portfolio-consolidated-holdings__desk-btn"
+                          disabled={pending}
+                          onClick={() => openDeskDialog(p, u, q, metrics.currentValueUsd)}
+                          aria-label={`Create desk alert for ${u}`}
+                        >
+                          <ActivityPulseIcon className="crud-icon" aria-hidden />
+                        </button>
+                      ) : (
+                        <span className="portfolio-consolidated-holdings__muted">—</span>
+                      )}
+                    </td>
+                  ) : null}
+                  <td>
+                    <button
+                      type="button"
+                      className="cta cta-secondary portfolio-consolidated-holdings__remove"
+                      disabled={pending}
+                      onClick={() => onRemove(p._id)}
+                    >
+                      <DeleteIcon className="crud-icon" aria-hidden />
+                      <span className="sr-only">Remove</span>
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           {positions.length > 0 ? (
             <tfoot>
               <tr className="portfolio-consolidated-holdings__total">
-                <th scope="row" colSpan={4} className="portfolio-consolidated-holdings__total-label">
-                  Total (mark)
+                <th scope="row" colSpan={3} className="portfolio-consolidated-holdings__total-label">
+                  Account total
                 </th>
+                <td className="portfolio-consolidated-holdings__num">
+                  {accountTotals.dayGainUsd != null ? (
+                    <span className={gainLossClass(accountTotals.dayGainUsd)}>
+                      {fmtSignedUsd(accountTotals.dayGainUsd)}
+                    </span>
+                  ) : (
+                    <span className="portfolio-consolidated-holdings__muted">—</span>
+                  )}
+                </td>
+                <td />
+                <td className="portfolio-consolidated-holdings__num">
+                  {accountTotals.totalGainUsd != null ? (
+                    <span className={gainLossClass(accountTotals.totalGainUsd)}>
+                      {fmtSignedUsd(accountTotals.totalGainUsd)}
+                    </span>
+                  ) : (
+                    <span className="portfolio-consolidated-holdings__muted">—</span>
+                  )}
+                </td>
+                <td />
                 <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">
-                  {fmtUsd(totalMark)}
+                  {fmtUsd(accountTotals.currentValueUsd)}
                 </td>
                 <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">100%</td>
-                <td colSpan={showDeskAlertCol ? 4 : 3} />
+                <td colSpan={showDeskAlertCol ? 6 : 5} />
               </tr>
             </tfoot>
           ) : null}
         </table>
       </div>
-
       <dialog
         ref={deskDialogRef}
         className="portfolio-alerts-preview-dialog"

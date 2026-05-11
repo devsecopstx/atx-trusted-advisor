@@ -52,11 +52,13 @@ export function PortfolioManageShell({
   deskPrefetch = null
 }: PortfolioManageShellProps) {
   const [selectedAccountHex, setSelectedAccountHex] = useState(defaultAccountHex);
+  const [deskFocusSymbol, setDeskFocusSymbol] = useState<string | null>(null);
   const [workspaceTab, setWorkspaceTab] = useState<"portfolios" | "holdings" | "activities">("portfolios");
 
   const setSelectedAccountHexSynced = useCallback(
     (id: string) => {
       setSelectedAccountHex(id);
+      setDeskFocusSymbol(null);
       if (
         portfolioIdHex &&
         isLikelyMongoObjectIdHex(portfolioIdHex) &&
@@ -290,8 +292,11 @@ export function PortfolioManageShell({
         <AccountHoldingsCrudCard
           key={resolvedSelectedHex}
           accountIdHex={resolvedSelectedHex}
+          accountLabel={selectedAccountName}
+          deskFocusSymbol={deskFocusSymbol}
           embeddedInTab
           initialPositions={initialForSelected}
+          onDeskFocusSymbolChange={setDeskFocusSymbol}
           portfolioIdHex={portfolioIdHex}
         />
       ) : (
@@ -306,8 +311,11 @@ export function PortfolioManageShell({
         <div className="portfolio-overview__main" style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
           {topBand}
           <PortfolioAccountManageBar
+            accountPositions={initialForSelected}
             accounts={manageOptions}
+            focusSymbol={deskFocusSymbol}
             portfolioIdHex={portfolioIdHex}
+            portfolioName={portfolioDisplayName}
             selectedAccountId={resolvedSelectedHex}
             onSelectedAccountIdChange={setSelectedAccountHexSynced}
           />

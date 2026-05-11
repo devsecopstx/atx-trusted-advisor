@@ -4,8 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
+import {
+    buildPortfolioDeskHandoffUrls,
+    buildPortfolioDeskXchatPrompt,
+    writePortfolioDeskXchatHandoff
+} from "@/lib/portfolio/portfolio-desk-handoff";
 import {
     dispatchWorkspaceAccountChanged,
     writeStoredWorkspaceAccountId
@@ -24,13 +30,19 @@ type Props = {
   onSelectedAccountIdChange?: (accountId: string) => void;
   /** When set, account changes sync workspace account (rail / xOptions) and enable deep link context. */
   portfolioIdHex?: string;
+  portfolioName?: string | null;
+  accountPositions?: SerializablePosition[];
+  focusSymbol?: string | null;
 };
 
 export function PortfolioAccountManageBar({
   accounts,
   selectedAccountId: controlledId,
   onSelectedAccountIdChange,
-  portfolioIdHex
+  portfolioIdHex,
+  portfolioName = null,
+  accountPositions = [],
+  focusSymbol = null
 }: Props) {
   const router = useRouter();
   const preferredId = useMemo(() => {
@@ -64,17 +76,22 @@ export function PortfolioAccountManageBar({
     router.push(`/portfolio/accounts/${encodeURIComponent(effectiveId)}`);
   }
 
-  let xOptionsHref: string | null = null;
-  let xchatHref: string | null = null;
-  if (
+  const selectedAccountName = accounts.find((a) => a.id === effectiveId)?.name ?? "Selected account";
+
+  const deskHandoff =
     portfolioIdHex &&
     effectiveId &&
     isLikelyMongoObjectIdHex(portfolioIdHex) &&
     isLikelyMongoObjectIdHex(effectiveId)
-  ) {
-    xOptionsHref = `/xoptions?portfolioId=${encodeURIComponent(portfolioIdHex)}&accountId=${encodeURIComponent(effectiveId)}`;
-    xchatHref = `/xchat?portfolioId=${encodeURIComponent(portfolioIdHex)}&accountId=${encodeURIComponent(effectiveId)}&rail=xchat&item=composer`;
-  }
+      ? buildPortfolioDeskHandoffUrls({
+          portfolioIdHex,
+          accountIdHex: effectiveId,
+          accountName: selectedAccountName,
+          portfolioName,
+          positions: accountPositions,
+          focusSymbol
+        })
+      : null;
 
   function syncWorkspaceAccountForDesk(): void {
     if (!portfolioIdHex || !effectiveId) {
@@ -85,6 +102,20 @@ export function PortfolioAccountManageBar({
     }
     writeStoredWorkspaceAccountId(portfolioIdHex, effectiveId);
     dispatchWorkspaceAccountChanged({ portfolioId: portfolioIdHex, accountId: effectiveId });
+  }
+
+  function prepareXchatHandoff(): void {
+    if (!deskHandoff) {
+      return;
+    }
+    syncWorkspaceAccountForDesk();
+    writePortfolioDeskXchatHandoff(
+      buildPortfolioDeskXchatPrompt({
+        accountName: selectedAccountName,
+        portfolioName,
+        symbol: deskHandoff.symbol
+      })
+    );
   }
 
   return (
@@ -133,17 +164,26 @@ export function PortfolioAccountManageBar({
           ))}
         </select>
       </label>
-      {xOptionsHref ? (
-        <Link className="cta cta-secondary portfolio-head-action-btn" href={xOptionsHref}>
+      {deskHandoff ? (
+        <Link
+          className="cta cta-secondary portfolio-head-action-btn"
+          href={deskHandoff.xoptionsHref}
+          title={
+            deskHandoff.symbol
+              ? `Open xOptions for ${deskHandoff.symbol} in this account`
+              : "Open xOptions for this account"
+          }
+          onClick={syncWorkspaceAccountForDesk}
+        >
           xOptions
         </Link>
       ) : null}
-      {xchatHref ? (
+      {deskHandoff ? (
         <Link
           className="cta cta-secondary portfolio-head-action-btn"
-          href={xchatHref}
-          title="Open xChat with this portfolio and selected account"
-          onClick={syncWorkspaceAccountForDesk}
+          href={deskHandoff.xchatHref}
+          title="Open xChat with portfolio context and a prefilled prompt"
+          onClick={prepareXchatHandoff}
         >
           xChat
         </Link>

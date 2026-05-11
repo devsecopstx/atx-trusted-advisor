@@ -15,13 +15,19 @@ type AccountHoldingsCrudCardProps = {
   initialPositions: SerializablePosition[];
   /** When true (Edit Account tab), outer “Holdings” heading is screen-reader only — tab bar shows the label. */
   embeddedInTab?: boolean;
+  accountLabel?: string | null;
+  deskFocusSymbol?: string | null;
+  onDeskFocusSymbolChange?: (symbol: string | null) => void;
 };
 
 export function AccountHoldingsCrudCard({
   portfolioIdHex,
   accountIdHex,
   initialPositions,
-  embeddedInTab = false
+  embeddedInTab = false,
+  accountLabel = null,
+  deskFocusSymbol = null,
+  onDeskFocusSymbolChange
 }: AccountHoldingsCrudCardProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -200,11 +206,10 @@ export function AccountHoldingsCrudCard({
       </h2>
       <h3 className="portfolio-edit-holdings-card__table-title">Positions</h3>
       <p className="portfolio-edit-holdings-card__table-hint">
-        Consolidated view: <strong>Last</strong> and <strong>Day Δ</strong> use Yahoo quotes (stock rows use the
-        underlying; option rows use the option contract quote when available). <strong>Value</strong> uses live stock
-        marks; options show <strong>book</strong> (contracts × 100 × premium) until option marks ship. Use{" "}
-        <strong>Avg cost</strong> vs <strong>Last</strong> for baselines; the <strong>Desk</strong> column saves a
-        portfolio alert (prefilled body) to <strong>Alerts</strong> + optional desk channels.
+        Broker-style grid: live <strong>Last</strong>, day/total gain, <strong>Current value</strong>,{" "}
+        <strong>Cost basis</strong>, and stock <strong>52-week range</strong> from Yahoo quotes. Option rows use
+        contract quotes when available; otherwise value stays on <strong>book</strong>. The <strong>Desk</strong> column
+        saves a portfolio alert to <strong>Alerts</strong> + optional desk channels.
       </p>
       {error ? (
         <p className="status-text status-error" role="alert">
@@ -219,6 +224,9 @@ export function AccountHoldingsCrudCard({
             pending={pending}
             portfolioIdHex={portfolioIdHex}
             accountIdHex={accountIdHex}
+            accountLabel={accountLabel}
+            deskFocusSymbol={deskFocusSymbol}
+            onDeskFocusSymbolChange={onDeskFocusSymbolChange}
             positions={positions}
             onRemove={removePosition}
             onDeskAlertSaved={() => startTransition(() => router.refresh())}

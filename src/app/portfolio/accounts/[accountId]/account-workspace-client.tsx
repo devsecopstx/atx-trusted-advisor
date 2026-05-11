@@ -743,6 +743,7 @@ function AccountWorkspaceInner({
           >
             <AccountHoldingsCrudCard
               accountIdHex={account._id}
+              accountLabel={account.name}
               embeddedInTab
               initialPositions={initialPositions}
               portfolioIdHex={portfolioId}
