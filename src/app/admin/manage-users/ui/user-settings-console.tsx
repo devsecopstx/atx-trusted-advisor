@@ -167,6 +167,17 @@ const ROLE_SELECT_OPTIONS: ReadonlyArray<ApprovedUser["role"]> = [
   "viewer"
 ];
 
+function shortMongoObjectIdHex(id: string | null | undefined): string {
+  if (!id?.trim()) {
+    return "—";
+  }
+  const trimmed = id.trim();
+  if (trimmed.length <= 14) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, 8)}…${trimmed.slice(-4)}`;
+}
+
 const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
   assignedPersonaId: "",
   finraLicenseUploadUrl: "",
@@ -809,17 +820,17 @@ export function UserSettingsConsole() {
                   <td className="align-top" style={{ maxWidth: 220 }}>
                     <div className="flex flex-col gap-1">
                       <div
-                        className="font-mono text-xs break-all opacity-90"
-                        title="core_users._id"
+                        className="font-mono text-xs opacity-90"
+                        title={`core_users._id: ${user.userId}`}
                       >
-                        {user.userId}
+                        <span className="opacity-70">user</span> {shortMongoObjectIdHex(user.userId)}
                       </div>
                       <button
                         className="tiny-button self-start"
                         onClick={() => void copyMongoUserId(user.userId)}
                         type="button"
                       >
-                        Copy id
+                        Copy full id
                       </button>
                     </div>
                   </td>
@@ -856,11 +867,16 @@ export function UserSettingsConsole() {
                               ) : null}
                             </div>
                             <div
-                              className="font-mono text-xs break-all opacity-80"
-                              title="core_tenants._id"
+                              className="font-mono text-xs opacity-80"
+                              title={`core_tenants._id: ${m.tenantId}`}
                             >
-                              {m.tenantId}
+                              <span className="opacity-70">tenant</span> {shortMongoObjectIdHex(m.tenantId)}
                             </div>
+                            {m.tenantId === user.userId ? (
+                              <div className="text-xs" style={{ color: "var(--xf-loss-red)" }}>
+                                Data issue: tenant id matches user id
+                              </div>
+                            ) : null}
                             <div className="text-xs opacity-70">{m.tenantRole}</div>
                           </li>
                         ))}
@@ -884,7 +900,7 @@ export function UserSettingsConsole() {
                         {tenantOptions.map((tenant) => (
                           <option key={tenant.tenantId} value={tenant.tenantId}>
                             {tenant.slug}
-                            {tenant.name ? ` - ${tenant.name}` : ""}
+                            {tenant.name ? ` - ${tenant.name}` : ""} · {shortMongoObjectIdHex(tenant.tenantId)}
                           </option>
                         ))}
                       </select>
