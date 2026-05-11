@@ -67,6 +67,7 @@ import {
     mergeBaseFromRawWatchlistEntry,
     symbolFromRawWatchlistEntry
 } from "@/modules/watchlist/watchlist-row-raw";
+import { invalidateAccountOutlookContextCache } from "@/modules/xchat/account-outlook-context-cache";
 import { clearPerUserXaiHistoryCollectionForUserTenant } from "@/modules/xchat/user-history-xai-purge";
 
 const collections = {
@@ -395,6 +396,10 @@ async function createPortfolioIndexes(): Promise<void> {
     db.collection<Account>(collections.accounts).createIndex(
       { portfolioId: 1, userId: 1, isDefault: -1, createdAt: 1 },
       { name: "idx_accounts_snapshot_portfolio_user_default_created" }
+    ),
+    db.collection<Account>(collections.accounts).createIndex(
+      { userId: 1, portfolioId: 1, isDefault: -1 },
+      { name: "idx_accounts_user_portfolio_default_outlook" }
     ),
     /** Exactly one default watchlist per user per tenant (legacy rows may omit `tenantId`). */
     db.collection<Watchlist>(collections.watchlists).createIndex(
@@ -4591,6 +4596,13 @@ export async function updatePortfolioAccountForUser(
     portfolioId: input.portfolioId,
     tenantId: input.tenantId
   });
+  void invalidateAccountOutlookContextCache({
+    userId: input.userId,
+    portfolioIdHex: input.portfolioId,
+    tenantId: input.tenantId
+  }).catch(() => {
+    /* ignore */
+  });
   return db.collection<Account>(collections.accounts).findOne(filter);
 }
 
@@ -4629,6 +4641,13 @@ export async function refreshPortfolioAccountInvestmentOutlookForUser(input: {
     userId: input.userId,
     portfolioId: input.portfolioId,
     tenantId: input.tenantId
+  });
+  void invalidateAccountOutlookContextCache({
+    userId: input.userId,
+    portfolioIdHex: input.portfolioId,
+    tenantId: input.tenantId
+  }).catch(() => {
+    /* ignore */
   });
   return db.collection<Account>(collections.accounts).findOne(filter);
 }
@@ -5377,6 +5396,13 @@ export async function deleteAccountInPortfolioForOwner(input: {
     userId: input.ownerUserId,
     portfolioId: input.portfolioId,
     tenantId: input.tenantId
+  });
+  void invalidateAccountOutlookContextCache({
+    userId: input.ownerUserId,
+    portfolioIdHex: input.portfolioId,
+    tenantId: input.tenantId
+  }).catch(() => {
+    /* ignore */
   });
   return true;
 }

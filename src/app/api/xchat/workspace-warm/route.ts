@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
+import { getDefaultPortfolio } from "@/modules/core-admin/repository";
+import { resolveAccountOutlookContextForXchat } from "@/modules/xchat/account-outlook-context";
 import { loadWorkspaceSnapshotPreload } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 export const dynamic = "force-dynamic";
@@ -20,14 +22,28 @@ export async function GET(request: Request) {
   const portfolioId =
     portfolioIdRaw && /^[a-f\d]{24}$/i.test(portfolioIdRaw) ? portfolioIdRaw : undefined;
 
-  await loadWorkspaceSnapshotPreload(
-    {
-      userId: session.userId,
-      tenantId: session.tenantId,
-      workspacePortfolioId: portfolioId
-    },
-    { snapshotQuoteNetwork: "live", coordinatingRequest: request }
-  );
+  const portfolioIdHex =
+    portfolioId ||
+    (await getDefaultPortfolio(session.userId, { tenantId: session.tenantId }))?._id?.toHexString() ||
+    "";
 
-  return NextResponse.json({ data: { warmed: true as const } });
+  await Promise.all([
+    loadWorkspaceSnapshotPreload(
+      {
+        userId: session.userId,
+        tenantId: session.tenantId,
+        workspacePortfolioId: portfolioId
+      },
+      { snapshotQuoteNetwork: "live", coordinatingRequest: request }
+    ),
+    portfolioIdHex
+      ? resolveAccountOutlookContextForXchat({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          portfolioIdHex
+        })
+      : Promise.resolve(null)
+  ]);
+
+  return NextResponse.json({ data: { warmed: true as const, portfolioId: portfolioIdHex || null } });
 }

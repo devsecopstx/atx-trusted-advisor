@@ -6,6 +6,12 @@ import {
     type Account,
     type AccountOutlook
 } from "@/modules/core-admin/types";
+import {
+    buildAccountOutlookContextCacheKey,
+    getAccountOutlookContextCacheTtlSeconds,
+    readAccountOutlookContextCache,
+    writeAccountOutlookContextCache
+} from "@/modules/xchat/account-outlook-context-cache";
 
 export type AccountOutlookRefreshSource = "xai-sentiment" | "yahoo-macro" | "manual";
 
@@ -141,10 +147,28 @@ export async function resolveAccountOutlookContextForXchat(input: {
   userId: string;
   tenantId?: string;
   portfolioIdHex: string;
+  skipCache?: boolean;
 }): Promise<AccountOutlookContextForXchat | null> {
+  const portfolioIdHex = input.portfolioIdHex.trim();
+  if (!portfolioIdHex) {
+    return null;
+  }
+
+  const cacheKey = buildAccountOutlookContextCacheKey({
+    userId: input.userId,
+    portfolioIdHex,
+    tenantId: input.tenantId
+  });
+  if (!input.skipCache) {
+    const cached = await readAccountOutlookContextCache(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const accounts = await listPortfolioAccounts({
     userId: input.userId,
-    portfolioId: input.portfolioIdHex,
+    portfolioId: portfolioIdHex,
     tenantId: input.tenantId
   });
   const pick =
@@ -152,7 +176,13 @@ export async function resolveAccountOutlookContextForXchat(input: {
   if (!pick?._id) {
     return null;
   }
-  return accountToContext(pick);
+  const ctx = accountToContext(pick);
+  void writeAccountOutlookContextCache(cacheKey, ctx, getAccountOutlookContextCacheTtlSeconds()).catch(
+    () => {
+      /* ignore */
+    }
+  );
+  return ctx;
 }
 
 export function formatAccountOutlookPromptInjection(

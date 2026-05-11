@@ -1090,9 +1090,13 @@ export async function POST(request: Request) {
       workspacePortfolioScoped ||
       workspaceIncomeIdeasPreload);
   const shouldEagerWorkspacePreload = hasXfinanceTool && likelyDirectWorkspaceToolPath;
+  const portfolioHexForOutlook =
+    workspacePortfolioId?.trim() ||
+    (await getDefaultPortfolio(session.userId, { tenantId: session.tenantId }))?._id?.toHexString() ||
+    "";
   const ragAndPreloadStartedAt = Date.now();
 
-  const [ragBundle, eagerWorkspacePreload] = await Promise.all([
+  const [ragBundle, eagerWorkspacePreload, outlookCtx, limitsForOutlook] = await Promise.all([
     (async (): Promise<{
       contextSource: "none" | "xai_collection";
       collectionContextReferences: Array<{
@@ -1220,14 +1224,44 @@ export async function POST(request: Request) {
       ? loadWorkspaceSnapshotPreload(workspaceSnapshotCtx, {
           snapshotQuoteNetwork: workspaceSnapshotQuoteNetwork
         })
-      : Promise.resolve(null)
+      : Promise.resolve(null),
+    portfolioHexForOutlook
+      ? resolveAccountOutlookContextForXchat({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          portfolioIdHex: portfolioHexForOutlook
+        })
+      : Promise.resolve(null),
+    effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan)
   ]);
+  const accountOutlookAugment = outlookCtx
+    ? formatAccountOutlookPromptInjection(
+        outlookCtx,
+        getInvestmentOutlookRefreshEnabled({
+          envEnabled: getEnv().INVESTMENT_OUTLOOK_REFRESH_ENABLED === true,
+          tenantLimits: limitsForOutlook
+        })
+      )
+    : "";
   markPerf("rag_and_workspace_prefetch", ragAndPreloadStartedAt, {
     hasXfinanceTool,
     shouldEagerWorkspacePreload,
     workspaceIncomeIdeasPreload,
-    workspaceSnapshotQuoteNetwork
+    workspaceSnapshotQuoteNetwork,
+    hasOutlookContext: Boolean(outlookCtx)
   });
+  if (isXchatPromptLatencyMetricsEnabled()) {
+    void recordXchatPromptLatencySample({
+      tenantId: session.tenantId.trim(),
+      promptType: "outlook-context-fetch-ms",
+      durationMs: Math.max(0, Date.now() - ragAndPreloadStartedAt)
+    });
+    void recordXchatPromptLatencySample({
+      tenantId: session.tenantId.trim(),
+      promptType: "xchat-prompt-prep-time",
+      durationMs: Math.max(0, Date.now() - ragAndPreloadStartedAt)
+    });
+  }
 
   const {
     contextSource,
@@ -1597,30 +1631,6 @@ export async function POST(request: Request) {
 
   const tenantWorkspaceCtxBase =
     typeof tenantWorkspaceContextBlock === "string" ? tenantWorkspaceContextBlock.trim() : "";
-  let accountOutlookAugment = "";
-  const portfolioHexForOutlook =
-    workspacePortfolioId?.trim() ||
-    (await getDefaultPortfolio(session.userId, { tenantId: session.tenantId }))?._id?.toHexString();
-  if (portfolioHexForOutlook) {
-    const limitsForOutlook = await effectiveWorkspaceLimitsForTenantAndPlan(
-      tenantForDebug,
-      subscriptionPlan
-    );
-    const outlookCtx = await resolveAccountOutlookContextForXchat({
-      userId: session.userId,
-      tenantId: session.tenantId,
-      portfolioIdHex: portfolioHexForOutlook
-    });
-    if (outlookCtx) {
-      accountOutlookAugment = formatAccountOutlookPromptInjection(
-        outlookCtx,
-        getInvestmentOutlookRefreshEnabled({
-          envEnabled: getEnv().INVESTMENT_OUTLOOK_REFRESH_ENABLED === true,
-          tenantLimits: limitsForOutlook
-        })
-      );
-    }
-  }
   const effectiveTenantWorkspaceContextBlock = [tenantWorkspaceCtxBase, accountOutlookAugment]
     .filter((s) => s.trim().length > 0)
     .join("\n\n");

@@ -42,6 +42,7 @@ import type {
     XchatInteractionMeta
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
+import { XchatOutlookFreshnessBadge } from "@/app/xchat/ui/xchat-outlook-freshness-badge";
 import { XchatSidebarTokenStats } from "@/app/xchat/ui/xchat-sidebar-token-stats";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
@@ -447,6 +448,7 @@ export function XchatConversation({
   const [strategyJobLaunchBusy, setStrategyJobLaunchBusy] = useState(false);
   /** Aborts in-flight `fetch` to `/api/xchat/ask` or `/api/strategy-jobs` when the user clicks Stop. */
   const askAbortRef = useRef<AbortController | null>(null);
+  const sendSubmittingRef = useRef(false);
 
   const tenantFileUploadEnabled = useMemo(
     () =>
@@ -1303,7 +1305,8 @@ export function XchatConversation({
     const prompt = input.trim();
     const pastedImage = pendingPasteImage;
     const hasPasteImage = Boolean(pastedImage);
-    if ((!prompt && !hasPasteImage) || loading) return;
+    if ((!prompt && !hasPasteImage) || loading || sendSubmittingRef.current) return;
+    sendSubmittingRef.current = true;
 
     if (!shouldStayInChatFromReply(prompt)) {
       strategyStayRestorePromptRef.current = null;
@@ -1419,6 +1422,7 @@ export function XchatConversation({
         return;
       } finally {
         askAbortRef.current = null;
+        sendSubmittingRef.current = false;
         setStrategyJobLaunchBusy(false);
         setLoading(false);
       }
@@ -1837,6 +1841,7 @@ export function XchatConversation({
       }
     } finally {
       askAbortRef.current = null;
+      sendSubmittingRef.current = false;
       setLoading(false);
     }
   }
@@ -2165,6 +2170,7 @@ export function XchatConversation({
           onStop={cancelAskInFlight}
         />
 
+        <XchatOutlookFreshnessBadge workspacePortfolioId={workspacePortfolioId} />
         <XchatUsageMeter refreshSignal={promptUsageRefreshKey} variant="composer" />
         <Suspense fallback={<XchatChatSkeleton variant="composer" />}>
           <XchatComposerPanelLazy
