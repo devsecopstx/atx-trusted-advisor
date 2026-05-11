@@ -68,10 +68,10 @@ html[data-xf-ui="soft"] .portfolio-symbol-mark {
 .xoptions-workspace-topbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.55rem 0.85rem;
-  padding: 0.45rem 0.55rem;
+  gap: 0.35rem 0.65rem;
+  padding: 0.32rem 0.45rem;
   border-radius: var(--xf-radius-sm);
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
   background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
@@ -81,13 +81,54 @@ html[data-xf-ui="soft"] .portfolio-symbol-mark {
   display: flex;
   min-width: 0;
   flex: 1 1 14rem;
-  flex-direction: column;
-  gap: 0.35rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
 }
 
 .xoptions-workspace-topbar__pickers {
   display: grid;
   gap: 0.35rem;
+}
+
+.xoptions-workspace-topbar__pickers--inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.xoptions-workspace-topbar__pickers--inline .app-user-rail-workspace-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.xoptions-workspace-topbar__pickers--inline .app-user-rail-workspace-row--stack {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.xoptions-workspace-topbar__pickers--inline .app-user-rail-workspace-k {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.xoptions-workspace-topbar__pickers--inline .app-user-rail-workspace-v {
+  font-size: 0.72rem;
+}
+
+.xoptions-workspace-topbar__pickers--inline .app-user-rail-account-select {
+  width: auto;
+  min-width: 6.5rem;
+  max-width: 11rem;
+  padding: 0.22rem 0.32rem;
+  font-size: 0.68rem;
 }
 
 .xoptions-workspace-topbar__nav {

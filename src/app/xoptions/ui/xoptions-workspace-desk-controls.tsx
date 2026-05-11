@@ -36,7 +36,7 @@ export function XoptionsWorkspaceDeskControls({
     <section className="xoptions-workspace-topbar" aria-label="Workspace desk">
       <div className="xoptions-workspace-topbar__desk">
         {workspaceBook && portfolioId ? (
-          <div className="xoptions-workspace-topbar__pickers app-user-rail-workspace-card">
+          <div className="xoptions-workspace-topbar__pickers xoptions-workspace-topbar__pickers--inline app-user-rail-workspace-card">
             <AppUserWorkspacePortfolioPicker
               portfolios={workspaceBook.workspacePortfolios}
               selectedPortfolioId={portfolioId}
