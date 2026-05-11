@@ -9,7 +9,7 @@ export const ATXFINANCE_TOOL_DEFINITION = {
   function: {
     name: "atx_function",
     description:
-      "Portfolio, accounts, watchlist (read + add/remove on the user's default watchlist), positions, scheduled tasks, Yahoo quotes, and Premium+ advisor NL price alerts (price_alert_manage; one active rule per symbol per user; optional portfolio hint). Scoped to the signed-in user only—never pass a user id. watchlist_add_symbols upserts tickers with default row metadata (Stock / balanced) and fills desk risk growth + outlook neutral only when unset; use when the user says e.g. \"add NVDA to my watchlist\". watchlist_remove_symbols removes tickers.",
+      "Portfolio, accounts, watchlist (read + add/remove on the user's default watchlist), positions, scheduled tasks, Yahoo quotes, JVM engine strategy recommendations, and Premium+ advisor NL price alerts (price_alert_manage; one active rule per symbol per user; optional portfolio hint). Scoped to the signed-in user only—never pass a user id. watchlist_add_symbols upserts tickers with default row metadata (Stock / balanced) and fills desk risk growth + outlook neutral only when unset; use when the user says e.g. \"add NVDA to my watchlist\". watchlist_remove_symbols removes tickers.",
     parameters: {
       type: "object",
       properties: {
@@ -25,11 +25,12 @@ export const ATXFINANCE_TOOL_DEFINITION = {
             "task_status",
             "options_scan",
             "options_action_scan",
+            "strategy_recommendations",
             "market_quote",
             "price_alert_manage"
           ],
           description:
-            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt, entryPrice/targetEntryPrice when set) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. options_scan: scan Yahoo option chains by filters (optionType, DTE, delta, IV, OI, bid); accepts either structured fields or a natural-language `query` such as 'RDW CSP scan put DTE<=7 delta 0.15-0.30 vol>40 OI>500 bid>0.10'. options_action_scan: deterministic options action report across live option holdings + watchlist symbols with recommended actions (ROLL/BTC/HOLD/LET_EXPIRE/STC/OPEN/MONITOR). market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers. price_alert_manage: Premium+HNWI NL desk price rules on the **workspace portfolio** (see priceAlertOp + confirmDestructive); fires during tenant watchlist price scanner when Yahoo quotes cross armed thresholds; email uses desk delivery channels when configured."
+            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt, entryPrice/targetEntryPrice when set) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. options_scan: scan Yahoo option chains by filters (optionType, DTE, delta, IV, OI, bid); accepts either structured fields or a natural-language `query` such as 'RDW CSP scan put DTE<=7 delta 0.15-0.30 vol>40 OI>500 bid>0.10'. options_action_scan: deterministic options action report across live option holdings + watchlist symbols with recommended actions (ROLL/BTC/HOLD/LET_EXPIRE/STC/OPEN/MONITOR). strategy_recommendations: use the JVM OptionsStrategyEngine for ranked strategy recommendation JSON; requires symbols, outlook, risk, and horizonDays; narrate only from returned legs/scores/rationale. market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers. price_alert_manage: Premium+HNWI NL desk price rules on the **workspace portfolio** (see priceAlertOp + confirmDestructive); fires during tenant watchlist price scanner when Yahoo quotes cross armed thresholds; email uses desk delivery channels when configured."
         },
         symbol: {
           type: "string",
@@ -82,7 +83,43 @@ export const ATXFINANCE_TOOL_DEFINITION = {
           type: "array",
           items: { type: "string" },
           description:
-            "Multiple tickers for watchlist_add_symbols or watchlist_remove_symbols (max 20 per call), e.g. [\"NVDA\",\"AMD\"]."
+            "Multiple tickers for watchlist_add_symbols/watchlist_remove_symbols (max 20 per call) or strategy_recommendations (max 5), e.g. [\"NVDA\",\"AMD\"]."
+        },
+        outlook: {
+          type: "string",
+          enum: ["bullish", "bearish", "neutral"],
+          description: "Required for strategy_recommendations; market outlook for the ranked engine scan."
+        },
+        risk: {
+          type: "string",
+          enum: ["conservative", "moderate", "aggressive"],
+          description: "Required for strategy_recommendations; user risk tolerance."
+        },
+        horizonDays: {
+          type: "number",
+          description: "Required for strategy_recommendations; target option horizon in days (1..365)."
+        },
+        preferredStrategies: {
+          type: "array",
+          items: {
+            type: "string",
+            enum: [
+              "covered_call",
+              "cash_secured_put",
+              "protective_put",
+              "long_straddle",
+              "iron_condor",
+              "bull_put_spread",
+              "bear_call_spread",
+              "long_call",
+              "long_put"
+            ]
+          },
+          description: "Optional strategy_recommendations allowlist. Leave unset for engine-eligible strategies."
+        },
+        maxResults: {
+          type: "number",
+          description: "strategy_recommendations result cap (1..10; default 5)."
         },
         priceAlertOp: {
           type: "string",

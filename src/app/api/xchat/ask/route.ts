@@ -288,6 +288,7 @@ export async function POST(request: Request) {
   if (session instanceof NextResponse) {
     return session;
   }
+  const sessionCookie = request.headers.get("cookie") ?? undefined;
 
   const isAdminSession = isGlobalAdmin(session.roles);
   if (!isAdminSession && !canUserLogin(session.roles)) {
@@ -1101,6 +1102,7 @@ export async function POST(request: Request) {
       tenantId: session.tenantId,
       subscriptionPlan,
       platformRoles: session.roles,
+      sessionCookie,
       workspacePortfolioId,
       ...atxWorkspaceExecutorOpts
     });
@@ -1253,6 +1255,7 @@ export async function POST(request: Request) {
       tenantId: session.tenantId,
       subscriptionPlan,
       platformRoles: session.roles,
+      sessionCookie,
       workspacePortfolioId,
       ...atxWorkspaceExecutorOpts
     });
@@ -1514,6 +1517,7 @@ export async function POST(request: Request) {
         tenantId: session.tenantId,
         subscriptionPlan,
         platformRoles: session.roles,
+        sessionCookie,
         workspacePortfolioId,
         ...(hasXfinanceTool ? atxWorkspaceExecutorOpts : {})
       })

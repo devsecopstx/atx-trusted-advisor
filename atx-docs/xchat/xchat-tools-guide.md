@@ -14,14 +14,15 @@
 
 ```mermaid
 flowchart TD
-  A["POST /api/xchat/ask"] --> B["Persona + effective tools\nnormalize → Super-Agent defaults → linked ids → withLinked → mergeXchatHostedToolBaseline"]
-  B --> C["RAG: xAI collections then Mongo scope"]
+  A["POST /api/xchat/ask"] --> B["Persona + effective tools\nnormalize → Super-Agent defaults → persona-linked ids → withLinked"]
+  B --> C["RAG: persona-linked TEAM xAI collections then Mongo scope"]
   C --> D["buildXchatSystemPrompt\n(persona → RAG → snapshot → buildSessionToolInstructions)"]
   D --> E["User: override + message + appendXchatKbMetadata"]
   E --> F["respondWithXaiToolLoop /v1/responses"]
 ```
 
-- **Effective tools:** `mergeXchatHostedToolBaseline` keeps `web_search` + `x_search` on the wire even if Mongo omitted them.
+- **Effective tools:** ask uses the persona tool config plus `ensureSuperAgentDefaultTools` where applicable. `mergeXchatHostedToolBaseline` is compatibility glue and must not be treated as an unconditional hosted-tool injector.
+- **Runtime TEAM KB:** ask and batch wire only persona-declared collection IDs (`xaiCollection`, `teamCollection`, or tool `collection_ids`; max 2). The deploy default resolved from `XAI_TEAM_ID` is visible for admin/discovery flows but is not auto-merged into ask grounding.
 - **Ask execution:** Always `respondWithXaiToolLoop` (not chat-completions). Batch stays **single-turn** xAI Batch JSONL — same **prompt** builders, different **transport**.
 
 ---
@@ -68,6 +69,15 @@ flowchart TD
 | Recovery | Synthetic / `previous_response_id` handling in `lib/xai.ts` — see [`xfeature-tools-plan.md`](./xfeature-tools-plan.md), [`atxfinance-tool-stub.md`](./atxfinance-tool-stub.md). |
 
 **Marker → wire:** `atxfinance` / `yahoo_finance` → function schemas (flattened for Responses); `collections_search` → `file_search` + `vector_store_ids`; hosted types via `toXaiRequestTools`. Hosted tool **calls** are satisfied on xAI’s side; the loop acks `web_search` / `x_search` / `file_search` with `{}` (and defensively handles `collections_search` if emitted) in `lib/xai.ts`.
+
+### Engine-grounded recommendations (PLAN 707)
+
+`atx_function.strategy_recommendations` is the first engine-grounded xChat bridge:
+
+- Next keeps ownership of `POST /api/xchat/ask`, persona resolution, live SSE, logs, and usage metering.
+- The local tool executor validates `symbols`, `outlook`, `risk`, and `horizonDays`, then calls Spring `POST /api/strategy-recommendations/generate` with the signed session cookie when `ATXFINANCE_BACKEND_ORIGIN` is set.
+- Spring owns the deterministic `OptionsStrategyEngine.generateRecommendations(...)` call and returns compact structured JSON (`recommendations`, `source`, `chainSources`, `generatedAt`, `correlationId`).
+- If the backend or chain data is unavailable, the tool returns `engine_unavailable` / `invalid_strategy_context`; xChat should not invent legs, scores, or risk/reward values outside the tool JSON.
 
 ---
 

@@ -40,6 +40,7 @@ import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
 import { canManageNlPriceAlerts } from "@/modules/xchat/plan-limits";
+import { runStrategyRecommendationsTool } from "@/modules/xchat/strategy-recommendations-tool";
 import {
     deleteCachedToolResult,
     getCachedToolResult,
@@ -477,6 +478,8 @@ export type XfinanceToolExecutorContext = {
   subscriptionPlan?: "basic" | "premium" | "premium_plus";
   /** Platform roles from session — NL price alerts require advisor or global_admin with Premium+. */
   platformRoles?: string[];
+  /** Raw request cookie forwarded to Spring for session-scoped engine tools. */
+  sessionCookie?: string;
   workspacePortfolioId?: string | null;
   /**
    * Eager preload (tests, batch, or explicit opt-in). When this key is present (including `null`),
@@ -989,6 +992,13 @@ function buildOperations(
         rows: report.rows,
         disclaimer: report.disclaimer
       };
+    },
+
+    strategy_recommendations: async (args, ctx: ExecutorContext) => {
+      return runStrategyRecommendationsTool(args, {
+        sessionCookie: ctx.sessionCookie,
+        workspacePortfolioId: ctx.workspacePortfolioId
+      });
     },
 
     price_alert_manage: async (args, ctx: ExecutorContext) => {

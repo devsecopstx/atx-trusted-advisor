@@ -14,6 +14,7 @@ New work: **`XAI_TEAM_ID`** per tenant; TEAM append/retrieval; chat-history coll
 | **Live user state** (positions, balances, watchlist) | **`atxfinance` tool** (responses tool loop) | Data is per-session Mongo; not in xAI collections; must run server executor. |
 | **Show watchlist** (`"show my watchlist"`, `"show watchlist for <portfolio>"`) | **`atx_function.watchlist_snapshot` + market pulse enrichment** | Deterministic, tool-backed output. Render as table with live 1D delta / `% distance` from target and xOptions CTA links; avoid model-invented prices. |
 | **Live market quote** | **`yahoo_finance` or `atxfinance` + `market_quote`** | Canonical Yahoo path; avoid inventing prices from web prose. |
+| **Rank options structures / strategy ideas** | **`atx_function.strategy_recommendations`** | Spring `OptionsStrategyEngine` returns structured recommendation JSON (legs, score, risk/reward, rationale) for model narration; fail closed on missing symbols/outlook/risk/horizon or backend outage. |
 | **Breaking news, sentiment, “what happened today”** | **`web_search` / `x_search` tools** (after retrieval if needed) | Collections lag; tools pull fresh web/X. |
 | **Heavy synthesis** (many conflicting sources, multi-angle research, explicit “red team”) | **Multi-agent** (`grok-4.20-multi-agent` + `reasoningEffort`) — **admin / cost-approved tiers only** by default | Higher cost and latency; use when single-pass quality is insufficient, not for every turn. |
 

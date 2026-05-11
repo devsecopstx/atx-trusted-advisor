@@ -60,6 +60,21 @@ class OptionsStrategyEngineTest {
     }
 
     @Test
+    fun `recommendations include engine-grounded narrative fields`() {
+        val chain = sampleChain()
+        val ctx = UserOptionsContext(RiskTolerance.MODERATE, MarketOutlook.BULLISH)
+        val recs = engine.generateRecommendations(ctx, mapOf("SMP" to chain), OptionsScanPrompt(minScore = 0))
+        val top = recs.first()
+
+        assertEquals("SMP", top.underlying)
+        assertTrue(top.score in 0..100)
+        assertTrue(top.legs.isNotEmpty())
+        assertTrue(top.riskReward.popApproxPercent in 5.0..95.0)
+        assertTrue(top.rationale.contains("fit score"))
+        assertTrue(top.rationale.contains("Educational only"))
+    }
+
+    @Test
     fun `normalizers are bounded zero to one`() {
         assertEquals(0.0, normalizeIv(-1.0), 0.001)
         assertTrue(normalizeIv(0.6) in 0.0..1.0)

@@ -82,6 +82,14 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `
 
 **Finalizer env (JVM):** `STRATEGY_FINALIZER_MODEL` (default `grok-4.3`, with `reasoning.effort` **medium** when not multi-agent), `STRATEGY_FINALIZER_SYNC_FOR_GLOBAL_ADMIN`, `STRATEGY_FINALIZER_MULTI_AGENT_FOR_GLOBAL_ADMIN`, optional `STRATEGY_TEAM_KB_COLLECTION_ID` (else team KB from `XAI_TEAM_ID` when it resolves to `collection_*`), optional `STRATEGY_FINALIZER_NON_ADMIN_MODEL` when multi-agent is not used. Requires `XAI_API_KEY` (same as xChat).
 
+## Strategy recommendations (PLAN 707 engine tool bridge)
+
+Session cookie + **`viewer`+** roles (`canUserLogin`). This endpoint is the JVM-authoritative `OptionsStrategyEngine.generateRecommendations(...)` contract consumed by Next xChat `atx_function.strategy_recommendations`; it does **not** move `/api/xchat/ask` or the Responses tool loop to Spring.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/strategy-recommendations/generate` | Body `{ symbols, outlook, risk, horizonDays, portfolioId?, preferredStrategies?, maxResults? }`. **200** `{ "data": { "recommendations", "source", "chainSources", "generatedAt", "correlationId", "input" } }`; **400** `invalid_strategy_context`; **503** `engine_unavailable` when no usable option chains are available. |
+
 ## User feedback
 
 | Method | Path | Purpose |

@@ -16,7 +16,7 @@
 | `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` | Yes | Read-only admin probes. |
 | `GET` / `POST /api/rag/files` | Yes | Inventory Mongo **`xai_collections`**; POST uploads via xAI + chunking. |
 | **Auth (`/api/auth/*`)** | Next-primary | OAuth callback (`/api/auth/x/callback`) on Next. To retire: implement Spring callback per **Auth callback contract**; add BFF proxy; dual-run 7–14 days before removing Next. |
-| **Deferred** | | **`xchat/*`** — streaming + tools; see **Plan: xChat** below. |
+| **xChat engine tool bridge** | Partial | Spring owns **`POST /api/strategy-recommendations/generate`** for deterministic `OptionsStrategyEngine` JSON consumed by Next `atx_function.strategy_recommendations`. Full **`xchat/*`** streaming + tool-loop ownership remains deferred; see **Plan: xChat** below. |
 | **PR 4 shipped** | | **deploy-note-configs**, **import/broker** on Kotlin + BFF. **RAG readiness** `GET /api/rag/files/{fileId}/readiness` migrated. |
 
 **Target (your architecture):** Next.js focuses on **branding + UI**; **atxfinance-backend** implements **business HTTP APIs** and scheduler/worker concerns. The browser or Next server calls the Spring service instead of executing domain logic in Route Handlers.
@@ -161,7 +161,8 @@ Track these before **PR 3** prod cutover and during BFF rollout; **PR 4** code p
 0. **Heavy read offload (shipped):** Next materializes **`portfolio_workspace_snapshots`**; BFF **`GET /api/portfolios/{portfolioId}/workspace-snapshot`** (Mongo) and **`GET /api/portfolios/{portfolioId}/snapshot`** (JVM Redis read-through + Mongo, shared `xf:wsnap:v1:*` keys with Next, response **`data.preload`** + **`data.structured`** + **`data.cache`**) offload hot reads. Next **`loadWorkspaceSnapshotPreload`** / **`GET /api/app-user/find-options/bootstrap`** call the JVM snapshot after local Redis miss when **`ATXFINANCE_BACKEND_ORIGIN`** is set; unset ⇒ Mongo fallback only (dual-run safe).
 1. **Read-only / low-risk:** `GET` history/stats routes if any are easy wins (still need session + Mongo parity).
 2. **Batch / async jobs:** Non-streaming paths that enqueue work (align with existing Pub/Sub worker if applicable).
-3. **`POST /api/xchat/ask` (streaming):** Last — highest coupling to Next’s tool loop, xAI client, and RAG orchestration.
+3. **Engine tool bridge (shipped slice):** `POST /api/strategy-recommendations/generate` is JVM-authoritative and consumed by Next xChat as `atx_function.strategy_recommendations`; this keeps persona resolution / SSE / xAI Responses loop on Next while grounding strategy narration in engine JSON.
+4. **`POST /api/xchat/ask` (streaming):** Last — highest coupling to Next’s tool loop, xAI client, and RAG orchestration.
 
 ### xChat testing gate
 

@@ -1245,6 +1245,19 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "strategy-jobs"
   },
   {
+    path: "/api/strategy-recommendations/generate",
+    operations: [
+      {
+        method: "POST",
+        auth: "session",
+        hasRequestBody: true,
+        summary:
+          "Generate ranked OptionsStrategyEngine recommendations for xChat/tool-loop narration. Spring-authoritative when BFF/backend origin is configured; returns structured recommendation JSON rather than model-invented legs."
+      }
+    ],
+    tag: "strategy-jobs"
+  },
+  {
     path: "/api/rag/files",
     operations: [
       { method: "GET", auth: "admin" },

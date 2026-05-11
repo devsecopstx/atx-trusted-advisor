@@ -21,6 +21,7 @@
  *
  * Deferred vertical slice: full xChat tool-loop SSE on Spring — `POST /api/xchat/ask/stream` is registered for BFF
  * and ships a JVM **stub** stream until the tool loop is wired; see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
+ * PLAN 707 adds Spring-authoritative engine recommendations for xChat tools while Next keeps ask ownership.
  */
 export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -60,6 +61,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "GET", path: "/api/strategy-jobs/{jobId}" },
   { method: "POST", path: "/api/strategy-jobs/{jobId}/turns" },
   { method: "GET", path: "/api/strategy-jobs/{jobId}/artifact" },
+  { method: "POST", path: "/api/strategy-recommendations/generate" },
   { method: "POST", path: "/api/user-feedback" },
   { method: "POST", path: "/api/xchat/ask/stream" },
   { method: "GET", path: "/api/admin/bootstrap-status" },

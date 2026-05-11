@@ -100,6 +100,12 @@ export const nextBffApi = {
       methods: ["GET"]
     }
   },
+  strategyRecommendations: {
+    generate: {
+      pathTemplate: "/api/strategy-recommendations/generate",
+      methods: ["POST"]
+    }
+  },
   userFeedback: {
     post: {
       pathTemplate: "/api/user-feedback",
