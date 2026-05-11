@@ -6,6 +6,7 @@ import { getDb } from "@/lib/mongodb";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { resolveEffectivePlanOverridesForTenant } from "@/lib/tenant-workspace-limits";
 import { parseXfUiThemePreferenceFromUnknown } from "@/lib/xf-ui-theme";
+import { createAuditEvent } from "@/modules/audit/repository";
 import {
     applyTenantShellPreferencesPatch,
     getTenantByHexId,
@@ -13,11 +14,13 @@ import {
     resolveTenantIdHexForGlobalAdminConsole,
     updateTenantAmbientMarketVeil,
     updateTenantBrandingPreferencesOneTime,
+    updateTenantFeatureFlags,
     updateTenantWorkspaceLimits,
     updateTenantXchatDebugEnabled,
     updateTenantXfUiThemePreference
 } from "@/modules/identity/repository";
 import {
+    parseFeatureFlagsPayload,
     parseTenantAmbientMarketVeil,
     parseTenantBrandingPreferencesPayload,
     parseTenantXchatDebugEnabled
@@ -38,7 +41,8 @@ type RouteContext = {
 const patchSchema = z.object({
   workspaceLimits: z.record(z.string(), z.unknown()).optional(),
   planOverrides: z.record(z.string(), z.unknown()).optional(),
-  tenantPreferences: z.record(z.string(), z.unknown()).optional()
+  tenantPreferences: z.record(z.string(), z.unknown()).optional(),
+  featureFlags: z.record(z.string(), z.unknown()).optional()
 });
 
 async function loadTenantForWorkspaceLimitsRoute(urlTenantId: string, sessionTenantId: string) {
@@ -316,6 +320,30 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (updateResult?._id) {
       updated = updateResult;
     }
+  }
+
+  if (parsed.data.featureFlags !== undefined) {
+    const ffParsed = parseFeatureFlagsPayload(parsed.data.featureFlags);
+    if (!ffParsed.ok) {
+      return NextResponse.json({ error: ffParsed.error }, { status: 400 });
+    }
+    const before = updated.tenantPreferences?.featureFlags ?? {};
+    const afterFlags = await updateTenantFeatureFlags(effectiveTenantHex, ffParsed.value);
+    if (afterFlags?._id) {
+      updated = afterFlags;
+    }
+    void createAuditEvent({
+      entityType: "tenant",
+      entityId: effectiveTenantHex,
+      action: "feature_flags_update",
+      actor: { userId: session.userId, email: session.email },
+      details: { before, after: ffParsed.value }
+    }).catch((err: unknown) => {
+      console.error("[admin/tenant-preferences] audit write failed", {
+        action: "feature_flags_update",
+        error: err instanceof Error ? err.message : "Unknown audit error"
+      });
+    });
   }
 
   const effective = await resolvedWorkspaceLimitsForTenant(updated);

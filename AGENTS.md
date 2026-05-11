@@ -132,6 +132,7 @@ echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run" --
 - Non-blocking backlog / design TBD: `atx-docs/PLAN.md`.
 - For persona/xchat/admin-audit changes, run at least build + typecheck before PR.
 - **Roles:** platform roles vs `tenantRole` — see `DEVELOPMENT.md` → *Platform roles vs tenant membership (session)*. Use `isGlobalAdmin()` / `canUserLogin()` from `@/modules/identity/authorization` (and `requireGlobalAdminSession` for admin APIs); avoid ad-hoc `roles.includes("global_admin")`.
+- **Feature flags:** Use `isFeatureEnabled(tenant, 'flag-key')` from `src/lib/feature-flags.ts` — never `process.env.NEW_EXPERIMENTAL_*`. Admin toggles at `/admin/tenant-preferences` → Feature Flags. Flags stored in `core_tenants.tenantPreferences.featureFlags`. See `atx-docs/feature-flag.md`.
 
 ## Cursor Cloud specific instructions
 
