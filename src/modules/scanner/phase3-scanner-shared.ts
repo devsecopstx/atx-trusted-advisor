@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { type Document, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
@@ -36,7 +36,10 @@ function isOccOptionSymbol(sym: string): boolean {
   return /^[A-Z]{1,5}\d{6}[CP]\d{8}$/.test(sym);
 }
 
-export async function loadEquitySymbolsForTenant(tenantId?: ObjectId, maxSymbols = 120): Promise<string[]> {
+async function loadEquitySymbolsForTenantLegacy(
+  tenantId: ObjectId | undefined,
+  maxSymbols: number
+): Promise<string[]> {
   const scope = tenantScopeFilter(tenantId);
   const db = await getDb();
   const [positions, watchlists] = await Promise.all([
@@ -71,6 +74,71 @@ export async function loadEquitySymbolsForTenant(tenantId?: ObjectId, maxSymbols
     }
   }
   return Array.from(out).sort().slice(0, maxSymbols);
+}
+
+/** Holdings + watchlist equity tickers in one aggregation (`$unionWith`). Falls back to legacy parallel reads on older MongoDB. */
+export async function loadEquitySymbolsForTenant(tenantId?: ObjectId, maxSymbols = 120): Promise<string[]> {
+  const scope = tenantScopeFilter(tenantId);
+  const occRegex = "^[A-Z]{1,5}[0-9]{6}[CP][0-9]{8}$";
+  const tickerRegex = "^[A-Z][A-Z0-9.\\\\-]{0,10}$";
+  const db = await getDb();
+
+  const pipeline: Document[] = [
+    { $match: scope },
+    {
+      $match: {
+        $nor: [{ type: "option" }, { optionType: { $in: ["call", "put"] } }]
+      }
+    },
+    {
+      $addFields: {
+        sym: {
+          $toUpper: { $trim: { input: { $ifNull: ["$symbol", ""] } } }
+        }
+      }
+    },
+    { $match: { sym: { $nin: ["", "USD", "CASH"] } } },
+    { $match: { $expr: { $not: { $regexMatch: { input: "$sym", regex: occRegex } } } } },
+    { $match: { $expr: { $regexMatch: { input: "$sym", regex: tickerRegex } } } },
+    { $project: { sym: 1, _id: 0 } },
+    {
+      $unionWith: {
+        coll: WATCHLIST_COLLECTION,
+        pipeline: [
+          { $match: scope },
+          { $unwind: { path: "$symbols", preserveNullAndEmptyArrays: false } },
+          {
+            $addFields: {
+              sym: {
+                $toUpper: {
+                  $trim: { input: { $ifNull: ["$symbols.symbol", ""] } }
+                }
+              }
+            }
+          },
+          { $match: { sym: { $nin: ["", "USD", "CASH"] } } },
+          { $match: { $expr: { $not: { $regexMatch: { input: "$sym", regex: occRegex } } } } },
+          { $match: { $expr: { $regexMatch: { input: "$sym", regex: tickerRegex } } } },
+          { $project: { sym: 1, _id: 0 } }
+        ]
+      }
+    },
+    { $group: { _id: "$sym" } },
+    { $sort: { _id: 1 } },
+    { $limit: maxSymbols },
+    { $replaceRoot: { newRoot: { symbol: "$_id" } } }
+  ];
+
+  try {
+    const rows = await db
+      .collection<Position>(POSITION_COLLECTION)
+      .aggregate<{ symbol?: string }>(pipeline)
+      .toArray();
+    const sorted = rows.map((r) => r.symbol).filter((s): s is string => typeof s === "string" && s.length > 0);
+    return sorted.slice(0, maxSymbols);
+  } catch {
+    return loadEquitySymbolsForTenantLegacy(tenantId, maxSymbols);
+  }
 }
 
 export async function loadStockPositionsWithQty(tenantId?: ObjectId): Promise<

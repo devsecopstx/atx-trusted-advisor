@@ -25,6 +25,10 @@ const lookupSymbolsMock = vi.hoisted(() =>
   })
 );
 
+const loadInvestmentOutlookPromptJsonMock = vi.hoisted(() =>
+  vi.fn(async () => Promise.resolve(null))
+);
+
 vi.mock("@/modules/core-admin/repository", () => repo);
 vi.mock("@/modules/xchat/workspace-snapshot-cache", () => ({
   buildWorkspaceSnapshotCacheKey: (input: {
@@ -44,6 +48,10 @@ vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
   LOOKUP_ROUTE: "yahoo-finance2"
 }));
 
+vi.mock("@/modules/portfolio/investment-outlooks", () => ({
+  loadInvestmentOutlookPromptJson: loadInvestmentOutlookPromptJsonMock
+}));
+
 vi.mock("@/modules/xchat/portfolio-workspace-snapshot-repository", () => ({
   findPortfolioWorkspaceSnapshot: vi.fn(() => Promise.resolve(null)),
   upsertPortfolioWorkspaceSnapshot: vi.fn(() => Promise.resolve(undefined)),
@@ -53,12 +61,14 @@ vi.mock("@/modules/xchat/portfolio-workspace-snapshot-repository", () => ({
 import {
     buildWorkspacePreloadHintForSystemPrompt,
     buildWorkspaceServerSnapshotBlock,
-    loadWorkspaceSnapshotPreload
+    loadWorkspaceSnapshotPreload,
+    type WorkspaceSnapshotPromptJson
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 describe("buildWorkspaceServerSnapshotBlock", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadInvestmentOutlookPromptJsonMock.mockResolvedValue(null);
     wsCacheMocks.readWorkspaceSnapshotCache.mockResolvedValue(null);
     wsCacheMocks.writeWorkspaceSnapshotCache.mockResolvedValue(undefined);
     repo.getUserWatchlist.mockImplementation(async (input) => {
@@ -129,6 +139,59 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
     expect(r).toContain('"accountId":"507f1f77bcf86cd799439002"');
     expect(r).toContain('"extAccountId":"••••"');
     expect(wsCacheMocks.writeWorkspaceSnapshotCache).toHaveBeenCalled();
+    expect(loadInvestmentOutlookPromptJsonMock).toHaveBeenCalled();
+  });
+
+  it("includes investmentOutlook in workspace JSON when loader returns rows", async () => {
+    loadInvestmentOutlookPromptJsonMock.mockResolvedValueOnce({
+      updatedAt: "2026-05-10T12:00:00.000Z",
+      expiresAt: "2026-05-12T12:00:00.000Z",
+      symbols: [
+        {
+          symbol: "TSLA",
+          spot: 250,
+          expirationYmd: "2026-06-19",
+          coveredCall: {
+            conservative: { strike: 280, probabilityCalledAway: 0.15, premium: 2 },
+            aggressive: { strike: 252, probabilityCalledAway: 0.42, premium: 5 }
+          },
+          cashSecuredPut: {
+            conservative: { strike: 220, probabilityExpireOtm: 0.7, premium: 3 },
+            aggressive: { strike: 248, probabilityExpireOtm: 0.45, premium: 4 }
+          }
+        }
+      ]
+    });
+    repo.getDefaultPortfolio.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439001" },
+      name: "Main",
+      isDefault: true
+    });
+    repo.listPortfolioAccounts.mockResolvedValue([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439002" },
+        name: "Cash",
+        type: "cash",
+        extAccountId: "x",
+        isDefault: true,
+        cashBalance: 100
+      }
+    ]);
+    repo.listPortfolioPositionsByAccount.mockResolvedValue([]);
+    repo.getPortfolioWatchlist.mockResolvedValue({
+      name: "WL",
+      symbols: []
+    });
+    const r = await buildWorkspaceServerSnapshotBlock({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+    expect(r).toContain('"investmentOutlook"');
+    expect(r).toContain('"expirationYmd":"2026-06-19"');
+    const jsonStr = (r ?? "").split("```json")[1]?.split("```")[0]?.trim() ?? "{}";
+    const promptJson = JSON.parse(jsonStr) as WorkspaceSnapshotPromptJson;
+    const hint = buildWorkspacePreloadHintForSystemPrompt({ promptJson, positionsFull: [] });
+    expect(hint).toContain("Pre-computed wheel/outlook");
   });
 
   it("passes allowNetwork false to lookupSymbols when snapshotQuoteNetwork is cached_first", async () => {

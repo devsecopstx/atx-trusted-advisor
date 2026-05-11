@@ -42,6 +42,9 @@ Apply these **before** adding or dropping indexes. This repo spreads indexes acr
 | `portfolio_positions` | `idx_positions_snapshot_portfolio_account_user_tenant_created` `{ portfolioId, accountId, userId, tenantId, createdAt }` | `listPortfolioPositionsByAccount` + `createdAt` sort |
 | `portfolio_accounts` | `idx_accounts_snapshot_portfolio_user_default_created` `{ portfolioId, userId, isDefault, createdAt }` | `listPortfolioAccounts` sort |
 | `portfolio_watchlists` | `idx_watchlists_snapshot_portfolio_user` `{ portfolioId, userId }` | `getPortfolioWatchlist` |
+| `portfolio_watchlists` | `idx_watchlists_user_tenant_symbol` `{ userId, tenantId, symbols.symbol }` (multikey) | Desk / ticker line lookups |
+| `portfolio_positions` | `idx_positions_account_symbol_type_expiration_option` `{ accountId, symbol, type, expiration }` (partial: option legs) | Phase 3 chain / wheel tooling |
+| `investment_outlooks` | `uniq_investment_outlook_portfolio` + TTL `expiresAt` | Pre-computed wheel / CSP outlook rows per portfolio |
 
 Default portfolio resolution uses **`uniq_default_portfolio_per_user`** (`tenantId`, `userId`, `isDefault` partial) — no extra `_id` + `ownerUserId` index (schema uses `userId`, and `_id` is already indexed).
 

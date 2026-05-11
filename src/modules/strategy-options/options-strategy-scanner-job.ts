@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
@@ -10,6 +10,7 @@ import {
 } from "@/modules/core-admin/repository";
 import type { Position, Watchlist } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
+import { refreshInvestmentOutlooksForTenant } from "@/modules/portfolio/investment-outlooks";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
     resolveUsMarketDayContext,
@@ -149,6 +150,49 @@ async function loadTenantWatchlists(scope: Record<string, unknown>): Promise<Wat
   return db.collection<Watchlist>(WATCHLIST_COLLECTION).find(scope).toArray();
 }
 
+/** Single round-trip for option legs + tenant watchlists (`$documents` + `$lookup`). MongoDB 5.1+; falls back to parallel reads. */
+async function loadTenantScanBooksOneRoundTrip(scope: Record<string, unknown>): Promise<{
+  optionRows: Position[];
+  watchlists: Watchlist[];
+}> {
+  const db = await getDb();
+  const pipeline: Document[] = [
+    { $documents: [{ _id: "option_scan_book_anchor" }] },
+    {
+      $lookup: {
+        from: POSITION_COLLECTION,
+        pipeline: [{ $match: optionPositionFilter(scope) }],
+        as: "optionPositions"
+      }
+    },
+    {
+      $lookup: {
+        from: WATCHLIST_COLLECTION,
+        pipeline: [{ $match: scope }],
+        as: "watchlists"
+      }
+    },
+    { $project: { _id: 0, optionPositions: 1, watchlists: 1 } }
+  ];
+  try {
+    const rows = await db
+      .collection(POSITION_COLLECTION)
+      .aggregate<{ optionPositions?: Position[]; watchlists?: Watchlist[] }>(pipeline)
+      .toArray();
+    const row = rows[0];
+    return {
+      optionRows: row?.optionPositions ?? [],
+      watchlists: row?.watchlists ?? []
+    };
+  } catch {
+    const [optionRows, watchlists] = await Promise.all([
+      loadTenantOptionPositions(scope),
+      loadTenantWatchlists(scope)
+    ]);
+    return { optionRows, watchlists };
+  }
+}
+
 async function defaultPortfolioIdsForWatchlistOwners(
   watchlists: Watchlist[],
   tenantId?: ObjectId
@@ -173,35 +217,6 @@ async function defaultPortfolioIdsForWatchlistOwners(
   return out;
 }
 
-async function countOptionPositionsAndUnderlyings(
-  scope: Record<string, unknown>
-): Promise<{ optionPositions: number; uniqueUnderlyings: number }> {
-  const db = await getDb();
-  const match = optionPositionFilter(scope);
-  const optionPositions = await db.collection(POSITION_COLLECTION).countDocuments(match);
-  const agg = await db
-    .collection(POSITION_COLLECTION)
-    .aggregate<{ n?: number }>([
-      { $match: match },
-      {
-        $group: {
-          _id: {
-            $toUpper: {
-              $trim: {
-                input: { $ifNull: ["$symbol", ""] }
-              }
-            }
-          }
-        }
-      },
-      { $match: { _id: { $nin: [null, ""] } } },
-      { $count: "n" }
-    ])
-    .toArray();
-  const uniqueUnderlyings = agg[0]?.n ?? 0;
-  return { optionPositions, uniqueUnderlyings };
-}
-
 /** Shared target merge for options scanner + Phase 3 expiration/roll job. */
 export async function buildMergedOptionScanTargets(input: {
   tenantId?: ObjectId;
@@ -214,12 +229,11 @@ export async function buildMergedOptionScanTargets(input: {
 }> {
   const { tenantId } = input;
   const scope = tenantFilter(tenantId);
-  const [countInfo, optionRows, watchlists] = await Promise.all([
-    countOptionPositionsAndUnderlyings(scope),
-    loadTenantOptionPositions(scope),
-    loadTenantWatchlists(scope)
-  ]);
-  const { optionPositions, uniqueUnderlyings } = countInfo;
+  const { optionRows, watchlists } = await loadTenantScanBooksOneRoundTrip(scope);
+  const optionPositions = optionRows.length;
+  const uniqueUnderlyings = new Set(
+    optionRows.map((p) => String(p.symbol ?? "").trim().toUpperCase()).filter((s) => s.length > 0)
+  ).size;
 
   const wlCap = parseOptionsScannerCapEnv(process.env.OPTIONS_SCANNER_MAX_WATCHLIST_ROWS, null);
   const posCap = parseOptionsScannerCapEnv(process.env.OPTIONS_SCANNER_MAX_POSITIONS, null);
@@ -527,6 +541,11 @@ export async function executeOptionsStrategyScannerJob(
       holdingsCount: optionPositions,
       watchlistCount: wlTargetsLen,
       sourceTaskCategory: "options_strategy_scanner"
+    });
+
+    void refreshInvestmentOutlooksForTenant(tenantId).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[investment-outlook] refresh_failed tenant=${tenantId.toHexString()} ${msg}`);
     });
 
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));

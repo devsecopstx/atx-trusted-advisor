@@ -417,10 +417,28 @@ async function createPortfolioIndexes(): Promise<void> {
       { userId: 1, tenantId: 1 },
       { name: "idx_watchlists_user_tenant" }
     ),
+    /** Desk lookups by user + ticker line (`symbols.symbol` multikey). */
+    db.collection<Watchlist>(collections.watchlists).createIndex(
+      { userId: 1, tenantId: 1, "symbols.symbol": 1 },
+      { name: "idx_watchlists_user_tenant_symbol" }
+    ),
     db.collection<Position>(collections.positions).createIndex(
       { tenantId: 1, portfolioId: 1, accountId: 1, symbol: 1 },
       {
         name: "idx_positions_tenant_portfolio_account_symbol"
+      }
+    ),
+    /**
+     * Option legs: account + OCC/root symbol + kind + expiry (Phase 3 wheel / chain tooling).
+     * Partial so cash/stock rows without `expiration` are not indexed here.
+     */
+    db.collection<Position>(collections.positions).createIndex(
+      { accountId: 1, symbol: 1, type: 1, expiration: 1 },
+      {
+        name: "idx_positions_account_symbol_type_expiration_option",
+        partialFilterExpression: {
+          $or: [{ type: "option" }, { optionType: { $in: ["call", "put"] } }]
+        }
       }
     ),
     /** xChat / atx_function workspace snapshot: {@link listPortfolioPositionsByAccount} (sort `createdAt`). */
@@ -449,6 +467,14 @@ async function createPortfolioIndexes(): Promise<void> {
     db.collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels).createIndex(
       { tenantId: 1, portfolioId: 1, label: 1 },
       { name: "idx_portfolio_delivery_channels_tenant_portfolio_label" }
+    ),
+    db.collection("investment_outlooks").createIndex(
+      { portfolioId: 1 },
+      { unique: true, name: "uniq_investment_outlook_portfolio" }
+    ),
+    db.collection("investment_outlooks").createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0, name: "ttl_investment_outlook_expires" }
     )
   ];
   await Promise.all(indexes);

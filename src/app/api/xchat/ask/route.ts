@@ -48,9 +48,26 @@ import {
 } from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
+import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
+import {
+    buildIncomeIdeasCompactPayload,
+    buildIncomeIdeasJsonOnlySuffix,
+    buildIncomeIdeasUserSuffix,
+    collectIncomeIdeasEquitySymbols,
+    filterRagSnippetsForIncomeIdeas,
+    formatIncomeIdeasWorkspaceBlock,
+    INCOME_IDEAS_RAG_QUERY,
+    mergeIncomeIdeasRagContext,
+    shouldOptimizeIncomeIdeasPrompt
+} from "@/modules/xchat/income-ideas-prompt";
+import {
+    buildIncomeIdeasResponseCacheKey,
+    setIncomeIdeasResponseCache,
+    tryGetIncomeIdeasResponseCache
+} from "@/modules/xchat/income-ideas-response-cache";
 import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
@@ -968,6 +985,10 @@ export async function POST(request: Request) {
     typeof workspacePortfolioId === "string" && workspacePortfolioId.trim().length > 0;
   const workspaceIncomeIdeasPreload =
     shouldEagerWorkspaceSnapshotPreloadForMessage(messageTrimmed);
+  const incomeIdeasOptimizationCandidate =
+    !visionImage &&
+    shouldOptimizeIncomeIdeasPrompt(messageTrimmed) &&
+    workspaceIncomeIdeasPreload;
   const likelyDirectWorkspaceToolPath =
     !visionImage &&
     (showWatchlistIntent ||
@@ -1020,13 +1041,17 @@ export async function POST(request: Request) {
         if (linkedCollectionIds.length > 0 && collectionSearchStatus === "ready") {
           try {
             const ragTtl = getRagLexicalCacheTtlSeconds();
-            const ragQuery = messageTrimmed || "User attached an image for analysis.";
+            const incomeIdeasRagMode = incomeIdeasOptimizationCandidate;
+            const ragQuery = incomeIdeasRagMode
+              ? INCOME_IDEAS_RAG_QUERY
+              : messageTrimmed || "User attached an image for analysis.";
+            const ragLimit = incomeIdeasRagMode ? Math.min(topK, 6) : topK;
             const ragKey =
               ragTtl > 0
                 ? buildRagLexicalCacheKey({
                     collectionIds: linkedCollectionIds,
                     query: ragQuery,
-                    limit: topK
+                    limit: ragLimit
                   })
                 : null;
             let collectionSnippets: XaiCollectionSearchSnippet[] = [];
@@ -1040,7 +1065,7 @@ export async function POST(request: Request) {
               collectionSnippets = await searchDocumentsInCollections({
                 query: ragQuery,
                 collectionIds: linkedCollectionIds,
-                limit: topK
+                limit: ragLimit
               });
               if (ragKey && ragTtl > 0 && collectionSnippets.length > 0) {
                 void setRagLexicalCache(ragKey, collectionSnippets, ragTtl).catch(() => {
@@ -1048,15 +1073,31 @@ export async function POST(request: Request) {
                 });
               }
             }
-            if (collectionSnippets.length > 0) {
+            const effectiveSnippets =
+              incomeIdeasRagMode && collectionSnippets.length > 0
+                ? filterRagSnippetsForIncomeIdeas(collectionSnippets)
+                : collectionSnippets;
+
+            if (incomeIdeasRagMode) {
+              ragContext = mergeIncomeIdeasRagContext(effectiveSnippets);
+              if (effectiveSnippets.length > 0) {
+                contextSource = "xai_collection";
+                contextCount = effectiveSnippets.length;
+                collectionContextReferences = effectiveSnippets.map((snippet) => ({
+                  documentId: snippet.documentId,
+                  documentName: snippet.documentName,
+                  snippetFingerprint: createSnippetFingerprint(snippet.text)
+                }));
+              }
+            } else if (effectiveSnippets.length > 0) {
               contextSource = "xai_collection";
-              contextCount = collectionSnippets.length;
-              collectionContextReferences = collectionSnippets.map((snippet) => ({
+              contextCount = effectiveSnippets.length;
+              collectionContextReferences = effectiveSnippets.map((snippet) => ({
                 documentId: snippet.documentId,
                 documentName: snippet.documentName,
                 snippetFingerprint: createSnippetFingerprint(snippet.text)
               }));
-              ragContext = collectionSnippets
+              ragContext = effectiveSnippets
                 .map((snippet, index) => {
                   const source = snippet.documentName ?? snippet.documentId ?? "collection_doc";
                   return `[#${index + 1}] (${source}) ${snippet.text}`;
@@ -1097,11 +1138,43 @@ export async function POST(request: Request) {
   const {
     contextSource,
     collectionContextReferences,
-    ragContext,
+    ragContext: ragContextRaw,
     contextCount,
     collectionSearchStatus,
     collectionSearchNonReadyFileCount
   } = ragBundle;
+
+  const incomeIdeasOptimization =
+    incomeIdeasOptimizationCandidate && Boolean(eagerWorkspacePreload) && hasXfinanceTool;
+
+  let ragContext = ragContextRaw;
+  if (incomeIdeasOptimization && !ragContext.trim()) {
+    ragContext = mergeIncomeIdeasRagContext([]);
+  }
+
+  let incomeIdeasQuoteMap:
+    | Map<string, import("@/modules/watchlist/yahoo-symbol-lookup").SymbolLookupResult>
+    | undefined;
+  if (incomeIdeasOptimization && eagerWorkspacePreload) {
+    const syms = collectIncomeIdeasEquitySymbols(eagerWorkspacePreload);
+    if (syms.length > 0) {
+      const fetched = await lookupSymbols(syms, {
+        allowNetwork: workspaceSnapshotQuoteNetwork !== "cached_first"
+      });
+      incomeIdeasQuoteMap = fetched instanceof Map ? fetched : new Map();
+    }
+  }
+
+  const incomeIdeasCacheKey =
+    incomeIdeasOptimization && eagerWorkspacePreload && persona?._id && userId
+      ? buildIncomeIdeasResponseCacheKey({
+          tenantIdHex: tenantId?.toHexString() ?? "no_tenant",
+          userIdHex: userId.toHexString(),
+          preload: eagerWorkspacePreload,
+          personaIdHex: persona._id.toHexString(),
+          executionModel
+        })
+      : null;
 
   const atxWorkspaceExecutorOpts = !hasXfinanceTool
     ? {}
@@ -1485,7 +1558,11 @@ export async function POST(request: Request) {
 
   const workspaceSnapshotForPrompt =
     shouldEagerWorkspacePreload && eagerWorkspacePreload
-      ? buildWorkspacePreloadHintForSystemPrompt(eagerWorkspacePreload)
+      ? incomeIdeasOptimization
+        ? formatIncomeIdeasWorkspaceBlock(
+            buildIncomeIdeasCompactPayload(eagerWorkspacePreload, incomeIdeasQuoteMap)
+          )
+        : buildWorkspacePreloadHintForSystemPrompt(eagerWorkspacePreload)
       : null;
 
   const builtSystemPrompt = buildXchatSystemPrompt({
@@ -1505,9 +1582,12 @@ export async function POST(request: Request) {
     routingPolicyBlock: XCHAT_SERVER_ROUTING_POLICY_BLOCK,
     citationsEnabled: persona?.citationsEnabled !== false
   });
-  const systemPrompt = strategyJobOptOut
+  let systemPrompt = strategyJobOptOut
     ? `${STRATEGY_OPTOUT_SYSTEM_PROMPT_LINE}\n\n${builtSystemPrompt}`
     : builtSystemPrompt;
+  if (incomeIdeasOptimization) {
+    systemPrompt = `${systemPrompt}\n\n${buildIncomeIdeasJsonOnlySuffix()}`;
+  }
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
   const userPromptBase = userPromptTemplate
     ? `${userPromptTemplate}\n\nUser message:\n${captionForPrompt}`
@@ -1517,7 +1597,10 @@ export async function POST(request: Request) {
     linkedCollectionIds,
     resolvedCollectionsLine: teamKbMetaLine
   });
-  const userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
+  let userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
+  if (incomeIdeasOptimization) {
+    userPrompt = `${userPrompt}\n\n${buildIncomeIdeasUserSuffix()}`;
+  }
 
   if (!userId) {
     return NextResponse.json(
@@ -1657,6 +1740,82 @@ export async function POST(request: Request) {
 
   const liveToolLoopSse = wantsXchatLiveToolLoopSse(request);
 
+  if (incomeIdeasCacheKey && incomeIdeasOptimization) {
+    const cachedIncomeIdeas = await tryGetIncomeIdeasResponseCache(incomeIdeasCacheKey);
+    if (cachedIncomeIdeas) {
+      const cachedLoopResult: XaiToolLoopResult = {
+        model: executionModel,
+        outputText: cachedIncomeIdeas,
+        toolCalls: [],
+        turnsUsed: 0,
+        raw: { incomeIdeasResponseCacheHit: true }
+      };
+      if (!liveToolLoopSse) {
+        markPerf("ask_request_total", askRequestStartedAt, {
+          mode: "json_income_ideas_cache",
+          turnsUsed: 0
+        });
+        return completeXchatAskAfterModelLoop(cachedLoopResult, askCompleteCtx());
+      }
+      const heartbeatMsCached = resolveXchatSseHeartbeatMs();
+      const limiterHeadCached = buildLimiterHeaders({
+        remainingMinute: limiterRemainingMinute,
+        remainingHour: limiterRemainingHour,
+        remainingDay: limiterRemainingDay,
+        hourlyLimit: limiterHourlyLimit,
+        dailyLimit: limiterDailyLimit
+      });
+      const cacheStreamStartedRef = { at: Date.now() };
+      const cacheStream = createXchatLiveSseReadableStream({
+        heartbeatMs: heartbeatMsCached,
+        run: async (emit) => {
+          emit.meta({
+            v: 1,
+            phase: "live_tool_loop",
+            threadId: threadId ?? "",
+            model: executionModel,
+            personaId: persona._id?.toHexString() ?? ""
+          });
+          logXchatAskStreamDebug({
+            sseEvent: "meta",
+            requestId,
+            correlationId,
+            phase: "income_ideas_cache"
+          });
+          for (const piece of chunkIncomeIdeasCacheForSse(cachedIncomeIdeas, 140)) {
+            emit.delta({ c: piece });
+          }
+          const finalizeRes = await completeXchatAskAfterModelLoop(cachedLoopResult, askCompleteCtx());
+          const finalizeJson = (await finalizeRes.json()) as { data?: Record<string, unknown> };
+          const data = finalizeJson.data;
+          if (!data || typeof data !== "object") {
+            emit.error({ message: "finalize_failed", code: "internal_error" });
+            return;
+          }
+          emit.done(data as Record<string, unknown>);
+          markPerf("ask_request_total", askRequestStartedAt, {
+            mode: "sse_income_ideas_cache",
+            turnsUsed: 0
+          });
+          logXchatAskStreamDebug({
+            sseEvent: "done",
+            requestId,
+            correlationId,
+            elapsedMs: Date.now() - cacheStreamStartedRef.at,
+            turnsUsed: 0,
+            deltaChars: cachedIncomeIdeas.length
+          });
+        }
+      });
+      const cacheSseHeaders = new Headers(limiterHeadCached);
+      cacheSseHeaders.set("content-type", "text/event-stream; charset=utf-8");
+      cacheSseHeaders.set("cache-control", "no-cache, no-transform");
+      cacheSseHeaders.set("connection", "keep-alive");
+      cacheSseHeaders.set("x-accel-buffering", "no");
+      return new NextResponse(cacheStream, { headers: cacheSseHeaders });
+    }
+  }
+
   if (liveToolLoopSse) {
     const heartbeatMs = resolveXchatSseHeartbeatMs();
     const limiterHead = buildLimiterHeaders({
@@ -1793,6 +1952,10 @@ export async function POST(request: Request) {
           return;
         }
 
+        if (incomeIdeasCacheKey && loopResult.outputText.trim().length > 0) {
+          void setIncomeIdeasResponseCache(incomeIdeasCacheKey, loopResult.outputText);
+        }
+
         const finalizeRes = await completeXchatAskAfterModelLoop(loopResult, askCompleteCtx());
         const finalizeJson = (await finalizeRes.json()) as { data?: Record<string, unknown> };
         const data = finalizeJson.data;
@@ -1845,6 +2008,9 @@ export async function POST(request: Request) {
         });
       }
     });
+    if (incomeIdeasCacheKey && loopResult.outputText.trim().length > 0) {
+      void setIncomeIdeasResponseCache(incomeIdeasCacheKey, loopResult.outputText);
+    }
     markPerf("tool_loop_total", toolLoopStartedAt, {
       turnsUsed: loopResult.turnsUsed,
       outputChars: loopResult.outputText.length
@@ -1858,6 +2024,18 @@ export async function POST(request: Request) {
     return handleToolLoopFailure(error);
   }
   });
+}
+
+function chunkIncomeIdeasCacheForSse(input: string, maxChars: number): string[] {
+  const text = input.trim();
+  if (!text) {
+    return [""];
+  }
+  const out: string[] = [];
+  for (let i = 0; i < text.length; i += maxChars) {
+    out.push(text.slice(i, i + maxChars));
+  }
+  return out;
 }
 
 function createSnippetFingerprint(input: string): string {

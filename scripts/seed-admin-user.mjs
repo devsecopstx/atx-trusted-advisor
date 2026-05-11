@@ -489,9 +489,30 @@ async function ensureIndexes(db) {
       }
     ),
     wlColl.createIndex({ userId: 1, tenantId: 1 }, { name: "idx_watchlists_user_tenant" }),
+    wlColl.createIndex(
+      { userId: 1, tenantId: 1, "symbols.symbol": 1 },
+      { name: "idx_watchlists_user_tenant_symbol" }
+    ),
+    db.collection("portfolio_positions").createIndex(
+      { accountId: 1, symbol: 1, type: 1, expiration: 1 },
+      {
+        name: "idx_positions_account_symbol_type_expiration_option",
+        partialFilterExpression: {
+          $or: [{ type: "option" }, { optionType: { $in: ["call", "put"] } }]
+        }
+      }
+    ),
     db.collection("portfolio_positions").createIndex(
       { portfolioId: 1, accountId: 1, userId: 1, tenantId: 1, createdAt: 1 },
       { name: "idx_positions_snapshot_portfolio_account_user_tenant_created" }
+    ),
+    db.collection("investment_outlooks").createIndex(
+      { portfolioId: 1 },
+      { unique: true, name: "uniq_investment_outlook_portfolio" }
+    ),
+    db.collection("investment_outlooks").createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0, name: "ttl_investment_outlook_expires" }
     ),
     db.collection("portfolio_accounts").createIndex(
       { portfolioId: 1, userId: 1, isDefault: -1, createdAt: 1 },

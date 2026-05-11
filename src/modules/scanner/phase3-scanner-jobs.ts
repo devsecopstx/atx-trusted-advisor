@@ -10,6 +10,7 @@ import {
     quotesForSymbolsWithCircuit,
     tenantScopeFilter
 } from "@/modules/scanner/phase3-scanner-shared";
+import { warmOptionChainsForEquitySymbols } from "@/modules/scanner/scanner-watchlist-chain-warm";
 import { fetchYahooOptionChainForScanner } from "@/modules/scanner/yahoo-option-chain-scanner";
 import { daysToExpirationFromYmd } from "@/modules/strategy-options/options-scanner-engine";
 import { buildMergedOptionScanTargets, executeOptionsExpirationRollJob } from "@/modules/strategy-options/options-strategy-scanner-job";
@@ -73,9 +74,12 @@ export async function runCorporateEventsScanner(task: ScheduledTask): Promise<Sc
     }
   }
   const c = circuitOpen ? " circuit_open=true" : "";
+  const warm = await warmOptionChainsForEquitySymbols({ tenantId, symbols: syms });
+  const warmNote =
+    warm.attempted > 0 ? ` chain_warm=${warm.warmed}/${warm.attempted}` : "";
   return {
     status: "success",
-    output: `corporate_events_scanner: symbols=${syms.length} quoted=${rows.length} earnings_flags=${earningsUp} ex_div_next_week=${exDivSoon} portfolios=${portfolioCount}${c}`
+    output: `corporate_events_scanner: symbols=${syms.length} quoted=${rows.length} earnings_flags=${earningsUp} ex_div_next_week=${exDivSoon} portfolios=${portfolioCount}${c}${warmNote}`
   };
 }
 

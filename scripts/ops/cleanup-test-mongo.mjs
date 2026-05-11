@@ -363,13 +363,34 @@ async function ensurePortfolioIndexesLocal(db) {
       { unique: true, name: "uniq_watchlist_per_user" }
     ),
     db.collection(WATCHLISTS).createIndex({ userId: 1, tenantId: 1 }, { name: "idx_watchlists_user_tenant" }),
+    db.collection(WATCHLISTS).createIndex(
+      { userId: 1, tenantId: 1, "symbols.symbol": 1 },
+      { name: "idx_watchlists_user_tenant_symbol" }
+    ),
     db.collection(POSITIONS).createIndex(
       { tenantId: 1, portfolioId: 1, accountId: 1, symbol: 1 },
       { name: "idx_positions_tenant_portfolio_account_symbol" }
     ),
     db.collection(POSITIONS).createIndex(
+      { accountId: 1, symbol: 1, type: 1, expiration: 1 },
+      {
+        name: "idx_positions_account_symbol_type_expiration_option",
+        partialFilterExpression: {
+          $or: [{ type: "option" }, { optionType: { $in: ["call", "put"] } }]
+        }
+      }
+    ),
+    db.collection(POSITIONS).createIndex(
       { portfolioId: 1, accountId: 1, userId: 1, tenantId: 1, createdAt: 1 },
       { name: "idx_positions_snapshot_portfolio_account_user_tenant_created" }
+    ),
+    db.collection("investment_outlooks").createIndex(
+      { portfolioId: 1 },
+      { unique: true, name: "uniq_investment_outlook_portfolio" }
+    ),
+    db.collection("investment_outlooks").createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0, name: "ttl_investment_outlook_expires" }
     ),
     db.collection(POSITIONS).createIndex(
       { tenantId: 1, portfolioId: 1, accountId: 1, yahooRef: 1 },

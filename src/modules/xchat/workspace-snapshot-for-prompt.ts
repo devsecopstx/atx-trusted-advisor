@@ -76,10 +76,14 @@ function createPortfolioAllocationChart(positions: Array<{ symbol: string; qty: 
 import type { Portfolio, PositionType, WatchlistSymbol } from "@/modules/core-admin/types";
 import { normalizePositionType } from "@/modules/core-admin/types";
 import {
-    type BookTailRiskSummaryJson,
+    loadInvestmentOutlookPromptJson,
+    type InvestmentOutlookPromptJson
+} from "@/modules/portfolio/investment-outlooks";
+import {
     computeBookTailRiskMonteCarlo,
     isEquitySymbolForTailRisk,
-    mapWatchlistRiskProfileToMcTier
+    mapWatchlistRiskProfileToMcTier,
+    type BookTailRiskSummaryJson
 } from "@/modules/strategy-options/monte-carlo-tail-risk";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import {
@@ -202,6 +206,8 @@ export type WorkspaceSnapshotPromptJson = {
     | { error: "no_watchlist" };
   /** Monte Carlo book-level tail metrics (fat-tail + jumps); optional when equity book empty or compute skipped. */
   bookTailRisk?: BookTailRiskSummaryJson | null;
+  /** Pre-computed wheel/CSP strikes from `investment_outlooks` (options scanner); omitted when unset/expired. */
+  investmentOutlook?: InvestmentOutlookPromptJson;
 };
 
 /** Same-request preload for atx_function short-circuit (includes full positions; not in prompt JSON). */
@@ -345,6 +351,8 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
     }
   }
 
+  const investmentOutlook = await loadInvestmentOutlookPromptJson(portfolio._id);
+
   const promptJson: WorkspaceSnapshotPromptJson = {
     loadedAt,
     workspaceContentRev: rev,
@@ -384,7 +392,8 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
         )
       }
       : { error: "no_watchlist" as const },
-    ...(bookTailRisk ? { bookTailRisk } : {})
+    ...(bookTailRisk ? { bookTailRisk } : {}),
+    ...(investmentOutlook ? { investmentOutlook } : {})
   };
 
   const positionsFull = positions.map((p) => ({
@@ -587,11 +596,18 @@ export function buildWorkspacePreloadHintForSystemPrompt(preload: WorkspaceSnaps
       ? "If the user asks for covered-call or wheel ideas tied to their holdings, do not run options_scan for book-specific income plays until positions exist—tell them to add or import holdings."
       : "";
 
+  const io = j.investmentOutlook;
+  const ioHint =
+    io && io.symbols.length > 0
+      ? `Pre-computed wheel/outlook (scanner): ${io.symbols.length} symbol(s), as-of ${io.updatedAt.slice(0, 10)} UTC, valid until ${io.expiresAt.slice(0, 10)} — use workspace JSON investmentOutlook for strikes/expiry (no extra chain fetch needed for these candidates).`
+      : "";
+
   return [
     `Workspace preload hint (this request; refresh via atx_function if stale): portfolio "${j.portfolio.name}" (${j.portfolio.id}), rev ${j.workspaceContentRev}.`,
     `Accounts: ${j.accounts.length}. ${wlSummary}.`,
     posHint,
     wlSyms.length > 0 ? `Watchlist symbols (sample): ${wlSyms.join(", ")}.` : "",
+    ioHint,
     emptyBookGuard
   ]
     .filter((line) => line.trim().length > 0)
@@ -646,6 +662,16 @@ export function portfolioSummaryFromWorkspacePreload(p: WorkspaceSnapshotPreload
     totalPositionCount: j.portfolio.totalPositionCount,
     totalValue: totalPortfolioValue,
     ...(j.bookTailRisk ? { bookTailRisk: j.bookTailRisk } : {}),
+    ...(j.investmentOutlook && j.investmentOutlook.symbols.length > 0
+      ? {
+          investmentOutlook: {
+            symbolCount: j.investmentOutlook.symbols.length,
+            updatedAt: j.investmentOutlook.updatedAt,
+            expiresAt: j.investmentOutlook.expiresAt,
+            symbols: j.investmentOutlook.symbols
+          }
+        }
+      : {}),
     allocationChart,
     accounts: j.accounts.map((a) => ({
       name: a.name,
