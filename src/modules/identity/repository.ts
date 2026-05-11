@@ -2367,6 +2367,24 @@ export async function updateTenantAmbientMarketVeil(
   return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
 }
 
+export async function updateTenantFeatureFlags(
+  tenantIdHex: string,
+  flags: Record<string, boolean | number | string>
+): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const now = new Date();
+  await db.collection<Tenant>(collections.tenants).updateOne(
+    { _id: id },
+    { $set: { "tenantPreferences.featureFlags": flags, updatedAt: now } }
+  );
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+}
+
 export async function resolvedWorkspaceLimitsForTenant(
   tenant: Tenant | null
 ): Promise<TenantWorkspaceLimits> {

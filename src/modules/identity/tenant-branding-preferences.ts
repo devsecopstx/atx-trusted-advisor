@@ -82,6 +82,14 @@ export type TenantPreferences = TenantBrandingPreferences & {
    * Read by `isAmbientMarketVeilEnabledForTenant` and surfaced through `WorkspaceTenantHeaderContext.ambientMarketVeilEnabled`.
    */
   ambient_market_veil?: boolean;
+  /**
+   * Per-tenant feature flags — runtime toggles for new capabilities.
+   * Keys must be lowercase kebab-case slugs (`^[a-z0-9][a-z0-9-]*$`, max 64 chars).
+   * Values are boolean, number, or short string (max 256 chars).
+   * Read via `isFeatureEnabled()` / `getFeatureFlag()` in `src/lib/feature-flags.ts`.
+   * Admin: `/admin/tenant-preferences` → Feature Flags section.
+   */
+  featureFlags?: Record<string, boolean | number | string>;
 };
 
 /**
@@ -181,4 +189,60 @@ export function parseTenantXchatDebugEnabled(raw: unknown): boolean | undefined 
     }
   }
   return undefined;
+}
+
+const FEATURE_FLAG_KEY_RE = /^[a-z0-9][a-z0-9-]*$/;
+const FEATURE_FLAG_KEY_MAX = 64;
+const FEATURE_FLAG_STRING_VALUE_MAX = 256;
+const FEATURE_FLAG_MAX_ENTRIES = 200;
+
+export type FeatureFlagValue = boolean | number | string;
+
+export function isValidFeatureFlagKey(key: string): boolean {
+  return (
+    typeof key === "string" &&
+    key.length > 0 &&
+    key.length <= FEATURE_FLAG_KEY_MAX &&
+    FEATURE_FLAG_KEY_RE.test(key)
+  );
+}
+
+function sanitizeFeatureFlagValue(raw: unknown): FeatureFlagValue | undefined {
+  if (typeof raw === "boolean") {
+    return raw;
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw;
+  }
+  if (typeof raw === "string") {
+    return raw.slice(0, FEATURE_FLAG_STRING_VALUE_MAX);
+  }
+  return undefined;
+}
+
+export function parseFeatureFlagsPayload(
+  raw: unknown
+): { ok: true; value: Record<string, FeatureFlagValue> } | { ok: false; error: string } {
+  if (raw === null || raw === undefined) {
+    return { ok: true, value: {} };
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: "featureFlags must be an object" };
+  }
+  const entries = Object.entries(raw as Record<string, unknown>);
+  if (entries.length > FEATURE_FLAG_MAX_ENTRIES) {
+    return { ok: false, error: `featureFlags may contain at most ${FEATURE_FLAG_MAX_ENTRIES} entries` };
+  }
+  const out: Record<string, FeatureFlagValue> = {};
+  for (const [key, val] of entries) {
+    if (!isValidFeatureFlagKey(key)) {
+      return { ok: false, error: `Invalid feature flag key "${key}" — use lowercase kebab-case (a-z0-9, hyphens), max ${FEATURE_FLAG_KEY_MAX} chars` };
+    }
+    const sanitized = sanitizeFeatureFlagValue(val);
+    if (sanitized === undefined) {
+      return { ok: false, error: `Invalid value for feature flag "${key}" — must be boolean, number, or string` };
+    }
+    out[key] = sanitized;
+  }
+  return { ok: true, value: out };
 }
