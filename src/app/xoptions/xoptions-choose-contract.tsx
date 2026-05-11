@@ -13,6 +13,7 @@ import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-pa
 import { XoptionsGreekCalcExplainer } from "@/app/xoptions/xoptions-greek-calc-explainer";
 import { XoptionsPositionReview } from "@/app/xoptions/xoptions-position-review";
 import { type StrategyChoiceId, type StrategyStartBasis } from "@/app/xoptions/xoptions-strategy-choice-panels";
+import { XoptionsStrategyGreeksSummary } from "@/app/xoptions/xoptions-strategy-greeks-summary";
 import { XoptionsTaxLimitHint } from "@/app/xoptions/xoptions-tax-education-panels";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import {
@@ -63,6 +64,7 @@ import {
     formatXoptionsOrderReviewPlainText,
     type XoptionsOpeningAction
 } from "@/lib/xoptions/xoptions-order-preview";
+import { computeStrategyGreeksSummary } from "@/lib/xoptions/xoptions-strategy-greeks-summary";
 
 type ChainLeg = {
   last_quote: { bid: number; ask: number };
@@ -924,6 +926,27 @@ export function XoptionsChooseContract({
     }
     return Math.min(100, (cap / portfolioApproxValue) * 100);
   }, [orderReview?.maxLossUsd, portfolioApproxValue]);
+  const strategyGreeksSummary = useMemo(() => {
+    if (!dataReady || !chain || selectedStrike == null) {
+      return null;
+    }
+    const row = chain.optionChain.find((r) => r.strike === selectedStrike);
+    const leg = row ? (side === "call" ? row.call : row.put) : null;
+    const greeks = leg?.greeks;
+    if (!greeks) {
+      return null;
+    }
+    return computeStrategyGreeksSummary({
+      legGreeks: {
+        delta: greeks.delta,
+        gamma: greeks.gamma,
+        thetaPerDay: greeks.theta_per_day,
+        vegaPerOnePercentIv: greeks.vega_per_one_percent_iv
+      },
+      quantity: quantity.trim(),
+      openingAction: openingActionResolved
+    });
+  }, [dataReady, chain, selectedStrike, side, quantity, openingActionResolved]);
   const yahooOptionSymbol = useMemo(() => {
     if (!chain || !expiration || selectedStrike == null || !u) {
       return null;
@@ -1724,6 +1747,12 @@ export function XoptionsChooseContract({
       ) : (
         <p className="xoptions-hint text-sm">Enter a symbol in step 1.</p>
       )}
+
+      {hidePositionReview && strategyGreeksSummary ? (
+        <div className="xoptions-contract__greeks-summary mt-3 min-w-0">
+          <XoptionsStrategyGreeksSummary summary={strategyGreeksSummary} />
+        </div>
+      ) : null}
 
       <p className="xoptions-contract__disclaimer mt-3 text-[0.65rem] leading-snug text-[var(--xf-text-500)]">
         Payoff BE uses model mid; review uses your limit. {EDUCATIONAL_ONLY_SHORT}

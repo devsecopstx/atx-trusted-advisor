@@ -2976,6 +2976,66 @@ html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
   margin: 0;
 }
 
+.xoptions-greeks-summary {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-xoptions-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--xf-xoptions-accent) 6%, transparent);
+  padding: 0.65rem 0.75rem;
+}
+
+.xoptions-greeks-summary__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xoptions-greeks-summary__grid {
+  display: grid;
+  gap: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+@media (min-width: 40rem) {
+  .xoptions-greeks-summary__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.xoptions-greeks-summary__item {
+  min-width: 0;
+}
+
+.xoptions-greeks-summary__label {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xoptions-greeks-summary__value {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--xf-text-200);
+}
+
+.xoptions-greeks-summary__gamma-warning {
+  margin: 0.6rem 0 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-loss-red, #f87171) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-loss-red, #f87171) 12%, transparent);
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--xf-text-200);
+}
+
 .xoptions-contract__disclaimer {
   font-style: italic;
 }
