@@ -152,6 +152,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xoptions"
   },
   {
+    path: "/api/app-user/xoptions/review",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xoptions"
+  },
+  {
     path: "/api/app-user/me/role",
     operations: [{ method: "GET", auth: "session" }],
     tag: "user"

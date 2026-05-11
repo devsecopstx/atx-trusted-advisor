@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
     Suspense,
@@ -25,6 +24,8 @@ import { isValidXoptionsUnderlyingSymbol, normalizeXoptionsUnderlyingSymbol } fr
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { outlookIconClassForSlug, OutlookIconFor } from "@/app/ui/outlook-icons";
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
+import { XoptionsBreadcrumb } from "@/app/xoptions/ui/xoptions-breadcrumb";
+import { XoptionsStepper } from "@/app/xoptions/ui/xoptions-stepper";
 import { XoptionsWorkspaceDeskControls } from "@/app/xoptions/ui/xoptions-workspace-desk-controls";
 import {
     XoptionsChooseContract,
@@ -32,6 +33,7 @@ import {
 } from "@/app/xoptions/xoptions-choose-contract";
 import { XoptionsDisclaimerModal } from "@/app/xoptions/xoptions-disclaimer-modal";
 import { XoptionsErrorBoundary } from "@/app/xoptions/xoptions-error-boundary";
+import { XoptionsReviewWorkspace } from "@/app/xoptions/xoptions-review-workspace";
 import {
     parseStrategyStartBasis,
     StrategyChoicePanels,
@@ -138,7 +140,8 @@ const STEPS = [
   { n: 1 as const, title: "Input symbol", question: "Which company are you looking for?" },
   { n: 2 as const, title: "Choose outlook" },
   { n: 3 as const, title: "Choose strategy" },
-  { n: 4 as const, title: "Choose contract" }
+  { n: 4 as const, title: "Choose contract" },
+  { n: 5 as const, title: "Review order" }
 ];
 
 /** Written when the user enters a symbol; read on `/portfolios` for "Resume". */
@@ -273,7 +276,7 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
   const [strategyCapitalMode, setStrategyCapitalMode] = useState<StrategyCapitalMode>("cash");
   const [strategyCapitalInput, setStrategyCapitalInput] = useState("");
   const [activeStep, setActiveStep] = useState<(typeof STEPS)[number]["n"]>(1);
-  /** Highest step the user may open (1–4); advances on Next, never ahead of symbol readiness. */
+  /** Highest step the user may open (1–5); advances on Next, never ahead of symbol readiness. */
   const [unlockedStep, setUnlockedStep] = useState(1);
   const [strategyChoiceId, setStrategyChoiceId] = useState<StrategyChoiceId | null>(null);
   const [reviewOrderPlainText, setReviewOrderPlainText] = useState<string | null>(null);
@@ -553,10 +556,11 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
     return () => mq.removeEventListener("change", fn);
   }, []);
 
-  /** Alerts desk deep-link: `/xoptions?symbol=…&step=4&portfolioId=…` opens the contract step. */
+  /** Alerts desk deep-link: `/xoptions?symbol=…&step=4|5&portfolioId=…` opens contract or review. */
   useEffect(() => {
     const q = readXoptionsUrlSearchParams();
-    if (q.get("step") !== "4") {
+    const stepRaw = q.get("step");
+    if (stepRaw !== "4" && stepRaw !== "5") {
       return;
     }
     const sym = normalizeXoptionsUnderlyingSymbol(symbol);
@@ -566,8 +570,9 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
     if (snapLoading) {
       return;
     }
-    setUnlockedStep((u) => Math.max(u, 4));
-    setActiveStep(4);
+    const step = stepRaw === "5" ? 5 : 4;
+    setUnlockedStep((u) => Math.max(u, step));
+    setActiveStep(step);
   }, [symbol, snapLoading, searchParamsKey]);
 
   useEffect(() => {
@@ -909,16 +914,26 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
   }
 
   function goStep(n: (typeof STEPS)[number]["n"]) {
-    if (n < 1 || n > 4 || n > unlockedStep) return;
+    if (n < 1 || n > 5 || n > unlockedStep) return;
     setActiveStep(n);
   }
 
   function advanceFrom(step: (typeof STEPS)[number]["n"]) {
-    if (step < 1 || step > 3) return;
+    if (step < 1 || step > 4) return;
     if (step === 1 && !canGoStep2) return;
+    if (step === 4 && !selectedOptionMeta) return;
     const next = (step + 1) as (typeof STEPS)[number]["n"];
     setUnlockedStep((u) => Math.max(u, next));
     setActiveStep(next);
+    if (step === 4 && symbolUpper) {
+      const params = new URLSearchParams();
+      params.set("step", String(next));
+      params.set("symbol", symbolUpper);
+      if (yahooOptionSymbol?.trim()) {
+        params.set("contractId", yahooOptionSymbol.trim());
+      }
+      router.replace(`/xoptions?${params.toString()}`, { scroll: false });
+    }
   }
 
   function stepHeaderClass(n: (typeof STEPS)[number]["n"]): string {
@@ -958,23 +973,20 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
         </Suspense>
       ) : null}
 
-      <nav className="xoptions-stepper" aria-label="Strategy builder progress">
-        {STEPS.map((s, i) => (
-          <div key={s.n} className="xoptions-stepper__segment">
-            <button
-              type="button"
-              className={`xoptions-stepper__node ${s.n === activeStep ? "xoptions-stepper__node--current" : ""} ${s.n < activeStep ? "xoptions-stepper__node--complete" : ""} ${s.n > activeStep ? "xoptions-stepper__node--future" : ""}`}
-              aria-current={s.n === activeStep ? "step" : undefined}
-              disabled={s.n > unlockedStep}
-              onClick={() => goStep(s.n)}
-            >
-              <span className="xoptions-stepper__node-num">{s.n}</span>
-              <span className="xoptions-stepper__node-label">{s.title}</span>
-            </button>
-            {i < STEPS.length - 1 ? <span className="xoptions-stepper__rail" aria-hidden /> : null}
-          </div>
-        ))}
-      </nav>
+      <XoptionsBreadcrumb
+        currentStep={activeStep}
+        symbol={symbolUpper || null}
+        contractId={yahooOptionSymbol}
+        outlook={effectiveOutlook || null}
+        strategy={strategyChoiceId}
+        unlockedStep={unlockedStep}
+      />
+      <XoptionsStepper
+        steps={STEPS.map((step) => ({ n: step.n, title: step.title }))}
+        currentStep={activeStep}
+        unlockedStep={unlockedStep}
+        onStepSelect={(step) => goStep(step as (typeof STEPS)[number]["n"])}
+      />
 
       <section className="xoptions-symbol-glance-row" aria-label="Enter symbol and portfolio snapshot">
         <div className="xoptions-symbol-hero xoptions-symbol-hero--in-row" aria-label="Enter symbol">
@@ -1472,6 +1484,7 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
                 holdingSharesForSymbol={holdingSharesForSymbol}
                 strategyStartBasis={strategyStartBasis}
                 initialContractPrefill={initialContractPrefill}
+                hidePositionReview
               />
               </XoptionsErrorBoundary>
               <div className="max-w-xl min-w-0">
@@ -1490,43 +1503,11 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
               <div className="flex flex-wrap items-center gap-3 md:gap-2">
                 <button
                   type="button"
-                  className="cta cta-secondary xoptions-chain-cta"
-                  disabled={watchlistAddBusy || !ctx?.portfolio?.id || !yahooOptionSymbol?.trim()}
-                  onClick={() => void handleAddOptionToWatchlist()}
+                  className="cta cta-primary xoptions-next-btn"
+                  disabled={!selectedOptionMeta || !reviewOrderPlainText?.trim()}
+                  onClick={() => advanceFrom(4)}
                 >
-                  {watchlistAddBusy ? "Adding..." : "Add to watchlist"}
-                </button>
-                <Link
-                  className="cta cta-primary xoptions-chain-cta"
-                  href={
-                    symbol.trim()
-                      ? `/xoptions/full-chain?symbol=${encodeURIComponent(symbol.trim().toUpperCase())}${
-                          weeks != null ? `&weeks=${weeks}` : ""
-                        }`
-                      : "/xoptions/full-chain"
-                  }
-                >
-                  Open full option chain
-                </Link>
-                <button
-                  type="button"
-                  className="cta cta-secondary xoptions-chain-cta"
-                  disabled={!reviewOrderPlainText?.trim()}
-                  onClick={handleAskXchat}
-                  aria-label="Copy review order to clipboard and open xChat"
-                >
-                  Ask xChat
-                </button>
-                <button
-                  type="button"
-                  className="cta cta-secondary xoptions-chain-cta"
-                  disabled={saveScenarioBusy || !reviewOrderPlainText?.trim()}
-                  onClick={() => void handleSaveScenario()}
-                >
-                  {saveScenarioBusy ? "Saving…" : "Save scenario"}
-                </button>
-                <button type="button" className="cta cta-secondary xoptions-chain-cta" onClick={handlePrintSummary}>
-                  Print / PDF
+                  Continue to review
                 </button>
               </div>
               {yahooOptionSymbol ? (
@@ -1535,31 +1516,50 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
                   <span className="font-mono text-[var(--xf-text-200)]">{yahooOptionSymbol}</span>
                 </p>
               ) : null}
-              {watchlistAddStatus ? (
-                <p
-                  className={`xoptions-hint text-xs ${watchlistAddStatus === "Added to watchlist" ? "text-[var(--xf-gain-green)]" : "text-red-300"}`}
-                  role="status"
-                >
-                  {watchlistAddStatus}
-                </p>
-              ) : null}
-              {saveScenarioStatus ? (
-                <p
-                  className={`xoptions-hint text-xs ${
-                    saveScenarioStatus.startsWith("Synced to workspace")
-                      ? "text-[var(--xf-gain-green)]"
-                      : saveScenarioStatus.startsWith("Uploaded;") ||
-                          saveScenarioStatus.startsWith("Uploaded —")
-                        ? "text-amber-300"
-                        : saveScenarioStatus.startsWith("Not synced:")
-                          ? "text-red-300"
-                          : "text-[var(--xf-text-400)]"
-                  }`}
-                  role="status"
-                >
-                  {saveScenarioStatus}
-                </p>
-              ) : null}
+            </div>
+          ) : null}
+        </section>
+
+        <section className="xoptions-step" aria-labelledby="xo-step-5-title">
+          <button
+            type="button"
+            className={stepHeaderClass(5)}
+            id="xo-step-5-title"
+            disabled={unlockedStep < 5}
+            onClick={() => goStep(5)}
+          >
+            <span className="xoptions-step__num">5</span>
+            <span className="xoptions-step__title">{STEPS[4]?.title}</span>
+          </button>
+          {activeStep === 5 && selectedOptionMeta ? (
+            <div className="xoptions-step__body">
+              <XoptionsReviewWorkspace
+                variant="embedded"
+                symbol={selectedOptionMeta.underlying}
+                contractId={selectedOptionMeta.yahooSymbol}
+                expiration={selectedOptionMeta.expiration}
+                strike={selectedOptionMeta.strike}
+                side={selectedOptionMeta.side}
+                limitPrice={selectedOptionMeta.limitPrice}
+                quantity={selectedOptionMeta.quantity}
+                openingAction={selectedOptionMeta.openingAction}
+                strategyChoiceId={strategyChoiceId}
+                strategyLabel={strategyChoiceId ? strategyShortLabel(strategyChoiceId) : null}
+                outlook={effectiveOutlook || null}
+                riskProfile={effectiveRisk || null}
+                portfolioApproxValue={portfolioApproxValue}
+                holdingSharesForSymbol={holdingSharesForSymbol}
+                reviewOrderPlainText={reviewOrderPlainText}
+                onAskXchat={handleAskXchat}
+                onSaveScenario={() => void handleSaveScenario()}
+                onAddToWatchlist={() => void handleAddOptionToWatchlist()}
+                onPrint={handlePrintSummary}
+                watchlistBusy={watchlistAddBusy}
+                saveScenarioBusy={saveScenarioBusy}
+                watchlistStatus={watchlistAddStatus}
+                saveScenarioStatus={saveScenarioStatus}
+                yahooOptionSymbol={yahooOptionSymbol}
+              />
             </div>
           ) : null}
         </section>

@@ -385,6 +385,113 @@ html[data-xf-ui="soft"] .xoptions-workspace-topbar {
   }
 }
 
+.xoptions-stepper--compact {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.35rem 0 0.5rem;
+}
+
+.xoptions-stepper__progress-track {
+  height: 0.35rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  overflow: hidden;
+}
+
+.xoptions-stepper__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--xf-gain-green) 78%, var(--xf-text-100));
+}
+
+.xoptions-breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.xoptions-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.xoptions-breadcrumb__link {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--xf-text-400);
+  text-decoration: none;
+}
+
+.xoptions-breadcrumb__link--current {
+  color: color-mix(in srgb, var(--xf-gain-green) 86%, var(--xf-text-100));
+}
+
+.xoptions-breadcrumb__link--disabled {
+  opacity: 0.45;
+}
+
+.xoptions-breadcrumb__sep {
+  color: var(--xf-text-500);
+  font-size: 0.62rem;
+}
+
+.xoptions-review-workspace__grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .xoptions-review-workspace__grid {
+    grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 0.9fr);
+    align-items: start;
+  }
+}
+
+.xoptions-review-workspace__aside-card {
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  border-radius: var(--xf-radius-sm);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  padding: 0.85rem;
+}
+
+.xoptions-review-workspace__sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 0.75rem 0 0.25rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--xf-xoptions-surface) 0%, transparent),
+    color-mix(in srgb, var(--xf-xoptions-surface) 92%, var(--xf-bg-900))
+  );
+}
+
+.xoptions-position-review__alert {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  padding: 0.55rem 0.65rem;
+}
+
+.xoptions-position-review__alert--warning {
+  border-color: color-mix(in srgb, var(--xf-danger-400) 34%, transparent);
+  background: color-mix(in srgb, var(--xf-danger-400) 8%, transparent);
+}
+
+.xoptions-position-review__alert--caution {
+  border-color: color-mix(in srgb, var(--xf-warning-400) 34%, transparent);
+  background: color-mix(in srgb, var(--xf-warning-400) 8%, transparent);
+}
+
+.xoptions-position-review__alert--info {
+  border-color: color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+}
+
 /* ── Account row + options notice ── */
 .xoptions-account-bar {
   padding: 0.35rem 0 0;

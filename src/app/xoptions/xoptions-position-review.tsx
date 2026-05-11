@@ -6,21 +6,31 @@ import { XoptionsOrderPreviewCard } from "@/app/xoptions/xoptions-order-preview-
 import type { StrategyChoiceId } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import { strategyShortLabel } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import type { XoptionsOpeningAction, XoptionsOrderReview } from "@/lib/xoptions/xoptions-order-preview";
+import type {
+    XoptionsReviewAuditTrail,
+    XoptionsReviewSummary,
+    XoptionsRiskAlert,
+    XoptionsWhatIfAssigned
+} from "@/lib/xoptions/xoptions-review-types";
 
 type MetricProps = {
   label: string;
   title: string;
+  ariaLabel: string;
   children: ReactNode;
   valueClassName?: string;
 };
 
-function Metric({ label, title, children, valueClassName }: MetricProps) {
+function Metric({ label, title, ariaLabel, children, valueClassName }: MetricProps) {
   return (
     <div className="xoptions-position-review__metric">
       <span className="xoptions-position-review__metric-label" title={title}>
         {label}
       </span>
-      <span className={`xoptions-position-review__metric-value font-semibold tabular-nums ${valueClassName ?? ""}`}>
+      <span
+        className={`xoptions-position-review__metric-value font-semibold tabular-nums ${valueClassName ?? ""}`}
+        aria-label={ariaLabel}
+      >
         {children}
       </span>
     </div>
@@ -90,6 +100,10 @@ type XoptionsPositionReviewProps = {
   quantity: number;
   limitPricePerShare: number;
   side: "call" | "put";
+  riskAlerts?: XoptionsRiskAlert[];
+  whatIfAssigned?: XoptionsWhatIfAssigned | null;
+  reviewSummary?: XoptionsReviewSummary | null;
+  auditTrail?: XoptionsReviewAuditTrail | null;
 };
 
 export function XoptionsPositionReview({
@@ -107,7 +121,11 @@ export function XoptionsPositionReview({
   expirationYyyyMmDd,
   quantity,
   limitPricePerShare,
-  side
+  side,
+  riskAlerts = [],
+  whatIfAssigned = null,
+  reviewSummary = null,
+  auditTrail = null
 }: XoptionsPositionReviewProps) {
   const title = strategyLabel?.trim() || strategyShortLabel(strategyChoiceId) || "Single-leg option";
   const pctRef =
@@ -151,23 +169,57 @@ export function XoptionsPositionReview({
         ) : null}
       </div>
 
+      {riskAlerts.length > 0 ? (
+        <ul className="xoptions-position-review__alerts mt-3 space-y-2" aria-label="Risk alerts">
+          {riskAlerts.map((alert) => (
+            <li
+              key={alert.id}
+              className={`xoptions-position-review__alert xoptions-position-review__alert--${alert.severity}`}
+            >
+              <p className="m-0 text-[0.68rem] font-semibold text-[var(--xf-text-100)]" title={alert.tooltipDefinition}>
+                {alert.title}
+              </p>
+              <p className="mt-1 mb-0 text-[0.65rem] leading-snug text-[var(--xf-text-300)]">{alert.plainEnglish}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       <p className="mt-3 mb-0 text-sm font-semibold text-[var(--xf-text-100)]">{title}</p>
       <p className="mt-1 mb-0 text-[0.72rem] leading-snug text-[var(--xf-text-400)]">{orderReview.strategyOneLiner}</p>
 
       <div className="xoptions-position-review__grid mt-3">
-        <Metric label="Limit" title="Limit price per share for this preview" valueClassName="text-[var(--xf-text-100)]">
+        <Metric
+          label="Limit"
+          title="Limit price per share for this preview"
+          ariaLabel={`Limit price ${orderReview.bidPerShareDisplay}`}
+          valueClassName="text-[var(--xf-text-100)]"
+        >
           {orderReview.bidPerShareDisplay}
         </Metric>
         <Metric
           label="Breakeven"
           title="Stock price at expiration where P/L crosses zero (model)"
+          ariaLabel={`Breakeven ${orderReview.breakevenDisplay}`}
           valueClassName="text-[var(--xf-text-100)]"
         >
           {orderReview.breakevenDisplay}
         </Metric>
         <Metric
+          label="P(OTM)"
+          title="Estimated probability of expiring out of the money"
+          ariaLabel={`Probability out of the money ${orderReview.probabilityOtmDisplay}`}
+          valueClassName="text-[var(--xf-text-100)]"
+        >
+          <span className="inline-flex items-center gap-1">
+            {orderReview.probabilityOtmDisplay}
+            <OtmSemiGauge percent={orderReview.probabilityOtmPercent} />
+          </span>
+        </Metric>
+        <Metric
           label="POP"
           title="Estimated probability of profit at expiry (risk-neutral; illustrative)"
+          ariaLabel={`Probability of profit ${orderReview.probabilityProfitDisplay}`}
           valueClassName="text-[var(--xf-gain-green)]"
         >
           <span className="inline-flex items-center gap-1">
@@ -175,12 +227,18 @@ export function XoptionsPositionReview({
             <OtmSemiGauge percent={orderReview.probabilityProfitPercent} />
           </span>
         </Metric>
-        <Metric label="EV" title="Expected value not modeled in-app" valueClassName="text-[var(--xf-text-300)]">
+        <Metric
+          label="EV"
+          title="Expected value not modeled in-app"
+          ariaLabel={`Expected value ${orderReview.expectedValueDisplay}`}
+          valueClassName="text-[var(--xf-text-300)]"
+        >
           {orderReview.expectedValueDisplay}
         </Metric>
         <Metric
           label="Max loss"
           title="Maximum debit for long premium; short premium differs"
+          ariaLabel={`Maximum loss ${orderReview.maxLossDisplay}`}
           valueClassName="text-[color-mix(in_srgb,var(--xf-danger-400)_90%,var(--xf-text-100))]"
         >
           {orderReview.maxLossDisplay}
@@ -203,9 +261,16 @@ export function XoptionsPositionReview({
           <span className="text-[0.58rem] font-semibold uppercase tracking-[0.06em] text-[var(--xf-text-500)]" title="Annualized yield on premium vs secured notional">
             Ann. premium yield
           </span>
-          <span className="font-semibold tabular-nums text-[var(--xf-text-200)]">
-            {orderReview.annualizedPremiumYieldPercent != null
-              ? `${orderReview.annualizedPremiumYieldPercent.toFixed(1)}%`
+          <span
+            className="font-semibold tabular-nums text-[var(--xf-text-200)]"
+            aria-label={`Annualized premium yield ${
+              (reviewSummary?.annualizedYieldPercent ?? orderReview.annualizedPremiumYieldPercent) != null
+                ? `${(reviewSummary?.annualizedYieldPercent ?? orderReview.annualizedPremiumYieldPercent)!.toFixed(1)} percent`
+                : "unavailable"
+            }`}
+          >
+            {(reviewSummary?.annualizedYieldPercent ?? orderReview.annualizedPremiumYieldPercent) != null
+              ? `${(reviewSummary?.annualizedYieldPercent ?? orderReview.annualizedPremiumYieldPercent)!.toFixed(1)}%`
               : "—"}
           </span>
         </div>
@@ -235,6 +300,35 @@ export function XoptionsPositionReview({
           <li>Wash-sale: offsetting stock/options within the window can disallow losses.</li>
           <li>Section 1256: most single-stock options are not 1256; index products may differ.</li>
         </ul>
+      ) : null}
+
+      {whatIfAssigned ? (
+        <div className="xoptions-position-review__what-if mt-3 rounded border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] p-2">
+          <p className="m-0 text-[0.62rem] font-semibold uppercase tracking-[0.06em] text-[var(--xf-text-500)]">
+            What-if assigned
+          </p>
+          <p className="mt-1 mb-0 text-[0.68rem] leading-snug text-[var(--xf-text-300)]" aria-label="What-if assigned scenario">
+            {whatIfAssigned.narrative}
+          </p>
+        </div>
+      ) : null}
+
+      {auditTrail ? (
+        <div className="xoptions-position-review__audit mt-3 border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pt-2 text-[0.62rem] text-[var(--xf-text-500)]">
+          <p className="m-0 font-semibold uppercase tracking-[0.06em] text-[var(--xf-text-400)]">Audit trail</p>
+          <p className="mt-1 mb-0">Generated {new Date(auditTrail.generatedAtUtc).toLocaleString()}</p>
+          {auditTrail.outlook ? <p className="mt-1 mb-0">Outlook: {auditTrail.outlook}</p> : null}
+          {auditTrail.riskProfile ? <p className="mt-1 mb-0">Risk profile: {auditTrail.riskProfile}</p> : null}
+          {auditTrail.weights.length > 0 ? (
+            <ul className="mt-1 mb-0 list-disc pl-4">
+              {auditTrail.weights.map((weight) => (
+                <li key={weight.id}>
+                  {weight.label}: {(weight.weight * 100).toFixed(0)}%
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
 
       {holdingSharesForSymbol != null && holdingSharesForSymbol > 0 ? (

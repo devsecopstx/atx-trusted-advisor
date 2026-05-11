@@ -217,6 +217,8 @@ export type XoptionsChooseContractProps = {
   strategyStartBasis?: StrategyStartBasis | null;
   /** Optional deep-link contract prefill from scan/report actions. */
   initialContractPrefill?: { expiration: string; strike: number; contractType: "call" | "put" } | null;
+  /** Hide inline position review when step 5 owns the review surface. */
+  hidePositionReview?: boolean;
 };
 
 export type XoptionsSelectedOptionMeta = {
@@ -225,6 +227,9 @@ export type XoptionsSelectedOptionMeta = {
   strike: number;
   side: "call" | "put";
   yahooSymbol: string;
+  limitPrice: string;
+  quantity: string;
+  openingAction: XoptionsOpeningAction;
 };
 
 function toYahooOptionSymbol(
@@ -453,7 +458,8 @@ export function XoptionsChooseContract({
   portfolioApproxValue = null,
   holdingSharesForSymbol = null,
   strategyStartBasis = null,
-  initialContractPrefill = null
+  initialContractPrefill = null,
+  hidePositionReview = false
 }: XoptionsChooseContractProps) {
   const u = symbol.trim().toUpperCase();
 
@@ -933,9 +939,12 @@ export function XoptionsChooseContract({
       expiration,
       strike: selectedStrike,
       side,
-      yahooSymbol: yahooOptionSymbol
+      yahooSymbol: yahooOptionSymbol,
+      limitPrice: limitPrice.trim(),
+      quantity: quantity.trim(),
+      openingAction: openingActionResolved
     };
-  }, [yahooOptionSymbol, expiration, selectedStrike, side, u]);
+  }, [yahooOptionSymbol, expiration, selectedStrike, side, u, limitPrice, quantity, openingActionResolved]);
 
   useEffect(() => {
     onReviewOrderPlainTextChange?.(
@@ -1665,7 +1674,7 @@ export function XoptionsChooseContract({
             </div>
           ) : null}
         </div>
-            {orderReview && !payoffPreviewEnabled ? (
+            {orderReview && !hidePositionReview && !payoffPreviewEnabled ? (
               <div
                 className="xoptions-contract__review-below mt-3 min-w-0"
                 aria-label="Position review"
@@ -1690,7 +1699,7 @@ export function XoptionsChooseContract({
               </div>
             ) : null}
             </div>
-          {orderReview && payoffPreviewEnabled ? (
+          {orderReview && !hidePositionReview && payoffPreviewEnabled ? (
             <aside className="xoptions-contract__split-aside" aria-label="Position review">
               <XoptionsPositionReview
                 orderReview={orderReview}
