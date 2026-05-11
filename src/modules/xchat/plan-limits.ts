@@ -123,7 +123,10 @@ export function mergeXchatPromptLimitsForWorkspace(
   const tierLimits = getPlanLimits(subscriptionPlan);
   const ws = effectiveWorkspace;
   const dailyFromWs =
-    ws && typeof ws.userChatLimit === "number" && Number.isFinite(ws.userChatLimit)
+    ws &&
+    typeof ws.userChatLimit === "number" &&
+    Number.isFinite(ws.userChatLimit) &&
+    ws.userChatLimit > 0
       ? Math.max(1, Math.floor(ws.userChatLimit))
       : tierLimits.maxPromptsPerDay;
   const hourlyRaw = ws?.userChatHourlyLimit;

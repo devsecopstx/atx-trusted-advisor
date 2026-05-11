@@ -1,9 +1,22 @@
 # xChat Hardening Plan (Production Reliability for HNWI Advisor Sessions)
 
-**Status:** Implementation Spec & Bugfix Roadmap  
+**Status:** Implementation Spec & Bugfix Roadmap — **Phase 1 shipped in app `v3.18.6`** (limiter + meter parity); Phases 2–4 pending  
 **Owner:** The Architect  
 **Date:** 2026-05-10  
 **Priority:** Critical — rate-limit bug observed in prod (hourly cap triggered on first prompt) + general production hardening for live options-trading conversations.
+
+### Phase 1 shipped (2026-05-10, v3.18.6)
+
+| Item | Change |
+|------|--------|
+| Per-minute burst `0` | `perMinuteLimit <= 0` skips burst enforcement (avoids `1 > 0` blocking every ask if misconfigured). |
+| Hour meter vs enforcement | When workspace daily caps apply, **hour bucket always increments**; hourly **enforcement** only if `userChatHourlyLimit > 0`. Aligns `POST /api/xchat/ask` with `GET /api/app-user/xchat/prompt-usage` (`peekXchatAskUsageCounts`). |
+| Daily cap coercion | Non-positive `dailyPromptLimit` falls back to tier `maxPromptsPerDay` (never `Math.max(1, 0)` → accidental **1/day**). Same rule in `mergeXchatPromptLimitsForWorkspace` for UI caps. |
+| Tests | `tests/unit/xchat-usage-limits-enforcement.test.ts`, `tests/integration/plan-limits.test.ts` (non-positive `userChatLimit`). |
+
+**Files:** `src/modules/xchat/ask-usage-limits.ts`, `src/modules/xchat/plan-limits.ts`, `src/app/api/xchat/ask/route.ts` (positive-only tenant daily override passed to limiter).
+
+**Still verify in prod:** Tenant/plan rows with explicit `userChatLimit: 1` or `userChatHourlyLimit: 1` will legitimately cap after one successful prompt — distinguish from false positives via structured logs (Phase 2).
 
 ## Executive Summary
 
@@ -41,19 +54,18 @@ Root cause hypothesis (to be confirmed in audit):
 
 ## Implementation Phases for Cursor
 
-### Phase 1: Bugfix — False Hourly/Daily Limit (2–3 hrs, ship today)
+### Phase 1: Bugfix — False Hourly/Daily Limit (2–3 hrs, ship today) ✅ *delivered v3.18.6*
 1. Audit limiter code:
-   - Locate `src/modules/xchat/ask-usage-limits.ts` (or `limit.ts`, `usage.ts`).
-   - Trace `POST /api/xchat/ask` → `checkAndIncrementUsage` → `xchat_usage_limits` collection + Redis counters.
-   - Check UTC bucket key generation (`${tenantId}:${userId}:hour:${YYYYMMDDHH}` and day bucket).
-2. Fix initialization:
-   - Ensure new user/tenant always starts with counter = 0 for current UTC hour/day.
-   - Add explicit `userChatHourlyLimit: 0` handling (means "no hourly cap" — do not enforce).
-   - Fix off-by-one: use `Math.floor(Date.now() / 3600000)` for hour bucket, proper rollover at :00 UTC.
-3. Update `mergeTenantWorkspaceLimits` + plan resolver to correctly inherit `userChatHourlyLimit` from tenant → planOverrides → global default (0 = unlimited).
-4. Add unit tests: `tests/unit/xchat-usage-limits.test.ts` covering first-prompt, hourly rollover, `0` = unlimited, global_admin bypass.
-5. Integration test: simulate new user first ask, assert allowed and counters increment correctly.
-6. Deploy hotfix + monitor `xchat_limit_exceeded_total` metric for 24 h.
+   - **`src/modules/xchat/ask-usage-limits.ts`** — Mongo `xchat_usage_limits` buckets (`minute` / `hour` / `day`), keys include user + tenant + bucket ISO start (UTC-aligned hour via epoch division).
+   - Trace **`POST /api/xchat/ask`** → **`enforceDistributedAskUsageLimit`** (no Redis in this path).
+2. Fix initialization / coercion:
+   - Hour/day buckets still start at 0 via `$inc` upsert; **hour always incremented** when daily caps enforced so meters match sends.
+   - **`userChatHourlyLimit: 0` or omitted** → no hourly enforcement (unchanged intent).
+   - **Non-positive daily override** → tier default (fixes accidental **1/day** from `Math.max(1, 0)`).
+3. **`mergeTenantWorkspaceLimits` / `applyTenantPlanRowToBase`** — already treat hourly `0` as unlimited; daily UI merge updated in **`mergeXchatPromptLimitsForWorkspace`** for non-positive `userChatLimit`.
+4. Unit tests: **`tests/unit/xchat-usage-limits-enforcement.test.ts`** (+ plan-limits integration case).
+5. Integration test: *optional follow-up* — live Mongo harness for first ask (current suite mocks ask route limiter where needed).
+6. Deploy hotfix + monitor **`xchat_limit_exceeded_total`** (Phase 2) for 24 h.
 
 ### Phase 2: Observability & Hardening (4–6 hrs)
 1. Structured logging on every ask:

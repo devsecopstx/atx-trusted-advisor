@@ -450,7 +450,11 @@ export async function POST(request: Request) {
       tenantForDebug,
       subscriptionPlan
     );
-    dailyPromptCap = xchatAskWorkspaceLimits.userChatLimit;
+    const rawDailyCap = xchatAskWorkspaceLimits.userChatLimit;
+    dailyPromptCap =
+      typeof rawDailyCap === "number" && Number.isFinite(rawDailyCap) && rawDailyCap > 0
+        ? Math.floor(rawDailyCap)
+        : undefined;
     const h = xchatAskWorkspaceLimits.userChatHourlyLimit;
     hourlyPromptCap = typeof h === "number" && h > 0 ? h : undefined;
   }

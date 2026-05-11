@@ -193,6 +193,21 @@ describe("xChat merged workspace + plan limits (meter helpers)", () => {
     expect(merged.hourlyCap).toBe(0);
   });
 
+  it("merge ignores non-positive userChatLimit (tier daily cap)", () => {
+    const merged = mergeXchatPromptLimitsForWorkspace("basic", {
+      userChatLimit: 0,
+      userXoptionsLimit: 10,
+      tenantPortfolioLimit: 1,
+      portfolioAccountLimit: 1,
+      changePersonaEnabled: true,
+      chatHistoryMax: 10,
+      maxUsersPerTenant: 5,
+      userTasksMax: 5,
+      outlookRefreshEnabled: true
+    });
+    expect(merged.dailyCap).toBe(5);
+  });
+
   it("soft-limit banner at 80%+ daily utilization (threshold capped at 80)", () => {
     expect(
       shouldShowXchatPromptSoftLimitBanner({

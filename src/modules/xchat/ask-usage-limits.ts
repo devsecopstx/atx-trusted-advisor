@@ -62,7 +62,12 @@ export async function enforceDistributedAskUsageLimit(
     now
   });
 
-  if (minuteBucket.count > input.perMinuteLimit) {
+  const perMinuteCap =
+    typeof input.perMinuteLimit === "number" && Number.isFinite(input.perMinuteLimit)
+      ? Math.floor(input.perMinuteLimit)
+      : 0;
+
+  if (perMinuteCap > 0 && minuteBucket.count > perMinuteCap) {
     const minuteWindowEndMs = minuteBucket.bucketStart.getTime() + ONE_MINUTE_MS;
     return {
       allowed: false,
@@ -72,7 +77,8 @@ export async function enforceDistributedAskUsageLimit(
     };
   }
 
-  const remainingMinute = Math.max(0, input.perMinuteLimit - minuteBucket.count);
+  const remainingMinute =
+    perMinuteCap > 0 ? Math.max(0, perMinuteCap - minuteBucket.count) : undefined;
 
   if (!input.enforceDailyLimit) {
     /**
@@ -93,14 +99,19 @@ export async function enforceDistributedAskUsageLimit(
       ? Math.max(1, Math.floor(input.hourlyPromptLimit))
       : 0;
 
+  /**
+   * Always bump the UTC clock-hour bucket when workspace caps apply so
+   * `peekXchatAskUsageCounts` / prompt-usage stay aligned with sends (hourly enforcement is optional).
+   */
+  const hourBucket = await incrementUsageBucket({
+    kind: "hour",
+    userId: input.userId,
+    tenantId: input.tenantId,
+    now
+  });
+
   let remainingHour: number | undefined;
   if (hourlyCap > 0) {
-    const hourBucket = await incrementUsageBucket({
-      kind: "hour",
-      userId: input.userId,
-      tenantId: input.tenantId,
-      now
-    });
     if (hourBucket.count > hourlyCap) {
       const hourEndMs = hourBucket.bucketStart.getTime() + ONE_HOUR_MS;
       return {
@@ -115,10 +126,14 @@ export async function enforceDistributedAskUsageLimit(
     remainingHour = Math.max(0, hourlyCap - hourBucket.count);
   }
 
-  const dailyLimit =
-    input.dailyPromptLimit !== undefined
+  const dailyFromInput =
+    input.dailyPromptLimit !== undefined &&
+    Number.isFinite(input.dailyPromptLimit) &&
+    input.dailyPromptLimit > 0
       ? Math.max(1, Math.floor(input.dailyPromptLimit))
-      : getPlanLimits(input.plan).maxPromptsPerDay;
+      : undefined;
+  const dailyLimit =
+    dailyFromInput ?? getPlanLimits(input.plan).maxPromptsPerDay;
   const dayBucket = await incrementUsageBucket({
     kind: "day",
     userId: input.userId,
