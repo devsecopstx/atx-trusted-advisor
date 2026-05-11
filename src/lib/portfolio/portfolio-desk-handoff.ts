@@ -1,10 +1,5 @@
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import {
-    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
-    XCHAT_PENDING_PROMPT_STORAGE_KEY,
-    XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME
-} from "@/lib/xchat/xchat-pending-prompt";
-import {
     isValidXoptionsUnderlyingSymbol,
     normalizeXoptionsUnderlyingSymbol
 } from "@/lib/xoptions/xoptions-desk-deep-link";
@@ -64,6 +59,13 @@ export function resolvePortfolioDeskFocusSymbol(
   return null;
 }
 
+export function buildPortfoliosWorkspaceXchatPrompt(portfolioName?: string | null): string {
+  const book = portfolioName?.trim();
+  return book
+    ? `Review my ${book} portfolio: allocation, cash vs positions, and one defined-risk options income idea.`
+    : "Review my portfolios: allocation, cash vs positions, and one defined-risk options income idea.";
+}
+
 export function buildPortfolioDeskXchatPrompt(input: {
   accountName: string;
   portfolioName?: string | null;
@@ -80,15 +82,6 @@ export function buildPortfolioDeskXchatPrompt(input: {
   return book
     ? `Review my ${account} holdings in ${book}. Summarize allocation, cash vs positions, and one defined-risk options income idea.`
     : `Review my ${account} holdings. Summarize allocation, cash vs positions, and one defined-risk options income idea.`;
-}
-
-export function writePortfolioDeskXchatHandoff(prompt: string): void {
-  try {
-    sessionStorage.setItem(XCHAT_PENDING_PROMPT_STORAGE_KEY, prompt);
-    sessionStorage.setItem(XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY, XCHAT_PORTFOLIOS_DESK_ADVISOR_PERSONA_NAME);
-  } catch {
-    // ignore quota / private mode
-  }
 }
 
 export function buildPortfolioDeskHandoffUrls(input: PortfolioDeskHandoffContext): {

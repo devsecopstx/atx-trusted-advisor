@@ -79,6 +79,10 @@ When a global admin **approves** an access request (`PATCH`/`PUT` `/api/admin/ac
 
 If X does not expose an email, the UI uses the **link email** step so the user can tie their X identity to the same email they registered with.
 
+## Admin — Manage users (directory + onboarding test)
+
+**≥3.19.1:** **Admin → Manage users** (`/admin/manage-users`) lists **Access requests** first, then **Users** (sortable columns; grouped section headers). **Create user** opens a dedicated card from the toolbar; **User settings** opens broker/portfolio/notification defaults for the selected approved user. Pending onboarding rows (open request + **`core_users`** with no login role) appear **only** in **Access requests** until approval — not duplicated under **Users**. Approve/reject use shield/circle access icons; approval still requires tenant + role + plan on **`PUT /api/admin/access-requests/{id}`**. **Onboarding test** checkbox creates a pending request via **`POST /api/admin/access-requests`** without immediate login provisioning.
+
 ## Admin — Manage users (credential invite resend)
 
 **≥3.12.7:** For approved users who still need email/password setup, **Manage users** exposes **Resend invite** when **`resendPasswordInviteAvailable`** is true on **`GET /api/admin/users`** (same rules as approve-time invite: login role, no **`passwordHash`**, non-placeholder email, active, not **`ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY`**). **`POST /api/admin/users/{userId}/resend-credential-invite`** rotates **`credentialInviteTokenHash`** / **`credentialInviteExpiresAt`** and sends **`sendAccessApprovedPasswordInviteEmail`**; audit **`credential_invite_resent`** or **`credential_invite_resend_email_failed`**. Does **not** replace Access Requests approve flow — use when the original mail was missed or the 7-day link expired.

@@ -39,25 +39,72 @@ export type UsersDirectoryAccessRequestRow = {
 
 export type UsersDirectoryRow = UsersDirectoryUserRow | UsersDirectoryAccessRequestRow;
 
+export type UsersDirectoryTableGroup = {
+  kind: "group";
+  id: "users" | "access_requests";
+  label: string;
+  count: number;
+};
+
+export type UsersDirectoryTableEntry =
+  | UsersDirectoryTableGroup
+  | { kind: "row"; row: UsersDirectoryRow };
+
 type PendingAccessUser = {
   userId: string;
   pendingAccess: boolean;
 };
 
-/** Drop open access requests when the user already appears in the directory with pending access. */
+export function findOpenAccessRequestForUser(
+  userId: string,
+  openRequests: AdminAccessRequest[]
+): (AdminAccessRequest & { _id: string }) | undefined {
+  for (const request of openRequests) {
+    if (request.userId === userId && request._id) {
+      return request as AdminAccessRequest & { _id: string };
+    }
+  }
+  return undefined;
+}
+
+/** Keep all open access requests visible in the access-requests group. */
 export function filterAccessRequestsForDirectory(
-  users: PendingAccessUser[],
+  _users: PendingAccessUser[],
   openRequests: AdminAccessRequest[]
 ): AdminAccessRequest[] {
-  const pendingIds = new Set(
-    users.filter((u) => u.pendingAccess).map((u) => u.userId)
+  return openRequests;
+}
+
+/** Hide pending user rows when their open access request is listed for approval. */
+export function filterUsersForDirectory(
+  users: PendingAccessUser[],
+  openRequests: AdminAccessRequest[]
+): PendingAccessUser[] {
+  return users.filter(
+    (user) => !(user.pendingAccess && findOpenAccessRequestForUser(user.userId, openRequests))
   );
-  return openRequests.filter((r) => !pendingIds.has(r.userId));
 }
 
 function cmp(a: string, b: string, dir: UsersDirectorySortDir): number {
   const base = a.localeCompare(b, undefined, { sensitivity: "base" });
   return dir === "asc" ? base : -base;
+}
+
+export function buildGroupedDirectoryTableEntries(
+  userRows: UsersDirectoryRow[],
+  accessRequestRows: UsersDirectoryRow[]
+): UsersDirectoryTableEntry[] {
+  return [
+    {
+      kind: "group",
+      id: "access_requests",
+      label: "Access requests",
+      count: accessRequestRows.length
+    },
+    ...accessRequestRows.map((row) => ({ kind: "row" as const, row })),
+    { kind: "group", id: "users", label: "Users", count: userRows.length },
+    ...userRows.map((row) => ({ kind: "row" as const, row }))
+  ];
 }
 
 export function sortUsersDirectoryRows(
@@ -123,12 +170,14 @@ export function buildUsersDirectoryRows(
   users: DirectoryUserSource[],
   openRequests: AdminAccessRequest[]
 ): UsersDirectoryRow[] {
-  const filtered = filterAccessRequestsForDirectory(
-    users.map((user) => ({ userId: user.userId, pendingAccess: user.pendingAccess })),
-    openRequests
-  );
+  const pendingUsers = users.map((user) => ({ userId: user.userId, pendingAccess: user.pendingAccess }));
+  const filtered = filterAccessRequestsForDirectory(pendingUsers, openRequests);
+  const visibleUsers = filterUsersForDirectory(pendingUsers, openRequests);
+  const visibleUserIds = new Set(visibleUsers.map((user) => user.userId));
 
-  const userRows: UsersDirectoryUserRow[] = users.map((user) => {
+  const userRows: UsersDirectoryUserRow[] = users
+    .filter((user) => visibleUserIds.has(user.userId))
+    .map((user) => {
     const membership =
       user.tenantMemberships.find((row) => row.isDefaultSessionTenant) ?? user.tenantMemberships[0];
     return {
@@ -143,7 +192,7 @@ export function buildUsersDirectoryRows(
       pendingAccess: user.pendingAccess,
       userStatus: user.status ?? "active"
     };
-  });
+    });
 
   const requestRows: UsersDirectoryAccessRequestRow[] = filtered
     .filter((request): request is AdminAccessRequest & { _id: string } => Boolean(request._id))

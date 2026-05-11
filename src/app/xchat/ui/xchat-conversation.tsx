@@ -59,8 +59,8 @@ import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachmen
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
 import {
-    XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
-    XCHAT_PENDING_PROMPT_STORAGE_KEY
+    clearXchatPendingComposerHandoffMemory,
+    consumeXchatPendingComposerHandoff
 } from "@/lib/xchat/xchat-pending-prompt";
 import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import {
@@ -353,6 +353,11 @@ export function XchatConversation({
   tenantWorkspaceSessionLabel = null,
   mainFooter = null
 }: XchatConversationProps) {
+  const initialComposerHandoffRef = useRef<ReturnType<typeof consumeXchatPendingComposerHandoff> | null>(null);
+  if (!initialComposerHandoffRef.current) {
+    initialComposerHandoffRef.current = consumeXchatPendingComposerHandoff();
+  }
+  const initialComposerHandoff = initialComposerHandoffRef.current;
   const router = useRouter();
   const liveSseEnabled =
     typeof serverBootstrap?.liveSseEnabled === "boolean"
@@ -378,7 +383,7 @@ export function XchatConversation({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => initialComposerHandoff.prompt);
   const [reasoningMode, setReasoningMode] = useState<XchatReasoningMode>("fast");
   const [quoteFreshness, setQuoteFreshness] = useState<"cached_first" | "live">("cached_first");
   const [pendingPasteImage, setPendingPasteImage] = useState<XchatPendingPasteImage | null>(null);
@@ -393,7 +398,9 @@ export function XchatConversation({
   const [personaListFetched, setPersonaListFetched] = useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
   const [suggestedPersonaId, setSuggestedPersonaId] = useState<string | null>(null);
-  const [pendingPreferredPersonaName, setPendingPreferredPersonaName] = useState<string | null>(null);
+  const [pendingPreferredPersonaName, setPendingPreferredPersonaName] = useState<string | null>(
+    () => initialComposerHandoff.personaName
+  );
   const [privacyPrefs, setPrivacyPrefs] = useState<XchatPrivacyPrefs | null>(() =>
     serverBootstrap
       ? {
@@ -443,7 +450,8 @@ export function XchatConversation({
         (serverBootstrap.historyItemsNewestFirst?.length ?? 0) > 0
     )
   );
-  const pendingComposerFromHandoffRef = useRef(false);
+  const pendingComposerFromHandoffRef = useRef(Boolean(initialComposerHandoff.prompt.trim()));
+  const composerHandoffPromptRef = useRef(initialComposerHandoff.prompt.trim());
   const userPickedPersonaRef = useRef(false);
   /** After "Stay in chat", re-fill composer with the prompt that triggered the strategy-job offer. */
   const strategyStayRestorePromptRef = useRef<string | null>(null);
@@ -756,31 +764,12 @@ export function XchatConversation({
     if (!contextChanged) {
       return;
     }
-    clearXchatComposerDraft(setInput, composerRef.current, resizeComposer);
-  }, [reasoningMode, resizeComposer, selectedPersonaId, workspacePortfolioId]);
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(XCHAT_PENDING_PROMPT_STORAGE_KEY);
-      if (raw) {
-        sessionStorage.removeItem(XCHAT_PENDING_PROMPT_STORAGE_KEY);
-        setInput((prev) => {
-          if (prev.trim()) {
-            return prev;
-          }
-          pendingComposerFromHandoffRef.current = true;
-          return raw;
-        });
-      }
-      const personaName = sessionStorage.getItem(XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY)?.trim();
-      if (personaName) {
-        sessionStorage.removeItem(XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY);
-        setPendingPreferredPersonaName(personaName);
-      }
-    } catch {
-      // ignore quota / private mode
+    const protectedHandoffPrompt = composerHandoffPromptRef.current;
+    if (protectedHandoffPrompt && input.trim() === protectedHandoffPrompt) {
+      return;
     }
-  }, []);
+    clearXchatComposerDraft(setInput, composerRef.current, resizeComposer);
+  }, [input, reasoningMode, resizeComposer, selectedPersonaId, workspacePortfolioId]);
 
   useEffect(() => {
     if (serverBootstrap != null) {
@@ -1208,30 +1197,27 @@ export function XchatConversation({
   }, [reasoningMode]);
 
   useEffect(() => {
-    if (!initialXchatItem) {
-      return;
-    }
-    expandWorkspaceProductRail();
-    if (initialXchatItem !== "composer" && initialXchatItem !== "persona") {
-      return;
-    }
-    queueMicrotask(() => {
-      const el = composerRef.current;
-      if (!el) {
-        return;
-      }
-      el.focus();
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
-    });
-  }, [initialXchatItem]);
+    const focusComposer = () => {
+      queueMicrotask(() => {
+        const el = composerRef.current;
+        if (!el) {
+          return;
+        }
+        el.focus();
+        el.style.height = "auto";
+        el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
+      });
+    };
 
-  /** Normal xChat opens (e.g. post-login `/xchat`, `/xchat?thread=…`): start with rail collapsed; deep links keep expand above. */
-  useEffect(() => {
-    if (initialXchatItem) {
+    if (!initialXchatItem || initialXchatItem === "composer" || initialXchatItem === "persona") {
+      collapseWorkspaceProductRail();
+      if (initialXchatItem === "composer" || initialXchatItem === "persona") {
+        focusComposer();
+      }
       return;
     }
-    collapseWorkspaceProductRail();
+
+    expandWorkspaceProductRail();
   }, [initialXchatItem]);
 
   const setKeepLastTenMessages = useCallback(async (enabled: boolean) => {
@@ -1375,6 +1361,8 @@ export function XchatConversation({
       return next;
     });
     clearXchatComposerDraft(setInput, composerRef.current, resizeComposer, { blur: true });
+    composerHandoffPromptRef.current = "";
+    clearXchatPendingComposerHandoffMemory();
     queueMicrotask(() => anchorThreadViewportToLatestTurn("smooth"));
     setLoading(true);
     const askController = new AbortController();

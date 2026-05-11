@@ -283,6 +283,42 @@ export function SendIcon({ className }: IconProps) {
   );
 }
 
+export function ApproveAccessIcon({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" className={className} fill="none" height="14" viewBox="0 0 24 24" width="14">
+      <path
+        d="M12 2.5 18.5 6v6.2c0 4.6-3.1 8.4-6.5 9.3-3.4-.9-6.5-4.7-6.5-9.3V6L12 2.5z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="m8.5 12.2 2.1 2.1 4.9-4.9"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+export function RejectAccessIcon({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" className={className} fill="none" height="14" viewBox="0 0 24 24" width="14">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M9 9l6 6M15 9l-6 6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 export function ExternalLinkIcon({ className }: IconProps) {
   return (
     <svg aria-hidden="true" className={className} fill="none" height="14" viewBox="0 0 24 24" width="14">

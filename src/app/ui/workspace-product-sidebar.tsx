@@ -541,10 +541,14 @@ export function WorkspaceProductSidebar({
   const isAccountOrLegalAppRoute =
     (pathname.startsWith("/account") && !pathname.startsWith("/account/tasks")) ||
     pathname.startsWith("/legal");
-  const xchatHistoryDeepLinkActive = isXchatRoute && searchParams.get("item") === "history";
+  const xchatRailItem = searchParams.get("item");
+  const xchatHistoryDeepLinkActive = isXchatRoute && xchatRailItem === "history";
   const xchatExamplePromptsDeepLinkActive =
-    isXchatRoute && searchParams.get("item") === "example-prompts";
-  const xchatAttachmentsDeepLinkActive = isXchatRoute && searchParams.get("item") === "attachments";
+    isXchatRoute && xchatRailItem === "example-prompts";
+  const xchatAttachmentsDeepLinkActive = isXchatRoute && xchatRailItem === "attachments";
+  const shouldCollapseXchatWorkspaceRail =
+    isXchatRoute &&
+    (!xchatRailItem || xchatRailItem === "composer" || xchatRailItem === "persona");
 
   /** User Collections utilities subgroup — only attachments deep link toggles it open. */
   const utilitiesAttachmentsRouteMatch = xchatAttachmentsDeepLinkActive;
@@ -597,6 +601,13 @@ export function WorkspaceProductSidebar({
     pathname,
     persistExpanded
   ]);
+
+  useEffect(() => {
+    if (!shouldCollapseXchatWorkspaceRail) {
+      return;
+    }
+    persistExpanded(false);
+  }, [persistExpanded, shouldCollapseXchatWorkspaceRail]);
 
   useEffect(() => {
     if (!belowLg || typeof document === "undefined") {

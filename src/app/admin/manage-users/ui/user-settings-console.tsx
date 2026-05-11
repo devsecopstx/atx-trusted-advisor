@@ -4,10 +4,12 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
     AddIcon,
+    ApproveAccessIcon,
     CopyIcon,
     DeleteIcon,
     EditIcon,
     RefreshIcon,
+    RejectAccessIcon,
     SaveIcon,
     SendIcon,
     SyncArrowsIcon,
@@ -19,11 +21,15 @@ import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { ACCESS_REQUEST_PLAN_OPTIONS } from "@/lib/access-request-plans";
 import { type AdminAccessRequest, isAdminAccessRequestActionable } from "@/lib/admin/admin-access-request";
 import {
+    buildGroupedDirectoryTableEntries,
     filterAccessRequestsForDirectory,
+    filterUsersForDirectory,
+    findOpenAccessRequestForUser,
     sortUsersDirectoryRows,
     type UsersDirectoryRow,
     type UsersDirectorySortDir,
-    type UsersDirectorySortKey
+    type UsersDirectorySortKey,
+    type UsersDirectoryTableEntry
 } from "@/lib/admin/users-directory";
 import {
     normalizeSubscriptionPlan,
@@ -268,6 +274,8 @@ export function UserSettingsConsole() {
   const [newUserRole, setNewUserRole] = useState<ApprovedUser["role"]>("operator");
   const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("basic");
   const [onboardingTestPendingAccess, setOnboardingTestPendingAccess] = useState(false);
+  const [isCreateUserPanelOpen, setIsCreateUserPanelOpen] = useState(false);
+  const [isUserSettingsPanelOpen, setIsUserSettingsPanelOpen] = useState(false);
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
   const [tenantEdits, setTenantEdits] = useState<Record<string, string>>({});
   const [tenantRoleEdits, setTenantRoleEdits] = useState<Record<string, "tenant_admin" | "member">>({});
@@ -651,6 +659,7 @@ export function UserSettingsConsole() {
         setNewUserRole("operator");
         setNewUserPlan("basic");
         setOnboardingTestPendingAccess(false);
+        setIsCreateUserPanelOpen(false);
         await refreshDirectory();
         setStatus(
           "Pending access request created — approve the user from this directory (table or access panel), then they can sign in."
@@ -677,6 +686,7 @@ export function UserSettingsConsole() {
       setNewUserEmail("");
       setNewUserRole("operator");
       setNewUserPlan("basic");
+      setIsCreateUserPanelOpen(false);
       await refreshDirectory();
       setStatus("User created");
     } catch (error) {
@@ -762,12 +772,15 @@ export function UserSettingsConsole() {
     setSelectedAccessRequestId(null);
     setSelectedUserId(userId);
     void loadUserSettings(userId);
+    const user = approvedUsers.find((row) => row.userId === userId);
+    setIsUserSettingsPanelOpen(!user?.pendingAccess);
   }
 
   function selectAccessRequest(requestId: string) {
     setSelectedAccessRequestId(requestId);
     setSelectedUserId(null);
     setEditingUserId(null);
+    setIsUserSettingsPanelOpen(false);
   }
 
   function toggleDirectorySort(key: UsersDirectorySortKey) {
@@ -917,27 +930,39 @@ export function UserSettingsConsole() {
   const selectedUserRow = selectedUserId
     ? approvedUsers.find((u) => u.userId === selectedUserId)
     : undefined;
-  const selectedAccessRequest = selectedAccessRequestId
-    ? openAccessRequests.find((r) => r._id === selectedAccessRequestId)
+  const pendingUserAccessRequest =
+    selectedUserId && selectedUserRow?.pendingAccess
+      ? findOpenAccessRequestForUser(selectedUserId, openAccessRequests)
+      : undefined;
+  const accessRequestPanelId =
+    selectedAccessRequestId ?? pendingUserAccessRequest?._id ?? null;
+  const accessRequestPanel = accessRequestPanelId
+    ? openAccessRequests.find((r) => r._id === accessRequestPanelId)
     : undefined;
 
-  const directoryRows: UsersDirectoryRow[] = useMemo(() => {
-    const usersPart: UsersDirectoryRow[] = approvedUsers.map((u) => ({
-      kind: "user",
+  const { userDirectoryRows, accessRequestDirectoryRows, directoryTableEntries } = useMemo(() => {
+    const pendingUsers = approvedUsers.map((u) => ({
       userId: u.userId,
-      name: u.name,
-      email: u.email,
-      tenantId: primaryTenantIdForUser(u),
-      roleLabel: u.pendingAccess ? "pending" : u.role,
-      planLabel: u.subscriptionPlan,
-      statusLabel: userDirectoryStatusLabel(u),
-      pendingAccess: u.pendingAccess,
-      userStatus: u.userStatus
+      pendingAccess: u.pendingAccess
     }));
-    const filteredAr = filterAccessRequestsForDirectory(
-      approvedUsers.map((u) => ({ userId: u.userId, pendingAccess: u.pendingAccess })),
-      openAccessRequests
+    const visibleUserIds = new Set(
+      filterUsersForDirectory(pendingUsers, openAccessRequests).map((user) => user.userId)
     );
+    const usersPart: UsersDirectoryRow[] = approvedUsers
+      .filter((user) => visibleUserIds.has(user.userId))
+      .map((u) => ({
+        kind: "user",
+        userId: u.userId,
+        name: u.name,
+        email: u.email,
+        tenantId: primaryTenantIdForUser(u),
+        roleLabel: u.pendingAccess ? "pending" : u.role,
+        planLabel: u.subscriptionPlan,
+        statusLabel: userDirectoryStatusLabel(u),
+        pendingAccess: u.pendingAccess,
+        userStatus: u.userStatus
+      }));
+    const filteredAr = filterAccessRequestsForDirectory(pendingUsers, openAccessRequests);
     const arPart: UsersDirectoryRow[] = filteredAr
       .filter((r): r is AdminAccessRequest & { _id: string } => Boolean(r._id))
       .map((r) => ({
@@ -952,7 +977,16 @@ export function UserSettingsConsole() {
         statusLabel: r.status,
         arStatus: r.status
       }));
-    return sortUsersDirectoryRows([...usersPart, ...arPart], sortKey, sortDir);
+    const userDirectoryRows = sortUsersDirectoryRows(usersPart, sortKey, sortDir);
+    const accessRequestDirectoryRows = sortUsersDirectoryRows(arPart, sortKey, sortDir);
+    return {
+      userDirectoryRows,
+      accessRequestDirectoryRows,
+      directoryTableEntries: buildGroupedDirectoryTableEntries(
+        userDirectoryRows,
+        accessRequestDirectoryRows
+      )
+    };
   }, [
     approvedUsers,
     openAccessRequests,
@@ -978,10 +1012,22 @@ export function UserSettingsConsole() {
   }, []);
 
   const SortHeader = ({ col, label }: { col: UsersDirectorySortKey; label: string }) => (
-    <th scope="col">
-      <button type="button" onClick={() => toggleDirectorySort(col)}>
-        {label}
-        {sortKey === col ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+    <th
+      aria-sort={
+        sortKey === col ? (sortDir === "asc" ? "ascending" : "descending") : "none"
+      }
+      scope="col"
+    >
+      <button
+        aria-label={`Sort by ${label}`}
+        className="admin-users-dir-table__sort"
+        type="button"
+        onClick={() => toggleDirectorySort(col)}
+      >
+        <span>{label}</span>
+        <span aria-hidden="true" className="admin-users-dir-table__sort-indicator">
+          {sortKey === col ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+        </span>
       </button>
     </th>
   );
@@ -992,778 +1038,143 @@ export function UserSettingsConsole() {
         <button className="cta cta-secondary" onClick={() => void refreshDirectory()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh directory
         </button>
+        <button
+          aria-expanded={isCreateUserPanelOpen}
+          className="cta cta-primary"
+          onClick={() => setIsCreateUserPanelOpen((open) => !open)}
+          type="button"
+        >
+          <AddIcon className="crud-icon" /> Create user
+        </button>
+        <button
+          aria-expanded={isUserSettingsPanelOpen}
+          className="cta cta-secondary"
+          disabled={!selectedUserId || Boolean(accessRequestPanelId)}
+          onClick={() => setIsUserSettingsPanelOpen((open) => !open)}
+          type="button"
+        >
+          <EditIcon className="crud-icon" /> User settings
+        </button>
         <p className="status-text">{status}</p>
       </div>
 
-      <div className="admin-users-directory">
-        <div className="admin-users-directory__main">
-          <article className="surface-card xf-widget section-card">
-            <h3>
-              People ({approvedUsers.length} users · {directoryRows.filter((r) => r.kind === "access_request").length}{" "}
-              standalone access requests)
-            </h3>
-            <div className="admin-users-dir-table-wrap">
-              <table className="admin-users-dir-table">
-                <thead>
-                  <tr>
-                    <SortHeader col="name" label="Name" />
-                    <SortHeader col="email" label="Email" />
-                    <SortHeader col="userId" label="User ID" />
-                    <SortHeader col="tenantId" label="Tenant ID" />
-                    <SortHeader col="role" label="Role" />
-                    <SortHeader col="plan" label="Plan" />
-                    <SortHeader col="status" label="Status" />
-                    <th scope="col">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {directoryRows.map((row) => {
-                    if (row.kind === "user") {
-                      const user = approvedUsers.find((u) => u.userId === row.userId);
-                      if (!user) {
-                        return null;
-                      }
-                      const rowSelected = selectedUserId === row.userId && selectedAccessRequestId == null;
-                      return (
-                        <tr
-                          key={`u-${row.userId}`}
-                          className={rowSelected ? "row-selected" : ""}
-                        >
-                          <td>{row.name}</td>
-                          <td>{row.email}</td>
-                          <td className="col-mono">
-                            <div className="flex items-center gap-1">
-                              <span>{shortMongoObjectIdHex(row.userId)}</span>
-                              <XfHoverHint
-                                hint={
-                                  copiedClipboardKey === `user:${row.userId}`
-                                    ? "Copied user id"
-                                    : "Copy user id"
-                                }
-                              >
-                                <button
-                                  aria-label="Copy user id"
-                                  className="tiny-button xf-icon-edit-btn--icon-only"
-                                  onClick={() =>
-                                    void copyMongoObjectId(`user:${row.userId}`, row.userId, "user id")
-                                  }
-                                  type="button"
-                                >
-                                  <CopyIcon className="crud-icon" />
-                                </button>
-                              </XfHoverHint>
-                            </div>
-                          </td>
-                          <td className="col-mono">
-                            {row.tenantId ? (
-                              <div className="flex items-center gap-1">
-                                <span>{shortMongoObjectIdHex(row.tenantId)}</span>
-                                <XfHoverHint
-                                  hint={
-                                    copiedClipboardKey === `tenant:${row.tenantId}`
-                                      ? "Copied tenant id"
-                                      : "Copy tenant id"
-                                  }
-                                >
-                                  <button
-                                    aria-label="Copy tenant id"
-                                    className="tiny-button xf-icon-edit-btn--icon-only"
-                                    onClick={() =>
-                                      void copyMongoObjectId(
-                                        `tenant:${row.tenantId}`,
-                                        row.tenantId,
-                                        "tenant id"
-                                      )
-                                    }
-                                    type="button"
-                                  >
-                                    <CopyIcon className="crud-icon" />
-                                  </button>
-                                </XfHoverHint>
-                              </div>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td>{row.roleLabel}</td>
-                          <td>{row.planLabel}</td>
-                          <td>
-                            <span
-                              className={`status-pill${
-                                user.pendingAccess ? " status-pill--pending" : ""
-                              }${user.userStatus === "suspended" ? " status-pill--suspended" : ""}`}
-                            >
-                              {row.statusLabel}
-                            </span>
-                          </td>
-                          <td className="col-actions">
-                            <div className="tool-row">
-                              <XfHoverHint hint="Open in side panel">
-                                <button
-                                  aria-label="Open user"
-                                  className="tiny-button xf-icon-edit-btn--icon-only"
-                                  onClick={() => selectUser(user.userId)}
-                                  type="button"
-                                >
-                                  <EditIcon className="crud-icon" />
-                                </button>
-                              </XfHoverHint>
-                              <IconEditButton
-                                label="Edit user"
-                                variant="tiny"
-                                onClick={() => {
-                                  selectUser(user.userId);
-                                  setEditingUserId(user.userId);
-                                }}
-                              />
-                              <XfHoverHint hint="Save email, role, plan, tenant, persona, billing">
-                                <button
-                                  aria-label="Save user row"
-                                  className="tiny-button xf-icon-edit-btn--icon-only"
-                                  disabled={
-                                    editingUserId !== user.userId || selectedUserId !== user.userId
-                                  }
-                                  onClick={() => void saveUserEdits(user.userId)}
-                                  type="button"
-                                >
-                                  <SaveIcon className="crud-icon" />
-                                </button>
-                              </XfHoverHint>
-                              <XfHoverHint hint="Clears xChat usage limits and app feature daily usage for this user (Mongo, today)">
-                                <button
-                                  aria-label="Reset usage"
-                                  className="tiny-button xf-icon-edit-btn--icon-only"
-                                  onClick={() => void resetUserMeteredUsage(user.userId, user.email)}
-                                  type="button"
-                                >
-                                  <SyncArrowsIcon className="crud-icon" />
-                                </button>
-                              </XfHoverHint>
-                              <XfHoverHint
-                                hint={
-                                  user.resendPasswordInviteAvailable
-                                    ? "Reissue password-setup email (7-day link; prior links invalidate)"
-                                    : (user.resendPasswordInviteBlockedReason ??
-                                      "Password invite not available")
-                                }
-                              >
-                                <button
-                                  aria-label="Resend password invite"
-                                  className="tiny-button xf-icon-edit-btn--icon-only"
-                                  disabled={!user.resendPasswordInviteAvailable}
-                                  onClick={() => void resendCredentialInvite(user.userId, user.email)}
-                                  type="button"
-                                >
-                                  <SendIcon className="crud-icon" />
-                                </button>
-                              </XfHoverHint>
-                              <XfHoverHint hint="Permanently delete user and related data">
-                                <button
-                                  aria-label="Delete user"
-                                  className="tiny-button xf-icon-edit-btn--icon-only"
-                                  onClick={() => void deleteUser(user.userId)}
-                                  type="button"
-                                >
-                                  <DeleteIcon className="crud-icon" />
-                                </button>
-                              </XfHoverHint>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    const ar = openAccessRequests.find((r) => r._id === row.requestId);
-                    if (!ar?._id) {
-                      return null;
-                    }
-                    const actionable = isAdminAccessRequestActionable(ar.status);
-                    const tenantOk =
-                      (arTenantEdits[ar._id]?.trim() || ar.tenantId?.trim() || "").trim().length > 0;
-                    const rowSelected = selectedAccessRequestId === ar._id;
-                    return (
-                      <tr key={`ar-${ar._id}`} className={rowSelected ? "row-selected" : ""}>
-                        <td>{row.name}</td>
-                        <td>{row.email}</td>
-                        <td className="col-mono">
-                          <div className="flex items-center gap-1">
-                            <span>{shortMongoObjectIdHex(row.userId)}</span>
-                            <XfHoverHint
-                              hint={
-                                copiedClipboardKey === `user:${row.userId}`
-                                  ? "Copied user id"
-                                  : "Copy user id"
-                              }
-                            >
-                              <button
-                                aria-label="Copy user id"
-                                className="tiny-button xf-icon-edit-btn--icon-only"
-                                onClick={() => void copyMongoObjectId(`user:${row.userId}`, row.userId, "user id")}
-                                type="button"
-                              >
-                                <CopyIcon className="crud-icon" />
-                              </button>
-                            </XfHoverHint>
-                          </div>
-                        </td>
-                        <td className="col-mono">
-                          {row.tenantId ? (
-                            <div className="flex items-center gap-1">
-                              <span>{shortMongoObjectIdHex(row.tenantId)}</span>
-                              <XfHoverHint
-                                hint={
-                                  copiedClipboardKey === `tenant:${row.tenantId}`
-                                    ? "Copied tenant id"
-                                    : "Copy tenant id"
-                                }
-                              >
-                                <button
-                                  aria-label="Copy tenant id"
-                                  className="tiny-button xf-icon-edit-btn--icon-only"
-                                  onClick={() =>
-                                    void copyMongoObjectId(
-                                      `tenant:${row.tenantId}`,
-                                      row.tenantId,
-                                      "tenant id"
-                                    )
-                                  }
-                                  type="button"
-                                >
-                                  <CopyIcon className="crud-icon" />
-                                </button>
-                              </XfHoverHint>
-                            </div>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td>{row.roleLabel}</td>
-                        <td>{row.planLabel}</td>
-                        <td>
-                          <span className="status-pill status-pill--ar">{row.statusLabel}</span>
-                        </td>
-                        <td className="col-actions">
-                          <div className="tool-row">
-                            <XfHoverHint hint="Review access request in side panel">
-                              <button
-                                aria-label="Open access request"
-                                className="tiny-button xf-icon-edit-btn--icon-only"
-                                onClick={() => selectAccessRequest(ar._id as string)}
-                                type="button"
-                              >
-                                <EditIcon className="crud-icon" />
-                              </button>
-                            </XfHoverHint>
-                            <IconEditButton
-                              label="Update requester email"
-                              variant="tiny"
-                              onClick={() => void updateArUserEmail(ar.userId)}
-                            />
-                            <XfHoverHint
-                              hint={
-                                !actionable || !tenantOk
-                                  ? "Approve requires tenant (pick in side panel)"
-                                  : "Approve and assign tenant, role, plan"
-                              }
-                            >
-                              <button
-                                aria-label="Approve access request"
-                                className="tiny-button xf-icon-edit-btn--icon-only"
-                                disabled={!actionable || !tenantOk}
-                                onClick={() => void reviewAccessRequest(ar._id as string, "approved")}
-                                type="button"
-                              >
-                                <SaveIcon className="crud-icon" />
-                              </button>
-                            </XfHoverHint>
-                            <XfHoverHint hint="Reject this access request">
-                              <button
-                                aria-label="Reject access request"
-                                className="tiny-button xf-icon-edit-btn--icon-only"
-                                disabled={!actionable}
-                                onClick={() => void reviewAccessRequest(ar._id as string, "rejected")}
-                                type="button"
-                              >
-                                <XMarkIcon className="crud-icon" />
-                              </button>
-                            </XfHoverHint>
-                            <XfHoverHint hint="Delete access request record">
-                              <button
-                                aria-label="Delete access request"
-                                className="tiny-button xf-icon-edit-btn--icon-only"
-                                onClick={() => void deleteAccessRequestRow(ar._id as string)}
-                                type="button"
-                              >
-                                <DeleteIcon className="crud-icon" />
-                              </button>
-                            </XfHoverHint>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        </div>
-
-        <aside className="admin-users-directory__rail">
-          <article className="surface-card xf-widget section-card">
-            <h3>Add user</h3>
-            <form className="stack-form" onSubmit={createUser}>
-              <input
-                onChange={(event) => setNewUserEmail(event.target.value)}
-                placeholder="new user email"
-                required
-                type="email"
-                value={newUserEmail}
-              />
-              <select
-                onChange={(event) => setNewUserRole(event.target.value as ApprovedUser["role"])}
-                value={newUserRole}
-                aria-label={
-                  onboardingTestPendingAccess
-                    ? "Requested role (applied when access request is approved)"
-                    : "Default role for new user"
-                }
-              >
-                {ROLE_SELECT_OPTIONS.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-              <select
-                onChange={(event) =>
-                  setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])
-                }
-                value={newUserPlan}
-                aria-label={
-                  onboardingTestPendingAccess
-                    ? "Requested plan (applied when access request is approved)"
-                    : "Subscription plan for new user"
-                }
-              >
-                {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <label className="flex cursor-pointer items-start gap-2 text-sm leading-snug">
+      {isCreateUserPanelOpen ? (
+        <article className="surface-card xf-widget section-card admin-users-directory__create-panel">
+          <div className="admin-users-directory__create-panel-header">
+            <h3>Create user</h3>
+            <button
+              aria-label="Close create user panel"
+              className="tiny-button"
+              onClick={() => setIsCreateUserPanelOpen(false)}
+              type="button"
+            >
+              <XMarkIcon className="crud-icon" /> Close
+            </button>
+          </div>
+          <form className="stack-form admin-users-directory__create-form" onSubmit={createUser}>
+            <input
+              onChange={(event) => setNewUserEmail(event.target.value)}
+              placeholder="new user email"
+              required
+              type="email"
+              value={newUserEmail}
+            />
+            <select
+              onChange={(event) => setNewUserRole(event.target.value as ApprovedUser["role"])}
+              value={newUserRole}
+              aria-label={
+                onboardingTestPendingAccess
+                  ? "Requested role (applied when access request is approved)"
+                  : "Default role for new user"
+              }
+            >
+              {ROLE_SELECT_OPTIONS.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+            <select
+              onChange={(event) =>
+                setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])
+              }
+              value={newUserPlan}
+              aria-label={
+                onboardingTestPendingAccess
+                  ? "Requested plan (applied when access request is approved)"
+                  : "Subscription plan for new user"
+              }
+            >
+              {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <div className="admin-users-directory__onboarding-toggle">
+              <label className="admin-users-directory__onboarding-toggle-label">
                 <input
                   checked={onboardingTestPendingAccess}
-                  className="mt-1 shrink-0"
                   onChange={(event) => setOnboardingTestPendingAccess(event.target.checked)}
                   type="checkbox"
                 />
-                <span>
-                  <strong>Onboarding test:</strong> create a <strong>pending access request</strong> only
-                  (no login until approved in this directory). Leave off to provision the user immediately.
-                </span>
+                <span>Onboarding test</span>
               </label>
+              <p className="admin-users-directory__onboarding-copy">
+                Create a pending access request only (no login until you approve here). Leave off to
+                provision the user immediately.
+              </p>
+            </div>
+            <div className="tool-row">
               <button className="cta cta-primary" type="submit">
                 <AddIcon className="crud-icon" />{" "}
                 {onboardingTestPendingAccess ? "Create pending access request" : "Add user"}
               </button>
-            </form>
-            <details className="mt-3 text-sm opacity-90">
-              <summary className="cursor-pointer select-none font-medium">Onboarding test loop</summary>
-              <ol className="mt-2 ml-4 list-decimal space-y-1">
-                <li>
-                  Check <strong>Onboarding test</strong>, enter email + requested role/plan, submit — user row
-                  appears with no login role until approval.
-                </li>
-                <li>
-                  Approve from the <strong>access request</strong> row or the side panel — user gains roles and
-                  can sign in.
-                </li>
-                <li>
-                  Use <strong>Delete</strong> on the row to wipe the user and related rows (including access
-                  requests).
-                </li>
-                <li>Repeat with the same email — delete clears state so you can re-run the flow.</li>
-              </ol>
-            </details>
-          </article>
+              <button
+                className="cta cta-secondary"
+                onClick={() => setIsCreateUserPanelOpen(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+          <details className="mt-3 text-sm opacity-90">
+            <summary className="cursor-pointer select-none font-medium">Onboarding test loop</summary>
+            <ol className="mt-2 ml-4 list-decimal space-y-1">
+              <li>
+                Check <strong>Onboarding test</strong>, enter email + requested role/plan, submit — user row
+                appears with no login role until approval.
+              </li>
+              <li>
+                Approve from the <strong>access request</strong> row or the side panel — user gains roles and
+                can sign in.
+              </li>
+              <li>
+                Use <strong>Delete</strong> on the row to wipe the user and related rows (including access
+                requests).
+              </li>
+              <li>Repeat with the same email — delete clears state so you can re-run the flow.</li>
+            </ol>
+          </details>
+        </article>
+      ) : null}
 
-          {selectedAccessRequest && selectedAccessRequestId ? (
-            <article className="surface-card xf-widget section-card">
-              <h3>Access request</h3>
-              <p className="status-text text-xs opacity-90">
-                Status: <span className="status-pill status-pill--ar">{selectedAccessRequest.status}</span>
-              </p>
-              <p className="status-text font-mono text-xs break-all">{selectedAccessRequest.reason}</p>
-              {selectedAccessRequest.policyViolations &&
-              selectedAccessRequest.policyViolations.length > 0 ? (
-                <p className="status-text status-error text-xs">
-                  {selectedAccessRequest.policyViolations.map((v) => v.message).join("; ")}
-                </p>
-              ) : null}
-              <label className="stack-form">
-                Requester email
-                <input
-                  onChange={(event) =>
-                    setArEmailEdits((p) => ({
-                      ...p,
-                      [selectedAccessRequest.userId]: event.target.value
-                    }))
-                  }
-                  type="email"
-                  value={arEmailEdits[selectedAccessRequest.userId] ?? ""}
-                />
-              </label>
-              <label className="stack-form">
-                Tenant (required to approve)
-                <select
-                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
-                  onChange={(event) =>
-                    setArTenantEdits((p) => ({
-                      ...p,
-                      [selectedAccessRequestId]: event.target.value
-                    }))
-                  }
-                  value={arTenantEdits[selectedAccessRequestId] ?? selectedAccessRequest.tenantId ?? ""}
-                >
-                  <option value="">Select tenant…</option>
-                  {tenantOptions.map((t) => (
-                    <option key={t.tenantId} value={t.tenantId}>
-                      {t.name || t.slug} ({t.slug})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="stack-form">
-                Role on approve
-                <select
-                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
-                  onChange={(event) =>
-                    setArRoleEdits((p) => ({
-                      ...p,
-                      [selectedAccessRequestId]: event.target.value as ApprovedUser["role"]
-                    }))
-                  }
-                  value={arRoleEdits[selectedAccessRequestId] ?? selectedAccessRequest.requestedRole}
-                >
-                  <option value="global_admin">global_admin (elevated)</option>
-                  <option value="advisor">advisor</option>
-                  <option value="operator">operator</option>
-                  <option value="viewer">viewer</option>
-                </select>
-              </label>
-              <label className="stack-form">
-                Plan on approve
-                <select
-                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
-                  onChange={(event) =>
-                    setArPlanEdits((p) => ({
-                      ...p,
-                      [selectedAccessRequestId]: normalizeSubscriptionPlan(event.target.value)
-                    }))
-                  }
-                  value={arPlanEdits[selectedAccessRequestId] ?? selectedAccessRequest.requestedPlan}
-                >
-                  {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="stack-form">
-                Review note (optional)
-                <textarea
-                  className="min-h-[4rem] w-full"
-                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
-                  onChange={(event) =>
-                    setArReviewNoteEdits((p) => ({ ...p, [selectedAccessRequestId]: event.target.value }))
-                  }
-                  value={arReviewNoteEdits[selectedAccessRequestId] ?? ""}
-                />
-              </label>
-              <div className="tool-row flex-wrap">
-                <button
-                  className="cta cta-secondary"
-                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
-                  onClick={() => void updateAccessRequestTenantOnly(selectedAccessRequestId)}
-                  type="button"
-                >
-                  Save tenant
-                </button>
-                <button
-                  className="cta cta-secondary"
-                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
-                  onClick={() => void updateAccessRequestPlanOnly(selectedAccessRequestId)}
-                  type="button"
-                >
-                  Save plan
-                </button>
-                <button
-                  className="cta cta-secondary"
-                  onClick={() => void updateArUserEmail(selectedAccessRequest.userId)}
-                  type="button"
-                >
-                  Save email
-                </button>
-              </div>
-              <div className="tool-row flex-wrap">
-                <button
-                  className="cta cta-primary"
-                  disabled={
-                    !isAdminAccessRequestActionable(selectedAccessRequest.status) ||
-                    !(arTenantEdits[selectedAccessRequestId]?.trim() ||
-                      selectedAccessRequest.tenantId?.trim() ||
-                      "").trim()
-                  }
-                  onClick={() => void reviewAccessRequest(selectedAccessRequestId, "approved")}
-                  type="button"
-                >
-                  Approve
-                </button>
-                <button
-                  className="cta cta-secondary"
-                  disabled={!isAdminAccessRequestActionable(selectedAccessRequest.status)}
-                  onClick={() => void reviewAccessRequest(selectedAccessRequestId, "rejected")}
-                  type="button"
-                >
-                  Reject
-                </button>
-                <button
-                  className="tiny-button"
-                  onClick={() => void deleteAccessRequestRow(selectedAccessRequestId)}
-                  type="button"
-                >
-                  <DeleteIcon className="crud-icon" /> Delete request
-                </button>
-              </div>
-            </article>
-          ) : null}
-
-          {selectedUserRow && selectedUserId && !selectedAccessRequestId ? (
-            <article className="surface-card xf-widget section-card">
-              <h3>Profile &amp; access</h3>
-              <p className="status-text text-xs">
-                Edit when <strong>Edit user</strong> is active, then <strong>Save profile</strong>.
-              </p>
-              <div className="stack-form">
-                <label>
-                  Email
-                  <input
-                    disabled={editingUserId !== selectedUserId}
-                    onChange={(event) =>
-                      setEmailEdits((previous) => ({
-                        ...previous,
-                        [selectedUserId]: event.target.value
-                      }))
-                    }
-                    type="email"
-                    value={emailEdits[selectedUserId] ?? ""}
-                  />
-                </label>
-                <div>
-                  <p className="status-text mb-1 text-xs">Tenant membership</p>
-                  {selectedUserRow.tenantMemberships.length > 0 ? (
-                    <ul className="m-0 list-none space-y-2 p-0">
-                      {selectedUserRow.tenantMemberships.map((m) => (
-                        <li key={m.tenantId}>
-                          <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
-                            {m.isDefaultSessionTenant ? (
-                              <span
-                                className="shrink-0"
-                                style={{ color: "var(--xf-gain-green)" }}
-                                aria-label="Default session tenant"
-                              >
-                                ●
-                              </span>
-                            ) : null}
-                            <span className="font-semibold text-sm">{m.slug}</span>
-                            {m.name ? (
-                              <span className="status-text text-xs opacity-80">· {m.name}</span>
-                            ) : null}
-                          </div>
-                          {m.tenantId === selectedUserRow.userId ? (
-                            <div className="text-xs" style={{ color: "var(--xf-loss-red)" }}>
-                              Data issue: tenant id matches user id
-                            </div>
-                          ) : null}
-                          <div className="text-xs opacity-70">{m.tenantRole}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span className="status-text text-xs">No tenant membership</span>
-                  )}
-                  <select
-                    className="mt-2 w-full"
-                    disabled={editingUserId !== selectedUserId}
-                    onChange={(event) =>
-                      setTenantEdits((previous) => ({
-                        ...previous,
-                        [selectedUserId]: event.target.value
-                      }))
-                    }
-                    value={tenantEdits[selectedUserId] ?? ""}
-                  >
-                    <option value="">(no tenant)</option>
-                    {tenantOptions.map((tenant) => (
-                      <option key={tenant.tenantId} value={tenant.tenantId}>
-                        {tenant.slug}
-                        {tenant.name ? ` - ${tenant.name}` : ""} ·{" "}
-                        {shortMongoObjectIdHex(tenant.tenantId)}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="mt-2 w-full"
-                    disabled={editingUserId !== selectedUserId}
-                    onChange={(event) =>
-                      setTenantRoleEdits((previous) => ({
-                        ...previous,
-                        [selectedUserId]: event.target.value as "tenant_admin" | "member"
-                      }))
-                    }
-                    value={tenantRoleEdits[selectedUserId] ?? "member"}
-                  >
-                    <option value="member">member</option>
-                    <option value="tenant_admin">tenant_admin</option>
-                  </select>
-                </div>
-                <label>
-                  Role
-                  {selectedUserRow.pendingAccess ? (
-                    <p className="status-text text-xs opacity-80">
-                      Pending — approve a matching access above or in the table.
-                    </p>
-                  ) : (
-                    <select
-                      disabled={editingUserId !== selectedUserId}
-                      onChange={(event) =>
-                        setRoleEdits((previous) => ({
-                          ...previous,
-                          [selectedUserId]: event.target.value as ApprovedUser["role"]
-                        }))
-                      }
-                      value={roleEdits[selectedUserId] ?? selectedUserRow.role}
-                    >
-                      {ROLE_SELECT_OPTIONS.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </label>
-                <label>
-                  Plan
-                  <select
-                    disabled={editingUserId !== selectedUserId}
-                    onChange={(event) =>
-                      setPlanEdits((previous) => ({
-                        ...previous,
-                        [selectedUserId]: event.target.value as ApprovedUser["subscriptionPlan"]
-                      }))
-                    }
-                    value={planEdits[selectedUserId] ?? selectedUserRow.subscriptionPlan}
-                  >
-                    {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Billing override
-                  {selectedUserRow.pendingAccess ? (
-                    <p className="status-text text-xs opacity-70">—</p>
-                  ) : (
-                    <select
-                      disabled={editingUserId !== selectedUserId}
-                      value={
-                        (billingOverrideEdits[selectedUserId]?.enabled ??
-                          selectedUserRow.billing?.override?.enabled ??
-                          false)
-                          ? "on"
-                          : "off"
-                      }
-                      onChange={(event) => {
-                        const enabled = event.target.value === "on";
-                        setBillingOverrideEdits((previous) => ({
-                          ...previous,
-                          [selectedUserId]: {
-                            enabled,
-                            reason:
-                              previous[selectedUserId]?.reason ??
-                              selectedUserRow.billing?.override?.reason ??
-                              "",
-                            expiresAtLocal:
-                              previous[selectedUserId]?.expiresAtLocal ??
-                              (selectedUserRow.billing?.override?.expiresAt
-                                ? isoToDatetimeLocalValue(selectedUserRow.billing.override.expiresAt)
-                                : "")
-                          }
-                        }));
-                      }}
-                    >
-                      <option value="off">Off</option>
-                      <option value="on">On</option>
-                    </select>
-                  )}
-                </label>
-                <label>
-                  xPersona (row assignment)
-                  <select
-                    disabled={editingUserId !== selectedUserId}
-                    onChange={(event) =>
-                      setPersonaByUserId((previous) => ({
-                        ...previous,
-                        [selectedUserId]: event.target.value
-                      }))
-                    }
-                    value={personaByUserId[selectedUserId] ?? ""}
-                  >
-                    <option value="">(default persona)</option>
-                    {personaOptions.map((persona) => (
-                      <option key={persona.id} value={persona.id}>
-                        {persona.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <p className="status-text text-xs opacity-80">
-                  {selectedUserRow.latestAuditEvent
-                    ? `${selectedUserRow.latestAuditEvent.action} · ${new Date(
-                        selectedUserRow.latestAuditEvent.createdAt
-                      ).toLocaleString()}`
-                    : selectedUserRow.approvedAt
-                      ? new Date(selectedUserRow.approvedAt).toLocaleString()
-                      : "No audit row"}
-                </p>
-                <div className="tool-row flex-wrap">
-                  <IconEditButton
-                    label="Edit user"
-                    variant="secondary-cta"
-                    onClick={() => setEditingUserId(selectedUserId)}
-                  />
-                  <button
-                    className="cta cta-primary"
-                    disabled={editingUserId !== selectedUserId}
-                    onClick={() => void saveUserEdits(selectedUserId)}
-                    type="button"
-                  >
-                    <SaveIcon className="crud-icon" /> Save profile
-                  </button>
-                </div>
-              </div>
-            </article>
-          ) : null}
-
-          {selectedUserId && !selectedAccessRequestId ? (
-            <article className="surface-card xf-widget section-card">
-          <h3>
-            Settings for {approvedUsers.find((u) => u.userId === selectedUserId)?.name ?? selectedUserId}
-          </h3>
+      {selectedUserId && isUserSettingsPanelOpen && !accessRequestPanelId ? (
+        <article className="surface-card xf-widget section-card admin-users-directory__settings-panel">
+          <div className="admin-users-directory__create-panel-header">
+            <h3>
+              User settings for {approvedUsers.find((u) => u.userId === selectedUserId)?.name ?? selectedUserId}
+            </h3>
+            <button
+              aria-label="Close user settings panel"
+              className="tiny-button"
+              onClick={() => setIsUserSettingsPanelOpen(false)}
+              type="button"
+            >
+              <XMarkIcon className="crud-icon" /> Close
+            </button>
+          </div>
           <p className="status-text flex flex-wrap items-center gap-2">
             <span className="opacity-80">core_users._id</span>
             <span className="font-mono text-xs break-all">{selectedUserId}</span>
@@ -2214,14 +1625,756 @@ export function UserSettingsConsole() {
             </form>
           )}
         </article>
-      ) : !selectedAccessRequestId ? (
-        <article className="surface-card xf-widget section-card">
-          <h3>User settings</h3>
-          <p className="status-text">
-            Select a user row to edit profile, broker, portfolio, and notification defaults.
-          </p>
-        </article>
       ) : null}
+
+      <div className="admin-users-directory">
+        <div className="admin-users-directory__main">
+          <article className="surface-card xf-widget section-card">
+            <h3>
+              People ({userDirectoryRows.length} users · {accessRequestDirectoryRows.length} standalone
+              access requests)
+            </h3>
+            <div className="admin-users-dir-table-wrap">
+              <table className="admin-users-dir-table">
+                <thead>
+                  <tr>
+                    <SortHeader col="name" label="Name" />
+                    <SortHeader col="email" label="Email" />
+                    <SortHeader col="userId" label="User ID" />
+                    <SortHeader col="tenantId" label="Tenant ID" />
+                    <SortHeader col="role" label="Role" />
+                    <SortHeader col="plan" label="Plan" />
+                    <SortHeader col="status" label="Status" />
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {directoryTableEntries.map((entry: UsersDirectoryTableEntry) => {
+                    if (entry.kind === "group") {
+                      return (
+                        <tr className="admin-users-dir-table__group-row" key={`group-${entry.id}`}>
+                          <td colSpan={8}>
+                            {entry.label} ({entry.count})
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const row = entry.row;
+                    if (row.kind === "user") {
+                      const user = approvedUsers.find((u) => u.userId === row.userId);
+                      if (!user) {
+                        return null;
+                      }
+                      const pendingAr = user.pendingAccess
+                        ? findOpenAccessRequestForUser(user.userId, openAccessRequests)
+                        : undefined;
+                      const pendingArId = pendingAr?._id;
+                      const pendingArActionable =
+                        pendingAr != null && isAdminAccessRequestActionable(pendingAr.status);
+                      const pendingArTenantOk =
+                        pendingArId != null
+                          ? (arTenantEdits[pendingArId]?.trim() || pendingAr?.tenantId?.trim() || "")
+                              .trim().length > 0
+                          : false;
+                      const rowSelected =
+                        selectedUserId === row.userId && selectedAccessRequestId == null;
+                      return (
+                        <tr
+                          key={`u-${row.userId}`}
+                          className={rowSelected ? "row-selected" : ""}
+                        >
+                          <td>{row.name}</td>
+                          <td>{row.email}</td>
+                          <td className="col-mono">
+                            <div className="flex items-center gap-1">
+                              <span>{shortMongoObjectIdHex(row.userId)}</span>
+                              <XfHoverHint
+                                hint={
+                                  copiedClipboardKey === `user:${row.userId}`
+                                    ? "Copied user id"
+                                    : "Copy user id"
+                                }
+                              >
+                                <button
+                                  aria-label="Copy user id"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() =>
+                                    void copyMongoObjectId(`user:${row.userId}`, row.userId, "user id")
+                                  }
+                                  type="button"
+                                >
+                                  <CopyIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                            </div>
+                          </td>
+                          <td className="col-mono">
+                            {row.tenantId ? (
+                              <div className="flex items-center gap-1">
+                                <span>{shortMongoObjectIdHex(row.tenantId)}</span>
+                                <XfHoverHint
+                                  hint={
+                                    copiedClipboardKey === `tenant:${row.tenantId}`
+                                      ? "Copied tenant id"
+                                      : "Copy tenant id"
+                                  }
+                                >
+                                  <button
+                                    aria-label="Copy tenant id"
+                                    className="tiny-button xf-icon-edit-btn--icon-only"
+                                    onClick={() =>
+                                      void copyMongoObjectId(
+                                        `tenant:${row.tenantId}`,
+                                        row.tenantId,
+                                        "tenant id"
+                                      )
+                                    }
+                                    type="button"
+                                  >
+                                    <CopyIcon className="crud-icon" />
+                                  </button>
+                                </XfHoverHint>
+                              </div>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td>{row.roleLabel}</td>
+                          <td>{row.planLabel}</td>
+                          <td>
+                            <span
+                              className={`status-pill${
+                                user.pendingAccess ? " status-pill--pending" : ""
+                              }${user.userStatus === "suspended" ? " status-pill--suspended" : ""}`}
+                            >
+                              {row.statusLabel}
+                            </span>
+                          </td>
+                          <td className="col-actions">
+                            <div className="tool-row">
+                              <XfHoverHint hint="Open in side panel">
+                                <button
+                                  aria-label="Open user"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() => selectUser(user.userId)}
+                                  type="button"
+                                >
+                                  <EditIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <IconEditButton
+                                label="Edit user"
+                                variant="tiny"
+                                onClick={() => {
+                                  selectUser(user.userId);
+                                  setEditingUserId(user.userId);
+                                }}
+                              />
+                              {user.pendingAccess && pendingArId ? (
+                                <>
+                                  <XfHoverHint
+                                    hint={
+                                      !pendingArActionable || !pendingArTenantOk
+                                        ? "Approve requires tenant (pick in side panel)"
+                                        : "Approve and assign tenant, role, plan"
+                                    }
+                                  >
+                                    <button
+                                      aria-label="Approve access request"
+                                      className="tiny-button xf-icon-edit-btn--icon-only"
+                                      disabled={!pendingArActionable || !pendingArTenantOk}
+                                      onClick={() =>
+                                        void reviewAccessRequest(pendingArId, "approved")
+                                      }
+                                      type="button"
+                                    >
+                                      <ApproveAccessIcon className="crud-icon" />
+                                    </button>
+                                  </XfHoverHint>
+                                  <XfHoverHint hint="Reject this access request">
+                                    <button
+                                      aria-label="Reject access request"
+                                      className="tiny-button xf-icon-edit-btn--icon-only"
+                                      disabled={!pendingArActionable}
+                                      onClick={() =>
+                                        void reviewAccessRequest(pendingArId, "rejected")
+                                      }
+                                      type="button"
+                                    >
+                                      <RejectAccessIcon className="crud-icon" />
+                                    </button>
+                                  </XfHoverHint>
+                                </>
+                              ) : null}
+                              <XfHoverHint hint="Save email, role, plan, tenant, persona, billing">
+                                <button
+                                  aria-label="Save user row"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  disabled={
+                                    editingUserId !== user.userId || selectedUserId !== user.userId
+                                  }
+                                  onClick={() => void saveUserEdits(user.userId)}
+                                  type="button"
+                                >
+                                  <SaveIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <XfHoverHint hint="Clears xChat usage limits and app feature daily usage for this user (Mongo, today)">
+                                <button
+                                  aria-label="Reset usage"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() => void resetUserMeteredUsage(user.userId, user.email)}
+                                  type="button"
+                                >
+                                  <SyncArrowsIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <XfHoverHint
+                                hint={
+                                  user.resendPasswordInviteAvailable
+                                    ? "Reissue password-setup email (7-day link; prior links invalidate)"
+                                    : (user.resendPasswordInviteBlockedReason ??
+                                      "Password invite not available")
+                                }
+                              >
+                                <button
+                                  aria-label="Resend password invite"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  disabled={!user.resendPasswordInviteAvailable}
+                                  onClick={() => void resendCredentialInvite(user.userId, user.email)}
+                                  type="button"
+                                >
+                                  <SendIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <XfHoverHint hint="Permanently delete user and related data">
+                                <button
+                                  aria-label="Delete user"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() => void deleteUser(user.userId)}
+                                  type="button"
+                                >
+                                  <DeleteIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const ar = openAccessRequests.find((r) => r._id === row.requestId);
+                    if (!ar?._id) {
+                      return null;
+                    }
+                    const actionable = isAdminAccessRequestActionable(ar.status);
+                    const tenantOk =
+                      (arTenantEdits[ar._id]?.trim() || ar.tenantId?.trim() || "").trim().length > 0;
+                    const rowSelected = selectedAccessRequestId === ar._id;
+                    return (
+                      <tr key={`ar-${ar._id}`} className={rowSelected ? "row-selected" : ""}>
+                        <td>{row.name}</td>
+                        <td>{row.email}</td>
+                        <td className="col-mono">
+                          <div className="flex items-center gap-1">
+                            <span>{shortMongoObjectIdHex(row.userId)}</span>
+                            <XfHoverHint
+                              hint={
+                                copiedClipboardKey === `user:${row.userId}`
+                                  ? "Copied user id"
+                                  : "Copy user id"
+                              }
+                            >
+                              <button
+                                aria-label="Copy user id"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                onClick={() => void copyMongoObjectId(`user:${row.userId}`, row.userId, "user id")}
+                                type="button"
+                              >
+                                <CopyIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                          </div>
+                        </td>
+                        <td className="col-mono">
+                          {row.tenantId ? (
+                            <div className="flex items-center gap-1">
+                              <span>{shortMongoObjectIdHex(row.tenantId)}</span>
+                              <XfHoverHint
+                                hint={
+                                  copiedClipboardKey === `tenant:${row.tenantId}`
+                                    ? "Copied tenant id"
+                                    : "Copy tenant id"
+                                }
+                              >
+                                <button
+                                  aria-label="Copy tenant id"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  onClick={() =>
+                                    void copyMongoObjectId(
+                                      `tenant:${row.tenantId}`,
+                                      row.tenantId,
+                                      "tenant id"
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  <CopyIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td>{row.roleLabel}</td>
+                        <td>{row.planLabel}</td>
+                        <td>
+                          <span className="status-pill status-pill--ar">{row.statusLabel}</span>
+                        </td>
+                        <td className="col-actions">
+                          <div className="tool-row">
+                            <XfHoverHint hint="Review access request in side panel">
+                              <button
+                                aria-label="Open access request"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                onClick={() => selectAccessRequest(ar._id as string)}
+                                type="button"
+                              >
+                                <EditIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                            <IconEditButton
+                              label="Update requester email"
+                              variant="tiny"
+                              onClick={() => void updateArUserEmail(ar.userId)}
+                            />
+                            <XfHoverHint
+                              hint={
+                                !actionable || !tenantOk
+                                  ? "Approve requires tenant (pick in side panel)"
+                                  : "Approve and assign tenant, role, plan"
+                              }
+                            >
+                              <button
+                                aria-label="Approve access request"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                disabled={!actionable || !tenantOk}
+                                onClick={() => void reviewAccessRequest(ar._id as string, "approved")}
+                                type="button"
+                              >
+                                <ApproveAccessIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                            <XfHoverHint hint="Reject this access request">
+                              <button
+                                aria-label="Reject access request"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                disabled={!actionable}
+                                onClick={() => void reviewAccessRequest(ar._id as string, "rejected")}
+                                type="button"
+                              >
+                                <RejectAccessIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                            <XfHoverHint hint="Delete access request record">
+                              <button
+                                aria-label="Delete access request"
+                                className="tiny-button xf-icon-edit-btn--icon-only"
+                                onClick={() => void deleteAccessRequestRow(ar._id as string)}
+                                type="button"
+                              >
+                                <DeleteIcon className="crud-icon" />
+                              </button>
+                            </XfHoverHint>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+
+        <aside className="admin-users-directory__rail">
+          {accessRequestPanel && accessRequestPanelId ? (
+            <article className="surface-card xf-widget section-card">
+              <h3>Access request</h3>
+              {selectedUserRow?.pendingAccess && !selectedAccessRequestId ? (
+                <p className="status-text text-xs opacity-90">
+                  Pending user — pick tenant, role, and plan, then approve.
+                </p>
+              ) : null}
+              <p className="status-text text-xs opacity-90">
+                Status: <span className="status-pill status-pill--ar">{accessRequestPanel.status}</span>
+              </p>
+              <p className="status-text font-mono text-xs break-all">{accessRequestPanel.reason}</p>
+              {accessRequestPanel.policyViolations &&
+              accessRequestPanel.policyViolations.length > 0 ? (
+                <p className="status-text status-error text-xs">
+                  {accessRequestPanel.policyViolations.map((v) => v.message).join("; ")}
+                </p>
+              ) : null}
+              <label className="stack-form">
+                Requester email
+                <input
+                  onChange={(event) =>
+                    setArEmailEdits((p) => ({
+                      ...p,
+                      [accessRequestPanel.userId]: event.target.value
+                    }))
+                  }
+                  type="email"
+                  value={arEmailEdits[accessRequestPanel.userId] ?? ""}
+                />
+              </label>
+              <label className="stack-form">
+                Tenant (required to approve)
+                <select
+                  disabled={!isAdminAccessRequestActionable(accessRequestPanel.status)}
+                  onChange={(event) =>
+                    setArTenantEdits((p) => ({
+                      ...p,
+                      [accessRequestPanelId]: event.target.value
+                    }))
+                  }
+                  value={arTenantEdits[accessRequestPanelId] ?? accessRequestPanel.tenantId ?? ""}
+                >
+                  <option value="">Select tenant…</option>
+                  {tenantOptions.map((t) => (
+                    <option key={t.tenantId} value={t.tenantId}>
+                      {t.name || t.slug} ({t.slug})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="stack-form">
+                Role on approve
+                <select
+                  disabled={!isAdminAccessRequestActionable(accessRequestPanel.status)}
+                  onChange={(event) =>
+                    setArRoleEdits((p) => ({
+                      ...p,
+                      [accessRequestPanelId]: event.target.value as ApprovedUser["role"]
+                    }))
+                  }
+                  value={arRoleEdits[accessRequestPanelId] ?? accessRequestPanel.requestedRole}
+                >
+                  <option value="global_admin">global_admin (elevated)</option>
+                  <option value="advisor">advisor</option>
+                  <option value="operator">operator</option>
+                  <option value="viewer">viewer</option>
+                </select>
+              </label>
+              <label className="stack-form">
+                Plan on approve
+                <select
+                  disabled={!isAdminAccessRequestActionable(accessRequestPanel.status)}
+                  onChange={(event) =>
+                    setArPlanEdits((p) => ({
+                      ...p,
+                      [accessRequestPanelId]: normalizeSubscriptionPlan(event.target.value)
+                    }))
+                  }
+                  value={arPlanEdits[accessRequestPanelId] ?? accessRequestPanel.requestedPlan}
+                >
+                  {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="stack-form">
+                Review note (optional)
+                <textarea
+                  className="min-h-[4rem] w-full"
+                  disabled={!isAdminAccessRequestActionable(accessRequestPanel.status)}
+                  onChange={(event) =>
+                    setArReviewNoteEdits((p) => ({ ...p, [accessRequestPanelId]: event.target.value }))
+                  }
+                  value={arReviewNoteEdits[accessRequestPanelId] ?? ""}
+                />
+              </label>
+              <div className="tool-row flex-wrap">
+                <button
+                  className="cta cta-secondary"
+                  disabled={!isAdminAccessRequestActionable(accessRequestPanel.status)}
+                  onClick={() => void updateAccessRequestTenantOnly(accessRequestPanelId)}
+                  type="button"
+                >
+                  Save tenant
+                </button>
+                <button
+                  className="cta cta-secondary"
+                  disabled={!isAdminAccessRequestActionable(accessRequestPanel.status)}
+                  onClick={() => void updateAccessRequestPlanOnly(accessRequestPanelId)}
+                  type="button"
+                >
+                  Save plan
+                </button>
+                <button
+                  className="cta cta-secondary"
+                  onClick={() => void updateArUserEmail(accessRequestPanel.userId)}
+                  type="button"
+                >
+                  Save email
+                </button>
+              </div>
+              <div className="tool-row flex-wrap">
+                <button
+                  className="cta cta-primary"
+                  disabled={
+                    !isAdminAccessRequestActionable(accessRequestPanel.status) ||
+                    !(arTenantEdits[accessRequestPanelId]?.trim() ||
+                      accessRequestPanel.tenantId?.trim() ||
+                      "").trim()
+                  }
+                  onClick={() => void reviewAccessRequest(accessRequestPanelId, "approved")}
+                  type="button"
+                >
+                  <ApproveAccessIcon className="crud-icon" /> Approve
+                </button>
+                <button
+                  className="cta cta-secondary"
+                  disabled={!isAdminAccessRequestActionable(accessRequestPanel.status)}
+                  onClick={() => void reviewAccessRequest(accessRequestPanelId, "rejected")}
+                  type="button"
+                >
+                  <RejectAccessIcon className="crud-icon" /> Reject
+                </button>
+                <button
+                  className="tiny-button"
+                  onClick={() => void deleteAccessRequestRow(accessRequestPanelId)}
+                  type="button"
+                >
+                  <DeleteIcon className="crud-icon" /> Delete request
+                </button>
+              </div>
+            </article>
+          ) : null}
+
+          {selectedUserRow && selectedUserId && !accessRequestPanelId ? (
+            <article className="surface-card xf-widget section-card">
+              <h3>Profile &amp; access</h3>
+              <p className="status-text text-xs">
+                Edit when <strong>Edit user</strong> is active, then <strong>Save profile</strong>.
+              </p>
+              <div className="stack-form">
+                <label>
+                  Email
+                  <input
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setEmailEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value
+                      }))
+                    }
+                    type="email"
+                    value={emailEdits[selectedUserId] ?? ""}
+                  />
+                </label>
+                <div>
+                  <p className="status-text mb-1 text-xs">Tenant membership</p>
+                  {selectedUserRow.tenantMemberships.length > 0 ? (
+                    <ul className="m-0 list-none space-y-2 p-0">
+                      {selectedUserRow.tenantMemberships.map((m) => (
+                        <li key={m.tenantId}>
+                          <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
+                            {m.isDefaultSessionTenant ? (
+                              <span
+                                className="shrink-0"
+                                style={{ color: "var(--xf-gain-green)" }}
+                                aria-label="Default session tenant"
+                              >
+                                ●
+                              </span>
+                            ) : null}
+                            <span className="font-semibold text-sm">{m.slug}</span>
+                            {m.name ? (
+                              <span className="status-text text-xs opacity-80">· {m.name}</span>
+                            ) : null}
+                          </div>
+                          {m.tenantId === selectedUserRow.userId ? (
+                            <div className="text-xs" style={{ color: "var(--xf-loss-red)" }}>
+                              Data issue: tenant id matches user id
+                            </div>
+                          ) : null}
+                          <div className="text-xs opacity-70">{m.tenantRole}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="status-text text-xs">No tenant membership</span>
+                  )}
+                  <select
+                    className="mt-2 w-full"
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setTenantEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value
+                      }))
+                    }
+                    value={tenantEdits[selectedUserId] ?? ""}
+                  >
+                    <option value="">(no tenant)</option>
+                    {tenantOptions.map((tenant) => (
+                      <option key={tenant.tenantId} value={tenant.tenantId}>
+                        {tenant.slug}
+                        {tenant.name ? ` - ${tenant.name}` : ""} ·{" "}
+                        {shortMongoObjectIdHex(tenant.tenantId)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="mt-2 w-full"
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setTenantRoleEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value as "tenant_admin" | "member"
+                      }))
+                    }
+                    value={tenantRoleEdits[selectedUserId] ?? "member"}
+                  >
+                    <option value="member">member</option>
+                    <option value="tenant_admin">tenant_admin</option>
+                  </select>
+                </div>
+                <label>
+                  Role
+                  {selectedUserRow.pendingAccess ? (
+                    <p className="status-text text-xs opacity-80">
+                      Pending — use Approve in the table or the access request panel above.
+                    </p>
+                  ) : (
+                    <select
+                      disabled={editingUserId !== selectedUserId}
+                      onChange={(event) =>
+                        setRoleEdits((previous) => ({
+                          ...previous,
+                          [selectedUserId]: event.target.value as ApprovedUser["role"]
+                        }))
+                      }
+                      value={roleEdits[selectedUserId] ?? selectedUserRow.role}
+                    >
+                      {ROLE_SELECT_OPTIONS.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+                <label>
+                  Plan
+                  <select
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setPlanEdits((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value as ApprovedUser["subscriptionPlan"]
+                      }))
+                    }
+                    value={planEdits[selectedUserId] ?? selectedUserRow.subscriptionPlan}
+                  >
+                    {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Billing override
+                  {selectedUserRow.pendingAccess ? (
+                    <p className="status-text text-xs opacity-70">—</p>
+                  ) : (
+                    <select
+                      disabled={editingUserId !== selectedUserId}
+                      value={
+                        (billingOverrideEdits[selectedUserId]?.enabled ??
+                          selectedUserRow.billing?.override?.enabled ??
+                          false)
+                          ? "on"
+                          : "off"
+                      }
+                      onChange={(event) => {
+                        const enabled = event.target.value === "on";
+                        setBillingOverrideEdits((previous) => ({
+                          ...previous,
+                          [selectedUserId]: {
+                            enabled,
+                            reason:
+                              previous[selectedUserId]?.reason ??
+                              selectedUserRow.billing?.override?.reason ??
+                              "",
+                            expiresAtLocal:
+                              previous[selectedUserId]?.expiresAtLocal ??
+                              (selectedUserRow.billing?.override?.expiresAt
+                                ? isoToDatetimeLocalValue(selectedUserRow.billing.override.expiresAt)
+                                : "")
+                          }
+                        }));
+                      }}
+                    >
+                      <option value="off">Off</option>
+                      <option value="on">On</option>
+                    </select>
+                  )}
+                </label>
+                <label>
+                  xPersona (row assignment)
+                  <select
+                    disabled={editingUserId !== selectedUserId}
+                    onChange={(event) =>
+                      setPersonaByUserId((previous) => ({
+                        ...previous,
+                        [selectedUserId]: event.target.value
+                      }))
+                    }
+                    value={personaByUserId[selectedUserId] ?? ""}
+                  >
+                    <option value="">(default persona)</option>
+                    {personaOptions.map((persona) => (
+                      <option key={persona.id} value={persona.id}>
+                        {persona.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="status-text text-xs opacity-80">
+                  {selectedUserRow.latestAuditEvent
+                    ? `${selectedUserRow.latestAuditEvent.action} · ${new Date(
+                        selectedUserRow.latestAuditEvent.createdAt
+                      ).toLocaleString()}`
+                    : selectedUserRow.approvedAt
+                      ? new Date(selectedUserRow.approvedAt).toLocaleString()
+                      : "No audit row"}
+                </p>
+                <div className="tool-row flex-wrap">
+                  <IconEditButton
+                    label="Edit user"
+                    variant="secondary-cta"
+                    onClick={() => setEditingUserId(selectedUserId)}
+                  />
+                  <button
+                    className="cta cta-primary"
+                    disabled={editingUserId !== selectedUserId}
+                    onClick={() => void saveUserEdits(selectedUserId)}
+                    type="button"
+                  >
+                    <SaveIcon className="crud-icon" /> Save profile
+                  </button>
+                </div>
+              </div>
+            </article>
+          ) : null}
         </aside>
       </div>
     </section>

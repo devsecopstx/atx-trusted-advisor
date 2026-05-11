@@ -9,9 +9,9 @@ import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import {
     buildPortfolioDeskHandoffUrls,
-    buildPortfolioDeskXchatPrompt,
-    writePortfolioDeskXchatHandoff
+    buildPortfolioDeskXchatPrompt
 } from "@/lib/portfolio/portfolio-desk-handoff";
+import { writePortfolioDeskXchatHandoff } from "@/lib/portfolio/portfolio-desk-xchat-handoff";
 import {
     dispatchWorkspaceAccountChanged,
     writeStoredWorkspaceAccountId

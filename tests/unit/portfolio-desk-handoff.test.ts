@@ -4,6 +4,7 @@ import type { SerializablePosition } from "@/app/portfolio/accounts/serializable
 import {
     buildPortfolioDeskHandoffUrls,
     buildPortfolioDeskXchatPrompt,
+    buildPortfoliosWorkspaceXchatPrompt,
     resolvePortfolioDeskFocusSymbol
 } from "@/lib/portfolio/portfolio-desk-handoff";
 
@@ -43,5 +44,11 @@ describe("portfolio-desk-handoff", () => {
     });
     expect(prompt).toContain("Individual - TOD");
     expect(prompt).toContain("RDW");
+  });
+
+  it("builds portfolios workspace prompt with book name", () => {
+    const prompt = buildPortfoliosWorkspaceXchatPrompt("Family book");
+    expect(prompt).toContain("Family book");
+    expect(prompt).toContain("defined-risk");
   });
 });
