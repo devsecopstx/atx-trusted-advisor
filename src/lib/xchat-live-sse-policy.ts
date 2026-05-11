@@ -5,6 +5,17 @@
  * `x-xchat-stream-internal` (server-side delegates only — e.g. `/api/xchat/ask/stream`).
  */
 
+/**
+ * Client + shell bootstrap: live `/api/xchat/ask/stream` unless `NEXT_PUBLIC_XCHAT_LIVE_SSE` is off.
+ */
+export function resolveXchatClientLiveSseEnabled(): boolean {
+  const envRaw = process.env.NEXT_PUBLIC_XCHAT_LIVE_SSE?.trim().toLowerCase();
+  if (envRaw === undefined || envRaw === "") {
+    return true;
+  }
+  return !["0", "false", "no", "off"].includes(envRaw);
+}
+
 export function wantsXchatLiveToolLoopSse(request: Request): boolean {
   const accept = request.headers.get("accept")?.toLowerCase() ?? "";
   if (!accept.includes("text/event-stream")) {

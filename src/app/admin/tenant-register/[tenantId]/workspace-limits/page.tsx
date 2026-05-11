@@ -37,7 +37,7 @@ export default async function AdminTenantRegisterWorkspaceLimitsPage(props: Page
           Quotas and preferences for tenant <code className="font-mono text-sm">{id}</code>. Same panel as{" "}
           <Link
             className="text-[var(--xf-gain-green)] underline-offset-2 hover:underline"
-            href="/admin/tenant-preferences/workspace-limits"
+            href="/admin/tenant-preferences?tab=workspace-limits"
           >
             Tenant preferences → Workspace limits
           </Link>

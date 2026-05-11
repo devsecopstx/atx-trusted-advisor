@@ -20,6 +20,7 @@ import {
     parseXfCitationFenceJson,
     rejoinWrappedCiteSplitAcrossParens,
     repairAdjacentMangledXfInlineChips,
+    repairMangledXfInlineBacktickRuns,
     resolveCitationPresentation,
     resolveGrokRenderSlug,
     stripNonRenderableBareCitationLines,
@@ -32,6 +33,7 @@ describe("xchat-citations", () => {
   it("citationChipRenderable is false for unknown slugs without label", () => {
     expect(citationChipRenderable("yahoo_finance")).toBe(true);
     expect(citationChipRenderable("atxfinance")).toBe(true);
+    expect(citationChipRenderable("atx_function")).toBe(true);
     expect(citationChipRenderable("made_up_tool_xyz")).toBe(false);
     expect(citationChipRenderable("made_up_tool_xyz", "Custom label")).toBe(true);
     expect(citationChipRenderable("")).toBe(false);
@@ -58,33 +60,33 @@ describe("xchat-citations", () => {
       label: "Chain"
     });
     expect(parseInlineXfChipCode("XF_CITE:web_search")).toEqual({ slug: "web_search" });
-    expect(parseInlineXfChipCode("XF_TOOL:atxfinance")).toEqual({ slug: "atxfinance" });
+    expect(parseInlineXfChipCode("XF_TOOL:atxfinance")).toEqual({ slug: "atx_function" });
     expect(parseInlineCitationCode("not a cite")).toBeNull();
   });
 
   it("normalizes xf_cite / xf_tool casing and ZWSP so chips render instead of monospace fallback", () => {
     expect(parseInlineXfChipCode("xf_cite:yahoo_finance")).toEqual({ slug: "yahoo_finance" });
-    expect(parseInlineXfChipCode("Xf_Cite:atxfinance")).toEqual({ slug: "atxfinance" });
+    expect(parseInlineXfChipCode("Xf_Cite:atxfinance")).toEqual({ slug: "atx_function" });
     expect(parseInlineXfChipCode("xf_tool:market_quote")).toEqual({ slug: "market_quote" });
     expect(normalizeXfInlineChipProbeText("XF_CITE\u200B:yahoo_finance")).toBe("XF_CITE:yahoo_finance");
   });
 
   it("parses XF_CITE/XF_TOOL when Grok appends footnote markers to the slug (e.g. atxfinance[7])", () => {
-    expect(parseInlineXfChipCode("XF_CITE:atxfinance[7]")).toEqual({ slug: "atxfinance" });
+    expect(parseInlineXfChipCode("XF_CITE:atxfinance[7]")).toEqual({ slug: "atx_function" });
     expect(parseInlineXfChipCode("XF_CITE:yahoo_finance[7][8]")).toEqual({ slug: "yahoo_finance" });
-    expect(parseInlineXfChipCode("XF_TOOL:atxfinance[1]")).toEqual({ slug: "atxfinance" });
+    expect(parseInlineXfChipCode("XF_TOOL:atxfinance[1]")).toEqual({ slug: "atx_function" });
   });
 
   it("encodes bracket citation and tool syntax", () => {
     expect(expandBracketCitationsToInlineCode("x [@citation:web_search] y")).toBe("x `XF_CITE:web_search` y");
     expect(expandBracketCitationsToInlineCode("[@tool:market_quote|Q]")).toBe("`XF_TOOL:market_quote|Q`");
-    expect(expandBracketCitationsToInlineCode("[@citation:atxfinance]")).toBe("`XF_CITE:atxfinance`");
-    expect(expandBracketCitationsToInlineCode("[@citation:atx_function]")).toBe("`XF_CITE:atxfinance`");
+    expect(expandBracketCitationsToInlineCode("[@citation:atxfinance]")).toBe("`XF_CITE:atx_function`");
+    expect(expandBracketCitationsToInlineCode("[@citation:atx_function]")).toBe("`XF_CITE:atx_function`");
   });
 
-  it("wraps bare XF_CITE lines; atx_function wire slug maps to atxfinance chip slug", () => {
-    expect(wrapBareXfCiteLines("a\nXF_CITE:atxfinance\nb")).toBe("a\n`XF_CITE:atxfinance`\nb");
-    expect(wrapBareXfCiteLines("XF_CITE:atx_function")).toBe("`XF_CITE:atxfinance`");
+  it("wraps bare XF_CITE lines; legacy atxfinance slug maps to atx_function chip slug", () => {
+    expect(wrapBareXfCiteLines("a\nXF_CITE:atxfinance\nb")).toBe("a\n`XF_CITE:atx_function`\nb");
+    expect(wrapBareXfCiteLines("XF_CITE:atx_function")).toBe("`XF_CITE:atx_function`");
   });
 
   it("wraps cites with leading indent, space after colon, blockquote, or lowercase prefix", () => {
@@ -102,11 +104,15 @@ describe("xchat-citations", () => {
     expect(wrapBareXfCiteLines("XF_CITE:yahoo_finance.")).toBe("`XF_CITE:yahoo_finance`");
   });
 
+  it("repairs trailing extra backticks on a lone XF_CITE chip", () => {
+    expect(repairMangledXfInlineBacktickRuns("`XF_CITE:atx_function``")).toBe("`XF_CITE:atx_function`");
+  });
+
   it("repairs doubled-backtick adjacent XF_CITE chips (GFM leak)", () => {
     const raw = "Quick math `XF_CITE:yahoo_finance``XF_CITE:atxfinance` after";
     const fixed = repairAdjacentMangledXfInlineChips(raw);
     expect(fixed).toContain("`XF_CITE:yahoo_finance`");
-    expect(fixed).toContain("`XF_CITE:atxfinance`");
+    expect(fixed).toContain("`XF_CITE:atx_function`");
     expect(fixed).not.toMatch(/XF_CITE:yahoo_finance``XF_CITE/);
   });
 
@@ -114,7 +120,7 @@ describe("xchat-citations", () => {
     const raw = "x `XF_CITE:yahoo_finance`XF_CITE:atxfinance` y";
     const fixed = repairAdjacentMangledXfInlineChips(raw);
     expect(fixed).toContain("`XF_CITE:yahoo_finance`");
-    expect(fixed).toContain("`XF_CITE:atxfinance`");
+    expect(fixed).toContain("`XF_CITE:atx_function`");
   });
 
   it("wraps bare XF_CITE with model footnote-style [n] suffixes (own line or tail)", () => {
@@ -160,18 +166,18 @@ describe("xchat-citations", () => {
   it("rejoinWrappedCiteSplitAcrossParens merges cite line between ( and closing ) line", () => {
     const raw = [
       "Diversify (e.g., add ASTS from watchlist",
-      "`XF_CITE:atxfinance`",
+      "`XF_CITE:atx_function`",
       ") or hedge?"
     ].join("\n");
     expect(rejoinWrappedCiteSplitAcrossParens(raw)).toBe(
-      "Diversify (e.g., add ASTS from watchlist `XF_CITE:atxfinance` ) or hedge?"
+      "Diversify (e.g., add ASTS from watchlist `XF_CITE:atx_function` ) or hedge?"
     );
     expect(rejoinWrappedCiteSplitAcrossParens("a\nb\n")).toBe("a\nb\n");
   });
 
   it("wrapMidLineBareXfSentinels wraps bare sentinels inside prose, not in code fences or inline code", () => {
     expect(wrapMidLineBareXfSentinels("Symbols XF_CITE:atxfinance and XF_TOOL:yahoo_finance done.")).toBe(
-      "Symbols `XF_CITE:atxfinance` and `XF_TOOL:yahoo_finance` done."
+      "Symbols `XF_CITE:atx_function` and `XF_TOOL:yahoo_finance` done."
     );
     expect(wrapMidLineBareXfSentinels("Lower xf_cite:market_quote ok")).toBe("Lower `XF_CITE:market_quote` ok");
     expect(wrapMidLineBareXfSentinels("no `XF_CITE:yahoo_finance` leak")).toBe("no `XF_CITE:yahoo_finance` leak");
@@ -213,8 +219,8 @@ describe("xchat-citations", () => {
     expect(inferCitationSlugFromGrokInner("? atx market_quote")).toBe("market_quote");
     expect(inferCitationSlugFromGrokInner("code_interpreter run")).toBe("code_interpreter");
     expect(inferCitationSlugFromGrokInner("x_search results")).toBe("x_search");
-    expect(inferCitationSlugFromGrokInner("atxfinance workspace")).toBe("atxfinance");
-    expect(inferCitationSlugFromGrokInner("positions_snapshot")).toBe("atxfinance");
+    expect(inferCitationSlugFromGrokInner("atxfinance workspace")).toBe("atx_function");
+    expect(inferCitationSlugFromGrokInner("positions_snapshot")).toBe("atx_function");
   });
 
   it("extractXmlAttr reads quoted attributes", () => {
@@ -249,6 +255,7 @@ describe("xchat-citations", () => {
     expect(resolveCitationPresentation("atxfinance").title).toBe("Workspace tools");
     expect(resolveCitationPresentation("atxfinance").href).toBe("/portfolio");
     expect(resolveCitationPresentation("atx_function").title).toBe("Workspace tools");
+    expect(resolveCitationPresentation("atx_function").href).toBe("/portfolio");
   });
 
   it("parses xf-citation fence JSON", () => {
@@ -256,8 +263,8 @@ describe("xchat-citations", () => {
       slug: "file_search",
       label: "KB"
     });
-    expect(parseXfCitationFenceJson('{"slug":"atxfinance"}')?.slug).toBe("atxfinance");
-    expect(parseXfCitationFenceJson('{"slug":"atx_function"}')?.slug).toBe("atxfinance");
+    expect(parseXfCitationFenceJson('{"slug":"atxfinance"}')?.slug).toBe("atx_function");
+    expect(parseXfCitationFenceJson('{"slug":"atx_function"}')?.slug).toBe("atx_function");
     expect(parseXfCitationFenceJson("{}")).toBeNull();
   });
 

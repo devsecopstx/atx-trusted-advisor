@@ -2387,11 +2387,52 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
   overflow: visible;
 }
 
-.xchat-msg-ai-body--long-response {
-  max-height: 70vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
+.xchat-msg-ai-body__markdown-preview {
+  max-height: 18rem;
+  overflow: hidden;
+}
+
+.xchat-msg-ai-body__toggle {
+  margin-top: 0.55rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--xchat-grok-link-blue);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.xchat-msg-ai-body__toggle:hover {
+  color: var(--xf-text-100);
+}
+
+.xchat-thread-system-banner {
+  flex-shrink: 0;
+}
+
+.xchat-thread-system-banner__dismiss {
+  margin-top: 0.65rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--xchat-grok-link-blue);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.xchat-thread-chrome {
+  flex-shrink: 0;
+}
+
+.xchat-thread-row {
+  width: 100%;
+  min-width: 0;
 }
 
 html[data-xf-ui="soft"] .xchat-msg-ai-body--markdown {
@@ -3024,6 +3065,13 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-markdown .xchat-citation-fence {
   margin: 0.5rem 0;
+}
+
+.xchat-markdown .xchat-citation-fence--inline-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
 }
 
 .xchat-markdown .xchat-citation-chip {

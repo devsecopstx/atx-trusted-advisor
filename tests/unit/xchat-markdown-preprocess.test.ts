@@ -8,7 +8,7 @@ describe("preprocessXchatMarkdown", () => {
     const out = preprocessXchatMarkdown(raw);
     expect(out).not.toMatch(/yahoo_finance``XF_CITE/);
     expect(out).toContain("`XF_CITE:yahoo_finance`");
-    expect(out).toContain("`XF_CITE:atxfinance`");
+    expect(out).toContain("`XF_CITE:atx_function`");
   });
 
   it("rejoins cite between parenthesis lines so closing ) is not orphaned by paragraph breaks", () => {
@@ -17,17 +17,37 @@ XF_CITE:atxfinance
 ) or hedge?`;
     const out = preprocessXchatMarkdown(raw);
     expect(out).toContain(") or hedge?");
-    expect(out).toContain("`XF_CITE:atxfinance` ) or");
-    expect(out.split("\n").some((line) => line.includes(") or hedge?") && line.includes("XF_CITE:atxfinance"))).toBe(
+    expect(out).toContain("`XF_CITE:atx_function` ) or");
+    expect(out.split("\n").some((line) => line.includes(") or hedge?") && line.includes("XF_CITE:atx_function"))).toBe(
       true
     );
   });
 
   it("wraps mid-line bare XF_CITE / XF_TOOL so chips render instead of raw sentinels", () => {
-    const raw = "Current symbols XF_CITE:atxfinance and XF_TOOL:yahoo_finance for context.";
+    const raw = "Current symbols XF_CITE:atx_function and XF_TOOL:yahoo_finance for context.";
     const out = preprocessXchatMarkdown(raw);
-    expect(out).toContain("`XF_CITE:atxfinance`");
+    expect(out).toContain("`XF_CITE:atx_function`");
     expect(out).toContain("`XF_TOOL:yahoo_finance`");
-    expect(out).not.toMatch(/[^`]XF_CITE:atxfinance[^`]/);
+    expect(out).not.toMatch(/[^`]XF_CITE:atx_function[^`]/);
+  });
+
+  it("repairs trailing extra backticks on a lone XF_CITE chip without leaking raw sentinel", () => {
+    const raw = [
+      "These guide our strategy discussions.",
+      "`XF_CITE:atx_function``"
+    ].join("\n");
+    const out = preprocessXchatMarkdown(raw);
+    expect(out).toBe("These guide our strategy discussions.\n`XF_CITE:atx_function`");
+    expect(out).not.toMatch(/XF_CITE:atx_function``/);
+  });
+
+  it("dedupes wrapped chip plus bare duplicate atx_function cite lines", () => {
+    const raw = [
+      "These guide our strategy discussions.",
+      "`XF_CITE:atx_function`",
+      "XF_CITE:atx_function"
+    ].join("\n");
+    const out = preprocessXchatMarkdown(raw);
+    expect(out).toBe("These guide our strategy discussions.\n`XF_CITE:atx_function`");
   });
 });

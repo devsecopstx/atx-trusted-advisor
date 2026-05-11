@@ -31,7 +31,7 @@ export type TenantWorkspaceLimits = {
   userTasksMax: number;
   /**
    * When false, disables investment outlook auto-refresh UX + scheduler hooks for this tenant
-   * (`INVESTMENT_OUTLOOK_REFRESH_ENABLED` must still be true at the environment layer).
+   * (`INVESTMENT_OUTLOOK_REFRESH_ENABLED` env, default on).
    * Default **true** when omitted on read.
    */
   outlookRefreshEnabled: boolean;

@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
 import type { SessionUser } from "@/lib/auth";
+import { resolveXchatClientLiveSseEnabled } from "@/lib/xchat-live-sse-policy";
 import { listXChatHistoryByUser } from "@/modules/xchat/repository";
 import type { XChatHistoryItem } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
@@ -28,6 +29,8 @@ export type XchatServerShellBootstrap = {
   consentedAt: string | null;
   xaiMemoryConsentedAt: string | null;
   historyItemsNewestFirst: XchatShellHistoryRow[];
+  /** Env `NEXT_PUBLIC_XCHAT_LIVE_SSE` (default on) — drives `/api/xchat/ask/stream` client path. */
+  liveSseEnabled: boolean;
 };
 
 function serializeRow(row: XChatHistoryItem): XchatShellHistoryRow {
@@ -68,12 +71,14 @@ async function readXchatShellBootstrapFromDb(
   const rows = keepLastTenMessages
     ? await listXChatHistoryByUser({ userId, tenantId, limit: cap })
     : [];
+  const liveSseEnabled = resolveXchatClientLiveSseEnabled();
   return {
     keepLastTenMessages,
     enableLongTermXaiMemory,
     consentedAt,
     xaiMemoryConsentedAt,
-    historyItemsNewestFirst: rows.map(serializeRow)
+    historyItemsNewestFirst: rows.map(serializeRow),
+    liveSseEnabled
   };
 }
 

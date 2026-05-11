@@ -1,6 +1,4 @@
 import { spawn } from "node:child_process";
-import fs from "node:fs/promises";
-import path from "node:path";
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -47,14 +45,16 @@ type PythonExecResult = {
   exitCode: number;
 };
 
+/** Repo-relative path — avoids `path.join(process.cwd(), …)` so Turbopack NFT does not trace the whole tree. */
+const OPTIONS_SCAN_REPORT_REL = "services/report-service/options_scan_report.py";
+
 async function runPythonReportGenerator(payload: unknown): Promise<PythonExecResult> {
-  const scriptPath = path.join(process.cwd(), "services", "report-service", "options_scan_report.py");
-  await fs.access(scriptPath);
+  const scriptArg =
+    process.env.OPTIONS_SCAN_REPORT_PY?.trim() || OPTIONS_SCAN_REPORT_REL;
   const pythonBin = process.env.PYTHON_BIN?.trim() || "python3";
 
   return await new Promise<PythonExecResult>((resolve) => {
-    const child = spawn(pythonBin, [scriptPath, "--stdin"], {
-      cwd: process.cwd(),
+    const child = spawn(pythonBin, [scriptArg, "--stdin"], {
       env: process.env
     });
 

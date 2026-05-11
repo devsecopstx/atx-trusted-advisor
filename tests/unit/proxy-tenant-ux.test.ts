@@ -3,12 +3,17 @@ import { describe, expect, it } from "vitest";
 import { isTenantUxEnforcementV2Enabled, isTenantUxPolicyFailClosedEnabled, resolvePolicyPathForRequest } from "@/proxy";
 
 describe("proxy tenant ux helpers", () => {
-  it("parses feature flag values", () => {
-    expect(isTenantUxEnforcementV2Enabled(undefined)).toBe(false);
+  it("parses tenant UX V2 enforcement (default on; explicit opt-out)", () => {
+    expect(isTenantUxEnforcementV2Enabled(undefined)).toBe(true);
+    expect(isTenantUxEnforcementV2Enabled("")).toBe(true);
+    expect(isTenantUxEnforcementV2Enabled("   ")).toBe(true);
     expect(isTenantUxEnforcementV2Enabled("true")).toBe(true);
     expect(isTenantUxEnforcementV2Enabled("1")).toBe(true);
     expect(isTenantUxEnforcementV2Enabled("yes")).toBe(true);
     expect(isTenantUxEnforcementV2Enabled("false")).toBe(false);
+    expect(isTenantUxEnforcementV2Enabled("0")).toBe(false);
+    expect(isTenantUxEnforcementV2Enabled("no")).toBe(false);
+    expect(isTenantUxEnforcementV2Enabled("off")).toBe(false);
   });
 
   it("parses fail-closed flag for policy resolver outages", () => {

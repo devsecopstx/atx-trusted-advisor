@@ -2,8 +2,8 @@ import type { TenantWorkspaceLimits } from "@/modules/identity/tenant-workspace-
 import type { Tenant } from "@/modules/identity/types";
 
 /**
- * Investment outlook auto-refresh (xAI / scheduler) — env gate AND tenant workspace limit.
- * Never hardcode; read via this helper at runtime.
+ * Investment outlook auto-refresh — **`INVESTMENT_OUTLOOK_REFRESH_ENABLED`** (default on) with workspace limit
+ * **`outlookRefreshEnabled`** opt-out when `false`.
  */
 export function getInvestmentOutlookRefreshEnabled(input: {
   envEnabled: boolean;

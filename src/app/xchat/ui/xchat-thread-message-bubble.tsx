@@ -1,7 +1,7 @@
 "use client";
 
 import nextDynamic from "next/dynamic";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { XchatAiResponseChrome } from "@/app/xchat/ui/xchat-ai-response-chrome";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
@@ -17,6 +17,8 @@ import type { Message } from "./xchat-conversation-types";
  * a scan card is about to render. `ssr: false` matches the existing client-only
  * shape (the report uses browser APIs like `URL.createObjectURL`).
  */
+const XCHAT_ASSISTANT_COLLAPSE_CHAR_THRESHOLD = 800;
+
 const OptionsActionScanReportLazy = nextDynamic(
   () =>
     import("@/app/reports/scan/ui/options-action-scan-report").then((m) => ({
@@ -62,11 +64,39 @@ export const XchatThreadMessageBubble = memo(
   }: XchatThreadMessageBubbleProps) {
     const hasScanRows = Boolean(msg.optionsActionScan && msg.optionsActionScan.rows.length > 0);
     const hasAssistantText = msg.content.trim().length > 0;
-    const shouldUseLongResponseViewport =
+    const isCollapsibleMarkdown =
       msg.role === "ai" &&
       !msg.strategyJobOffer &&
       !msg.optionsActionScan &&
-      msg.content.trim().length >= 2500;
+      msg.content.trim().length > XCHAT_ASSISTANT_COLLAPSE_CHAR_THRESHOLD;
+    const [markdownExpanded, setMarkdownExpanded] = useState(true);
+
+    useEffect(() => {
+      setMarkdownExpanded(true);
+    }, [msg.id]);
+
+    const renderMarkdownBody = (content: string) => (
+      <>
+        <div
+          className={
+            isCollapsibleMarkdown && !markdownExpanded
+              ? "xchat-msg-ai-body__markdown-preview"
+              : undefined
+          }
+        >
+          <XchatMarkdownBody content={content} />
+        </div>
+        {isCollapsibleMarkdown ? (
+          <button
+            className="xchat-msg-ai-body__toggle"
+            type="button"
+            onClick={() => setMarkdownExpanded((prev) => !prev)}
+          >
+            {markdownExpanded ? "Collapse response" : "Expand response"}
+          </button>
+        ) : null}
+      </>
+    );
 
     return (
       <div className={`xchat-msg xchat-msg-${msg.role}`}>
@@ -116,10 +146,8 @@ export const XchatThreadMessageBubble = memo(
                     />
                   </div>
                 ) : hasAssistantText ? (
-                  <div
-                    className={`xchat-msg-ai-body xchat-msg-ai-body--markdown${shouldUseLongResponseViewport ? " xchat-msg-ai-body--long-response" : ""}`}
-                  >
-                    <XchatMarkdownBody content={msg.content} />
+                  <div className="xchat-msg-ai-body xchat-msg-ai-body--markdown">
+                    {renderMarkdownBody(msg.content)}
                   </div>
                 ) : (
                   <div className="xchat-msg-ai-body xchat-msg-ai-body--markdown">
@@ -127,10 +155,8 @@ export const XchatThreadMessageBubble = memo(
                   </div>
                 )
               ) : (
-                <div
-                  className={`xchat-msg-ai-body xchat-msg-ai-body--markdown${shouldUseLongResponseViewport ? " xchat-msg-ai-body--long-response" : ""}`}
-                >
-                  <XchatMarkdownBody content={msg.content} />
+                <div className="xchat-msg-ai-body xchat-msg-ai-body--markdown">
+                  {renderMarkdownBody(msg.content)}
                 </div>
               )}
             </div>

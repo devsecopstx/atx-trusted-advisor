@@ -9,6 +9,10 @@
  *   # mint from `.env` (or `.env.stage` / `.env.prod`)
  *   node scripts/lhci/mint-session-cookie.mjs --env-file=.env --user-id=<userId> --tenant-id=<tenantId>
  *
+ *   When **user-id / tenant-id are omitted** but **MONGODB_URI** is set, the script looks up
+ *   **core_users** by **ADMIN_SEED_EMAIL** (or **LHCI_AUTH_EMAIL**) and fills ids automatically
+ *   (requires `npm run seed:admin` + reachable Mongo).
+ *
  *   # print as full cookie header (default): `xf_core_session=<value>`
  *   node scripts/lhci/mint-session-cookie.mjs ... --format=cookie
  *
@@ -39,6 +43,10 @@ import { createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { argv, exit, stderr, stdout } from "node:process";
+
+import { MongoClient } from "mongodb";
+
+import { resolveMongoUri, resolveSeedDbName } from "../lib/resolve-mongo-uri.mjs";
 
 function parseArgs(input) {
   const out = {};
@@ -93,7 +101,48 @@ function fail(msg) {
   exit(1);
 }
 
-function main() {
+function escapeRegexLiteral(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * When ids are omitted, resolve seeded admin user from Mongo (same DB as Next `getDb`).
+ * @returns {Promise<{ userId: string; tenantId: string } | null>}
+ */
+async function tryResolveUserTenantFromMongo(email) {
+  const raw = process.env.MONGODB_URI?.trim() || process.env.MONGODB_URI_B64?.trim();
+  if (!raw || !email?.trim()) {
+    return null;
+  }
+  let mongoUri;
+  try {
+    mongoUri = resolveMongoUri();
+  } catch {
+    return null;
+  }
+
+  const client = new MongoClient(mongoUri, { serverSelectionTimeoutMS: 5000 });
+  try {
+    await client.connect();
+    const db = client.db(resolveSeedDbName());
+    const user = await db.collection("core_users").findOne({
+      email: new RegExp(`^${escapeRegexLiteral(email.trim())}$`, "i")
+    });
+    if (!user?._id || user.tenantId == null || String(user.tenantId).trim() === "") {
+      return null;
+    }
+    return { userId: String(user._id), tenantId: String(user.tenantId) };
+  } catch (err) {
+    stderr.write(
+      `mint-session-cookie: Mongo lookup skipped (${err instanceof Error ? err.message : String(err)})\n`
+    );
+    return null;
+  } finally {
+    await client.close().catch(() => {});
+  }
+}
+
+async function main() {
   const args = parseArgs(argv);
   loadEnvFile(args["env-file"]);
 
@@ -102,20 +151,28 @@ function main() {
     fail("AUTH_SECRET (or --secret) must be set and ≥16 chars");
   }
 
-  const userId = pickFirst(args["user-id"], process.env.LHCI_AUTH_USER_ID);
-  const tenantId = pickFirst(args["tenant-id"], process.env.LHCI_AUTH_TENANT_ID);
-  if (!userId || !tenantId) {
-    fail(
-      "userId + tenantId required (use --user-id / --tenant-id, or LHCI_AUTH_USER_ID / LHCI_AUTH_TENANT_ID; obtain from `npm run seed:admin` output)"
-    );
-  }
-
   const email = pickFirst(
     args.email,
     process.env.LHCI_AUTH_EMAIL,
     process.env.ADMIN_SEED_EMAIL,
     "lhci@local.test"
   );
+
+  let userId = pickFirst(args["user-id"], process.env.LHCI_AUTH_USER_ID);
+  let tenantId = pickFirst(args["tenant-id"], process.env.LHCI_AUTH_TENANT_ID);
+  if (!userId || !tenantId) {
+    const resolved = await tryResolveUserTenantFromMongo(email);
+    if (resolved) {
+      userId = resolved.userId;
+      tenantId = resolved.tenantId;
+    }
+  }
+  if (!userId || !tenantId) {
+    fail(
+      "userId + tenantId required (pass --user-id / --tenant-id, set LHCI_AUTH_USER_ID / LHCI_AUTH_TENANT_ID, " +
+        "or ensure MONGODB_URI + ADMIN_SEED_EMAIL / LHCI_AUTH_EMAIL so the seed admin row can be loaded from Mongo)"
+    );
+  }
   const xUserId = pickFirst(args["x-user-id"], process.env.LHCI_AUTH_X_USER_ID, "lhci_test");
   const username = pickFirst(args.username, process.env.LHCI_AUTH_USERNAME, "lhci_test");
   const tenantRole = pickFirst(
@@ -157,4 +214,7 @@ function main() {
   }
 }
 
-main();
+main().catch((err) => {
+  stderr.write(`mint-session-cookie: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+  exit(1);
+});

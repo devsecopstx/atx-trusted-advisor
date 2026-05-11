@@ -353,7 +353,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { data: { response: string } };
     expect(payload.data.response).toContain("`XF_CITE:yahoo_finance`");
-    expect(payload.data.response).toContain("`XF_CITE:atxfinance`");
+    expect(payload.data.response).toContain("`XF_CITE:atx_function`");
     const saved = repositoryMocks.saveXChatLog.mock.calls.at(-1)?.[0] as { response: string };
     expect(saved.response).toContain("`XF_CITE:yahoo_finance`");
     expect(saved.response).toBe(payload.data.response);

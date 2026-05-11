@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import type { SessionUser } from "@/lib/auth";
 import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
@@ -31,6 +31,8 @@ type AppUserApprovedHeaderProps = {
    * When set (e.g. from `getWorkspaceTenantHeaderContext`), show the same tenant display name as `/portfolios`.
    */
   workspaceTenant?: WorkspaceTenantHeaderContext | null;
+  /** Optional trailing chrome (e.g. Hub session panel) rendered after appearance controls. */
+  trailingExtras?: ReactNode;
 };
 
 export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
@@ -121,6 +123,7 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
               </nav>
             ) : null}
             <WorkspaceRailAppearance variant="header" />
+            {props.trailingExtras}
             {showTenantCard ? (
               <div className="xchat-header-tenant-card">
                 <span className="xchat-header-tenant-card__tagline">{branding?.tagline}</span>

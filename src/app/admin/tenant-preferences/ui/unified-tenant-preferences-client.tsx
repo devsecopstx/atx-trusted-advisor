@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { AmbientExperiencePanel } from "@/app/admin/tenant-preferences/ui/ambient-experience-panel";
@@ -9,7 +10,9 @@ import { XchatDefaultPersonaPanel } from "@/app/admin/tenant-preferences/ui/xcha
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 
 type Props = {
-  defaultTenantId: string;
+  sessionTenantId: string;
+  initialTab: TabId;
+  initialTenantId: string;
 };
 
 type TenantRegisterRow = {
@@ -32,17 +35,41 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-export function UnifiedTenantPreferencesClient({ defaultTenantId }: Props) {
+export function UnifiedTenantPreferencesClient({
+  sessionTenantId,
+  initialTab,
+  initialTenantId
+}: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [tenants, setTenants] = useState<TenantRegisterRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState<TabId>("workspace-limits");
-  const [selectedTenantIdState, setSelectedTenantIdState] = useState(defaultTenantId);
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+  const [selectedTenantIdState, setSelectedTenantIdState] = useState(initialTenantId);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+    setSelectedTenantIdState(initialTenantId);
+  }, [initialTab, initialTenantId]);
+
+  const pushPrefsUrl = useCallback(
+    (tab: TabId, tenantId: string) => {
+      const sp = new URLSearchParams();
+      sp.set("tab", tab);
+      if (tenantId && tenantId !== sessionTenantId) {
+        sp.set("tenant", tenantId);
+      }
+      router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
+    },
+    [router, pathname, sessionTenantId]
+  );
 
   const selectedTenantId = useMemo(() => {
-    return selectedTenantIdState || defaultTenantId;
-  }, [selectedTenantIdState, defaultTenantId]);
+    return selectedTenantIdState || sessionTenantId;
+  }, [selectedTenantIdState, sessionTenantId]);
 
   const loadTenants = useCallback(async () => {
     setLoading(true);
@@ -77,9 +104,19 @@ export function UnifiedTenantPreferencesClient({ defaultTenantId }: Props) {
 
   const onChangeTenant = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setSelectedTenantIdState(e.target.value);
+      const v = e.target.value;
+      setSelectedTenantIdState(v);
+      pushPrefsUrl(activeTab, v);
     },
-    []
+    [activeTab, pushPrefsUrl]
+  );
+
+  const onSelectTab = useCallback(
+    (id: TabId) => {
+      setActiveTab(id);
+      pushPrefsUrl(id, selectedTenantIdState || sessionTenantId);
+    },
+    [pushPrefsUrl, selectedTenantIdState, sessionTenantId]
   );
 
   const onReload = useCallback(() => {
@@ -90,16 +127,15 @@ export function UnifiedTenantPreferencesClient({ defaultTenantId }: Props) {
 
   return (
     <div className="admin-tenant-workspace-limits-page">
-      {/* Tenant selector */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label htmlFor="tenant-select" className="block text-sm font-semibold text-[var(--xf-muted-fg)]">
+          <label htmlFor="tenant-select" className="block text-sm font-semibold text-[var(--xf-text-400)]">
             Tenant
           </label>
           <div className="flex items-center gap-2">
             <select
               id="tenant-select"
-              className="min-w-[16rem] rounded border border-[var(--xf-muted-border)] bg-[var(--xf-surface)] p-2 text-sm"
+              className="min-w-[16rem] rounded border border-[var(--xf-muted-border)] bg-[var(--xf-surface)] p-2 text-sm text-[var(--xf-text-100)]"
               value={selectedTenantId}
               onChange={onChangeTenant}
               disabled={loading || Boolean(tenants && tenants.length === 0)}
@@ -130,7 +166,7 @@ export function UnifiedTenantPreferencesClient({ defaultTenantId }: Props) {
             </select>
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded border border-[var(--xf-muted-border)] px-2 py-1 text-xs hover:bg-[var(--xf-surface-2)]"
+              className="inline-flex items-center gap-1 rounded border border-[var(--xf-muted-border)] px-2 py-1 text-xs text-[var(--xf-text-200)] hover:bg-[var(--xf-surface-2)]"
               onClick={onReload}
               disabled={loading}
               title="Reload tenants"
@@ -143,7 +179,6 @@ export function UnifiedTenantPreferencesClient({ defaultTenantId }: Props) {
         <div className="flex-1" />
       </div>
 
-      {/* Tab bar */}
       <nav className="mt-6 flex gap-1 border-b border-[var(--xf-muted-border)]" role="tablist" aria-label="Preference sections">
         {TABS.map((tab) => (
           <button
@@ -151,19 +186,18 @@ export function UnifiedTenantPreferencesClient({ defaultTenantId }: Props) {
             role="tab"
             type="button"
             aria-selected={activeTab === tab.id}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
+            className={
               activeTab === tab.id
-                ? "border-b-2 border-[var(--xf-gain-green)] text-[var(--xf-gain-green)]"
-                : "text-[var(--xf-muted-fg)] hover:text-[var(--xf-text-100)]"
-            }`}
-            onClick={() => setActiveTab(tab.id)}
+                ? "-mb-px rounded-t-md border border-[var(--xf-border-subtle)] border-b-transparent bg-[var(--xf-bg-800)] px-4 py-2 text-sm font-semibold text-[var(--xf-gain-green)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--xf-gain-green)]"
+                : "-mb-px rounded-t-md border border-transparent bg-[color-mix(in_srgb,var(--xf-surface-800)_78%,transparent)] px-4 py-2 text-sm font-semibold text-[var(--xf-text-200)] transition-colors hover:border-[var(--xf-border-subtle)] hover:text-[var(--xf-text-100)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--xf-gain-green)]"
+            }
+            onClick={() => onSelectTab(tab.id)}
           >
             {tab.label}
           </button>
         ))}
       </nav>
 
-      {/* Tab content */}
       <div className="mt-6">
         {!selectedTenantId ? (
           <div className="rounded border border-[var(--xf-muted-border)] p-4 text-sm">
@@ -186,7 +220,7 @@ export function UnifiedTenantPreferencesClient({ defaultTenantId }: Props) {
       </div>
 
       {isRefreshing ? (
-        <p className="mt-2 text-xs text-[var(--xf-muted-fg)]">Refreshing…</p>
+        <p className="mt-2 text-xs text-[var(--xf-text-400)]">Refreshing…</p>
       ) : null}
     </div>
   );

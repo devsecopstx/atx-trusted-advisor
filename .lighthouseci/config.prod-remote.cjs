@@ -11,6 +11,15 @@
  */
 const origin = process.env.LHCI_PROD_ORIGIN || "https://atx.fintech-advisor.ai";
 
+const onlyPerf = process.env.LHCI_PERF_ONLY === "1" || process.env.LHCI_PERF_ONLY === "true";
+
+const assertAssertions = {
+  "categories:performance": ["warn", { minScore: 0.5 }]
+};
+if (!onlyPerf) {
+  assertAssertions["categories:accessibility"] = ["warn", { minScore: 0.85 }];
+}
+
 module.exports = {
   ci: {
     collect: {
@@ -23,14 +32,13 @@ module.exports = {
       ],
       settings: {
         preset: "desktop",
-        onlyCategories: ["performance", "accessibility", "best-practices", "seo"]
+        onlyCategories: onlyPerf
+          ? ["performance"]
+          : ["performance", "accessibility", "best-practices", "seo"]
       }
     },
     assert: {
-      assertions: {
-        "categories:performance": ["warn", { minScore: 0.5 }],
-        "categories:accessibility": ["warn", { minScore: 0.85 }]
-      }
+      assertions: assertAssertions
     },
     upload: {
       target: "filesystem",

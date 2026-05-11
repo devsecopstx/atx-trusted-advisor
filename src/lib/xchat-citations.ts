@@ -29,8 +29,8 @@ export const CITATION_KIND_META: Record<string, CitationPresentation> = {
   file_search: { title: "Knowledge search" },
   web_search: { title: "Web search" },
   x_search: { title: "X search" },
-  /** Citation slug for workspace tools (xAI tool name remains `atx_function`). */
-  atxfinance: { title: "Workspace tools", href: "/portfolio" },
+  /** Citation slug aligned with xAI custom tool wire name `atx_function`. Legacy `atxfinance` aliases here. */
+  atx_function: { title: "Workspace tools", href: "/portfolio" },
   code_interpreter: { title: "Code interpreter" },
   tool_call: { title: "Tool data" }
 };
@@ -39,10 +39,9 @@ const SLUG_RE = /^[a-z0-9_]+$/;
 
 /**
  * Map wire / model variants → canonical chip slug in inline `XF_CITE:` / fences.
- * Keep workspace cites as `atxfinance` so unwrapped prose is less GFM-fragile than `atx_function` (`_…` emphasis).
  */
 const CITATION_SLUG_ALIASES: Record<string, string> = {
-  atx_function: "atxfinance"
+  atxfinance: "atx_function"
 };
 
 export function canonicalizeCitationSlug(slug: string): string {
@@ -440,7 +439,7 @@ export function inferCitationSlugFromGrokInner(inner: string): string {
     t.includes("account_health") ||
     t.includes("workspace snapshot")
   ) {
-    return "atxfinance";
+    return "atx_function";
   }
   return "tool_call";
 }
@@ -521,8 +520,32 @@ export function dedupeInlineRepeatedBareXfSentinels(markdown: string): string {
  * e.g. `` `XF_CITE:yahoo_finance``XF_CITE:atxfinance` ``, which breaks GFM and leaks raw `XF_CITE:` in prose.
  * Split into two valid inline codes separated by a space.
  */
+/** `XF_CITE:slug`` / `` `XF_CITE:slug``` `` → single valid inline chip markdown. */
+export function repairMangledXfInlineBacktickRuns(markdown: string): string {
+  let s = markdown.replace(
+    /`XF_(CITE|TOOL):([a-z0-9_]+)(\|[^`\n]*)?`{2,}/gi,
+    (full, kind: string, slug: string, labelPipe?: string) => {
+      const label = labelPipe ? String(labelPipe).replace(/^\|/, "").trim() || undefined : undefined;
+      const slugCanon = canonicalizeCitationSlug(String(slug));
+      const chip =
+        String(kind).toUpperCase() === "TOOL"
+          ? encodeToolBadgeInlineMarkdown(slugCanon, label)
+          : encodeCitationInlineMarkdown(slugCanon, label);
+      return chip || full;
+    }
+  );
+  s = s.replace(
+    /(^|[\n `])(XF_(?:CITE|TOOL):([a-z0-9_]+)(?:\|[^\s`\n]*)?)`{2,}(?=\s*$)/gim,
+    (full, before: string, _sent: string, slug: string) => {
+      const chip = encodeCitationInlineMarkdown(canonicalizeCitationSlug(String(slug)));
+      return chip ? `${before}${chip}` : full;
+    }
+  );
+  return s;
+}
+
 export function repairAdjacentMangledXfInlineChips(markdown: string): string {
-  let s = markdown;
+  let s = repairMangledXfInlineBacktickRuns(markdown);
   const doubled =
     /`XF_(CITE|TOOL):([a-z0-9_]+)(\|[^`]+)?`{2,}XF_(CITE|TOOL):([a-z0-9_]+)(\|[^`]+)?`/gi;
   for (let i = 0; i < 24; i++) {

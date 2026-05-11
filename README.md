@@ -49,6 +49,6 @@ Notes
 
 ## Admin: Workspace limits per tenant
 
-- Path: `/admin/tenant-preferences/workspace-limits` (global_admin only).
+- Path: `/admin/tenant-preferences` (global_admin only); `?tab=workspace-limits` opens workspace limits.
 - A tenant selector is available at the top of the page to switch which tenant’s limits are being configured.
 - The selection syncs to the URL via `?tenant=<tenantId>` for deep-linking.

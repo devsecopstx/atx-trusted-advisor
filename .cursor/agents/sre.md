@@ -38,7 +38,7 @@ no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer doc
 
 **Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, optional
 `workspaceLimits.planOverrides.<tier>.price` (USD list price per tenant/plan, default **10**), per-tier **`changePersonaEnabled`** (default **true**) and **`chatHistoryMax`** (default **10**), collection
-`app_feature_daily_usage`, admin API `PATCH /api/admin/tenants/{tenantId}/workspace-limits`, UI rail **Tenant preferences → Workspace limits** (`/admin/tenant-preferences/workspace-limits`), **Account → Billing** workspace block, and xChat (persona picker + history depth).
+`app_feature_daily_usage`, admin API `PATCH /api/admin/tenants/{tenantId}/workspace-limits`, UI **Tenant preferences** (`/admin/tenant-preferences`, tab `workspace-limits`; legacy paths redirect), **Account → Billing** workspace block, and xChat (persona picker + history depth).
 
 **xChat persona flags (`xchat_personas`):** **`citationsEnabled`** (default true when unset) controls whether `buildXchatSystemPrompt` injects the citation-chip contract vs a plain-prose-only instruction (`src/modules/xchat/xchat-prompt-build.ts`, `POST /api/xchat/ask`). **`keepXchatHistory`** (default true when unset) gates xAI remote thread continuity when **`XCHAT_USE_REMOTE_HISTORY=true`** — if false for that persona, ask skips `previous_response_id` / `store_messages` for that turn chain. Admins edit both on **Admin → Personas → edit** (`PersonaEditorPage`); API: `GET`/`PUT` `/api/personas/{id}` include `citationsEnabled` and `keepXchatHistory` in the serialized persona.
 

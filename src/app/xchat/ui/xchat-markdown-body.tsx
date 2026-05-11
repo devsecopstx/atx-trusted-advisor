@@ -94,6 +94,28 @@ function createMarkdownComponents(xfSoft: boolean): Components {
     code({ className, children, inline, ...rest }: MdCodeProps) {
       const text = mdInlineCodePlainText(children).replace(/\n$/, "");
       if (!inline) {
+        const trimmedBlock = text.trim();
+        const xfSentinelLine =
+          /^(?:XF_CITE|XF_TOOL|xf_cite|xf_tool):\s*[a-z0-9_]+(?:\s*\[\d+\])*\.?\s*$/i;
+        const blockLines = trimmedBlock.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        const looksLikeToolCitationBlock =
+          blockLines.length > 0 && blockLines.every((ln) => xfSentinelLine.test(ln));
+        if (looksLikeToolCitationBlock) {
+          const chips = blockLines
+            .map((ln) => parseInlineXfChipCode(ln.replace(/(?:\s*\[\d+\])+/g, "").trim()))
+            .filter((c): c is NonNullable<typeof c> => Boolean(c))
+            .filter((c) => citationChipRenderable(c.slug, c.label));
+          if (chips.length === 0) {
+            return null;
+          }
+          return (
+            <div className="xchat-citation-fence xchat-citation-fence--inline-stack">
+              {chips.map((c, idx) => (
+                <XchatCitationChip key={`${c.slug}-${idx}`} label={c.label} slug={c.slug} />
+              ))}
+            </div>
+          );
+        }
         const match = /language-(\w+)/.exec(className ?? "");
         const lang = match?.[1] ?? "text";
         if (lang === "xf-citation") {

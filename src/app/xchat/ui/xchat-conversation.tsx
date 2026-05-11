@@ -29,6 +29,10 @@ import {
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatUsageMeter } from "@/app/xchat/ui/usage-meter";
 import { XchatAdvisorWorkingOverlay } from "@/app/xchat/ui/xchat-advisor-working-overlay";
+import {
+    buildXchatAskLimitBannerMarkdown,
+    isXchatUsageLimitCode
+} from "@/app/xchat/ui/xchat-ask-limit-banner";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type {
     HistoryItem,
@@ -50,6 +54,7 @@ import {
     consumeXchatAskSseResponse,
     mergeLiveToolStatusRow
 } from "@/lib/xchat-live-sse-client";
+import { resolveXchatClientLiveSseEnabled } from "@/lib/xchat-live-sse-policy";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
@@ -66,12 +71,8 @@ import {
     type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
 
-const liveSseRaw = process.env.NEXT_PUBLIC_XCHAT_LIVE_SSE?.trim().toLowerCase();
-/** Default **on** when unset (first-token UX); set to `0`, `false`, `no`, or `off` to disable. */
-const XCHAT_LIVE_SSE =
-  liveSseRaw === undefined || liveSseRaw === ""
-    ? true
-    : !["0", "false", "no", "off"].includes(liveSseRaw);
+/** Client fallback when `serverBootstrap.liveSseEnabled` is absent (SSR dynamic route edge cases). */
+const XCHAT_LIVE_SSE_ENV_FALLBACK = resolveXchatClientLiveSseEnabled();
 
 const XchatThreadPanelLazy = dynamic(
   () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),
@@ -349,6 +350,10 @@ export function XchatConversation({
   mainFooter = null
 }: XchatConversationProps) {
   const router = useRouter();
+  const liveSseEnabled =
+    typeof serverBootstrap?.liveSseEnabled === "boolean"
+      ? serverBootstrap.liveSseEnabled
+      : XCHAT_LIVE_SSE_ENV_FALLBACK;
   const uiPromptLimit = Math.max(1, Math.min(500, workspaceChatHistoryMax));
   const personaPickerLocked =
     !workspaceChangePersonaEnabled && !isGlobalAdminSession;
@@ -406,6 +411,7 @@ export function XchatConversation({
   const [threadUiCollapsed, setThreadUiCollapsed] = useState(true);
   /** When false, thread list shows only the last `XCHAT_UI_VISIBLE_MESSAGE_CAP` rows; expand keeps full history. */
   const [threadHistoryExpanded, setThreadHistoryExpanded] = useState(false);
+  const [threadSystemBanner, setThreadSystemBanner] = useState<string | null>(null);
   const [activeThreadId, setActiveThreadId] = useState(() => {
     if (typeof window !== "undefined") {
       try {
@@ -524,13 +530,21 @@ export function XchatConversation({
     queueMicrotask(() => scrollToLatestMessage("smooth"));
   }, [scrollToLatestMessage]);
 
-  /** Smooth scroll to transcript bottom on every message update (user + assistant + streaming deltas). */
+  /** Smooth scroll to transcript bottom when a new assistant turn lands or streams. */
   useEffect(() => {
     if (threadUiCollapsed) {
       return;
     }
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "ai") {
+      return;
+    }
     scrollToLatestMessage("smooth");
   }, [messages, threadUiCollapsed, scrollToLatestMessage]);
+
+  const dismissThreadSystemBanner = useCallback(() => {
+    setThreadSystemBanner(null);
+  }, []);
 
   /**
    * Rich cards (Options Action Scan) can inflate after lazy chunk mount.
@@ -1297,6 +1311,7 @@ export function XchatConversation({
 
     // Keep thread expanded while a response is in flight so users can read it immediately.
     setThreadUiCollapsed(false);
+    setThreadSystemBanner(null);
     // Collapse older turns behind "Previous turns" so latest prompt/response stay together.
     setThreadHistoryExpanded(false);
 
@@ -1483,64 +1498,37 @@ export function XchatConversation({
       };
 
       const handleAskFailure = (response: Response, payload: AskPayload) => {
-        const friendly = payload.contactAdmin === true;
-        const resetHint = (() => {
-          if (typeof payload.resetAt === "string" && payload.resetAt.trim()) {
-            const d = new Date(payload.resetAt);
-            if (!Number.isNaN(d.getTime())) {
-              return `\n\n**Next window:** about **${d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}** (server estimate from UTC buckets).`;
-            }
-          }
-          if (typeof payload.retryAfterSeconds === "number" && payload.retryAfterSeconds > 0) {
-            const mins = Math.ceil(payload.retryAfterSeconds / 60);
-            return mins >= 2
-              ? `\n\n**Try again in ~${mins} min** (${payload.retryAfterSeconds}s).`
-              : `\n\n**Try again in ~${payload.retryAfterSeconds}s.**`;
-          }
-          return "";
-        })();
-        const limitSuffix =
-          payload.code === "xchat_daily_limit_exceeded" && typeof payload.dailyLimit === "number"
-            ? `\n\nWorkspace daily cap: **${payload.dailyLimit}** prompts per UTC day (tenant + plan effective limit).`
-            : payload.code === "xchat_hourly_limit_exceeded" && typeof payload.hourlyLimit === "number"
-              ? `\n\nWorkspace hourly cap: **${payload.hourlyLimit}** prompts per UTC clock hour.`
-              : "";
-        const codePrefix = friendly
-          ? payload.code === "xchat_daily_limit_exceeded"
-            ? "**Daily limit reached**\n\n"
-            : payload.code === "xchat_hourly_limit_exceeded"
-              ? "**Hourly limit reached**\n\n"
-              : payload.code === "xchat_rate_limit_exceeded"
-                ? "**Sending too fast**\n\n"
-                : payload.code
-                  ? `**Limit**\n\n`
-                  : ""
-          : payload.code === "xchat_daily_limit_exceeded"
-            ? "**`xchat_daily_limit_exceeded`** — daily prompt cap (UTC calendar day).\n\n"
-            : payload.code === "xchat_hourly_limit_exceeded"
-              ? "**`xchat_hourly_limit_exceeded`** — hourly prompt cap (UTC clock hour).\n\n"
-              : payload.code === "xchat_rate_limit_exceeded"
-                ? "**`xchat_rate_limit_exceeded`** — per-minute send throttle (burst protection).\n\n"
-                : payload.code
-                  ? `**\`${payload.code}\`**\n\n`
-                  : "";
-        const base = payload.error ?? `Request failed (${response.status})`;
-        const upgrade =
-          "\n\n---\n\n**Plans / billing:** [Account → Billing](/account/billing). Ask your workspace admin if you need higher caps.";
         setPromptUsageRefreshKey((k) => k + 1);
-        setMessages((prev) => {
-          const added = [
-            ...prev,
-            {
-              id: `error-${Date.now()}`,
-              role: "error" as const,
-              content: `${codePrefix}${base}${limitSuffix}${resetHint}${upgrade}`,
-              timestamp: Date.now()
-            }
-          ];
-          const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
-          return next;
-        });
+        if (isXchatUsageLimitCode(payload.code)) {
+          setThreadSystemBanner(
+            buildXchatAskLimitBannerMarkdown({
+              code: payload.code,
+              error: payload.error,
+              dailyLimit: payload.dailyLimit,
+              hourlyLimit: payload.hourlyLimit,
+              retryAfterSeconds: payload.retryAfterSeconds,
+              resetAt: payload.resetAt,
+              contactAdmin: payload.contactAdmin,
+              responseStatus: response.status
+            })
+          );
+          setThreadUiCollapsed(false);
+        } else {
+          const base = payload.error ?? `Request failed (${response.status})`;
+          setMessages((prev) => {
+            const added = [
+              ...prev,
+              {
+                id: `error-${Date.now()}`,
+                role: "error" as const,
+                content: base,
+                timestamp: Date.now()
+              }
+            ];
+            const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
+            return next;
+          });
+        }
         if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
           setInput(strategyStayRestorePromptRef.current);
           strategyStayRestorePromptRef.current = null;
@@ -1598,7 +1586,7 @@ export function XchatConversation({
         }
       };
 
-      if (XCHAT_LIVE_SSE) {
+      if (liveSseEnabled) {
         let streamRes: Response;
         try {
           streamRes = await fetch("/api/xchat/ask/stream", {
@@ -1745,18 +1733,34 @@ export function XchatConversation({
                     const { next } = trimTranscriptToRecentPrompts(cleaned, uiPromptLimit);
                     return next;
                   }
-                  const added = [
-                    ...cleaned,
-                    {
-                      id: `error-${Date.now()}`,
-                      role: "error" as const,
-                      content: message,
-                      timestamp: Date.now()
-                    }
-                  ];
-                  const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
-                  return next;
+                  return cleaned;
                 });
+                if (code !== "request_aborted") {
+                  if (isXchatUsageLimitCode(code)) {
+                    setThreadSystemBanner(
+                      buildXchatAskLimitBannerMarkdown({
+                        code,
+                        error: message,
+                        contactAdmin: true
+                      })
+                    );
+                    setThreadUiCollapsed(false);
+                  } else {
+                    setMessages((prev) => {
+                      const added = [
+                        ...prev,
+                        {
+                          id: `error-${Date.now()}`,
+                          role: "error" as const,
+                          content: message,
+                          timestamp: Date.now()
+                        }
+                      ];
+                      const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
+                      return next;
+                    });
+                  }
+                }
                 if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
                   setInput(strategyStayRestorePromptRef.current);
                   strategyStayRestorePromptRef.current = null;
@@ -2135,6 +2139,8 @@ export function XchatConversation({
               onNewThread={startNewThread}
               hiddenEarlierMessageCount={hiddenEarlierMessageCount}
               onExpandEarlierMessages={expandFullThreadHistory}
+              onDismissThreadSystemBanner={dismissThreadSystemBanner}
+              threadSystemBanner={threadSystemBanner}
               messagesEndRef={messagesEndRef}
               onStrategyJobLaunch={onStrategyJobLaunch}
               onStrategyJobStay={onStrategyJobStay}

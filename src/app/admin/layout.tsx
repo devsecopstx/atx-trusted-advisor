@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel } from "@/lib/env";
+import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import { canCreateStrategyJobFromApp, isGlobalAdmin } from "@/modules/identity/authorization";
 import { GlobalFooter } from "../ui/global-footer";
-import { XchatHeaderBrand } from "../ui/xchat-header-brand";
+import "../xchat/xchat.css";
 import { AdminLayoutShell } from "./ui/admin-layout-shell";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 import { AdminShellThemeLock } from "./ui/admin-shell-theme-lock";
@@ -37,17 +38,18 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   const mongoConnection = getMongoConnectionLabel();
+  const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
 
   return (
     <div className="admin-layout">
       <AdminShellThemeLock />
-      <header className="admin-topbar">
-        <Link className="admin-topbar-brand" href="/admin">
-          <XchatHeaderBrand />
-        </Link>
-        <div className="admin-topbar-actions">
-          <div className="admin-topbar-trailing">
-            <div className="admin-topbar-session">
+      <div className="admin-layout-product-header sticky top-0 z-50 shrink-0 bg-[var(--xf-bg-800)]">
+        <AppUserApprovedHeader
+          current={null}
+          session={session}
+          workspaceTenant={workspaceTenant}
+          trailingExtras={
+            <div className="admin-approved-header-session admin-topbar-session ml-2 flex shrink-0 items-center border-l border-[var(--xf-border-subtle)] pl-2">
               <AdminSessionPanel
                 avatarUrl={session.avatarUrl}
                 displayName={session.displayName}
@@ -57,9 +59,9 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
                 username={session.username}
               />
             </div>
-          </div>
-        </div>
-      </header>
+          }
+        />
+      </div>
       <main className="admin-layout-content">
         <AdminLayoutShell>{children}</AdminLayoutShell>
       </main>

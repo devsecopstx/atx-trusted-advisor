@@ -153,22 +153,10 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
           "Upsert a tenant from the same fields as generate:tenant-spec + seed:tenant (no YAML file); optional initial tenant admin and xf_ui_theme."
       },
       {
-        href: "/admin/tenant-preferences/workspace-limits",
-        title: "Workspace limits",
+        href: "/admin/tenant-preferences",
+        title: "Tenant preferences",
         description:
-          "Per-tenant quotas on core_tenants.workspaceLimits; tenant_preferences (xChat debug, one-time branding aliases)."
-      },
-      {
-        href: "/admin/tenant-preferences/default-persona",
-        title: "Default xChat persona",
-        description:
-          "Platform default published xPersona for app users who do not have an admin-assigned persona."
-      },
-      {
-        href: "/admin/tenant-preferences/ambient",
-        title: "Ambient experience",
-        description:
-          "Toggle the Ambient Market Veil background (Canvas2D grid + drift particles) on /xchat, /xoptions, and /portfolios; default-on for paid tenants."
+          "Workspace limits, ambient experience, default xChat persona, and feature flags — unified per-tenant configuration (legacy paths redirect here)."
       },
       {
         href: "/admin/manage-backoffice",

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-/** @deprecated Use /admin/tenant-preferences/workspace-limits */
+/** @deprecated Use `/admin/tenant-preferences?tab=workspace-limits`. */
 export default function AdminTenantWorkspaceRedirectPage() {
-  redirect("/admin/tenant-preferences/workspace-limits");
+  redirect("/admin/tenant-preferences?tab=workspace-limits");
 }

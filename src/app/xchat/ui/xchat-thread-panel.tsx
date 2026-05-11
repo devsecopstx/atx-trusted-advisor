@@ -4,6 +4,7 @@ import type { Virtualizer } from "@tanstack/virtual-core";
 import { useMemo, type RefObject } from "react";
 
 import { XchatThreadMessageBubble } from "@/app/xchat/ui/xchat-thread-message-bubble";
+import { XchatThreadSystemBanner } from "@/app/xchat/ui/xchat-thread-system-banner";
 
 import type { Message } from "./xchat-conversation-types";
 
@@ -36,6 +37,16 @@ function stickyLatestUserPromptText(msg: Message): string {
   return msg.content.trim();
 }
 
+function threadRowClassName(role: Message["role"]): string {
+  if (role === "user") {
+    return "xchat-thread-row xchat-thread-row--user max-w-[85%] ml-auto";
+  }
+  if (role === "ai") {
+    return "xchat-thread-row xchat-thread-row--assistant max-w-[85%] mr-auto";
+  }
+  return "xchat-thread-row xchat-thread-row--system max-w-[85%] mr-auto";
+}
+
 export type XchatThreadPanelProps = {
   threadUiCollapsed: boolean;
   setThreadUiCollapsed: (next: boolean) => void;
@@ -60,6 +71,9 @@ export type XchatThreadPanelProps = {
   onExpandEarlierMessages?: () => void;
   /** Workspace portfolio for `/xoptions` links inside embedded scan cards. */
   workspacePortfolioId?: string | null;
+  /** Usage / throttle copy rendered outside the scrollable transcript. */
+  threadSystemBanner?: string | null;
+  onDismissThreadSystemBanner?: () => void;
 } & XchatThreadPanelCopyProps;
 
 export function XchatThreadPanel({
@@ -84,7 +98,9 @@ export function XchatThreadPanel({
   onNewThread,
   hiddenEarlierMessageCount = 0,
   onExpandEarlierMessages,
-  workspacePortfolioId = null
+  workspacePortfolioId = null,
+  threadSystemBanner = null,
+  onDismissThreadSystemBanner
 }: XchatThreadPanelProps) {
   const latestAssistantMessage = [...messages].reverse().find((msg) => msg.role === "ai");
   const showRetainedContextBadge = latestAssistantMessage?.contextRetainedFromPriorTurns === true;
@@ -128,8 +144,9 @@ export function XchatThreadPanel({
       return "";
     }
   }, [latestUserForSticky]);
+
   return (
-    <div className="xchat-thread-area">
+    <div className="xchat-thread-area flex min-h-0 flex-1 flex-col">
       {threadUiCollapsed && messages.length > 0 && !loading ? (
         <button
           aria-expanded={false}
@@ -158,98 +175,130 @@ export function XchatThreadPanel({
           <span className="xchat-thread-collapsed-bar__action">Expand</span>
         </button>
       ) : (
-        <div
-          ref={threadScrollRef}
-          className={`xchat-messages xchat-messages-container${threadMainVirtualize ? " xchat-messages--virtual-thread" : ""}${loading ? " xchat-messages-container--advisor-working" : ""}`}
-        >
-          {hiddenEarlierMessageCount > 0 && onExpandEarlierMessages ? (
-            <details
-              className="xchat-thread-previous-turns"
-              onToggle={(e) => {
-                const el = e.currentTarget;
-                if (!el.open || !onExpandEarlierMessages) {
-                  return;
-                }
-                onExpandEarlierMessages();
-                queueMicrotask(() =>
-                  messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
-                );
-              }}
-            >
-              <summary className="xchat-thread-previous-turns__summary">
-                Previous turns ({hiddenEarlierMessageCount} hidden) — expand full thread
-              </summary>
-            </details>
+        <>
+          {threadSystemBanner ? (
+            <XchatThreadSystemBanner
+              content={threadSystemBanner}
+              onDismiss={onDismissThreadSystemBanner}
+            />
           ) : null}
-          {messages.length > 0 ? (
-            <div className="xchat-thread-minimize-row">
-              <button
-                aria-expanded
-                className="xchat-thread-minimize"
-                type="button"
-                onClick={() => setThreadUiCollapsed(true)}
+          <div className="xchat-thread-chrome flex shrink-0 flex-col">
+            {hiddenEarlierMessageCount > 0 && onExpandEarlierMessages ? (
+              <details
+                className="xchat-thread-previous-turns"
+                onToggle={(e) => {
+                  const el = e.currentTarget;
+                  if (!el.open || !onExpandEarlierMessages) {
+                    return;
+                  }
+                  onExpandEarlierMessages();
+                  queueMicrotask(() =>
+                    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
+                  );
+                }}
               >
-                <XchatThreadCollapseChevronIcon />
-                <span>Minimize thread</span>
-              </button>
-              {onNewThread ? (
-                <button className="xchat-thread-minimize" type="button" onClick={onNewThread}>
-                  <span>New thread</span>
+                <summary className="xchat-thread-previous-turns__summary">
+                  Previous turns ({hiddenEarlierMessageCount} hidden) — expand full thread
+                </summary>
+              </details>
+            ) : null}
+            {messages.length > 0 ? (
+              <div className="xchat-thread-minimize-row">
+                <button
+                  aria-expanded
+                  className="xchat-thread-minimize"
+                  type="button"
+                  onClick={() => setThreadUiCollapsed(true)}
+                >
+                  <XchatThreadCollapseChevronIcon />
+                  <span>Minimize thread</span>
                 </button>
-              ) : null}
-            </div>
-          ) : null}
-          {messages.length > 0 && latestUserForSticky ? (
-            <div className="xchat-thread-sticky-prompt">
-              <span className="xchat-thread-sticky-prompt__label">Latest prompt</span>
-              <span className="xchat-thread-sticky-prompt__text">
-                {stickyUserPreview.length > 0 ? stickyUserPreview : "[Empty prompt]"}
-              </span>
-              {stickyUserTimeLabel ? (
-                <time className="xchat-thread-sticky-prompt__time" dateTime={stickyUserTimeIso}>
-                  {stickyUserTimeLabel}
-                </time>
-              ) : null}
-            </div>
-          ) : null}
-          {showRetainedContextBadge ? (
-            <div className="xchat-thread-retained-badge">Context retained from prior turns</div>
-          ) : null}
+                {onNewThread ? (
+                  <button className="xchat-thread-minimize" type="button" onClick={onNewThread}>
+                    <span>New thread</span>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            {messages.length > 0 && latestUserForSticky ? (
+              <div className="xchat-thread-sticky-prompt">
+                <span className="xchat-thread-sticky-prompt__label">Latest prompt</span>
+                <span className="xchat-thread-sticky-prompt__text">
+                  {stickyUserPreview.length > 0 ? stickyUserPreview : "[Empty prompt]"}
+                </span>
+                {stickyUserTimeLabel ? (
+                  <time className="xchat-thread-sticky-prompt__time" dateTime={stickyUserTimeIso}>
+                    {stickyUserTimeLabel}
+                  </time>
+                ) : null}
+              </div>
+            ) : null}
+            {showRetainedContextBadge ? (
+              <div className="xchat-thread-retained-badge">Context retained from prior turns</div>
+            ) : null}
+          </div>
+          <div
+            ref={threadScrollRef}
+            className={`xchat-messages xchat-messages-container flex min-h-0 flex-1 flex-col space-y-6 overflow-y-auto scroll-smooth px-4 pb-4${threadMainVirtualize ? " xchat-messages--virtual-thread" : ""}${loading ? " xchat-messages-container--advisor-working" : ""}`}
+          >
+            {messages.length === 0 ? (
+              <div className="xchat-messages-empty">
+                <p className="status-text">
+                  Start a conversation with <strong>{activePersonaName}</strong> (or choose another published persona in
+                  the composer).
+                </p>
+              </div>
+            ) : null}
 
-          {messages.length === 0 ? (
-            <div className="xchat-messages-empty">
-              <p className="status-text">
-                Start a conversation with <strong>{activePersonaName}</strong> (or choose another published persona in the
-                composer).
-              </p>
-            </div>
-          ) : null}
-
-          {threadMainVirtualize ? (
-            <div
-              className="xchat-messages__virtual-wrap"
-              style={{
-                height: threadVirtualizer.getTotalSize(),
-                position: "relative",
-                width: "100%"
-              }}
-            >
-              {threadVirtualizer.getVirtualItems().map((vi) => {
-                const msg = visibleThreadMessages[vi.index]!;
-                return (
-                  <div
-                    key={msg.id}
-                    ref={threadVirtualizer.measureElement}
-                    className="xchat-msg-virtual-row"
-                    data-index={vi.index}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${vi.start}px)`
-                    }}
-                  >
+            {threadMainVirtualize ? (
+              <div
+                className="xchat-messages__virtual-wrap"
+                style={{
+                  height: threadVirtualizer.getTotalSize(),
+                  position: "relative",
+                  width: "100%"
+                }}
+              >
+                {threadVirtualizer.getVirtualItems().map((vi) => {
+                  const msg = visibleThreadMessages[vi.index]!;
+                  return (
+                    <div
+                      key={msg.id}
+                      ref={threadVirtualizer.measureElement}
+                      className="xchat-msg-virtual-row"
+                      data-index={vi.index}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${vi.start}px)`
+                      }}
+                    >
+                      <div className={threadRowClassName(msg.role)}>
+                        <div className="prose prose-invert prose-sm md:prose-base max-w-none">
+                          <XchatThreadMessageBubble
+                            emphasizeStrategyJobPrimary={emphasizeStrategyJobPrimary(msg.id)}
+                            loading={loading}
+                            msg={msg}
+                            onMessageFeedback={onMessageFeedback}
+                            onRegeneratePrompt={onRegeneratePrompt}
+                            strategyJobLaunchBusy={strategyJobLaunchBusy}
+                            threadId={threadId}
+                            workspacePortfolioId={workspacePortfolioId}
+                            onStrategyLaunch={onStrategyJobLaunch}
+                            onStrategyStay={onStrategyJobStay}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              visibleThreadMessages.map((msg) => (
+                <div key={msg.id} className={threadRowClassName(msg.role)}>
+                  <div className="prose prose-invert prose-sm md:prose-base max-w-none">
                     <XchatThreadMessageBubble
                       emphasizeStrategyJobPrimary={emphasizeStrategyJobPrimary(msg.id)}
                       loading={loading}
@@ -263,29 +312,13 @@ export function XchatThreadPanel({
                       onStrategyStay={onStrategyJobStay}
                     />
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            visibleThreadMessages.map((msg) => (
-              <XchatThreadMessageBubble
-                key={msg.id}
-                emphasizeStrategyJobPrimary={emphasizeStrategyJobPrimary(msg.id)}
-                loading={loading}
-                msg={msg}
-                onMessageFeedback={onMessageFeedback}
-                onRegeneratePrompt={onRegeneratePrompt}
-                strategyJobLaunchBusy={strategyJobLaunchBusy}
-                threadId={threadId}
-                workspacePortfolioId={workspacePortfolioId}
-                onStrategyLaunch={onStrategyJobLaunch}
-                onStrategyStay={onStrategyJobStay}
-              />
-            ))
-          )}
+                </div>
+              ))
+            )}
 
-          <div ref={messagesEndRef} />
-        </div>
+            <div ref={messagesEndRef} />
+          </div>
+        </>
       )}
     </div>
   );

@@ -161,12 +161,17 @@ function isProtectedPath(pathname: string): boolean {
   return protectedPathPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
+/**
+ * Edge tenant-UX policy enforcement (`GET /api/internal/tenant-ux/policy`).
+ * Default **on** when unset or empty (prod deploy needs no env); set `TENANT_UX_ENFORCEMENT_V2` to
+ * `0` / `false` / `no` / `off` to disable.
+ */
 export function isTenantUxEnforcementV2Enabled(raw = process.env.TENANT_UX_ENFORCEMENT_V2): boolean {
-  if (!raw) {
-    return false;
+  if (raw === undefined || raw.trim() === "") {
+    return true;
   }
   const normalized = raw.trim().toLowerCase();
-  return normalized === "1" || normalized === "true" || normalized === "yes";
+  return !(normalized === "0" || normalized === "false" || normalized === "no" || normalized === "off");
 }
 
 export function isTenantUxPolicyFailClosedEnabled(raw = process.env.TENANT_UX_POLICY_FAIL_CLOSED): boolean {

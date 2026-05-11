@@ -27,6 +27,13 @@ const cookieHeader = authCookie.includes("xf_core_session=")
 
 const onlyPerf = process.env.LHCI_PERF_ONLY === "1" || process.env.LHCI_PERF_ONLY === "true";
 
+const assertAssertions = {
+  "categories:performance": ["warn", { minScore: 0.5 }]
+};
+if (!onlyPerf) {
+  assertAssertions["categories:accessibility"] = ["warn", { minScore: 0.85 }];
+}
+
 module.exports = {
   ci: {
     collect: {
@@ -46,10 +53,7 @@ module.exports = {
       }
     },
     assert: {
-      assertions: {
-        "categories:performance": ["warn", { minScore: 0.5 }],
-        "categories:accessibility": ["warn", { minScore: 0.85 }]
-      }
+      assertions: assertAssertions
     },
     upload: {
       target: "filesystem",

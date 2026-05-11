@@ -1,6 +1,6 @@
 # Tenant UX edge enforcement (V2)
 
-**Scope:** Next.js **`src/proxy.ts`** — authenticated **app_user** HTML + matched API paths — enforced when **`TENANT_UX_ENFORCEMENT_V2`** is enabled (`1` / `true` / `yes`).
+**Scope:** Next.js **`src/proxy.ts`** — authenticated **app_user** HTML + matched API paths — tenant UX **V2 is on by default** (unset / empty env). Disable with **`TENANT_UX_ENFORCEMENT_V2`** = `0` / `false` / `no` / `off`.
 
 ## Rollout
 
@@ -12,10 +12,18 @@
 
 | Variable | Default | Behavior |
 |----------|---------|------------|
-| **`TENANT_UX_ENFORCEMENT_V2`** | off | When **on**, proxy calls **`GET /api/internal/tenant-ux/policy?pathname=…`** (session cookie forwarded). |
-| **`TENANT_UX_POLICY_FAIL_CLOSED`** | off | When **on**, **non-OK** or **network error** from the policy route returns **503** **`tenant_ux_policy_unavailable`** (API) or **`/access-denied?code=tenant_ux_policy_unavailable`** (HTML). When **off** (**soak default**), failures **fail-open** (allow request) and emit one-line JSON stderr: **`type: tenant_ux_policy_fetch_error`**. |
+| **`TENANT_UX_ENFORCEMENT_V2`** | **on** (omit env) | Proxy calls **`GET /api/internal/tenant-ux/policy?pathname=…`** (session cookie forwarded). Set to **`0` / `false` / `no` / `off`** to disable V2. |
+| **`TENANT_UX_POLICY_FAIL_CLOSED`** | off | When **on**, **non-OK** or **network error** from the policy route returns **503** **`tenant_ux_policy_unavailable`** (API) or **`/access-denied?code=tenant_ux_policy_unavailable`** (HTML). When **off** (**default**), failures **fail-open** (allow request) and emit one-line JSON stderr: **`type: tenant_ux_policy_fetch_error`**. |
 
-See repo **`.env.example`** for canonical comments. **Staging soak:** enable **`TENANT_UX_ENFORCEMENT_V2=true`** on the Next service for **48–72h** before prod; keep **`TENANT_UX_POLICY_FAIL_CLOSED=false`** unless you are exercising explicit fail-closed drills.
+See repo **`.env.example`** for canonical comments. **Rollout:** soak staging/prod with **V2 default on**; watch **`tenant_ux_route_forbidden`** / **`tenant_ux_policy_fetch_error`**; keep **`TENANT_UX_POLICY_FAIL_CLOSED=false`** unless drilling fail-closed.
+
+## E2E verification (local or staging)
+
+1. **Signed-in app user** (`viewer` / `operator` / `advisor`): open **`/xchat`**, **`/portfolios`**, **`/watchlist`**, **`/xoptions`** — should load (no unexpected **`/access-denied`**).
+2. **`global_admin`**: same routes + **`/admin`** — admin shell loads; policy short-circuits **allowed** for admins.
+3. **Restricted route (negative):** in **Admin → Tenants → Roles**, remove **`/watchlist`** (or similar) from a test user’s role **`allowedRoutes`**, bust policy cache if needed — visiting **`/watchlist`** should redirect to **`/access-denied`** (HTML) or APIs return **403** **`tenant_ux_route_forbidden`**.
+4. **Internal policy:** with a valid session cookie, `GET /api/internal/tenant-ux/policy?pathname=/xchat` → **200** JSON **`data.allowed`** consistent with that user’s matrix.
+5. **Opt-out:** set **`TENANT_UX_ENFORCEMENT_V2=false`**, restart Next — policy fetch should be skipped (no **`tenant_ux_metric`** lines for policy latency from proxy); restore unset/true for production behavior.
 
 ## Fail-open vs fail-closed (authoritative)
 

@@ -19,6 +19,12 @@ Current separate pages (`/admin/tenant-preferences/ambient`, `/workspace-limits`
 
 This aligns with our shipped stack (Next.js 16 + Spring BFF + Mongo) and existing tenant UX patterns (see `tenant-ux-plan.md`, `current-state-features.md`).
 
+### Shipped DB overrides (runtime)
+
+| Flag key (`tenantPreferences.featureFlags`) | Behavior |
+|---------------------------------------------|----------|
+| **`xchat-live-sse-enabled`** (boolean) | When set, overrides **`NEXT_PUBLIC_XCHAT_LIVE_SSE`** for xChat client streaming (`resolveXchatLiveSseEnabled` → `XchatServerShellBootstrap.liveSseEnabled`). |
+
 ## Current State Analysis
 
 From live screenshots and docs:

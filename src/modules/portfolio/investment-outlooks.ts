@@ -145,7 +145,7 @@ export function pickWheelOutlookFromChain(
   let conservativeCall: StrikeOutlookPick | null = null;
   let bestCallAway = Infinity;
   const otmCalls = calls.filter((x) => x.strike >= spot * 1.02);
-  for (const { strike, c } of otmCalls) {
+  for (const { c } of otmCalls) {
     const pAway = c.probability_called_away ?? 1;
     if (pAway < bestCallAway) {
       bestCallAway = pAway;
@@ -169,7 +169,7 @@ export function pickWheelOutlookFromChain(
   let conservativePut: StrikeOutlookPick | null = null;
   let bestPutOtm = -1;
   const otmPuts = puts.filter((x) => x.strike <= spot * 0.98);
-  for (const { strike, p } of otmPuts) {
+  for (const { p } of otmPuts) {
     const po = p.probability_expire_otm ?? 0;
     if (po > bestPutOtm) {
       bestPutOtm = po;

@@ -195,15 +195,18 @@ const envSchema = z.object({
   INVESTMENT_OUTLOOK_REFRESH_ENABLED: z.preprocess(
     (v) => {
       if (v === undefined || v === null || v === "") {
-        return false;
+        return true;
       }
       if (typeof v === "boolean") {
         return v;
       }
       const s = String(v).trim().toLowerCase();
+      if (s === "0" || s === "false" || s === "no") {
+        return false;
+      }
       return s === "1" || s === "true" || s === "yes";
     },
-    z.boolean().optional().default(false)
+    z.boolean().optional().default(true)
   ),
   /** Optional Quartz/cron string for JVM scheduler (Spring) — documented only until job ships. */
   INVESTMENT_OUTLOOK_REFRESH_CRON: optionalNonEmptyString,
