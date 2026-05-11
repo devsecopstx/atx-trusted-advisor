@@ -39,6 +39,7 @@ const patchAccountSchema = z
     type: z.enum(accountTypeValues).optional(),
     riskProfile: z.union([deskRiskEnum, z.null()]).optional(),
     outlook: outlookPatchField,
+    outlookRefreshEnabled: z.boolean().optional(),
     hnwiGuardrails: hnwiGuardrailsPatchField.optional()
   })
   .refine((body) => Object.keys(body).length > 0, {

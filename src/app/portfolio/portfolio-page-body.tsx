@@ -11,7 +11,6 @@ import type { SessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { tryIbkrLinkedAccountsSnapshotForSession } from "@/lib/portfolio-ibkr-ssr";
 import { computePortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
-import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     adminListPortfolioAlerts,
@@ -22,7 +21,6 @@ import {
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
 import type { Account, Position } from "@/modules/core-admin/types";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
@@ -167,19 +165,6 @@ export async function PortfolioPageBody({ session }: Props) {
     }
   }
 
-  const scoringTenantId =
-    portfolio && !portfolioLoadError
-      ? portfolio.tenantId?.toHexString() ?? session.tenantId
-      : null;
-  const tenantForScoring = scoringTenantId ? await getTenantByHexIdCached(scoringTenantId) : null;
-  const scoringFactors =
-    portfolio && !portfolioLoadError
-      ? scoringFactorsPayloadForAdminApi(
-          portfolio.scoringFactors,
-          tenantForScoring?.defaultPortfolioScoringFactors
-        ).scoringFactors
-      : [];
-
   return (
     <>
       {portfolioLoadError ? (
@@ -260,7 +245,6 @@ export async function PortfolioPageBody({ session }: Props) {
           portfolioDisplayName={portfolioDisplayName}
           portfolioIdHex={portfolioIdHex}
           positionsByAccount={positionsByAccount}
-          scoringFactors={scoringFactors}
         />
       ) : null}
     </>

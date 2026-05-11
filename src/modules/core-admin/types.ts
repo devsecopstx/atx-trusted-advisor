@@ -414,6 +414,19 @@ export type Account = {
   /** Positioning outlook slug for this account (optional); see {@link accountOutlookValues}. */
   outlook?: AccountOutlook | null;
   /**
+   * When true (default when unset), tenant schedules / auto pipelines may refresh {@link outlook}.
+   * Persisted per account; UI toggle when `INVESTMENT_OUTLOOK_REFRESH_ENABLED` is on.
+   */
+  outlookRefreshEnabled?: boolean;
+  /** UTC timestamp of last automated or manual outlook refresh. */
+  lastOutlookRefreshAt?: Date | null;
+  /** Origin of the last outlook refresh. */
+  outlookRefreshSource?: "xai-sentiment" | "yahoo-macro" | "manual" | null;
+  /** Model or desk confidence for the current outlook label (0–1). */
+  outlookConfidence?: number | null;
+  /** Optional short desk rationale from refresh pipeline. */
+  outlookNotes?: string | null;
+  /**
    * When true, broker CSV import has applied to this book; app users cannot change `extAccountId` or `type`.
    */
   brokerImportLocked?: boolean;

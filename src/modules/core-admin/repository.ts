@@ -4483,6 +4483,7 @@ export type UpdatePortfolioAccountInput = {
   type?: AccountType;
   riskProfile?: "conservative" | "balanced" | "growth" | null;
   outlook?: AccountOutlook | null;
+  outlookRefreshEnabled?: boolean | null;
   /** When true (admin paths), `type` may be updated even if `brokerImportLocked`. `extAccountId` is always patchable for the account owner. */
   bypassBrokerImportLock?: boolean;
   /** Partial merge; `null` clears stored guardrails. Caller validates shape (API). */
@@ -4550,6 +4551,13 @@ export async function updatePortfolioAccountForUser(
       }
     }
   }
+  if (input.outlookRefreshEnabled !== undefined) {
+    if (input.outlookRefreshEnabled === null) {
+      $unset.outlookRefreshEnabled = "";
+    } else {
+      $set.outlookRefreshEnabled = Boolean(input.outlookRefreshEnabled);
+    }
+  }
 
   if (input.hnwiGuardrails !== undefined) {
     if (input.hnwiGuardrails === null) {
@@ -4578,6 +4586,45 @@ export async function updatePortfolioAccountForUser(
     updateDoc.$unset = $unset;
   }
   await db.collection<Account>(collections.accounts).updateOne(filter, updateDoc);
+  await bumpPortfolioWorkspaceContentRev({
+    userId: input.userId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
+  });
+  return db.collection<Account>(collections.accounts).findOne(filter);
+}
+
+/**
+ * Records a manual investment outlook refresh for an owned custodian account (timestamp + source).
+ * Does not mutate Bullish/Neutral/Bearish until the xAI macro pipeline is wired — callers audit old/new outlook.
+ */
+export async function refreshPortfolioAccountInvestmentOutlookForUser(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  accountId: string;
+}): Promise<Account | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId) || !ObjectId.isValid(input.accountId)) {
+    return null;
+  }
+  const db = await getDb();
+  const filter = {
+    _id: new ObjectId(input.accountId),
+    ...userAccountsForPortfolioSessionScopeFilter(input.userId, input.portfolioId, input.tenantId)
+  };
+  const existing = await db.collection<Account>(collections.accounts).findOne(filter);
+  if (!existing?._id) {
+    return null;
+  }
+  const now = new Date();
+  await db.collection<Account>(collections.accounts).updateOne(filter, {
+    $set: {
+      updatedAt: now,
+      lastOutlookRefreshAt: now,
+      outlookRefreshSource: "manual"
+    }
+  });
   await bumpPortfolioWorkspaceContentRev({
     userId: input.userId,
     portfolioId: input.portfolioId,

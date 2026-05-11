@@ -187,7 +187,28 @@ const envSchema = z.object({
       return s === "1" || s === "true" || s === "yes";
     },
     z.boolean().optional().default(false)
-  )
+  ),
+  /**
+   * Gates investment outlook auto-refresh UX, manual refresh API behavior, and enriched xChat outlook lines.
+   * Tenant may still disable via `core_tenants.workspaceLimits.outlookRefreshEnabled=false`.
+   */
+  INVESTMENT_OUTLOOK_REFRESH_ENABLED: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null || v === "") {
+        return false;
+      }
+      if (typeof v === "boolean") {
+        return v;
+      }
+      const s = String(v).trim().toLowerCase();
+      return s === "1" || s === "true" || s === "yes";
+    },
+    z.boolean().optional().default(false)
+  ),
+  /** Optional Quartz/cron string for JVM scheduler (Spring) — documented only until job ships. */
+  INVESTMENT_OUTLOOK_REFRESH_CRON: optionalNonEmptyString,
+  /** xAI model id for outlook sentiment/macro refresh (`/v1/responses`). */
+  XAI_OUTLOOK_MODEL: optionalNonEmptyString
 });
 
 export const REQUIRED_RUNTIME_ENV_VARS = [

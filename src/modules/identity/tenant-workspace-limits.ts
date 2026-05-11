@@ -29,6 +29,12 @@ export type TenantWorkspaceLimits = {
   maxUsersPerTenant: number;
   /** Max saved app_user jobs (`user_tasks`) per user in this tenant workspace. Default **5**. */
   userTasksMax: number;
+  /**
+   * When false, disables investment outlook auto-refresh UX + scheduler hooks for this tenant
+   * (`INVESTMENT_OUTLOOK_REFRESH_ENABLED` must still be true at the environment layer).
+   * Default **true** when omitted on read.
+   */
+  outlookRefreshEnabled: boolean;
 };
 
 /** Fallback list price (USD, whole units) when plan defaults are unavailable. */
@@ -86,7 +92,8 @@ export const DEFAULT_TENANT_WORKSPACE_LIMITS: TenantWorkspaceLimits = {
   changePersonaEnabled: true,
   chatHistoryMax: 10,
   maxUsersPerTenant: 5,
-  userTasksMax: 5
+  userTasksMax: 5,
+  outlookRefreshEnabled: true
 };
 
 /** Numeric quota keys (positive integers), including chat history depth. */
@@ -202,6 +209,10 @@ function parseChangePersonaLoose(v: unknown): boolean | undefined {
   return undefined;
 }
 
+function parseOutlookRefreshEnabledLoose(v: unknown): boolean | undefined {
+  return parseChangePersonaLoose(v);
+}
+
 /** Lenient read from Mongo: only accept well-formed Stripe ids. */
 function parseStripeProductIdLoose(raw: unknown): string | undefined {
   if (raw === undefined || raw === null) {
@@ -240,6 +251,10 @@ function parsePlanOverrideRowLoose(o: Record<string, unknown>): TenantPlanWorksp
   if (cp !== undefined) {
     row.changePersonaEnabled = cp;
   }
+  const ore = parseOutlookRefreshEnabledLoose(o.outlookRefreshEnabled);
+  if (ore !== undefined) {
+    row.outlookRefreshEnabled = ore;
+  }
   const prod = parseStripeProductIdLoose(o.stripeProductId);
   if (prod) {
     row.stripeProductId = prod;
@@ -268,6 +283,10 @@ export function mergeTenantWorkspaceLimits(
   const cp = parseChangePersonaLoose(o.changePersonaEnabled);
   if (cp !== undefined) {
     out.changePersonaEnabled = cp;
+  }
+  const ore = parseOutlookRefreshEnabledLoose(o.outlookRefreshEnabled);
+  if (ore !== undefined) {
+    out.outlookRefreshEnabled = ore;
   }
   if (Object.prototype.hasOwnProperty.call(o, "userChatHourlyLimit")) {
     const n = coerceUserChatHourlyLimitLoose(o.userChatHourlyLimit);
@@ -376,7 +395,8 @@ export function applyTenantPlanRowToBase(
     changePersonaEnabled: row.changePersonaEnabled ?? base.changePersonaEnabled,
     chatHistoryMax: row.chatHistoryMax ?? base.chatHistoryMax,
     maxUsersPerTenant: row.maxUsersPerTenant ?? base.maxUsersPerTenant,
-    userTasksMax: row.userTasksMax ?? base.userTasksMax
+    userTasksMax: row.userTasksMax ?? base.userTasksMax,
+    outlookRefreshEnabled: row.outlookRefreshEnabled ?? base.outlookRefreshEnabled
   };
 }
 
@@ -406,6 +426,13 @@ export function parseWorkspaceLimitsPayload(
       return { ok: false, error: "Invalid changePersonaEnabled: boolean required" };
     }
     value.changePersonaEnabled = cp;
+  }
+  if (o.outlookRefreshEnabled !== undefined) {
+    const ore = parseOutlookRefreshEnabledLoose(o.outlookRefreshEnabled);
+    if (ore === undefined) {
+      return { ok: false, error: "Invalid outlookRefreshEnabled: boolean required" };
+    }
+    value.outlookRefreshEnabled = ore;
   }
   if (o.userChatHourlyLimit !== undefined) {
     const hn = coerceUserChatHourlyLimitLoose(o.userChatHourlyLimit);

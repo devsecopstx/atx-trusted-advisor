@@ -79,6 +79,15 @@ data class AtxfinanceProperties(
     val portfolioWorkspaceSnapshotPurgeRetentionDays: Int = 14,
     /** Fixed-rate interval (ms) for purge job. */
     val portfolioWorkspaceSnapshotPurgeIntervalMs: Long = 21_600_000L,
+    /**
+     * Gates JVM outlook refresh scheduler hooks + aligns with Next `INVESTMENT_OUTLOOK_REFRESH_ENABLED`.
+     * Job wiring is incremental — properties are carried for shared configuration.
+     */
+    val investmentOutlookRefreshEnabled: Boolean = false,
+    /** Optional Quartz/cron expression for outlook refresh (when job ships). */
+    val investmentOutlookRefreshCron: String = "",
+    /** xAI model id for macro outlook synthesis. */
+    val xaiOutlookModel: String = "grok-3-latest",
     @NestedConfigurationProperty
     val redis: RedisProps = RedisProps(),
     @NestedConfigurationProperty

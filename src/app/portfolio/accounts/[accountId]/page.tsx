@@ -11,7 +11,11 @@ import {
 import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import { getEnv } from "@/lib/env";
+import { getInvestmentOutlookRefreshEnabled } from "@/lib/feature-flags";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { effectiveWorkspaceLimitsForTenantAndPlan } from "@/lib/tenant-workspace-limits";
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import {
@@ -24,6 +28,7 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { parseAccountOutlook, type Account } from "@/modules/core-admin/types";
+import { getCoreUserById } from "@/modules/identity/repository";
 
 function serializeAccount(account: Account) {
   const rawRef = (account.extAccountId ?? "").trim();
@@ -39,6 +44,20 @@ function serializeAccount(account: Account) {
     brokerImportLocked: Boolean(account.brokerImportLocked),
     riskProfile: account.riskProfile ?? null,
     outlook: parseAccountOutlook(account.outlook) ?? null,
+    outlookRefreshEnabled: account.outlookRefreshEnabled !== false,
+    lastOutlookRefreshAt:
+      account.lastOutlookRefreshAt instanceof Date
+        ? account.lastOutlookRefreshAt.toISOString()
+        : typeof account.lastOutlookRefreshAt === "string"
+          ? account.lastOutlookRefreshAt
+          : null,
+    outlookRefreshSource:
+      typeof account.outlookRefreshSource === "string" ? account.outlookRefreshSource : null,
+    outlookConfidence:
+      typeof account.outlookConfidence === "number" && Number.isFinite(account.outlookConfidence)
+        ? account.outlookConfidence
+        : null,
+    outlookNotes: typeof account.outlookNotes === "string" ? account.outlookNotes : null,
     hnwiGuardrails: account.hnwiGuardrails ?? null
   };
 }
@@ -162,6 +181,19 @@ export default async function PortfolioAccountPage({
     getWorkspaceTenantHeaderContext(session.tenantId)
   ]);
 
+  const tenantRow =
+    ObjectId.isValid(session.tenantId) ? await getTenantByHexIdCached(session.tenantId) : null;
+  const coreUser =
+    ObjectId.isValid(session.userId) ? await getCoreUserById(new ObjectId(session.userId)) : null;
+  const workspaceLimits = await effectiveWorkspaceLimitsForTenantAndPlan(
+    tenantRow,
+    coreUser?.subscriptionPlan
+  );
+  const investmentOutlookRefreshEnabled = getInvestmentOutlookRefreshEnabled({
+    envEnabled: getEnv().INVESTMENT_OUTLOOK_REFRESH_ENABLED === true,
+    tenantLimits: workspaceLimits
+  });
+
   return (
     <PortfolioWorkspaceProductShell
       feedbackPageLabel="Portfolio"
@@ -176,6 +208,7 @@ export default async function PortfolioAccountPage({
           account={serializeAccount(account)}
           portfolioAccountCount={accounts.length}
           initialPositions={initialPositions}
+          investmentOutlookRefreshEnabled={investmentOutlookRefreshEnabled}
         />
       </div>
     </PortfolioWorkspaceProductShell>

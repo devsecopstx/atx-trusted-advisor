@@ -14,6 +14,12 @@ export type SerializableAccount = {
   brokerImportLocked: boolean;
   riskProfile: "conservative" | "balanced" | "growth" | null;
   outlook: AccountOutlook | null;
+  /** Per-account opt-in for outlook refresh pipelines; default true when omitted. */
+  outlookRefreshEnabled: boolean;
+  lastOutlookRefreshAt: string | null;
+  outlookRefreshSource: string | null;
+  outlookConfidence: number | null;
+  outlookNotes: string | null;
   hnwiGuardrails: PortfolioAccountHnwiGuardrails | null;
 };
 

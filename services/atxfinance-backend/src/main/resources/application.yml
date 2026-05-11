@@ -71,6 +71,9 @@ app:
     portfolio-workspace-snapshot-purge-enabled: ${PORTFOLIO_WORKSPACE_SNAPSHOT_PURGE_ENABLED:true}
     portfolio-workspace-snapshot-purge-retention-days: ${PORTFOLIO_WORKSPACE_SNAPSHOT_PURGE_RETENTION_DAYS:14}
     portfolio-workspace-snapshot-purge-interval-ms: ${PORTFOLIO_WORKSPACE_SNAPSHOT_PURGE_INTERVAL_MS:21600000}
+    investment-outlook-refresh-enabled: ${INVESTMENT_OUTLOOK_REFRESH_ENABLED:false}
+    investment-outlook-refresh-cron: ${INVESTMENT_OUTLOOK_REFRESH_CRON:}
+    xai-outlook-model: ${XAI_OUTLOOK_MODEL:grok-3-latest}
     redis:
       url: ${REDIS_URL:}
       control-url: ${REDIS_URL_CONTROL:${REDIS_URL:}}

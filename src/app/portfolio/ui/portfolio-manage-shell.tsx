@@ -19,14 +19,12 @@ import { PortfolioManageTabs } from "@/app/portfolio/ui/portfolio-manage-tabs";
 import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { PortfoliosWatchlistCompact } from "@/app/portfolios/portfolios-watchlist-compact";
-import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { formatUsd2, formatUsdWhole, type PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import {
     dispatchWorkspaceAccountChanged,
     writeStoredWorkspaceAccountId
 } from "@/lib/workspace-account-selection";
-import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
 export type PortfolioManageShellProps = {
   portfolioDisplayName: string;
@@ -38,7 +36,6 @@ export type PortfolioManageShellProps = {
   totalAccounts: number;
   metrics: PortfolioOverviewMetrics;
   positionsByAccount: Record<string, SerializablePosition[]>;
-  scoringFactors: PortfolioScoringFactorApi[];
   deskPrefetch?: PortfolioDeskPrefetchStrip | null;
 };
 
@@ -52,7 +49,6 @@ export function PortfolioManageShell({
   totalAccounts,
   metrics,
   positionsByAccount,
-  scoringFactors,
   deskPrefetch = null
 }: PortfolioManageShellProps) {
   const [selectedAccountHex, setSelectedAccountHex] = useState(defaultAccountHex);
@@ -253,9 +249,8 @@ export function PortfolioManageShell({
           </p>
         ) : null}
         <details className="portfolio-tech-details portfolio-tech-details--quiet">
-          <summary>Scoring factors</summary>
+          <summary>Book metadata</summary>
           <pre className="portfolio-tech-details__id">ID {portfolioIdHex}</pre>
-          <PortfolioScoringFactorsReadonlyTable factors={scoringFactors} variant="full" />
         </details>
       </header>
 

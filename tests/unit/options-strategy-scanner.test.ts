@@ -29,13 +29,20 @@ vi.mock("@/lib/mongodb", () => ({
   getDb: vi.fn(async () => ({
     collection: (name: string) => {
       if (name === "portfolio_positions") {
+        const fiveLegs = [
+          { symbol: "TSLA" },
+          { symbol: "TSLA" },
+          { symbol: "TSLA" },
+          { symbol: "RKLB" },
+          { symbol: "RKLB" }
+        ];
         return {
           countDocuments: vi.fn().mockResolvedValue(5),
           aggregate: vi.fn().mockReturnValue({
-            toArray: vi.fn().mockResolvedValue([{ n: 2 }])
+            toArray: vi.fn().mockResolvedValue([{ optionPositions: fiveLegs, watchlists: [] }])
           }),
           find: vi.fn().mockReturnValue({
-            toArray: vi.fn().mockResolvedValue([])
+            toArray: vi.fn().mockResolvedValue(fiveLegs)
           })
         };
       }

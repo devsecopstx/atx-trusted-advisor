@@ -67,6 +67,7 @@
     "migrate:tenant-portfolio": "node --env-file=.env scripts/migrate-portfolio-portfolios-to-tenant-portfolios.mjs",
     "migrate:persona-name-normalized": "node --env-file=.env scripts/backfill-persona-name-normalized.mjs",
     "migrate:persona-tools": "node --env-file=.env scripts/backfill-persona-tools.mjs",
+    "migrate:account-outlook": "node --env-file=.env scripts/migrate-account-outlook.mjs",
     "migrate:merge-user-watchlists": "node --env-file=.env scripts/ops/merge-user-watchlists.mjs",
     "migrate:merge-user-watchlists:apply": "node --env-file=.env scripts/ops/merge-user-watchlists.mjs --apply",
     "status:deploy": "bash scripts/ops/print-deploy-status.sh",

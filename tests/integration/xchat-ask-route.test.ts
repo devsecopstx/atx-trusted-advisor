@@ -35,7 +35,8 @@ const verifierMocks = vi.hoisted(() => ({
 }));
 
 const coreAdminRepositoryMocks = vi.hoisted(() => ({
-  getUserAdminSettings: vi.fn()
+  getUserAdminSettings: vi.fn(),
+  getDefaultPortfolio: vi.fn().mockResolvedValue(null)
 }));
 
 const ragReadinessMocks = vi.hoisted(() => ({
@@ -58,7 +59,12 @@ const defaultWorkspaceLimits = {
   userXoptionsLimit: 10,
   userChatLimit: 10,
   tenantPortfolioLimit: 1,
-  portfolioAccountLimit: 1
+  portfolioAccountLimit: 1,
+  changePersonaEnabled: true,
+  chatHistoryMax: 10,
+  maxUsersPerTenant: 5,
+  userTasksMax: 5,
+  outlookRefreshEnabled: true
 };
 
 const identityMocks = vi.hoisted(() => ({
@@ -92,7 +98,18 @@ vi.mock("@/modules/xchat/repository", async (importOriginal) => {
 });
 vi.mock("@/modules/xchat/team-xai-collection", () => teamKbMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
-vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
+vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/core-admin/repository")>();
+  return {
+    ...actual,
+    getUserAdminSettings: coreAdminRepositoryMocks.getUserAdminSettings,
+    getDefaultPortfolio: coreAdminRepositoryMocks.getDefaultPortfolio
+  };
+});
+vi.mock("@/modules/xchat/account-outlook-context", () => ({
+  resolveAccountOutlookContextForXchat: vi.fn().mockResolvedValue(null),
+  formatAccountOutlookPromptInjection: vi.fn(() => "")
+}));
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
 vi.mock("@/modules/xchat/user-preferences-repository", () => prefsMocks);
 vi.mock("@/modules/xchat/xchat-platform-settings", async (importOriginal) => {

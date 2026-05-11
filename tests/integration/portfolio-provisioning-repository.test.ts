@@ -184,6 +184,17 @@ function buildFakeDb() {
           }
         }
         return { matchedCount: modified, modifiedCount: modified };
+      },
+      deleteMany: async (filter: Record<string, unknown>) => {
+        let deletedCount = 0;
+        for (let i = store.length - 1; i >= 0; i -= 1) {
+          const doc = store[i];
+          if (docMatchesFilter(doc, filter)) {
+            store.splice(i, 1);
+            deletedCount += 1;
+          }
+        }
+        return { deletedCount };
       }
     };
   }

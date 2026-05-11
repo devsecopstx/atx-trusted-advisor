@@ -178,7 +178,8 @@ describe("xChat merged workspace + plan limits (meter helpers)", () => {
       changePersonaEnabled: true,
       chatHistoryMax: 10,
       maxUsersPerTenant: 5,
-      userTasksMax: 5
+      userTasksMax: 5,
+      outlookRefreshEnabled: true
     });
     expect(merged.dailyCap).toBe(50);
     expect(merged.hourlyCap).toBe(12);

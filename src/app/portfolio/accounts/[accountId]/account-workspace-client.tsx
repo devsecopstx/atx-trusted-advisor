@@ -14,7 +14,6 @@ import {
     hnwiGuardrailsPartialSchema,
     type HnwiGuardrailsPatchPayload
 } from "@/modules/core-admin/portfolio-account-hnwi-guardrails";
-import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 import {
     accountTypeValues,
     type AccountOutlook,
@@ -26,6 +25,7 @@ import {
 
 import type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { AccountHoldingsCrudCard } from "@/app/portfolio/ui/account-holdings-crud-card";
+import { OutlookRiskSection } from "@/components/account/OutlookRiskSection";
 
 export type { SerializableAccount } from "@/app/portfolio/accounts/serializable-account";
 
@@ -35,6 +35,7 @@ type AccountWorkspaceProps = {
   account: SerializableAccount;
   portfolioAccountCount: number;
   initialPositions: SerializablePosition[];
+  investmentOutlookRefreshEnabled: boolean;
 };
 
 type EditTab = "account" | "holdings";
@@ -42,12 +43,6 @@ type EditTab = "account" | "holdings";
 function coerceAccountType(raw: string): AccountType {
   return (accountTypeValues as readonly string[]).includes(raw) ? (raw as AccountType) : "fidelity";
 }
-
-const OUTLOOK_OPTIONS: ReadonlyArray<{ value: AccountOutlook; label: string }> = [
-  { value: "bullish", label: "Bullish" },
-  { value: "neutral", label: "Neutral" },
-  { value: "bearish", label: "Bearish" }
-];
 
 function brokerPickerOptions(current: AccountType): AccountType[] {
   const base = [...ACCOUNT_TYPE_PICKER_ORDER];
@@ -99,7 +94,8 @@ function AccountWorkspaceInner({
   portfolioName,
   account,
   portfolioAccountCount,
-  initialPositions
+  initialPositions,
+  investmentOutlookRefreshEnabled
 }: AccountWorkspaceProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -136,6 +132,7 @@ function AccountWorkspaceInner({
       ? String(g0.minLiquidityMonthsExpenses)
       : ""
   );
+  const [outlookRefreshEnabled, setOutlookRefreshEnabled] = useState(account.outlookRefreshEnabled);
 
   useEffect(() => {
     setAcctName(account.name);
@@ -156,6 +153,7 @@ function AccountWorkspaceInner({
         ? String(g.minLiquidityMonthsExpenses)
         : ""
     );
+    setOutlookRefreshEnabled(account.outlookRefreshEnabled);
   }, [
     account._id,
     account.name,
@@ -166,7 +164,8 @@ function AccountWorkspaceInner({
     account.riskProfile,
     account.outlook,
     account.type,
-    account.hnwiGuardrails
+    account.hnwiGuardrails,
+    account.outlookRefreshEnabled
   ]);
 
   function setTab(next: EditTab) {
@@ -234,7 +233,8 @@ function AccountWorkspaceInner({
           outlook: parsed.data.outlook,
           extAccountId: parsed.data.extAccountId,
           type: parsed.data.type,
-          hnwiGuardrails: hnwiParsed.value
+          hnwiGuardrails: hnwiParsed.value,
+          ...(investmentOutlookRefreshEnabled ? { outlookRefreshEnabled } : {})
         };
         const res = await fetch(
           `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
@@ -282,7 +282,8 @@ function AccountWorkspaceInner({
         cashBalance: parsed.data.cashBalance,
         riskProfile: parsed.data.riskProfile,
         outlook: parsed.data.outlook,
-        hnwiGuardrails: hnwiParsed.value
+        hnwiGuardrails: hnwiParsed.value,
+        ...(investmentOutlookRefreshEnabled ? { outlookRefreshEnabled } : {})
       };
       if (!brokerLocked) {
         body.type = parsed.data.type;
@@ -445,58 +446,22 @@ function AccountWorkspaceInner({
 
           <div className="portfolio-edit-account-section-divider" role="presentation" />
 
-          <h3 className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section">
-            Outlook &amp; risk
-          </h3>
-          <p className="portfolio-edit-field__hint" style={{ marginTop: 0 }}>
-            Account-level overrides used by xStrategyBuilder prefill, options-income scanner filters, and desk risk alerts.
-          </p>
-
-          <fieldset className="portfolio-edit-fieldset portfolio-edit-fieldset--segmented">
-            <legend className="portfolio-edit-field__label">Market outlook</legend>
-            <div className="portfolio-edit-segmented-row" role="radiogroup" aria-label="Market outlook">
-              {OUTLOOK_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value}
-                  className={`portfolio-edit-segment${outlook === opt.value ? " portfolio-edit-segment--active" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="account-outlook"
-                    value={opt.value}
-                    checked={outlook === opt.value}
-                    onChange={() => setOutlook(opt.value)}
-                    className="sr-only"
-                  />
-                  <span>{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset className="portfolio-edit-fieldset portfolio-edit-fieldset--segmented">
-            <legend className="portfolio-edit-field__label">Risk level</legend>
-            <div className="portfolio-edit-segmented-row" role="radiogroup" aria-label="Risk level">
-              {RISK_LEVEL_OPTIONS.map((opt) => (
-                <label
-                  key={opt.riskProfile}
-                  className={`portfolio-edit-segment${
-                    riskProfile === opt.riskProfile ? " portfolio-edit-segment--active" : ""
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="account-risk"
-                    value={opt.riskProfile}
-                    checked={riskProfile === opt.riskProfile}
-                    onChange={() => setRiskProfile(opt.riskProfile)}
-                    className="sr-only"
-                  />
-                  <span>{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <OutlookRiskSection
+            portfolioId={portfolioId}
+            accountId={account._id}
+            investmentOutlookRefreshEnabled={investmentOutlookRefreshEnabled}
+            outlook={outlook}
+            riskProfile={riskProfile}
+            outlookRefreshEnabled={outlookRefreshEnabled}
+            onOutlookChange={setOutlook}
+            onRiskChange={setRiskProfile}
+            onOutlookRefreshEnabledChange={setOutlookRefreshEnabled}
+            lastOutlookRefreshAt={account.lastOutlookRefreshAt}
+            outlookConfidence={account.outlookConfidence}
+            outlookRefreshSource={account.outlookRefreshSource}
+            disabled={savePending || pending}
+            onErrorMessage={setError}
+          />
 
           <div className="portfolio-edit-account-section-divider" role="presentation" />
 

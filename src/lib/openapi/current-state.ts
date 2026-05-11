@@ -1204,6 +1204,30 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "portfolios"
   },
   {
+    path: "/api/portfolios/{portfolioId}/accounts/{accountId}/outlook/refresh",
+    operations: [
+      {
+        method: "POST",
+        auth: "session",
+        summary:
+          "Record manual investment outlook refresh (timestamp + audit). Automated Bullish/Neutral/Bearish synthesis is gated by INVESTMENT_OUTLOOK_REFRESH_ENABLED and tenant workspace limits."
+      }
+    ],
+    tag: "portfolios"
+  },
+  {
+    path: "/api/accounts/{accountId}/outlook/refresh",
+    operations: [
+      {
+        method: "POST",
+        auth: "session",
+        summary:
+          "Account-centric alias for outlook refresh: resolves owning portfolio server-side, then same handler as /api/portfolios/{portfolioId}/accounts/{accountId}/outlook/refresh."
+      }
+    ],
+    tag: "portfolios"
+  },
+  {
     path: "/api/positions",
     operations: [
       { method: "GET", auth: "session" },

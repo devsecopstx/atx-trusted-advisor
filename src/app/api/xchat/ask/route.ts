@@ -9,15 +9,14 @@ import {
     resolveAppUserBillingAccessState
 } from "@/lib/app-user-billing-state";
 import { requireSessionUser } from "@/lib/auth";
-import { isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
+import { getEnv, isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
+import { getInvestmentOutlookRefreshEnabled } from "@/lib/feature-flags";
 import {
     getPersonaByIdCached,
     getTenantByHexIdCached,
     loadDefaultXchatPersonaForSessionDeduped
 } from "@/lib/server-request-cache";
-import {
-    effectiveWorkspaceLimitsForTenantAndPlan,
-} from "@/lib/tenant-workspace-limits";
+import { effectiveWorkspaceLimitsForTenantAndPlan } from "@/lib/tenant-workspace-limits";
 import {
     respondWithXaiToolLoop,
     searchDocumentsInCollections,
@@ -39,7 +38,10 @@ import {
     resolveXchatSseHeartbeatMs,
     wantsXchatLiveToolLoopSse
 } from "@/lib/xchat-live-sse-policy";
-import { getUserAdminSettings } from "@/modules/core-admin/repository";
+import {
+    getDefaultPortfolio,
+    getUserAdminSettings
+} from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     getCoreUserById,
@@ -49,6 +51,10 @@ import {
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
+import {
+    formatAccountOutlookPromptInjection,
+    resolveAccountOutlookContextForXchat
+} from "@/modules/xchat/account-outlook-context";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
@@ -348,7 +354,6 @@ export async function POST(request: Request) {
     tenantName: typeof tenantForDebug?.name === "string" ? tenantForDebug.name : "",
     xchatBrandName: tenantForDebug?.tenantPreferences?.xchat_brandname
   });
-  const tenantWorkspaceContextFingerprint = tenantWorkspaceContextBlock?.trim() ?? "";
 
   return runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
   const askRequestStartedAt = Date.now();
@@ -1517,6 +1522,36 @@ export async function POST(request: Request) {
     Boolean(userId) &&
     !visionImage;
 
+  const tenantWorkspaceCtxBase =
+    typeof tenantWorkspaceContextBlock === "string" ? tenantWorkspaceContextBlock.trim() : "";
+  let accountOutlookAugment = "";
+  const portfolioHexForOutlook =
+    workspacePortfolioId?.trim() ||
+    (await getDefaultPortfolio(session.userId, { tenantId: session.tenantId }))?._id?.toHexString();
+  if (portfolioHexForOutlook) {
+    const limitsForOutlook = await effectiveWorkspaceLimitsForTenantAndPlan(
+      tenantForDebug,
+      subscriptionPlan
+    );
+    const outlookCtx = await resolveAccountOutlookContextForXchat({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      portfolioIdHex: portfolioHexForOutlook
+    });
+    if (outlookCtx) {
+      accountOutlookAugment = formatAccountOutlookPromptInjection(
+        outlookCtx,
+        getInvestmentOutlookRefreshEnabled({
+          envEnabled: getEnv().INVESTMENT_OUTLOOK_REFRESH_ENABLED === true,
+          tenantLimits: limitsForOutlook
+        })
+      );
+    }
+  }
+  const effectiveTenantWorkspaceContextBlock = [tenantWorkspaceCtxBase, accountOutlookAugment]
+    .filter((s) => s.trim().length > 0)
+    .join("\n\n");
+
   const remoteChainInstructionsFingerprint = computeXchatRemoteChainInstructionsFingerprint({
     personaSystem: persona?.systemPrompt ?? "",
     personaUpdatedAtMs: persona?.updatedAt?.getTime() ?? 0,
@@ -1524,7 +1559,10 @@ export async function POST(request: Request) {
     hostedSearch: hasHostedSearchTool,
     atxFunction: hasXfinanceTool,
     citationsEnabled: persona?.citationsEnabled !== false,
-    tenantWorkspaceContextBlock: tenantWorkspaceContextFingerprint
+    tenantWorkspaceContextBlock:
+      effectiveTenantWorkspaceContextBlock.trim().length > 0
+        ? effectiveTenantWorkspaceContextBlock
+        : tenantWorkspaceCtxBase
   });
 
   let previousResponseId: string | undefined;
@@ -1582,7 +1620,10 @@ export async function POST(request: Request) {
       : null;
 
   const builtSystemPrompt = buildXchatSystemPrompt({
-    tenantWorkspaceContextBlock,
+    tenantWorkspaceContextBlock:
+      effectiveTenantWorkspaceContextBlock.trim().length > 0
+        ? effectiveTenantWorkspaceContextBlock
+        : tenantWorkspaceContextBlock,
     personaSystem: persona?.systemPrompt ?? "",
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
