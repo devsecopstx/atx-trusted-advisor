@@ -58,7 +58,7 @@ This skill holds **short shipped summaries** that were trimmed from `PLAN.md` so
 - **Branding v1** — logo remains **URL-only** on **`xf_tenant_logo_url`** (see `tenant-logo-url` validation); no tenant file upload in this slice.
 - **Tests:** **`tenant-bootstrap-policy`** unit; **`access-request-item-crud-route`** (approve + **`bootstrap_on_approve`**); **`tenant-spec-schema`** (YAML mirror).
 
-**PLAN 10 — shipped in-repo slice:** Admin bootstrap **audit + replay** APIs + workspace panel; Spring **`provisionForUser`** reads tenant **`bootstrap_policy`** / **`watchlist_seed_symbols`** (Next parity); create-tenant **YAML preview**. Remaining optional items stay in `PLAN.md` row **10** (spec export, CSV).
+**PLAN 10 — shipped:** Admin bootstrap **audit + replay**; **export jobs** (`tenant_admin_export_jobs` + **`tenant_export_worker`** drain, live YAML + bootstrap CSV); Spring **`provisionForUser`** bootstrap parity; create-tenant **YAML preview**. Ops: seed **`tenant_export_worker`** task manually (`tenant-specs/README.md`).
 
 ---
 

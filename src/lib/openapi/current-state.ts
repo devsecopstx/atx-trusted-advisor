@@ -850,6 +850,24 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tenants"
   },
   {
+    path: "/api/admin/tenants/{tenantId}/export-jobs",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/export-jobs/{jobId}",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/export-jobs/{jobId}/artifact/{kind}",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-tenants"
+  },
+  {
     path: "/api/admin/tenants/{tenantId}/rental-api-keys",
     operations: [
       { method: "GET", auth: "admin" },

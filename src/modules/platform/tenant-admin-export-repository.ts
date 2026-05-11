@@ -3,11 +3,11 @@ import type { Filter, ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 
 import {
-  TENANT_ADMIN_EXPORT_JOBS_COLLECTION,
-  type TenantExportArtifactKind,
-  type TenantExportJob,
-  type TenantExportJobArtifact,
-  type TenantExportJobStatus
+    TENANT_ADMIN_EXPORT_JOBS_COLLECTION,
+    type TenantExportArtifactKind,
+    type TenantExportJob,
+    type TenantExportJobArtifact,
+    type TenantExportJobStatus
 } from "@/modules/platform/tenant-admin-export-types";
 
 export async function ensureTenantExportJobIndexes(): Promise<void> {
@@ -48,37 +48,32 @@ export async function listTenantExportJobsForTenant(input: {
 }): Promise<TenantExportJob[]> {
   const db = await getDb();
   const lim = Math.min(Math.max(input.limit ?? 25, 1), 100);
-  return db
+  const rows = await db
     .collection<TenantExportJob>(TENANT_ADMIN_EXPORT_JOBS_COLLECTION)
     .find({ tenantId: input.tenantId })
+    .project({ "artifacts.content": 0 })
     .sort({ createdAt: -1 })
     .limit(lim)
-    .project({
-      tenantId: 1,
-      kinds: 1,
-      status: 1,
-      createdAt: 1,
-      startedAt: 1,
-      completedAt: 1,
-      createdByUserId: 1,
-      error: 1,
-      "artifacts.kind": 1,
-      "artifacts.filename": 1,
-      "artifacts.byteLength": 1
-    })
     .toArray();
+  return rows as TenantExportJob[];
 }
 
 export async function getTenantExportJobById(input: {
   jobId: ObjectId;
   tenantId: ObjectId;
+  /** When true, drops `artifacts.content` so list/detail APIs stay small. */
+  omitArtifactBodies?: boolean;
 }): Promise<TenantExportJob | null> {
   const db = await getDb();
   const filter: Filter<TenantExportJob> = {
     _id: input.jobId,
     tenantId: input.tenantId
   };
-  return db.collection<TenantExportJob>(TENANT_ADMIN_EXPORT_JOBS_COLLECTION).findOne(filter);
+  const projection =
+    input.omitArtifactBodies === true ? ({ "artifacts.content": 0 } as const) : undefined;
+  return db.collection<TenantExportJob>(TENANT_ADMIN_EXPORT_JOBS_COLLECTION).findOne(filter, {
+    projection
+  });
 }
 
 export async function claimNextPendingTenantExportJob(): Promise<TenantExportJob | null> {

@@ -109,7 +109,8 @@ export type ScheduledTask = {
     | "tax_loss_harvest_scanner"
     | "marketing_post"
     | "user_alert_manager"
-    | "xchat_spend_alert";
+    | "xchat_spend_alert"
+    | "tenant_export_worker";
   scheduleCron?: string;
   /** RRULE expression for rich recurrence; preferred over cron when present. */
   scheduleRRule?: string;

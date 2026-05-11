@@ -11,6 +11,7 @@ import { notifyScheduledTaskSlackSummary } from "@/modules/core-admin/scheduled-
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requests-task";
 import { runMarketingPostTask } from "@/modules/marketing/publisher";
+import { runTenantExportWorkerTask } from "@/modules/platform/tenant-export-worker-task";
 import { runScheduledAppBrokerImportTask } from "@/modules/portfolio-import/app-broker-import-job";
 import { runUserAlertManagerScanner } from "@/modules/price-alerts/user-alert-manager-scanner";
 import {
@@ -176,6 +177,9 @@ async function runScheduledCategory(
   }
   if (task.category === "xchat_spend_alert") {
     return runXchatTenantSpendAlertTask(task);
+  }
+  if (task.category === "tenant_export_worker") {
+    return runTenantExportWorkerTask(task);
   }
   if (task.category === "watchlist_price_scanner") {
     return runWatchlistPriceScanner(task, { bypassMarketWindow: bypass });

@@ -39,7 +39,8 @@ import { computeNextRunAtFromCron } from "@/lib/scheduled-task-cron";
 
 /** Categories omitted from automatic upsert (operators create rows manually). */
 const SCHEDULED_TASK_CATEGORIES_EXCLUDED_FROM_SPEC_SYNC: ReadonlySet<ScheduledTaskCategory> = new Set([
-  "xchat_spend_alert"
+  "xchat_spend_alert",
+  "tenant_export_worker"
 ]);
 
 import { resolveMongoUri } from "../lib/resolve-mongo-uri.mjs";

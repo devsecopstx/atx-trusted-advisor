@@ -121,6 +121,12 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     defaultJobName: "xchat-spend-alert-job",
     description:
       "Tenant-only: sums rolling 24h `xchat_logs.xaiUsage.costUsdTicks` (xAI `usage.cost_in_usd_ticks`) and compares to `core_tenants.tenantPreferences.xchat_daily_spend_alert_usd_ticks`. Emits a breach line in task output / Slack when over threshold. **Not auto-seeded** — create manually per tenant."
+  },
+  tenant_export_worker: {
+    displayName: "Tenant admin export worker (queue drain, every 15m UTC)",
+    defaultJobName: "tenant-export-worker",
+    description:
+      "Processes **`tenant_admin_export_jobs`** queued by **Admin → Tenant register → Workspace limits → Export jobs** (`live_spec_yaml`, `bootstrap_audit_csv`). FIFO pending→running→completed. Create **one tenant-scoped** scheduled task row (category `tenant_export_worker`) or run manually from Admin → Tasks — **excluded from `ops:scheduled-tasks:sync` bulk upsert**."
   }
 } satisfies Record<ScheduledTaskCategory, ScheduledTaskCategoryCatalogEntry>;
 

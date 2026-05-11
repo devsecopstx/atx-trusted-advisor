@@ -42,6 +42,15 @@ The tenant document (including **`rentalProfile`** provisioning when present) st
 
 Prints the new/updated tenant **ObjectId** (hex). With **`tenant.initialTenantAdmin`**, the script also upserts **`core_users`** and **`core_tenant_memberships`** (see below).
 
+## Live tenant export (admin UI / background queue)
+
+For drift review against YAML specs without hand-copying Mongo:
+
+1. **Admin → Tenant register →** choose tenant **→ Workspace limits → Export jobs** — queue **live spec YAML** and/or **bootstrap audit CSV**.
+2. Jobs persist in **`tenant_admin_export_jobs`** (`pending` → `running` → `completed` / `failed`).
+3. Drain with scheduled task category **`tenant_export_worker`** (create **one** tenant-scoped row under **Admin → Tasks**, or **Run** manually after queueing). This category is **excluded** from `npm run ops:scheduled-tasks:sync` bulk upsert — add deliberately per environment.
+4. Completed jobs show download links (YAML + CSV). CSV covers `tenant_provision_bootstrap` audit rows (capped at 5k).
+
 ## Phase 1 provisioning contract
 
 Optional block **`tenant.initialTenantAdmin`** (object):

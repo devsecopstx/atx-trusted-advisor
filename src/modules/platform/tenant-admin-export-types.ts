@@ -7,8 +7,8 @@ export type TenantExportArtifactKind = "live_spec_yaml" | "bootstrap_audit_csv";
 export type TenantExportJobArtifact = {
   kind: TenantExportArtifactKind;
   filename: string;
-  /** UTF-8 text (YAML or CSV). */
-  content: string;
+  /** UTF-8 text (YAML or CSV). Omitted when listing jobs with projection. */
+  content?: string;
   byteLength: number;
 };
 
