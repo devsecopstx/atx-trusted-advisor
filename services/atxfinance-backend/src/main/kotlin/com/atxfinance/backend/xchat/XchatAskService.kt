@@ -1,13 +1,12 @@
 package com.atxfinance.backend.xchat
 
 import com.atxfinance.backend.audit.AuditEventService
-import com.atxfinance.backend.persona.PersonaService
+import com.atxfinance.backend.portfolio.PortfolioWorkspaceSnapshotService
 import com.atxfinance.backend.session.ResolvedSession
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.http.HttpServletRequest
 import org.bson.Document
-import org.bson.types.ObjectId
 import org.springframework.stereotype.Service
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.nio.charset.StandardCharsets
@@ -16,10 +15,13 @@ import java.util.UUID
 @Service
 class XchatAskService(
     private val atxFunctionExecutor: AtxFunctionExecutor,
-    private val personaService: PersonaService,
+    private val personaResolver: XchatPersonaResolver,
     private val auditEventService: AuditEventService,
     private val xaiToolLoopService: XaiToolLoopService,
     private val xchatRagContextService: XchatRagContextService,
+    private val xchatUserPreferencesService: XchatUserPreferencesService,
+    private val xchatSessionLogService: XchatSessionLogService,
+    private val workspaceSnapshotService: PortfolioWorkspaceSnapshotService,
 ) {
     fun streamAsk(
         request: HttpServletRequest,
@@ -38,15 +40,13 @@ class XchatAskService(
             val root = parseRequestJson(body, objectMapper)
             val message = root.path("message").asText("").trim()
             val threadId = resolveThreadId(root)
-            val persona = resolvePersona(root)
-            val personaId = persona?.getObjectId("_id")?.toHexString() ?: root.path("personaId").asText("advisor")
+            val requestedPersonaId = root.path("personaId").asText("").trim().takeIf { it.isNotEmpty() }
+            val persona = personaResolver.resolveForAsk(session, requestedPersonaId)
+            val personaId = persona?.getObjectId("_id")?.toHexString() ?: requestedPersonaId ?: "advisor"
             val model = XchatPersonaSupport.model(persona, "grok-4-1-fast-reasoning")
-            val executionContext =
-                AtxFunctionExecutionContext(
-                    session = session,
-                    portfolioIdHex = root.path("portfolioId").asText("").trim().takeIf { it.isNotEmpty() },
-                    workspacePreload = parseWorkspacePreload(root, objectMapper),
-                )
+            val shouldPersistHistory = xchatUserPreferencesService.shouldPersistHistory(session)
+            val correlationId = resolveCorrelationId(request, requestId)
+            val executionContext = resolveExecutionContext(session, root, objectMapper)
 
             emit(emitter, "meta", objectMapper) {
                 mapOf(
@@ -68,6 +68,18 @@ class XchatAskService(
                         markdownProvider = {
                             atxFunctionExecutor.executeOptionsActionScan(executionContext).let { it.markdown to it.donePayload }
                         },
+                        persist =
+                            buildPersistTurn(
+                                shouldPersistHistory = shouldPersistHistory,
+                                session = session,
+                                threadId = threadId,
+                                requestId = requestId,
+                                correlationId = correlationId,
+                                persona = persona,
+                                message = message,
+                                model = model,
+                                startedAt = startedAt,
+                            ),
                     )
                     writeTurnAudit(
                         session = session,
@@ -91,6 +103,18 @@ class XchatAskService(
                         markdownProvider = {
                             atxFunctionExecutor.executeWatchlistSnapshot(executionContext).let { it.markdown to it.donePayload }
                         },
+                        persist =
+                            buildPersistTurn(
+                                shouldPersistHistory = shouldPersistHistory,
+                                session = session,
+                                threadId = threadId,
+                                requestId = requestId,
+                                correlationId = correlationId,
+                                persona = persona,
+                                message = message,
+                                model = model,
+                                startedAt = startedAt,
+                            ),
                     )
                     writeTurnAudit(
                         session = session,
@@ -115,6 +139,11 @@ class XchatAskService(
                         model = model,
                         executionContext = executionContext,
                         startedAt = startedAt,
+                        shouldPersistHistory = shouldPersistHistory,
+                        session = session,
+                        threadId = threadId,
+                        requestId = requestId,
+                        correlationId = correlationId,
                     )
                     writeTurnAudit(
                         session = session,
@@ -157,15 +186,6 @@ class XchatAskService(
         }
     }
 
-    private fun resolvePersona(root: JsonNode) =
-        root.path("personaId").asText("").trim().takeIf { it.isNotEmpty() }?.let { personaId ->
-            if (ObjectId.isValid(personaId)) {
-                personaService.getPersonaById(personaId)
-            } else {
-                null
-            }
-        }
-
     private fun writeTurnAudit(
         session: ResolvedSession,
         requestId: String,
@@ -192,6 +212,11 @@ class XchatAskService(
         model: String,
         executionContext: AtxFunctionExecutionContext,
         startedAt: Long,
+        shouldPersistHistory: Boolean,
+        session: ResolvedSession,
+        threadId: String,
+        requestId: String,
+        correlationId: String,
     ) {
         if (message.isBlank()) {
             emit(emitter, "error", objectMapper) {
@@ -242,6 +267,23 @@ class XchatAskService(
             emit(emitter, "delta", objectMapper) { mapOf("c" to chunk) }
         }
         val personaCollections = XchatPersonaSupport.linkedCollectionIds(persona).size
+        val generationMs = (System.currentTimeMillis() - startedAt).coerceAtLeast(0)
+        val logId =
+            persistTurnIfNeeded(
+                shouldPersistHistory = shouldPersistHistory,
+                session = session,
+                threadId = threadId,
+                requestId = requestId,
+                correlationId = correlationId,
+                persona = persona,
+                message = message,
+                response = output,
+                model = loopResult.model,
+                xaiResponseId = loopResult.responseId,
+                xaiUsage = XaiResponsesUsage.extract(loopResult.rawPayload),
+                toolCalls = loopResult.toolCalls,
+                interactionGenerationMs = generationMs,
+            )
         emit(emitter, "done", objectMapper) {
             mapOf(
                 "response" to output,
@@ -251,9 +293,10 @@ class XchatAskService(
                 "contextSource" to if (ragChunkCount > 0) "rag_documents_search" else "none",
                 "collectionSearchStatus" to if (ragChunkCount > 0) "ok" else "skipped_no_collections",
                 "toolCalls" to loopResult.toolCalls,
+                "logId" to logId,
                 "interactionMeta" to
                     mapOf(
-                        "generationMs" to (System.currentTimeMillis() - startedAt).coerceAtLeast(0),
+                        "generationMs" to generationMs,
                         "turnsUsed" to loopResult.turnsUsed,
                         "sources" to
                             mapOf(
@@ -267,6 +310,38 @@ class XchatAskService(
         }
     }
 
+    private fun resolveExecutionContext(
+        session: ResolvedSession,
+        root: JsonNode,
+        objectMapper: ObjectMapper,
+    ): AtxFunctionExecutionContext {
+        val portfolioIdHex = root.path("portfolioId").asText("").trim().takeIf { it.isNotEmpty() }
+        val inlinePreload = parseWorkspacePreload(root, objectMapper)
+        if (inlinePreload != null) {
+            return AtxFunctionExecutionContext(
+                session = session,
+                portfolioIdHex = portfolioIdHex,
+                workspacePreload = inlinePreload,
+            )
+        }
+        val rev = root.path("workspaceContentRev").asInt(-1)
+        if (portfolioIdHex != null && rev >= 0) {
+            val snapshot = workspaceSnapshotService.findSnapshotForSessionUser(portfolioIdHex, rev, session)
+            if (snapshot != null) {
+                return AtxFunctionExecutionContext(
+                    session = session,
+                    portfolioIdHex = portfolioIdHex,
+                    workspacePreload = snapshot,
+                )
+            }
+        }
+        return AtxFunctionExecutionContext(
+            session = session,
+            portfolioIdHex = portfolioIdHex,
+            workspacePreload = null,
+        )
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun parseWorkspacePreload(root: JsonNode, objectMapper: ObjectMapper): Map<String, Any?>? {
         val node = root.get("workspacePreload") ?: return null
@@ -276,12 +351,84 @@ class XchatAskService(
         return objectMapper.convertValue(node, Map::class.java) as Map<String, Any?>
     }
 
+    private fun resolveCorrelationId(request: HttpServletRequest, requestId: String): String {
+        val header = request.getHeader("x-correlation-id")?.trim().orEmpty()
+        if (header.isNotEmpty()) {
+            return header
+        }
+        return "xcorr-$requestId"
+    }
+
+    private fun buildPersistTurn(
+        shouldPersistHistory: Boolean,
+        session: ResolvedSession,
+        threadId: String,
+        requestId: String,
+        correlationId: String,
+        persona: Document?,
+        message: String,
+        model: String,
+        startedAt: Long,
+    ): (String, List<Map<String, Any?>>) -> String? =
+        { response, toolCalls ->
+            persistTurnIfNeeded(
+                shouldPersistHistory = shouldPersistHistory,
+                session = session,
+                threadId = threadId,
+                requestId = requestId,
+                correlationId = correlationId,
+                persona = persona,
+                message = message,
+                response = response,
+                model = model,
+                xaiResponseId = null,
+                xaiUsage = null,
+                toolCalls = toolCalls,
+                interactionGenerationMs = (System.currentTimeMillis() - startedAt).coerceAtLeast(0),
+            )
+        }
+
+    private fun persistTurnIfNeeded(
+        shouldPersistHistory: Boolean,
+        session: ResolvedSession,
+        threadId: String,
+        requestId: String,
+        correlationId: String,
+        persona: Document?,
+        message: String,
+        response: String,
+        model: String,
+        xaiResponseId: String?,
+        xaiUsage: XchatXaiUsageSnapshot?,
+        toolCalls: List<Map<String, Any?>>,
+        interactionGenerationMs: Long,
+    ): String? {
+        if (!shouldPersistHistory || persona?.getBoolean("keepXchatHistory") == false) {
+            return null
+        }
+        return xchatSessionLogService.saveTurn(
+            session = session,
+            threadId = threadId,
+            requestId = requestId,
+            correlationId = correlationId,
+            persona = persona,
+            message = message,
+            response = response,
+            model = model,
+            xaiResponseId = xaiResponseId,
+            xaiUsage = xaiUsage,
+            toolCalls = toolCalls,
+            interactionGenerationMs = interactionGenerationMs,
+        )
+    }
+
     private fun streamDirectToolPath(
         emitter: SseEmitter,
         objectMapper: ObjectMapper,
         operation: String,
         turnIndex: Int,
         markdownProvider: () -> Pair<String, Map<String, Any?>>,
+        persist: (String, List<Map<String, Any?>>) -> String?,
     ) {
         emit(emitter, "turn", objectMapper) { mapOf("index" to turnIndex) }
         emit(emitter, "tool_status", objectMapper) {
@@ -302,7 +449,18 @@ class XchatAskService(
         for (chunk in chunkUtf16PreservingPairs(markdown, 140)) {
             emit(emitter, "delta", objectMapper) { mapOf("c" to chunk) }
         }
-        emit(emitter, "done", objectMapper) { donePayload }
+        val toolCalls =
+            (donePayload["toolCalls"] as? List<*>)?.mapNotNull { row ->
+                row as? Map<String, Any?>
+            }.orEmpty()
+        val logId = persist(markdown, toolCalls)
+        emit(emitter, "done", objectMapper) {
+            donePayload.toMutableMap().apply {
+                if (logId != null) {
+                    put("logId", logId)
+                }
+            }
+        }
     }
 
     private fun readRequestBody(request: HttpServletRequest): String {

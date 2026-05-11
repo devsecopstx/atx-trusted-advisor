@@ -24,6 +24,7 @@ class XaiToolLoopService(
         val responseId: String?,
         val turnsUsed: Int,
         val toolCalls: List<Map<String, Any?>>,
+        val rawPayload: JsonNode,
     )
 
     fun runLoop(
@@ -78,6 +79,7 @@ class XaiToolLoopService(
                     responseId = previousResponseId,
                     turnsUsed = turnsUsed,
                     toolCalls = toolCalls,
+                    rawPayload = payload,
                 )
             }
 
@@ -158,6 +160,7 @@ class XaiToolLoopService(
             responseId = previousResponseId,
             turnsUsed = turnsUsed,
             toolCalls = toolCalls,
+            rawPayload = objectMapper.createObjectNode(),
         )
     }
 
