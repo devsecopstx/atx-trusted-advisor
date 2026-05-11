@@ -96,11 +96,11 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). This endpoint is the JVM-
 |--------|------|---------|
 | POST | `/api/user-feedback` | **201** `{ "ok": true }`. Body `{ "message", "page"? }`. Posts to **`SLACK_WEBHOOK_URL`** when set (same as Next). |
 
-## xChat streaming (stub, `text/event-stream`)
+## xChat streaming (Phase 1, `text/event-stream`)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/api/xchat/ask/stream` | **401** without session cookie. **200** `Content-Type: text/event-stream` — emits a single SSE **`meta`** event (`phase: stub`) until the xAI tool-loop stream is implemented. BFF-proxied from Next when **`ATXFINANCE_BACKEND_ORIGIN`** is set. |
+| POST | `/api/xchat/ask/stream` | **401** without session cookie. **200** `Content-Type: text/event-stream` — Phase 1 service emits **`meta`**, **`turn`**, **`tool_status`**, **`delta`**, **`done`** (and **`error`** on failure) for direct **`options_action_scan`** / **`watchlist_snapshot`** intents; other prompts return **`error`** until Phase 2 xAI Responses tool loop. BFF-proxied from Next only when **`XCHAT_SSE_PROXY_BACKEND`** is explicitly enabled and **`ATXFINANCE_BACKEND_ORIGIN`** is set. Parity plan: [xchat-bffparity.md](./xchat-bffparity.md). |
 
 ## Admin (global_admin session)
 
