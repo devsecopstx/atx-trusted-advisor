@@ -27,6 +27,7 @@ If `jq` still errors, the line may be **non-debug** noise (framework requests, s
 |--------|------|----------|
 | **`[xchat/debug]`** | Only if tenant workspace xChat debug is on for that request | JSON with `type` (see below). User id / email **masked**; xAI collection id **masked**; full prompts + RAG + response in `xchat_ask_full` only when debug is on. |
 | **`[xchat/ask]`** | Always on errors/warnings | Operational: RAG search failures, mongo scope failures, responses→chat fallback, provider 502 path. **No** full message bodies by default. |
+| **`[xchat/limit]`** | Every `POST /api/xchat/ask` after limit check | Single JSON object (`console.info`): `type: "xchat.ask.limit_decision"`, `correlationId`, tenant/user ids, plan, `decision` (`allowed` / minute-hourly-daily exceeded / `limiter_degraded_allow`), bucket counts, effective caps, `latencyMs`. Use for log-based metrics (`xchat_asks_total`–style dashboards). Not gated by tenant xChat debug. |
 | **`[xchat/batch]`** | Always on batch errors | Operational: batch submit failures, poll issues (see routes). |
 
 Filter in Cloud Logging:

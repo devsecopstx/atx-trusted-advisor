@@ -1,6 +1,6 @@
 # xChat Hardening Plan (Production Reliability for HNWI Advisor Sessions)
 
-**Status:** Implementation Spec & Bugfix Roadmap — **Phase 1 shipped in app `v3.18.6`** (limiter + meter parity); Phases 2–4 pending  
+**Status:** Implementation Spec & Bugfix Roadmap — **Phase 1 `v3.18.6`** (limiter + meter parity); **Phase 2 `v3.18.7`** (observability + circuit breaker + admin usage + 429 UX); Phases 3–4 pending  
 **Owner:** The Architect  
 **Date:** 2026-05-10  
 **Priority:** Critical — rate-limit bug observed in prod (hourly cap triggered on first prompt) + general production hardening for live options-trading conversations.
@@ -67,31 +67,17 @@ Root cause hypothesis (to be confirmed in audit):
 5. Integration test: *optional follow-up* — live Mongo harness for first ask (current suite mocks ask route limiter where needed).
 6. Deploy hotfix + monitor **`xchat_limit_exceeded_total`** (Phase 2) for 24 h.
 
-### Phase 2: Observability & Hardening (4–6 hrs)
-1. Structured logging on every ask:
-   ```ts
-   logger.info('xchat.ask.decision', {
-     correlationId,
-     tenantId,
-     userId,
-     plan: subscriptionPlan,
-     effectiveDailyLimit,
-     effectiveHourlyLimit,
-     currentHourCount,
-     currentDayCount,
-     decision: 'allowed' | 'hourly_exceeded' | 'daily_exceeded',
-     latencyMs
-   });
-   ```
-2. Metrics (Micrometer/OTLP):
-   - `xchat_asks_total{tenant, plan, decision}`
-   - `xchat_limit_exceeded_total{type: 'hourly'|'daily'}`
-   - `xchat_limit_check_duration_seconds`
-3. Circuit breaker for limiter service (fallback to "allow + log" after 3 consecutive failures).
-4. Enhance error responses:
-   - 429 with JSON `{ code: 'xchat_hourly_limit_exceeded', resetAt: ISO8601, contactAdmin: true }`
-   - UI: replace raw code with friendly card + "Next reset in X min" + "Compare plans" CTA.
-5. Add admin debug endpoint: `GET /api/admin/xchat/usage?userId=...&tenantId=...` (global_admin only) showing live counters and effective limits.
+### Phase 2: Observability & Hardening (4–6 hrs) ✅ *delivered v3.18.7*
+1. **Structured logging** — `console.info(JSON.stringify({ msg: "[xchat/limit]", ... }))` on every ask after the limit check: `src/modules/xchat/xchat-limit-observability.ts` (`logXchatAskLimitDecision`). Fields: `correlationId` (header `x-correlation-id` / `x-request-id` / UUID), tenant, user, plan, `decision`, effective caps, observed bucket counts, `latencyMs`, `adminSession`, `limiterDegraded`. Documented in **`atx-docs/xchat/xchat-debug-logging.md`**.
+2. **In-process metrics** (this Node instance; Cloud Logging can aggregate `[xchat/limit]` for multi-instance):
+   - Counters + limit-check duration stats via `recordXchatLimitDecisionMetric` / `recordXchatLimitCheckDurationMs`; snapshot **`getXchatLimitMetricsSnapshot()`** on **`GET /api/admin/xchat/usage`**.
+   - Maps approximate `xchat_asks_total` / `xchat_limit_exceeded_total` / duration until OTLP wiring exists.
+3. **Circuit breaker** — After **3** consecutive Mongo/limiter exceptions, allow the ask (`limiter_degraded_allow`), `console.warn`, reset streak on next successful limit check.
+4. **429 JSON** — `resetAt` (ISO8601), `contactAdmin: true`, `correlationId`; friendlier `error` strings. **`503`** limiter failures include `correlationId` when still failing before circuit opens.
+5. **UI** — `xchat-conversation.tsx`: when `contactAdmin`, friendly headings + **Next window** / retry hint + billing link (no raw error codes in the title).
+6. **Admin** — **`GET /api/admin/xchat/usage?userId={hex}&tenantId={hex}`** (`global_admin`): live `peekXchatAskUsageCounts`, merged workspace limits, merged prompt caps, limit metrics snapshot.
+
+**Tests:** `tests/unit/xchat-limit-observability.test.ts`, `tests/integration/admin-xchat-usage-route.test.ts`.
 
 ### Phase 3: Abuse & Security Hardening (3 hrs)
 1. Vision paste: enforce EXIF strip, max 8 MB JSON / 4 MB decoded, optional virus scan (ClamAV or external) before xAI vision call.

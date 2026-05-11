@@ -982,6 +982,18 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-xchat"
   },
   {
+    path: "/api/admin/xchat/usage",
+    operations: [
+      {
+        method: "GET",
+        auth: "admin",
+        summary:
+          "Debug: xChat prompt usage buckets (UTC minute/hour/day) + effective workspace limits + in-process limiter metrics for a user/tenant (global_admin)."
+      }
+    ],
+    tag: "admin-xchat"
+  },
+  {
     path: "/api/personas",
     operations: [
       { method: "GET", auth: "session", summary: "List personas visible to current user" },

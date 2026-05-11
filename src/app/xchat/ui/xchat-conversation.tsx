@@ -1476,17 +1476,46 @@ export function XchatConversation({
         dailyLimit?: number;
         hourlyLimit?: number;
         xchatLimitSource?: "tenant_plan_effective" | "per_minute_burst";
+        retryAfterSeconds?: number;
+        resetAt?: string;
+        contactAdmin?: boolean;
+        correlationId?: string;
       };
 
       const handleAskFailure = (response: Response, payload: AskPayload) => {
+        const friendly = payload.contactAdmin === true;
+        const resetHint = (() => {
+          if (typeof payload.resetAt === "string" && payload.resetAt.trim()) {
+            const d = new Date(payload.resetAt);
+            if (!Number.isNaN(d.getTime())) {
+              return `\n\n**Next window:** about **${d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}** (server estimate from UTC buckets).`;
+            }
+          }
+          if (typeof payload.retryAfterSeconds === "number" && payload.retryAfterSeconds > 0) {
+            const mins = Math.ceil(payload.retryAfterSeconds / 60);
+            return mins >= 2
+              ? `\n\n**Try again in ~${mins} min** (${payload.retryAfterSeconds}s).`
+              : `\n\n**Try again in ~${payload.retryAfterSeconds}s.**`;
+          }
+          return "";
+        })();
         const limitSuffix =
           payload.code === "xchat_daily_limit_exceeded" && typeof payload.dailyLimit === "number"
-            ? `\n\nWorkspace daily cap: **${payload.dailyLimit}** prompts per UTC day (effective tenant + plan limit; Admin → Tenant workspace limits).`
+            ? `\n\nWorkspace daily cap: **${payload.dailyLimit}** prompts per UTC day (tenant + plan effective limit).`
             : payload.code === "xchat_hourly_limit_exceeded" && typeof payload.hourlyLimit === "number"
-              ? `\n\nWorkspace hourly cap: **${payload.hourlyLimit}** prompts per UTC clock hour (effective tenant + plan limit).`
+              ? `\n\nWorkspace hourly cap: **${payload.hourlyLimit}** prompts per UTC clock hour.`
               : "";
-        const codePrefix =
-          payload.code === "xchat_daily_limit_exceeded"
+        const codePrefix = friendly
+          ? payload.code === "xchat_daily_limit_exceeded"
+            ? "**Daily limit reached**\n\n"
+            : payload.code === "xchat_hourly_limit_exceeded"
+              ? "**Hourly limit reached**\n\n"
+              : payload.code === "xchat_rate_limit_exceeded"
+                ? "**Sending too fast**\n\n"
+                : payload.code
+                  ? `**Limit**\n\n`
+                  : ""
+          : payload.code === "xchat_daily_limit_exceeded"
             ? "**`xchat_daily_limit_exceeded`** — daily prompt cap (UTC calendar day).\n\n"
             : payload.code === "xchat_hourly_limit_exceeded"
               ? "**`xchat_hourly_limit_exceeded`** — hourly prompt cap (UTC clock hour).\n\n"
@@ -1497,7 +1526,7 @@ export function XchatConversation({
                   : "";
         const base = payload.error ?? `Request failed (${response.status})`;
         const upgrade =
-          "\n\n---\n\n**Upgrade / compare plans:** [Account → Billing](/account/billing).";
+          "\n\n---\n\n**Plans / billing:** [Account → Billing](/account/billing). Ask your workspace admin if you need higher caps.";
         setPromptUsageRefreshKey((k) => k + 1);
         setMessages((prev) => {
           const added = [
@@ -1505,7 +1534,7 @@ export function XchatConversation({
             {
               id: `error-${Date.now()}`,
               role: "error" as const,
-              content: `${codePrefix}${base}${limitSuffix}${upgrade}`,
+              content: `${codePrefix}${base}${limitSuffix}${resetHint}${upgrade}`,
               timestamp: Date.now()
             }
           ];

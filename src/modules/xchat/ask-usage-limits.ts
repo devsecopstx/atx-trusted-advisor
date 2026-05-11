@@ -45,6 +45,13 @@ export type UsageLimitResult = {
   remainingDay?: number;
   hourlyLimit?: number;
   dailyLimit?: number;
+  /** Post-increment bucket counts (observability / admin debug). */
+  observedMinuteCount?: number;
+  observedHourCount?: number;
+  observedDayCount?: number;
+  /** Effective caps after tenant + plan merge (0 hourly = no hourly cap). */
+  effectiveDailyLimit?: number;
+  effectiveHourlyLimit?: number;
 };
 
 let ensureUsageIndexesPromise: Promise<void> | null = null;
@@ -73,7 +80,8 @@ export async function enforceDistributedAskUsageLimit(
       allowed: false,
       code: "xchat_rate_limit_exceeded",
       retryAfterSeconds: Math.max(1, Math.ceil((minuteWindowEndMs - Date.now()) / 1000)),
-      remainingMinute: 0
+      remainingMinute: 0,
+      observedMinuteCount: minuteBucket.count
     };
   }
 
@@ -86,11 +94,24 @@ export async function enforceDistributedAskUsageLimit(
      * `GET /api/app-user/xchat/prompt-usage` and the rail/composer meter match real send volume.
      * Enforcement against caps remains off (`workspaceCapsEnforced: false` in the API).
      */
-    await incrementUsageBucket({ kind: "hour", userId: input.userId, tenantId: input.tenantId, now });
-    await incrementUsageBucket({ kind: "day", userId: input.userId, tenantId: input.tenantId, now });
+    const hourAd = await incrementUsageBucket({
+      kind: "hour",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      now
+    });
+    const dayAd = await incrementUsageBucket({
+      kind: "day",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      now
+    });
     return {
       allowed: true,
-      remainingMinute
+      remainingMinute,
+      observedMinuteCount: minuteBucket.count,
+      observedHourCount: hourAd.count,
+      observedDayCount: dayAd.count
     };
   }
 
@@ -98,6 +119,15 @@ export async function enforceDistributedAskUsageLimit(
     input.hourlyPromptLimit !== undefined && input.hourlyPromptLimit > 0
       ? Math.max(1, Math.floor(input.hourlyPromptLimit))
       : 0;
+
+  const dailyFromInput =
+    input.dailyPromptLimit !== undefined &&
+    Number.isFinite(input.dailyPromptLimit) &&
+    input.dailyPromptLimit > 0
+      ? Math.max(1, Math.floor(input.dailyPromptLimit))
+      : undefined;
+  const dailyLimit =
+    dailyFromInput ?? getPlanLimits(input.plan).maxPromptsPerDay;
 
   /**
    * Always bump the UTC clock-hour bucket when workspace caps apply so
@@ -120,20 +150,16 @@ export async function enforceDistributedAskUsageLimit(
         retryAfterSeconds: Math.max(1, Math.ceil((hourEndMs - Date.now()) / 1000)),
         remainingMinute,
         remainingHour: 0,
-        hourlyLimit: hourlyCap
+        hourlyLimit: hourlyCap,
+        observedMinuteCount: minuteBucket.count,
+        observedHourCount: hourBucket.count,
+        effectiveDailyLimit: dailyLimit,
+        effectiveHourlyLimit: hourlyCap
       };
     }
     remainingHour = Math.max(0, hourlyCap - hourBucket.count);
   }
 
-  const dailyFromInput =
-    input.dailyPromptLimit !== undefined &&
-    Number.isFinite(input.dailyPromptLimit) &&
-    input.dailyPromptLimit > 0
-      ? Math.max(1, Math.floor(input.dailyPromptLimit))
-      : undefined;
-  const dailyLimit =
-    dailyFromInput ?? getPlanLimits(input.plan).maxPromptsPerDay;
   const dayBucket = await incrementUsageBucket({
     kind: "day",
     userId: input.userId,
@@ -151,7 +177,12 @@ export async function enforceDistributedAskUsageLimit(
       remainingHour,
       hourlyLimit: hourlyCap > 0 ? hourlyCap : undefined,
       remainingDay: 0,
-      dailyLimit
+      dailyLimit,
+      observedMinuteCount: minuteBucket.count,
+      observedHourCount: hourBucket.count,
+      observedDayCount: dayBucket.count,
+      effectiveDailyLimit: dailyLimit,
+      effectiveHourlyLimit: hourlyCap
     };
   }
 
@@ -161,7 +192,12 @@ export async function enforceDistributedAskUsageLimit(
     remainingHour,
     hourlyLimit: hourlyCap > 0 ? hourlyCap : undefined,
     remainingDay: Math.max(0, dailyLimit - dayBucket.count),
-    dailyLimit
+    dailyLimit,
+    observedMinuteCount: minuteBucket.count,
+    observedHourCount: hourBucket.count,
+    observedDayCount: dayBucket.count,
+    effectiveDailyLimit: dailyLimit,
+    effectiveHourlyLimit: hourlyCap
   };
 }
 

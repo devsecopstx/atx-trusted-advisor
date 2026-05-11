@@ -1026,7 +1026,9 @@ describe("xchat ask route collection retrieval", () => {
       retryAfterSeconds: number;
     };
     expect(response.status).toBe(429);
-    expect(payload.error).toBe("Rate limit exceeded");
+    expect(payload.error).toBe(
+      "Too many messages sent in a short window. Pause briefly and try again."
+    );
     expect(payload.retryAfterSeconds).toBeGreaterThan(0);
     expect(response.headers.get("x-xchat-limit-remaining-minute")).toBe("0");
     expect(response.headers.get("retry-after")).toBe("30");

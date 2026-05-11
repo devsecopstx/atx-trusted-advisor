@@ -55,7 +55,10 @@ import {
     formatAccountOutlookPromptInjection,
     resolveAccountOutlookContextForXchat
 } from "@/modules/xchat/account-outlook-context";
-import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
+import {
+    enforceDistributedAskUsageLimit,
+    type UsageLimitResult
+} from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import {
@@ -129,6 +132,17 @@ import {
     MAX_XCHAT_ASK_JSON_BYTES,
     parseAndValidateXchatPasteImage
 } from "@/modules/xchat/xchat-image-attachment";
+import {
+    computeLimitResetAtIso,
+    limiterCircuitAllowDegraded,
+    logXchatAskLimitDecision,
+    recordXchatLimitCheckDurationMs,
+    recordXchatLimitDecisionMetric,
+    registerLimiterCheckFailure,
+    resetLimiterFailureStreak,
+    usageLimitDecisionFromResult,
+    type XchatLimitDecision
+} from "@/modules/xchat/xchat-limit-observability";
 import { getXchatPlatformSettings } from "@/modules/xchat/xchat-platform-settings";
 import {
     buildSessionToolInstructions,
@@ -423,6 +437,10 @@ export async function POST(request: Request) {
     ? `[image:${visionImage.mediaType}] ${messageTrimmed || "(paste)"}`
     : messageRaw;
   const threadId = parsed.data.threadId?.trim() || randomUUID();
+  const askCorrelationId =
+    request.headers.get("x-correlation-id")?.trim() ||
+    request.headers.get("x-request-id")?.trim() ||
+    randomUUID();
   let workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
   const showWatchlistIntent = isShowWatchlistIntent(messageTrimmed);
   const watchlistPortfolioSlot = collectWatchlistPortfolioIdSlot({
@@ -433,11 +451,6 @@ export async function POST(request: Request) {
     workspacePortfolioId = watchlistPortfolioSlot.resolvedPortfolioId;
   }
   let subscriptionPlan: SubscriptionPlan | undefined;
-  let limiterRemainingMinute: number | undefined;
-  let limiterRemainingHour: number | undefined;
-  let limiterRemainingDay: number | undefined;
-  let limiterHourlyLimit: number | undefined;
-  let limiterDailyLimit: number | undefined;
   if (!isAdminSession && ObjectId.isValid(session.userId)) {
     subscriptionPlan = coreUser?.subscriptionPlan;
   }
@@ -459,8 +472,10 @@ export async function POST(request: Request) {
     hourlyPromptCap = typeof h === "number" && h > 0 ? h : undefined;
   }
   const usageLimitStartedAt = Date.now();
+  let usageCheck: UsageLimitResult;
+  let limiterDegraded = false;
   try {
-    const usageCheck = await enforceDistributedAskUsageLimit({
+    usageCheck = await enforceDistributedAskUsageLimit({
       userId: session.userId,
       tenantId: session.tenantId,
       plan: subscriptionPlan,
@@ -469,70 +484,124 @@ export async function POST(request: Request) {
       dailyPromptLimit: dailyPromptCap,
       hourlyPromptLimit: hourlyPromptCap
     });
-    if (!usageCheck.allowed) {
-      const limiterHeaders = buildLimiterHeaders({
-        remainingMinute: usageCheck.remainingMinute,
-        remainingHour: usageCheck.remainingHour,
-        remainingDay: usageCheck.remainingDay,
-        hourlyLimit: usageCheck.hourlyLimit,
-        dailyLimit: usageCheck.dailyLimit,
-        retryAfterSeconds: usageCheck.retryAfterSeconds
-      });
-      const limitError =
-        usageCheck.code === "xchat_daily_limit_exceeded"
-          ? "xChat daily prompt limit reached (UTC calendar day). Resets at next UTC midnight or contact your admin."
-          : usageCheck.code === "xchat_hourly_limit_exceeded"
-            ? "xChat hourly prompt limit reached (UTC hour window). Try again next hour or contact your admin."
-            : "Rate limit exceeded";
-      return NextResponse.json(
-        {
-          error: limitError,
-          code: usageCheck.code,
-          retryAfterSeconds: usageCheck.retryAfterSeconds ?? 60,
-          ...(usageCheck.code === "xchat_rate_limit_exceeded"
-            ? { xchatLimitSource: "per_minute_burst" as const }
-            : {}),
-          ...(usageCheck.code === "xchat_daily_limit_exceeded" &&
-          typeof usageCheck.dailyLimit === "number"
-            ? {
-                dailyLimit: usageCheck.dailyLimit,
-                xchatLimitSource: "tenant_plan_effective" as const
-              }
-            : {}),
-          ...(usageCheck.code === "xchat_hourly_limit_exceeded" &&
-          typeof usageCheck.hourlyLimit === "number"
-            ? {
-                hourlyLimit: usageCheck.hourlyLimit,
-                xchatLimitSource: "tenant_plan_effective" as const
-              }
-            : {})
-        },
-        { status: 429, headers: limiterHeaders }
-      );
-    }
-    limiterRemainingMinute = usageCheck.remainingMinute;
-    limiterRemainingHour = usageCheck.remainingHour;
-    limiterRemainingDay = usageCheck.remainingDay;
-    limiterHourlyLimit = usageCheck.hourlyLimit;
-    limiterDailyLimit = usageCheck.dailyLimit;
-    markPerf("usage_limit_check", usageLimitStartedAt, {
-      isAdminSession,
-      hasDailyCap: typeof dailyPromptCap === "number",
-      hasHourlyCap: typeof hourlyPromptCap === "number"
-    });
+    resetLimiterFailureStreak();
   } catch (error) {
+    const fails = registerLimiterCheckFailure();
     console.error("[xchat/ask] distributed usage limit check failed", {
       userId: session.userId,
+      consecutiveFailures: fails,
       error: error instanceof Error ? error.message : String(error)
     });
+    if (limiterCircuitAllowDegraded()) {
+      limiterDegraded = true;
+      console.warn("[xchat/ask] limiter circuit open — allowing ask (degraded)", {
+        userId: session.userId,
+        consecutiveFailures: fails
+      });
+      usageCheck = { allowed: true };
+    } else {
+      return NextResponse.json(
+        {
+          error: "xChat usage limiter is unavailable",
+          retryable: true,
+          correlationId: askCorrelationId
+        },
+        { status: 503 }
+      );
+    }
+  }
+
+  const usageLimitLatencyMs = Date.now() - usageLimitStartedAt;
+  recordXchatLimitCheckDurationMs(usageLimitLatencyMs);
+
+  const limitDecision: XchatLimitDecision = limiterDegraded
+    ? "limiter_degraded_allow"
+    : usageCheck.allowed
+      ? "allowed"
+      : usageLimitDecisionFromResult(false, usageCheck.code);
+
+  recordXchatLimitDecisionMetric({
+    decision: limitDecision,
+    tenantId: session.tenantId,
+    plan: subscriptionPlan
+  });
+
+  logXchatAskLimitDecision({
+    type: "xchat.ask.limit_decision",
+    correlationId: askCorrelationId,
+    tenantId: session.tenantId,
+    userId: session.userId,
+    plan: subscriptionPlan,
+    decision: limitDecision,
+    latencyMs: usageLimitLatencyMs,
+    effectiveDailyLimit: usageCheck.effectiveDailyLimit,
+    effectiveHourlyLimit: usageCheck.effectiveHourlyLimit,
+    currentMinuteCount: usageCheck.observedMinuteCount,
+    currentHourCount: usageCheck.observedHourCount,
+    currentDayCount: usageCheck.observedDayCount,
+    limitCode: usageCheck.code,
+    adminSession: isAdminSession,
+    limiterDegraded
+  });
+
+  if (!usageCheck.allowed) {
+    const retryAfter = usageCheck.retryAfterSeconds ?? 60;
+    const limiterHeaders = buildLimiterHeaders({
+      remainingMinute: usageCheck.remainingMinute,
+      remainingHour: usageCheck.remainingHour,
+      remainingDay: usageCheck.remainingDay,
+      hourlyLimit: usageCheck.hourlyLimit,
+      dailyLimit: usageCheck.dailyLimit,
+      retryAfterSeconds: retryAfter
+    });
+    const resetAt = computeLimitResetAtIso(retryAfter);
+    const limitError =
+      usageCheck.code === "xchat_daily_limit_exceeded"
+        ? "Daily prompt limit reached for your workspace (UTC calendar day). Your admin can raise caps under Tenant → Workspace limits, or compare plans."
+        : usageCheck.code === "xchat_hourly_limit_exceeded"
+          ? "Hourly prompt limit reached (UTC clock hour). Wait for the top of the next hour or ask your admin to adjust workspace limits."
+          : "Too many messages sent in a short window. Pause briefly and try again.";
     return NextResponse.json(
       {
-        error: "xChat usage limiter is unavailable",
-        retryable: true
+        error: limitError,
+        code: usageCheck.code,
+        retryAfterSeconds: retryAfter,
+        resetAt,
+        contactAdmin: true,
+        correlationId: askCorrelationId,
+        ...(usageCheck.code === "xchat_rate_limit_exceeded"
+          ? { xchatLimitSource: "per_minute_burst" as const }
+          : {}),
+        ...(usageCheck.code === "xchat_daily_limit_exceeded" &&
+        typeof usageCheck.dailyLimit === "number"
+          ? {
+              dailyLimit: usageCheck.dailyLimit,
+              xchatLimitSource: "tenant_plan_effective" as const
+            }
+          : {}),
+        ...(usageCheck.code === "xchat_hourly_limit_exceeded" &&
+        typeof usageCheck.hourlyLimit === "number"
+          ? {
+              hourlyLimit: usageCheck.hourlyLimit,
+              xchatLimitSource: "tenant_plan_effective" as const
+            }
+          : {})
       },
-      { status: 503 }
+      { status: 429, headers: limiterHeaders }
     );
   }
+
+  const limiterRemainingMinute = usageCheck.remainingMinute;
+  const limiterRemainingHour = usageCheck.remainingHour;
+  const limiterRemainingDay = usageCheck.remainingDay;
+  const limiterHourlyLimit = usageCheck.hourlyLimit;
+  const limiterDailyLimit = usageCheck.dailyLimit;
+  markPerf("usage_limit_check", usageLimitStartedAt, {
+    isAdminSession,
+    limiterDegraded,
+    hasDailyCap: typeof dailyPromptCap === "number",
+    hasHourlyCap: typeof hourlyPromptCap === "number"
+  });
 
   const personaResolveStartedAt = Date.now();
   const defaultPersona = await loadDefaultXchatPersonaForSessionDeduped(session.roles);
