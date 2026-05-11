@@ -13,6 +13,7 @@ import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requ
 import { runMarketingPostTask } from "@/modules/marketing/publisher";
 import { runTenantExportWorkerTask } from "@/modules/platform/tenant-export-worker-task";
 import { runScheduledAppBrokerImportTask } from "@/modules/portfolio-import/app-broker-import-job";
+import { runInvestmentOutlookScanner } from "@/modules/portfolio/investment-outlook-scanner-task";
 import { runUserAlertManagerScanner } from "@/modules/price-alerts/user-alert-manager-scanner";
 import {
     appendTenantIdToScheduledTaskOutput,
@@ -34,7 +35,6 @@ import { runOptionsActionScheduledDigest } from "@/modules/xchat/options-action-
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 import { warmPortfolioWorkspaceSnapshotsForTenant } from "@/modules/xchat/warm-portfolio-workspace-snapshots";
 import { runXchatTenantSpendAlertTask } from "@/modules/xchat/xchat-spend-alert-task";
-
 const PORTFOLIO_SNAPSHOT_WARM_AFTER_SCAN_CATEGORIES = new Set([
   "price_scanner",
   "options_scanner",
@@ -45,7 +45,8 @@ const PORTFOLIO_SNAPSHOT_WARM_AFTER_SCAN_CATEGORIES = new Set([
   "options_expiration_roll_manager",
   "risk_concentration_scanner",
   "tax_loss_harvest_scanner",
-  "rebalance"
+  "rebalance",
+  "investment_outlook_scanner"
 ]);
 
 function portfolioSnapshotWarmAfterScanEnabled(): boolean {
@@ -165,6 +166,9 @@ async function runScheduledCategory(
   const bypass = Boolean(executionOptions?.bypassMarketWindow);
   if (task.category === "price_scanner") {
     return executePriceScannerJob({ tenantId: task.tenantId, bypassMarketWindow: bypass });
+  }
+  if (task.category === "investment_outlook_scanner") {
+    return runInvestmentOutlookScanner(task);
   }
   if (task.category === "options_scanner") {
     return runOptionsStrategyScanner(task, { bypassMarketWindow: bypass });

@@ -18,6 +18,7 @@ import { listTaskRuns } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import type { Tenant } from "@/modules/identity/types";
 import { listBatchJobs, type BatchJobRecord } from "@/modules/xchat/batch-service";
+import { aggregateXchatPromptLatencySummariesLast24h } from "@/modules/xchat/xchat-prompt-latency-metrics";
 
 const STRATEGY_JOBS = "strategy_jobs";
 const AUDIT_LOGIN = "audit_login";
@@ -256,10 +257,16 @@ export async function collectPlatformOpsMetrics(input: {
     xchatLogsPromptCountToday = await db.collection(XCHAT_LOGS).countDocuments(q);
   }
 
+  const promptLatency24h = await aggregateXchatPromptLatencySummariesLast24h(db, {
+    platformWide,
+    tenantHex: platformWide ? undefined : tenantHex
+  });
+
   const xchatStats: AdminOpsXchatStats = {
     promptsToday,
     hourlyPeakToday,
-    ...(xchatLogsPromptCountToday !== undefined ? { xchatLogsPromptCountToday } : {})
+    ...(xchatLogsPromptCountToday !== undefined ? { xchatLogsPromptCountToday } : {}),
+    ...(promptLatency24h.length > 0 ? { promptLatency24h } : {})
   };
 
   const strategyFilter: Record<string, unknown> = {};

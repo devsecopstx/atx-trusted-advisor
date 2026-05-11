@@ -127,6 +127,12 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     defaultJobName: "tenant-export-worker",
     description:
       "Processes **`tenant_admin_export_jobs`** queued by **Admin → Tenant register → Workspace limits → Export jobs** (`live_spec_yaml`, `bootstrap_audit_csv`). FIFO pending→running→completed. Create **one tenant-scoped** scheduled task row (category `tenant_export_worker`) or run manually from Admin → Tasks — **excluded from `ops:scheduled-tasks:sync` bulk upsert**."
+  },
+  investment_outlook_scanner: {
+    displayName: "Investment outlook / wheel ideas (post US close, UTC weekdays)",
+    defaultJobName: "investment-outlook-scanner-job",
+    description:
+      "Refreshes **`investment_outlooks`** pre-computed covered-call / CSP strike candidates per portfolio (Yahoo chains + Mongo cache). Runs on the **Next.js task-runner** via **`admin_scheduled_tasks`** — same JVM **ShedLock** poller as other scheduled categories (`AdminSchedulerPoller` → Mongo due tasks). **Not** the interactive Premium `POST /api/strategy-jobs` orchestrator (that path remains for xOptions slot jobs). Disable with env **`INVESTMENT_OUTLOOK_SCANNER_ENABLED=0`** on the worker or omit/disable the scheduled row."
   }
 } satisfies Record<ScheduledTaskCategory, ScheduledTaskCategoryCatalogEntry>;
 

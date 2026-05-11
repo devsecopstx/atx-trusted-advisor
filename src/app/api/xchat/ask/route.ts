@@ -133,6 +133,10 @@ import {
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
 import {
+    isXchatPromptLatencyMetricsEnabled,
+    recordXchatPromptLatencySample
+} from "@/modules/xchat/xchat-prompt-latency-metrics";
+import {
     resolveReasoningEffortFromAskPayload,
     XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID,
     XCHAT_DEPTH_FAST_MODEL_ID
@@ -394,6 +398,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: visionParsed.error }, { status: 400 });
   }
   const visionImage = visionParsed?.ok ? visionParsed.value : null;
+
+  const recordAskLatencyIfEnabled = (mode: string): void => {
+    if (!isXchatPromptLatencyMetricsEnabled()) {
+      return;
+    }
+    const promptType = visionImage ? `vision_${mode}` : mode;
+    void recordXchatPromptLatencySample({
+      tenantId: session.tenantId.trim(),
+      promptType,
+      durationMs: Math.max(0, Date.now() - askRequestStartedAt)
+    });
+  };
 
   const xchatImageCaptionFallback =
     "Analyze this screenshot or pasted image. If it shows tickers, options, charts, or portfolio data, describe what you see and anything actionable. If it is not finance-related, say so briefly.";
@@ -1755,6 +1771,7 @@ export async function POST(request: Request) {
           mode: "json_income_ideas_cache",
           turnsUsed: 0
         });
+        recordAskLatencyIfEnabled("json_income_ideas_cache");
         return completeXchatAskAfterModelLoop(cachedLoopResult, askCompleteCtx());
       }
       const heartbeatMsCached = resolveXchatSseHeartbeatMs();
@@ -1797,6 +1814,7 @@ export async function POST(request: Request) {
             mode: "sse_income_ideas_cache",
             turnsUsed: 0
           });
+          recordAskLatencyIfEnabled("sse_income_ideas_cache");
           logXchatAskStreamDebug({
             sseEvent: "done",
             requestId,
@@ -1978,6 +1996,7 @@ export async function POST(request: Request) {
           mode: "sse",
           turnsUsed: loopResult.turnsUsed
         });
+        recordAskLatencyIfEnabled("sse");
         logXchatAskStreamDebug({
           sseEvent: "done",
           requestId,
@@ -2019,6 +2038,7 @@ export async function POST(request: Request) {
       mode: "json",
       turnsUsed: loopResult.turnsUsed
     });
+    recordAskLatencyIfEnabled("json");
     return completeXchatAskAfterModelLoop(loopResult, askCompleteCtx());
   } catch (error) {
     return handleToolLoopFailure(error);

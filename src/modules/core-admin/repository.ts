@@ -1815,15 +1815,31 @@ export async function getDefaultPortfolio(
   return ensureDefaultPortfolioInvariantForUser(userId, options);
 }
 
+const INVESTMENT_OUTLOOKS_INV = "investment_outlooks";
+
+export async function invalidateInvestmentOutlookRowsForPortfolioIds(portfolioIds: ObjectId[]): Promise<void> {
+  if (portfolioIds.length === 0) {
+    return;
+  }
+  const db = await getDb();
+  await db.collection(INVESTMENT_OUTLOOKS_INV).deleteMany({ portfolioId: { $in: portfolioIds } });
+}
+
 /**
  * Bumps `workspaceContentRev` on an owned portfolio so xChat workspace snapshot cache keys miss
  * after positions, accounts, watchlist, or portfolio metadata changes.
+ *
+ * Clears cached `investment_outlooks` for that portfolio unless `skipInvestmentOutlookInvalidate`
+ * (used after the outlook scanner writes fresh rows — avoids deleting what was just persisted).
  */
-export async function bumpPortfolioWorkspaceContentRev(input: {
-  userId: string;
-  portfolioId: string;
-  tenantId?: string;
-}): Promise<void> {
+export async function bumpPortfolioWorkspaceContentRev(
+  input: {
+    userId: string;
+    portfolioId: string;
+    tenantId?: string;
+  },
+  options?: { skipInvestmentOutlookInvalidate?: boolean }
+): Promise<void> {
   await ensurePortfolioIndexes();
   if (!ObjectId.isValid(input.portfolioId)) {
     return;
@@ -1843,6 +1859,9 @@ export async function bumpPortfolioWorkspaceContentRev(input: {
       $set: { updatedAt: new Date() }
     }
   );
+  if (!options?.skipInvestmentOutlookInvalidate) {
+    await invalidateInvestmentOutlookRowsForPortfolioIds([pid]);
+  }
 }
 
 /** Bumps workspace rev on every owned portfolio so xChat cache misses after user-global watchlist edits. */
@@ -1894,6 +1913,15 @@ export async function listPortfoliosForSessionUser(input: {
     .find(filter)
     .sort({ createdAt: 1, _id: 1 })
     .toArray();
+}
+
+export async function invalidateInvestmentOutlookForUserPortfolios(input: {
+  userId: string;
+  tenantId?: string;
+}): Promise<void> {
+  const rows = await listPortfoliosForSessionUser(input);
+  const ids = rows.map((r) => r._id).filter((id): id is ObjectId => Boolean(id));
+  await invalidateInvestmentOutlookRowsForPortfolioIds(ids);
 }
 
 /** Removes all position lots for an account (replace-before-import). Returns deleted count. */
@@ -5016,6 +5044,7 @@ export async function adminDeletePortfolio(portfolioId: string): Promise<boolean
   const tenantStr = portfolioTenantIdString(portfolio);
   const uid = userIdQuery(ownerHex);
   const baseFilter: Record<string, unknown> = { portfolioId: pid, ...uid };
+  await db.collection(INVESTMENT_OUTLOOKS_INV).deleteMany({ portfolioId: pid });
   await db.collection<Position>(collections.positions).deleteMany(baseFilter);
   await db.collection<Recommendation>(collections.recommendations).deleteMany(baseFilter);
   await db.collection<PortfolioAlert>(collections.portfolioAlerts).deleteMany(baseFilter);

@@ -888,12 +888,24 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "GET /api/admin/system/ops-summary": {
     summary: "Admin ops summary: Next Mongo/Redis + optional Spring backend health + platform KPIs",
     description:
-      "`global_admin`, `advisor`, or `operator` (viewer excluded). Returns session tenant id, Next.js app version, Mongo ping + DB name, Next Redis health (`checkRedisHealth`), optional Spring `GET /api/backend/health`, and **`platformOps`**: tenant/user counts, `audit_login` success totals (platform-wide only), xChat usage aggregates (`xchat_usage_limits`), merged **last 5 jobs** (batch + `admin_task_runs` + `strategy_jobs`), and conservative **`costEstimate`** (tunable via `OPS_SUMMARY_*` env vars). Audited as `ops_summary_viewed`.",
+      "`global_admin`, `advisor`, or `operator` (viewer excluded). Returns session tenant id, Next.js app version, Mongo ping + DB name, Next Redis health (`checkRedisHealth`), optional Spring `GET /api/backend/health`, and **`platformOps`**: tenant/user counts, `audit_login` success totals (platform-wide only), xChat usage aggregates (`xchat_usage_limits`), optional **`platformOps.xchat.promptLatency24h`** (p50/p95 per `promptType` from `xchat_prompt_latency_samples` when **`XCHAT_PROMPT_LATENCY_METRICS_ENABLED`**), merged **last 5 jobs** (batch + `admin_task_runs` + `strategy_jobs`), and conservative **`costEstimate`** (tunable via `OPS_SUMMARY_*` env vars). Audited as `ops_summary_viewed`.",
     responses: {
       "200": jsonResponse("Ops summary JSON (no Mongo credentials).", "ErrorResponse"),
       "401": json401Session(),
       "403": json403Admin("Session is valid, but operator/advisor/global_admin role is required."),
       "500": jsonResponse("Failed to build ops summary.", "ErrorResponse")
+    }
+  },
+  "GET /api/admin/investment-outlooks": {
+    summary: "List cached wheel/CSP investment outlook rows (pre-generated strikes)",
+    description:
+      "`global_admin`, `advisor`, or `operator`. **`global_admin`**: optional `tenantId` query filters Mongo `investment_outlooks`; otherwise all tenants. Non-global sessions are scoped to **`session.tenantId`**. Joins **`tenant_portfolio`** for portfolio name + owner user id; returns **`updatedAt`**, **`expiresAt`**, **`symbolCount`**. Use to verify scanner output without hitting xChat. Query: **`limit`** (default 100, max 500).",
+    responses: {
+      "200": jsonResponse("Investment outlook list envelope.", "ErrorResponse"),
+      "400": jsonResponse("Invalid tenant scope.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but operator/advisor/global_admin role is required."),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
   "GET /api/admin/tenants": {

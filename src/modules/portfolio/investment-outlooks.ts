@@ -76,11 +76,14 @@ async function bumpWorkspaceRevAfterOutlookChange(input: {
   if (!uid) {
     return;
   }
-  await bumpPortfolioWorkspaceContentRev({
-    userId: uid,
-    portfolioId: input.portfolioId.toHexString(),
-    tenantId: input.tenantId.toHexString()
-  }).catch(() => {
+  await bumpPortfolioWorkspaceContentRev(
+    {
+      userId: uid,
+      portfolioId: input.portfolioId.toHexString(),
+      tenantId: input.tenantId.toHexString()
+    },
+    { skipInvestmentOutlookInvalidate: true }
+  ).catch(() => {
     /* scanner context — non-fatal */
   });
 }
@@ -183,11 +186,6 @@ export function pickWheelOutlookFromChain(
   };
 }
 
-function outlookRefreshEnabled(): boolean {
-  const v = String(process.env.INVESTMENT_OUTLOOK_REFRESH_ENABLED ?? "").toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
-}
-
 function outlookTtlMs(): number {
   const h = Number.parseInt(process.env.INVESTMENT_OUTLOOK_TTL_HOURS ?? "36", 10);
   const hrs = Number.isFinite(h) && h >= 1 && h <= 168 ? h : 36;
@@ -217,9 +215,6 @@ async function ensureInvestmentOutlookIndexes(): Promise<void> {
 }
 
 export async function refreshInvestmentOutlooksForTenant(tenantId: ObjectId): Promise<void> {
-  if (!outlookRefreshEnabled()) {
-    return;
-  }
   await ensureInvestmentOutlookIndexes();
   const db = await getDb();
   const coll = db.collection<InvestmentOutlookDoc>(INVESTMENT_OUTLOOKS_COLLECTION);

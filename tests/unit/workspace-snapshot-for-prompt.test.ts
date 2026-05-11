@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { InvestmentOutlookPromptJson } from "@/modules/portfolio/investment-outlooks";
+
 const repo = vi.hoisted(() => ({
   getDefaultPortfolio: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
@@ -26,7 +28,7 @@ const lookupSymbolsMock = vi.hoisted(() =>
 );
 
 const loadInvestmentOutlookPromptJsonMock = vi.hoisted(() =>
-  vi.fn(async () => Promise.resolve(null))
+  vi.fn(async (): Promise<InvestmentOutlookPromptJson | null> => null)
 );
 
 vi.mock("@/modules/core-admin/repository", () => repo);

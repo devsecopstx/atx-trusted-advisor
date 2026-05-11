@@ -16,10 +16,19 @@ export type AdminOpsSummaryBackend = {
   redisDetail?: string;
 };
 
+export type AdminOpsXchatPromptLatencyRow = {
+  promptType: string;
+  sampleCount: number;
+  p50Ms: number;
+  p95Ms: number;
+};
+
 export type AdminOpsXchatStats = {
   promptsToday: number;
   hourlyPeakToday: number;
   xchatLogsPromptCountToday?: number;
+  /** UTC-day rolling sample from `xchat_prompt_latency_samples` when `XCHAT_PROMPT_LATENCY_METRICS_ENABLED` is on */
+  promptLatency24h?: AdminOpsXchatPromptLatencyRow[];
 };
 
 export type AdminOpsJobRunRow = {

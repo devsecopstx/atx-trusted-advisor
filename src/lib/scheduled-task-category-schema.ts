@@ -20,6 +20,7 @@ export const SCHEDULED_TASK_CATEGORIES = [
   "user_alert_manager",
   "xchat_spend_alert",
   "tenant_export_worker",
+  "investment_outlook_scanner",
 ] as const;
 
 export type ScheduledTaskCategory = (typeof SCHEDULED_TASK_CATEGORIES)[number];
@@ -52,7 +53,9 @@ export const SCHEDULED_TASK_CATEGORY_DEFAULT_CRON: Record<ScheduledTaskCategory,
   /** Daily tenant xChat vendor-spend check (rolling 24h vs threshold on `core_tenants.tenantPreferences`). */
   xchat_spend_alert: "30 13 * * 1-5",
   /** Drains `tenant_admin_export_jobs` (live YAML + bootstrap CSV exports). Prefer one tenant-scoped row + manual Run; excluded from bulk spec sync. */
-  tenant_export_worker: "*/15 * * * *"
+  tenant_export_worker: "*/15 * * * *",
+  /** Pre-computes wheel/CSP strikes into `investment_outlooks` (off hot xChat path); same Mongo scheduler + JVM ShedLock poller as other admin tasks. */
+  investment_outlook_scanner: EOD_US_CRON_UTC
 };
 
 export const scheduledTaskCategorySchema = z.enum(SCHEDULED_TASK_CATEGORIES);

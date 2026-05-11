@@ -29,7 +29,17 @@ describe("income-ideas-response-cache", () => {
           name: "WL",
           riskProfile: null,
           outlook: null,
-          symbols: [{ symbol: "AAPL" }]
+          symbols: [
+            {
+              symbol: "AAPL",
+              addedAt: "2026-05-10T00:00:00.000Z",
+              addedAtDisplay: "May 9, 2026, 8:00 PM UTC",
+              spotPriceDisplay: "$150.00",
+              targetEntryNotional100xUsdDisplay: "$15,000",
+              targetEntryDisplay: "not set",
+              targetEntryNotional100xDisplay: "15,000"
+            }
+          ]
         }
       },
       positionsFull: [

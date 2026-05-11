@@ -78,7 +78,17 @@ describe("buildIncomeIdeasCompactPayload", () => {
           name: "WL",
           riskProfile: null,
           outlook: null,
-          symbols: [{ symbol: "NVDA", spotPriceDisplay: "$100.00" }]
+          symbols: [
+            {
+              symbol: "NVDA",
+              addedAt: "2026-05-10T00:00:00.000Z",
+              addedAtDisplay: "May 9, 2026, 8:00 PM UTC",
+              spotPriceDisplay: "$100.00",
+              targetEntryNotional100xUsdDisplay: "$10,000",
+              targetEntryDisplay: "not set",
+              targetEntryNotional100xDisplay: "10,000"
+            }
+          ]
         }
       },
       positionsFull: [

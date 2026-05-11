@@ -46,7 +46,8 @@ const CORE_SCANNER_CATEGORIES = new Set<ScheduledTask["category"]>([
   "risk_concentration_scanner",
   "tax_loss_harvest_scanner",
   "rebalance",
-  "marketing_post"
+  "marketing_post",
+  "investment_outlook_scanner"
 ]);
 
 export function isCoreScannerCategory(category: ScheduledTask["category"]): boolean {

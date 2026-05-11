@@ -45,6 +45,7 @@ Apply these **before** adding or dropping indexes. This repo spreads indexes acr
 | `portfolio_watchlists` | `idx_watchlists_user_tenant_symbol` `{ userId, tenantId, symbols.symbol }` (multikey) | Desk / ticker line lookups |
 | `portfolio_positions` | `idx_positions_account_symbol_type_expiration_option` `{ accountId, symbol, type, expiration }` (partial: option legs) | Phase 3 chain / wheel tooling |
 | `investment_outlooks` | `uniq_investment_outlook_portfolio` + TTL `expiresAt` | Pre-computed wheel / CSP outlook rows per portfolio |
+| `xchat_prompt_latency_samples` | TTL `createdAt` (7d) + `tenantId`/`promptType` compounds | Optional **`XCHAT_PROMPT_LATENCY_METRICS_ENABLED`** — ops summary p50/p95 per ask prompt type |
 
 Default portfolio resolution uses **`uniq_default_portfolio_per_user`** (`tenantId`, `userId`, `isDefault` partial) — no extra `_id` + `ownerUserId` index (schema uses `userId`, and `_id` is already indexed).
 

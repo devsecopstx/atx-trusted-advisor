@@ -10,7 +10,6 @@ import {
 } from "@/modules/core-admin/repository";
 import type { Position, Watchlist } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
-import { refreshInvestmentOutlooksForTenant } from "@/modules/portfolio/investment-outlooks";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
     resolveUsMarketDayContext,
@@ -541,11 +540,6 @@ export async function executeOptionsStrategyScannerJob(
       holdingsCount: optionPositions,
       watchlistCount: wlTargetsLen,
       sourceTaskCategory: "options_strategy_scanner"
-    });
-
-    void refreshInvestmentOutlooksForTenant(tenantId).catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[investment-outlook] refresh_failed tenant=${tenantId.toHexString()} ${msg}`);
     });
 
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
