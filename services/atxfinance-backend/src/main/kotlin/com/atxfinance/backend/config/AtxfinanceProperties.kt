@@ -39,7 +39,10 @@ data class AtxfinanceProperties(
     val ragFilesCollection: String = "xai_collections",
     val ragChunksCollection: String = "xchat_rag_chunks",
     val xchatLogsCollection: String = "xchat_logs",
+    val xchatUsageLimitsCollection: String = "xchat_usage_limits",
     val xchatUserPreferencesCollection: String = "xchat_user_preferences",
+    /** Per-user rolling minute cap for `POST /api/xchat/ask/stream` (mirrors Next `ASK_RATE_MAX`). */
+    val xchatAskPerMinuteLimit: Int = 20,
     val defaultExtBrokerRef: String = "extBrokerName",
     val defaultAccountCashBalance: Double = 25_000.0,
     val tenantPortfolioOrgKey: String = "org-atx-finance",
