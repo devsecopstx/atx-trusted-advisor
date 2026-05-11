@@ -81,6 +81,26 @@ export function getPlanLimits(plan?: SubscriptionPlan | string): PlanTierLimits 
   return PLAN_LIMITS[normalizeSubscriptionPlan(plan)];
 }
 
+/**
+ * Caps interactive tool-loop turns by subscription tier (app users). Global admins keep persona `maxTurns`
+ * up to 16 for debugging; everyone else is min(persona, plan tier maxTurns).
+ */
+export function clampToolLoopMaxTurnsForSession(input: {
+  personaMaxTurns: number;
+  plan?: SubscriptionPlan | string;
+  isAdminSession: boolean;
+}): number {
+  const raw = Number(input.personaMaxTurns);
+  const persona = Number.isFinite(raw)
+    ? Math.min(16, Math.max(1, Math.floor(raw)))
+    : 5;
+  if (input.isAdminSession) {
+    return persona;
+  }
+  const cap = getPlanLimits(input.plan).maxTurns;
+  return Math.min(persona, cap);
+}
+
 /** Effective xChat prompt caps for UI + metering (matches ask route: tenant workspace first, plan tier for soft %). */
 export type XchatMergedPromptLimits = {
   subscriptionPlan: SubscriptionPlan;

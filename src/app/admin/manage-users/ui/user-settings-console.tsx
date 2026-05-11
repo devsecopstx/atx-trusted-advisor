@@ -181,6 +181,27 @@ const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
   notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
 };
 
+async function writeTextToClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    /* continue to fallback */
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+  if (!ok) {
+    throw new Error("copy_failed");
+  }
+}
+
 export function UserSettingsConsole() {
   const [status, setStatus] = useState("Ready");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -659,6 +680,15 @@ export function UserSettingsConsole() {
     ? approvedUsers.find((u) => u.userId === selectedUserId)
     : undefined;
 
+  const copyMongoUserId = useCallback(async (userId: string) => {
+    try {
+      await writeTextToClipboard(userId);
+      setStatus(`Copied user id (${userId})`);
+    } catch {
+      setStatus("Could not copy — select the User ID text manually.");
+    }
+  }, []);
+
   return (
     <section className="panel stack-gap">
       <div className="tool-row">
@@ -755,6 +785,9 @@ export function UserSettingsConsole() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th title="core_users._id — 24-character Mongo ObjectId hex (APIs, session mint, scripting)">
+                  User ID
+                </th>
                 <th>Email</th>
                 <th title="Each user is linked to at most one tenant; duplicates are merged on refresh.">
                   Tenant
@@ -773,6 +806,23 @@ export function UserSettingsConsole() {
               {approvedUsers.map((user) => (
                 <tr key={user.userId} className={selectedUserId === user.userId ? "row-selected" : ""}>
                   <td>{user.name}</td>
+                  <td className="align-top" style={{ maxWidth: 220 }}>
+                    <div className="flex flex-col gap-1">
+                      <div
+                        className="font-mono text-xs break-all opacity-90"
+                        title="core_users._id"
+                      >
+                        {user.userId}
+                      </div>
+                      <button
+                        className="tiny-button self-start"
+                        onClick={() => void copyMongoUserId(user.userId)}
+                        type="button"
+                      >
+                        Copy id
+                      </button>
+                    </div>
+                  </td>
                   <td>
                     <input
                       disabled={editingUserId !== user.userId}
@@ -1035,6 +1085,17 @@ export function UserSettingsConsole() {
           <h3>
             Settings for {approvedUsers.find((u) => u.userId === selectedUserId)?.name ?? selectedUserId}
           </h3>
+          <p className="status-text flex flex-wrap items-center gap-2">
+            <span className="opacity-80">core_users._id</span>
+            <span className="font-mono text-xs break-all">{selectedUserId}</span>
+            <button
+              className="tiny-button shrink-0"
+              onClick={() => void copyMongoUserId(selectedUserId)}
+              type="button"
+            >
+              Copy id
+            </button>
+          </p>
           {settingsLastSaved ? (
             <p className="status-text">Last saved: {new Date(settingsLastSaved).toLocaleString()}</p>
           ) : null}

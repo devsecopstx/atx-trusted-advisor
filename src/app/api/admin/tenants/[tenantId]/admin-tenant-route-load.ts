@@ -1,4 +1,4 @@
-import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { getTenantBySlugOrHexIdCached } from "@/lib/server-request-cache";
 import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
 import type { Tenant } from "@/modules/identity/types";
 
@@ -8,14 +8,14 @@ export async function loadTenantForAdminTenantRoute(
   sessionTenantId: string
 ): Promise<Tenant | null> {
   const url = urlTenantId.trim();
-  let tenant = await getTenantByHexIdCached(url);
+  let tenant = await getTenantBySlugOrHexIdCached(url);
   if (tenant?._id) {
     return tenant;
   }
   if (url === sessionTenantId.trim()) {
     const resolved = await resolveTenantIdHexForGlobalAdminConsole(sessionTenantId);
     if (resolved) {
-      tenant = await getTenantByHexIdCached(resolved);
+      tenant = await getTenantBySlugOrHexIdCached(resolved);
     }
   }
   return tenant?._id ? tenant : null;

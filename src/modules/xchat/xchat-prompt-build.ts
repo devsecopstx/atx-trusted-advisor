@@ -45,6 +45,48 @@ If the tool returns no_default_portfolio, no_watchlist, or empty positions, say 
 
 **NL (natural language) before structured options / strategy flows:** When the user asks for an xOptions-style or multi-leg strategy setup, use **nl**—short, direct questions—to collect any **required** inputs (underlying, direction, timeframe, risk cap, position context) before you infer strikes or recommend actions. If something essential is missing, ask in nl; do not guess symbols or sizing. Workspace data for *their* book should come from **atx_function** (and yahoo_finance for quotes)—not by re-prompting the user to paste holdings. For the **full slot + artifact orchestrator** (auditable Markdown + JSON after desk slots), direct them to **xOptions → Hardcore strategy jobs** (\`/xoptions\`, guided \`/api/strategy-jobs\` via BFF). The server may also surface a one-turn preflight in chat when intent clearly matches that flow.`;
 
+/** Omits long HNWI-style **options_scan** desk table contracts; keeps workspace + NL discipline. */
+const ATX_FUNCTION_TOOL_COPY_SLIM = `Workspace tools (this signed-in user only):
+**Live portfolio, watchlist, and balances are not pre-loaded into the system prompt.** Use **atx_function** when you need workspace facts: **portfolio_summary**, **positions_snapshot**, **watchlist_snapshot**, **account_health**. Prefer the smallest call that answers the question; avoid redundant tool calls after you already have current data for this turn.
+When a **workspace snapshot** block is present, watchlist symbols include **spotPriceDisplay** (Yahoo last, USD); **targetEntryNotional100xUsdDisplay** and desk **targetEntryDisplay** / **entryPrice**. When listing like the Watchlist **table**, lead with spot + target notional USD.
+If the user asks to "show my watchlist" (or equivalent), enumerate **every symbol returned** in the tool result (do not sample or truncate short lists).
+When the user asks to add or remove watchlist symbols, call watchlist_add_symbols or watchlist_remove_symbols—then confirm briefly.
+**Premium+ NL price alerts (advisor desk):** Use **price_alert_manage** when the persona exposes it—same confirm/destructive rules as full routing.
+Use real atx_function calls via the API—no pseudo \`<function_call>\` markup in user-visible text.
+For **live quotes** use yahoo_finance or **market_quote**. For **task_status**, call atx_function.
+When you run **options_scan**, summarize ranked contracts clearly from tool JSON; keep output compact unless the user asks for full desk-style tables. Avoid repeated options_scan calls on the same symbol/filters in one turn.
+If the tool returns no_default_portfolio, no_watchlist, or empty positions, say that clearly.
+
+**NL (natural language) before structured options / strategy flows:** When the user asks for an xOptions-style or multi-leg strategy setup, use **nl**—short, direct questions—to collect required inputs before inferring strikes. Workspace data should come from **atx_function** (and yahoo_finance for quotes). For the **Hardcore strategy jobs** orchestrator, direct them to **xOptions** (\`/xoptions\`).`;
+
+export type XchatSessionToolCopyMode = "full" | "slim";
+
+export function classifyXchatSessionToolCopyMode(message: string): XchatSessionToolCopyMode {
+  const m = message.trim().toLowerCase();
+  if (!m) {
+    return "slim";
+  }
+
+  const educationalStub =
+    /^\s*(what is|what's|define|explain)\s+(a\s+)?(covered call|cash[- ]secured put|iron condor|wheel)\b/i.test(m) ||
+    /\b(teach me|basics of|introduction to)\s+(options|covered calls)\b/i.test(m);
+  if (educationalStub && !/\b(my|our)\b.*\b(portfolio|holdings|positions|watchlist|stock)\b/i.test(m)) {
+    return "slim";
+  }
+
+  const fullIntent =
+    /\b(covered[- ]calls?|covered call\b|\bcsp\b|cash[- ]secured|iron condor|credit spread|put spread|call spread|calendar spread|diagonal|straddle|strangle)\b/.test(m) ||
+    /\b(wheel strategy|\bthe wheel\b|wheel ideas|covered call ideas)\b/.test(m) ||
+    /\b(options?\s*scan|scan my options)\b/.test(m) ||
+    (/\b(from holdings|holdings)\b/.test(m) && /\b(watchlist|ideas?)\b/.test(m)) ||
+    /\b(strike|strikes|expiry|expiration|\bdte\b|premium income|assignment|call-away)\b/.test(m) ||
+    (/\b(watchlist|holdings|positions?|portfolio)\b/.test(m) &&
+      /\b(option|call|put|wheel|income|premium)\b/.test(m)) ||
+    /\b(price alert|portfolio\/alerts|strategy job|xoptions|multi[- ]leg|hardcore)\b/.test(m);
+
+  return fullIntent ? "full" : "slim";
+}
+
 export const XCHAT_SERVER_ROUTING_POLICY_BLOCK = `**Server routing policy (TEAM KB + tools):** Snippets from team xAI collections are injected above when available—prefer them first for policy, playbooks, and static docs. **Live portfolio** state: **atx_function** on demand (not bulk-injected each turn). **Quotes:** yahoo_finance or atx_function \`market_quote\`—never invent prices from web prose. **Breaking news / sentiment:** web_search / x_search after KB when freshness matters. **Heavy multi-source synthesis** uses parallel multi-agent only when the user explicitly raises effort or the question clearly requires cross-source reconciliation—the default path is one model pass plus retrieval and selective tools.`;
 
 export type SessionToolFlags = {
@@ -58,13 +100,16 @@ export type SessionToolFlags = {
  * One session-level instruction block derived from effective tools (hosted + custom).
  * Omit sections the persona does not expose.
  */
-export function buildSessionToolInstructions(flags: SessionToolFlags): string {
+export function buildSessionToolInstructions(
+  flags: SessionToolFlags,
+  atxCopyMode: XchatSessionToolCopyMode = "full"
+): string {
   const parts: string[] = [];
   if (flags.hostedSearch) {
     parts.push(HOSTED_SEARCH_TOOL_COPY);
   }
   if (flags.atxFunction) {
-    parts.push(ATX_FUNCTION_TOOL_COPY);
+    parts.push(atxCopyMode === "slim" ? ATX_FUNCTION_TOOL_COPY_SLIM : ATX_FUNCTION_TOOL_COPY);
   }
   return parts.join("\n\n");
 }

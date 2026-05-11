@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
+    classifyXchatSessionToolCopyMode,
     computeXchatRemoteChainInstructionsFingerprint,
     formatTenantWorkspaceContextBlockForXchat,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
@@ -59,6 +60,36 @@ describe("buildSessionToolInstructions", () => {
     expect(s).toContain("Best Upside/Income Balance");
     expect(s).toContain("Upside to Strike = ((strike - spot) / spot) * 100");
     expect(s).toContain("ROC (ann.) = (premium/spot) * (365/DTE)");
+  });
+
+  it("slim omits HNWI desk style for options_scan", () => {
+    const s = buildSessionToolInstructions({ hostedSearch: false, atxFunction: true }, "slim");
+    expect(s).not.toContain("HNWI desk style");
+    expect(s).toContain("options_scan");
+    expect(s).toContain("avoid redundant tool calls");
+  });
+});
+
+describe("classifyXchatSessionToolCopyMode", () => {
+  it("returns slim for empty message", () => {
+    expect(classifyXchatSessionToolCopyMode("")).toBe("slim");
+  });
+
+  it("returns slim for generic chit-chat", () => {
+    expect(classifyXchatSessionToolCopyMode("Hello")).toBe("slim");
+  });
+
+  it("returns slim for educational stub without portfolio cues", () => {
+    expect(classifyXchatSessionToolCopyMode("What is a covered call?")).toBe("slim");
+  });
+
+  it("returns full when educational stub references my portfolio", () => {
+    expect(classifyXchatSessionToolCopyMode("What is a covered call on my TSLA holdings?")).toBe("full");
+  });
+
+  it("returns full for wheel / income intents", () => {
+    expect(classifyXchatSessionToolCopyMode("Covered call ideas on AAPL")).toBe("full");
+    expect(classifyXchatSessionToolCopyMode("Wheel strategy using my watchlist")).toBe("full");
   });
 });
 

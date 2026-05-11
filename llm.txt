@@ -12,7 +12,7 @@ Partner landing spec (/ai-rent, implement later): atx-docs/design-system/ai-rent
 Auth (all routes): Authorization: Bearer atxr_<16-hex key id>_<64-hex secret>
 Keys are hashed on core_tenants.apiKeys; scopes: chat | strategy | analyze.
 
-- POST /api/ai/rent/chat — scope chat. Body: { message, portfolioId?, stream? }. JSON 200 or SSE (Accept: text/event-stream or stream: true). Headers on success: x-rental-tokens-used, x-rental-tokens-remaining.
+- POST /api/ai/rent/chat — scope chat. Body: { message, username?, portfolioId?, stream? }. username = X handle (@ optional) for a tenant member — resolves Mongo user server-side (no hex user id). JSON 200 or SSE (Accept: text/event-stream or stream: true). Headers on success: x-rental-tokens-used, x-rental-tokens-remaining.
 - POST /api/ai/rent/strategy — scope strategy. Body: { symbols[], portfolioId?, notes? }. 202 { jobId, pollUrl }; GET /api/ai/rent/strategy?jobId= poll.
 - POST /api/ai/rent/analyze — scope analyze. Body: { jobId?, deepRun? }. 202 + GET /api/ai/rent/analyze?jobId= poll.
 

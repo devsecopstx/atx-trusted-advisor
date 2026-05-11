@@ -140,6 +140,65 @@ export type WatchlistPortfolioSlotCollectionResult = {
 };
 
 /**
+ * When true (with `hasXfinanceTool`), `/api/xchat/ask` eagerly runs `loadWorkspaceSnapshotPreload`
+ * in parallel with RAG so first-turn `atx_function` calls (`portfolio_summary`, `watchlist_snapshot`,
+ * `positions_snapshot`, `account_health`) short-circuit via `PRELOAD_SHORT_CIRCUIT_OPS` instead of
+ * lazy Mongo + duplicate fetches.
+ */
+export function shouldEagerWorkspaceSnapshotPreloadForMessage(message: string): boolean {
+  const m = message.trim().toLowerCase();
+  if (!m) {
+    return false;
+  }
+  if (
+    /^(what is|what's|define|explain)\s+(a\s+|the\s+)?(covered[- ]call|covered call|wheel strategy|the wheel)\b/i.test(
+      m
+    )
+  ) {
+    return false;
+  }
+  if (
+    m.includes("watchlist add") ||
+    m.includes("watchlist remove") ||
+    (m.includes(" add ") && m.includes("watchlist")) ||
+    (m.includes(" remove ") && m.includes("watchlist"))
+  ) {
+    return false;
+  }
+
+  const holdingsPlusWatchlistPhrase =
+    m.includes("from holdings") ||
+    (m.includes("holdings") && m.includes("watchlist"));
+
+  const bookCue =
+    /\b(holdings?|watchlist|positions?|portfolio)\b/.test(m) ||
+    /\bmy portfolio\b/.test(m);
+
+  const wheelIdeasPhrase =
+    /\bwheel\b.*\bideas?\b/.test(m) || /\bideas?\b.*\bwheel\b/.test(m);
+
+  const incomeOrScanCue =
+    /\bcovered[- ]calls?\b/.test(m) ||
+    /\bcovered call\b/.test(m) ||
+    /\bwheel strategy\b/.test(m) ||
+    /\bthe wheel\b/.test(m) ||
+    /\b(?:cash[- ]secured|csp)\b/.test(m) ||
+    /\boptions?\s*(scan|action)\b/.test(m) ||
+    /\bscan my options\b/.test(m);
+
+  const ideasIncomeCue =
+    /\bideas?\b/.test(m) &&
+    (incomeOrScanCue || wheelIdeasPhrase || /\bcovered[- ]calls?\b/.test(m) || /\bcovered call\b/.test(m));
+
+  return (
+    holdingsPlusWatchlistPhrase ||
+    (bookCue && incomeOrScanCue) ||
+    wheelIdeasPhrase ||
+    ideasIncomeCue
+  );
+}
+
+/**
  * NL slot collection for direct watchlist asks:
  * - If user asks "show watchlist for [portfolio]" and includes a 24-char id, resolve it.
  * - If user asks "show watchlist for ..." without a resolvable id, require a follow-up slot prompt.

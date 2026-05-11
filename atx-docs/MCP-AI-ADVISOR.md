@@ -24,7 +24,7 @@ Rent a **logically isolated** branded workspace: dedicated `rentalProfile`, hash
 
 | Capability | Method & path | Notes |
 |------------|----------------|-------|
-| **Chat** | `POST /api/ai/rent/chat` | Natural language options context, portfolio-aware snapshot, **`strategyBias`** injected. **JSON** (`200`) or **SSE** (`Accept: text/event-stream` or `"stream": true`) — OpenAI-style `chat.completion.chunk` deltas + `[DONE]`. |
+| **Chat** | `POST /api/ai/rent/chat` | Natural language options context, portfolio-aware snapshot, **`strategyBias`** injected. Optional body **`username`** (X handle, `@` optional) selects a **tenant member’s** workspace without Mongo user-id hex; optional **`portfolioId`** still scopes an owned portfolio. **JSON** (`200`) or **SSE** (`Accept: text/event-stream` or `"stream": true`) — OpenAI-style `chat.completion.chunk` deltas + `[DONE]`. |
 | **Strategy job** | `POST /api/ai/rent/strategy` | Body: `symbols[]`, optional `portfolioId`, `notes`. **`202`** with `jobId` + `pollUrl`. **`GET /api/ai/rent/strategy?jobId=`** returns status + `result` (MVP materialization — see runbook). |
 | **Analyze job** | `POST /api/ai/rent/analyze` | Body: optional `jobId`, `deepRun`. Same **`202` + GET poll** pattern as strategy. |
 
@@ -32,7 +32,7 @@ Rent a **logically isolated** branded workspace: dedicated `rentalProfile`, hash
 
 ## Authentication
 
-- **Per-tenant API keys** (plaintext shown only at mint time — **`global_admin`** **`GET`/`POST /api/admin/tenants/{tenantId}/rental-api-keys`**, revoke **`DELETE …/rental-api-keys/{keyId}`**, rotate **`POST …/{keyId}/rotate`**).
+- **Per-tenant API keys** (plaintext shown only at mint time — **`global_admin`** **`GET`/`POST /api/admin/tenants/{tenantId}/rental-api-keys`**, revoke **`DELETE …/rental-api-keys/{keyId}`**, rotate **`POST …/{keyId}/rotate`**). The **`{tenantId}`** path segment accepts **`core_tenants._id` hex** or **`slug`** (same as other admin tenant routes using `loadTenantForAdminTenantRoute`).
 - **Header:** `Authorization: Bearer atxr_<16-hex id>_<64-hex secret>`
 - **Scopes:** each key has `chat`, `strategy`, and/or `analyze`; routes enforce the matching scope.
 - **Tenant binding:** resolver loads `core_tenants` by key id; all data and jobs are scoped to that tenant.
@@ -64,6 +64,7 @@ Content-Type: application/json
 
 {
   "message": "Outline a conservative wheel-style income plan on NVDA given my workspace snapshot.",
+  "username": "partnerDesk",
   "portfolioId": "507f1f77bcf86cd799439011",
   "stream": false
 }

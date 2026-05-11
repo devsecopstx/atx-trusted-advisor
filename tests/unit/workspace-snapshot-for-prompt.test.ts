@@ -50,7 +50,11 @@ vi.mock("@/modules/xchat/portfolio-workspace-snapshot-repository", () => ({
   ensurePortfolioWorkspaceSnapshotIndexes: vi.fn(() => Promise.resolve(undefined))
 }));
 
-import { buildWorkspaceServerSnapshotBlock, loadWorkspaceSnapshotPreload } from "@/modules/xchat/workspace-snapshot-for-prompt";
+import {
+    buildWorkspacePreloadHintForSystemPrompt,
+    buildWorkspaceServerSnapshotBlock,
+    loadWorkspaceSnapshotPreload
+} from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 describe("buildWorkspaceServerSnapshotBlock", () => {
   beforeEach(() => {
@@ -154,5 +158,48 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
       { snapshotQuoteNetwork: "cached_first" }
     );
     expect(lookupSymbolsMock).toHaveBeenCalledWith(["TSLA"], { allowNetwork: false });
+  });
+});
+
+describe("buildWorkspacePreloadHintForSystemPrompt", () => {
+  it("summarizes portfolio + watchlist without full JSON", () => {
+    const hint = buildWorkspacePreloadHintForSystemPrompt({
+      promptJson: {
+        loadedAt: new Date().toISOString(),
+        workspaceContentRev: 2,
+        portfolio: {
+          id: "507f1f77bcf86cd799439033",
+          name: "Main",
+          isDefault: true,
+          totalPositionCount: 1
+        },
+        accounts: [
+          {
+            accountId: "acc1",
+            name: "Individual",
+            type: "cash",
+            extAccountId: "",
+            isDefault: true,
+            cashBalance: 1000,
+            positionCount: 1
+          }
+        ],
+        positionsPreview: [{ symbol: "TSLA", qty: 10, avgCost: 200, accountId: "acc1" }],
+        positionsPreviewTruncated: false,
+        positionsOmittedCount: 0,
+        watchlist: {
+          name: "Hot",
+          riskProfile: null,
+          outlook: null,
+          symbols: []
+        }
+      },
+      positionsFull: []
+    });
+    expect(hint).toContain("Workspace preload hint");
+    expect(hint).toContain("Main");
+    expect(hint).toContain("watchlist \"Hot\"");
+    expect(hint).toContain("TSLA");
+    expect(hint).not.toContain("```json");
   });
 });

@@ -100,6 +100,17 @@ import {
     writeWorkspaceSnapshotCache
 } from "@/modules/xchat/workspace-snapshot-cache";
 
+/** `[xchat/debug]` + JSON.stringify so dev logs (`tee .next/dev.log`) parse with `jq` (see xchat-debug-logging.md). */
+function logWorkspaceSnapshotDebug(payload: Record<string, unknown>): void {
+  console.info(
+    "[xchat/debug]",
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      ...payload
+    })
+  );
+}
+
 export type WorkspaceSnapshotContext = {
   userId: string;
   tenantId?: string;
@@ -386,7 +397,7 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
 
   const elapsedMs = Math.round(performance.now() - t0);
   if (isXchatStructuredDebugEnabled()) {
-    console.info("[xchat/debug]", {
+    logWorkspaceSnapshotDebug({
       type: "workspace_snapshot_build",
       source: "mongo",
       elapsedMs,
@@ -412,7 +423,7 @@ export async function loadWorkspaceSnapshotPreload(
   if (!portfolio?._id) {
     const elapsedMs = Math.round(performance.now() - tStart);
     if (isXchatStructuredDebugEnabled()) {
-      console.info("[xchat/debug]", {
+      logWorkspaceSnapshotDebug({
         type: "workspace_snapshot_load",
         source: "null",
         elapsedMs
@@ -437,7 +448,7 @@ export async function loadWorkspaceSnapshotPreload(
       if (isValidWorkspacePreloadPayload(parsed, portfolioId, rev)) {
         const elapsedMs = Math.round(performance.now() - tStart);
         if (isXchatStructuredDebugEnabled()) {
-          console.info("[xchat/debug]", {
+          logWorkspaceSnapshotDebug({
             type: "workspace_snapshot_load",
             source: "cache",
             elapsedMs,
@@ -469,7 +480,7 @@ export async function loadWorkspaceSnapshotPreload(
       const elapsedMs = Math.round(performance.now() - tStart);
       const backendFetchMs = Math.round(performance.now() - tJvm);
       if (isXchatStructuredDebugEnabled()) {
-        console.info("[xchat/debug]", {
+        logWorkspaceSnapshotDebug({
           type: "workspace_snapshot_backend",
           source: "jvm_snapshot",
           elapsedMs,
@@ -495,7 +506,7 @@ export async function loadWorkspaceSnapshotPreload(
     }
     const elapsedMs = Math.round(performance.now() - tStart);
     if (isXchatStructuredDebugEnabled()) {
-      console.info("[xchat/debug]", {
+      logWorkspaceSnapshotDebug({
         type: "workspace_snapshot_load",
         source: "materialized",
         elapsedMs,
@@ -531,7 +542,7 @@ export async function loadWorkspaceSnapshotPreload(
   }
   const elapsedMs = Math.round(performance.now() - tStart);
   if (isXchatStructuredDebugEnabled()) {
-    console.info("[xchat/debug]", {
+    logWorkspaceSnapshotDebug({
       type: "workspace_snapshot_load",
       source: built ? "mongo" : "null",
       elapsedMs,
@@ -550,6 +561,41 @@ export function formatWorkspaceServerSnapshotBlock(preload: WorkspaceSnapshotPre
     json,
     "```"
   ].join("\n");
+}
+
+/** Compact text for system prompt when eager preload ran — avoids duplicating full JSON + cuts redundant tool rounds. */
+export function buildWorkspacePreloadHintForSystemPrompt(preload: WorkspaceSnapshotPreload): string {
+  const j = preload.promptJson;
+  const wl = j.watchlist;
+  const wlSummary =
+    "error" in wl
+      ? "watchlist: none"
+      : `watchlist "${wl.name}" (${wl.symbols.length} symbols)`;
+  const prevSyms = j.positionsPreview.slice(0, 12).map((p) => p.symbol.trim().toUpperCase());
+  const wlSyms =
+    "error" in wl ? [] : wl.symbols.slice(0, 16).map((s) => String(s.symbol).trim().toUpperCase());
+
+  const posHint =
+    j.portfolio.totalPositionCount === 0
+      ? "No equity positions recorded for this portfolio."
+      : j.positionsPreview.length === 0
+        ? `Positions preview empty (${j.portfolio.totalPositionCount} total); call positions_snapshot for the full book if needed.`
+        : `Positions preview: ${j.positionsPreview.length} row(s); total position count ${j.portfolio.totalPositionCount}. Preview symbols: ${prevSyms.join(", ")}.`;
+
+  const emptyBookGuard =
+    j.portfolio.totalPositionCount === 0
+      ? "If the user asks for covered-call or wheel ideas tied to their holdings, do not run options_scan for book-specific income plays until positions exist—tell them to add or import holdings."
+      : "";
+
+  return [
+    `Workspace preload hint (this request; refresh via atx_function if stale): portfolio "${j.portfolio.name}" (${j.portfolio.id}), rev ${j.workspaceContentRev}.`,
+    `Accounts: ${j.accounts.length}. ${wlSummary}.`,
+    posHint,
+    wlSyms.length > 0 ? `Watchlist symbols (sample): ${wlSyms.join(", ")}.` : "",
+    emptyBookGuard
+  ]
+    .filter((line) => line.trim().length > 0)
+    .join("\n");
 }
 
 /**

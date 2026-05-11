@@ -1996,6 +1996,34 @@ export async function resolveAuthContext(input: {
   };
 }
 
+/** Core tenant `_id` as 24-char hex (distinct from slug-shaped ids). */
+const TENANT_OBJECT_ID_HEX_RE = /^[a-fA-F0-9]{24}$/;
+
+/**
+ * Resolve `core_tenants` by Mongo `_id` hex or by **`slug`** (exact, then lowercase fallback).
+ * Used by admin `/api/admin/tenants/{tenantId}/…` routes so operators can use the tenant slug in URLs.
+ */
+export async function getTenantBySlugOrHexId(idOrSlug: string): Promise<Tenant | null> {
+  const trimmed = idOrSlug.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (TENANT_OBJECT_ID_HEX_RE.test(trimmed)) {
+    const byId = await getTenantByHexId(trimmed);
+    if (byId?._id) {
+      return byId;
+    }
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const coll = db.collection<Tenant>(collections.tenants);
+  const exact = await coll.findOne({ slug: trimmed });
+  if (exact?._id) {
+    return exact;
+  }
+  return coll.findOne({ slug: trimmed.toLowerCase() });
+}
+
 export async function getTenantByHexId(tenantIdHex: string): Promise<Tenant | null> {
   if (!ObjectId.isValid(tenantIdHex)) {
     return null;
@@ -2003,6 +2031,44 @@ export async function getTenantByHexId(tenantIdHex: string): Promise<Tenant | nu
   await ensureIdentityIndexes();
   const db = await getDb();
   return db.collection<Tenant>(collections.tenants).findOne({ _id: new ObjectId(tenantIdHex) });
+}
+
+export type ResolveRentalWorkspaceUserByUsernameCode =
+  | "invalid_username"
+  | "user_not_found"
+  | "no_tenant_membership";
+
+/**
+ * For rental AI chat: resolve a tenant member by **X handle** (`xAccount.username`, case-insensitive; `@` stripped)
+ * without requiring Mongo `userId` hex in the request body.
+ */
+export async function resolveCoreUserHexIdForRentalTenantByUsername(input: {
+  tenantId: ObjectId;
+  username: string;
+}): Promise<
+  | { ok: true; userIdHex: string }
+  | { ok: false; code: ResolveRentalWorkspaceUserByUsernameCode }
+> {
+  const uname = normalizeXUsernameForOAuthLookup(input.username);
+  if (!uname) {
+    return { ok: false, code: "invalid_username" };
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const pattern = new RegExp(`^${escapeRegexChars(uname)}$`, "i");
+  const user = await db.collection<CoreUser>(collections.users).findOne({
+    $or: [{ "xAccount.username": pattern }, { "xAccount.xUserId": pattern }]
+  });
+  if (!user?._id) {
+    return { ok: false, code: "user_not_found" };
+  }
+  const membership = await db
+    .collection<TenantMembership>(collections.memberships)
+    .findOne({ userId: user._id, tenantId: input.tenantId });
+  if (!membership?._id) {
+    return { ok: false, code: "no_tenant_membership" };
+  }
+  return { ok: true, userIdHex: user._id.toHexString() };
 }
 
 export async function getTenantXfUiThemePreferenceForHex(

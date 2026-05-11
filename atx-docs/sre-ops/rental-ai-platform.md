@@ -30,6 +30,8 @@ On `npm run seed:tenant`, a **published** rental persona is upserted (`nameNorma
 
 **Admin HTTP (global_admin session):**
 
+The **`{tenantId}`** segment is **`core_tenants._id` hex** or **`slug`** (same resolver as other admin tenant routes).
+
 - **`GET /api/admin/tenants/{tenantId}/rental-api-keys`** — list keys (**no** `keyHash`; includes **`revokedAt`** / **`status`**).
 - **`POST /api/admin/tenants/{tenantId}/rental-api-keys`** — body optional **`scopes`** (default all three) + **`label`**; **`201`** returns **`plaintextKey`** once + **`warning`** string.
 - **`DELETE /api/admin/tenants/{tenantId}/rental-api-keys/{keyId}`** — sets **`revokedAt`**.
@@ -50,7 +52,7 @@ The script prints `export KEY='atxr_…'` **once**; store it in a secrets manage
 
 ### Chat
 
-- **`POST /api/ai/rent/chat`** — scope **`chat`**. Body: `{ message, portfolioId?, stream? }`. Runs **`respondWithXaiToolLoop`** with rental persona + **`strategyBias`** + tenant workspace snapshot (**`portfolioId`** override or provisioned sample portfolio). **Non-streaming:** `200` JSON (`data.response`, `data.usage`). **Streaming:** `Accept: text/event-stream` **or** `stream: true` → SSE with OpenAI-style **`chat.completion.chunk`** deltas + **`[DONE]`**.
+- **`POST /api/ai/rent/chat`** — scope **`chat`**. Body: `{ message, username?, portfolioId?, stream? }`. Optional **`username`** is an **X handle** (`xAccount.username`, `@` optional) for a **tenant member**; server resolves Mongo user id (no hex user id in the payload). Runs **`respondWithXaiToolLoop`** with rental persona + **`strategyBias`** + workspace snapshot (**`portfolioId`** override, else default portfolio for that user, else provisioned sample portfolio when no `username`). **Non-streaming:** `200` JSON (`data.response`, `data.usage`). **Streaming:** `Accept: text/event-stream` **or** `stream: true` → SSE with OpenAI-style **`chat.completion.chunk`** deltas + **`[DONE]`**.
 
 ### Strategy & analyze (async materialization)
 

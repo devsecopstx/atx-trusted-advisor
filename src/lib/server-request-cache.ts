@@ -4,7 +4,7 @@
  */
 import { cache } from "react";
 
-import { getTenantByHexId } from "@/modules/identity/repository";
+import { getTenantByHexId, getTenantBySlugOrHexId } from "@/modules/identity/repository";
 import {
     getPersonaById,
     listPersonas,
@@ -15,6 +15,11 @@ import type { PersonaConfig, PersonaStatus } from "@/modules/xchat/types";
 
 export const getTenantByHexIdCached = cache(async (tenantIdHex: string) =>
   getTenantByHexId(tenantIdHex.trim())
+);
+
+/** Admin URLs may pass Mongo tenant hex or **`core_tenants.slug`**. */
+export const getTenantBySlugOrHexIdCached = cache(async (key: string) =>
+  getTenantBySlugOrHexId(key.trim())
 );
 
 export const listPersonasCached = cache(async () => listPersonas());

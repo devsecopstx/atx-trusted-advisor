@@ -17,7 +17,7 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 | **704** | xMoney / crypto book (phased) | Full phased spec below: [xMoney & crypto portfolio (704)](#xmoney-crypto-704-roadmap) |
 | **705** | App_user tasks — strategy handoff | Engine + scheduled jobs: [scheduled-task/user-tasks.md](./design-system/scheduled-task/user-tasks.md) |
 | **706** | Tenant workspace automations | NL schedules, queue fairness, workspace limits — same user-tasks doc |
-| **707** | **xChat harden** | **Open** — engine-grounded tools, vision paste policy, metering/BFF paths, artifacts/schema parity, TEAM KB alignment: [#xchat-harden](#xchat-harden) |
+| **707** | **xChat harden** | **Partial shipped** — Spring-authoritative engine recommendation tool bridge + TEAM KB docs aligned; open: vision paste policy, metering refinements, JVM ask ownership, artifacts/schema parity: [#xchat-harden](#xchat-harden) |
 | **708** | **Monte Carlo tail-risk** (`MonteCarloTailRiskEngine`) | **Open** — fat-tail sims, VaR/CVaR/drawdown stress, **`UserOptionsContext`** tier gates, Redis cache + quote circuit-break; companion to **`OptionsStrategyEngine`**: [#monte-carlo-tail-risk](#monte-carlo-tail-risk) · [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) |
 | **900** | Automated trades w/ verify | After **200** + custodian execution maturity; until then alerts / manual |
 
@@ -29,14 +29,32 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 ## xChat harden
 
-**Track:** **707** (open). Umbrella for reliability, grounding, and parity across Next xChat modules and the JVM strategy pipeline.
+**Track:** **707** (partial shipped). Umbrella for reliability, grounding, and parity across Next xChat modules and the JVM strategy pipeline. Latency backlog (Wheel/CC baseline, P0 slices): [#xchat-latency-perf](#xchat-latency-perf).
 
-- **Engine-grounded tools:** Treat quant engine outputs as first-class xAI Responses tools (structured JSON in → narrative out); reduce free-form hallucination — elaborated in [Engine × xAI conversational layer](#engine-xai-conversational-layer) below. Book-level tail metrics from [Monte Carlo tail-risk module](#monte-carlo-tail-risk) roll into the same rationale payload.
+- **Engine-grounded tools:** **Shipped v1** — Next xChat `atx_function.strategy_recommendations` validates symbols/outlook/risk/horizon, forwards the signed session to Spring **`POST /api/strategy-recommendations/generate`**, and narrates structured **`OptionsStrategyEngine.generateRecommendations()`** JSON instead of inventing legs/scores. Next remains ask/SSE owner; Spring owns the deterministic engine contract.
 - **Vision paste:** Policy (scan bounds, EXIF strip, optional max dimensions), batch/admin harness parity — backlog detail in [Deferred product TODOs](#deferred-product-todos).
 - **Limits & metering:** In-product usage meter and prompt limits — contract in [current-state-features.md](./design-system/current-state-features.md); optional plans-copy alignment with `getPlanLimits()`.
-- **BFF / JVM ask:** Optional JVM-authoritative streaming and tool loop — [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md), [Deferred (larger lifts)](#deferred-larger-lifts).
+- **BFF / JVM ask:** Engine recommendation endpoint is Spring-authoritative; full JVM-authoritative streaming and tool loop remain deferred — [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md), [Deferred (larger lifts)](#deferred-larger-lifts).
 - **Artifacts & audit:** Strict JSON Schema **v2** for strategy artifacts where multi-agent paths need parity ([atx-multi-agent.md](./xchat/atx-multi-agent.md)); regression guardrails + OpenAPI **`xchat`** inventory in `src/lib/openapi/current-state.ts`.
-- **TEAM-only xAI path:** Team KB anchor and linked collections — align with `context-routing-multi-agent-policy.md` + `xchat-tools-guide.md` (drop legacy per-user bootstrap where policy is TEAM-only).
+- **TEAM-only xAI path:** **Docs aligned** — ask/batch grounding stays persona-declared TEAM collection IDs only (`xaiCollection`, `teamCollection`, tool `collection_ids`; max 2); no env-team default auto-merge into runtime ask.
+
+<a id="xchat-latency-perf"></a>
+
+### xChat ask latency (Wheel / CC template — May 2026)
+
+**P0 shipped:** `shouldEagerWorkspaceSnapshotPreloadForMessage` (`src/modules/xchat/xchat-ask-routing.ts`) gates eager `loadWorkspaceSnapshotPreload` in parallel with RAG when prompts mention holdings + watchlist (`from holdings`, etc.) and/or **book cues + income/options cues** (wheel ideas, covered call, CSP, options scan — excludes basic “what is a covered call?” stubs and watchlist add/remove). First-turn `atx_function` hits `PRELOAD_SHORT_CIRCUIT_OPS` instead of lazy Mongo. **xAI prompt cache key** — `xf-xchat:{threadSlice}:{personaHex}` (≤256 chars) so persona switches do not reuse cached `instructions` bytes.
+
+**P1–P5 shipped (May 2026):** **Conditional `atx_function` session copy** — `classifyXchatSessionToolCopyMode` + **full** vs **slim** `buildSessionToolInstructions` (batch stays **full** default). **Preload hint** — `buildWorkspacePreloadHintForSystemPrompt` when eager workspace prefetch runs (compact vs full JSON snapshot). **`options_scan` in-memory cache** — `tool-cache.ts`, ~60 s TTL, key `symbol + filters`. **SSE default on** — `NEXT_PUBLIC_XCHAT_LIVE_SSE` unset → live stream enabled; `0/false/no/off` disables. **`clampToolLoopMaxTurnsForSession`** — plan-tier cap on tool-loop turns (`ask/route.ts`).
+
+**Executor guards + Redis options_scan shipped (May 2026):** **`options-scan-redis-cache.ts`** — Redis `cache` plane with in-memory fallback, TTL via `REDIS_OPTIONS_SCAN_CACHE_TTL_SECONDS` (default 60 s, clamped 5–600), key `xf:xchat:options_scan:v1:{sha256(symbol+filters)}`. **Per-request dedup** — `tool-executor.ts` memoizes identical `op:argsHash` calls inside one ask so model retries return instantly. **Empty-book covered-call guard** — `options_scan` with `optionType: "call"` (or CC/wheel intent) on a portfolio with `totalPositionCount === 0` returns `error: empty_book_for_covered_call` instead of running Yahoo (~10–15 s per avoided turn).
+
+**Remaining work (priority score — higher = sooner):**
+
+| Score | Item |
+| ----- | ---- |
+| **50** | **Monte Carlo tail-risk on preload** — env-gated skip or defer (`WORKSPACE_TAIL_RISK_*`, `workspace-snapshot-for-prompt.ts`). |
+
+**Baseline (local):** ~51 s total ask; `tool_loop_total` ~51 s; local tools + Mongo **<4%** — xAI multi-turn dominates; re-profile after each slice.
 
 ---
 
@@ -48,7 +66,7 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 | Area | Work |
 | ---- | ---- |
-| **Tool loop** | In `StrategyJobFinalizerService.kt` and Next `src/modules/xchat/**`: expose engine **`generateRecommendations()`** as a first-class tool in the xAI Responses loop — **`input_text`** plus **structured `StrategyRecommendation` JSON** (typed arguments, deterministic validation before model narration). |
+| **Tool loop** | **Shipped v1:** Next `src/modules/xchat/**` exposes **`atx_function.strategy_recommendations`**; Spring `StrategyRecommendationService` returns structured recommendation JSON from **`generateRecommendations()`** via **`POST /api/strategy-recommendations/generate`**. Remaining: feed the same engine payload into `StrategyJobFinalizerService.kt` before artifact narration. |
 | **Rationale** | Enhance **`generateRationale()`** to call xAI for a personalized narrative grounded on engine facts, e.g. risk tolerance, portfolio delta, symbol outlook, theta/POP, and **RAG-sourced** macro context (FOMC / filings collections). |
 | **Investment outlook model** | Add **`InvestmentOutlook`** (Java `recommendation/` package + Mongo): per-portfolio / per-account **bull / bear / neutral + conviction**; persist **thesis hash** for audit. Scanner jobs refresh outlook on earnings/material events. |
 | **Tail-risk overlay** | **`MonteCarloTailRiskEngine`** outputs (VaR/CVaR, drawdown probabilities, stress paths) attached to **`StrategyRecommendation`** and xChat tool payloads — see [Monte Carlo tail-risk module](#monte-carlo-tail-risk). |

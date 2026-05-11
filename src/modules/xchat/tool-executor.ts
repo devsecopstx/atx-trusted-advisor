@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import { parsePortfolioAlertUserPriceRuleMetadata } from "@/lib/portfolio-alert-user-price-rule-metadata";
 import type { ToolExecutor } from "@/lib/xai";
@@ -39,6 +41,11 @@ import {
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
+import {
+    buildOptionsScanFingerprint,
+    setOptionsScanCache,
+    tryGetOptionsScanCache
+} from "@/modules/xchat/options-scan-redis-cache";
 import { canManageNlPriceAlerts } from "@/modules/xchat/plan-limits";
 import { runStrategyRecommendationsTool } from "@/modules/xchat/strategy-recommendations-tool";
 import {
@@ -864,6 +871,16 @@ function buildOperations(
       }
 
       const filters = buildOptionsScanFilters(args);
+      const fingerprint = buildOptionsScanFingerprint({ symbol, filters });
+      const cachedScan = await tryGetOptionsScanCache(fingerprint);
+      if (cachedScan) {
+        try {
+          return JSON.parse(cachedScan) as Record<string, unknown>;
+        } catch {
+          /* ignore bad cache */
+        }
+      }
+
       const yahoo = getYahooFinance2();
       let expirationDates: string[] = [];
       try {
@@ -962,7 +979,7 @@ function buildOperations(
         return b.bid - a.bid;
       });
 
-      return {
+      const payload = {
         symbol,
         spot,
         criteria: filters,
@@ -975,6 +992,10 @@ function buildOperations(
             ? "No contracts matched all active filters. Loosen one threshold and retry."
             : undefined
       };
+      void setOptionsScanCache(fingerprint, JSON.stringify(payload)).catch(() => {
+        /* non-fatal */
+      });
+      return payload;
     },
 
     options_action_scan: async (_args, ctx: ExecutorContext) => {
@@ -1314,6 +1335,50 @@ function tryPreloadResult(
   return truncateOutput(JSON.stringify(data));
 }
 
+/** Per-request fingerprint for dedup tracker (`op:argsHash`). */
+function buildPerRequestFingerprint(operation: string, args: Record<string, unknown>): string {
+  let argsJson: string;
+  try {
+    argsJson = JSON.stringify(args ?? {});
+  } catch {
+    argsJson = "{}";
+  }
+  return `${operation}:${createHash("sha256").update(argsJson).digest("hex").slice(0, 24)}`;
+}
+
+/** Empty-book guard: if covered-call options_scan is requested and the book has zero positions, steer the model off Yahoo. */
+function buildEmptyBookCoveredCallGuard(input: {
+  args: Record<string, unknown>;
+  preload: WorkspaceSnapshotPreload | null;
+}): Record<string, unknown> | null {
+  const { args, preload } = input;
+  if (!preload || preload.promptJson.portfolio.totalPositionCount > 0) {
+    return null;
+  }
+  const optionType =
+    parseOptionType(args.optionType) ?? parseOptionType(args.contractType);
+  const queryStr = typeof args.query === "string" ? args.query.toLowerCase() : "";
+  const inferredCall =
+    optionType === "call" ||
+    /\b(covered\s*call|cc\s+(idea|setup)|wheel|call\s+ideas?)\b/.test(queryStr);
+  if (!inferredCall) {
+    return null;
+  }
+  const symbol =
+    typeof args.underlying === "string"
+      ? args.underlying.trim().toUpperCase()
+      : typeof args.symbol === "string"
+        ? args.symbol.trim().toUpperCase()
+        : "";
+  return {
+    error: "empty_book_for_covered_call",
+    symbol: symbol || null,
+    portfolioId: preload.promptJson.portfolio.id,
+    portfolioName: preload.promptJson.portfolio.name,
+    hint: "User has no equity positions in the active portfolio. Do not run options_scan for covered-call/wheel ideas tied to their book; ask them to add or import holdings (or pivot to cash-secured-put ideas if they want to enter the position)."
+  };
+}
+
 export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): ToolExecutor {
   const cacheScopeKey = ctx.workspacePortfolioId?.trim() || "default_portfolio";
   const lazyEnabled =
@@ -1323,6 +1388,9 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
     ctx.workspacePreload !== undefined ? (ctx.workspacePreload ?? null) : null;
   let preloadValid = Boolean(resolvedPreload);
   let lazyFetchStarted = false;
+
+  /** Per-request memo of `op:argsHash → serialized result`; survives only this executor instance. */
+  const perRequestResults = new Map<string, string>();
 
   async function ensureLazyPreload(): Promise<void> {
     if (!lazyEnabled || lazyFetchStarted) {
@@ -1341,6 +1409,8 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
 
   const invalidateWorkspacePreload = (): void => {
     preloadValid = false;
+    /** Mutation just landed — drop per-request memo so subsequent reads (e.g. portfolio_summary) refetch. */
+    perRequestResults.clear();
   };
 
   const operations = buildOperations(invalidateWorkspacePreload, cacheScopeKey);
@@ -1360,13 +1430,33 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
       };
     }
 
+    /** Per-request dedup: same op + args within one tool-loop ask returns memoized JSON immediately. */
+    const perRequestKey = buildPerRequestFingerprint(operation, args);
+    const memoed = perRequestResults.get(perRequestKey);
+    if (memoed) {
+      return { result: memoed };
+    }
+
     if (PRELOAD_SHORT_CIRCUIT_OPS.has(operation)) {
       await ensureLazyPreload();
+    }
+
+    if (operation === "options_scan") {
+      const guard = buildEmptyBookCoveredCallGuard({
+        args,
+        preload: resolvedPreload && preloadValid ? resolvedPreload : null
+      });
+      if (guard) {
+        const guardSerialized = JSON.stringify(guard);
+        perRequestResults.set(perRequestKey, guardSerialized);
+        return { result: guardSerialized };
+      }
     }
 
     if (resolvedPreload && preloadValid) {
       const fromPreload = tryPreloadResult(operation, resolvedPreload, preloadValid);
       if (fromPreload !== null) {
+        perRequestResults.set(perRequestKey, fromPreload);
         return { result: fromPreload };
       }
     }
@@ -1377,6 +1467,7 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
     if (CACHEABLE_OPERATIONS.has(operation)) {
       const cached = getCachedToolResult(ctx.userId, operation, toolCacheScopeKey);
       if (cached) {
+        perRequestResults.set(perRequestKey, cached);
         return { result: cached };
       }
     }
@@ -1390,6 +1481,8 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
     if (CACHEABLE_OPERATIONS.has(operation)) {
       setCachedToolResult(ctx.userId, operation, output, undefined, toolCacheScopeKey);
     }
+
+    perRequestResults.set(perRequestKey, output);
 
     return { result: output };
   };

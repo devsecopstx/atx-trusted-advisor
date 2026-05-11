@@ -61,7 +61,7 @@ import {
     resolveXchatPersonaDeclaredCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
-import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
+import { clampMultiAgentParallelismForPlan, clampToolLoopMaxTurnsForSession, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     buildRagLexicalCacheKey,
@@ -84,6 +84,7 @@ import {
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 import { postProcessWatchlistMarkdown } from "@/modules/xchat/watchlist-response-postprocess";
 import {
+    buildWorkspacePreloadHintForSystemPrompt,
     loadWorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
@@ -95,6 +96,7 @@ import {
     collectWatchlistPortfolioIdSlot,
     heavySynthesisIntent,
     isShowWatchlistIntent,
+    shouldEagerWorkspaceSnapshotPreloadForMessage,
     shouldOfferStrategyJobPreflight,
     shouldRunOptionsActionScan,
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
@@ -108,6 +110,7 @@ import { getXchatPlatformSettings } from "@/modules/xchat/xchat-platform-setting
 import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
+    classifyXchatSessionToolCopyMode,
     computeXchatRemoteChainInstructionsFingerprint,
     formatTenantWorkspaceContextBlockForXchat,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
@@ -941,6 +944,12 @@ export async function POST(request: Request) {
     withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds, "replace")
   );
 
+  const effectiveMaxTurns = clampToolLoopMaxTurnsForSession({
+    personaMaxTurns: xapiConfig.maxTurns,
+    plan: subscriptionPlan,
+    isAdminSession
+  });
+
   const hasXfinanceTool = xapiConfig.tools.some((t) => isAtxFunctionToolType(t.type));
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
 
@@ -957,11 +966,14 @@ export async function POST(request: Request) {
   });
   const workspacePortfolioScoped =
     typeof workspacePortfolioId === "string" && workspacePortfolioId.trim().length > 0;
+  const workspaceIncomeIdeasPreload =
+    shouldEagerWorkspaceSnapshotPreloadForMessage(messageTrimmed);
   const likelyDirectWorkspaceToolPath =
     !visionImage &&
     (showWatchlistIntent ||
       shouldRunOptionsActionScan(messageTrimmed) ||
-      workspacePortfolioScoped);
+      workspacePortfolioScoped ||
+      workspaceIncomeIdeasPreload);
   const shouldEagerWorkspacePreload = hasXfinanceTool && likelyDirectWorkspaceToolPath;
   const ragAndPreloadStartedAt = Date.now();
 
@@ -1078,6 +1090,7 @@ export async function POST(request: Request) {
   markPerf("rag_and_workspace_prefetch", ragAndPreloadStartedAt, {
     hasXfinanceTool,
     shouldEagerWorkspacePreload,
+    workspaceIncomeIdeasPreload,
     workspaceSnapshotQuoteNetwork
   });
 
@@ -1465,17 +1478,30 @@ export async function POST(request: Request) {
           grok43MaxPriorThreadMessages: xchatPlatformSettings?.xchatGrok43MaxPriorThreadMessages
         }) ?? "";
 
+  const sessionToolCopyMode =
+    useRemoteConversationHistory && previousResponseId
+      ? ("full" as const)
+      : classifyXchatSessionToolCopyMode(messageTrimmed);
+
+  const workspaceSnapshotForPrompt =
+    shouldEagerWorkspacePreload && eagerWorkspacePreload
+      ? buildWorkspacePreloadHintForSystemPrompt(eagerWorkspacePreload)
+      : null;
+
   const builtSystemPrompt = buildXchatSystemPrompt({
     tenantWorkspaceContextBlock,
     personaSystem: persona?.systemPrompt ?? "",
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
     recentHistoryBlock,
-    workspaceSnapshot: null,
-    sessionToolInstructions: buildSessionToolInstructions({
-      hostedSearch: hasHostedSearchTool,
-      atxFunction: hasXfinanceTool
-    }),
+    workspaceSnapshot: workspaceSnapshotForPrompt,
+    sessionToolInstructions: buildSessionToolInstructions(
+      {
+        hostedSearch: hasHostedSearchTool,
+        atxFunction: hasXfinanceTool
+      },
+      sessionToolCopyMode
+    ),
     routingPolicyBlock: XCHAT_SERVER_ROUTING_POLICY_BLOCK,
     citationsEnabled: persona?.citationsEnabled !== false
   });
@@ -1506,7 +1532,7 @@ export async function POST(request: Request) {
     personaName: persona?.name,
     model: executionModel,
     toolChoice: xapiConfig.toolChoice,
-    maxTurns: xapiConfig.maxTurns,
+    maxTurns: effectiveMaxTurns,
     wireTools
   });
 
@@ -1563,9 +1589,11 @@ export async function POST(request: Request) {
     limiterDailyLimit
   });
 
+  /** Scope cache by persona so switching persona mid-thread never reuses prior instructions bytes. */
+  const personaCacheSegment = persona?._id?.toHexString() ?? "persona";
   const promptCacheKey =
     threadId?.trim() && !previousResponseId
-      ? `xf-xchat:${threadId.trim().slice(0, 200)}`
+      ? `xf-xchat:${threadId.trim().slice(0, 160)}:${personaCacheSegment}`.slice(0, 256)
       : undefined;
 
   const toolLoopShared = {
@@ -1575,7 +1603,7 @@ export async function POST(request: Request) {
     userImageDataUrl: visionImage?.dataUrl,
     tools: xaiTools,
     toolChoice: xapiConfig.toolChoice,
-    maxTurns: xapiConfig.maxTurns,
+    maxTurns: effectiveMaxTurns,
     executor,
     parallelism: parallelAgentConfig,
     responsesReasoning,

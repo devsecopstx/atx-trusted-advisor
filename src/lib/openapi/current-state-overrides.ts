@@ -429,7 +429,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "POST /api/ai/rent/chat": {
     summary: "Rental AI chat (tenant-scoped xChat tool-loop)",
     description:
-      "White-label partner chat. Authenticate with `Authorization: Bearer atxr_*` and **`chat`** scope. Injects tenant `strategyBias` and workspace snapshot (owned `portfolioId` or sample portfolio from `rentalProfile`). **Non-streaming:** `200` JSON envelope below. **Streaming:** set `Accept: text/event-stream` **or** `stream: true` for SSE (`chat.completion.chunk` deltas + terminal `data: [DONE]`). Token metering updates `rental_ai_token_usage` / `xchat_usage_limits`; successful JSON responses include **`x-rental-tokens-*`** headers.",
+      "White-label partner chat. Authenticate with `Authorization: Bearer atxr_*` and **`chat`** scope. Injects tenant `strategyBias` and workspace snapshot: optional **`username`** (X handle, `@` optional) scopes the book to that tenant member without Mongo user-id hex; otherwise use owned **`portfolioId`** or the provisioned sample portfolio from `rentalProfile`. **Non-streaming:** `200` JSON envelope below. **Streaming:** set `Accept: text/event-stream` **or** `stream: true` for SSE (`chat.completion.chunk` deltas + terminal `data: [DONE]`). Token metering updates `rental_ai_token_usage` / `xchat_usage_limits`; successful JSON responses include **`x-rental-tokens-*`** headers.",
     requestBody: {
       required: true,
       content: {
@@ -452,6 +452,10 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "400": jsonResponse("Invalid JSON or validation error.", "ValidationErrorResponse"),
       "401": json401RentalBearer(),
       "403": jsonResponse("Rental inactive, expired, scope mismatch, or API keys disabled.", "ErrorResponse"),
+      "404": jsonResponse(
+        "Workspace user not found for optional `username`, or user has no membership in this tenant.",
+        "ErrorResponse"
+      ),
       "429": jsonResponse("Rate limit, concurrency, or token budget exhausted.", "RateLimitErrorResponse"),
       "502": jsonResponse("xAI provider error.", "XaiProviderErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
@@ -2951,11 +2955,19 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["message"],
     properties: {
       message: { type: "string", minLength: 1, maxLength: 32000 },
+      username: {
+        type: "string",
+        minLength: 1,
+        maxLength: 200,
+        description:
+          "X (Twitter) handle for a user who belongs to this tenant (`xAccount.username`). Case-insensitive; leading `@` optional. Resolves Mongo user id server-side — no hex `userId` in the payload. When set, defaults omit `rentalProfile.samplePortfolioId` unless `portfolioId` is also sent."
+      },
       portfolioId: {
         type: "string",
         minLength: 24,
         maxLength: 24,
-        description: "Mongo ObjectId hex for an owned portfolio; when omitted, server uses `rentalProfile.samplePortfolioId` when set."
+        description:
+          "Mongo ObjectId hex for an owned portfolio; when omitted with no `username`, server uses `rentalProfile.samplePortfolioId` when set."
       },
       stream: {
         type: "boolean",

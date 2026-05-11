@@ -8,6 +8,17 @@ When **`core_tenants.tenantPreferences.xchat_debug_enabled`** is **`true`** (boo
 
 **Next.js dev request lines** (for example `GET /api/xchat/history/stats 200 in …ms` with `next.js` / `proxy.ts` / `application-code` breakdown) are **framework request logging**, not `[xchat/debug]`. They appear in the dev terminal when `next dev` is running; production builds do not print them the same way.
 
+### Parsing lines with `jq` (e.g. `tee .next/dev.log`)
+
+Each `[xchat/debug]` line is **`[xchat/debug]` + space + a single JSON object** (`JSON.stringify` in code). `jq` must read **only the JSON**, not the prefix (and not any Next.js timestamp text before `[xchat/debug]`). Strip everything before the first `{` on the line, then pipe to `jq`:
+
+```bash
+grep '"type":"xchat_perf"' .next/dev.log | sed 's/^[^{]*//' | jq -c '.'
+grep '"type":"xchat_ask_full"' .next/dev.log | tail -1 | sed 's/^[^{]*//' | jq '.'
+```
+
+If `jq` still errors, the line may be **non-debug** noise (framework requests, stack traces) — tighten `grep` or capture logs only from the Next server child process.
+
 **Implementation:** `src/lib/xchat-debug.ts` · **Tenant flag:** `AsyncLocalStorage` from `src/lib/xchat-debug-context.ts` (`runWithXchatTenantDebug` / `runWithXchatTenantDebugAsync`), entered from xChat API routes after loading the tenant and `isTenantXchatDebugPreferenceEnabled()`.
 
 ## Log taxonomy (prefixes)
@@ -39,7 +50,7 @@ Exported as `XCHAT_DEBUG_LOG_TYPES` in `src/lib/xchat-debug.ts`.
 | `xchat_history_list` | `GET /api/xchat/history` list response metadata (limit, counts, cursor). |
 | `workspace_snapshot_backend` | JVM snapshot coordination: **`backendFetchMs`** (client-side fetch to Spring), **`elapsedMs`** (full load path), portfolio id, rev when **`loadWorkspaceSnapshotPreload`** successfully hydrates from **`GET /api/portfolios/{id}/snapshot`**. Correlate with JVM response headers **`X-Atx-Snapshot-Handler-Ms`** (handler wall time on Spring) and **`X-Atx-Snapshot-Cache`** (`hit` / `miss` / `skipped`). |
 
-**Workspace snapshot (optional, same prefix):** when tenant xChat debug is on, `[workspace-snapshot-for-prompt.ts](../../src/modules/xchat/workspace-snapshot-for-prompt.ts)` logs `console.info("[xchat/debug]", { type: "workspace_snapshot_load", … })` (cache vs mongo vs **jvm_snapshot** via `workspace_snapshot_backend`, `elapsedMs`, masked portfolio id) and `{ type: "workspace_snapshot_build", … }` after a Mongo build. Filter on `workspace_snapshot_` / `workspace_snapshot_backend` in JSON if needed.
+**Workspace snapshot (optional, same prefix):** when tenant xChat debug is on, `[workspace-snapshot-for-prompt.ts](../../src/modules/xchat/workspace-snapshot-for-prompt.ts)` emits the same **`[xchat/debug]` + JSON** shape (`type`: `workspace_snapshot_load` / `workspace_snapshot_build` / `workspace_snapshot_backend`; `elapsedMs`; portfolio id + rev when relevant). Filter on `workspace_snapshot_` in JSON if needed.
 
 **Snapshot timing:** `workspace_snapshot_backend.backendFetchMs` measures Next→JVM network + JVM work for the snapshot GET; Spring adds **`X-Atx-Snapshot-Handler-Ms`** for server-only timing (Redis + Mongo + structured summary assembly). **`data.structured.lastUpdated`** mirrors **`preload.promptJson.loadedAt`** when present (else materialized row timestamp).
 

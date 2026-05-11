@@ -4,6 +4,7 @@ import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preproces
 import { getDb } from "@/lib/mongodb";
 import { respondWithXaiToolLoop } from "@/lib/xai";
 import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
+import { resolveCoreUserHexIdForRentalTenantByUsername } from "@/modules/identity/repository";
 import { logRentalAiAudit } from "@/modules/platform/rental-ai-audit";
 import { authenticateRentalAiApiKey } from "@/modules/platform/rental-ai-auth";
 import {
@@ -35,6 +36,8 @@ export const maxDuration = 45;
 const bodySchema = z.object({
   message: z.string().min(1).max(32_000),
   portfolioId: z.string().regex(/^[a-f0-9]{24}$/).optional(),
+  /** X handle for this tenant member — resolves Mongo user id server-side (no hex user id required). */
+  username: z.string().trim().min(1).max(200).optional(),
   stream: z.boolean().optional()
 });
 
@@ -71,6 +74,30 @@ export async function POST(request: Request) {
   }
 
   const tenantHex = auth.ctx.tenantId.toHexString();
+  const usernameRaw = parsedBody.data.username?.trim();
+  const rentalProfileForUser = auth.ctx.rentalProfile;
+  let workspaceUserId =
+    rentalProfileForUser.sampleUserId ?? `rental-sample:${auth.ctx.tenantSlug}`;
+  if (usernameRaw) {
+    const resolved = await resolveCoreUserHexIdForRentalTenantByUsername({
+      tenantId: auth.ctx.tenantId,
+      username: usernameRaw
+    });
+    if (!resolved.ok) {
+      const message =
+        resolved.code === "no_tenant_membership"
+          ? "User is not a member of this tenant workspace."
+          : resolved.code === "invalid_username"
+            ? "Invalid username."
+            : "No user found for that X username.";
+      return rentalAiJsonResponse(
+        { error: message, code: `workspace_${resolved.code}`, correlationId },
+        404
+      );
+    }
+    workspaceUserId = resolved.userIdHex;
+  }
+
   const streamRequested =
     request.headers.get("accept")?.toLowerCase().includes("text/event-stream") ||
     parsedBody.data.stream === true;
@@ -103,13 +130,14 @@ export async function POST(request: Request) {
   try {
     const db = await getDb();
     const rentalProfile = auth.ctx.rentalProfile;
-    const sampleUserId = rentalProfile.sampleUserId ?? `rental-sample:${auth.ctx.tenantSlug}`;
     const requestedPortfolioId = parsedBody.data.portfolioId?.trim() || undefined;
     const workspacePortfolioId =
       requestedPortfolioId ??
-      (rentalProfile.samplePortfolioId ? rentalProfile.samplePortfolioId.toHexString() : undefined);
+      (!usernameRaw && rentalProfile.samplePortfolioId
+        ? rentalProfile.samplePortfolioId.toHexString()
+        : undefined);
     const workspaceSnapshot = await buildWorkspaceServerSnapshotBlock({
-      userId: sampleUserId,
+      userId: workspaceUserId,
       tenantId: tenantHex,
       workspacePortfolioId
     });
@@ -147,7 +175,7 @@ export async function POST(request: Request) {
       toolChoice: xapiConfig.toolChoice,
       maxTurns: xapiConfig.maxTurns,
       executor: createXfinanceToolExecutor({
-        userId: sampleUserId,
+        userId: workspaceUserId,
         tenantId: tenantHex,
         workspacePortfolioId
       }),
@@ -169,6 +197,7 @@ export async function POST(request: Request) {
       action: "rental_ai_chat_request",
       details: {
         portfolioId: parsedBody.data.portfolioId,
+        workspaceUsername: usernameRaw ?? null,
         stream: streamRequested,
         tokensUsed
       }

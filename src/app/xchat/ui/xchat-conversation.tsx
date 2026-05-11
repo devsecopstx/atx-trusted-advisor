@@ -66,9 +66,12 @@ import {
     type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
 
+const liveSseRaw = process.env.NEXT_PUBLIC_XCHAT_LIVE_SSE?.trim().toLowerCase();
+/** Default **on** when unset (first-token UX); set to `0`, `false`, `no`, or `off` to disable. */
 const XCHAT_LIVE_SSE =
-    typeof process.env.NEXT_PUBLIC_XCHAT_LIVE_SSE === "string" &&
-    ["1", "true", "yes"].includes(process.env.NEXT_PUBLIC_XCHAT_LIVE_SSE.trim().toLowerCase());
+  liveSseRaw === undefined || liveSseRaw === ""
+    ? true
+    : !["0", "false", "no", "off"].includes(liveSseRaw);
 
 const XchatThreadPanelLazy = dynamic(
   () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),

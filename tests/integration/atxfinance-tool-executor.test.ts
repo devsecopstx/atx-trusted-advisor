@@ -420,6 +420,7 @@ describe("atxfinance tool executor", () => {
       "task_status",
       "options_scan",
       "options_action_scan",
+      "strategy_recommendations",
       "market_quote",
       "price_alert_manage"
     ]);
