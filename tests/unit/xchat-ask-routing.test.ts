@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
     heavySynthesisIntent,
     shouldEagerWorkspaceSnapshotPreloadForMessage,
-    shouldOfferStrategyJobPreflight
+    shouldOfferStrategyJobPreflight,
+    shouldRunOptionsActionScan
 } from "@/modules/xchat/xchat-ask-routing";
 
 describe("heavySynthesisIntent", () => {
@@ -17,6 +18,16 @@ describe("heavySynthesisIntent", () => {
 
   it("is true for very long messages", () => {
     expect(heavySynthesisIntent("x".repeat(2900))).toBe(true);
+  });
+});
+
+describe("shouldRunOptionsActionScan", () => {
+  it("matches the workspace scan template prompt", () => {
+    expect(shouldRunOptionsActionScan("Scan my options from holdings + watchlist.")).toBe(true);
+  });
+
+  it("ignores unrelated chat", () => {
+    expect(shouldRunOptionsActionScan("What is a covered call?")).toBe(false);
   });
 });
 

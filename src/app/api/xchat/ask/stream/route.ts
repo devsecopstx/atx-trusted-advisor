@@ -1,3 +1,4 @@
+import { POST as postAsk } from "@/app/api/xchat/ask/route";
 import {
     proxyPortfolioRequestToBackend,
     releaseUnusedProxyResponse
@@ -27,28 +28,10 @@ export async function POST(request: Request) {
 
   const bodyText = await request.text();
   const url = new URL(request.url);
-  const askUrl = `${url.origin}/api/xchat/ask`;
 
   let askRes: Response;
   try {
-    askRes = await fetch(askUrl, {
-      method: "POST",
-      headers: {
-        "content-type": request.headers.get("content-type") ?? "application/json",
-        accept: "text/event-stream",
-        cookie: request.headers.get("cookie") ?? "",
-        ...resolveXchatStreamInternalSecretHeader(),
-        ...(request.headers.get("x-forwarded-for")
-          ? { "x-forwarded-for": request.headers.get("x-forwarded-for")! }
-          : {}),
-        ...(request.headers.get("authorization")
-          ? { authorization: request.headers.get("authorization")! }
-          : {})
-      },
-      body: bodyText,
-      signal: request.signal,
-      cache: "no-store"
-    });
+    askRes = await postAsk(buildAskDelegateRequest(request, url, bodyText));
   } catch (e) {
     return Response.json(
       {
@@ -78,6 +61,33 @@ export async function POST(request: Request) {
       ...Object.fromEntries(limiterHeaders.entries()),
       "content-type": askRes.headers.get("content-type") ?? "application/json; charset=utf-8"
     }
+  });
+}
+
+function buildAskDelegateRequest(request: Request, url: URL, bodyText: string): Request {
+  const headers = new Headers();
+  headers.set("content-type", request.headers.get("content-type") ?? "application/json");
+  headers.set("accept", "text/event-stream");
+  const cookie = request.headers.get("cookie");
+  if (cookie) {
+    headers.set("cookie", cookie);
+  }
+  for (const [name, value] of Object.entries(resolveXchatStreamInternalSecretHeader())) {
+    headers.set(name, value);
+  }
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    headers.set("x-forwarded-for", forwardedFor);
+  }
+  const authorization = request.headers.get("authorization");
+  if (authorization) {
+    headers.set("authorization", authorization);
+  }
+  return new Request(`${url.origin}/api/xchat/ask`, {
+    method: "POST",
+    headers,
+    body: bodyText,
+    signal: request.signal
   });
 }
 

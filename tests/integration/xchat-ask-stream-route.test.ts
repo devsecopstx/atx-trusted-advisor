@@ -5,7 +5,14 @@ const bffMocks = vi.hoisted(() => ({
   releaseUnusedProxyResponse: vi.fn()
 }));
 
+const askMocks = vi.hoisted(() => ({
+  postAsk: vi.fn()
+}));
+
 vi.mock("@/lib/backend-bff", () => bffMocks);
+vi.mock("@/app/api/xchat/ask/route", () => ({
+  POST: askMocks.postAsk
+}));
 
 import { POST as postAskStream } from "@/app/api/xchat/ask/stream/route";
 
@@ -24,14 +31,11 @@ async function readAll(stream: ReadableStream<Uint8Array> | null): Promise<strin
 }
 
 describe("POST /api/xchat/ask/stream", () => {
-  const originalFetch = globalThis.fetch;
-
   beforeEach(() => {
     bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
     vi.clearAllMocks();
   });
 
@@ -40,7 +44,7 @@ describe("POST /api/xchat/ask/stream", () => {
       `event: meta\ndata: {"v":1,"phase":"live_tool_loop"}\n\n` +
       `event: delta\ndata: {"c":"Hi"}\n\n` +
       `event: done\ndata: {"model":"grok-test","interactionMeta":{"generationMs":1,"sources":{"ragChunks":0,"toolInvocations":0,"personaCollections":0,"total":0}}}\n\n`;
-    const fetchMock = vi.fn().mockResolvedValue(
+    askMocks.postAsk.mockResolvedValue(
       new Response(ssePayload, {
         status: 200,
         headers: {
@@ -49,7 +53,6 @@ describe("POST /api/xchat/ask/stream", () => {
         }
       })
     );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     const req = new Request("http://localhost:3000/api/xchat/ask/stream", {
       method: "POST",
@@ -72,29 +75,23 @@ describe("POST /api/xchat/ask/stream", () => {
     expect(body).toContain('"c":"Hi"');
     expect(body).toContain("event: done");
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:3000/api/xchat/ask",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ message: "hi" }),
-        headers: expect.objectContaining({
-          cookie: "xf_core_session=test",
-          "content-type": "application/json",
-          accept: "text/event-stream"
-        })
-      })
-    );
+    expect(askMocks.postAsk).toHaveBeenCalledTimes(1);
+    const delegatedRequest = askMocks.postAsk.mock.calls[0]?.[0] as Request;
+    expect(delegatedRequest.url).toBe("http://localhost:3000/api/xchat/ask");
+    expect(delegatedRequest.method).toBe("POST");
+    expect(await delegatedRequest.text()).toBe(JSON.stringify({ message: "hi" }));
+    expect(delegatedRequest.headers.get("cookie")).toBe("xf_core_session=test");
+    expect(delegatedRequest.headers.get("content-type")).toBe("application/json");
+    expect(delegatedRequest.headers.get("accept")).toBe("text/event-stream");
   });
 
   it("returns JSON when delegate returns an error body", async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ error: "Subscription required", code: "billing_subscription_required" }), {
-          status: 402,
-          headers: { "content-type": "application/json" }
-        })
-      ) as unknown as typeof fetch;
+    askMocks.postAsk.mockResolvedValue(
+      new Response(JSON.stringify({ error: "Subscription required", code: "billing_subscription_required" }), {
+        status: 402,
+        headers: { "content-type": "application/json" }
+      })
+    );
 
     const req = new Request("http://localhost:3000/api/xchat/ask/stream", {
       method: "POST",

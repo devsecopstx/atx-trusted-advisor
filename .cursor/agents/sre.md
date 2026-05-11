@@ -100,6 +100,16 @@ test -f .cursor/agents/sre.md && npm install
 
 **App behavior:** `src/app/api/xchat/ask/route.ts` — If **`changePersonaEnabled`** is true (effective tenant workspace limits + user plan) **or** the session is **`global_admin`**, **`personaId` in the JSON body** is preferred over assigned when both differ. If **`changePersonaEnabled`** is **false**, app users are locked to **assigned only** (request `personaId` ignored); admins still override. See **`atx-docs/sre-ops/tenant-workspace-limits.md`**.
 
+## Hotfix: xChat template “Scan my options from holdings + watchlist” → `xchat_stream_ask_delegate_failed`
+
+**Symptom:** Workspace template **Scan my options** (prompt `Scan my options from holdings + watchlist.`) returns **`xchat_stream_ask_delegate_failed`** (HTTP **502**) instead of the deterministic options action scan card.
+
+**Cause (fixed in app):** Live SSE shell **`POST /api/xchat/ask/stream`** delegated to **`POST /api/xchat/ask`** via same-origin **`fetch`**, which can fail on Cloud Run (loopback / LB / cold-start self-call). That scan path returns JSON (`options_action_scan_direct`), not SSE.
+
+**App fix:** `src/app/api/xchat/ask/stream/route.ts` calls the ask route handler in-process (session + `XCHAT_STREAM_INTERNAL_SECRET` headers preserved). Live SSE stays on in the client; no new env vars. Routing: `shouldRunOptionsActionScan` in `src/modules/xchat/xchat-ask-routing.ts`.
+
+**Deploy:** Roll **Next** Cloud Run only (no Spring / scheduler secret change).
+
 ## Hotfix: duplicate default portfolio / account after OAuth re-login
 
 **Symptom:** After logout and X/Google login, `/portfolio` or `POST /api/portfolios/default` appears to **provision a second** default portfolio and empty default account; older accounts/positions still exist on the **previous** portfolio id; renames on the original default do not show on the “new” default.
