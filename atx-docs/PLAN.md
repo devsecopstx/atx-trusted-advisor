@@ -8,18 +8,18 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 ## Priority tracks
 
-| ID | Track | Pointer / contract |
-| -- | ----- | ------------------- |
-| **10** | Multi-tenant provisioning & exports | Bootstrap audit/replay, export jobs (`tenant_admin_export_jobs`, `tenant_export_worker`), YAML/CSV artifacts — details in [current-state-features.md](./design-system/current-state-features.md); ops: [tenant-specs/README.md](../tenant-specs/README.md) |
-| **11** | Tenant UX (`tenant_ux`) V2 | Feature set in-repo; ops soak + metrics: [tenant-ux-enforcement.md](./sre-ops/tenant-ux-enforcement.md) |
-| **41** | AI Rental Platform | Admin rental keys + Stripe webhook paths: [rental-ai-platform.md](./sre-ops/rental-ai-platform.md); product UI checkout/embed flags |
-| **200** | IBKR Client Portal | [ibkr-automation.md](./design-system/ibkr-automation.md); execution path before automated trades (**900**) |
-| **704** | xMoney / crypto book (phased) | Full phased spec below: [xMoney & crypto portfolio (704)](#xmoney-crypto-704-roadmap) |
-| **705** | App_user tasks — strategy handoff | Engine + scheduled jobs: [scheduled-task/user-tasks.md](./design-system/scheduled-task/user-tasks.md) |
-| **706** | Tenant workspace automations | NL schedules, queue fairness, workspace limits — same user-tasks doc |
-| **707** | **xChat harden** | **Partial shipped** — Spring-authoritative engine recommendation tool bridge + TEAM KB docs aligned; open: vision paste policy, metering refinements, JVM ask ownership, artifacts/schema parity: [#xchat-harden](#xchat-harden) |
-| **708** | **Monte Carlo tail-risk** (`MonteCarloTailRiskEngine`) | **Open** — fat-tail sims, VaR/CVaR/drawdown stress, **`UserOptionsContext`** tier gates, Redis cache + quote circuit-break; companion to **`OptionsStrategyEngine`**: [#monte-carlo-tail-risk](#monte-carlo-tail-risk) · [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) |
-| **900** | Automated trades w/ verify | After **200** + custodian execution maturity; until then alerts / manual |
+| ID | Track | Priority | Pointer / contract |
+| -- | ----- | -------- | ------------------- |
+| **10** | Multi-tenant provisioning & exports | Low | Bootstrap audit/replay, export jobs (`tenant_admin_export_jobs`, `tenant_export_worker`), YAML/CSV artifacts — details in [current-state-features.md](./design-system/current-state-features.md); ops: [tenant-specs/README.md](../tenant-specs/README.md) |
+| **11** | Tenant UX (`tenant_ux`) V2 | Medium | Feature set in-repo; ops soak + metrics: [tenant-ux-enforcement.md](./sre-ops/tenant-ux-enforcement.md) |
+| **41** | AI Rental Platform | Medium | Admin rental keys + Stripe webhook paths: [rental-ai-platform.md](./sre-ops/rental-ai-platform.md); product UI checkout/embed flags |
+| **200** | IBKR Client Portal | High | [ibkr-automation.md](./design-system/ibkr-automation.md); execution path before automated trades (**900**) |
+| **704** | xMoney / crypto book (phased) | Medium | Full phased spec below: [xMoney & crypto portfolio (704)](#xmoney-crypto-704-roadmap) |
+| **705** | App_user tasks — strategy handoff | Medium | Engine + scheduled jobs: [scheduled-task/user-tasks.md](./design-system/scheduled-task/user-tasks.md) |
+| **706** | Tenant workspace automations | Medium | NL schedules, queue fairness, workspace limits — same user-tasks doc |
+| **707** | **xChat harden** | High | Vision paste policy, metering refinements, JVM ask ownership, artifacts/schema parity: [#xchat-harden](#xchat-harden) |
+| **708** | **Monte Carlo tail-risk** (`MonteCarloTailRiskEngine`) | High | **Open** — fat-tail sims, VaR/CVaR/drawdown stress, **`UserOptionsContext`** tier gates, Redis cache + quote circuit-break; companion to **`OptionsStrategyEngine`**: [#monte-carlo-tail-risk](#monte-carlo-tail-risk) · [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) |
+| **900** | Automated trades w/ verify | Low | After **200** + custodian execution maturity; until then alerts / manual |
 
 **White-label / branding debt:** admin tenant branding preview, PWA manifest behavior — see [current-state-features.md](./design-system/current-state-features.md) (Tenant UX section).
 
@@ -29,24 +29,18 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 ## xChat harden
 
-**Track:** **707** (partial shipped). Umbrella for reliability, grounding, and parity across Next xChat modules and the JVM strategy pipeline. Latency backlog (Wheel/CC baseline, P0 slices): [#xchat-latency-perf](#xchat-latency-perf).
+**Track:** **707**. Reliability, grounding, and parity across Next xChat modules and the JVM strategy pipeline. Ask latency follow-ups: [#xchat-latency-perf](#xchat-latency-perf).
 
-- **Engine-grounded tools:** **Shipped v1** — Next xChat `atx_function.strategy_recommendations` validates symbols/outlook/risk/horizon, forwards the signed session to Spring **`POST /api/strategy-recommendations/generate`**, and narrates structured **`OptionsStrategyEngine.generateRecommendations()`** JSON instead of inventing legs/scores. Next remains ask/SSE owner; Spring owns the deterministic engine contract.
 - **Vision paste:** Policy (scan bounds, EXIF strip, optional max dimensions), batch/admin harness parity — backlog detail in [Deferred product TODOs](#deferred-product-todos).
-- **Limits & metering:** In-product usage meter and prompt limits — contract in [current-state-features.md](./design-system/current-state-features.md); optional plans-copy alignment with `getPlanLimits()`.
-- **BFF / JVM ask:** Engine recommendation endpoint is Spring-authoritative; full JVM-authoritative streaming and tool loop remain deferred — [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md), [Deferred (larger lifts)](#deferred-larger-lifts).
+- **Limits & metering:** Optional plans-copy alignment with `getPlanLimits()` (meter + caps contract: [current-state-features.md](./design-system/current-state-features.md)).
+- **BFF / JVM ask:** Full JVM-authoritative streaming and tool loop — [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md), [Deferred (larger lifts)](#deferred-larger-lifts).
 - **Artifacts & audit:** Strict JSON Schema **v2** for strategy artifacts where multi-agent paths need parity ([atx-multi-agent.md](./xchat/atx-multi-agent.md)); regression guardrails + OpenAPI **`xchat`** inventory in `src/lib/openapi/current-state.ts`.
-- **TEAM-only xAI path:** **Docs aligned** — ask/batch grounding stays persona-declared TEAM collection IDs only (`xaiCollection`, `teamCollection`, tool `collection_ids`; max 2); no env-team default auto-merge into runtime ask.
 
 <a id="xchat-latency-perf"></a>
 
 ### xChat ask latency (Wheel / CC template — May 2026)
 
-**P0 shipped:** `shouldEagerWorkspaceSnapshotPreloadForMessage` (`src/modules/xchat/xchat-ask-routing.ts`) gates eager `loadWorkspaceSnapshotPreload` in parallel with RAG when prompts mention holdings + watchlist (`from holdings`, etc.) and/or **book cues + income/options cues** (wheel ideas, covered call, CSP, options scan — excludes basic “what is a covered call?” stubs and watchlist add/remove). First-turn `atx_function` hits `PRELOAD_SHORT_CIRCUIT_OPS` instead of lazy Mongo. **xAI prompt cache key** — `xf-xchat:{threadSlice}:{personaHex}` (≤256 chars) so persona switches do not reuse cached `instructions` bytes.
-
-**P1–P5 shipped (May 2026):** **Conditional `atx_function` session copy** — `classifyXchatSessionToolCopyMode` + **full** vs **slim** `buildSessionToolInstructions` (batch stays **full** default). **Preload hint** — `buildWorkspacePreloadHintForSystemPrompt` when eager workspace prefetch runs (compact vs full JSON snapshot). **`options_scan` in-memory cache** — `tool-cache.ts`, ~60 s TTL, key `symbol + filters`. **SSE default on** — `NEXT_PUBLIC_XCHAT_LIVE_SSE` unset → live stream enabled; `0/false/no/off` disables. **`clampToolLoopMaxTurnsForSession`** — plan-tier cap on tool-loop turns (`ask/route.ts`).
-
-**Executor guards + Redis options_scan shipped (May 2026):** **`options-scan-redis-cache.ts`** — Redis `cache` plane with in-memory fallback, TTL via `REDIS_OPTIONS_SCAN_CACHE_TTL_SECONDS` (default 60 s, clamped 5–600), key `xf:xchat:options_scan:v1:{sha256(symbol+filters)}`. **Per-request dedup** — `tool-executor.ts` memoizes identical `op:argsHash` calls inside one ask so model retries return instantly. **Empty-book covered-call guard** — `options_scan` with `optionType: "call"` (or CC/wheel intent) on a portfolio with `totalPositionCount === 0` returns `error: empty_book_for_covered_call` instead of running Yahoo (~10–15 s per avoided turn).
+Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-tool copy, options_scan caches/guards, SSE default, plan tool-loop caps): [release-notes.md](./sre-ops/release-notes.md) **3.18.8**.
 
 **Remaining work (priority score — higher = sooner):**
 
@@ -66,7 +60,7 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 | Area | Work |
 | ---- | ---- |
-| **Tool loop** | **Shipped v1:** Next `src/modules/xchat/**` exposes **`atx_function.strategy_recommendations`**; Spring `StrategyRecommendationService` returns structured recommendation JSON from **`generateRecommendations()`** via **`POST /api/strategy-recommendations/generate`**. Remaining: feed the same engine payload into `StrategyJobFinalizerService.kt` before artifact narration. |
+| **Tool loop** | Feed Spring **`OptionsStrategyEngine.generateRecommendations()`** payload into `StrategyJobFinalizerService.kt` before artifact narration (xChat **`atx_function.strategy_recommendations`** + **`POST /api/strategy-recommendations/generate`** shipped — [release-notes.md](./sre-ops/release-notes.md) **3.18.8**). |
 | **Rationale** | Enhance **`generateRationale()`** to call xAI for a personalized narrative grounded on engine facts, e.g. risk tolerance, portfolio delta, symbol outlook, theta/POP, and **RAG-sourced** macro context (FOMC / filings collections). |
 | **Investment outlook model** | Add **`InvestmentOutlook`** (Java `recommendation/` package + Mongo): per-portfolio / per-account **bull / bear / neutral + conviction**; persist **thesis hash** for audit. Scanner jobs refresh outlook on earnings/material events. |
 | **Tail-risk overlay** | **`MonteCarloTailRiskEngine`** outputs (VaR/CVaR, drawdown probabilities, stress paths) attached to **`StrategyRecommendation`** and xChat tool payloads — see [Monte Carlo tail-risk module](#monte-carlo-tail-risk). |
@@ -249,7 +243,7 @@ Broker import `POST /api/import/broker/clean`: [api-endpoints.md](./guides/api-e
 
 ### BFF / consolidation
 
-Portfolio workspace snapshots: Redis + optional JVM `GET /api/portfolios/{id}/snapshot` — [current-state-features.md](./design-system/current-state-features.md). xChat routes, persona governance, some admin mutations remain Next until registry parity — [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md).
+xChat routes, persona governance, and some admin mutations remain on Next until registry parity — [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md). Workspace snapshot Redis + JVM **`GET /api/portfolios/{id}/snapshot`**: [current-state-features.md](./design-system/current-state-features.md).
 
 **Ops:** `ATXFINANCE_BACKEND_ORIGIN` = backend HTTPS origin when Spring enabled — [deploy-and-ops.md](./guides/deploy-and-ops.md).
 
