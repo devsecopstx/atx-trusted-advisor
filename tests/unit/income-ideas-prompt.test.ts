@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     buildIncomeIdeasCompactPayload,
+    buildIncomeIdeasJsonOnlySuffix,
     filterRagSnippetsForIncomeIdeas,
     mergeIncomeIdeasRagContext,
     shouldOptimizeIncomeIdeasPrompt
@@ -19,6 +20,29 @@ describe("shouldOptimizeIncomeIdeasPrompt", () => {
 
   it("is false without holdings+watchlist pairing", () => {
     expect(shouldOptimizeIncomeIdeasPrompt("Give me three wheel ideas for premium income")).toBe(false);
+  });
+
+  it("is true for desk JSON contract wheel template copy", () => {
+    expect(
+      shouldOptimizeIncomeIdeasPrompt(
+        "From holdings + watchlist: up to three covered_call, wheel, or cash_secured_put ideas with strike, expiry, premium, contract sizing, annualized ROC, and assignment risk — desk JSON contract only."
+      )
+    ).toBe(true);
+  });
+});
+
+describe("buildIncomeIdeasJsonOnlySuffix", () => {
+  it("requires strict income ideas JSON fields", () => {
+    const suffix = buildIncomeIdeasJsonOnlySuffix();
+    expect(suffix).toContain('"contractsRecommended"');
+    expect(suffix).toContain('"maxContracts"');
+    expect(suffix).toContain('"annualizedROC"');
+    expect(suffix).toContain('"probabilityOfProfit"');
+    expect(suffix).toContain('"iron_condor"');
+    expect(suffix).toContain('"jade_lizard"');
+    expect(suffix).toContain('"butterfly"');
+    expect(suffix).toContain("Not financial advice. Past performance is not indicative of future results.");
+    expect(suffix).not.toContain('"other"');
   });
 });
 

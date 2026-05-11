@@ -1,3 +1,5 @@
+<!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
+
 # atx-options — strategy reference
 
 **aTx Finance · options education & agent context**
@@ -50,6 +52,45 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 *The four strategies above link to [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) until dedicated `skill-*` playbooks ship.*
 
 Shared principles (not a single strategy): [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md).
+
+---
+
+## Output contract (holdings + watchlist / Wheel · CC scan)
+
+When the user runs the xChat **Wheel / CC scan** template or any **From holdings + watchlist** income prompt, return **only** one JSON object — no markdown fences, no commentary. Each strategy narrative in this tree uses the **same** envelope; set `ideaType` to that strategy’s slug (see per-file **Output contract** sections).
+
+```json
+{
+  "ideas": [
+    {
+      "ideaType": "[strategy_type]",
+      "underlying": "[TICKER]",
+      "strike": [NUMBER],
+      "expiry": "YYYY-MM-DD",
+      "premium": [NUMBER],
+      "contractsRecommended": [1-5],
+      "maxContracts": [NUMBER],
+      "annualizedROC": [NUMBER],
+      "probabilityOfProfit": [0-100],
+      "assignmentRiskNote": "[Risk Level]. [Key risk detail with % OTM or buffer]. [Impact on position].",
+      "rationale": "[Strategy logic + liquidity + outlook alignment. Max 220 characters.]"
+    }
+  ],
+  "disclaimer": "Not financial advice. Past performance is not indicative of future results."
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `ideaType` | `covered_call`, `wheel`, `cash_secured_put`, `iron_condor`, `bull_put_spread`, `bull_call_spread`, `calendar_spread`, `diagonal_spread`, `butterfly`, `jade_lizard`, `ratio_spread`, `zebra` (match the active strategy narrative). |
+| `contractsRecommended` | Integer **1–5** from inventory/cash and liquidity. |
+| `maxContracts` | Integer ≥ `contractsRecommended`; hard cap for the line. |
+| `annualizedROC` | Decimal percent (e.g. `1.8` = 1.8%). |
+| `probabilityOfProfit` | Integer **0–100**. |
+| `assignmentRiskNote` | ≤180 chars: **risk level** + **% OTM/buffer** + **position impact**. |
+| `rationale` | ≤220 chars: strategy logic + liquidity + outlook alignment. |
+
+Return **up to three** `ideas` when the book and watchlist support it.
 
 ---
 

@@ -25,7 +25,7 @@ export const XCHAT_HNWI_PROMPT_TEMPLATES: readonly XchatPromptTemplate[] = [
     title: "Wheel / CC scan",
     subtitle: "Income · defined risk",
     prompt:
-      "From holdings + watchlist: up to three covered-call or wheel ideas with strike/expiry notes and assignment context."
+      "From holdings + watchlist: up to three covered_call, wheel, or cash_secured_put ideas with strike, expiry, premium, contract sizing, annualized ROC, and assignment risk — desk JSON contract only."
   },
   {
     id: "protective-puts",

@@ -16,6 +16,8 @@ tags:
   - high-iv
 ---
 
+<!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
+
 # xFinance Strategy: Broken wing butterfly
 
 ## How Commonly Used
@@ -36,3 +38,33 @@ Moderate (defined risk when structured as a closed butterfly; outcome depends on
 - Avoid illiquid strikes; multi-leg inventory is hard to adjust in wide markets.
 - Reconcile with margin and “worst case” at expiration under your broker’s methodology.
 - Educational context only; not financial advice.
+
+## Output contract
+
+Return **only** valid JSON (no markdown fences, no commentary). For holdings + watchlist prompts, return up to **three** `ideas` when supported.
+
+```json
+{
+  "ideas": [
+    {
+      "ideaType": "jade_lizard",
+      "underlying": "[TICKER]",
+      "strike": [NUMBER],
+      "expiry": "YYYY-MM-DD",
+      "premium": [NUMBER],
+      "contractsRecommended": [1-5],
+      "maxContracts": [NUMBER],
+      "annualizedROC": [NUMBER],
+      "probabilityOfProfit": [0-100],
+      "assignmentRiskNote": "[Risk Level]. [Key risk detail with % OTM or buffer]. [Impact on position].",
+      "rationale": "[Strategy logic + liquidity + outlook alignment. Max 220 characters.]"
+    }
+  ],
+  "disclaimer": "Not financial advice. Past performance is not indicative of future results."
+}
+```
+
+**assignmentRiskNote** (≤180 chars): start with risk level (**Low**, **Low-moderate**, **Moderate**, **High**); include % OTM or buffer; end with position impact. Example: `Low-moderate. Put ~10% OTM. Call spread caps upside risk.`
+
+**rationale** (≤220 chars): strategy logic + liquidity + outlook alignment only.
+

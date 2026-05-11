@@ -15,10 +15,13 @@ export function shouldOptimizeIncomeIdeasPrompt(message: string): boolean {
     m.includes("from holdings") || (m.includes("holdings") && m.includes("watchlist"));
   const wantsIdeas =
     /\bideas?\b/.test(m) &&
-    (/\bcovered[- ]calls?\b/.test(m) ||
+    (/\bcovered[-_ ]calls?\b/.test(m) ||
       /\bcovered call\b/.test(m) ||
       /\bwheel\b/.test(m) ||
-      /\bpremium\b/.test(m));
+      /\bcash[-_ ]secured[-_ ]puts?\b/.test(m) ||
+      /\bcash_secured_put\b/.test(m) ||
+      /\bpremium\b/.test(m) ||
+      /\bdesk json contract\b/.test(m));
   return holdingsPlusWatchlist && wantsIdeas;
 }
 
@@ -28,24 +31,39 @@ export const INCOME_IDEAS_RAG_QUERY =
 export const INCOME_IDEAS_STATIC_GUIDELINES = `Desk posture guidelines (apply qualitatively to the user’s book; do not contradict workspace facts):
 - **Conservative:** wider OTM, shorter gamma, prioritize capital preservation and liquidity; flag assignment/call-away explicitly.
 - **Balanced:** modest OTM vs premium trade-off; one clear primary structure per name.
-- **Aggressive:** tighter strikes / higher premium density only when liquidity and risk tolerance support it; still cite assignment risk.`;
+- **Aggressive:** tighter strikes / higher premium density only when liquidity and risk tolerance support it; still cite assignment risk.
+- **assignmentRiskNote (≤180 chars):** start with risk level (**Low** / **Low-moderate** / **Moderate** / **High**), include % OTM or buffer vs spot, end with impact on the position (assignment, call-away, or basis).
+- **contractsRecommended / maxContracts:** size from share inventory or cash collateral, open interest, and bid/ask width; \`contractsRecommended\` is 1–5; \`maxContracts\` is the hard cap for the line.
+- **rationale (≤220 chars):** strategy logic + liquidity only — no filler, no markdown.`;
 
-const INCOME_IDEAS_JSON_SCHEMA = `Return **exactly one JSON object** (no markdown fences, no commentary, no citation chips) with this shape:
+export const INCOME_IDEAS_JSON_SCHEMA = `Return **exactly one JSON object** (no markdown fences, no commentary, no citation chips) with this shape:
 {
   "ideas": [
     {
-      "ideaType": "covered_call" | "cash_secured_put" | "wheel" | "other",
+      "ideaType": "covered_call" | "wheel" | "cash_secured_put" | "iron_condor" | "bull_put_spread" | "bull_call_spread" | "calendar_spread" | "diagonal_spread" | "butterfly" | "jade_lizard" | "ratio_spread" | "zebra",
       "underlying": string,
-      "strike": number | null,
-      "expiry": string | null,
-      "premium": number | null,
+      "strike": number,
+      "expiry": "YYYY-MM-DD",
+      "premium": number,
+      "contractsRecommended": number,
+      "maxContracts": number,
+      "annualizedROC": number,
+      "probabilityOfProfit": number,
       "assignmentRiskNote": string,
       "rationale": string
     }
   ],
-  "disclaimer": "Not financial advice."
+  "disclaimer": "Not financial advice. Past performance is not indicative of future results."
 }
-Rules: **exactly three** objects in \`ideas\` when the book/watchlist supports it; otherwise return fewer and explain gaps only inside each \`rationale\`. Use **null** for unknown numerics.`;
+Rules:
+- **Valid JSON only** — no trailing commas, no comments, no prose outside the object.
+- \`ideaType\` must match the active strategy narrative slug (e.g. **covered_call**, **wheel**, **cash_secured_put**, **iron_condor**, **bull_put_spread**, **butterfly**, **jade_lizard** — no aliases).
+- \`contractsRecommended\`: integer **1–5**; \`maxContracts\`: integer ≥ \`contractsRecommended\` from position size and liquidity.
+- \`annualizedROC\`: decimal percent (e.g. **1.8** for 1.8% annualized on premium vs notional).
+- \`probabilityOfProfit\`: integer **0–100**.
+- \`assignmentRiskNote\`: ≤180 chars; risk level + % OTM/buffer + position impact.
+- \`rationale\`: ≤220 chars; strategy logic + liquidity.
+- Return **up to three** \`ideas\` when holdings + watchlist support it; otherwise return fewer and explain gaps only inside each \`rationale\`.`;
 
 export function buildIncomeIdeasJsonOnlySuffix(): string {
   return [
@@ -58,7 +76,7 @@ export function buildIncomeIdeasJsonOnlySuffix(): string {
 }
 
 export function buildIncomeIdeasUserSuffix(): string {
-  return "Reminder: respond with **only** the JSON object defined in system instructions (three ideas when possible).";
+  return "Reminder: respond with **only** the JSON object defined in system instructions (up to three ideas when possible; strict ideaType enum and field limits).";
 }
 
 /** Pull equity symbols for quote enrichment (bounded). */
