@@ -50,4 +50,18 @@ XF_CITE:atxfinance
     const out = preprocessXchatMarkdown(raw);
     expect(out).toBe("These guide our strategy discussions.\n`XF_CITE:atx_function`");
   });
+
+  it("wraps bare XF_CITE lines with pipe labels and drops orphan colon before tables", () => {
+    const raw = [
+      "Watchlist (4 symbols, all tech/AI/EV exposure): 100% skewed to Technology. Here's the breakdown by hypothetical 100-share notional",
+      "XF_CITE:atx_function|Watchlist",
+      ":",
+      "Symbol\tSpot Price\t100-Share Notional\tSector",
+      "AMD\t$455.19\t$45,519\tSemiconductors"
+    ].join("\n");
+    const out = preprocessXchatMarkdown(raw);
+    expect(out).toContain("`XF_CITE:atx_function|Watchlist`");
+    expect(out).not.toMatch(/^\s*:\s*$/m);
+    expect(out).not.toMatch(/[^`]XF_CITE:atx_function/);
+  });
 });

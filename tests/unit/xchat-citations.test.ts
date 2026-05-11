@@ -25,6 +25,7 @@ import {
     resolveGrokRenderSlug,
     stripNonRenderableBareCitationLines,
     stripNonRenderableCitationInlineSpans,
+    stripOrphanColonOnlyLines,
     wrapBareXfCiteLines,
     wrapMidLineBareXfSentinels
 } from "@/lib/xchat-citations";
@@ -87,6 +88,14 @@ describe("xchat-citations", () => {
   it("wraps bare XF_CITE lines; legacy atxfinance slug maps to atx_function chip slug", () => {
     expect(wrapBareXfCiteLines("a\nXF_CITE:atxfinance\nb")).toBe("a\n`XF_CITE:atx_function`\nb");
     expect(wrapBareXfCiteLines("XF_CITE:atx_function")).toBe("`XF_CITE:atx_function`");
+  });
+
+  it("wraps bare XF_CITE lines with pipe labels", () => {
+    expect(wrapBareXfCiteLines("XF_CITE:atx_function|Watchlist")).toBe("`XF_CITE:atx_function|Watchlist`");
+  });
+
+  it("stripOrphanColonOnlyLines removes lone colon rows", () => {
+    expect(stripOrphanColonOnlyLines("a\n:\nSymbol\tSpot")).toBe("a\nSymbol\tSpot");
   });
 
   it("wraps cites with leading indent, space after colon, blockquote, or lowercase prefix", () => {

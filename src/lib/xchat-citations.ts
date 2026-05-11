@@ -101,6 +101,21 @@ export function stripNonRenderableCitationInlineSpans(markdown: string): string 
   return s;
 }
 
+function bareXfSentinelProbeFromLine(line: string): string | null {
+  const t = line.trim();
+  const m = t.match(/^(?:> ?)?[ \t]*((?:XF_CITE|xf_cite|XF_TOOL|xf_tool):.*)$/i);
+  return m ? m[1].trim() : null;
+}
+
+function parseBareXfSentinelFromLine(line: string): { slug: string; label?: string } | null {
+  const probe = bareXfSentinelProbeFromLine(line);
+  if (!probe) {
+    return null;
+  }
+  const normalized = stripCitationFootnoteMarkers(probe).replace(/\.\s*$/, "").trim();
+  return parseInlineXfChipCode(normalized);
+}
+
 /**
  * Drop lines that are only a bare XF_CITE/XF_TOOL sentinel when the slug is invalid or not renderable.
  */
@@ -108,23 +123,24 @@ export function stripNonRenderableBareCitationLines(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
   const out: string[] = [];
   for (const line of lines) {
-    const t = line.trimEnd();
-    const m =
-      t.match(/^(?:> ?)?[ \t]*(?:XF_CITE|xf_cite):\s*(\S*)(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/i) ||
-      t.match(/^(?:> ?)?[ \t]*(?:XF_TOOL|xf_tool):\s*(\S*)(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/i);
-    if (m) {
-      const raw = (m[1] ?? "").replace(/\[\d+\]/g, "").trim().split(/[\s,]/)[0] ?? "";
-      if (!raw) {
+    if (bareXfSentinelProbeFromLine(line) !== null) {
+      const parsed = parseBareXfSentinelFromLine(line);
+      if (!parsed || !citationChipRenderable(parsed.slug, parsed.label)) {
         continue;
       }
-      const low = raw.toLowerCase();
-      if (!SLUG_RE.test(low)) {
-        continue;
-      }
-      const slug = canonicalizeCitationSlug(low);
-      if (!citationChipRenderable(slug)) {
-        continue;
-      }
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
+/** Models sometimes emit a lone `:` between a cite sentinel and a table or list. */
+export function stripOrphanColonOnlyLines(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const out: string[] = [];
+  for (const line of lines) {
+    if (line.trim() === ":") {
+      continue;
     }
     out.push(line);
   }
@@ -462,20 +478,13 @@ export function normalizeXchatMarkdownNoise(markdown: string): string {
 
 /** Line is only a bare XF_CITE/XF_TOOL sentinel (optional blockquote indent, footnote markers, trailing period). */
 function bareXfLineDedupeKey(line: string): string | null {
-  const t = line.trimEnd();
-  const cite = t.match(
-    /^(?:> ?)?[ \t]*(?:XF_CITE|xf_cite):\s*([a-z0-9_]+)(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/i
-  );
-  if (cite) {
-    return `c:${cite[1].toLowerCase()}`;
+  const parsed = parseBareXfSentinelFromLine(line);
+  if (!parsed) {
+    return null;
   }
-  const tool = t.match(
-    /^(?:> ?)?[ \t]*(?:XF_TOOL|xf_tool):\s*([a-z0-9_]+)(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/i
-  );
-  if (tool) {
-    return `t:${tool[1].toLowerCase()}`;
-  }
-  return null;
+  const probe = bareXfSentinelProbeFromLine(line);
+  const kind = probe?.toLowerCase().startsWith("xf_tool") ? "t" : "c";
+  return `${kind}:${parsed.slug}:${parsed.label ?? ""}`;
 }
 
 /**
@@ -609,8 +618,8 @@ export function collapseAdjacentDuplicateWrappedXfChipLines(markdown: string): s
       prevKey = null;
       continue;
     }
-    const c = tr.match(/^`XF_CITE:([a-z0-9_]+)`$/);
-    const t = tr.match(/^`XF_TOOL:([a-z0-9_]+)`$/);
+    const c = tr.match(/^`XF_CITE:([a-z0-9_]+)(?:\|[^`]+)?`$/);
+    const t = tr.match(/^`XF_TOOL:([a-z0-9_]+)(?:\|[^`]+)?`$/);
     const key = c ? `c:${c[1]}` : t ? `t:${t[1]}` : null;
     if (key !== null) {
       if (key === prevKey) {
@@ -653,13 +662,21 @@ export function wrapBareXfCiteLines(markdown: string): string {
       return tail ? `${indent}${chip}, ${tail}` : `${indent}${chip}`;
     });
     /** Before `spaced`, so lines like `XF_CITE:yahoo_finance [1] [2]` are not treated as slug + prose. */
-    const lone = new RegExp(
-      `${lead}${p}\\s*([a-z0-9_]+)(?:\\s*\\[\\d+\\])*(?:\\s*\\.?)?\\s*$`,
-      "gim"
-    );
-    s = s.replace(lone, (_full: string, indent: string, rawSlug: string) => {
-      const slug = canonicalizeCitationSlug(rawSlug);
-      return `${indent}\`${prefix}${slug}\``;
+    const lone = new RegExp(`${lead}${p}\\s*(.+?)(?:\\s*\\.?)?\\s*$`, "gim");
+    s = s.replace(lone, (_full: string, indent: string, tailRaw: string) => {
+      const tail = stripCitationFootnoteMarkers(String(tailRaw)).trim();
+      const parsed =
+        prefix === XF_INLINE_CITE_PREFIX
+          ? parseInlineCitationCode(`${XF_INLINE_CITE_PREFIX}${tail}`)
+          : parseInlineToolBadgeCode(`${XF_TOOL_BADGE_PREFIX}${tail}`);
+      if (!parsed) {
+        return _full;
+      }
+      const chip =
+        prefix === XF_INLINE_CITE_PREFIX
+          ? encodeCitationInlineMarkdown(parsed.slug, parsed.label)
+          : encodeToolBadgeInlineMarkdown(parsed.slug, parsed.label);
+      return chip ? `${indent}${chip}` : _full;
     });
     const spaced = new RegExp(`${lead}${p}\\s*([a-z0-9_]+)[ \\t]+(.+)$`, "gim");
     s = s.replace(spaced, (_full: string, indent: string, rawSlug: string, prose: string) => {
@@ -686,9 +703,9 @@ export function wrapBareXfCiteLines(markdown: string): string {
 
 /** `(?!-)` avoids wrapping a partial slug before a hyphen (`XF_CITE:bad-slug` must not become cite `bad`). */
 const MID_BARE_XF_CITE_IN_PLAIN =
-  /(^|[^A-Za-z0-9_])(?:XF_CITE|xf_cite):\s*([a-z0-9_]+)(?!-)(?:\s*\[\d+\])*(?![a-z0-9_])/gi;
+  /(^|[^A-Za-z0-9_])((?:XF_CITE|xf_cite):\s*[a-z0-9_]+(?:\|[^\s`\n[\]]+)?)(?!-)(?:\s*\[\d+\])*(?![a-z0-9_])/gi;
 const MID_BARE_XF_TOOL_IN_PLAIN =
-  /(^|[^A-Za-z0-9_])(?:XF_TOOL|xf_tool):\s*([a-z0-9_]+)(?!-)(?:\s*\[\d+\])*(?![a-z0-9_])/gi;
+  /(^|[^A-Za-z0-9_])((?:XF_TOOL|xf_tool):\s*[a-z0-9_]+(?:\|[^\s`\n[\]]+)?)(?!-)(?:\s*\[\d+\])*(?![a-z0-9_])/gi;
 
 function findClosingInlineBacktickRun(s: string, from: number, run: number): number {
   const fence = "`".repeat(run);
@@ -708,14 +725,14 @@ function findClosingInlineBacktickRun(s: string, from: number, run: number): num
  * Plain segments only (not inside inline `…` / `` … `` / run≥3); used by {@link wrapMidLineBareXfSentinels}.
  */
 function wrapBareXfSentinelsInPlainText(plain: string): string {
-  let s = plain.replace(MID_BARE_XF_CITE_IN_PLAIN, (full, before: string, rawSlug: string) => {
-    const slug = canonicalizeCitationSlug(rawSlug);
-    const enc = encodeCitationInlineMarkdown(slug);
+  let s = plain.replace(MID_BARE_XF_CITE_IN_PLAIN, (full, before: string, sentinel: string) => {
+    const parsed = parseInlineCitationCode(stripCitationFootnoteMarkers(sentinel).trim());
+    const enc = parsed ? encodeCitationInlineMarkdown(parsed.slug, parsed.label) : "";
     return enc ? `${before}${enc}` : full;
   });
-  s = s.replace(MID_BARE_XF_TOOL_IN_PLAIN, (full, before: string, rawSlug: string) => {
-    const slug = canonicalizeCitationSlug(rawSlug);
-    const enc = encodeToolBadgeInlineMarkdown(slug);
+  s = s.replace(MID_BARE_XF_TOOL_IN_PLAIN, (full, before: string, sentinel: string) => {
+    const parsed = parseInlineToolBadgeCode(stripCitationFootnoteMarkers(sentinel).trim());
+    const enc = parsed ? encodeToolBadgeInlineMarkdown(parsed.slug, parsed.label) : "";
     return enc ? `${before}${enc}` : full;
   });
   return s;

@@ -19,6 +19,7 @@ import {
     repairAdjacentMangledXfInlineChips,
     stripNonRenderableBareCitationLines,
     stripNonRenderableCitationInlineSpans,
+    stripOrphanColonOnlyLines,
     wrapBareXfCiteLines,
     wrapMidLineBareXfSentinels
 } from "@/lib/xchat-citations";
@@ -37,6 +38,7 @@ export function preprocessXchatMarkdown(raw: string): string {
   s = stripNonRenderableBareCitationLines(s);
   s = wrapBareXfCiteLines(s);
   s = wrapMidLineBareXfSentinels(s);
+  s = stripOrphanColonOnlyLines(s);
   s = rejoinWrappedCiteSplitAcrossParens(s);
   s = repairAdjacentMangledXfInlineChips(s);
   s = collapseAdjacentDuplicateWrappedXfChipLines(s);
