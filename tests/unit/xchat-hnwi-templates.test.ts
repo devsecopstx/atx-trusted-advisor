@@ -2,8 +2,26 @@ import { describe, expect, it } from "vitest";
 
 import {
     filterXchatPromptTemplates,
-    XCHAT_HNWI_PROMPT_TEMPLATES
+    resolveWheelCcScanComposerPrompt,
+    XCHAT_HNWI_PROMPT_TEMPLATES,
+    XCHAT_WHEEL_CC_SCAN_PROMPT
 } from "@/modules/xchat/xchat-hnwi-templates";
+
+describe("resolveWheelCcScanComposerPrompt", () => {
+  it("replaces legacy desk JSON contract line with canonical markdown prompt", () => {
+    const legacy =
+      "From holdings + watchlist: up to three covered_call, wheel, or cash_secured_put ideas with strike, expiry, premium, contract sizing, annualized ROC, and assignment risk — desk JSON contract only.";
+    expect(resolveWheelCcScanComposerPrompt(legacy)).toBe(XCHAT_WHEEL_CC_SCAN_PROMPT);
+  });
+
+  it("leaves unrelated prompts unchanged", () => {
+    expect(resolveWheelCcScanComposerPrompt("What is a wheel strategy?")).toBe("What is a wheel strategy?");
+  });
+
+  it("leaves wheel copy without json marker unchanged", () => {
+    expect(resolveWheelCcScanComposerPrompt(XCHAT_WHEEL_CC_SCAN_PROMPT)).toBe(XCHAT_WHEEL_CC_SCAN_PROMPT);
+  });
+});
 
 describe("filterXchatPromptTemplates", () => {
   it("returns all templates when query empty", () => {

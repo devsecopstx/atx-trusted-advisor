@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     buildIncomeIdeasCompactPayload,
+    buildIncomeIdeasDeskReportSuffix,
     buildIncomeIdeasJsonOnlySuffix,
     filterRagSnippetsForIncomeIdeas,
     mergeIncomeIdeasRagContext,
@@ -22,27 +23,41 @@ describe("shouldOptimizeIncomeIdeasPrompt", () => {
     expect(shouldOptimizeIncomeIdeasPrompt("Give me three wheel ideas for premium income")).toBe(false);
   });
 
-  it("is true for desk JSON contract wheel template copy", () => {
+  it("is true for legacy desk JSON contract wheel template copy", () => {
     expect(
       shouldOptimizeIncomeIdeasPrompt(
         "From holdings + watchlist: up to three covered_call, wheel, or cash_secured_put ideas with strike, expiry, premium, contract sizing, annualized ROC, and assignment risk — desk JSON contract only."
       )
     ).toBe(true);
   });
+
+  it("is true for formatted markdown desk report template copy", () => {
+    expect(
+      shouldOptimizeIncomeIdeasPrompt(
+        "From holdings + watchlist: up to three covered_call, wheel, or cash_secured_put ideas with strike, expiry, premium, contract sizing, annualized ROC, and assignment risk — answer as a formatted markdown desk report (headings and/or a table), using the desk field contract for each idea (not raw JSON only)."
+      )
+    ).toBe(true);
+  });
 });
 
-describe("buildIncomeIdeasJsonOnlySuffix", () => {
-  it("requires strict income ideas JSON fields", () => {
-    const suffix = buildIncomeIdeasJsonOnlySuffix();
-    expect(suffix).toContain('"contractsRecommended"');
-    expect(suffix).toContain('"maxContracts"');
-    expect(suffix).toContain('"annualizedROC"');
-    expect(suffix).toContain('"probabilityOfProfit"');
-    expect(suffix).toContain('"iron_condor"');
-    expect(suffix).toContain('"jade_lizard"');
-    expect(suffix).toContain('"butterfly"');
+describe("buildIncomeIdeasDeskReportSuffix", () => {
+  it("requires markdown desk report and desk field contract", () => {
+    const suffix = buildIncomeIdeasDeskReportSuffix();
+    expect(suffix).toContain("formatted markdown desk report");
+    expect(suffix).toContain("**contractsRecommended**");
+    expect(suffix).toContain("**maxContracts**");
+    expect(suffix).toContain("**annualizedROC**");
+    expect(suffix).toContain("**probabilityOfProfit**");
+    expect(suffix).toContain("`iron_condor`");
+    expect(suffix).toContain("`jade_lizard`");
+    expect(suffix).toContain("`butterfly`");
     expect(suffix).toContain("Not financial advice. Past performance is not indicative of future results.");
+    expect(suffix).not.toContain("Return **exactly one JSON object**");
     expect(suffix).not.toContain('"other"');
+  });
+
+  it("aliases deprecated JsonOnlySuffix to desk report suffix", () => {
+    expect(buildIncomeIdeasJsonOnlySuffix()).toBe(buildIncomeIdeasDeskReportSuffix());
   });
 });
 

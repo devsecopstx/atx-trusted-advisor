@@ -64,7 +64,7 @@ import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import {
     buildIncomeIdeasCompactPayload,
-    buildIncomeIdeasJsonOnlySuffix,
+    buildIncomeIdeasDeskReportSuffix,
     buildIncomeIdeasUserSuffix,
     collectIncomeIdeasEquitySymbols,
     filterRagSnippetsForIncomeIdeas,
@@ -1747,7 +1747,7 @@ export async function POST(request: Request) {
     ? `${STRATEGY_OPTOUT_SYSTEM_PROMPT_LINE}\n\n${builtSystemPrompt}`
     : builtSystemPrompt;
   if (incomeIdeasOptimization) {
-    systemPrompt = `${systemPrompt}\n\n${buildIncomeIdeasJsonOnlySuffix()}`;
+    systemPrompt = `${systemPrompt}\n\n${buildIncomeIdeasDeskReportSuffix()}`;
   }
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
   const userPromptBase = userPromptTemplate

@@ -17,6 +17,7 @@ import { applyXchatScanOptionsPrompt } from "@/app/xchat/ui/xchat-templates-work
 import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
 import {
     filterXchatPromptTemplates,
+    resolveWheelCcScanComposerPrompt,
     XCHAT_HNWI_PROMPT_TEMPLATES,
     type XchatPromptTemplate
 } from "@/modules/xchat/xchat-hnwi-templates";
@@ -159,7 +160,7 @@ export function XchatTemplatesStrip({
   const scrollerTemplates = filtered.slice(0, 4);
 
   function applyTemplate(t: StripTemplate) {
-    setInput(t.prompt);
+    setInput(resolveWheelCcScanComposerPrompt(t.prompt));
     queueMicrotask(() => {
       const el = composerRef.current;
       if (el) {

@@ -21,7 +21,10 @@ export function shouldOptimizeIncomeIdeasPrompt(message: string): boolean {
       /\bcash[-_ ]secured[-_ ]puts?\b/.test(m) ||
       /\bcash_secured_put\b/.test(m) ||
       /\bpremium\b/.test(m) ||
-      /\bdesk json contract\b/.test(m));
+      /\bdesk json contract\b/.test(m) ||
+      /\bdesk field contract\b/.test(m) ||
+      (m.includes("formatted") && m.includes("report")) ||
+      (m.includes("markdown") && m.includes("desk")));
   return holdingsPlusWatchlist && wantsIdeas;
 }
 
@@ -36,47 +39,39 @@ export const INCOME_IDEAS_STATIC_GUIDELINES = `Desk posture guidelines (apply qu
 - **contractsRecommended / maxContracts:** size from share inventory or cash collateral, open interest, and bid/ask width; \`contractsRecommended\` is 1–5; \`maxContracts\` is the hard cap for the line.
 - **rationale (≤220 chars):** strategy logic + liquidity only — no filler, no markdown.`;
 
-export const INCOME_IDEAS_JSON_SCHEMA = `Return **exactly one JSON object** (no markdown fences, no commentary, no citation chips) with this shape:
-{
-  "ideas": [
-    {
-      "ideaType": "covered_call" | "wheel" | "cash_secured_put" | "iron_condor" | "bull_put_spread" | "bull_call_spread" | "calendar_spread" | "diagonal_spread" | "butterfly" | "jade_lizard" | "ratio_spread" | "zebra",
-      "underlying": string,
-      "strike": number,
-      "expiry": "YYYY-MM-DD",
-      "premium": number,
-      "contractsRecommended": number,
-      "maxContracts": number,
-      "annualizedROC": number,
-      "probabilityOfProfit": number,
-      "assignmentRiskNote": string,
-      "rationale": string
-    }
-  ],
-  "disclaimer": "Not financial advice. Past performance is not indicative of future results."
-}
-Rules:
-- **Valid JSON only** — no trailing commas, no comments, no prose outside the object.
-- \`ideaType\` must match the active strategy narrative slug (e.g. **covered_call**, **wheel**, **cash_secured_put**, **iron_condor**, **bull_put_spread**, **butterfly**, **jade_lizard** — no aliases).
-- \`contractsRecommended\`: integer **1–5**; \`maxContracts\`: integer ≥ \`contractsRecommended\` from position size and liquidity.
-- \`annualizedROC\`: decimal percent (e.g. **1.8** for 1.8% annualized on premium vs notional).
-- \`probabilityOfProfit\`: integer **0–100**.
-- \`assignmentRiskNote\`: ≤180 chars; risk level + % OTM/buffer + position impact.
-- \`rationale\`: ≤220 chars; strategy logic + liquidity.
-- Return **up to three** \`ideas\` when holdings + watchlist support it; otherwise return fewer and explain gaps only inside each \`rationale\`.`;
+/** Machine-readable shape the model must honor in user-visible copy (report/table), not as a lone JSON blob. */
+export const INCOME_IDEAS_DESK_FIELD_CONTRACT = `**Desk field contract (each idea, up to three):** every idea the user sees must include these fields (names and limits match the former JSON schema):
+- **ideaType**: \`covered_call\` | \`wheel\` | \`cash_secured_put\` | \`iron_condor\` | \`bull_put_spread\` | \`bull_call_spread\` | \`calendar_spread\` | \`diagonal_spread\` | \`butterfly\` | \`jade_lizard\` | \`ratio_spread\` | \`zebra\` (slug only — no aliases).
+- **underlying** (ticker), **strike** (number), **expiry** (\`YYYY-MM-DD\`).
+- **premium** (number; label clearly **per share** vs **total premium**).
+- **contractsRecommended**: integer **1–5**; **maxContracts**: integer ≥ \`contractsRecommended\` (hard cap from size + liquidity).
+- **annualizedROC**: decimal percent (e.g. **1.8** = 1.8% annualized on premium vs notional).
+- **probabilityOfProfit**: integer **0–100**.
+- **assignmentRiskNote**: ≤180 chars; risk level + % OTM/buffer + position impact.
+- **rationale**: ≤220 chars; strategy logic + liquidity only (plain text inside the cell/line — no nested markdown).
+Close the report with a line: **Not financial advice. Past performance is not indicative of future results.**`;
 
-export function buildIncomeIdeasJsonOnlySuffix(): string {
+export const INCOME_IDEAS_JSON_SCHEMA = INCOME_IDEAS_DESK_FIELD_CONTRACT;
+
+export function buildIncomeIdeasDeskReportSuffix(): string {
   return [
     "**Income ideas mode (this turn only):**",
-    "Think step-by-step internally, but **output only** the final JSON object — no prose before or after, no \\`\\`\\` fences.",
-    INCOME_IDEAS_JSON_SCHEMA,
-    "After internal reasoning, you may call **atx_function** / **yahoo_finance** / **options_scan** only if needed for realistic strikes, expiries, or premiums — still end with **only** the JSON object as your user-visible output.",
-    "**Do not** emit xChat citation chips or markdown tables for this turn."
+    "Reply with a **formatted markdown desk report** the user can scan: use \`##\` per idea and/or **one markdown table** for all ideas; bullets are fine. **Do not** make the entire assistant message a single raw JSON object or a JSON-only code fence.",
+    INCOME_IDEAS_DESK_FIELD_CONTRACT,
+    "Rules:",
+    "- Cover **up to three** ideas when holdings + watchlist support it; otherwise fewer — note gaps briefly in that idea’s **rationale** line only.",
+    "- After internal reasoning, you may call **atx_function** / **yahoo_finance** / **options_scan** when needed for realistic strikes, expiries, or premiums — then still present the **markdown report** as the user-visible answer.",
+    "- Citation chips follow the persona’s normal citation rules; tables and headings are allowed this turn."
   ].join("\n");
 }
 
+/** @deprecated Use \`buildIncomeIdeasDeskReportSuffix\` — income ideas UX is markdown report, not JSON-only. */
+export function buildIncomeIdeasJsonOnlySuffix(): string {
+  return buildIncomeIdeasDeskReportSuffix();
+}
+
 export function buildIncomeIdeasUserSuffix(): string {
-  return "Reminder: respond with **only** the JSON object defined in system instructions (up to three ideas when possible; strict ideaType enum and field limits).";
+  return "Reminder: answer with the **markdown desk report** using the desk field contract above (up to three ideas; strict ideaType enum and numeric/length limits).";
 }
 
 /** Pull equity symbols for quote enrichment (bounded). */

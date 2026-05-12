@@ -20,7 +20,7 @@ function evictMemoryExpired(): void {
 }
 
 /**
- * TTL seconds for cached **final** income-ideas JSON assistant text. Clamped 300–1800; default 1200 (~20m).
+ * TTL seconds for cached **final** income-ideas assistant text (markdown report). Clamped 300–1800; default 1200 (~20m).
  * Invalidates naturally when `workspaceContentRev` or book/watchlist signatures change.
  */
 export function getIncomeIdeasResponseCacheTtlSeconds(): number {

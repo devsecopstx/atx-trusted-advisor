@@ -57,7 +57,9 @@ Shared principles (not a single strategy): [`skill-options-principles`](../../..
 
 ## Output contract (holdings + watchlist / Wheel · CC scan)
 
-When the user runs the xChat **Wheel / CC scan** template or any **From holdings + watchlist** income prompt, return **only** one JSON object — no markdown fences, no commentary. Each strategy narrative in this tree uses the **same** envelope; set `ideaType` to that strategy’s slug (see per-file **Output contract** sections).
+**xChat (HNWI template + income-ideas optimization):** the assistant answers with a **formatted markdown desk report** (headings and/or a table) so users see strike, expiry, premium, sizing, annualized ROC, and assignment risk at a glance. The **same field names, enums, and limits** as below apply to each idea — do **not** make the entire reply a lone JSON object.
+
+**Authoring / RAG reference:** the JSON envelope below is the **canonical machine shape** for field semantics; strategy narrative files may still show it for tooling. Each strategy narrative sets `ideaType` to that strategy’s slug (see per-file **Output contract** sections).
 
 ```json
 {
