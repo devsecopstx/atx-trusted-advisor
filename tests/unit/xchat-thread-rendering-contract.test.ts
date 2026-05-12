@@ -26,6 +26,9 @@ describe("xChat thread rendering regression contract", () => {
   it("collapses multiline Latest prompt chrome by default", () => {
     expect(threadPanel).toContain("isMultilineStickyPrompt");
     expect(threadPanel).toContain("isStickyPromptCollapsible");
+    expect(threadPanel).toContain("stickyPromptExpandedForId");
+    expect(threadPanel).toContain("stickyPromptExpandedForId === stickyUserId");
+    expect(threadPanel).not.toContain("setStickyPromptExpanded(false)");
     expect(threadPanel).toContain("xchat-thread-sticky-prompt--multiline");
     expect(threadPanel).toContain("xchat-thread-sticky-prompt--advisor-working");
     expect(css).toContain(".xchat-thread-sticky-prompt--multiline .xchat-thread-sticky-prompt__preview");

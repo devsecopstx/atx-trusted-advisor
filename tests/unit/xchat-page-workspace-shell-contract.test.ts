@@ -18,4 +18,12 @@ describe("/xchat workspace shell contract", () => {
     expect(conversationSrc).toContain("mainFooter");
     expect(conversationSrc).toContain("{mainFooter}");
   });
+
+  it("seeds desk outlook through the approved shell into the welcome header row", () => {
+    expect(approvedShellSrc).toContain("initialOutlookDesk={initialOutlookDesk}");
+    expect(approvedShellSrc).not.toContain("<XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} />");
+    expect(conversationSrc).toContain("initialOutlookDesk?: XchatInitialOutlookDesk | null");
+    expect(conversationSrc).toContain('className="xchat-welcome-header__row"');
+    expect(conversationSrc).toContain("<XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} inline />");
+  });
 });

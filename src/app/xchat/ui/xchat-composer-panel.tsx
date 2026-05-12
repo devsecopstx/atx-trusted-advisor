@@ -408,7 +408,7 @@ export function XchatComposerPanel({
               </XfHoverHint>
               <XfHoverHint
                 className="xchat-composer__input-grow"
-                hint="Enter to send · Shift+Enter newline · Paste image (screenshot) to analyze"
+                hint="Enter: send · Shift+Enter: newline · Paste: vision"
               >
                 <textarea
                   ref={composerRef}
@@ -527,7 +527,7 @@ export function XchatComposerPanel({
       <div className="xchat-composer-shortcuts xchat-composer-shortcuts--unified">
         <div className="xchat-composer-shortcuts__row xchat-composer-shortcuts__row--unified">
           <div className="xchat-composer-shortcuts__left text-xs text-[#64748b]">
-            Enter: Send · Shift+Enter: Newline · Paste: Vision · Mic: Dictation · 📎: Uploads
+            Enter: Send · Shift+Enter: Newline
           </div>
           <div className="xchat-composer-shortcuts__split-nav">
             <XchatComposerNav />

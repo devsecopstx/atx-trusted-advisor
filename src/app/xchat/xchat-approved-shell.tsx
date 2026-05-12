@@ -1,7 +1,6 @@
 import { ObjectId } from "mongodb";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
-import { XchatOutlookDeskFreshnessLabel } from "@/app/xchat/ui/xchat-outlook-desk-freshness-label";
 import { XchatConversationMount } from "@/app/xchat/xchat-conversation-mount";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import {
@@ -153,8 +152,8 @@ export async function XchatApprovedShell({
 
   return (
     <div className="xchat-approved-shell flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} />
       <XchatConversationMount
+      initialOutlookDesk={initialOutlookDesk}
       googleLinkHref={googleLinkHrefForApproved}
       mainFooter={<GlobalFooter />}
       accountDetails={{

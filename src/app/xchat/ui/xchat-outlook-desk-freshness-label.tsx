@@ -5,10 +5,15 @@ import {
 
 type XchatOutlookDeskFreshnessLabelProps = {
   desk: XchatInitialOutlookDesk | null | undefined;
+  /** When true, render for the welcome header row (no extra block margin). */
+  inline?: boolean;
 };
 
 /** Server-rendered desk outlook line (cached Mongo/Redis path) for early LCP on /xchat. */
-export function XchatOutlookDeskFreshnessLabel({ desk }: XchatOutlookDeskFreshnessLabelProps) {
+export function XchatOutlookDeskFreshnessLabel({
+  desk,
+  inline = false
+}: XchatOutlookDeskFreshnessLabelProps) {
   if (!desk) {
     return null;
   }
@@ -22,14 +27,11 @@ export function XchatOutlookDeskFreshnessLabel({ desk }: XchatOutlookDeskFreshne
   return (
     <p
       aria-live="polite"
-      className="xchat-outlook-freshness-badge"
-      style={{
-        margin: "0 0 0.35rem",
-        fontSize: "0.72rem",
-        lineHeight: 1.35,
-        color: "var(--xf-text-muted)",
-        textAlign: "center"
-      }}
+      className={
+        inline
+          ? "xchat-outlook-freshness-badge xchat-outlook-freshness-badge--welcome-row"
+          : "xchat-outlook-freshness-badge"
+      }
     >
       {label}
     </p>

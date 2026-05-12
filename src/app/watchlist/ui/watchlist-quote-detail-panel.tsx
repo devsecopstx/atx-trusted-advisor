@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { SymbolOhlcChartPanel } from "@/app/ui/symbol-ohlc-chart-panel";
+import {
+    formatPortfolioRiskPct,
+    targetEntryRiskPctNumeric,
+    targetEntryRiskPctToneClass
+} from "@/app/watchlist/ui/watchlist-metrics";
 import type { WatchlistRowStatus } from "@/modules/core-admin/types";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
-import {
-  formatPortfolioRiskPct,
-  targetEntryRiskPctNumeric,
-  targetEntryRiskPctToneClass
-} from "@/app/watchlist/ui/watchlist-metrics";
 
 export type WatchlistQuotePanelTab = "quote" | "rationale";
 
@@ -146,11 +146,6 @@ function WatchlistQuoteRationaleTab({
   const [rationaleEditing, setRationaleEditing] = useState(false);
   const [rationaleDraft, setRationaleDraft] = useState(row.rationale ?? "");
   const rationaleHasValue = (row.rationale ?? "").trim().length > 0;
-
-  useEffect(() => {
-    setRationaleDraft(row.rationale ?? "");
-    setRationaleEditing(false);
-  }, [row.symbol, row.rationale]);
 
   const saveRationale = async () => {
     const prev = (row.rationale ?? "").trim();
@@ -405,6 +400,7 @@ export function WatchlistQuoteDetailPanel({
         role="tabpanel"
       >
         <WatchlistQuoteRationaleTab
+          key={`${row.symbol}:${row.rationale ?? ""}`}
           aiSuggestBusy={aiSuggestBusy}
           editMode={editMode}
           mutating={mutating}

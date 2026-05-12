@@ -23,4 +23,9 @@ describe("watchlist quote detail panel contract", () => {
     expect(panelSrc).toContain('onTabChange("rationale")');
     expect(panelSrc).toContain("Open the Rationale tab in this panel");
   });
+
+  it("remounts rationale editor state when symbol or rationale changes", () => {
+    expect(panelSrc).toContain('key={`${row.symbol}:${row.rationale ?? ""}`}');
+    expect(panelSrc).not.toContain("useEffect(() => {");
+  });
 });

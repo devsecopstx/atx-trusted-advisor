@@ -1,7 +1,7 @@
 "use client";
 
 import type { Virtualizer } from "@tanstack/virtual-core";
-import { useEffect, useMemo, useState, type RefObject } from "react";
+import { useMemo, useState, type RefObject } from "react";
 
 import { XchatThreadMessageBubble } from "@/app/xchat/ui/xchat-thread-message-bubble";
 import { XchatThreadSystemBanner } from "@/app/xchat/ui/xchat-thread-system-banner";
@@ -138,17 +138,11 @@ export function XchatThreadPanel({
     multiline: stickyPromptMultiline,
     loading
   });
-  const [stickyPromptExpanded, setStickyPromptExpanded] = useState(false);
+  const stickyUserId = latestUserForSticky?.id ?? null;
+  const [stickyPromptExpandedForId, setStickyPromptExpandedForId] = useState<string | null>(null);
+  const stickyPromptExpanded =
+    stickyUserId != null && stickyPromptExpandedForId === stickyUserId && !loading;
 
-  useEffect(() => {
-    setStickyPromptExpanded(false);
-  }, [latestUserForSticky?.id]);
-
-  useEffect(() => {
-    if (loading) {
-      setStickyPromptExpanded(false);
-    }
-  }, [loading]);
   const stickyUserTimeIso = useMemo(() => {
     if (!latestUserForSticky) {
       return "";
@@ -263,7 +257,7 @@ export function XchatThreadPanel({
                         e.currentTarget.open = false;
                         return;
                       }
-                      setStickyPromptExpanded(e.currentTarget.open);
+                      setStickyPromptExpandedForId(e.currentTarget.open ? stickyUserId : null);
                     }}
                   >
                     <summary

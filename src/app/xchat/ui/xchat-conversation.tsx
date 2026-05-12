@@ -47,6 +47,7 @@ import type {
     XchatInteractionMeta
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
+import { XchatOutlookDeskFreshnessLabel } from "@/app/xchat/ui/xchat-outlook-desk-freshness-label";
 import { XchatSidebarTokenStats } from "@/app/xchat/ui/xchat-sidebar-token-stats";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
@@ -63,6 +64,7 @@ import { resolveXchatClientLiveSseEnabled } from "@/lib/xchat-live-sse-policy";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
+import type { XchatInitialOutlookDesk } from "@/lib/xchat/xchat-outlook-desk";
 import {
     clearXchatPendingComposerHandoffMemory,
     consumeXchatPendingComposerHandoff
@@ -149,6 +151,8 @@ export type XchatConversationProps = {
   serverBootstrap?: XchatServerShellBootstrap | null;
   /** Tenant display name for welcome copy (server: `core_tenants.name` via branding resolver). */
   tenantWorkspaceSessionLabel?: string | null;
+  /** Server-seeded desk outlook for the active workspace portfolio. */
+  initialOutlookDesk?: XchatInitialOutlookDesk | null;
   /** Tenant allowlist for workspace rail; pass from server so Resources and routes match policy without client race. */
   visiblePathPrefixes?: string[];
   /** Legal footer under the chat main column only (not full viewport width). */
@@ -356,6 +360,7 @@ export function XchatConversation({
   serverBootstrap = null,
   visiblePathPrefixes,
   tenantWorkspaceSessionLabel = null,
+  initialOutlookDesk = null,
   mainFooter = null
 }: XchatConversationProps) {
   const initialComposerHandoffRef = useRef<ReturnType<typeof consumeXchatPendingComposerHandoff> | null>(null);
@@ -784,7 +789,7 @@ export function XchatConversation({
       return;
     }
     clearXchatComposerDraft(setInput, composerRef.current, resizeComposer);
-  }, [input, reasoningMode, resizeComposer, selectedPersonaId, workspacePortfolioId]);
+  }, [input, loading, reasoningMode, resizeComposer, selectedPersonaId, workspacePortfolioId]);
 
   useEffect(() => {
     if (serverBootstrap != null) {
@@ -2140,54 +2145,30 @@ export function XchatConversation({
 
       <div className="xchat-main">
         <div ref={mainChatScrollRef} className="xchat-main__chat-scroll">
-          <details className="xchat-mobile-workspace-info md:hidden">
-            <summary className="xchat-mobile-workspace-info__summary">Workspace info · billing</summary>
-            <div className="xchat-mobile-workspace-info__body">
-              <header className="xchat-welcome-header xchat-welcome-header--in-details">
-                <h2 className="xchat-welcome-title">Welcome, {welcomeName}!</h2>
+          <header className="xchat-welcome-header xchat-welcome-header--compact">
+            <div className="xchat-welcome-header__row">
+              <div className="xchat-welcome-header__lead">
+                <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
                 {tenantWorkspaceSessionLabel ? (
-                  <p className="xchat-welcome-tenant">
-                    <span className="font-medium text-[var(--xf-text-200)]">
-                      Advisor workspace · {tenantWorkspaceSessionLabel}
-                    </span>
+                  <p className="xchat-welcome-tenant font-medium text-[var(--xf-text-200)]">
+                    · {tenantWorkspaceSessionLabel}
                   </p>
                 ) : null}
-                <p className="xchat-welcome-sub xchat-welcome-sub--mobile-compact">
-                  Portfolio, watchlist, and options tools — Templates above the composer; Depth sets reasoning.
-                </p>
-              </header>
-              {!isRetailPaidSubscriptionPlan(accountDetails.subscriptionPlan) ? (
-                <BillingAccessStateBanner
-                  className="billing-access-state-banner--xchat-shell"
-                  dismissSessionKey="workspace_v1"
-                  persistentDismissIdentity={accountDetails.email}
-                />
-              ) : null}
+              </div>
+              <XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} inline />
             </div>
-          </details>
+            <p className="xchat-welcome-sub">
+              Portfolio, watchlist, and options tools — Templates above the composer; Depth sets reasoning.
+            </p>
+          </header>
 
-          <div className="hidden md:contents">
-            <header className="xchat-welcome-header xchat-welcome-header--inline">
-              <h1 className="xchat-welcome-title xchat-welcome-title--inline">Welcome, {welcomeName}!</h1>
-              {tenantWorkspaceSessionLabel ? (
-                <p className="xchat-welcome-tenant xchat-welcome-tenant--inline font-medium text-[var(--xf-text-200)]">
-                  Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
-                </p>
-              ) : null}
-              <p className="xchat-welcome-sub xchat-welcome-sub--inline">
-                Overview of xChat — portfolio, watchlist, and advisor options tools. Use Templates above the composer for
-                starter prompts; Depth (Fast / Expert / Heavy) controls plan-aware reasoning.
-              </p>
-            </header>
-
-            {!isRetailPaidSubscriptionPlan(accountDetails.subscriptionPlan) ? (
-              <BillingAccessStateBanner
-                className="billing-access-state-banner--xchat-shell"
-                dismissSessionKey="workspace_v1"
-                persistentDismissIdentity={accountDetails.email}
-              />
-            ) : null}
-          </div>
+          {!isRetailPaidSubscriptionPlan(accountDetails.subscriptionPlan) ? (
+            <BillingAccessStateBanner
+              className="billing-access-state-banner--xchat-shell"
+              dismissSessionKey="workspace_v1"
+              persistentDismissIdentity={accountDetails.email}
+            />
+          ) : null}
 
           <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
             <XchatThreadPanelLazy

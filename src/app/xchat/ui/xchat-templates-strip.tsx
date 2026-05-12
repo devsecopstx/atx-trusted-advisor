@@ -54,6 +54,7 @@ export function XchatTemplatesStrip({
   const [query, setQuery] = useState("");
   const [searchVisible, setSearchVisible] = useState(initiallyExpanded);
   const [seeAllOpen, setSeeAllOpen] = useState(initiallyExpanded);
+  const [libraryExpanded, setLibraryExpanded] = useState(initiallyExpanded);
   const [userRows, setUserRows] = useState<UserTemplateRow[]>([]);
   const [userLoadFailed, setUserLoadFailed] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
@@ -329,21 +330,55 @@ export function XchatTemplatesStrip({
             aria-hidden
             className={`xchat-workspace-bar__pulse${askInFlight ? " xchat-workspace-bar__pulse--live" : ""}`}
           />
-          <h3 className="xchat-templates-strip__library-heading">Workspace library</h3>
-          <span className="xchat-templates-strip__ready-badge" aria-live="polite">
-            {askInFlight ? "Advisor compiling…" : `${mergedTemplates.length} prompts ready`}
-          </span>
+          <button
+            aria-expanded={libraryExpanded}
+            className="xchat-templates-strip__collapse-toggle"
+            type="button"
+            onClick={() => {
+              setLibraryExpanded((prev) => {
+                if (!prev) {
+                  setSeeAllOpen(false);
+                }
+                return !prev;
+              });
+            }}
+          >
+            <span className="xchat-templates-strip__library-heading">Workspace library</span>
+            <span className="xchat-templates-strip__ready-badge" aria-live="polite">
+              · {askInFlight ? "compiling…" : `${mergedTemplates.length} ready`}
+            </span>
+            <span
+              aria-hidden
+              className={`xchat-templates-strip__collapse-chevron${libraryExpanded ? " xchat-templates-strip__collapse-chevron--expanded" : ""}`}
+            >
+              ▾
+            </span>
+          </button>
+          {!libraryExpanded ? (
+            <button
+              aria-busy={askInFlight}
+              aria-label="Scan my options"
+              className="xchat-templates-strip__card xchat-templates-strip__card--pill xchat-templates-strip__card--scan"
+              disabled={askInFlight}
+              type="button"
+              onClick={() => applyXchatScanOptionsPrompt(setInput, composerRef)}
+            >
+              <span className="xchat-templates-strip__card-title">Scan my options</span>
+            </button>
+          ) : null}
         </div>
-        <div className="xchat-templates-strip__header-actions">{templatesRowTail}</div>
+        {libraryExpanded ? (
+          <div className="xchat-templates-strip__header-actions">{templatesRowTail}</div>
+        ) : null}
       </div>
 
-      {userLoadFailed ? (
+      {!libraryExpanded ? null : userLoadFailed ? (
         <p className="xchat-templates-strip__hint xchat-templates-strip__hint--muted" role="status">
           Sign in to save custom templates.
         </p>
       ) : null}
 
-      {searchVisible ? (
+      {!libraryExpanded ? null : searchVisible ? (
         <div className="xchat-templates-strip__search-row">
           <label className="sr-only" htmlFor={searchId}>
             Filter templates
@@ -361,7 +396,7 @@ export function XchatTemplatesStrip({
         </div>
       ) : null}
 
-      {seeAllOpen ? (
+      {!libraryExpanded ? null : seeAllOpen ? (
         <div className="xchat-templates-strip__grid-full">
           <button
             aria-busy={askInFlight}
@@ -417,7 +452,7 @@ export function XchatTemplatesStrip({
           </button>
           <div className="xchat-templates-strip__tail-slot">{templatesRowTail}</div>
         </div>
-      ) : (
+      ) : libraryExpanded ? (
         <div className="xchat-templates-strip__cards-row xchat-templates-strip__cards-row--compact">
           <div
             ref={scrollerRef}
@@ -489,16 +524,18 @@ export function XchatTemplatesStrip({
             </button>
           </div>
         </div>
-      )}
+      ) : null}
 
-      <p className="xchat-templates-strip__footnote" role="note" title="Curated + saved prompts — review before Send. Depth (Fast / Expert / Heavy) controls plan-aware multi-agent runs.">
-        <span className="xchat-templates-strip__footnote-inner">
-          Curated + saved prompts — review before Send · Depth (Fast / Expert / Heavy) for multi-agent runs ·{" "}
-          <a className="xchat-templates-strip__doc-link" href="/resources/guides">
-            guides
-          </a>
-        </span>
-      </p>
+      {libraryExpanded ? (
+        <p className="xchat-templates-strip__footnote" role="note" title="Curated + saved prompts — review before Send. Depth (Fast / Expert / Heavy) controls plan-aware multi-agent runs.">
+          <span className="xchat-templates-strip__footnote-inner">
+            Curated + saved prompts — review before Send · Depth (Fast / Expert / Heavy) for multi-agent runs ·{" "}
+            <a className="xchat-templates-strip__doc-link" href="/resources/guides">
+              guides
+            </a>
+          </span>
+        </p>
+      ) : null}
 
       {saveOpen ? (
         <div
