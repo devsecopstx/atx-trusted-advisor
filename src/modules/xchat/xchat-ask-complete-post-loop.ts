@@ -11,6 +11,10 @@ import { createAuditEvent } from "@/modules/audit/repository";
 import { saveXChatLog } from "@/modules/xchat/repository";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import type { PersonaXapiConfig, XChatXaiUsageSnapshot } from "@/modules/xchat/types";
+import type { HnwiPromptTemplateV21Slug } from "@/modules/xchat/prompt-templates-v21-defaults";
+import {
+  validateHnwiV21DeskReportMarkdown
+} from "@/modules/xchat/xchat-hnwi-v21-desk-report";
 
 type AskModelSelectionSource =
   | "default"
@@ -61,6 +65,7 @@ export type XchatAskCompletePostLoopCtx = {
   limiterRemainingDay: number | undefined;
   limiterHourlyLimit: number | undefined;
   limiterDailyLimit: number | undefined;
+  hnwiPromptTemplateV21Slug?: HnwiPromptTemplateV21Slug;
 };
 
 function maskIdentifier(value: string | undefined): string | undefined {
@@ -197,6 +202,17 @@ export async function completeXchatAskAfterModelLoop(
   const previousResponseId = lr.responseId;
 
   const responseMarkdown = preprocessXchatMarkdown(xaiResponse.outputText);
+
+  if (ctx.hnwiPromptTemplateV21Slug) {
+    const v21 = validateHnwiV21DeskReportMarkdown(responseMarkdown);
+    if (!v21.ok) {
+      console.warn("[xchat/ask] hnwi_desk_report_v21_shape_mismatch", {
+        slug: ctx.hnwiPromptTemplateV21Slug,
+        missing: v21.missing,
+        requestId: ctx.requestId
+      });
+    }
+  }
 
   const contextChunkIds: ObjectId[] = [];
 

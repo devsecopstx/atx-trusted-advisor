@@ -7929,6 +7929,52 @@ html[data-xf-ui="soft"] .xchat-workspace-bar {
   }
 }
 
+/* HNWI Desk Report v2.1 — composer quick actions */
+.xchat-hnwi-v21 {
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.45rem 0.5rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 88%, transparent);
+}
+
+.xchat-hnwi-v21__heading {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--xf-text-100) 55%, transparent);
+  margin-bottom: 0.35rem;
+}
+
+.xchat-hnwi-v21__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.xchat-hnwi-v21__btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-gain-green) 6%, transparent);
+  cursor: pointer;
+}
+
+.xchat-hnwi-v21__btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 55%, transparent);
+}
+
+.xchat-hnwi-v21__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ── Reduced motion ── */
 
 @media (prefers-reduced-motion: reduce) {

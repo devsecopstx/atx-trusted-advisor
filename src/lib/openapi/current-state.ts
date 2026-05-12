@@ -203,6 +203,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/app-user/xchat/prompt-template-v21/{slug}",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xchat"
+  },
+  {
     path: "/api/app-user/xchat/token-stats",
     operations: [{ method: "GET", auth: "session" }],
     tag: "xchat"

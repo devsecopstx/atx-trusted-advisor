@@ -129,6 +129,8 @@ export type XchatRemoteChainFingerprintInput = {
   citationsEnabled: boolean;
   /** Tenant workspace context block (trimmed); empty string when absent. */
   tenantWorkspaceContextBlock?: string;
+  /** HNWI Desk Report v2.1 template slug when the client opts into structured desk output. */
+  hnwiPromptTemplateV21Slug?: string;
 };
 
 export function computeXchatRemoteChainInstructionsFingerprint(
@@ -138,6 +140,8 @@ export function computeXchatRemoteChainInstructionsFingerprint(
     typeof input.tenantWorkspaceContextBlock === "string"
       ? input.tenantWorkspaceContextBlock.trim()
       : "";
+  const hnwiSlug =
+    typeof input.hnwiPromptTemplateV21Slug === "string" ? input.hnwiPromptTemplateV21Slug.trim() : "";
   const raw = [
     typeof input.personaSystem === "string" ? input.personaSystem : "",
     String(Number.isFinite(input.personaUpdatedAtMs) ? input.personaUpdatedAtMs : 0),
@@ -145,7 +149,8 @@ export function computeXchatRemoteChainInstructionsFingerprint(
     input.hostedSearch ? "1" : "0",
     input.atxFunction ? "1" : "0",
     input.citationsEnabled ? "1" : "0",
-    tenantCtx
+    tenantCtx,
+    hnwiSlug
   ].join("\0");
   return createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 24);
 }

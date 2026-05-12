@@ -35,6 +35,7 @@ import { VoiceModeSession } from "@/app/xchat/voice/VoiceModeSession";
 import { XchatPersonaMenu } from "@/app/xchat/ui/xchat-persona-menu";
 import { XchatReasoningModeToggle } from "@/app/xchat/ui/xchat-reasoning-mode-toggle";
 import { XchatTemplatesStrip } from "@/app/xchat/ui/xchat-templates-strip";
+import { XchatHnwiV21QuickActions } from "@/app/xchat/ui/xchat-hnwi-v21-quick-actions";
 
 import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
 
@@ -84,6 +85,9 @@ export type XchatComposerPanelProps = {
   askProgressPhaseIndex: number;
   quoteFreshness: "cached_first" | "live";
   onQuoteFreshnessChange: (next: "cached_first" | "live") => void;
+  /** Scoped workspace portfolio for HNWI v2.1 template resolution. */
+  workspacePortfolioId?: string | null;
+  hnwiV21SlugForNextAskRef: MutableRefObject<string | null>;
 };
 
 export function XchatComposerPanel({
@@ -112,7 +116,9 @@ export function XchatComposerPanel({
   setReasoningMode,
   askProgressPhaseIndex,
   quoteFreshness,
-  onQuoteFreshnessChange
+  onQuoteFreshnessChange,
+  workspacePortfolioId = null,
+  hnwiV21SlugForNextAskRef
 }: XchatComposerPanelProps) {
   const reduceMotion = useReducedMotion();
   const [composerFocused, setComposerFocused] = useState(false);
@@ -273,6 +279,13 @@ export function XchatComposerPanel({
 
   return (
     <div className="xchat-composer-wrap" id="xchat-composer">
+      <XchatHnwiV21QuickActions
+        askInFlight={loading}
+        composerRef={composerRef}
+        hnwiV21SlugForNextAskRef={hnwiV21SlugForNextAskRef}
+        setInput={setInput}
+        workspacePortfolioId={workspacePortfolioId}
+      />
       <XchatTemplatesStrip
         askInFlight={loading}
         composerDraft={input}

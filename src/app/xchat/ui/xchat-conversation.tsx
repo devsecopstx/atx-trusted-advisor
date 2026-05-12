@@ -78,9 +78,10 @@ import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
 import {
-    XCHAT_REASONING_MODE_STORAGE_KEY,
-    type XchatReasoningMode
+  XCHAT_REASONING_MODE_STORAGE_KEY,
+  type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
+import { isHnwiPromptTemplateV21Slug } from "@/modules/xchat/prompt-templates-v21-defaults";
 
 /** Client fallback when `serverBootstrap.liveSseEnabled` is absent (SSR dynamic route edge cases). */
 const XCHAT_LIVE_SSE_ENV_FALLBACK = resolveXchatClientLiveSseEnabled();
@@ -475,6 +476,7 @@ export function XchatConversation({
   /** Aborts in-flight `fetch` to `/api/xchat/ask` or `/api/strategy-jobs` when the user clicks Stop. */
   const askAbortRef = useRef<AbortController | null>(null);
   const sendSubmittingRef = useRef(false);
+  const hnwiV21SlugForNextAskRef = useRef<string | null>(null);
 
   const tenantFileUploadEnabled = useMemo(
     () =>
@@ -1478,6 +1480,11 @@ export function XchatConversation({
     }
 
     try {
+      const hnwiSlugForTurnRaw = hnwiV21SlugForNextAskRef.current;
+      hnwiV21SlugForNextAskRef.current = null;
+      const hnwiSlugForTurn =
+        hnwiSlugForTurnRaw && isHnwiPromptTemplateV21Slug(hnwiSlugForTurnRaw) ? hnwiSlugForTurnRaw : null;
+
       const askBody: {
         message: string;
         imageAttachment?: { mediaType: XchatPendingPasteImage["mediaType"]; dataBase64: string };
@@ -1489,6 +1496,7 @@ export function XchatConversation({
         personaId?: string;
         reasoningMode?: XchatReasoningMode;
         quoteFreshness: "cached_first" | "live";
+        hnwiPromptTemplateV21Slug?: string;
       } = {
         message: prompt,
         scope: "global",
@@ -1514,6 +1522,9 @@ export function XchatConversation({
       }
       if (reasoningMode !== "fast") {
         askBody.reasoningMode = reasoningMode;
+      }
+      if (hnwiSlugForTurn) {
+        askBody.hnwiPromptTemplateV21Slug = hnwiSlugForTurn;
       }
 
       type AskPayload = {
@@ -2242,6 +2253,8 @@ export function XchatConversation({
             tenantFileUploadEnabled={tenantFileUploadEnabled}
             userPickedPersonaRef={userPickedPersonaRef}
             voiceSessionPersonaLabel={activePersonaName}
+            workspacePortfolioId={workspacePortfolioId?.trim() ? workspacePortfolioId.trim() : null}
+            hnwiV21SlugForNextAskRef={hnwiV21SlugForNextAskRef}
           />
         </Suspense>
         {mainFooter}

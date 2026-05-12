@@ -121,14 +121,19 @@ import {
 } from "@/modules/xchat/xchat-ask-complete-post-loop";
 import { resolveToolLoopConversationInput } from "@/modules/xchat/xchat-ask-history-input";
 import {
-    collectWatchlistPortfolioIdSlot,
-    heavySynthesisIntent,
-    isShowWatchlistIntent,
-    shouldEagerWorkspaceSnapshotPreloadForMessage,
-    shouldOfferStrategyJobPreflight,
-    shouldRunOptionsActionScan,
-    STRATEGY_JOB_PREFLIGHT_MARKDOWN
+  collectWatchlistPortfolioIdSlot,
+  heavySynthesisIntent,
+  isShowWatchlistIntent,
+  shouldEagerWorkspaceSnapshotPreloadForMessage,
+  shouldOfferStrategyJobPreflight,
+  shouldRunOptionsActionScan,
+  STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
+import {
+  isHnwiPromptTemplateV21Slug,
+  type HnwiPromptTemplateV21Slug
+} from "@/modules/xchat/prompt-templates-v21-defaults";
+import { buildHnwiV21DeskReportSystemAddon } from "@/modules/xchat/xchat-hnwi-v21-desk-report";
 import { createXchatLiveSseReadableStream } from "@/modules/xchat/xchat-ask-stream-sse";
 import {
     MAX_XCHAT_ASK_JSON_BYTES,
@@ -195,7 +200,8 @@ const askSchema = z
     reasoningMode: z.enum(["fast", "expert", "heavy"]).optional(),
     scope: z.string().min(1).max(128).optional(),
     topK: z.number().int().min(1).max(10).optional(),
-    quoteFreshness: z.enum(["cached_first", "live"]).optional()
+    quoteFreshness: z.enum(["cached_first", "live"]).optional(),
+    hnwiPromptTemplateV21Slug: z.string().min(1).max(64).optional()
   })
   .superRefine((data, ctx) => {
     const t = data.message.trim();
@@ -211,6 +217,13 @@ const askSchema = z
         code: z.ZodIssueCode.custom,
         message: "Use reasoningMode or reasoningEffort, not both.",
         path: ["reasoningMode"]
+      });
+    }
+    if (data.hnwiPromptTemplateV21Slug !== undefined && !isHnwiPromptTemplateV21Slug(data.hnwiPromptTemplateV21Slug)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid hnwiPromptTemplateV21Slug",
+        path: ["hnwiPromptTemplateV21Slug"]
       });
     }
   });
@@ -444,6 +457,11 @@ export async function POST(request: Request) {
     request.headers.get("x-request-id")?.trim() ||
     randomUUID();
   let workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
+  const hnwiSlug: HnwiPromptTemplateV21Slug | undefined =
+    parsed.data.hnwiPromptTemplateV21Slug &&
+    isHnwiPromptTemplateV21Slug(parsed.data.hnwiPromptTemplateV21Slug)
+      ? parsed.data.hnwiPromptTemplateV21Slug
+      : undefined;
   const showWatchlistIntent = isShowWatchlistIntent(messageTrimmed);
   const watchlistPortfolioSlot = collectWatchlistPortfolioIdSlot({
     message: messageTrimmed,
@@ -1664,7 +1682,8 @@ export async function POST(request: Request) {
     tenantWorkspaceContextBlock:
       effectiveTenantWorkspaceContextBlock.trim().length > 0
         ? effectiveTenantWorkspaceContextBlock
-        : tenantWorkspaceCtxBase
+        : tenantWorkspaceCtxBase,
+    hnwiPromptTemplateV21Slug: hnwiSlug ?? ""
   });
 
   let previousResponseId: string | undefined;
@@ -1748,6 +1767,9 @@ export async function POST(request: Request) {
     : builtSystemPrompt;
   if (incomeIdeasOptimization) {
     systemPrompt = `${systemPrompt}\n\n${buildIncomeIdeasDeskReportSuffix()}`;
+  }
+  if (hnwiSlug) {
+    systemPrompt = `${systemPrompt}\n\n${buildHnwiV21DeskReportSystemAddon(hnwiSlug)}`;
   }
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
   const userPromptBase = userPromptTemplate
@@ -1847,7 +1869,8 @@ export async function POST(request: Request) {
     limiterRemainingHour,
     limiterRemainingDay,
     limiterHourlyLimit,
-    limiterDailyLimit
+    limiterDailyLimit,
+    hnwiPromptTemplateV21Slug: hnwiSlug
   });
 
   /** Scope cache by persona so switching persona mid-thread never reuses prior instructions bytes. */

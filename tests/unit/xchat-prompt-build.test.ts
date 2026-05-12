@@ -127,6 +127,15 @@ describe("computeXchatRemoteChainInstructionsFingerprint", () => {
     });
     expect(a).not.toBe(b);
   });
+
+  it("changes when HNWI Desk Report v2.1 slug overlay changes", () => {
+    const a = computeXchatRemoteChainInstructionsFingerprint(base);
+    const b = computeXchatRemoteChainInstructionsFingerprint({
+      ...base,
+      hnwiPromptTemplateV21Slug: "hnwi-v21-wheel-cc"
+    });
+    expect(a).not.toBe(b);
+  });
 });
 
 describe("formatTenantWorkspaceContextBlockForXchat", () => {

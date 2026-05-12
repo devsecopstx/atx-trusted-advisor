@@ -47,6 +47,10 @@ Use this page as the canonical prompt bank for QA and support runbooks.
 
 - xStrategy
 
+## HNWI Desk Report v2.1 (composer quick actions)
+
+Shipped **≥3.19.6:** five workspace-aligned prompts (concentration, wheel/CC scan, protective puts, watchlist pass, options desk snapshot) resolve through **`GET /api/app-user/xchat/prompt-template-v21/{slug}`**; sending sets optional **`hnwiPromptTemplateV21Slug`** on **`POST /api/xchat/ask`** so the model receives the **Desk Report v2.1** Markdown structure contract. Canonical prose: [`hnwi-options-prompts-v2.1.md`](./hnwi-options-prompts-v2.1.md).
+
 ## Maintenance checklist
 
 - Keep this file aligned with `src/app/xchat/ui/xchat-conversation.tsx`.

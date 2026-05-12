@@ -16,9 +16,7 @@ This is the xChat/persona entrypoint. It summarizes operational behavior and lin
 - `POST /api/xchat/batch`
 - `GET /api/xchat/batch`
 - `GET /api/xchat/batch/:batchId`
-- `POST /api/xchat/batch/:batchId`
-
-## Persona resolution policy
+- `GET /api/app-user/xchat/prompt-template-v21/{slug}` — resolves **HNWI Desk Report v2.1** composer packages (Mongo **`prompt_templates`** override or built-in copy) merged with workspace snapshot; optional **`portfolioId`** query scopes holdings/watchlist preload. See [`hnwi-options-prompts-v2.1.md`](../xchat/hnwi-options-prompts-v2.1.md).
 
 `POST /api/xchat/ask` resolves the effective persona after session defaults, optional **`personaId`** in the JSON body, and **`admin_user_settings.assignedPersonaId`**.
 

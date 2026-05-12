@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.19.5",
+  "version": "3.19.6",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -116,7 +116,8 @@
     "ops:users:reset-basic-super-agent": "node scripts/ops/reset-all-users-basic-super-agent.mjs",
     "ops:users:find-orphans": "node --env-file=.env scripts/ops/find-orphan-core-users.mjs",
     "ops:scheduled-tasks:sync": "node --env-file=.env --import tsx scripts/ops/sync-scheduled-tasks-from-spec.ts",
-    "ops:rental:mint-key": "node --env-file=.env --import tsx scripts/ops/mint-rental-api-key.ts"
+    "ops:rental:mint-key": "node --env-file=.env --import tsx scripts/ops/mint-rental-api-key.ts",
+    "seed:prompt-templates-v21": "node --env-file=.env --import tsx scripts/ops/seed-prompt-templates-v21.ts"
   },
   "keywords": [],
   "author": "",

@@ -192,6 +192,27 @@ function runPostSeedScheduledTasksSync() {
   }
 }
 
+function runPostSeedPromptTemplatesV21() {
+  const s = String(process.env.SKIP_SEED_PROMPT_TEMPLATES_V21 ?? "").toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") {
+    console.log("[seed:admin] SKIP_SEED_PROMPT_TEMPLATES_V21 set — skipping prompt_templates HNWI v2.1 upsert");
+    return;
+  }
+  const script = join(SEED_SCRIPT_DIR, "ops/seed-prompt-templates-v21.ts");
+  console.log("[seed:admin] upserting global HNWI v2.1 prompt_templates…");
+  const r = spawnSync(process.execPath, ["--import", "tsx", script], {
+    cwd: REPO_ROOT,
+    env: childEnvWithSeedParentMongoDb(),
+    stdio: "inherit"
+  });
+  if (r.status !== 0 && r.status != null) {
+    console.error(
+      "[seed:admin] prompt_templates v2.1 seed failed — run `npm run seed:prompt-templates-v21` or set SKIP_SEED_PROMPT_TEMPLATES_V21=1"
+    );
+    process.exit(r.status ?? 1);
+  }
+}
+
 function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
@@ -545,6 +566,14 @@ async function ensureIndexes(db) {
     db.collection("rental_ai_token_usage").createIndex(
       { tenantId: 1, dayUtc: 1 },
       { unique: true, name: "uniq_rental_ai_token_usage_tenant_day" }
+    ),
+    db.collection("prompt_templates").createIndex(
+      { slug: 1, tenantId: 1, version: 1 },
+      { unique: true, name: "uniq_prompt_template_slug_tenant_version" }
+    ),
+    db.collection("prompt_templates").createIndex(
+      { slug: 1, tenantId: 1, active: 1 },
+      { name: "idx_prompt_templates_slug_tenant_active" }
     )
   ]);
 }
@@ -850,6 +879,7 @@ async function seed() {
 
     await upsertSeedAdminDeliveryChannels(db, tenant._id, now);
     runPostSeedScheduledTasksSync();
+    runPostSeedPromptTemplatesV21();
 
     const personaAfterDisk = await db
       .collection("xchat_personas")

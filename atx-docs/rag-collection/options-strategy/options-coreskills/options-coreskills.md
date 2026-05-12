@@ -53,6 +53,16 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 
 Shared principles (not a single strategy): [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md).
 
+### HNWI Desk Report v2.1 — xChat quick-action slugs (risk / outlook defaults)
+
+| Template slug (`prompt_templates.slug`) | Desk focus | Default risk bias | Default outlook bias |
+|----------------------------------------|------------|-------------------|----------------------|
+| **`hnwi-v21-concentration`** | Book concentration + one hedge/diversify idea | Moderate | Neutral |
+| **`hnwi-v21-wheel-cc`** | Wheel / covered call / CSP income scan | Moderate | Neutral |
+| **`hnwi-v21-protective-puts`** | Protective put checklist on largest lines | Conservative | Bearish |
+| **`hnwi-v21-watchlist-pass`** | Watchlist themes vs holdings | Moderate | Bullish |
+| **`hnwi-v21-options-desk`** | Holdings + watchlist options pass | Moderate | Neutral |
+
 ---
 
 ## Output contract (holdings + watchlist / Wheel · CC scan)
