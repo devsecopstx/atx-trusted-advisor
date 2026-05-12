@@ -18,16 +18,7 @@ describe("resolveXchatPersonaDeclaredCollectionIds", () => {
     expect(resolveXchatPersonaDeclaredCollectionIds({})).toEqual([getXaiFinanceCollectionId()]);
   });
 
-  it("prepends Finance id and dedupes persona collections", () => {
-    const financeId = getXaiFinanceCollectionId();
-    const ids = resolveXchatPersonaDeclaredCollectionIds({
-      xaiCollection: { collectionId: financeId },
-      teamCollection: { collectionId: "col_extra" }
-    });
-    expect(ids).toEqual([financeId, "col_extra"]);
-  });
-
-  it("caps at MAX_XCHAT_TEAM_KB_COLLECTION_IDS", () => {
+  it("ignores legacy persona-linked collections at runtime", () => {
     const financeId = getXaiFinanceCollectionId();
     const ids = resolveXchatPersonaDeclaredCollectionIds({
       xaiCollection: { collectionId: "c1" },
@@ -39,8 +30,9 @@ describe("resolveXchatPersonaDeclaredCollectionIds", () => {
         tools: [{ type: "collections_search", collection_ids: ["c3"] }]
       }
     });
-    expect(ids).toHaveLength(MAX_XCHAT_TEAM_KB_COLLECTION_IDS);
-    expect(ids[0]).toBe(financeId);
+    expect(ids).toEqual([financeId]);
+    expect(ids).toHaveLength(1);
+    expect(MAX_XCHAT_TEAM_KB_COLLECTION_IDS).toBeGreaterThanOrEqual(1);
   });
 });
 

@@ -60,3 +60,28 @@ export function buildInputWithHistory(
 ): string {
   return currentMessage.trim();
 }
+
+export function resolveToolLoopConversationInput(input: {
+  visionImage: boolean;
+  useRemoteContinuation: boolean;
+  enableLongTermXaiMemory: boolean;
+  recentMessages: XchatRecentThreadMessage[];
+  userPrompt: string;
+  captionForPrompt: string;
+}): unknown | undefined {
+  if (input.visionImage) {
+    return undefined;
+  }
+  if (input.useRemoteContinuation) {
+    return buildInputWithHistory([], input.userPrompt);
+  }
+  if (input.enableLongTermXaiMemory) {
+    const messages = buildFullHistoryMessages(input.recentMessages, input.captionForPrompt);
+    const last = messages[messages.length - 1];
+    if (last?.role === "user") {
+      last.content = input.userPrompt;
+    }
+    return messages;
+  }
+  return buildInputWithHistory(input.recentMessages, input.userPrompt);
+}

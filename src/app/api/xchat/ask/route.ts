@@ -25,7 +25,6 @@ import {
     type XaiToolLoopResult
 } from "@/lib/xai";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
-import { getXaiFinanceCollectionId } from "@/lib/xai-finance-collection";
 import { summarizeToolLikeStreamEvent } from "@/lib/xai-responses-stream";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import {
@@ -120,17 +119,13 @@ import {
     completeXchatAskAfterModelLoop,
     type XchatAskCompletePostLoopCtx
 } from "@/modules/xchat/xchat-ask-complete-post-loop";
-import {
-    buildFullHistoryMessages,
-    buildInputWithHistory,
-} from "@/modules/xchat/xchat-ask-history-input";
+import { resolveToolLoopConversationInput } from "@/modules/xchat/xchat-ask-history-input";
 import {
     collectWatchlistPortfolioIdSlot,
     heavySynthesisIntent,
     isShowWatchlistIntent,
     shouldEagerWorkspaceSnapshotPreloadForMessage,
     shouldOfferStrategyJobPreflight,
-    shouldPinFinanceCollectionForMessage,
     shouldRunOptionsActionScan,
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
@@ -1055,10 +1050,8 @@ export async function POST(request: Request) {
     );
   }
 
-  /** RAG / collection tools: canonical Finance KB first; finance/options asks pin to Finance only. */
-  const linkedCollectionIds = shouldPinFinanceCollectionForMessage(messageTrimmed)
-    ? [getXaiFinanceCollectionId()]
-    : resolveXchatPersonaDeclaredCollectionIds(persona);
+  /** RAG / collection tools: canonical Finance KB only (legacy persona-linked buckets are ignored at runtime). */
+  const linkedCollectionIds = resolveXchatPersonaDeclaredCollectionIds(persona);
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
@@ -1777,18 +1770,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const toolLoopConversationInput: unknown = visionImage
-    ? undefined
-    : enableLongTermXaiMemory
-      ? (() => {
-          const messages = buildFullHistoryMessages(recentThreadMessages, captionForPrompt);
-          const last = messages[messages.length - 1];
-          if (last?.role === "user") {
-            last.content = userPrompt;
-          }
-          return messages;
-        })()
-      : buildInputWithHistory(recentThreadMessages, userPrompt);
+  const toolLoopConversationInput = resolveToolLoopConversationInput({
+    visionImage: Boolean(visionImage),
+    useRemoteContinuation: Boolean(useRemoteConversationHistory && previousResponseId),
+    enableLongTermXaiMemory,
+    recentMessages: recentThreadMessages,
+    userPrompt,
+    captionForPrompt
+  });
 
   if (enableLongTermXaiMemory || previousResponseId) {
     console.warn(

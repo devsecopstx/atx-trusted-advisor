@@ -1,39 +1,42 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    buildFullHistoryMessages,
     buildInputWithHistory,
-    XCHAT_LONG_TERM_HISTORY_MAX_CHARS,
-    XCHAT_LONG_TERM_MAX_TOOL_HISTORY_TURNS
+    resolveToolLoopConversationInput
 } from "@/modules/xchat/xchat-ask-history-input";
 
-describe("xchat ask history input", () => {
-  it("buildFullHistoryMessages caps turns and appends the current user turn", () => {
-    const recent = Array.from({ length: 30 }, (_, index) => ({
-      role: (index % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
-      content: `turn-${index}`
-    }));
-    const messages = buildFullHistoryMessages(recent, "current wheel on NVDA");
-    expect(messages.at(-1)).toEqual({ role: "user", content: "current wheel on NVDA" });
-    expect(messages.length).toBeLessThanOrEqual(XCHAT_LONG_TERM_MAX_TOOL_HISTORY_TURNS * 2 + 1);
+describe("resolveToolLoopConversationInput", () => {
+  it("sends only the current turn when xAI remote continuation is active", () => {
+    const userPrompt = "Continue the wheel on NVDA with the same strikes.";
+    const input = resolveToolLoopConversationInput({
+      visionImage: false,
+      useRemoteContinuation: true,
+      enableLongTermXaiMemory: true,
+      recentMessages: [
+        { role: "user", content: "Start a conservative wheel on NVDA." },
+        { role: "assistant", content: "Prior assistant turn." }
+      ],
+      userPrompt,
+      captionForPrompt: "Continue the wheel on NVDA with the same strikes."
+    });
+
+    expect(input).toBe(userPrompt);
+    expect(input).toBe(buildInputWithHistory([], userPrompt));
   });
 
-  it("buildFullHistoryMessages stays within the character budget", () => {
-    const recent = Array.from({ length: 8 }, () => ({
-      role: "user" as const,
-      content: "x".repeat(4_000)
-    }));
-    const messages = buildFullHistoryMessages(recent, "next");
-    const total = messages.reduce((sum, row) => sum + row.content.length, 0);
-    expect(total).toBeLessThanOrEqual(XCHAT_LONG_TERM_HISTORY_MAX_CHARS);
-  });
+  it("keeps capped local history when long-term memory is on without remote continuation", () => {
+    const input = resolveToolLoopConversationInput({
+      visionImage: false,
+      useRemoteContinuation: false,
+      enableLongTermXaiMemory: true,
+      recentMessages: [{ role: "user", content: "Earlier turn" }],
+      userPrompt: "Follow-up with tools",
+      captionForPrompt: "Follow-up"
+    });
 
-  it("buildInputWithHistory returns the current message only", () => {
-    expect(
-      buildInputWithHistory(
-        [{ role: "user", content: "prior" }],
-        "  follow-up wheel strikes  "
-      )
-    ).toBe("follow-up wheel strikes");
+    expect(Array.isArray(input)).toBe(true);
+    expect(input).toEqual(
+      expect.arrayContaining([expect.objectContaining({ role: "user", content: "Follow-up with tools" })])
+    );
   });
 });

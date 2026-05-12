@@ -94,13 +94,9 @@ export const MAX_XCHAT_TEAM_KB_COLLECTION_IDS = 2;
  * Does **not** merge `resolveTeamKbCollectionId()` — avoids injecting `collections_search` / RAG from env alone.
  */
 export function resolveXchatPersonaDeclaredCollectionIds(
-  persona: PersonaLinkedIdSource | null | undefined
+  _persona: PersonaLinkedIdSource | null | undefined
 ): string[] {
-  const financeId = getXaiFinanceCollectionId();
-  const declared = getPersonaLinkedCollectionIds(persona);
-  const extras = declared.filter((id) => id !== financeId);
-  const unique = Array.from(new Set([financeId, ...extras]));
-  return unique.slice(0, MAX_XCHAT_TEAM_KB_COLLECTION_IDS);
+  return [getXaiFinanceCollectionId()];
 }
 
 /**

@@ -6,6 +6,10 @@ import {
     listXaiCollections
 } from "@/lib/xai";
 
+import {
+    getXaiFinanceCollectionId,
+    XAI_FINANCE_COLLECTION_DISPLAY_NAME
+} from "@/lib/xai-finance-collection";
 import { computePersonaSeedUpdatePatch } from "@/modules/xchat/persona-seed-merge";
 import {
     buildSyntheticPersonaDocFromIngestedFile,
@@ -27,7 +31,6 @@ import {
     PersonaNameConflictError,
     updatePersona
 } from "@/modules/xchat/repository";
-import { defaultTrustedAdvisorXpersonasCollectionDisplayName } from "@/modules/xchat/trusted-advisor-xpersonas-collection";
 import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 
 export type SyncPersonasFromXaiResult = {
@@ -62,12 +65,15 @@ export async function syncPersonasFromXaiCollection(input: {
   }
 
   const collectionDisplayName =
-    input.collectionDisplayName?.trim() || defaultTrustedAdvisorXpersonasCollectionDisplayName();
+    input.collectionDisplayName?.trim() || XAI_FINANCE_COLLECTION_DISPLAY_NAME;
   const mode = input.mode === "replace" ? "replace" : "merge";
   const teamId = getEnv().XAI_TEAM_ID?.trim();
+  const financeCollectionId = getXaiFinanceCollectionId();
   const collections = await listXaiCollections(teamId ? { teamId } : undefined);
   const want = collectionDisplayName.toLowerCase();
-  const match = collections.find((c) => (c.name ?? "").trim().toLowerCase() === want);
+  const match =
+    collections.find((c) => (c.name ?? "").trim().toLowerCase() === want) ??
+    collections.find((c) => c.id?.trim() === financeCollectionId);
   if (!match?.id) {
     const err = new Error(
       `No xAI collection named "${collectionDisplayName}". Check seed RAG ingest and XAI_TEAM_ID.`
