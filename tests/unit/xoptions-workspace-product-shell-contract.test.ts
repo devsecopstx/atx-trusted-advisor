@@ -8,6 +8,10 @@ describe("XoptionsWorkspaceProductShell contract", () => {
     "utf8"
   );
   const pageSrc = readFileSync(join(process.cwd(), "src/app/xoptions/page.tsx"), "utf8");
+  const signedInPageSrc = readFileSync(
+    join(process.cwd(), "src/app/xoptions/xoptions-signed-in-page.tsx"),
+    "utf8"
+  );
   const layoutSrc = readFileSync(join(process.cwd(), "src/app/xoptions/layout.tsx"), "utf8");
 
   it("matches workspace-product viewport lock + footer-under-main (no layout-level GlobalFooter)", () => {
@@ -22,8 +26,9 @@ describe("XoptionsWorkspaceProductShell contract", () => {
   });
 
   it("mounts shell from authenticated /xoptions page", () => {
-    expect(pageSrc).toContain("<XoptionsWorkspaceProductShell");
-    expect(pageSrc).toContain("./ui/xoptions-workspace-product-shell");
+    expect(pageSrc).toContain('await import("./xoptions-signed-in-page")');
+    expect(signedInPageSrc).toContain("<XoptionsWorkspaceProductShell");
+    expect(signedInPageSrc).toContain("./ui/xoptions-workspace-product-shell");
     expect(pageSrc).not.toContain("<AppUserApprovedHeader");
   });
 });

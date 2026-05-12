@@ -13,7 +13,6 @@ import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-pa
 import { XoptionsGreekCalcExplainer } from "@/app/xoptions/xoptions-greek-calc-explainer";
 import { XoptionsPositionReview } from "@/app/xoptions/xoptions-position-review";
 import { type StrategyChoiceId, type StrategyStartBasis } from "@/app/xoptions/xoptions-strategy-choice-panels";
-import { XoptionsStrategyGreeksSummary } from "@/app/xoptions/xoptions-strategy-greeks-summary";
 import { XoptionsTaxLimitHint } from "@/app/xoptions/xoptions-tax-education-panels";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import {
@@ -24,17 +23,11 @@ import {
 import {
     CHAIN_COLUMN_LABELS,
     CHAIN_LAYOUT_STORAGE_KEY,
-    deriveStateFromSaved,
     isChainGreekColumnId,
     isFirstVisibleColumnInChainGroup,
-    normalizeColumnOrder,
     parseSavedLayout,
-    savedMatchesPreset,
-    serializeSavedLayout,
     visibleOrderedColumnsFromSaved,
-    XOPTIONS_CHAIN_DATA_COLUMN_IDS,
     type XoptionsChainDataColumnId,
-    type XoptionsChainLayoutPresetId,
     type XoptionsChainSavedLayout
 } from "@/lib/xoptions/xoptions-chain-column-layout";
 import {
@@ -62,9 +55,13 @@ import {
 import {
     buildXoptionsOrderReview,
     formatXoptionsOrderReviewPlainText,
-    type XoptionsOpeningAction
+    type XoptionsOpeningAction,
+    type XoptionsOrderReview
 } from "@/lib/xoptions/xoptions-order-preview";
-import { computeStrategyGreeksSummary } from "@/lib/xoptions/xoptions-strategy-greeks-summary";
+import {
+    computeStrategyGreeksSummary,
+    type StrategyGreeksSummary
+} from "@/lib/xoptions/xoptions-strategy-greeks-summary";
 
 type ChainLeg = {
   last_quote: { bid: number; ask: number };
@@ -111,8 +108,7 @@ function legOi(leg: ChainLeg): number {
   return typeof oi === "number" && Number.isFinite(oi) ? oi : 0;
 }
 
-const CHAIN_TABLE_MAX = 80;
-const ATM_STRIKE_WINDOW = 9;
+const CHAIN_TABLE_VISIBLE_ROWS = 5;
 
 function formatExpirationLabel(yyyyMmDd: string): string {
   try {
@@ -207,6 +203,10 @@ export type XoptionsChooseContractProps = {
   strategyChoiceId?: StrategyChoiceId | null;
   /** Plain-text Review order for xChat handoff; `null` when preview unavailable. */
   onReviewOrderPlainTextChange?: (text: string | null) => void;
+  /** Structured order preview for step 4 summary card. */
+  onOrderReviewChange?: (review: XoptionsOrderReview | null) => void;
+  /** Greek summary for step 4 secondary card. */
+  onStrategyGreeksSummaryChange?: (summary: StrategyGreeksSummary | null) => void;
   /** Yahoo option contract symbol for selected leg (e.g. TSLA260130C00170000). */
   onYahooOptionSymbolChange?: (symbol: string | null) => void;
   /** Structured selected option metadata for downstream actions (watchlist, filters, etc.). */
@@ -320,132 +320,6 @@ function ChainSortHint() {
   );
 }
 
-const CHAIN_LAYOUT_PRESETS: { id: XoptionsChainLayoutPresetId; label: string }[] = [
-  { id: "default", label: "Default" },
-  { id: "greeks", label: "Greeks" },
-  { id: "liquidity", label: "Liquidity" },
-  { id: "advanced", label: "Advanced" }
-];
-
-function ChainColumnLayoutToolbar({
-  savedLayout,
-  onSavedLayoutChange
-}: {
-  savedLayout: XoptionsChainSavedLayout;
-  onSavedLayoutChange: (next: XoptionsChainSavedLayout) => void;
-}) {
-  const { order, hidden } = useMemo(() => deriveStateFromSaved(savedLayout), [savedLayout]);
-
-  const toggleColumn = (id: XoptionsChainDataColumnId, visible: boolean) => {
-    if (id === "strike" && !visible) {
-      return;
-    }
-    const nextHidden = new Set(hidden);
-    if (visible) {
-      nextHidden.delete(id);
-    } else {
-      nextHidden.add(id);
-    }
-    const shown = XOPTIONS_CHAIN_DATA_COLUMN_IDS.filter((c) => !nextHidden.has(c));
-    if (shown.length === 0) {
-      return;
-    }
-    onSavedLayoutChange({
-      kind: "custom",
-      order: normalizeColumnOrder(order),
-      hidden: XOPTIONS_CHAIN_DATA_COLUMN_IDS.filter((c) => nextHidden.has(c))
-    });
-  };
-
-  const reorder = (fromId: XoptionsChainDataColumnId, toId: XoptionsChainDataColumnId) => {
-    if (fromId === toId) {
-      return;
-    }
-    const o = [...order];
-    const fi = o.indexOf(fromId);
-    const ti = o.indexOf(toId);
-    if (fi < 0 || ti < 0) {
-      return;
-    }
-    const [item] = o.splice(fi, 1);
-    o.splice(ti, 0, item);
-    onSavedLayoutChange({
-      kind: "custom",
-      order: normalizeColumnOrder(o),
-      hidden: XOPTIONS_CHAIN_DATA_COLUMN_IDS.filter((c) => hidden.has(c))
-    });
-  };
-
-  return (
-    <details className="xoptions-chain-layout-toolbar group mb-2 rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] px-2 py-1.5">
-      <summary className="cursor-pointer select-none text-[0.65rem] font-semibold tracking-wide text-[var(--xf-text-300)] outline-none marker:text-[var(--xf-text-400)] [&::-webkit-details-marker]:hidden">
-        Columns & layouts
-      </summary>
-      <div className="mt-2 space-y-2 border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pt-2">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Layout presets">
-          {CHAIN_LAYOUT_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={`rounded-md border px-2 py-1 text-[0.62rem] font-semibold transition-colors ${
-                savedMatchesPreset(savedLayout, p.id)
-                  ? "border-[color-mix(in_srgb,var(--xf-gain-green)_55%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] text-[var(--xf-text-100)]"
-                  : "border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-transparent text-[var(--xf-text-300)] hover:border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] hover:text-[var(--xf-text-200)]"
-              }`}
-              onClick={() => onSavedLayoutChange({ kind: "preset", preset: p.id })}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <p className="m-0 text-[0.58rem] leading-snug text-[var(--xf-text-500)]">
-          Drag rows to reorder. Presets and custom layouts are saved in this browser (
-          <span className="font-mono">{CHAIN_LAYOUT_STORAGE_KEY}</span>).
-        </p>
-        <ul className="m-0 max-h-48 list-none space-y-1 overflow-y-auto p-0">
-          {order.map((cid) => {
-            const meta = CHAIN_COLUMN_LABELS[cid];
-            const checked = !hidden.has(cid);
-            return (
-              <li
-                key={cid}
-                className="flex items-center gap-2 rounded border border-transparent px-1 py-0.5 hover:border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)]"
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData("application/x-xo-chain-col", cid);
-                  e.dataTransfer.effectAllowed = "move";
-                }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const from = e.dataTransfer.getData("application/x-xo-chain-col") as XoptionsChainDataColumnId;
-                  if (from && XOPTIONS_CHAIN_DATA_COLUMN_IDS.includes(from)) {
-                    reorder(from, cid);
-                  }
-                }}
-              >
-                <span className="cursor-grab text-[0.55rem] text-[var(--xf-text-500)]" aria-hidden>
-                  ⋮⋮
-                </span>
-                <input
-                  type="checkbox"
-                  className="accent-[var(--xf-gain-green)]"
-                  checked={checked}
-                  disabled={cid === "strike"}
-                  onChange={(ev) => toggleColumn(cid, ev.target.checked)}
-                  aria-label={`Show ${meta.abbr} column`}
-                />
-                <span className="min-w-0 flex-1 text-[0.62rem] font-medium text-[var(--xf-text-200)]">
-                  {meta.abbr}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </details>
-  );
-}
 
 export function XoptionsChooseContract({
   symbol,
@@ -455,6 +329,8 @@ export function XoptionsChooseContract({
   strategyLabel = null,
   strategyChoiceId = null,
   onReviewOrderPlainTextChange,
+  onOrderReviewChange,
+  onStrategyGreeksSummaryChange,
   onYahooOptionSymbolChange,
   onSelectedOptionMetaChange,
   portfolioApproxValue = null,
@@ -476,8 +352,8 @@ export function XoptionsChooseContract({
 
   const [side, setSide] = useState<"call" | "put">("call");
   const [showAllStrikes, setShowAllStrikes] = useState(false);
-  /** Mobile-only: show Δ/Γ/Θ/Vega columns (desktop always shows). */
-  const [mobileGreeksOpen, setMobileGreeksOpen] = useState(false);
+  /** Δ/Γ/Θ/Vega chain columns stay collapsed until the user expands them. */
+  const [chainGreeksExpanded, setChainGreeksExpanded] = useState(false);
   const [chainLayoutSaved, setChainLayoutSaved] = useState<XoptionsChainSavedLayout>({
     kind: "preset",
     preset: "default"
@@ -531,18 +407,6 @@ export function XoptionsChooseContract({
     );
     if (parsed) {
       setChainLayoutSaved(parsed);
-    }
-  }, []);
-
-  const persistChainLayout = useCallback((next: XoptionsChainSavedLayout) => {
-    setChainLayoutSaved(next);
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      window.localStorage.setItem(CHAIN_LAYOUT_STORAGE_KEY, serializeSavedLayout(next));
-    } catch {
-      /* quota / private mode */
     }
   }, []);
 
@@ -777,14 +641,15 @@ export function XoptionsChooseContract({
   }, [baseRowsInSpotBand, baseRows, selectedStrike, showAllStrikes]);
 
   const tableRows = useMemo(() => {
-    if (!chain || baseRows.length === 0) return [];
-    if (showAllStrikes) {
-      return baseRows.slice(0, CHAIN_TABLE_MAX);
-    }
-    if (baseRowsInSpotBand.length === 0) {
+    if (!chain || baseRows.length === 0) {
       return [];
     }
-    return sliceStrikesAroundSpot(baseRowsInSpotBand, chain.stockPrice, ATM_STRIKE_WINDOW);
+    const source = showAllStrikes
+      ? baseRows
+      : baseRowsInSpotBand.length > 0
+        ? baseRowsInSpotBand
+        : baseRows;
+    return sliceStrikesAroundSpot(source, chain.stockPrice, CHAIN_TABLE_VISIBLE_ROWS);
   }, [chain, baseRows, baseRowsInSpotBand, showAllStrikes]);
 
   const tableRowsForDisplay = useMemo(() => {
@@ -812,10 +677,13 @@ export function XoptionsChooseContract({
     return maxVolumeAndOpenInterestForSide(tableRowsForDisplay, side);
   }, [chain, tableRowsForDisplay, side]);
 
-  const visibleChainDataCols = useMemo(
-    () => visibleOrderedColumnsFromSaved(chainLayoutSaved),
-    [chainLayoutSaved]
-  );
+  const visibleChainDataCols = useMemo(() => {
+    const ordered = visibleOrderedColumnsFromSaved(chainLayoutSaved);
+    if (chainGreeksExpanded) {
+      return ordered;
+    }
+    return ordered.filter((id) => !isChainGreekColumnId(id));
+  }, [chainLayoutSaved, chainGreeksExpanded]);
 
   const chainTableColSpan = visibleChainDataCols.length + 2;
 
@@ -856,7 +724,17 @@ export function XoptionsChooseContract({
     [visibleChainDataCols]
   );
 
-  const truncated = showAllStrikes && baseRows.length > CHAIN_TABLE_MAX;
+  const truncated = useMemo(() => {
+    if (!chain) {
+      return false;
+    }
+    const source = showAllStrikes
+      ? baseRows
+      : baseRowsInSpotBand.length > 0
+        ? baseRowsInSpotBand
+        : baseRows;
+    return source.length > CHAIN_TABLE_VISIBLE_ROWS;
+  }, [chain, baseRows, baseRowsInSpotBand, showAllStrikes]);
 
   const selectedRow = useMemo(() => {
     if (!chain || selectedStrike == null) return null;
@@ -976,6 +854,14 @@ export function XoptionsChooseContract({
   }, [orderReview, onReviewOrderPlainTextChange]);
 
   useEffect(() => {
+    onOrderReviewChange?.(orderReview);
+  }, [orderReview, onOrderReviewChange]);
+
+  useEffect(() => {
+    onStrategyGreeksSummaryChange?.(strategyGreeksSummary);
+  }, [strategyGreeksSummary, onStrategyGreeksSummaryChange]);
+
+  useEffect(() => {
     onYahooOptionSymbolChange?.(yahooOptionSymbol);
   }, [onYahooOptionSymbolChange, yahooOptionSymbol]);
   useEffect(() => {
@@ -1047,9 +933,9 @@ export function XoptionsChooseContract({
 
   return (
     <section className="xoptions-contract min-w-0" aria-label="Choose contract">
-      <div className="xoptions-contract__horizon mb-4 pb-4 md:mb-3 md:pb-3">
+      <div className="xoptions-contract__horizon">
         <p className="xoptions-top-option-header__label">Target expiration</p>
-        <div className="mt-2 flex flex-wrap gap-3 md:mt-1 md:gap-2">
+        <div className="xoptions-contract__horizon-chips">
           {WEEK_CHIPS.map((w) => (
             <button
               key={w.days}
@@ -1064,7 +950,7 @@ export function XoptionsChooseContract({
             </button>
           ))}
         </div>
-        <p className="xoptions-hint mt-2 text-xs md:mt-1">
+        <p className="xoptions-hint xoptions-contract__horizon-hint">
           {weeks == null
             ? "Choose a horizon chip or an expiration below — the chain loads only after you pick one."
             : `~${weeks}d horizon — adjust expiration below if needed.`}
@@ -1099,7 +985,7 @@ export function XoptionsChooseContract({
             </div>
             <select
               id="xo-contract-exp"
-              className="crud-input xoptions-contract__input mt-1 w-full min-w-0 touch-manipulation font-mono text-sm md:mt-0.5"
+              className="crud-input xoptions-contract__input w-full min-w-0 touch-manipulation font-mono"
               value={expiration}
               disabled={
                 loadingExp ||
@@ -1149,7 +1035,7 @@ export function XoptionsChooseContract({
                   )}
             </select>
             {expirationListMode === "strike_dates" ? (
-              <p className="xoptions-hint mt-1 text-xs text-[var(--xf-text-400)]">
+              <p className="xoptions-hint xoptions-contract__control-hint">
                 Weekly = expirations within the next 4 weeks. Monthly = standard 3rd-Friday expirations up to ~18 months
                 out. Use <strong>Show all expirations</strong> for the full chain calendar.
               </p>
@@ -1165,7 +1051,7 @@ export function XoptionsChooseContract({
             </label>
             <select
               id="xo-contract-strike"
-              className="crud-input xoptions-contract__input mt-1 w-full min-w-0 touch-manipulation font-mono text-sm md:mt-0.5"
+              className="crud-input xoptions-contract__input w-full min-w-0 touch-manipulation font-mono"
               value={selectedStrike ?? ""}
               disabled={loadingExp || loadingChain || strikeOptions.length === 0}
               onChange={(e) => {
@@ -1202,7 +1088,7 @@ export function XoptionsChooseContract({
               id="xo-contract-limit"
               type="text"
               inputMode="decimal"
-              className="crud-input xoptions-contract__input mt-1 w-full min-w-0 touch-manipulation font-mono text-sm md:mt-0.5"
+              className="crud-input xoptions-contract__input w-full min-w-0 touch-manipulation font-mono"
               placeholder="Limit $"
               value={limitPrice}
               onChange={(e) => setLimitPrice(e.target.value)}
@@ -1222,7 +1108,7 @@ export function XoptionsChooseContract({
               id="xo-contract-qty"
               type="text"
               inputMode="numeric"
-              className="crud-input xoptions-contract__input mt-1 w-full min-w-0 touch-manipulation font-mono text-sm md:mt-0.5"
+              className="crud-input xoptions-contract__input w-full min-w-0 touch-manipulation font-mono"
               placeholder="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ""))}
@@ -1277,7 +1163,7 @@ export function XoptionsChooseContract({
       ) : null}
 
       {error ? (
-        <p className="xoptions-alert mb-2" role="alert">
+        <p className="xoptions-alert mb-1" role="alert">
           {error}
         </p>
       ) : null}
@@ -1306,10 +1192,20 @@ export function XoptionsChooseContract({
             >
               {chain ? (
                 <>
-                  <p className="xoptions-mid-three__label mb-1">
-                    Option chain · {side === "call" ? "Calls" : "Puts"} · spot{" "}
-                    <span className="font-mono">{chain.stockPrice.toFixed(2)}</span>
-                  </p>
+                  <div className="xoptions-contract__chain-head mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                    <p className="xoptions-mid-three__label m-0">
+                      Option chain · {side === "call" ? "Calls" : "Puts"} · spot{" "}
+                      <span className="font-mono">{chain.stockPrice.toFixed(2)}</span>
+                    </p>
+                    <button
+                      type="button"
+                      className="xoptions-contract__chain-greeks-toggle shrink-0 rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] px-2 py-0.5 text-[0.58rem] font-medium text-[var(--xf-text-300)] hover:border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] hover:text-[var(--xf-text-200)]"
+                      onClick={() => setChainGreeksExpanded((v) => !v)}
+                      aria-expanded={chainGreeksExpanded}
+                    >
+                      {chainGreeksExpanded ? "Hide Greeks" : "Show Greeks"}
+                    </button>
+                  </div>
                   <div
                     className={
                       showGreeksCalcLogic
@@ -1322,24 +1218,10 @@ export function XoptionsChooseContract({
                         <XoptionsGreekCalcExplainer />
                       </div>
                     ) : null}
-                    <div className="mb-1 flex justify-end lg:hidden">
-                      <button
-                        type="button"
-                        className="rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] px-2 py-1 text-[0.65rem] font-medium text-[var(--xf-text-300)] hover:border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] hover:text-[var(--xf-text-200)]"
-                        onClick={() => setMobileGreeksOpen((v) => !v)}
-                        aria-expanded={mobileGreeksOpen}
-                      >
-                        {mobileGreeksOpen ? "Hide Greeks" : "Show Greeks"}
-                      </button>
-                    </div>
-                    <div ref={chainTableScrollRef} className="xoptions-contract__table-scroll min-w-0">
-                    <ChainColumnLayoutToolbar
-                      savedLayout={chainLayoutSaved}
-                      onSavedLayoutChange={persistChainLayout}
-                    />
+                    <div ref={chainTableScrollRef} className="xoptions-contract__table-scroll xoptions-contract__table-scroll--five-rows min-w-0">
                     <div className="xoptions-chain-table__viewport">
                     <table
-                      className={`xoptions-chain-table xoptions-chain-table--compact xoptions-chain-table--contract-chooser xoptions-chain-table--hnwi w-full border-collapse text-left ${mobileGreeksOpen ? "xoptions-chain-table--greeks-mobile-open" : ""}`}
+                      className="xoptions-chain-table xoptions-chain-table--compact xoptions-chain-table--contract-chooser xoptions-chain-table--hnwi w-full border-collapse text-left"
                       style={{
                         minWidth: `${Math.max(44, 10 + visibleChainDataCols.length * 3.35)}rem`
                       }}
@@ -1591,8 +1473,8 @@ export function XoptionsChooseContract({
                   </div>
                   </div>
                   {truncated ? (
-                    <p className="xoptions-chain-scanner__warn mt-1 text-xs">
-                      Showing first {CHAIN_TABLE_MAX} strikes ({baseRows.length} loaded).
+                    <p className="xoptions-chain-scanner__warn mt-1 text-[0.58rem] leading-snug">
+                      Showing {CHAIN_TABLE_VISIBLE_ROWS} strikes around spot ({baseRows.length} loaded).
                     </p>
                   ) : null}
                   <p className="xoptions-contract__chain-foot mt-2">
@@ -1747,12 +1629,6 @@ export function XoptionsChooseContract({
       ) : (
         <p className="xoptions-hint text-sm">Enter a symbol in step 1.</p>
       )}
-
-      {hidePositionReview && strategyGreeksSummary ? (
-        <div className="xoptions-contract__greeks-summary mt-3 min-w-0">
-          <XoptionsStrategyGreeksSummary summary={strategyGreeksSummary} />
-        </div>
-      ) : null}
 
       <p className="xoptions-contract__disclaimer mt-3 text-[0.65rem] leading-snug text-[var(--xf-text-500)]">
         Payoff BE uses model mid; review uses your limit. {EDUCATIONAL_ONLY_SHORT}

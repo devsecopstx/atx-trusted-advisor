@@ -1610,10 +1610,19 @@ button.xoptions-chain-cta.cta.cta-secondary:disabled {
 /* Choose contract: scannable chain (striping, heat, mid/spread, Greeks toggle on mobile) */
 .xoptions-chain-table--contract-chooser.xoptions-chain-table--compact .xoptions-chain-table__th-pad,
 .xoptions-chain-table--contract-chooser.xoptions-chain-table--compact .xoptions-chain-table__td-pad {
-  padding-top: 0.35rem;
-  padding-bottom: 0.35rem;
-  padding-right: 0.4rem;
-  line-height: 1.25;
+  padding-top: 0.18rem;
+  padding-bottom: 0.18rem;
+  padding-right: 0.28rem;
+  line-height: 1.12;
+}
+
+.xoptions-contract__chain-head .xoptions-mid-three__label {
+  font-size: 0.58rem;
+  line-height: 1.2;
+}
+
+.xoptions-contract__chain-greeks-toggle {
+  min-height: 1.35rem;
 }
 
 .xoptions-chain-table--contract-chooser {
@@ -1622,19 +1631,39 @@ button.xoptions-chain-cta.cta.cta-secondary:disabled {
 
 /* Choose contract — HNWI chain density & quote emphasis */
 .xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi {
-  font-size: 0.68rem;
+  font-size: 0.58rem;
 }
 
 .xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__th-pad,
 .xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__td-pad {
-  padding-top: 0.48rem;
-  padding-bottom: 0.48rem;
-  padding-left: 0.35rem;
-  padding-right: 0.45rem;
+  padding-top: 0.16rem;
+  padding-bottom: 0.16rem;
+  padding-left: 0.24rem;
+  padding-right: 0.28rem;
+}
+
+.xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__quote-major {
+  font-size: 0.62rem;
+}
+
+.xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__th-label {
+  font-size: 0.56rem;
+}
+
+.xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__strike-val {
+  font-size: 0.6rem;
+}
+
+.xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__mid-cell {
+  font-size: 0.52rem;
+}
+
+.xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__spread-hint {
+  font-size: 0.46rem;
 }
 
 .xoptions-chain-table__quote-major {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -1762,7 +1791,10 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
 
 .xoptions-chain-table__viewport .xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__th-pad,
 .xoptions-chain-table__viewport .xoptions-chain-table--contract-chooser.xoptions-chain-table--hnwi .xoptions-chain-table__td-pad {
-  padding: 0.75rem 1rem;
+  padding-top: 0.16rem;
+  padding-bottom: 0.16rem;
+  padding-left: 0.24rem;
+  padding-right: 0.28rem;
 }
 
 .xoptions-chain-table__col-group-start {
@@ -2266,6 +2298,8 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
 /* ── Step 4: choose contract (controls + filtered chain + payoff) ── */
 .xoptions-contract__controls {
   width: 100%;
+  margin-top: 0.1rem;
+  margin-bottom: 0.2rem;
 }
 
 .xoptions-contract__controls-row--all {
@@ -2276,8 +2310,42 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
     minmax(0, 1fr)
     minmax(0, 0.95fr)
     minmax(2.75rem, 0.45fr);
-  gap: 0.5rem 0.65rem;
+  gap: 0.2rem 0.4rem;
   align-items: start;
+}
+
+.xoptions-contract__horizon-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.xoptions-contract__horizon .xoptions-choice {
+  padding: 0.22rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.xoptions-contract__horizon-hint {
+  margin-top: 0.25rem;
+  font-size: 0.625rem;
+  line-height: 1.2;
+}
+
+.xoptions-contract__control-hint {
+  margin-top: 0.15rem;
+  font-size: 0.5625rem;
+  line-height: 1.2;
+  color: var(--xf-text-400);
+}
+
+.xoptions-contract select.crud-input.xoptions-contract__input,
+.xoptions-contract input.crud-input.xoptions-contract__input {
+  min-height: 1.6rem;
+  padding: 0.16rem 0.42rem;
+  font-size: 0.8125rem;
+  line-height: 1.2;
 }
 
 .xoptions-contract__control {
@@ -2321,8 +2389,8 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
   }
 
   .xoptions-contract .xoptions-contract__symbol-val {
-    min-height: 3rem;
-    font-size: 1.0625rem;
+    min-height: 2.5rem;
+    font-size: 0.9375rem;
   }
 
   .xoptions-contract .xoptions-contract__label {
@@ -2392,42 +2460,48 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
     max-height: min(20rem, 42vh);
   }
 
+  .xoptions-contract .xoptions-contract__table-scroll--five-rows {
+    max-height: none;
+    overflow-y: hidden;
+  }
+
   .xoptions-step__body .xoptions-chain-cta {
     min-height: 3rem;
   }
 }
 
 .xoptions-contract__strike-hint {
-  margin: 0.25rem 0 0;
-  font-size: 0.5625rem;
-  line-height: 1.35;
+  margin: 0.1rem 0 0;
+  font-size: 0.5rem;
+  line-height: 1.2;
   color: var(--xf-text-500);
 }
 
 .xoptions-contract__label {
-  margin: 0 0 0.15rem;
-  font-size: 0.5625rem;
+  margin: 0;
+  font-size: 0.5rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--xf-text-400);
+  line-height: 1.1;
 }
 
 .xoptions-contract__symbol-val {
   display: flex;
   align-items: center;
   margin: 0;
-  margin-top: 0.125rem;
-  min-height: 2.125rem;
-  font-size: 1rem;
+  min-height: 1.3rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   color: var(--xf-text-100);
 }
 
 .xoptions-contract__help {
   display: block;
-  margin-top: 0.25rem;
-  font-size: 0.5625rem;
+  margin-top: 0.1rem;
+  font-size: 0.5rem;
+  line-height: 1.15;
   color: color-mix(in srgb, var(--xf-gain-green) 82%, var(--xf-text-100));
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -2520,9 +2594,9 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
-  margin-top: 0.5rem;
-  padding: 0.35rem 0;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  padding: 0.15rem 0;
   border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
 }
 
@@ -2534,11 +2608,11 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
 }
 
 .xoptions-contract__side-btn {
-  padding: 0.35rem 0.85rem;
+  padding: 0.2rem 0.6rem;
   border: none;
   background: transparent;
   color: var(--xf-text-400);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -2615,8 +2689,15 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
   -webkit-overflow-scrolling: touch;
 }
 
+.xoptions-contract__table-scroll--five-rows {
+  max-height: none;
+  overflow-y: hidden;
+}
+
 .xoptions-contract__horizon {
   border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.3rem;
 }
 
 .xoptions-contract__chain-wrap,
@@ -2980,7 +3061,151 @@ html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
   border-radius: var(--xf-radius-sm);
   border: 1px solid color-mix(in srgb, var(--xf-xoptions-accent) 28%, transparent);
   background: color-mix(in srgb, var(--xf-xoptions-accent) 6%, transparent);
-  padding: 0.65rem 0.75rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.xoptions-greeks-summary__summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+  outline: none;
+}
+
+.xoptions-greeks-summary__summary::-webkit-details-marker {
+  display: none;
+}
+
+.xoptions-greeks-summary__summary::after {
+  content: "▾";
+  float: right;
+  color: var(--xf-text-400);
+}
+
+.xoptions-greeks-summary[open] .xoptions-greeks-summary__summary::after {
+  transform: rotate(180deg);
+}
+
+.xoptions-greeks-summary__body {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-xoptions-accent) 18%, transparent);
+}
+
+.xoptions-watchlist-notes {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+  padding: 0.45rem 0.6rem;
+}
+
+.xoptions-watchlist-notes__summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+  outline: none;
+}
+
+.xoptions-watchlist-notes__summary::-webkit-details-marker {
+  display: none;
+}
+
+.xoptions-watchlist-notes__summary::after {
+  content: "▾";
+  float: right;
+  color: var(--xf-text-400);
+}
+
+.xoptions-watchlist-notes[open] .xoptions-watchlist-notes__summary::after {
+  transform: rotate(180deg);
+}
+
+.xoptions-watchlist-notes__body {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.xoptions-step4-footer__cards {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.xoptions-step4-footer__cards--notes-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.xoptions-step4-footer__card {
+  min-width: 0;
+}
+
+.xoptions-step4-order-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 48rem) {
+  .xoptions-step4-order-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+  }
+}
+
+.xoptions-step4-order-summary {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+  padding: 0.6rem 0.75rem;
+}
+
+.xoptions-step4-order-summary__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 0.75rem;
+}
+
+.xoptions-step4-order-summary__metric-label {
+  margin: 0;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xoptions-step4-order-summary__metric-value {
+  margin: 0.1rem 0 0;
+  font-family: var(--xf-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.xoptions-step4-order-summary__ticket {
+  margin: 0.55rem 0 0;
+  font-family: var(--xf-font-mono);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--xf-text-200);
+}
+
+.xoptions-step4-order-row__actions {
+  display: flex;
+  align-items: stretch;
+}
+
+.xoptions-step4-order-row__cta {
+  align-self: stretch;
+  min-width: 11rem;
 }
 
 .xoptions-greeks-summary__title {
@@ -2994,7 +3219,7 @@ html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
 
 .xoptions-greeks-summary__grid {
   display: grid;
-  gap: 0.5rem 0.75rem;
+  gap: 0.35rem 0.55rem;
   margin: 0;
 }
 

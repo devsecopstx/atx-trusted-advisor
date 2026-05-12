@@ -13,29 +13,27 @@ type XoptionsStrategyGreeksSummaryProps = {
 
 export function XoptionsStrategyGreeksSummary({ summary }: XoptionsStrategyGreeksSummaryProps) {
   return (
-    <section
-      className="xoptions-greeks-summary"
-      aria-label="Strategy Greeks summary"
-      data-gamma-risk={summary.gammaRiskWarning ? "true" : "false"}
-    >
-      <p className="xoptions-greeks-summary__title">Greek summary</p>
-      <dl className="xoptions-greeks-summary__grid">
-        <GreekSummaryItem label="Net delta" value={formatStrategyNetDeltaShares(summary.netDeltaShares)} />
-        <GreekSummaryItem
-          label="Net theta (daily income)"
-          value={formatStrategyNetThetaDailyUsd(summary.netThetaDailyUsd)}
-        />
-        <GreekSummaryItem
-          label="Net vega exposure"
-          value={formatStrategyNetVegaExposureUsd(summary.netVegaPerOnePercentIvUsd)}
-        />
-      </dl>
-      {summary.gammaRiskWarning ? (
-        <p className="xoptions-greeks-summary__gamma-warning" role="status">
-          Gamma risk: per-share gamma exceeds 0.05 — delta can shift quickly as spot moves.
-        </p>
-      ) : null}
-    </section>
+    <details className="xoptions-greeks-summary" data-gamma-risk={summary.gammaRiskWarning ? "true" : "false"}>
+      <summary className="xoptions-greeks-summary__summary">Greek summary</summary>
+      <div className="xoptions-greeks-summary__body" aria-label="Strategy Greeks summary">
+        <dl className="xoptions-greeks-summary__grid">
+          <GreekSummaryItem label="Net delta" value={formatStrategyNetDeltaShares(summary.netDeltaShares)} />
+          <GreekSummaryItem
+            label="Net theta (daily income)"
+            value={formatStrategyNetThetaDailyUsd(summary.netThetaDailyUsd)}
+          />
+          <GreekSummaryItem
+            label="Net vega exposure"
+            value={formatStrategyNetVegaExposureUsd(summary.netVegaPerOnePercentIvUsd)}
+          />
+        </dl>
+        {summary.gammaRiskWarning ? (
+          <p className="xoptions-greeks-summary__gamma-warning" role="status">
+            Gamma risk: per-share gamma exceeds 0.05 — delta can shift quickly as spot moves.
+          </p>
+        ) : null}
+      </div>
+    </details>
   );
 }
 

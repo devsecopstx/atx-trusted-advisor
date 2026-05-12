@@ -1,14 +1,7 @@
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
-import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
-import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
-import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import { canUserLogin } from "@/modules/identity/authorization";
-import { redirect } from "next/navigation";
-
-import { XoptionsWorkspaceProductShell } from "./ui/xoptions-workspace-product-shell";
-import { XoptionsStrategyBuilderMount } from "./xoptions-strategy-builder-mount";
 
 export const dynamic = "force-dynamic";
 
@@ -46,21 +39,6 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
     );
   }
 
-  const routeGuard = await resolveRouteGuardForSessionPath(session, "/xoptions");
-  if (!routeGuard.allowed) {
-    redirect(routeGuard.redirectPath);
-  }
-
-  const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
-  const workspaceBook = await loadAppUserDefaultBook(session);
-
-  return (
-    <XoptionsWorkspaceProductShell
-      feedbackPageLabel="xOptions"
-      session={session}
-      workspaceTenant={workspaceTenant}
-    >
-      <XoptionsStrategyBuilderMount workspaceBook={workspaceBook} />
-    </XoptionsWorkspaceProductShell>
-  );
+  const { default: XoptionsSignedInPage } = await import("./xoptions-signed-in-page");
+  return <XoptionsSignedInPage session={session} />;
 }

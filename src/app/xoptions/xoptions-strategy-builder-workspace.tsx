@@ -20,11 +20,14 @@ import {
 import { WORKSPACE_PORTFOLIO_CHANGED_EVENT } from "@/lib/workspace-portfolio-selection";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 import { isValidXoptionsUnderlyingSymbol, normalizeXoptionsUnderlyingSymbol } from "@/lib/xoptions/xoptions-desk-deep-link";
+import type { XoptionsOrderReview } from "@/lib/xoptions/xoptions-order-preview";
+import type { StrategyGreeksSummary } from "@/lib/xoptions/xoptions-strategy-greeks-summary";
 
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { outlookIconClassForSlug, OutlookIconFor } from "@/app/ui/outlook-icons";
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
 import { XoptionsBreadcrumb } from "@/app/xoptions/ui/xoptions-breadcrumb";
+import { XoptionsChooseContractStepFooter } from "@/app/xoptions/ui/xoptions-choose-contract-step-footer";
 import { XoptionsStepper } from "@/app/xoptions/ui/xoptions-stepper";
 import { XoptionsWorkspaceDeskControls } from "@/app/xoptions/ui/xoptions-workspace-desk-controls";
 import {
@@ -280,6 +283,8 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
   const [unlockedStep, setUnlockedStep] = useState(1);
   const [strategyChoiceId, setStrategyChoiceId] = useState<StrategyChoiceId | null>(null);
   const [reviewOrderPlainText, setReviewOrderPlainText] = useState<string | null>(null);
+  const [step4OrderReview, setStep4OrderReview] = useState<XoptionsOrderReview | null>(null);
+  const [step4StrategyGreeksSummary, setStep4StrategyGreeksSummary] = useState<StrategyGreeksSummary | null>(null);
   const [yahooOptionSymbol, setYahooOptionSymbol] = useState<string | null>(null);
   const [selectedOptionMeta, setSelectedOptionMeta] = useState<XoptionsSelectedOptionMeta | null>(null);
   const [watchlistAddBusy, setWatchlistAddBusy] = useState(false);
@@ -1468,7 +1473,7 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
             <span className="xoptions-step__title">{STEPS[3]?.title}</span>
           </button>
           {activeStep === 4 && canGoStep2 ? (
-            <div className="xoptions-step__body space-y-6 md:space-y-4">
+            <div className="xoptions-step__body space-y-3 md:space-y-2">
               <XoptionsErrorBoundary>
               <XoptionsChooseContract
                 symbol={symbol}
@@ -1480,6 +1485,8 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
                 strategyChoiceId={strategyChoiceId}
                 strategyLabel={strategyChoiceId ? strategyShortLabel(strategyChoiceId) : null}
                 onReviewOrderPlainTextChange={onReviewOrderPlainTextChange}
+                onOrderReviewChange={setStep4OrderReview}
+                onStrategyGreeksSummaryChange={setStep4StrategyGreeksSummary}
                 portfolioApproxValue={portfolioApproxValue}
                 holdingSharesForSymbol={holdingSharesForSymbol}
                 strategyStartBasis={strategyStartBasis}
@@ -1487,29 +1494,14 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
                 hidePositionReview
               />
               </XoptionsErrorBoundary>
-              <div className="max-w-xl min-w-0">
-                <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--xf-text-400)]" htmlFor="xo-watchlist-notes">
-                  Watchlist notes (optional)
-                </label>
-                <textarea
-                  id="xo-watchlist-notes"
-                  className="crud-input min-h-[4.5rem] w-full min-w-0 touch-manipulation font-mono text-sm md:min-h-[4rem]"
-                  placeholder="Limit context, catalyst, roll plan"
-                  value={watchlistNotes}
-                  onChange={(e) => setWatchlistNotes(e.target.value)}
-                  aria-label="Notes appended when adding contract to watchlist"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-3 md:gap-2">
-                <button
-                  type="button"
-                  className="cta cta-primary xoptions-next-btn"
-                  disabled={!selectedOptionMeta || !reviewOrderPlainText?.trim()}
-                  onClick={() => advanceFrom(4)}
-                >
-                  Continue to review
-                </button>
-              </div>
+              <XoptionsChooseContractStepFooter
+                orderReview={step4OrderReview}
+                strategyGreeksSummary={step4StrategyGreeksSummary}
+                watchlistNotes={watchlistNotes}
+                onWatchlistNotesChange={setWatchlistNotes}
+                reviewDisabled={!selectedOptionMeta || !reviewOrderPlainText?.trim()}
+                onReviewOrderDetails={() => advanceFrom(4)}
+              />
               {yahooOptionSymbol ? (
                 <p className="xoptions-hint text-xs text-[var(--xf-text-400)]">
                   Yahoo option chain id:{" "}
