@@ -59,7 +59,8 @@ Tool cache is implemented in `src/modules/xchat/tool-cache.ts`.
 
 ## Collection and RAG notes
 
-- Canonical **Finance** xAI collection (`XAI_FINANCE_COLLECTION_ID`) is the shared KB for all tenants; refresh via **`POST /api/admin/rag/refresh-finance`** or **`npm run seed:finance-xai-collection`**
+- Canonical **Finance** xAI collection (`XAI_FINANCE_COLLECTION_ID`) is the shared KB for all tenants; ask/batch runtime resolves **only** that id via **`resolveXchatPersonaDeclaredCollectionIds`** (legacy per-env xpersonas bucket ids on persona rows are ignored at runtime). Refresh via **`POST /api/admin/rag/refresh-finance`** or **`npm run seed:finance-xai-collection`**; one-time Mongo repair: **`npm run ops:migrate:xchat-personas-finance-collection -- --execute`**
+- Admin persona editor model presets include **`grok-4.3`** via **`XAI_PERSONA_CHAT_MODEL_OPTIONS`** / **`PersonaModelSelect`**
 - Long-term xAI memory: **`PUT /api/xchat/preferences`** with **`enableLongTermXaiMemory`** (requires keep-last-10); ask includes capped thread history in the Responses tool loop when enabled
 - Collection inventory endpoints: `GET /api/personas/collections` and `GET /api/personas/collections/:collectionId`
 - Collection stats may include `documentCount`, `chunkCount`, `fileCount`, `indexStatus`

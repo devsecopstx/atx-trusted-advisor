@@ -451,11 +451,10 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextCount).toBe(1);
     const financeCollectionId = getXaiFinanceCollectionId();
     expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith(financeCollectionId);
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_ops-global");
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledTimes(2);
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledTimes(1);
     expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
       expect.objectContaining({
-        collectionIds: [financeCollectionId, "collection_ops-global"]
+        collectionIds: [financeCollectionId]
       })
     );
     expect(repositoryMocks.listXChatHistoryByUser).not.toHaveBeenCalled();
@@ -469,14 +468,11 @@ describe("xchat ask route collection retrieval", () => {
           expect.objectContaining({
             type: "file_search",
             name: "file_search",
-            vector_store_ids: expect.arrayContaining([
-              getXaiFinanceCollectionId(),
-              "collection_ops-global"
-            ])
+            vector_store_ids: [getXaiFinanceCollectionId()]
           })
         ]),
         userPrompt: expect.stringMatching(
-          /\[Persona \/ KB metadata — xChat and batch[\s\S]*xChat linked xAI collection ids[\s\S]*collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
+          /\[Persona \/ KB metadata — xChat and batch[\s\S]*xChat linked xAI collection ids[\s\S]*Persona xAPI tools[\s\S]*- web_search/
         )
       })
     );
@@ -826,7 +822,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: [getXaiFinanceCollectionId(), "collection_ops-global"]
+            vector_store_ids: [getXaiFinanceCollectionId()]
           }
         ])
       })
@@ -867,7 +863,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: [getXaiFinanceCollectionId(), "collection_ops-global"]
+            vector_store_ids: [getXaiFinanceCollectionId()]
           },
           { type: "web_search", name: "web_search" },
           { type: "x_search", name: "x_search" }

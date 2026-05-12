@@ -1,6 +1,10 @@
 "use client";
 
-import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
+import {
+    XCHAT_DEPTH_MODE_GROUP_HINT,
+    xchatDepthRoutingModelLabel,
+    type XchatReasoningMode
+} from "@/modules/xchat/xchat-reasoning-mode";
 
 export type XchatReasoningModeToggleProps = {
   value: XchatReasoningMode;
@@ -11,17 +15,9 @@ export type XchatReasoningModeToggleProps = {
 };
 
 const MODES: Array<{ id: XchatReasoningMode; label: string; hint: string }> = [
-  { id: "fast", label: "Fast", hint: "grok-4-1-fast — lowest latency (no depth preset)" },
-  {
-    id: "expert",
-    label: "Expert",
-    hint: "grok-4.3 — reasoning.effort medium (more thinking for analysis & tools)"
-  },
-  {
-    id: "heavy",
-    label: "Heavy",
-    hint: "grok-4.3 — reasoning.effort high (deepest reasoning tokens)"
-  }
+  { id: "fast", label: "Fast", hint: "Grok 4.1 Fast — lowest latency for this turn" },
+  { id: "expert", label: "Expert", hint: "Grok 4.3 — medium reasoning effort" },
+  { id: "heavy", label: "Heavy", hint: "Grok 4.3 — high reasoning effort" }
 ];
 
 export function XchatReasoningModeToggle({
@@ -36,7 +32,9 @@ export function XchatReasoningModeToggle({
       className={`xchat-reasoning-mode${compact ? " xchat-reasoning-mode--compact" : ""}`}
       role="group"
     >
-      <span className="xchat-reasoning-mode__label">Depth</span>
+      <span className="xchat-reasoning-mode__label" title={XCHAT_DEPTH_MODE_GROUP_HINT}>
+        Depth
+      </span>
       <div className="xchat-reasoning-mode__segments">
         {MODES.map((m) => (
           <button
@@ -52,6 +50,9 @@ export function XchatReasoningModeToggle({
           </button>
         ))}
       </div>
+      <span className="xchat-reasoning-mode__model-id" title={XCHAT_DEPTH_MODE_GROUP_HINT}>
+        {xchatDepthRoutingModelLabel(value)}
+      </span>
     </div>
   );
 }

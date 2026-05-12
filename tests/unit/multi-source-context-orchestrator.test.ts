@@ -132,7 +132,7 @@ describe("gatherMultiSourceWorkspaceContext", () => {
     });
     expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
       expect.objectContaining({
-        collectionIds: [getXaiFinanceCollectionId(), "col_test"],
+        collectionIds: [getXaiFinanceCollectionId()],
         query: "TSLA outlook?"
       })
     );

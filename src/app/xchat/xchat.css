@@ -4736,6 +4736,16 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   background: rgba(0, 0, 0, 0.28);
 }
 
+.xchat-reasoning-mode__model-id {
+  margin-left: 0.15rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--xf-gain-green);
+  white-space: nowrap;
+}
+
 .xchat-reasoning-mode__seg {
   border: none;
   margin: 0;

@@ -4,13 +4,13 @@ Short policy for how `POST /api/xchat/ask` should combine **pre-call retrieval**
 
 ## Phase 1: xAI collections (canonical Finance KB)
 
-**Shipped:** one shared **Finance** xAI collection (`XAI_FINANCE_COLLECTION_ID`, default `collection_b75e188e-e7e6-4aa8-8e01-23caf0946236`) for all tenants. xChat ask pins finance/options/portfolio/strategy prompts to that id (single retrieval call). Persona rows still edit prompts/tools; optional per-persona extras remain capped at two ids. **`XAI_TEAM_ID`** remains for admin discovery and legacy segment ingest — not merged into ask unless declared on the persona. **Long-term memory:** when **`enableLongTermXaiMemory`** is on, ask includes capped thread history in the Responses tool loop and may continue via **`previous_response_id`** when **`XCHAT_USE_REMOTE_HISTORY`** is enabled. Details: [`atx-multi-agent.md`](./atx-multi-agent.md).
+**Shipped:** one shared **Finance** xAI collection (`XAI_FINANCE_COLLECTION_ID`, default `collection_b75e188e-e7e6-4aa8-8e01-23caf0946236`) for all tenants. xChat ask resolves **only** that id via **`resolveXchatPersonaDeclaredCollectionIds`** (legacy per-env xpersonas bucket ids on persona rows are ignored at runtime). Persona rows still edit prompts/tools. **`XAI_TEAM_ID`** remains for admin discovery and legacy segment ingest — not merged into ask. **Long-term memory:** when **`enableLongTermXaiMemory`** is on, ask includes capped thread history in the Responses tool loop and may continue via **`previous_response_id`** when **`XCHAT_USE_REMOTE_HISTORY`** is enabled; remote continuation omits duplicate thread `input` in the tool loop. Details: [`atx-multi-agent.md`](./atx-multi-agent.md).
 
 ## Decision table (intent → path)
 
 | User intent (examples) | Prefer | Why |
 |------------------------|--------|-----|
-| Answer from **your docs** (persona / **team** xAI collection under `XAI_TEAM_ID`, Mongo RAG scope where applicable) | **Retrieval first** — server-side `searchDocumentsInCollections` / `retrieveRagChunks` injected into system context | Lowest latency and cost; grounded answers; no extra model round-trips for static knowledge. |
+| Answer from **your docs** (canonical **Finance** xAI collection, Mongo RAG scope where applicable) | **Retrieval first** — server-side `searchDocumentsInCollections` / `retrieveRagChunks` injected into system context | Lowest latency and cost; grounded answers; no extra model round-trips for static knowledge. |
 | **Live user state** (positions, balances, watchlist) | **`atxfinance` tool** (responses tool loop) | Data is per-session Mongo; not in xAI collections; must run server executor. |
 | **Show watchlist** (`"show my watchlist"`, `"show watchlist for <portfolio>"`) | **`atx_function.watchlist_snapshot` + market pulse enrichment** | Deterministic, tool-backed output. Render as table with live 1D delta / `% distance` from target and xOptions CTA links; avoid model-invented prices. |
 | **Live market quote** | **`yahoo_finance` or `atxfinance` + `market_quote`** | Canonical Yahoo path; avoid inventing prices from web prose. |

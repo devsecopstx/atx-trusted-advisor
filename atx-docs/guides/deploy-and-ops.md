@@ -117,6 +117,7 @@ Required runtime secrets (core list — always expected in Secret Manager for de
 - `MONGODB_URI_B64` (mapped to env `MONGODB_URI`)
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY`
+- `XAI_FINANCE_COLLECTION_ID` — canonical shared Finance KB id for xChat RAG (`collection_*`; sync from `.env.stage` / `.env.prod` via **`ops:secrets:sync-xai-finance-collection:*`**)
 - `X_OAUTH_CLIENT_ID`
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET`
@@ -166,6 +167,8 @@ Recommended checks before merge/deploy:
 | `ops:secrets:sync-stripe-webhook:*` | `STRIPE_WEBHOOK_SECRET` → SM |
 | `ops:secrets:sync-redis:*` | `REDIS_URL` → SM |
 | `ops:secrets:sync-mongodb:*` | `MONGODB_URI` → `MONGODB_URI_B64` secret |
+| `ops:secrets:sync-xai-finance-collection:staging` / `:prod` | `XAI_FINANCE_COLLECTION_ID` → SM |
+| `ops:migrate:xchat-personas-finance-collection` | Dry-run / `--execute` Mongo patch for legacy persona collection links |
 | `ops:deploy:cloud-run:staging` | Local deploy from `.env.stage` (`deploy-cloud-run-from-env.sh`) |
 | `ops:deploy:cloud-run:production` | Local deploy from `.env.prod` |
 | `status:deploy` | Latest Actions / URLs summary (`print-deploy-status.sh`) |

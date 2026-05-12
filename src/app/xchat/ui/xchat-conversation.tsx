@@ -34,6 +34,11 @@ import {
     isXchatUsageLimitCode
 } from "@/app/xchat/ui/xchat-ask-limit-banner";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
+import {
+    xchatAskDataToComposerRailLastTurn,
+    XchatComposerRailRouting,
+    type XchatComposerRailLastTurnRouting
+} from "@/app/xchat/ui/xchat-composer-rail-routing";
 import type {
     HistoryItem,
     HistoryStats,
@@ -392,8 +397,11 @@ export function XchatConversation({
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
   const [personaPickerRows, setPersonaPickerRows] = useState<
-    Array<{ _id: string; name: string; previewLine?: string }>
+    Array<{ _id: string; name: string; model?: string; previewLine?: string }>
   >([]);
+  const [lastTurnRouting, setLastTurnRouting] = useState<XchatComposerRailLastTurnRouting | undefined>(
+    undefined
+  );
   const [personaListError, setPersonaListError] = useState<string | null>(null);
   const [personaListFetched, setPersonaListFetched] = useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
@@ -727,6 +735,13 @@ export function XchatConversation({
   }, [workspacePortfolioId, requestedWorkspaceAccountId]);
 
   const personaSelectRows = useMemo(() => personaPickerRows, [personaPickerRows]);
+  const selectedPersonaModel = useMemo(() => {
+    const id = selectedPersonaId.trim();
+    if (!id) {
+      return undefined;
+    }
+    return personaPickerRows.find((row) => row._id === id)?.model?.trim();
+  }, [personaPickerRows, selectedPersonaId]);
 
   const resizeComposer = useCallback(() => {
     const el = composerRef.current;
@@ -1014,7 +1029,7 @@ export function XchatConversation({
       try {
         const res = await fetch("/api/personas");
         const payload = (await res.json().catch(() => ({}))) as {
-          data?: Array<{ _id?: string; name?: string; systemPrompt?: string }>;
+          data?: Array<{ _id?: string; name?: string; model?: string; systemPrompt?: string }>;
         };
         if (!res.ok || !active) {
           if (active && !res.ok) {
@@ -1025,9 +1040,11 @@ export function XchatConversation({
         const rows = (Array.isArray(payload.data) ? payload.data : [])
           .map((r) => {
             const previewLine = personaPreviewLineFromSystemPrompt(r.systemPrompt);
+            const model = String(r.model ?? "").trim();
             return {
               _id: String(r._id ?? "").trim(),
               name: String(r.name ?? "").trim(),
+              ...(model ? { model } : {}),
               ...(previewLine ? { previewLine } : {})
             };
           })
@@ -1504,6 +1521,11 @@ export function XchatConversation({
           strategyJobOffer?: boolean;
           optionsActionScan?: OptionsActionScanDisplayData;
           model?: string;
+          modelSelectionSource?: string;
+          contextSource?: string;
+          contextCount?: number;
+          collectionSearchStatus?: string;
+          collectionSearchNonReadyFileCount?: number;
           xaiUsage?: {
             inputTokens: number;
             outputTokens: number;
@@ -1567,6 +1589,7 @@ export function XchatConversation({
       };
 
       const handleAskSuccess = (data: NonNullable<AskPayload["data"]>) => {
+        setLastTurnRouting(xchatAskDataToComposerRailLastTurn(data));
         const resolvedName = data.personaName ?? activePersonaName;
         setActivePersonaName(resolvedName);
         const effectiveThreadId = data.metadata?.threadId?.trim() || activeThreadId;
@@ -1704,6 +1727,7 @@ export function XchatConversation({
               onDone: (done) => {
                 lastActivity = Date.now();
                 const data = done as NonNullable<AskPayload["data"]>;
+                setLastTurnRouting(xchatAskDataToComposerRailLastTurn(data));
                 const finalText =
                   typeof data.content === "string"
                     ? data.content
@@ -1921,7 +1945,12 @@ export function XchatConversation({
                     >
                       Focus composer
                     </button>
-                    <p className="status-text">Shortcuts: Enter send · Shift+Enter newline</p>
+                    <XchatComposerRailRouting
+                      lastTurn={lastTurnRouting}
+                      personaModel={selectedPersonaModel}
+                      personaName={activePersonaName}
+                      reasoningMode={reasoningMode}
+                    />
                     <XchatUsageMeter refreshSignal={promptUsageRefreshKey} variant="rail" />
                     <XchatSidebarTokenStats />
                   </RailDisclosure>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./simple-persona-editor.module.css";
 
+import { PersonaModelSelect } from "@/app/admin/personas/ui/persona-model-select";
 import { AddIcon, DeleteIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { isMultiAgentPersonaModelId } from "@/modules/xchat/multi-agent-persona-models";
@@ -38,13 +39,6 @@ type CollectionRow = {
   name?: string;
   stats: { documentCount: number | null; createdAt: string | null; updatedAt: string | null };
 };
-
-/** Values listed in the model &lt;select&gt;; personas may still carry other xAI ids from API. */
-const PERSONA_MODEL_SELECT_IDS = new Set<string>([
-  "grok-4-1-fast-reasoning",
-  "grok-4-1",
-  "grok-4.20-multi-agent"
-]);
 
 const EMPTY_FORM: PersonaPayload = {
   name: "",
@@ -392,22 +386,12 @@ export function SimplePersonaEditor({
               </div>
 
               <div>
-                <label className="status-text" htmlFor="persona-model">
-                  AI Model *
-                </label>
-                <select
+                <PersonaModelSelect
                   id="persona-model"
-                  onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
+                  onChange={(modelId) => setForm((current) => ({ ...current, model: modelId }))}
+                  required
                   value={form.model}
-                  style={{ fontSize: "0.9rem", padding: "0.5rem" }}
-                >
-                  {form.model.trim() && !PERSONA_MODEL_SELECT_IDS.has(form.model.trim()) ? (
-                    <option value={form.model}>{form.model} (from persona)</option>
-                  ) : null}
-                  <option value="grok-4-1-fast-reasoning">Grok 4.1 Fast</option>
-                  <option value="grok-4-1">Grok 4.1</option>
-                  <option value="grok-4.20-multi-agent">Multi-Agent</option>
-                </select>
+                />
               </div>
 
               <div>

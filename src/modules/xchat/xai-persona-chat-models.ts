@@ -32,6 +32,11 @@ const OPTIONS: XaiPersonaChatModelOption[] = [
     pricingPerMillionUsd: "~4.1 fast tier — confirm in xAI console"
   },
   {
+    id: "grok-4.3",
+    label: "Grok 4.3 (reasoning, tools)",
+    pricingPerMillionUsd: "$1.25 ($0.25) / $2.50 in·out"
+  },
+  {
     id: "grok-4-latest",
     label: "grok-4-latest (alias)",
     pricingPerMillionUsd: "Follows current Grok-4 release — see console"

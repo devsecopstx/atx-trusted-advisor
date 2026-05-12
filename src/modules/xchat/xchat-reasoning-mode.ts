@@ -15,6 +15,20 @@ export const XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID = "grok-4.3" as const;
 
 export const XCHAT_REASONING_MODE_STORAGE_KEY = "xf_xchat_reasoning_mode";
 
+const DEPTH_ROUTING_MODEL_LABELS: Record<XchatReasoningMode, string> = {
+  fast: "Grok 4.1 Fast",
+  expert: "Grok 4.3",
+  heavy: "Grok 4.3"
+};
+
+/** User-facing model label for the composer Depth preset (matches ask-route overrides). */
+export function xchatDepthRoutingModelLabel(mode: XchatReasoningMode): string {
+  return DEPTH_ROUTING_MODEL_LABELS[mode];
+}
+
+export const XCHAT_DEPTH_MODE_GROUP_HINT =
+  "Fast = Grok 4.1 Fast · Expert = Grok 4.3 (medium reasoning) · Heavy = Grok 4.3 (high reasoning)";
+
 /** Legacy body control; includes **`none`** for grok-4.3 (disables reasoning per xAI docs). */
 export type RequestedReasoningEffortInput = "none" | "low" | "medium" | "high" | "xhigh";
 
