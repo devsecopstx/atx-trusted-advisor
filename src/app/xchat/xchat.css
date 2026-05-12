@@ -7747,3 +7747,164 @@ html[data-xf-ui="soft"] .xchat-workspace-bar {
   color: var(--xf-text-300);
   overflow-wrap: anywhere;
 }
+
+/* ── iOS mobile polish ──────────────────────────
+   Safe-area insets, 44px+ touch targets, no zoom,
+   momentum scrolling, reduced-motion support.
+   ────────────────────────────────────────────── */
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  .xchat-layout-root {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .xchat-composer-wrap {
+    padding-bottom: max(13px, env(safe-area-inset-bottom));
+  }
+
+  .xchat-shell > .workspace-product-sticky-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+.xchat-composer__grok-tool--toolbar,
+.xchat-composer__send-circle--toolbar,
+.xchat-templates-strip__grid-card,
+.xchat-templates-strip__card--pill,
+.xchat-templates-strip__see-all {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.xchat-templates-strip__scroller {
+  -webkit-overflow-scrolling: touch;
+}
+
+.xchat-templates-strip__card--pill {
+  touch-action: manipulation;
+}
+
+.xchat-composer__textarea--grok {
+  touch-action: manipulation;
+  font-size: 16px;
+}
+
+/* ── Composer keyboard-hints hidden on mobile ── */
+
+@media (max-width: 767px) {
+  .xchat-composer-shortcuts__left {
+    display: none;
+  }
+}
+
+/* ── Welcome header compact on mobile ────────── */
+
+.xchat-welcome-header--compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.xchat-welcome-header--compact .xchat-welcome-title {
+  font-size: 0.95rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.xchat-welcome-header--compact .xchat-welcome-tenant {
+  font-size: 0.72rem;
+  margin: 0;
+}
+
+.xchat-welcome-header--compact .xchat-welcome-sub {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .xchat-welcome-header--compact .xchat-welcome-sub {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--xf-text-400);
+    flex-basis: 100%;
+  }
+}
+
+/* ── Templates strip collapsed-by-default ────── */
+
+.xchat-templates-strip__collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  border-radius: var(--xf-radius-sm, 8px);
+  cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.xchat-templates-strip__collapse-toggle:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  color: var(--xf-text-200);
+}
+
+.xchat-templates-strip__collapse-chevron {
+  display: inline-block;
+  font-size: 0.65rem;
+  transition: transform 0.2s;
+}
+
+.xchat-templates-strip__collapse-chevron--expanded {
+  transform: rotate(180deg);
+}
+
+/* ── Quick actions single-row horizontal scroll on mobile ── */
+
+@media (max-width: 639px) {
+  .xchat-templates-strip__cards-row--compact {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .xchat-templates-strip__cards-row--compact::-webkit-scrollbar {
+    display: none;
+  }
+
+  .xchat-templates-strip__scroller--pills {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+  }
+
+  .xchat-templates-strip__card-wrap--scroll {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
+  .xchat-templates-strip__card--pill {
+    white-space: nowrap;
+    padding: 0.45rem 0.75rem;
+  }
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .xchat-workspace-bar__pulse--live {
+    animation: none;
+  }
+
+  .xchat-templates-strip__collapse-chevron {
+    transition: none;
+  }
+}

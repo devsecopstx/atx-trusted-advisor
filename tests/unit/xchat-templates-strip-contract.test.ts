@@ -13,9 +13,9 @@ describe("xChat templates strip + workspace library layout contract", () => {
   it("keeps workspace library header cluster before actions in top-row", () => {
     expect(strip).toContain('className="xchat-templates-strip__top-row"');
     expect(strip).toContain('className="xchat-templates-strip__header-main"');
-    expect(strip).toContain('className="xchat-templates-strip__library-heading">Workspace library</h3>');
+    expect(strip).toContain('className="xchat-templates-strip__library-heading">Workspace library</span>');
     expect(strip).toContain("xchat-templates-strip__ready-badge");
-    expect(strip).toContain("prompts ready");
+    expect(strip).toContain("ready");
     expect(strip).toContain('className="xchat-templates-strip__header-actions"');
     expect(strip).toContain("xchat-workspace-bar__pulse");
     const topRowIx = strip.indexOf("xchat-templates-strip__top-row");

@@ -2140,54 +2140,25 @@ export function XchatConversation({
 
       <div className="xchat-main">
         <div ref={mainChatScrollRef} className="xchat-main__chat-scroll">
-          <details className="xchat-mobile-workspace-info md:hidden">
-            <summary className="xchat-mobile-workspace-info__summary">Workspace info · billing</summary>
-            <div className="xchat-mobile-workspace-info__body">
-              <header className="xchat-welcome-header xchat-welcome-header--in-details">
-                <h2 className="xchat-welcome-title">Welcome, {welcomeName}!</h2>
-                {tenantWorkspaceSessionLabel ? (
-                  <p className="xchat-welcome-tenant">
-                    <span className="font-medium text-[var(--xf-text-200)]">
-                      Advisor workspace · {tenantWorkspaceSessionLabel}
-                    </span>
-                  </p>
-                ) : null}
-                <p className="xchat-welcome-sub xchat-welcome-sub--mobile-compact">
-                  Portfolio, watchlist, and options tools — Templates above the composer; Depth sets reasoning.
-                </p>
-              </header>
-              {!isRetailPaidSubscriptionPlan(accountDetails.subscriptionPlan) ? (
-                <BillingAccessStateBanner
-                  className="billing-access-state-banner--xchat-shell"
-                  dismissSessionKey="workspace_v1"
-                  persistentDismissIdentity={accountDetails.email}
-                />
-              ) : null}
-            </div>
-          </details>
-
-          <div className="hidden md:contents">
-            <header className="xchat-welcome-header xchat-welcome-header--inline">
-              <h1 className="xchat-welcome-title xchat-welcome-title--inline">Welcome, {welcomeName}!</h1>
-              {tenantWorkspaceSessionLabel ? (
-                <p className="xchat-welcome-tenant xchat-welcome-tenant--inline font-medium text-[var(--xf-text-200)]">
-                  Advisor workspace · {tenantWorkspaceSessionLabel} strategy session
-                </p>
-              ) : null}
-              <p className="xchat-welcome-sub xchat-welcome-sub--inline">
-                Overview of xChat — portfolio, watchlist, and advisor options tools. Use Templates above the composer for
-                starter prompts; Depth (Fast / Expert / Heavy) controls plan-aware reasoning.
+          <header className="xchat-welcome-header xchat-welcome-header--compact">
+            <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
+            {tenantWorkspaceSessionLabel ? (
+              <p className="xchat-welcome-tenant font-medium text-[var(--xf-text-200)]">
+                · {tenantWorkspaceSessionLabel}
               </p>
-            </header>
-
-            {!isRetailPaidSubscriptionPlan(accountDetails.subscriptionPlan) ? (
-              <BillingAccessStateBanner
-                className="billing-access-state-banner--xchat-shell"
-                dismissSessionKey="workspace_v1"
-                persistentDismissIdentity={accountDetails.email}
-              />
             ) : null}
-          </div>
+            <p className="xchat-welcome-sub">
+              Portfolio, watchlist, and options tools — Templates above the composer; Depth sets reasoning.
+            </p>
+          </header>
+
+          {!isRetailPaidSubscriptionPlan(accountDetails.subscriptionPlan) ? (
+            <BillingAccessStateBanner
+              className="billing-access-state-banner--xchat-shell"
+              dismissSessionKey="workspace_v1"
+              persistentDismissIdentity={accountDetails.email}
+            />
+          ) : null}
 
           <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
             <XchatThreadPanelLazy
