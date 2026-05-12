@@ -37,7 +37,6 @@ import {
     XMarkIcon
 } from "@/app/admin/ui/crud-icons";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
-import { SymbolOhlcChartPanel } from "@/app/ui/symbol-ohlc-chart-panel";
 import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
 import {
     XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
@@ -69,31 +68,16 @@ import {
 } from "@/app/watchlist/ui/watchlist-desk-columns";
 import {
     computeExecutiveMetrics,
-    formatPortfolioRiskPct,
     heuristicIvPercentile,
-    targetEntryRiskPctNumeric,
-    targetEntryRiskPctToneClass,
     watchlistMobileLegAccentClass,
     watchlistRsiToneClass,
     type WatchlistMetricRow
 } from "@/app/watchlist/ui/watchlist-metrics";
+import {
+    WatchlistQuoteDetailPanel,
+    type WatchlistQuotePanelTab
+} from "@/app/watchlist/ui/watchlist-quote-detail-panel";
 import { getSymbolSectorLabel } from "@/modules/watchlist/symbol-sector";
-
-function UpArrowIcon() {
-  return (
-    <svg aria-hidden fill="none" height="16" viewBox="0 0 24 24" width="16">
-      <path d="M12 19V5M12 5l-5 5M12 5l5 5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function DownArrowIcon() {
-  return (
-    <svg aria-hidden fill="none" height="16" viewBox="0 0 24 24" width="16">
-      <path d="M12 5v14M12 19l-5-5M12 19l5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    </svg>
-  );
-}
 
 function ReviewListIcon() {
   return (
@@ -336,18 +320,6 @@ function truncateCompanyBlurb(name: string, maxLen: number): string {
   return `${t.slice(0, Math.max(0, maxLen - 1))}…`;
 }
 
-const WATCHLIST_RATIONALE_PREVIEW_MAX_CHARS = 180;
-
-function getRationalePreview(raw?: string): string {
-  const compact = (raw ?? "").trim().replace(/\s+/g, " ");
-  if (!compact) {
-    return "";
-  }
-  if (compact.length <= WATCHLIST_RATIONALE_PREVIEW_MAX_CHARS) {
-    return compact;
-  }
-  return `${compact.slice(0, WATCHLIST_RATIONALE_PREVIEW_MAX_CHARS - 1)}…`;
-}
 
 function formatUsd2(n: number): string {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
@@ -414,22 +386,6 @@ function formatLegCell(row: WatchlistRow): string {
     return "—";
   }
   return `${g.contractType} ${g.strike.toFixed(2)}`;
-}
-
-function formatCatalystCell(row: WatchlistRow): string {
-  const iso = row.chainGlance?.expirationDate;
-  if (!iso) {
-    return "—";
-  }
-  const date = new Date(`${iso}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-  const daysOut = Math.max(0, Math.round((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
-  if (daysOut <= 7) {
-    return `Exp ${iso} • ${daysOut}d`;
-  }
-  return `Exp ${iso}`;
 }
 
 function formatRsiCell(row: WatchlistRow): string {
@@ -526,6 +482,21 @@ function useWatchlistViewportAllowsVirtualize(): boolean {
   );
 }
 
+function useWatchlistDeskCompactLayout(): boolean {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") {
+        return () => {};
+      }
+      const mq = window.matchMedia("(max-width: 1439px)");
+      mq.addEventListener("change", onStoreChange);
+      return () => mq.removeEventListener("change", onStoreChange);
+    },
+    () => (typeof window !== "undefined" ? window.matchMedia("(max-width: 1439px)").matches : false),
+    () => false
+  );
+}
+
 type WatchlistRowTrProps = {
   row: WatchlistRow;
   editMode: boolean;
@@ -548,7 +519,7 @@ type WatchlistRowTrProps = {
   patchRowEntryPrice: (symbol: string, entryPrice: number) => Promise<void>;
   aiSuggestBusy: boolean;
   onAiSuggest: (row: WatchlistRow) => void;
-  onShowQuote: (row: WatchlistRow) => void;
+  onShowQuote: (row: WatchlistRow, tab?: WatchlistQuotePanelTab) => void;
   onXchatPreflight?: (row: WatchlistRow) => void;
   /** Desktop grid only; omitted on mobile cards (defaults to full desk order). */
   visibleDeskColumnIds?: readonly WatchlistDeskColumnId[];
@@ -682,12 +653,6 @@ function WatchlistDeskHeaderRow(props: {
                 </button>
               </th>
             );
-          case "riskPct":
-            return (
-              <th key={colId} scope="col">
-                % book risk
-              </th>
-            );
           case "quickScore":
             return (
               <th
@@ -710,18 +675,6 @@ function WatchlistDeskHeaderRow(props: {
                 </button>
               </th>
             );
-          case "rationale":
-            return (
-              <th key={colId} scope="col">
-                Rationale
-              </th>
-            );
-          case "status":
-            return (
-              <th key={colId} scope="col">
-                Status + catalyst
-              </th>
-            );
           case "actions":
             return (
               <th key={colId} scope="col">
@@ -736,157 +689,6 @@ function WatchlistDeskHeaderRow(props: {
   );
 }
 
-function WatchlistRationaleBlock(
-  props: Pick<
-    WatchlistRowTrProps,
-    "row" | "editMode" | "mutating" | "aiSuggestBusy" | "updateDraftRow" | "patchRowMeta" | "onAiSuggest"
-  > & { wrapClassName?: string }
-) {
-  const { row, editMode, mutating, aiSuggestBusy, updateDraftRow, patchRowMeta, onAiSuggest, wrapClassName } = props;
-  const [rationaleDialogOpen, setRationaleDialogOpen] = useState(false);
-  const [rationaleDialogEditing, setRationaleDialogEditing] = useState(false);
-  const [rationaleDraft, setRationaleDraft] = useState(row.rationale ?? "");
-  const rationaleHasValue = (row.rationale ?? "").trim().length > 0;
-  const rationalePreview = useMemo(() => getRationalePreview(row.rationale), [row.rationale]);
-
-  const closeRationaleDialog = () => {
-    setRationaleDialogOpen(false);
-    setRationaleDialogEditing(false);
-    setRationaleDraft(row.rationale ?? "");
-  };
-
-  const saveRationaleDialog = async () => {
-    const prev = (row.rationale ?? "").trim();
-    const next = rationaleDraft.trim();
-    if (prev !== next) {
-      await patchRowMeta(row.symbol, { rationale: next });
-    }
-    setRationaleDialogOpen(false);
-  };
-
-  return (
-    <div className={wrapClassName ?? "xf-watchlist-rationale-cell"}>
-      {editMode ? (
-        <textarea
-          aria-label={`${row.symbol} rationale`}
-          className="xf-watchlist-rationale-input"
-          placeholder="Thesis (required for Active)"
-          rows={2}
-          value={row.rationale ?? ""}
-          onChange={(e) => updateDraftRow(row.symbol, { rationale: e.target.value })}
-        />
-      ) : (
-        <div
-          className={`xf-watchlist-rationale-preview${!rationaleHasValue ? " xf-watchlist-rationale-preview--empty" : ""}`}
-        >
-          {rationaleHasValue ? rationalePreview : "No rationale yet. Add one before marking Active."}
-        </div>
-      )}
-      <div className="xf-watchlist-rationale-actions">
-        {!editMode ? (
-          <button
-            className="xf-watchlist-rationale-expand-link"
-            disabled={mutating}
-            type="button"
-            onClick={() => {
-              setRationaleDraft(row.rationale ?? "");
-              setRationaleDialogEditing(false);
-              setRationaleDialogOpen(true);
-            }}
-          >
-            Expand
-          </button>
-        ) : null}
-        <button
-          className="xf-watchlist-ai-suggest"
-          disabled={mutating || aiSuggestBusy}
-          type="button"
-          onClick={() => onAiSuggest(row)}
-        >
-          ✦ AI Suggest
-        </button>
-      </div>
-      {!editMode && rationaleDialogOpen ? (
-        <div className="xf-watchlist-rationale-modal-backdrop" role="presentation" onClick={closeRationaleDialog}>
-          <div
-            aria-label={`${row.symbol} rationale`}
-            aria-modal="true"
-            className="xf-watchlist-rationale-modal"
-            role="dialog"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="xf-watchlist-rationale-modal__title">{row.symbol} rationale</h3>
-            {rationaleDialogEditing ? (
-              <textarea
-                aria-label={`${row.symbol} rationale editor`}
-                className="xf-watchlist-rationale-editor"
-                placeholder="One-line thesis"
-                rows={8}
-                value={rationaleDraft}
-                onChange={(e) => setRationaleDraft(e.target.value)}
-              />
-            ) : (
-              <div className="xf-watchlist-rationale-modal__content">
-                {rationaleDraft.trim().length > 0
-                  ? rationaleDraft
-                  : "No rationale set yet. Click Edit to add one."}
-              </div>
-            )}
-            {rationaleDialogEditing ? null : (
-              <div className="xf-watchlist-rationale-modal__chart">
-                <p className="xf-watchlist-rationale-modal__chart-label">Price action</p>
-                <SymbolOhlcChartPanel
-                  enabled
-                  initialRange="1w"
-                  showRangeSelector
-                  symbol={row.symbol}
-                  variant="compact"
-                />
-              </div>
-            )}
-            <div className="xf-watchlist-rationale-modal__actions">
-              <button className="xf-watchlist-rationale-modal__btn" type="button" onClick={closeRationaleDialog}>
-                Close
-              </button>
-              {rationaleDialogEditing ? (
-                <>
-                  <button
-                    className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--secondary"
-                    type="button"
-                    onClick={() => {
-                      setRationaleDraft(row.rationale ?? "");
-                      setRationaleDialogEditing(false);
-                    }}
-                  >
-                    Cancel edit
-                  </button>
-                  <button
-                    className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--primary"
-                    disabled={mutating}
-                    type="button"
-                    onClick={() => void saveRationaleDialog()}
-                  >
-                    Save
-                  </button>
-                </>
-              ) : (
-                <button
-                  className="xf-watchlist-rationale-modal__btn xf-watchlist-rationale-modal__btn--primary"
-                  disabled={mutating}
-                  type="button"
-                  onClick={() => setRationaleDialogEditing(true)}
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function WatchlistRowActionsInner(
   props: Pick<
     WatchlistRowTrProps,
@@ -895,7 +697,6 @@ function WatchlistRowActionsInner(
     | "mutating"
     | "removingThisSymbol"
     | "patchRowMeta"
-    | "patchRowEntryPrice"
     | "onShowQuote"
     | "onRemoveSymbol"
     | "onXchatPreflight"
@@ -907,7 +708,6 @@ function WatchlistRowActionsInner(
     mutating,
     removingThisSymbol,
     patchRowMeta,
-    patchRowEntryPrice,
     onShowQuote,
     onRemoveSymbol,
     onXchatPreflight
@@ -925,58 +725,14 @@ function WatchlistRowActionsInner(
         <ReviewListIcon />
       </button>
       <button
-        aria-label={`Show quote details for ${row.symbol}`}
+        aria-label={`View quote and rationale for ${row.symbol}`}
         className="xf-watchlist-row-action-btn"
         disabled={mutating}
-        title="View quote"
+        title="View quote and rationale"
         type="button"
         onClick={() => onShowQuote(row)}
       >
         <ActivityPulseIcon className="crud-icon" />
-      </button>
-      <button
-        aria-label={`Increase target entry for ${row.symbol}`}
-        className="xf-watchlist-row-action-btn"
-        disabled={mutating}
-        title="Increase target entry"
-        type="button"
-        onClick={() => {
-          const basis =
-            typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice) && row.entryPrice > 0
-              ? row.entryPrice
-              : typeof row.quote?.price === "number" && Number.isFinite(row.quote.price) && row.quote.price > 0
-                ? row.quote.price
-                : null;
-          if (basis == null) {
-            return;
-          }
-          const next = Math.round(basis * 1.01 * 100) / 100;
-          void patchRowEntryPrice(row.symbol, next);
-        }}
-      >
-        <UpArrowIcon />
-      </button>
-      <button
-        aria-label={`Decrease target entry for ${row.symbol}`}
-        className="xf-watchlist-row-action-btn"
-        disabled={mutating}
-        title="Decrease target entry"
-        type="button"
-        onClick={() => {
-          const basis =
-            typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice) && row.entryPrice > 0
-              ? row.entryPrice
-              : typeof row.quote?.price === "number" && Number.isFinite(row.quote.price) && row.quote.price > 0
-                ? row.quote.price
-                : null;
-          if (basis == null) {
-            return;
-          }
-          const next = Math.round(Math.max(0.01, basis * 0.99) * 100) / 100;
-          void patchRowEntryPrice(row.symbol, next);
-        }}
-      >
-        <DownArrowIcon />
       </button>
       <button
         aria-label={`Open ${row.symbol} in xOptions preflight`}
@@ -1057,15 +813,12 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   visibleDeskColumnIds: visibleColsProp
 }: WatchlistRowTrProps) {
   const visibleDeskColumnIds = visibleColsProp ?? WATCHLIST_DESK_COLUMN_ORDER;
-  const te = getTargetEntryNumeric(row);
-  const riskPct = formatPortfolioRiskPct(te, portfolioTotalUsd);
-  const riskNum = targetEntryRiskPctNumeric(te, portfolioTotalUsd);
   const ivRank = getIvRankSortValue(row);
   const optionsVolume = getOptionVolumeSortValue(row);
   const distToTargetDisplay = formatDistToTarget(row);
   const quickScoreValue = quickScore(row);
   const companyFull = row.quote?.companyName?.trim() ?? "";
-  const companyBlurb = companyFull ? truncateCompanyBlurb(companyFull, 44) : "";
+  const companyBlurb = companyFull ? truncateCompanyBlurb(companyFull, 32) : "";
   const wkLo = row.quote?.fiftyTwoWeekLow;
   const wkHi = row.quote?.fiftyTwoWeekHigh;
   const has52w =
@@ -1202,12 +955,6 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             )}
           </td>
         );
-      case "riskPct":
-        return (
-          <td key={colId} className={`xf-watchlist-table-mono xf-watchlist-table-nowrap ${targetEntryRiskPctToneClass(riskNum)}`}>
-            {riskPct}
-          </td>
-        );
       case "quickScore":
         return (
           <td
@@ -1222,69 +969,12 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             )}
           </td>
         );
-      case "rationale":
-        return (
-          <td key={colId} className="xf-watchlist-rationale-cell">
-            <WatchlistRationaleBlock
-              aiSuggestBusy={aiSuggestBusy}
-              editMode={editMode}
-              mutating={mutating}
-              patchRowMeta={patchRowMeta}
-              row={row}
-              updateDraftRow={updateDraftRow}
-              onAiSuggest={onAiSuggest}
-            />
-          </td>
-        );
-      case "status":
-        return (
-          <td key={colId} className="xf-watchlist-table-mono xf-watchlist-status-catalyst-cell">
-            {editMode ? (
-              <select
-                aria-label={`${row.symbol} row status`}
-                className="xf-watchlist-status-select"
-                value={row.rowStatus ?? "draft"}
-                onChange={(e) => {
-                  updateDraftRow(row.symbol, { rowStatus: rowStatusFromSelectValue(e.target.value) });
-                }}
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="review">Review</option>
-              </select>
-            ) : (
-              <select
-                aria-label={`${row.symbol} row status`}
-                className="xf-watchlist-status-select"
-                value={row.rowStatus ?? "draft"}
-                disabled={mutating}
-                onChange={(e) => {
-                  const v = rowStatusFromSelectValue(e.target.value);
-                  const rationale = (row.rationale ?? "").trim();
-                  if (v === "active" && rationale.length === 0) {
-                    window.alert("Add a rationale before marking this row Active.");
-                    return;
-                  }
-                  void patchRowMeta(row.symbol, { rowStatus: v, rationale: row.rationale });
-                }}
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="review">Review</option>
-              </select>
-            )}
-            <div className="xf-watchlist-catalyst-sub xf-watchlist-table-mono" title="Expiry / timing">
-              {formatCatalystCell(row)}
-            </div>
-          </td>
-        );
       case "actions":
         return (
           <td key={colId} className="xf-watchlist-actions-cell">
             <WatchlistRowActionsInner
               editMode={editMode}
               mutating={mutating}
-              patchRowEntryPrice={patchRowEntryPrice}
               patchRowMeta={patchRowMeta}
               removingThisSymbol={removingThisSymbol}
               row={row}
@@ -1322,9 +1012,6 @@ const WatchlistMobileCard = memo(function WatchlistMobileCard(props: WatchlistRo
     onShowQuote,
     onXchatPreflight
   } = props;
-  const te = getTargetEntryNumeric(row);
-  const riskPct = formatPortfolioRiskPct(te, portfolioTotalUsd);
-  const riskNum = targetEntryRiskPctNumeric(te, portfolioTotalUsd);
   const ivRank = getIvRankSortValue(row);
   const optionsVolume = getOptionVolumeSortValue(row);
   const distToTargetDisplay = formatDistToTarget(row);
@@ -1347,7 +1034,6 @@ const WatchlistMobileCard = memo(function WatchlistMobileCard(props: WatchlistRo
             {companyFull ? (
               <p className="xf-watchlist-mobile-card__company">{truncateCompanyBlurb(companyFull, 56)}</p>
             ) : null}
-            <p className="xf-watchlist-mobile-card__catalyst xf-watchlist-table-mono">{formatCatalystCell(row)}</p>
           </div>
         </div>
         <div
@@ -1417,12 +1103,6 @@ const WatchlistMobileCard = memo(function WatchlistMobileCard(props: WatchlistRo
             · {ivRank != null ? `${ivRank}%` : "—"}
           </span>
         </div>
-        <div>
-          <span className="xf-watchlist-mobile-card__k">% book</span>
-          <span className={`xf-watchlist-mobile-card__v xf-watchlist-table-mono ${targetEntryRiskPctToneClass(riskNum)}`}>
-            {riskPct}
-          </span>
-        </div>
       </div>
 
       {editMode ? (
@@ -1450,59 +1130,11 @@ const WatchlistMobileCard = memo(function WatchlistMobileCard(props: WatchlistRo
         </label>
       ) : null}
 
-      <WatchlistRationaleBlock
-        aiSuggestBusy={aiSuggestBusy}
-        editMode={editMode}
-        mutating={mutating}
-        patchRowMeta={patchRowMeta}
-        row={row}
-        updateDraftRow={updateDraftRow}
-        wrapClassName="xf-watchlist-rationale-cell xf-watchlist-mobile-card__rationale"
-        onAiSuggest={onAiSuggest}
-      />
-
       <div className="xf-watchlist-mobile-card__footer">
-        <div className="xf-watchlist-mobile-card__status">
-          {editMode ? (
-            <select
-              aria-label={`${row.symbol} row status`}
-              className="xf-watchlist-status-select"
-              value={row.rowStatus ?? "draft"}
-              onChange={(e) => {
-                updateDraftRow(row.symbol, { rowStatus: rowStatusFromSelectValue(e.target.value) });
-              }}
-            >
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="review">Review</option>
-            </select>
-          ) : (
-            <select
-              aria-label={`${row.symbol} row status`}
-              className="xf-watchlist-status-select"
-              value={row.rowStatus ?? "draft"}
-              disabled={mutating}
-              onChange={(e) => {
-                const v = rowStatusFromSelectValue(e.target.value);
-                const rationale = (row.rationale ?? "").trim();
-                if (v === "active" && rationale.length === 0) {
-                  window.alert("Add a rationale before marking this row Active.");
-                  return;
-                }
-                void patchRowMeta(row.symbol, { rowStatus: v, rationale: row.rationale });
-              }}
-            >
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="review">Review</option>
-            </select>
-          )}
-        </div>
         <div className="xf-watchlist-mobile-card__actions">
           <WatchlistRowActionsInner
             editMode={editMode}
             mutating={mutating}
-            patchRowEntryPrice={patchRowEntryPrice}
             patchRowMeta={patchRowMeta}
             removingThisSymbol={removingThisSymbol}
             row={row}
@@ -1610,53 +1242,11 @@ function toCsv(rows: WatchlistRow[]): string {
   return [headers.join(","), ...lines].join("\n");
 }
 
-const WATCHLIST_LIST_NAV_COLLAPSED_KEY = "xf-watchlist-list-sidebar-collapsed";
 const WATCHLIST_PORTFOLIO_TOTAL_LS_KEY = "xf_watchlist_portfolio_total_usd_v1";
 
 function stripMarkdownishFirstLine(raw: string): string {
   const t = raw.trim().replace(/^#+\s*/m, "").split(/\n/)[0]?.trim() ?? "";
   return t.slice(0, 280);
-}
-
-function WatchlistSidebarChevron({ direction }: { direction: "left" | "right" }) {
-  if (direction === "left") {
-    return (
-      <svg
-        aria-hidden
-        className="xf-watchlist-sidebar-toggle__icon"
-        fill="none"
-        height="18"
-        viewBox="0 0 24 24"
-        width="18"
-      >
-        <path
-          d="M15 18l-6-6 6-6"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-      </svg>
-    );
-  }
-  return (
-    <svg
-      aria-hidden
-      className="xf-watchlist-sidebar-toggle__icon"
-      fill="none"
-      height="18"
-      viewBox="0 0 24 24"
-      width="18"
-    >
-      <path
-        d="M9 18l6-6-6-6"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
 }
 
 function buildImportWorkload(
@@ -1702,8 +1292,6 @@ export type WatchlistConsoleProps = {
   onWatchlistMutated?: () => void;
   /** Fired after holdings mutations from watchlist actions (embedded workspace). */
   onBookMutated?: () => void;
-  /** App-user shell already has a workspace rail; hide local watchlist sidebar to avoid double sidebars. */
-  showLocalSidebar?: boolean;
 };
 
 export function WatchlistConsole({
@@ -1712,8 +1300,7 @@ export function WatchlistConsole({
   watchlistApiPrefix = "/api/portfolios",
   footerMode = "app_user",
   variant = "page",
-  onWatchlistMutated,
-  showLocalSidebar = true
+  onWatchlistMutated
 }: WatchlistConsoleProps) {
   const watchlistBaseUrl = `${watchlistApiPrefix}/${encodeURIComponent(portfolioId)}/watchlist`;
   const [listName, setListName] = useState("Default");
@@ -1727,7 +1314,6 @@ export function WatchlistConsole({
   const [mutating, setMutating] = useState(false);
   const [removingSymbol, setRemovingSymbol] = useState<string | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
-  const [listNavCollapsed, setListNavCollapsed] = useState(true);
   const [portfolioTotalInput, setPortfolioTotalInput] = useState("");
   const [listLoadedAtLabel, setListLoadedAtLabel] = useState("");
   const [symbolSearch, setSymbolSearch] = useState("");
@@ -1735,6 +1321,7 @@ export function WatchlistConsole({
   const [deskColumnVisibility, setDeskColumnVisibility] = useState<VisibilityState>({});
   const [deskColumnVisibilityHydrated, setDeskColumnVisibilityHydrated] = useState(false);
   const [quotePanelSymbol, setQuotePanelSymbol] = useState<string | null>(null);
+  const [quotePanelTab, setQuotePanelTab] = useState<WatchlistQuotePanelTab>("quote");
   const [aiSuggestSymbol, setAiSuggestSymbol] = useState<string | null>(null);
   const [selectedWatchlistId, setSelectedWatchlistId] = useState("");
   const [availableWatchlists, setAvailableWatchlists] = useState<
@@ -1749,6 +1336,17 @@ export function WatchlistConsole({
   const tableScrollParentRef = useRef<HTMLDivElement>(null);
 
   const viewportAllowsVirtualize = useWatchlistViewportAllowsVirtualize();
+  const deskCompactLayout = useWatchlistDeskCompactLayout();
+
+  const openQuotePanel = useCallback((row: WatchlistRow, tab: WatchlistQuotePanelTab = "quote") => {
+    setQuotePanelTab(tab);
+    setQuotePanelSymbol(row.symbol);
+  }, []);
+
+  const closeQuotePanel = useCallback(() => {
+    setQuotePanelSymbol(null);
+    setQuotePanelTab("quote");
+  }, []);
 
   const handleXchatPreflightForRow = useCallback(
     (row: WatchlistRow) => {
@@ -1788,29 +1386,6 @@ export function WatchlistConsole({
         ? { column, dir: prev.dir === "asc" ? "desc" : "asc" }
         : { column, dir: column === "instrument" ? "asc" : "desc" }
     );
-  }, []);
-
-  useEffect(() => {
-    try {
-      const v = localStorage.getItem(WATCHLIST_LIST_NAV_COLLAPSED_KEY);
-      if (v === "false") {
-        setListNavCollapsed(false);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const toggleListNav = useCallback(() => {
-    setListNavCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(WATCHLIST_LIST_NAV_COLLAPSED_KEY, next ? "true" : "false");
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
   }, []);
 
   const load = useCallback(async () => {
@@ -2344,8 +1919,8 @@ ${bodyRows}
       return null;
     }
     const symbolUpper = quotePanelSymbol.trim().toUpperCase();
-    return rows.find((row) => row.symbol.trim().toUpperCase() === symbolUpper) ?? null;
-  }, [quotePanelSymbol, rows]);
+    return displayRows.find((row) => row.symbol.trim().toUpperCase() === symbolUpper) ?? null;
+  }, [quotePanelSymbol, displayRows]);
   const watchlistSummaryText = useMemo(() => {
     const holdingsLine = `${rows.length} holding${rows.length === 1 ? "" : "s"} tracked`;
     const volumeLine =
@@ -2440,8 +2015,8 @@ ${bodyRows}
   );
 
   const deskGridTemplate = useMemo(
-    () => deskGridTemplateColumns(visibleDeskColumnIdsList),
-    [visibleDeskColumnIdsList]
+    () => deskGridTemplateColumns(visibleDeskColumnIdsList, deskCompactLayout),
+    [deskCompactLayout, visibleDeskColumnIdsList]
   );
 
   const rowVirtualizer = useVirtualizer({
@@ -2450,52 +2025,10 @@ ${bodyRows}
     estimateSize: () => WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX,
     overscan: 8
   });
-  const sidebarTitle = editMode ? draftName || listName : listName;
 
   return (
     <div className="xf-watchlist-app w-full max-w-full">
       <div className="xf-watchlist-layout w-full max-w-full">
-        <aside
-          className={`xf-watchlist-sidebar${listNavCollapsed ? " xf-watchlist-sidebar--collapsed" : ""}`}
-          hidden={!showLocalSidebar}
-        >
-          <div className="xf-watchlist-sidebar-head">
-            <h2
-              className={`xf-watchlist-sidebar-title${listNavCollapsed ? " sr-only" : ""}`}
-              id="watchlist-nav-heading"
-            >
-              Watchlists
-            </h2>
-            <button
-              aria-controls="watchlist-nav-panel"
-              aria-expanded={!listNavCollapsed}
-              className="xf-watchlist-sidebar-toggle"
-              type="button"
-              onClick={toggleListNav}
-            >
-              <WatchlistSidebarChevron direction={listNavCollapsed ? "right" : "left"} />
-              <span className="sr-only">
-                {listNavCollapsed ? "Expand watchlist list" : "Collapse watchlist list"}
-              </span>
-            </button>
-          </div>
-          <div
-            className="xf-watchlist-sidebar-panel"
-            hidden={listNavCollapsed}
-            id="watchlist-nav-panel"
-          >
-            <button className="xf-watchlist-new-btn" disabled type="button">
-              <AddIcon className="crud-icon" />
-              New watchlist
-            </button>
-            <div className="xf-watchlist-nav-item">
-              {sidebarTitle}
-              <small>{watchlistSummaryText.holdingsLine}</small>
-              <small>{watchlistSummaryText.volumeLine}</small>
-              <small>{watchlistSummaryText.moveLine}</small>
-            </div>
-          </div>
-        </aside>
 
         <div className="xf-watchlist-main w-full max-w-full">
           <div className="xf-watchlist-card xf-noise-overlay w-full max-w-full">
@@ -2761,7 +2294,7 @@ ${bodyRows}
 
             {!loading && rows.length > 0 ? (
               <>
-                <div className="w-full max-w-full space-y-3 px-3 pb-3 md:hidden">
+                <div className="w-full max-w-full space-y-3 px-3 pb-3 sm:hidden">
                   {filteredSortedRows.map((row, rowIndex) => (
                     <WatchlistMobileCard
                       key={`wl-m-${rowIndex}-${row.addedAt}-${row.symbol}`}
@@ -2776,14 +2309,14 @@ ${bodyRows}
                       updateDraftRow={updateDraftRow}
                       onAiSuggest={onAiSuggestRow}
                       onRemoveSymbol={onRemoveSymbol}
-                      onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
+                      onShowQuote={openQuotePanel}
                       onXchatPreflight={handleXchatPreflightForRow}
                     />
                   ))}
                 </div>
                 <div
                   ref={tableScrollParentRef}
-                  className={`xf-watchlist-table-wrap hidden w-full max-w-full overflow-x-auto md:block${watchlistVirtualize ? " xf-watchlist-table-wrap--virtual" : ""}`}
+                  className={`xf-watchlist-table-wrap hidden w-full max-w-full overflow-x-auto sm:block${watchlistVirtualize ? " xf-watchlist-table-wrap--virtual" : ""}${deskCompactLayout ? " xf-watchlist-table-wrap--compact" : ""}`}
                 >
                   <table
                     className={`xf-watchlist-table xf-watchlist-table--desk w-full max-w-full${watchlistVirtualize ? " xf-watchlist-table--virtual" : ""}`}
@@ -2830,7 +2363,7 @@ ${bodyRows}
                               }}
                               updateDraftRow={updateDraftRow}
                               onAiSuggest={onAiSuggestRow}
-                              onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
+                              onShowQuote={openQuotePanel}
                               onRemoveSymbol={onRemoveSymbol}
                               onXchatPreflight={handleXchatPreflightForRow}
                               visibleDeskColumnIds={visibleDeskColumnIdsList}
@@ -2855,7 +2388,7 @@ ${bodyRows}
                               rowClassName="xf-watchlist-table__data-row"
                               updateDraftRow={updateDraftRow}
                               onAiSuggest={onAiSuggestRow}
-                              onShowQuote={(r) => setQuotePanelSymbol(r.symbol)}
+                              onShowQuote={openQuotePanel}
                               onRemoveSymbol={onRemoveSymbol}
                               onXchatPreflight={handleXchatPreflightForRow}
                               visibleDeskColumnIds={visibleDeskColumnIdsList}
@@ -2866,7 +2399,7 @@ ${bodyRows}
                     )}
                   </table>
                 </div>
-                <p className="xf-watchlist-table-footer hidden px-3 pb-3 md:block">
+                <p className="xf-watchlist-table-footer hidden px-3 pb-3 sm:block">
                   Desk quotes refreshed · {listLoadedAtLabel || "—"}
                 </p>
               </>
@@ -2874,113 +2407,29 @@ ${bodyRows}
           </div>
 
           {quotePanelRow ? (
-            <div className="xf-watchlist-quote-panel-backdrop" role="presentation" onClick={() => setQuotePanelSymbol(null)}>
-              <aside
-                aria-label={`${quotePanelRow.symbol} quote details`}
-                aria-modal="true"
-                className="xf-watchlist-quote-panel"
-                role="dialog"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="xf-watchlist-quote-panel__head">
-                  <div className="xf-watchlist-quote-panel__brand">
-                    {quotePanelRow.quote?.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- remote CDN; matches desk tiles
-                      <img
-                        alt=""
-                        className="xf-watchlist-quote-panel__logo"
-                        height={40}
-                        src={quotePanelRow.quote.logoUrl}
-                        width={40}
-                      />
-                    ) : (
-                      <div aria-hidden className="xf-watchlist-quote-panel__logo xf-watchlist-quote-panel__logo--fallback">
-                        {quotePanelRow.symbol.slice(0, 2)}
-                      </div>
-                    )}
-                    <div className="xf-watchlist-quote-panel__brand-text">
-                      <h3 className="xf-watchlist-quote-panel__title">{quotePanelRow.symbol} quote</h3>
-                      <p className="xf-watchlist-quote-panel__delayed">US equity · delayed quote</p>
-                    </div>
-                  </div>
-                  <button
-                    aria-label="Close quote details"
-                    className="xf-watchlist-quote-panel__close"
-                    type="button"
-                    onClick={() => setQuotePanelSymbol(null)}
-                  >
-                    <XMarkIcon className="crud-icon" />
-                  </button>
-                </div>
-                <p className="xf-watchlist-quote-panel__asof">
-                  As of {listLoadedAtLabel || "latest refresh"}
-                </p>
-                <dl className="xf-watchlist-quote-panel__grid">
-                  <div>
-                    <dt>Quote</dt>
-                    <dd>{formatSpotCell(quotePanelRow)}</dd>
-                  </div>
-                  <div>
-                    <dt>Change</dt>
-                    <dd>
-                      {typeof quotePanelRow.quote?.change === "number" &&
-                      Number.isFinite(quotePanelRow.quote.change) &&
-                      typeof quotePanelRow.quote?.changePercent === "number" &&
-                      Number.isFinite(quotePanelRow.quote.changePercent)
-                        ? `${quotePanelRow.quote.change > 0 ? "+" : ""}${quotePanelRow.quote.change.toFixed(2)} (${quotePanelRow.quote.changePercent > 0 ? "+" : ""}${quotePanelRow.quote.changePercent.toFixed(2)}%)`
-                        : "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Volume</dt>
-                    <dd>
-                      {typeof quotePanelRow.quote?.volume === "number" && Number.isFinite(quotePanelRow.quote.volume)
-                        ? quotePanelRow.quote.volume.toLocaleString()
-                        : "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Day range</dt>
-                    <dd>
-                      {typeof quotePanelRow.quote?.low === "number" &&
-                      Number.isFinite(quotePanelRow.quote.low) &&
-                      typeof quotePanelRow.quote?.high === "number" &&
-                      Number.isFinite(quotePanelRow.quote.high)
-                        ? `${formatUsd2(quotePanelRow.quote.low)} - ${formatUsd2(quotePanelRow.quote.high)}`
-                        : "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>52 week range</dt>
-                    <dd>
-                      {typeof quotePanelRow.quote?.fiftyTwoWeekLow === "number" &&
-                      Number.isFinite(quotePanelRow.quote.fiftyTwoWeekLow) &&
-                      typeof quotePanelRow.quote?.fiftyTwoWeekHigh === "number" &&
-                      Number.isFinite(quotePanelRow.quote.fiftyTwoWeekHigh)
-                        ? `${formatUsd2(quotePanelRow.quote.fiftyTwoWeekLow)} - ${formatUsd2(quotePanelRow.quote.fiftyTwoWeekHigh)}`
-                        : "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Company</dt>
-                    <dd>{quotePanelRow.quote?.companyName?.trim() || quotePanelRow.symbol}</dd>
-                  </div>
-                </dl>
-                <div className="xf-watchlist-quote-panel__chart">
-                  <SymbolOhlcChartPanel
-                    enabled
-                    initialRange="1d"
-                    showRangeSelector
-                    symbol={quotePanelRow.symbol}
-                    variant="compact"
-                  />
-                </div>
-                <p className="xf-watchlist-quote-panel__foot">
-                  Data source: Yahoo Finance.
-                </p>
-              </aside>
+            <div className="xf-watchlist-quote-panel-backdrop" role="presentation" onClick={closeQuotePanel}>
+              <WatchlistQuoteDetailPanel
+                activeTab={quotePanelTab}
+                aiSuggestBusy={aiSuggestSymbol === quotePanelRow.symbol}
+                editMode={editMode}
+                listLoadedAtLabel={listLoadedAtLabel}
+                mutating={mutating}
+                portfolioTotalUsd={portfolioTotalUsd}
+                row={quotePanelRow}
+                onAiSuggest={(panelRow) => {
+                  const matched = displayRows.find((r) => r.symbol === panelRow.symbol);
+                  if (matched) {
+                    void onAiSuggestRow(matched);
+                  }
+                }}
+                onClose={closeQuotePanel}
+                onTabChange={setQuotePanelTab}
+                patchRowMeta={patchRowMeta}
+                updateDraftRow={updateDraftRow}
+              />
             </div>
           ) : null}
+
 
           {symbolSearchOpen ? (
             <div

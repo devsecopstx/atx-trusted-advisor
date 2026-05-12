@@ -16,141 +16,6 @@
   min-height: 0;
 }
 
-@media (min-width: 900px) {
-  .xf-watchlist-layout {
-    flex-direction: row;
-    align-items: stretch;
-  }
-}
-
-.xf-watchlist-sidebar {
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: var(--xf-surface-700);
-  padding: 1rem 1.1rem;
-}
-
-.xf-watchlist-sidebar--collapsed {
-  padding-top: 0.65rem;
-  padding-bottom: 0.65rem;
-}
-
-@media (min-width: 900px) {
-  .xf-watchlist-sidebar {
-    width: 220px;
-    border-bottom: none;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .xf-watchlist-sidebar--collapsed {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 3rem;
-    padding: 0.75rem 0.35rem;
-  }
-}
-
-.xf-watchlist-sidebar-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.xf-watchlist-sidebar--collapsed .xf-watchlist-sidebar-head {
-  margin-bottom: 0;
-  justify-content: center;
-  width: 100%;
-}
-
-.xf-watchlist-sidebar-toggle {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  padding: 0;
-  color: var(--xf-text-300);
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--xf-radius-sm);
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.xf-watchlist-sidebar-toggle:hover {
-  border-color: rgba(57, 255, 20, 0.45);
-  color: var(--xf-gain-green);
-}
-
-.xf-watchlist-sidebar-toggle__icon {
-  display: block;
-}
-
-.xf-watchlist-sidebar-panel[hidden] {
-  display: none !important;
-}
-
-.xf-watchlist-sidebar-title {
-  margin: 0 0 0.75rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--xf-text-400);
-}
-
-.xf-watchlist-sidebar-head .xf-watchlist-sidebar-title {
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-}
-
-.xf-watchlist-new-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  width: 100%;
-  margin-bottom: 1rem;
-  padding: 0.45rem 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--xf-text-300);
-  background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  border-radius: var(--xf-radius-sm);
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-.xf-watchlist-nav-item {
-  display: block;
-  width: 100%;
-  min-height: 100%;
-  text-align: left;
-  padding: 0.55rem 0.65rem;
-  margin-bottom: 0.25rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--xf-text-100);
-  background: rgba(57, 255, 20, 0.08);
-  border: 1px solid rgba(57, 255, 20, 0.22);
-  border-radius: var(--xf-radius-sm);
-  cursor: default;
-}
-
-.xf-watchlist-nav-item small {
-  display: block;
-  margin-top: 0.2rem;
-  font-weight: 400;
-  font-size: 0.72rem;
-  color: var(--xf-text-400);
-}
-
 .xf-watchlist-main {
   flex: 1;
   min-width: 0;
@@ -367,9 +232,8 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   display: grid;
   grid-template-columns: var(
     --wl-desk-cols,
-    3rem minmax(7rem, 1.45fr) minmax(4.75rem, 0.85fr) minmax(4.5rem, 0.72fr) minmax(4.25rem, 0.68fr)
-      minmax(3.6rem, 0.52fr) minmax(5.25rem, 0.78fr) minmax(3.85rem, 0.58fr) minmax(3.35rem, 0.52fr)
-      minmax(8.5rem, 1.25fr) minmax(5.75rem, 0.82fr) minmax(6.25rem, 1fr)
+    2.5rem minmax(5.5rem, 1fr) minmax(3.85rem, 0.62fr) minmax(3.65rem, 0.58fr) minmax(3.45rem, 0.54fr)
+      minmax(2.95rem, 0.42fr) minmax(4.15rem, 0.62fr) minmax(2.65rem, 0.4fr) minmax(4.25rem, 0.68fr)
   );
   width: 100%;
   box-sizing: border-box;
@@ -397,6 +261,39 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
 .xf-watchlist-table.xf-watchlist-table--desk {
   border-collapse: separate;
   border-spacing: 0;
+  font-size: 0.78rem;
+}
+
+.xf-watchlist-table--desk th {
+  padding: 0.5rem 0.55rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+}
+
+.xf-watchlist-table--desk td {
+  padding: 0.42rem 0.55rem;
+}
+
+.xf-watchlist-table--desk .xf-watchlist-table-mono {
+  font-size: 0.74rem;
+}
+
+.xf-watchlist-table--desk .xf-watchlist-stack-cell__sub,
+.xf-watchlist-table--desk .xf-watchlist-sym-cell__leg {
+  font-size: 0.68rem;
+}
+
+.xf-watchlist-table--desk .xf-watchlist-sym-cell__industry {
+  font-size: 0.62rem;
+}
+
+.xf-watchlist-table--desk .xf-watchlist-spot-cell__52w {
+  font-size: 0.62rem;
+}
+
+.xf-watchlist-table--desk .xf-watchlist-quick-score-pill {
+  padding: 0.12rem 0.35rem;
+  font-size: 0.66rem;
 }
 
 .xf-watchlist-table th {
@@ -701,6 +598,84 @@ button.xf-watchlist-sort-btn:hover {
   word-break: break-word;
 }
 
+@media (max-width: 1439px) {
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table {
+    font-size: 0.72rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table th {
+    padding: 0.45rem 0.5rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table td {
+    padding: 0.38rem 0.45rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table-mono {
+    font-size: 0.68rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-stack-cell__sub,
+  .xf-watchlist-table-wrap--compact .xf-watchlist-sym-cell__leg {
+    font-size: 0.62rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-sym-cell__label {
+    font-size: 0.76rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-sym-cell__company {
+    font-size: 0.64rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-sym-cell__industry {
+    font-size: 0.58rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-spot-cell__52w {
+    font-size: 0.58rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-catalyst-sub {
+    font-size: 0.6rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table-input {
+    padding: 0.28rem 0.35rem;
+    font-size: 0.66rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table-hint {
+    font-size: 0.58rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-quick-score-pill {
+    padding: 0.12rem 0.35rem;
+    font-size: 0.62rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-row-action-btn,
+  .xf-watchlist-table-wrap--compact .xf-watchlist-row-action-link {
+    width: 1.45rem;
+    height: 1.45rem;
+    min-width: 1.45rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-row-action-btn .crud-icon,
+  .xf-watchlist-table-wrap--compact .xf-watchlist-row-action-btn svg,
+  .xf-watchlist-table-wrap--compact .xf-watchlist-row-action-link .crud-icon,
+  .xf-watchlist-table-wrap--compact .xf-watchlist-row-action-link svg {
+    width: 0.72rem;
+    height: 0.72rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-actions-cell {
+    min-width: 6.5rem;
+  }
+}
+
 @media (max-width: 767px) {
   .xf-watchlist-table td {
     white-space: normal;
@@ -717,6 +692,22 @@ button.xf-watchlist-sort-btn:hover {
 
   .xf-watchlist-spot-cell__52w {
     white-space: normal;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table {
+    font-size: 0.68rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table th {
+    font-size: 0.54rem;
+  }
+
+  .xf-watchlist-table-wrap--compact .xf-watchlist-table-mono {
+    font-size: 0.64rem;
+  }
+
+  .xf-watchlist-mobile-card__v {
+    font-size: 0.76rem;
   }
 }
 
@@ -773,7 +764,7 @@ button.xf-watchlist-sort-btn:hover {
 }
 
 .xf-watchlist-table-icon-cell {
-  width: 3rem;
+  width: 2.5rem;
   vertical-align: middle;
 }
 
@@ -782,8 +773,8 @@ button.xf-watchlist-sort-btn:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.55rem;
+  height: 1.55rem;
   border-radius: var(--xf-radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
@@ -842,9 +833,9 @@ button.xf-watchlist-sort-btn:hover {
 }
 
 .xf-watchlist-sym-cell__company {
-  margin-top: 0.2rem;
-  max-width: 16rem;
-  font-size: 0.76rem;
+  margin-top: 0.12rem;
+  max-width: 11rem;
+  font-size: 0.7rem;
   line-height: 1.25;
   color: var(--xf-text-300);
   overflow: hidden;
@@ -860,7 +851,7 @@ button.xf-watchlist-sort-btn:hover {
   font-weight: 650;
   color: var(--xf-text-100);
   font-family: var(--xf-font-mono);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .xf-watchlist-sym-cell__industry {
@@ -1510,7 +1501,7 @@ a.xf-watchlist-sym-cell__ext:hover {
 }
 
 .xf-watchlist-actions-cell {
-  min-width: 8rem;
+  min-width: 6.25rem;
   position: relative;
   overflow: visible;
 }
@@ -1518,7 +1509,7 @@ a.xf-watchlist-sym-cell__ext:hover {
 .xf-watchlist-row-actions-inline {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.3rem;
 }
 
 .xf-watchlist-row-action-btn,
@@ -1527,9 +1518,9 @@ a.xf-watchlist-sym-cell__ext:hover {
   background: color-mix(in srgb, var(--xf-surface-700) 84%, transparent);
   color: var(--xf-xoptions-accent);
   border-radius: 6px;
-  width: 1.7rem;
-  height: 1.7rem;
-  min-width: 1.7rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  min-width: 1.55rem;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -1735,6 +1726,87 @@ a.xf-watchlist-sym-cell__ext:hover {
 
 .xf-watchlist-quote-panel__close:hover {
   color: var(--xf-text-100);
+}
+
+.xf-watchlist-quote-panel__desk-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 0.85rem;
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--xf-border-700);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--xf-surface-800) 88%, transparent);
+}
+
+.xf-watchlist-quote-panel__desk-meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.xf-watchlist-quote-panel__desk-meta dt {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xf-watchlist-quote-panel__desk-meta dd {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--xf-text-100);
+}
+
+.xf-watchlist-quote-panel__status-select {
+  width: 100%;
+}
+
+.xf-watchlist-quote-panel__tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.2rem;
+  border: 1px solid var(--xf-border-700);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--xf-surface-800) 88%, transparent);
+}
+
+.xf-watchlist-quote-panel__tab {
+  flex: 1;
+  border: 0;
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xf-text-400);
+  background: transparent;
+  cursor: pointer;
+}
+
+.xf-watchlist-quote-panel__tab--active {
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-surface-700) 92%, transparent);
+  box-shadow: inset 0 0 0 1px var(--xf-border-600);
+}
+
+.xf-watchlist-quote-panel__tab-panel {
+  min-height: 0;
+}
+
+.xf-watchlist-quote-panel__rationale {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.xf-watchlist-quote-panel__rationale-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .xf-watchlist-quote-panel__asof {

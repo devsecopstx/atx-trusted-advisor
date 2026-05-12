@@ -3,10 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
-import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
-import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { GlobalFooter } from "@/app/ui/global-footer";
-import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
+import { PortfolioWorkspaceProductShell } from "@/app/portfolio/ui/portfolio-workspace-product-shell";
 import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -14,10 +11,10 @@ import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import {
-  getDefaultPortfolio,
-  getPortfolioByIdForSessionUser,
-  getPortfolioWatchlist,
-  provisionDefaultPortfolioForUser
+    getDefaultPortfolio,
+    getPortfolioByIdForSessionUser,
+    getPortfolioWatchlist,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
@@ -118,53 +115,44 @@ export default async function WatchlistPage({
   ]);
 
   return (
-    <div className="xchat-shell">
-      <AppUserApprovedHeader
-        current="watchlist"
-        feedbackPageLabel="Watchlist"
-        session={session}
-        workspaceTenant={workspaceTenant}
-      />
-
-      <div className="xchat-body" style={{ padding: 0 }}>
-        <AppUserCollapsibleRailLayout
-          mainClassName="app-user-shell-with-rail--padded w-full max-w-full px-4 md:px-6 lg:px-8"
-          rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
-          railChrome="workspace-product"
-        >
-        {workspaceError || !portfolioId ? (
-          <div className="hero-card xf-noise-overlay" style={{ maxWidth: "640px", margin: "1rem auto", padding: "1rem" }}>
-            <p className="eyebrow">Watchlist</p>
-            <h1 className="hero-title" style={{ fontSize: "1.25rem" }}>
-              Workspace unavailable
-            </h1>
-            {workspaceError ? (
-              <p className="status-text status-error" style={{ marginTop: "0.75rem" }}>
-                {workspaceError}
-              </p>
-            ) : (
-              <p className="status-text status-warn" style={{ marginTop: "0.75rem" }}>
-                No default portfolio is linked yet. Use Sync to provision it, or open Portfolio.
-              </p>
-            )}
-            <SyncDefaultPortfolioButton />
-            <div className="cta-row" style={{ marginTop: "1rem" }}>
-              <Link className="cta cta-secondary" href="/portfolio">
-                <FolderPortfolioIcon className="crud-icon" />
-                Open Portfolio
-              </Link>
-              <Link className="cta cta-secondary" href="/">
-                <HomeIcon className="crud-icon" />
-                Home
-              </Link>
-            </div>
+    <PortfolioWorkspaceProductShell
+      current="watchlist"
+      feedbackPageLabel="Watchlist"
+      mainClassName="w-full max-w-full px-4 md:px-6 lg:px-8"
+      session={session}
+      workspaceRailProps={workspaceRailProps}
+      workspaceTenant={workspaceTenant}
+    >
+      {workspaceError || !portfolioId ? (
+        <div className="hero-card xf-noise-overlay" style={{ maxWidth: "640px", margin: "1rem auto", padding: "1rem" }}>
+          <p className="eyebrow">Watchlist</p>
+          <h1 className="hero-title" style={{ fontSize: "1.25rem" }}>
+            Workspace unavailable
+          </h1>
+          {workspaceError ? (
+            <p className="status-text status-error" style={{ marginTop: "0.75rem" }}>
+              {workspaceError}
+            </p>
+          ) : (
+            <p className="status-text status-warn" style={{ marginTop: "0.75rem" }}>
+              No default portfolio is linked yet. Use Sync to provision it, or open Portfolio.
+            </p>
+          )}
+          <SyncDefaultPortfolioButton />
+          <div className="cta-row" style={{ marginTop: "1rem" }}>
+            <Link className="cta cta-secondary" href="/portfolio">
+              <FolderPortfolioIcon className="crud-icon" />
+              Open Portfolio
+            </Link>
+            <Link className="cta cta-secondary" href="/">
+              <HomeIcon className="crud-icon" />
+              Home
+            </Link>
           </div>
-        ) : (
-          <WatchlistConsole isAdmin={admin} portfolioId={portfolioId} showLocalSidebar={false} />
-        )}
-        </AppUserCollapsibleRailLayout>
-      </div>
-      <GlobalFooter />
-    </div>
+        </div>
+      ) : (
+        <WatchlistConsole isAdmin={admin} portfolioId={portfolioId} />
+      )}
+    </PortfolioWorkspaceProductShell>
   );
 }

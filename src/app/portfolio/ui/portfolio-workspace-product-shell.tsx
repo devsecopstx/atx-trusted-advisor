@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import type { AppUserProductNavCurrent } from "@/app/ui/app_user-product-nav";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import type { SessionUser } from "@/lib/auth";
@@ -19,6 +20,10 @@ export type PortfolioWorkspaceProductShellProps = {
   /** Extra classes on the scroll-body wrapper (`portfolio-page-body xchat-body`). */
   bodyClassName?: string;
   bodyStyle?: CSSProperties;
+  /** Extra classes on the main column scrollport inside the rail layout. */
+  mainClassName?: string;
+  /** Approved header nav highlight (defaults to portfolio). */
+  current?: AppUserProductNavCurrent;
 };
 
 /**
@@ -33,7 +38,9 @@ export function PortfolioWorkspaceProductShell({
   children,
   headerAddon = null,
   bodyClassName,
-  bodyStyle
+  bodyStyle,
+  mainClassName,
+  current = "portfolio"
 }: PortfolioWorkspaceProductShellProps) {
   const bodyClasses = [
     "portfolio-page-body",
@@ -48,12 +55,23 @@ export function PortfolioWorkspaceProductShell({
     .filter(Boolean)
     .join(" ");
 
+  const mainScrollClassName = [
+    "app-user-shell-with-rail--padded",
+    "min-h-0",
+    "flex-1",
+    "overflow-y-auto",
+    "overscroll-contain",
+    mainClassName?.trim()
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="xchat-shell flex min-h-0 flex-col overflow-hidden bg-transparent">
       <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[color-mix(in_srgb,var(--xf-bg-800)_82%,transparent)] backdrop-blur-md">
         <div className="workspace-product-approved-header-slot">
           <AppUserApprovedHeader
-            current="portfolio"
+            current={current}
             feedbackPageLabel={feedbackPageLabel}
             session={session}
             workspaceTenant={workspaceTenant}
@@ -64,7 +82,7 @@ export function PortfolioWorkspaceProductShell({
 
       <div className={bodyClasses} style={bodyStyle}>
         <AppUserCollapsibleRailLayout
-          mainClassName="app-user-shell-with-rail--padded min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          mainClassName={mainScrollClassName}
           mainFooter={<GlobalFooter />}
           rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
           railChrome="workspace-product"

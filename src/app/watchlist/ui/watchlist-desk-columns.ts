@@ -25,27 +25,40 @@ export const WATCHLIST_DESK_COLUMN_ORDER: readonly WatchlistDeskColumnId[] = [
   "volOi",
   "rsi",
   "targetEntry",
-  "riskPct",
   "quickScore",
-  "rationale",
-  "status",
   "actions"
 ] as const;
 
 /** Grid track per column — keep in sync with `.xf-watchlist-table--virtual` fallback in watchlist.css */
 export const WATCHLIST_DESK_GRID_TRACKS: Record<WatchlistDeskColumnId, string> = {
-  icon: "3rem",
-  symbolLeg: "minmax(7rem, 1.45fr)",
-  spot: "minmax(4.75rem, 0.85fr)",
-  ivRank: "minmax(4.5rem, 0.72fr)",
-  volOi: "minmax(4.25rem, 0.68fr)",
-  rsi: "minmax(3.6rem, 0.52fr)",
-  targetEntry: "minmax(5.25rem, 0.78fr)",
-  riskPct: "minmax(3.85rem, 0.58fr)",
-  quickScore: "minmax(3.35rem, 0.52fr)",
-  rationale: "minmax(8.5rem, 1.25fr)",
-  status: "minmax(5.75rem, 0.82fr)",
-  actions: "minmax(6.25rem, 1fr)"
+  icon: "2.5rem",
+  symbolLeg: "minmax(5.5rem, 1fr)",
+  spot: "minmax(3.85rem, 0.62fr)",
+  ivRank: "minmax(3.65rem, 0.58fr)",
+  volOi: "minmax(3.45rem, 0.54fr)",
+  rsi: "minmax(2.95rem, 0.42fr)",
+  targetEntry: "minmax(4.15rem, 0.62fr)",
+  riskPct: "minmax(3.25rem, 0.48fr)",
+  quickScore: "minmax(2.65rem, 0.4fr)",
+  rationale: "minmax(7rem, 1.05fr)",
+  status: "minmax(4.75rem, 0.68fr)",
+  actions: "minmax(4.25rem, 0.68fr)"
+};
+
+/** Tighter min tracks for tablet / narrow desk viewports — keep in sync with compact rules in watchlist.css */
+export const WATCHLIST_DESK_GRID_TRACKS_COMPACT: Record<WatchlistDeskColumnId, string> = {
+  icon: "2.1rem",
+  symbolLeg: "minmax(4.75rem, 0.95fr)",
+  spot: "minmax(3.15rem, 0.58fr)",
+  ivRank: "minmax(2.95rem, 0.5fr)",
+  volOi: "minmax(2.8rem, 0.48fr)",
+  rsi: "minmax(2.55rem, 0.38fr)",
+  targetEntry: "minmax(3.65rem, 0.56fr)",
+  riskPct: "minmax(2.75rem, 0.42fr)",
+  quickScore: "minmax(2.45rem, 0.36fr)",
+  rationale: "minmax(5.75rem, 0.9fr)",
+  status: "minmax(3.85rem, 0.58fr)",
+  actions: "minmax(3.35rem, 0.58fr)"
 };
 
 export const WATCHLIST_DESK_COLUMN_HIDEABLE: Record<WatchlistDeskColumnId, boolean> = {
@@ -58,7 +71,7 @@ export const WATCHLIST_DESK_COLUMN_HIDEABLE: Record<WatchlistDeskColumnId, boole
   targetEntry: true,
   riskPct: true,
   quickScore: true,
-  rationale: false,
+  rationale: true,
   status: true,
   actions: false
 };
@@ -74,7 +87,7 @@ export const WATCHLIST_DESK_COLUMN_LABELS: Record<WatchlistDeskColumnId, string>
   riskPct: "% book risk",
   quickScore: "Quick score",
   rationale: "Rationale",
-  status: "Status + catalyst",
+  status: "Status",
   actions: "Actions"
 };
 
@@ -107,8 +120,12 @@ export function readDeskColumnVisibilityFromStorage(): VisibilityState {
   }
 }
 
-export function deskGridTemplateColumns(visibleIds: readonly WatchlistDeskColumnId[]): string {
-  return visibleIds.map((id) => WATCHLIST_DESK_GRID_TRACKS[id]).join(" ");
+export function deskGridTemplateColumns(
+  visibleIds: readonly WatchlistDeskColumnId[],
+  compact = false
+): string {
+  const tracks = compact ? WATCHLIST_DESK_GRID_TRACKS_COMPACT : WATCHLIST_DESK_GRID_TRACKS;
+  return visibleIds.map((id) => tracks[id]).join(" ");
 }
 
 export function visibleDeskColumnIds(visibility: VisibilityState): WatchlistDeskColumnId[] {
