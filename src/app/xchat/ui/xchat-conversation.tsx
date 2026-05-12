@@ -784,7 +784,7 @@ export function XchatConversation({
       return;
     }
     clearXchatComposerDraft(setInput, composerRef.current, resizeComposer);
-  }, [input, reasoningMode, resizeComposer, selectedPersonaId, workspacePortfolioId]);
+  }, [input, loading, reasoningMode, resizeComposer, selectedPersonaId, workspacePortfolioId]);
 
   useEffect(() => {
     if (serverBootstrap != null) {
