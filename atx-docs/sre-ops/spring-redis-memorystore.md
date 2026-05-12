@@ -8,7 +8,7 @@ If **`REDIS_URL`** / **`REDIS_URL_CONTROL`** / **`REDIS_URL_CACHE`** (or Spring 
 
 | Feature | Behavior |
 |--------|----------|
-| **Lettuce connections** | `AtxRedisConfiguration` — pooled Lettuce with low command/connect timeouts, adaptive reconnect backoff, and split templates (`controlRedisTemplate` vs `cacheRedisTemplate`). |
+| **Lettuce connections** | `AtxRedisConfiguration` — **one** pooled connection per JVM by default (`REDIS_POOL_MAX_ACTIVE=1`); control + cache templates share the same factory when URLs match. |
 | **OAuth PKCE** | `OAuthPkceRedisStore` — key `xf:oauth:pkce:{state}`, TTL `OAUTH_PKCE_REDIS_TTL_SECONDS` (default **600**). `GET /api/auth/x/login` writes verifier; `GET /api/auth/x/callback` consumes it if cookies are missing. |
 | **Auth rate limits** | `AuthPathRateLimitFilter` — per client IP, rolling minute bucket (`X-Forwarded-For` first hop). Defaults: login **30**/min, callback **60**/min. Set to **0** to disable a limit. Env: `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE`, `AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE`. |
 | **Strategy jobs** | `StrategyJobRedisQuota` — UTC hour bucket `xf:sj:hourly:{userId}:{yyyyMMddHH}`; primary fuse when Redis is on (Mongo count still read for `softWarn` / meta). On failed insert, quota is decremented. |

@@ -121,12 +121,12 @@ data class RedisProps(
     val commandTimeoutMs: Long = 750,
     /** Connect timeout for socket dialing/reconnect attempts. */
     val connectTimeoutMs: Long = 750,
-    /** Pool max active connections per Cloud Run instance. */
-    val poolMaxActive: Int = 6,
+    /** Pool max active connections per Cloud Run instance (Essentials: keep at 1 unless you scale the plan). */
+    val poolMaxActive: Int = 1,
     /** Pool max idle connections retained. */
-    val poolMaxIdle: Int = 6,
+    val poolMaxIdle: Int = 1,
     /** Pool min idle connections retained. */
-    val poolMinIdle: Int = 1,
+    val poolMinIdle: Int = 0,
     /** Max wait for a pooled connection before failing fast. */
     val poolMaxWaitMs: Long = 300,
     /** Idle connections older than this are evicted proactively. */

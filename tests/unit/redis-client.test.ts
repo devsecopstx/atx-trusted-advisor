@@ -9,6 +9,7 @@ import { createClient } from "redis";
 import {
     checkRedisHealth,
     getRedisClient,
+    getRedisClientForPlane,
     getRedisConnectTimeoutMs,
     getRedisConnectionUrl,
     getRedisQuoteCacheTtlSeconds,
@@ -138,8 +139,9 @@ describe("redis-client", () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     await logRedisStartupHealthCheck();
     expect(info).toHaveBeenCalledWith(
-      expect.stringMatching(/\[startup\/redis\/(control|cache)\] ok ping latencyMs=\d+/)
+      expect.stringMatching(/\[startup\/redis\/control\] ok ping latencyMs=\d+ shared control\+cache/)
     );
+    expect(createClient).toHaveBeenCalledTimes(1);
     info.mockRestore();
   });
 
@@ -156,6 +158,24 @@ describe("redis-client", () => {
       expect.stringContaining("[startup/redis/cache]")
     );
     info.mockRestore();
+  });
+
+  it("getRedisClient reuses one connection for control and cache when URLs match", async () => {
+    process.env.REDIS_URL = "redis://127.0.0.1:6379";
+    const client = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      ping: vi.fn().mockResolvedValue("PONG"),
+      on: vi.fn(),
+      quit: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined)
+    };
+    vi.mocked(createClient).mockReturnValue(client as never);
+
+    const control = await getRedisClient();
+    const cache = await getRedisClientForPlane("cache");
+    expect(control).toBe(client);
+    expect(cache).toBe(client);
+    expect(createClient).toHaveBeenCalledTimes(1);
   });
 
   it("checkRedisHealth pings when client connects", async () => {

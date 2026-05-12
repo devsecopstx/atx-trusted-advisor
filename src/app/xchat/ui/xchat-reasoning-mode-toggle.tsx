@@ -2,7 +2,7 @@
 
 import {
     XCHAT_DEPTH_MODE_GROUP_HINT,
-    xchatDepthRoutingModelLabel,
+    XCHAT_DEPTH_ROUTING_MODEL_LABELS,
     type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
 
@@ -51,7 +51,7 @@ export function XchatReasoningModeToggle({
         ))}
       </div>
       <span className="xchat-reasoning-mode__model-id" title={XCHAT_DEPTH_MODE_GROUP_HINT}>
-        {xchatDepthRoutingModelLabel(value)}
+        {XCHAT_DEPTH_ROUTING_MODEL_LABELS[value]}
       </span>
     </div>
   );

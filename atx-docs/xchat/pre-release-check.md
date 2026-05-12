@@ -66,6 +66,7 @@ No OpenAPI gap for xChat routes.
 - [ ] Options Action Scan turns render the formatted scan card only when structured rows exist (no duplicate markdown + card).
 - [ ] When structured scan payload is empty, xChat shows deterministic fallback text instead of a blank card.
 - [ ] Default collapsed-history window keeps latest prompt/response visible together (compact cap = 6 turns unless user expands history).
+- [ ] Multiline **Latest prompt** chrome defaults collapsed (first-line preview); while the advisor is working, Latest prompt stays collapsed until the reply lands.
 - [ ] New turn submission collapses expanded history (`setThreadHistoryExpanded(false)`) so newest advisor response has room.
 - [ ] After send + assistant turn integration, the main chat viewport anchors on Latest prompt chrome (composer draft cleared; desktop + mobile; long virtualized threads; keyboard + voice unchanged).
 

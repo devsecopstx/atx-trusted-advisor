@@ -1,10 +1,15 @@
 "use client";
 
 import type { Virtualizer } from "@tanstack/virtual-core";
-import { useMemo, type RefObject } from "react";
+import { useEffect, useMemo, useState, type RefObject } from "react";
 
 import { XchatThreadMessageBubble } from "@/app/xchat/ui/xchat-thread-message-bubble";
 import { XchatThreadSystemBanner } from "@/app/xchat/ui/xchat-thread-system-banner";
+import {
+    isMultilineStickyPrompt,
+    isStickyPromptCollapsible,
+    stickyPromptHeadLine
+} from "@/lib/xchat/xchat-sticky-prompt";
 
 import type { Message } from "./xchat-conversation-types";
 
@@ -121,6 +126,29 @@ export function XchatThreadPanel({
     }
     return stickyLatestUserPromptText(latestUserForSticky);
   }, [latestUserForSticky]);
+  const stickyPromptMultiline = useMemo(
+    () => isMultilineStickyPrompt(stickyUserPreview),
+    [stickyUserPreview]
+  );
+  const stickyPromptHeadPreview = useMemo(
+    () => stickyPromptHeadLine(stickyUserPreview),
+    [stickyUserPreview]
+  );
+  const stickyPromptCollapsible = isStickyPromptCollapsible({
+    multiline: stickyPromptMultiline,
+    loading
+  });
+  const [stickyPromptExpanded, setStickyPromptExpanded] = useState(false);
+
+  useEffect(() => {
+    setStickyPromptExpanded(false);
+  }, [latestUserForSticky?.id]);
+
+  useEffect(() => {
+    if (loading) {
+      setStickyPromptExpanded(false);
+    }
+  }, [loading]);
   const stickyUserTimeIso = useMemo(() => {
     if (!latestUserForSticky) {
       return "";
@@ -223,16 +251,48 @@ export function XchatThreadPanel({
               </div>
             ) : null}
             {messages.length > 0 && latestUserForSticky ? (
-              <div ref={stickyLatestPromptRef} className="xchat-thread-sticky-prompt">
-                <span className="xchat-thread-sticky-prompt__label">Latest prompt</span>
-                <span className="xchat-thread-sticky-prompt__text">
-                  {stickyUserPreview.length > 0 ? stickyUserPreview : "[Empty prompt]"}
-                </span>
-                {stickyUserTimeLabel ? (
-                  <time className="xchat-thread-sticky-prompt__time" dateTime={stickyUserTimeIso}>
-                    {stickyUserTimeLabel}
-                  </time>
-                ) : null}
+              <div ref={stickyLatestPromptRef}>
+                {stickyPromptCollapsible ? (
+                  <details
+                    key={latestUserForSticky.id}
+                    className={`xchat-thread-sticky-prompt xchat-thread-sticky-prompt--multiline${loading ? " xchat-thread-sticky-prompt--advisor-working" : ""}`}
+                    open={!loading && stickyPromptExpanded}
+                    onToggle={(e) => {
+                      if (loading) {
+                        e.preventDefault();
+                        e.currentTarget.open = false;
+                        return;
+                      }
+                      setStickyPromptExpanded(e.currentTarget.open);
+                    }}
+                  >
+                    <summary
+                      aria-busy={loading}
+                      className="xchat-thread-sticky-prompt__summary"
+                    >
+                      <span className="xchat-thread-sticky-prompt__label">Latest prompt</span>
+                      <span className="xchat-thread-sticky-prompt__preview">{stickyPromptHeadPreview}</span>
+                      {stickyUserTimeLabel ? (
+                        <time className="xchat-thread-sticky-prompt__time" dateTime={stickyUserTimeIso}>
+                          {stickyUserTimeLabel}
+                        </time>
+                      ) : null}
+                    </summary>
+                    <p className="xchat-thread-sticky-prompt__text">{stickyUserPreview}</p>
+                  </details>
+                ) : (
+                  <div className="xchat-thread-sticky-prompt">
+                    <span className="xchat-thread-sticky-prompt__label">Latest prompt</span>
+                    <span className="xchat-thread-sticky-prompt__text">
+                      {stickyUserPreview.length > 0 ? stickyUserPreview : "[Empty prompt]"}
+                    </span>
+                    {stickyUserTimeLabel ? (
+                      <time className="xchat-thread-sticky-prompt__time" dateTime={stickyUserTimeIso}>
+                        {stickyUserTimeLabel}
+                      </time>
+                    ) : null}
+                  </div>
+                )}
               </div>
             ) : null}
             {showRetainedContextBadge ? (

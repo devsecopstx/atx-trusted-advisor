@@ -27,6 +27,9 @@ const planeState: Record<RedisPlane, RedisPlaneState> = {
   }
 };
 
+/** One TCP client per resolved URL per Node process (control + cache planes share when URLs match). */
+const clientsByResolvedUrl = new Map<string, AtxRedisClient>();
+
 /** OpenSSL / Node TLS when the server speaks plain Redis on the same port (wrong scheme). */
 export function isLikelyRedisTlsPlainMismatch(message: string): boolean {
   const m = message.toLowerCase();
@@ -152,6 +155,14 @@ export async function getRedisClientForPlane(plane: RedisPlane): Promise<AtxRedi
     return state.client;
   }
 
+  const sharedClient = clientsByResolvedUrl.get(url);
+  if (sharedClient) {
+    state.client = sharedClient;
+    state.consecutiveFailures = 0;
+    state.nextRetryAtMs = 0;
+    return sharedClient;
+  }
+
   const attempts: string[] =
     url.startsWith("rediss://") ? [url, redissToPlainRedisUrl(url)] : [url];
 
@@ -172,6 +183,7 @@ export async function getRedisClientForPlane(plane: RedisPlane): Promise<AtxRedi
         console.warn(`[redis/${plane}] client error`, err instanceof Error ? err.message : String(err));
       });
       state.client = c;
+      clientsByResolvedUrl.set(url, c);
       state.consecutiveFailures = 0;
       state.nextRetryAtMs = 0;
       if (i > 0) {
@@ -239,7 +251,12 @@ export async function checkRedisHealthForPlane(plane: RedisPlane): Promise<Redis
  * Does not throw; Redis remains optional when `REDIS_URL` is unset.
  */
 export async function logRedisStartupHealthCheck(): Promise<void> {
-  for (const plane of ["control", "cache"] as const) {
+  const controlUrl = getRedisConnectionUrlForPlane("control");
+  const cacheUrl = getRedisConnectionUrlForPlane("cache");
+  const startupPlanes: RedisPlane[] =
+    controlUrl && cacheUrl && controlUrl === cacheUrl ? ["control"] : ["control", "cache"];
+
+  for (const plane of startupPlanes) {
     const url = getRedisConnectionUrlForPlane(plane);
     if (!url) {
       console.info(`[startup/redis/${plane}] skipped — REDIS_URL unset or invalid`);
@@ -247,7 +264,11 @@ export async function logRedisStartupHealthCheck(): Promise<void> {
     }
     const h = await checkRedisHealthForPlane(plane);
     if (h.status === "ok") {
-      console.info(`[startup/redis/${plane}] ok ping latencyMs=${String(h.latencyMs)}`);
+      const shared =
+        controlUrl && cacheUrl && controlUrl === cacheUrl ? " shared control+cache" : "";
+      console.info(
+        `[startup/redis/${plane}] ok ping latencyMs=${String(h.latencyMs)}${shared}`
+      );
       continue;
     }
     if (h.status === "skipped") {
@@ -260,21 +281,26 @@ export async function logRedisStartupHealthCheck(): Promise<void> {
 
 /** Vitest-only: reset process-local singleton + failure flag. */
 export async function resetRedisClientForTests(): Promise<void> {
+  const closed = new Set<AtxRedisClient>();
   for (const plane of ["control", "cache"] as const) {
     const state = planeState[plane];
     state.consecutiveFailures = 0;
     state.nextRetryAtMs = 0;
-    if (state.client) {
+    const client = state.client;
+    state.client = undefined;
+    if (!client || closed.has(client)) {
+      continue;
+    }
+    closed.add(client);
+    try {
+      await client.quit();
+    } catch {
       try {
-        await state.client.quit();
+        await client.disconnect();
       } catch {
-        try {
-          await state.client.disconnect();
-        } catch {
-          /* ignore */
-        }
+        /* ignore */
       }
-      state.client = undefined;
     }
   }
+  clientsByResolvedUrl.clear();
 }

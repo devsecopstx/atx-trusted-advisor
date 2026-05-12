@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 describe("xChat thread rendering regression contract", () => {
   const conversation = readFileSync(join(process.cwd(), "src/app/xchat/ui/xchat-conversation.tsx"), "utf8");
   const bubble = readFileSync(join(process.cwd(), "src/app/xchat/ui/xchat-thread-message-bubble.tsx"), "utf8");
+  const threadPanel = readFileSync(join(process.cwd(), "src/app/xchat/ui/xchat-thread-panel.tsx"), "utf8");
   const css = readFileSync(join(process.cwd(), "src/app/xchat/xchat.css"), "utf8");
 
   it("keeps latest turn paired by collapsing earlier history to compact cap", () => {
@@ -20,6 +21,15 @@ describe("xChat thread rendering regression contract", () => {
     expect(bubble).toContain("<OptionsActionScanReportLazy");
     expect(bubble).toContain(": hasAssistantText ? (");
     expect(bubble).toContain("No content received from advisor for this scan.");
+  });
+
+  it("collapses multiline Latest prompt chrome by default", () => {
+    expect(threadPanel).toContain("isMultilineStickyPrompt");
+    expect(threadPanel).toContain("isStickyPromptCollapsible");
+    expect(threadPanel).toContain("xchat-thread-sticky-prompt--multiline");
+    expect(threadPanel).toContain("xchat-thread-sticky-prompt--advisor-working");
+    expect(css).toContain(".xchat-thread-sticky-prompt--multiline .xchat-thread-sticky-prompt__preview");
+    expect(css).toContain(".xchat-thread-sticky-prompt--advisor-working .xchat-thread-sticky-prompt__summary");
   });
 
   it("pins user prompt bubble text sizing/alignment to latest-prompt scale", () => {

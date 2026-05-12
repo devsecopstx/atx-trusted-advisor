@@ -81,9 +81,9 @@ app:
       tls-plain-with-rediss: ${REDIS_TLS_PLAIN_WITH_REDISS:false}
       command-timeout-ms: ${REDIS_COMMAND_TIMEOUT_MS:750}
       connect-timeout-ms: ${REDIS_CONNECT_TIMEOUT_MS:750}
-      pool-max-active: ${REDIS_POOL_MAX_ACTIVE:6}
-      pool-max-idle: ${REDIS_POOL_MAX_IDLE:6}
-      pool-min-idle: ${REDIS_POOL_MIN_IDLE:1}
+      pool-max-active: ${REDIS_POOL_MAX_ACTIVE:1}
+      pool-max-idle: ${REDIS_POOL_MAX_IDLE:1}
+      pool-min-idle: ${REDIS_POOL_MIN_IDLE:0}
       pool-max-wait-ms: ${REDIS_POOL_MAX_WAIT_MS:300}
       pool-min-evictable-idle-ms: ${REDIS_POOL_MIN_EVICTABLE_IDLE_MS:60000}
       pool-eviction-run-interval-ms: ${REDIS_POOL_EVICTION_RUN_INTERVAL_MS:30000}

@@ -98,13 +98,38 @@ export type ToXaiRequestToolsOptions = {
   forXaiResponsesApi?: boolean;
 };
 
+function isPersonaMarkerToolType(type: unknown): boolean {
+  return type === "atx_function" || type === "atxfinance" || type === "yahoo_finance";
+}
+
+/** Persona `xapi.tools` markers → nested OpenAI function tool definitions (before Responses flattening). */
+export function expandPersonaMarkerToolsInWireList(
+  tools: Array<Record<string, unknown>>
+): Array<Record<string, unknown>> {
+  const hasAtxfinance = tools.some((t) => t.type === "atx_function" || t.type === "atxfinance");
+  const hasYahooFinance = tools.some((t) => t.type === "yahoo_finance");
+  const base = tools
+    .filter((t) => !isPersonaMarkerToolType(t.type))
+    .map((t) => ({ ...t }));
+  if (hasAtxfinance) {
+    base.push(ATXFINANCE_TOOL_DEFINITION as unknown as Record<string, unknown>);
+  }
+  if (hasYahooFinance) {
+    base.push(YAHOO_FINANCE_TOOL_DEFINITION as unknown as Record<string, unknown>);
+  }
+  return base;
+}
+
 export function toXaiRequestTools(
   tools: Array<Record<string, unknown>>,
   options?: ToXaiRequestToolsOptions
 ): Array<Record<string, unknown>> {
   const forResponses = options?.forXaiResponsesApi === true;
+  const wireTools = tools.some((t) => isPersonaMarkerToolType(t.type))
+    ? expandPersonaMarkerToolsInWireList(tools)
+    : tools;
   const result: Array<Record<string, unknown>> = [];
-  for (const tool of tools) {
+  for (const tool of wireTools) {
     const type = tool.type;
     if (type === "collections_search") {
       const ids = tool.collection_ids;
@@ -142,18 +167,7 @@ export function toXaiRequestTools(
 export function personaXapiToolsToXaiRequestTools(
   tools: PersonaXapiToolDefinition[]
 ): Array<Record<string, unknown>> {
-  const hasAtxfinance = tools.some((t) => t.type === "atx_function");
-  const hasYahooFinance = tools.some((t) => t.type === "yahoo_finance");
-  const base: Array<Record<string, unknown>> = tools
-    .filter((t) => t.type !== "atx_function" && t.type !== "yahoo_finance")
-    .map((t) => ({ ...t }));
-  if (hasAtxfinance) {
-    base.push(ATXFINANCE_TOOL_DEFINITION as unknown as Record<string, unknown>);
-  }
-  if (hasYahooFinance) {
-    base.push(YAHOO_FINANCE_TOOL_DEFINITION as unknown as Record<string, unknown>);
-  }
-  return toXaiRequestTools(base, { forXaiResponsesApi: true });
+  return toXaiRequestTools(tools as Array<Record<string, unknown>>, { forXaiResponsesApi: true });
 }
 
 /**

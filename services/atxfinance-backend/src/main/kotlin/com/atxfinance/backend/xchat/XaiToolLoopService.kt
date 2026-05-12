@@ -211,6 +211,7 @@ class XaiToolLoopService(
                     }
                 }
                 "function" -> out.add(tool)
+                "atx_function", "atxfinance" -> out.add(XchatPersonaSupport.defaultAtxFunctionTool())
                 else -> {
                     val function = tool["function"] as? Map<*, *>
                     if (function != null) {

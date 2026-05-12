@@ -70,7 +70,7 @@ object XchatPersonaSupport {
         return ids.distinct()
     }
 
-    private fun defaultAtxFunctionTool(): Map<String, Any?> =
+    fun defaultAtxFunctionTool(): Map<String, Any?> =
         mapOf(
             "type" to "function",
             "name" to "atx_function",

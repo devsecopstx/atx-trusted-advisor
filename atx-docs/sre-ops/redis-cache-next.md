@@ -54,6 +54,7 @@ Grant the Cloud Run runtime service account **Secret Manager Secret Accessor** o
 - **Control plane keys**: `ratelimit:*`, `xf:rental-ai:inflight:*`, `tenant-ux:policy:v2:*`
 - **Cache plane keys**: `xchat:market_quote:*`, `xf:yahoo:batch:v1:*`, `xf:equity:logo:*`, `xf:wsnap:v1:*`, `xf:rag:lexical:*`
 - Keep these on separate Redis instances (or at least DB indexes + ACL users) so cache churn cannot starve control-path reliability.
+- **Connection budget:** When both planes use the same `REDIS_URL`, Next keeps **one** `node-redis` client per Node process (`clientsByResolvedUrl` in `src/lib/redis-client.ts`). Do not mount `REDIS_URL_CONTROL` / `REDIS_URL_CACHE` to the same subscription unless you intend two TCP clients per instance.
 
 ## TTL policy (v1)
 

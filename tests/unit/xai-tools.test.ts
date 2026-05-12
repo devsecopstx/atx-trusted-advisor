@@ -31,6 +31,25 @@ describe("toXaiRequestTools", () => {
     ).toEqual([{ type: "file_search", name: "file_search", vector_store_ids: ["a", "b"] }]);
   });
 
+  it("expands persona marker tools before Responses flattening", () => {
+    const out = toXaiRequestTools([{ type: "atx_function" }], { forXaiResponsesApi: true });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      type: "function",
+      name: "atx_function"
+    });
+    expect((out[0] as { function?: unknown }).function).toBeUndefined();
+  });
+
+  it("expands legacy atxfinance marker tools", () => {
+    const out = toXaiRequestTools([{ type: "atxfinance" }], { forXaiResponsesApi: true });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      type: "function",
+      name: "atx_function"
+    });
+  });
+
   it("passes through web_search and shallow-copies objects", () => {
     const tool = { type: "x_search", foo: 1 };
     const out = toXaiRequestTools([tool]);

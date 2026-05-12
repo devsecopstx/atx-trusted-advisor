@@ -3,6 +3,7 @@ import { z } from "zod";
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import { getDb } from "@/lib/mongodb";
 import { respondWithXaiToolLoop } from "@/lib/xai";
+import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import { resolveCoreUserHexIdForRentalTenantByUsername } from "@/modules/identity/repository";
 import { logRentalAiAudit } from "@/modules/platform/rental-ai-audit";
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
       model: rentalProfile.xaiModelOverride,
       systemPrompt: finalSystemPrompt,
       userPrompt: parsedBody.data.message.trim(),
-      tools: xapiConfig.tools,
+      tools: personaXapiToolsToXaiRequestTools(xapiConfig.tools),
       toolChoice: xapiConfig.toolChoice,
       maxTurns: xapiConfig.maxTurns,
       executor: createXfinanceToolExecutor({

@@ -34,6 +34,20 @@ Use the same policy for both planes:
 - `p99 command latency > 20ms` for control plane -> **critical**
 - `p99 command latency > 50ms` for cache plane -> **warning**
 
+## Redis Cloud Essentials connection budget (30MB / ~30 clients)
+
+atxFinance can exhaust a **shared** Essentials plan before memory is full:
+
+| Consumer | Typical connections per Cloud Run instance |
+| --- | --- |
+| **Next.js** | **1** TCP client per Node process when `REDIS_URL` backs both control + cache planes (shared singleton in `src/lib/redis-client.ts`). |
+| **Spring** | **1** pooled TCP connection per JVM by default (`REDIS_POOL_MAX_ACTIVE`, `AtxRedisConfiguration`); control + cache factories share one pool when URLs match. |
+| **Local dev / CI** | Any machine with `REDIS_URL` pointed at the same subscription adds **1+** clients. |
+
+**Budget math (same `REDIS_URL` on Next + Spring):** `next_max_instances × 1 + backend_max_instances × pool_max_active + local_clients`. With defaults **12 + 8 × 1 = 20** before local traffic — still above a **30** client Essentials cap when scaled; cap **`--max-instances`** or raise the Redis plan. Next and Spring **cannot** share one TCP connection across processes — only **one client per Cloud Run instance** each.
+
+**Triage:** Redis Cloud **Metrics → Connections**; GCP Cloud Run **instance count** for Next + backend; confirm no stale dev shells hold `REDIS_URL` for prod.
+
 ## Application-side signals (required)
 
 ### Next.js
