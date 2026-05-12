@@ -21,6 +21,21 @@ describe("watchlist-desk-columns", () => {
     expect(v.includes("icon")).toBe(true);
     expect(v.includes("status")).toBe(false);
     expect(v.includes("rationale")).toBe(false);
+    expect(v.includes("riskPct")).toBe(false);
+  });
+
+  it("default desk column order omits rationale, status, and riskPct", () => {
+    expect(WATCHLIST_DESK_COLUMN_ORDER).toEqual([
+      "icon",
+      "symbolLeg",
+      "spot",
+      "ivRank",
+      "volOi",
+      "rsi",
+      "targetEntry",
+      "quickScore",
+      "actions"
+    ]);
   });
 
   it("deskGridTemplateColumns joins tracks in order", () => {

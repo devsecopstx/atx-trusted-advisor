@@ -21,7 +21,9 @@ describe("PortfolioWorkspaceProductShell contract", () => {
     expect(shellSrc).toContain("mainFooter={<GlobalFooter");
     expect(shellSrc).not.toMatch(/<\/AppUserCollapsibleRailLayout>\s*\n\s*<GlobalFooter/);
     expect(shellSrc).toContain("workspaceProductShellClassName");
-    expect(shellSrc).toContain("overflow-y-auto overscroll-contain");
+    expect(shellSrc).toContain("mainScrollClassName");
+    expect(shellSrc).toContain('"overflow-y-auto"');
+    expect(shellSrc).toContain('"overscroll-contain"');
     expect(cssSrc).toContain(".workspace-product-approved-header-slot");
     expect(cssSrc).toContain(".workspace-product-sticky-top");
   });

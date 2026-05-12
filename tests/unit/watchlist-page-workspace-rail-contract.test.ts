@@ -7,9 +7,9 @@ describe("watchlist page workspace rail contract", () => {
   const pageSrc = readFileSync(join(process.cwd(), "src/app/watchlist/page.tsx"), "utf8");
   const layoutSrc = readFileSync(join(process.cwd(), "src/app/watchlist/layout.tsx"), "utf8");
 
-  it("uses WorkspaceProductSidebar + workspace-product chrome + dashboard CSS", () => {
-    expect(pageSrc).toContain('railChrome="workspace-product"');
-    expect(pageSrc).toContain("<WorkspaceProductSidebar {...workspaceRailProps} />");
+  it("uses PortfolioWorkspaceProductShell + workspace rail props + dashboard CSS", () => {
+    expect(pageSrc).toContain("<PortfolioWorkspaceProductShell");
+    expect(pageSrc).toContain('current="watchlist"');
     expect(pageSrc).toContain("getWorkspaceProductSidebarPropsForSession(session, \"Watchlist\")");
     expect(layoutSrc).toContain('@/app/portfolios/portfolios-dashboard.css');
     expect(layoutSrc).toContain("../xchat/xchat.css");
