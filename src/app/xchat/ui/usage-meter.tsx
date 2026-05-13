@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
 import {
     shouldShowXchatPromptSoftLimitBanner,
@@ -85,11 +85,15 @@ export function XchatUsageMeter({ variant, refreshSignal = 0 }: XchatUsageMeterP
   const load = useCallback(async () => {
     try {
       const data = await fetchXchatPromptUsageShared();
-      setState({ status: "ok", data });
+      startTransition(() => {
+        setState({ status: "ok", data });
+      });
     } catch (e) {
-      setState({
-        status: "error",
-        message: e instanceof Error ? e.message : "Could not load prompt usage"
+      startTransition(() => {
+        setState({
+          status: "error",
+          message: e instanceof Error ? e.message : "Could not load prompt usage"
+        });
       });
     }
   }, []);
@@ -99,9 +103,14 @@ export function XchatUsageMeter({ variant, refreshSignal = 0 }: XchatUsageMeterP
       invalidateXchatPromptUsageClientCache();
       lastAppliedXchatPromptUsageRefresh = refreshSignal;
     }
-    void load();
+    const initial = window.setTimeout(() => {
+      void load();
+    }, 0);
     const id = window.setInterval(() => void load(), POLL_MS);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(id);
+    };
   }, [load, refreshSignal]);
 
   const rootCls = variant === "rail" ? "xchat-usage-meter xchat-usage-meter--rail" : "xchat-usage-meter";

@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
   proxyPortfolioRequestToBackend: vi.fn(),
-  releaseUnusedProxyResponse: vi.fn()
+  releaseUnusedProxyResponse: vi.fn(),
+  /** Gate for `isXchatSseProxyBackendEnabled` — keep off so tests use in-process ask delegate. */
+  shouldProxyPortfolioRequestsToBackend: vi.fn(() => false)
 }));
 
 const askMocks = vi.hoisted(() => ({
@@ -33,6 +35,7 @@ async function readAll(stream: ReadableStream<Uint8Array> | null): Promise<strin
 describe("POST /api/xchat/ask/stream", () => {
   beforeEach(() => {
     bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
+    bffMocks.shouldProxyPortfolioRequestsToBackend.mockReturnValue(false);
   });
 
   afterEach(() => {

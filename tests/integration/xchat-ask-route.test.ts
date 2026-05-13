@@ -38,7 +38,9 @@ const verifierMocks = vi.hoisted(() => ({
 
 const coreAdminRepositoryMocks = vi.hoisted(() => ({
   getUserAdminSettings: vi.fn(),
-  getDefaultPortfolio: vi.fn().mockResolvedValue(null)
+  getDefaultPortfolio: vi.fn().mockResolvedValue(null),
+  /** Avoid real Mongo + `getEnv()` when ask route prefetches `loadUserWorkspaceSummaryForPrompt`. */
+  listPortfoliosForSessionUser: vi.fn().mockResolvedValue([])
 }));
 
 const ragReadinessMocks = vi.hoisted(() => ({
@@ -105,7 +107,8 @@ vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
   return {
     ...actual,
     getUserAdminSettings: coreAdminRepositoryMocks.getUserAdminSettings,
-    getDefaultPortfolio: coreAdminRepositoryMocks.getDefaultPortfolio
+    getDefaultPortfolio: coreAdminRepositoryMocks.getDefaultPortfolio,
+    listPortfoliosForSessionUser: coreAdminRepositoryMocks.listPortfoliosForSessionUser
   };
 });
 vi.mock("@/modules/xchat/account-outlook-context", () => ({
@@ -230,6 +233,7 @@ describe("xchat ask route collection retrieval", () => {
       new ObjectId("507f1f77bcf86cd7994390ab")
     );
     coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValue(null);
+    coreAdminRepositoryMocks.listPortfoliosForSessionUser.mockResolvedValue([]);
     verifierMocks.verifyXaiCollectionNonBlocking.mockImplementation(() => {});
     ragReadinessMocks.getScopeReadinessSummary.mockResolvedValue({
       blocked: false,
