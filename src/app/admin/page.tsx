@@ -5,6 +5,7 @@ import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repo
 
 import { ADMIN_FUNCTION_GROUPS } from "./ui/admin-hub-sections";
 import { AdminOpsSummaryPanel } from "./ui/admin-ops-summary-panel";
+import { DataPlaneHealthPanel } from "./ui/data-plane-health-panel";
 import { TenantUxFailClosedDrillToggle } from "./ui/tenant-ux-fail-closed-drill-toggle";
 import { TenantUxObservabilityPanel } from "./ui/tenant-ux-observability-panel";
 
@@ -62,6 +63,7 @@ export default async function AdminPage() {
       </section>
 
       <AdminOpsSummaryPanel />
+      <DataPlaneHealthPanel />
       <section className="panel stack-gap">
         <div className="panel-header">
           <h2>Tenant UX enforcement drills</h2>

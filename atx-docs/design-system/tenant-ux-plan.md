@@ -1,8 +1,8 @@
 # Tenant UX (`tenant_ux`) — per-role routes, landing, white-label chrome
 
-**Status:** **Shipped** in repo for core flows. **PLAN 11 (dev): closed** — edge V2 remains an **ops toggle** (`TENANT_UX_ENFORCEMENT_V2`) with soak + GCP alerts per [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md). **Compliance:** Branding is **display-only** — do not imply different regulatory posture per tenant (`AGENTS.md`, multi-tenant roadmap **10**).
+**Status:** **Shipped** in repo for core flows. **Backlog:** the dedicated **`tenant_ux` V2** row was **removed from [`PLAN.md`](../PLAN.md) in May 2026** after multi-role field soak (global admin, tenant admin, app_user). Edge V2 remains an **ops toggle** (`TENANT_UX_ENFORCEMENT_V2`) with optional GCP alerts per [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md). **Compliance:** Branding is **display-only** — do not imply different regulatory posture per tenant (`AGENTS.md`, multi-tenant roadmap **10**).
 
-**Related:** [PLAN.md](../PLAN.md) priorities **10** (provisioning / bootstrap v1) **11** (tenant_ux soak); consolidated architecture: [current-state-features.md](./current-state-features.md) § Tenant UX; ops runbook: [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md).
+**Related:** [PLAN.md](../PLAN.md) priority **10** (provisioning / bootstrap v1); consolidated architecture: [current-state-features.md](./current-state-features.md) § Tenant UX; ops runbook: [tenant-ux-enforcement.md](../sre-ops/tenant-ux-enforcement.md).
 
 ---
 
@@ -37,7 +37,7 @@
 
 ## Soak backlog (ops — metrics owners TBD)
 
-Engineering backlog for **11** is **closed**; treat the rows below as **runbook / SRE** tasks when enabling V2 in each environment.
+Engineering backlog for the former **PLAN 11** row is **closed** (May 2026 field soak); treat the rows below as **runbook / SRE** tasks when enabling V2 in each environment.
 
 | Item | Success signal |
 |------|----------------|

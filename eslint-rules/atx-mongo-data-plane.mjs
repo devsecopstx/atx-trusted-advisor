@@ -1,7 +1,8 @@
 /**
- * @file Enforces the sprint policy: no new direct Mongo writes from Next `src/app/api/**` route handlers,
- * and no `MongoClient` imports outside `src/lib/mongodb.ts`. Extend `API_ROUTE_MONGO_WRITE_ALLOWLIST`
- * only for legacy exceptions being migrated to Spring BFF.
+ * @file Enforces the sprint policy: no new direct Mongo collection writes outside the data plane
+ * (`src/modules/**`, `src/lib/mongodb.ts`, and a small legacy API allowlist), no `MongoClient` imports
+ * outside `src/lib/mongodb.ts`, and no ambiguous `.save()` calls outside those areas (Mongoose-style).
+ * Extend `API_ROUTE_MONGO_WRITE_ALLOWLIST` only for legacy exceptions being migrated to Spring BFF.
  * @see atx-docs/sre-ops/mongo-next-write-boundary.md
  */
 import path from "node:path";
@@ -29,6 +30,35 @@ const API_ROUTE_MONGO_WRITE_ALLOWLIST = new Set([
   "src/app/api/admin/tenants/[tenantId]/roles/[role]/route.ts"
 ]);
 
+/** Known `foo.save(...)` calls that are not Mongoose (e.g. jsPDF). Add path here if ESLint flags a new false positive. */
+const NON_MONGOOSE_SAVE_FILE_ALLOWLIST = new Set([
+  "src/components/xoptions/wheel-report-view.tsx",
+  "src/app/reports/scan/ui/options-action-scan-report.tsx"
+]);
+
+function isMongoDataPlanePath(rel) {
+  if (rel.startsWith("src/modules/")) {
+    return true;
+  }
+  if (rel === "src/lib/mongodb.ts") {
+    return true;
+  }
+  if (API_ROUTE_MONGO_WRITE_ALLOWLIST.has(rel)) {
+    return true;
+  }
+  return false;
+}
+
+function isLintedSrcPath(rel) {
+  if (!rel.startsWith("src/")) {
+    return false;
+  }
+  if (rel.startsWith("tests/") || rel.startsWith("scripts/") || rel.startsWith("services/")) {
+    return false;
+  }
+  return true;
+}
+
 function repoRelativeFilename(filename) {
   const fsPath = typeof filename === "string" && filename.startsWith("file:") ? fileURLToPath(filename) : filename;
   const abs = path.resolve(fsPath);
@@ -40,13 +70,9 @@ function repoRelativeFilename(filename) {
   return rel;
 }
 
-function isUnderSrcAppApiRoute(rel) {
-  return rel.startsWith("src/app/api/") && (rel.endsWith("/route.ts") || rel.endsWith("/route.tsx"));
-}
-
 /** @type {import('eslint').ESLint.Plugin} */
 export const atxMongoDataPlane = {
-  meta: { name: "atx-mongo-data-plane", version: "1.0.0" },
+  meta: { name: "atx-mongo-data-plane", version: "1.1.0" },
   rules: {
     "no-mongo-client-import-outside-lib": {
       meta: {
@@ -86,25 +112,22 @@ export const atxMongoDataPlane = {
         };
       }
     },
-    "no-collection-write-in-app-api-routes": {
+    "no-mongo-collection-writes-outside-data-plane": {
       meta: {
         type: "problem",
         docs: {
           description:
-            "Disallow Mongo collection write helpers (updateOne, insertOne, …) in src/app/api route handlers — use Spring BFF or delegate to src/modules/* repositories."
+            "Disallow Mongo collection write helpers (updateOne, insertOne, …) outside src/modules/**, src/lib/mongodb.ts, and the legacy API allowlist — use Spring BFF + thin routes, or add code under src/modules/*."
         },
         schema: [],
         messages: {
           banned:
-            "Mongo write '{{method}}' is not allowed in App Router API handlers (POST/PUT/PATCH/DELETE must go through backend APIs). Move to Spring BFF + proxy, or call a repository module from a thin route. Allowlisted legacy files: see eslint-rules/atx-mongo-data-plane.mjs."
+            "Mongo write '{{method}}' is only allowed in the data plane (src/modules/**, src/lib/mongodb.ts, or API_ROUTE_MONGO_WRITE_ALLOWLIST in eslint-rules/atx-mongo-data-plane.mjs). Route handlers should proxy to Spring or call a repository module."
         }
       },
       create(context) {
         const rel = repoRelativeFilename(context.filename);
-        if (!isUnderSrcAppApiRoute(rel)) {
-          return {};
-        }
-        if (API_ROUTE_MONGO_WRITE_ALLOWLIST.has(rel)) {
+        if (!isLintedSrcPath(rel) || isMongoDataPlanePath(rel)) {
           return {};
         }
         return {
@@ -124,6 +147,45 @@ export const atxMongoDataPlane = {
               messageId: "banned",
               data: { method: prop.name }
             });
+          }
+        };
+      }
+    },
+    "no-suspicious-save-outside-data-plane": {
+      meta: {
+        type: "problem",
+        docs: {
+          description:
+            "Disallow `.save()` calls outside the data plane unless the receiver is `ctx` (canvas) or the file is allowlisted for jsPDF and similar."
+        },
+        schema: [],
+        messages: {
+          banned:
+            "`.save()` here looks like a persistence side-effect. Mongoose `document.save()` belongs in src/modules/**. If this is canvas `ctx.save()` use a `ctx` receiver; if it is jsPDF or similar, add this file to NON_MONGOOSE_SAVE_FILE_ALLOWLIST in eslint-rules/atx-mongo-data-plane.mjs."
+        }
+      },
+      create(context) {
+        const rel = repoRelativeFilename(context.filename);
+        if (!isLintedSrcPath(rel) || isMongoDataPlanePath(rel)) {
+          return {};
+        }
+        if (NON_MONGOOSE_SAVE_FILE_ALLOWLIST.has(rel)) {
+          return {};
+        }
+        return {
+          CallExpression(node) {
+            if (node.callee?.type !== "MemberExpression") {
+              return;
+            }
+            const prop = node.callee.property;
+            if (prop?.type !== "Identifier" || prop.name !== "save") {
+              return;
+            }
+            const obj = node.callee.object;
+            if (obj?.type === "Identifier" && obj.name === "ctx") {
+              return;
+            }
+            context.report({ node, messageId: "banned" });
           }
         };
       }

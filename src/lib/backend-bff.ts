@@ -48,6 +48,10 @@ export const nextBffApi = {
     portfolioSnapshot: {
       pathTemplate: "/api/portfolios/{portfolioId}/snapshot",
       methods: ["GET"]
+    },
+    productShellReadFacade: {
+      pathTemplate: "/api/read/product-shell-v1",
+      methods: ["GET"]
     }
   },
   positions: {

@@ -440,6 +440,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "market"
   },
   {
+    path: "/api/read/product-shell-v1",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "portfolios"
+  },
+  {
     path: "/api/recommendations",
     operations: [
       { method: "GET", auth: "session" },
@@ -715,6 +720,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/admin/platform/tenant-ux/observability",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-platform"
+  },
+  {
+    path: "/api/admin/platform/data-plane-health",
     operations: [{ method: "GET", auth: "admin" }],
     tag: "admin-platform"
   },

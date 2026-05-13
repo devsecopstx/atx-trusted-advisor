@@ -5,7 +5,7 @@
 ## Rollout
 
 1. **Staging first** — set env on the **Next** Cloud Run service; validate core flows (`/xchat`, `/portfolios`, `/portfolio`, `/xoptions`, `/xcoach`) for seeded tenants and a tenant with **restricted** routes.
-2. **Soak** — **48–72 hours** minimum with monitoring; confirm **`tenant_ux_policy_fetch_error`** logs are rare and investigated when present.
+2. **Soak** — **48–72 hours** minimum with monitoring; confirm **`tenant_ux_policy_fetch_error`** logs are rare and investigated when present. **May 2026:** multi-role manual soak (global admin, tenant admin, app user) completed; the **`tenant_ux` V2** row was **removed from [`PLAN.md`](../PLAN.md)** — keep optional GCP metrics/alerts here as ops polish.
 3. **Production** — enable per environment; optional **tenant allowlist** via a future **`core_tenants`** flag if product needs phased rollout (not required for env-wide flip).
 
 ## Environment

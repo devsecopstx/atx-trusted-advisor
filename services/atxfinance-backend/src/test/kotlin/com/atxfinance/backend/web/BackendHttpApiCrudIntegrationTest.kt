@@ -364,4 +364,13 @@ class BackendHttpApiCrudIntegrationTest {
         assertEquals("USER-KEEP-REF-1234", afterDefault.path("extAccountId").asText())
         assertEquals("merrill", afterDefault.path("type").asText())
     }
+
+    @Test
+    fun `read facade returns default portfolio and null snapshot when skipped`() {
+        val ch = cookieHeaders()
+        val tree = json("/api/read/product-shell-v1?includeSnapshot=false", HttpMethod.GET, null, ch)
+        assertEquals(1, tree.path("data").path("facadeVersion").asInt())
+        assertTrue(tree.path("data").path("defaultPortfolio").path("_id").asText().isNotEmpty())
+        assertTrue(tree.path("data").path("workspaceSnapshot").isNull)
+    }
 }

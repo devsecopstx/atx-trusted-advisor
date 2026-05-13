@@ -85,7 +85,7 @@ export function XoptionsChooseContractStepFooter({
             disabled={reviewDisabled}
             onClick={onReviewOrderDetails}
           >
-            Review order details
+            Next Review Order
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 ---
 name: skill-tenant-roadmap
-description: Tenant UX, multi-tenant provisioning (PLAN 10–11), app_user tasks (705), tenant workspace automations (706). Summarizes shipped slices moved out of atx-docs/PLAN.md; PLAN 10 v1 bootstrap/policy is documented under § Shipped — Multi-tenant provisioning.
+description: Tenant UX (shipped; multi-role soak May 2026), multi-tenant provisioning (PLAN 10), app_user tasks (705), tenant workspace automations (706). Summarizes shipped slices moved out of atx-docs/PLAN.md; PLAN 10 v1 bootstrap/policy is documented under § Shipped — Multi-tenant provisioning.
 ---
 
 # Tenant roadmap context (skill)
@@ -11,14 +11,14 @@ This skill holds **short shipped summaries** that were trimmed from `PLAN.md` so
 
 ---
 
-## Shipped — Tenant UX (`tenant_ux`, PLAN **11** core)
+## Shipped — Tenant UX (`tenant_ux`; former PLAN **11**)
 
 - Route catalog + drift tests; admin **`GET/PATCH /api/admin/platform/route-catalog/{tenantId}`** (audit on PATCH); tenant role matrix APIs + admin UI.
 - Runtime resolver + policy cache; page guards; workspace rail / headers; **`/access-denied`**; **`GET /api/app-user/me/role`**.
 - Edge **V2** hook in **`src/proxy.ts`** when **`TENANT_UX_ENFORCEMENT_V2`** (policy fetch; fail-open log **`tenant_ux_policy_fetch_error`**; optional **`TENANT_UX_POLICY_FAIL_CLOSED`**).
 - Policy path module (includes **`/xcoach`**); xChat tenant block in prompts/welcome; **`--xf-tenant-primary` / `--xf-tenant-secondary`** via branding provider + brand kit.
 
-**PLAN 11 — dev closed:** V2 feature set shipped; **ops-only** remainder is env soak (**48–72h**) + GCP metrics/alerts on stderr JSON lines (`tenant-ux-enforcement.md`). **Shipped:** Redis bust on roles/catalog **`PATCH`** + manual policy-cache POST; dynamic **`manifest.ts`**; admin observability API + hub panel; fail-closed drill cookie API; expanded **`resolvePolicyPathForRequest`**. **Redis policy keys** `tenant-ux:policy:v2:*` ship with **`REDIS_URL`** (dev/prod). Runbooks: `atx-docs/sre-ops/tenant-ux-enforcement.md`, `atx-docs/sre-ops/redis-cache-next.md` § Tenant UX policy.
+**May 2026 — backlog row removed from [`PLAN.md`](../../atx-docs/PLAN.md):** multi-role field soak (**global_admin**, tenant admin, **app_user**) passed. **Optional ops:** GCP metrics/alerts on stderr JSON lines (`tenant-ux-enforcement.md`). **Shipped:** Redis bust on roles/catalog **`PATCH`** + manual policy-cache POST; dynamic **`manifest.ts`**; admin observability API + hub panel; fail-closed drill cookie API; expanded **`resolvePolicyPathForRequest`**. **Redis policy keys** `tenant-ux:policy:v2:*` ship with **`REDIS_URL`** (dev/prod). Runbooks: `atx-docs/sre-ops/tenant-ux-enforcement.md`, `atx-docs/sre-ops/redis-cache-next.md` § Tenant UX policy.
 
 ---
 

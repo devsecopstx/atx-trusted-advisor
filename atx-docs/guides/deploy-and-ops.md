@@ -153,6 +153,7 @@ Recommended checks before merge/deploy:
 2. `NODE_ENV=production npm run build` (matches CI / release gate; plain `npm run build` is fine for a quick compile check)
 3. `npm run ops:secrets:verify:staging` (includes Google OAuth for staging)
 4. `npm run ops:secrets:verify:prod`
+5. After portfolio/BFF releases: optional **multi-account staging soak** (portfolio, watchlist, admin tasks, audit) — **[`staging-hnwi-soak-checklist.md`](../sre-ops/staging-hnwi-soak-checklist.md)**.
 
 `ops:secrets:verify:*` now also validates that `ATXFINANCE_BACKEND_ORIGIN` is present in your shell environment when using the staging/prod helper scripts.
 

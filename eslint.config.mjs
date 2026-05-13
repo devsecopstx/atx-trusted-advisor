@@ -12,7 +12,8 @@ const config = [
     },
     rules: {
       "atx-mongo/no-mongo-client-import-outside-lib": "error",
-      "atx-mongo/no-collection-write-in-app-api-routes": "error"
+      "atx-mongo/no-mongo-collection-writes-outside-data-plane": "error",
+      "atx-mongo/no-suspicious-save-outside-data-plane": "error"
     }
   }
 ];

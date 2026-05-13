@@ -1,56 +1,10 @@
 import { NextResponse } from "next/server";
 
-import type { SessionUser } from "@/lib/auth";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import { loadDefaultPortfolioSummaryForSession } from "@/lib/portfolio-default-summary-for-session";
 import { requireTenantHexForPortfolioDataPlane } from "@/lib/portfolio-access";
-import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
-import {
-    getDefaultPortfolio,
-    listPortfolioAccounts,
-    provisionDefaultPortfolioForUser
-} from "@/modules/core-admin/repository";
-
-type SummaryResult =
-  | NextResponse
-  | { data: Awaited<ReturnType<typeof buildPortfolioSummaryPayload>> };
-
-async function defaultPortfolioSummaryOrError(session: SessionUser): Promise<SummaryResult> {
-  let portfolio = await getDefaultPortfolio(session.userId, {
-    tenantId: session.tenantId
-  });
-  if (!portfolio?._id) {
-    const provisioned = await provisionDefaultPortfolioForUser({
-      userId: session.userId,
-      tenantId: session.tenantId,
-      watchlistSymbols: ["TSLA"]
-    });
-    portfolio = provisioned.portfolio;
-  }
-  if (!portfolio) {
-    return NextResponse.json({ error: "Default portfolio not found" }, { status: 404 });
-  }
-  if (!portfolio._id) {
-    return NextResponse.json({ error: "Default portfolio missing id" }, { status: 500 });
-  }
-
-  const accounts = await listPortfolioAccounts({
-    userId: session.userId,
-    portfolioId: portfolio._id.toHexString(),
-    tenantId: session.tenantId
-  });
-  if (accounts.length === 0) {
-    await provisionDefaultPortfolioForUser({
-      userId: session.userId,
-      tenantId: session.tenantId,
-      watchlistSymbols: ["TSLA"]
-    });
-  }
-
-  const data = await buildPortfolioSummaryPayload(session, portfolio);
-  return { data };
-}
 
 export async function GET(request: Request) {
   const proxied = await proxyPortfolioRequestToBackend(request);
@@ -67,7 +21,7 @@ export async function GET(request: Request) {
     return tenantDenied;
   }
 
-  const result = await defaultPortfolioSummaryOrError(session);
+  const result = await loadDefaultPortfolioSummaryForSession(session);
   if (result instanceof NextResponse) {
     return result;
   }
@@ -90,7 +44,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await defaultPortfolioSummaryOrError(session);
+    const result = await loadDefaultPortfolioSummaryForSession(session);
     if (result instanceof NextResponse) {
       return result;
     }

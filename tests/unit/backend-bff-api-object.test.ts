@@ -17,6 +17,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/portfolios/{portfolioId}/watchlist", methods: ["GET", "PATCH"] },
   { pathTemplate: "/api/portfolios/{portfolioId}/workspace-snapshot", methods: ["GET"] },
   { pathTemplate: "/api/portfolios/{portfolioId}/snapshot", methods: ["GET"] },
+  { pathTemplate: "/api/read/product-shell-v1", methods: ["GET"] },
   { pathTemplate: "/api/positions", methods: ["GET", "POST"] },
   { pathTemplate: "/api/positions/{positionId}", methods: ["DELETE"] },
   { pathTemplate: "/api/recommendations", methods: ["GET", "POST"] },

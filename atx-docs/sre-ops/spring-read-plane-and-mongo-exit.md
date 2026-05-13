@@ -21,6 +21,8 @@ Today: Next still uses Mongo for many **GET** handlers, persona governance, xCha
 
 Prioritize **high QPS, low branching** reads first: portfolio summary, workspace snapshot consumers, positions list — then admin directory reads that are already JVM-parity in places.
 
+**Shipped facade (v1):** `GET /api/read/product-shell-v1` — bundles default portfolio + optional cached snapshot (see `ReadFacadeController`, Next `src/app/api/read/product-shell-v1/route.ts`, ADR **`atx-docs/architecture/adr-002-read-facade-and-next-mongo-reads.md`**). Measure extra hop per **`atx-docs/sre-ops/bff-read-facade-latency-measurement.md`**.
+
 ## Materialized views (Mongo alternative)
 
 When Spring should **not** hit primary OLTP collections for heavy scans:
@@ -40,4 +42,6 @@ Use this when Kotlin read path would otherwise duplicate complex Next aggregatio
 
 - [`mongo-next-write-boundary.md`](./mongo-next-write-boundary.md) — write policy + ESLint.
 - [`atxfinance-backend-http-api.md`](./atxfinance-backend-http-api.md) — Spring route inventory.
+- [`architecture/adr-002-read-facade-and-next-mongo-reads.md`](../architecture/adr-002-read-facade-and-next-mongo-reads.md) — ADR: read facade + remaining Next Mongo reads + target quarters.
+- [`bff-read-facade-latency-measurement.md`](./bff-read-facade-latency-measurement.md) — Lighthouse / curl / `X-Atx-*` timing budget (50–80 ms).
 - [`guides/deploy-and-ops.md`](../guides/deploy-and-ops.md) — env matrix and CLI deploy.
