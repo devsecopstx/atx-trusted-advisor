@@ -118,7 +118,7 @@ export default async function WatchlistPage({
     <PortfolioWorkspaceProductShell
       current="watchlist"
       feedbackPageLabel="Watchlist"
-      mainClassName="w-full max-w-full px-4 md:px-6 lg:px-8"
+      mainClassName="min-w-0 w-full max-w-full px-2 sm:px-4 md:px-6 lg:px-8"
       session={session}
       workspaceRailProps={workspaceRailProps}
       workspaceTenant={workspaceTenant}

@@ -444,12 +444,13 @@ export function XchatTemplatesStrip({
               t.hnwiV21Slug != null && isHnwiPromptTemplateV21Slug(t.hnwiV21Slug)
                 ? t.hnwiV21Slug
                 : null;
+            const optionsDeskHighlight = hnwiKey === "hnwi-v21-options-desk";
             return (
             <div key={t.id} className="xchat-templates-strip__card-wrap">
               <button
                 aria-busy={hnwiKey !== null && busyHnwiSlug === hnwiKey}
                 aria-label={`${t.title}. ${t.subtitle}`}
-                className="xchat-templates-strip__grid-card"
+                className={`xchat-templates-strip__grid-card${optionsDeskHighlight ? " xchat-templates-strip__card--options-desk" : ""}`}
                 disabled={askInFlight || (hnwiKey !== null && Boolean(busyHnwiSlug))}
                 type="button"
                 onClick={() => void applyTemplate(t)}
@@ -506,12 +507,13 @@ export function XchatTemplatesStrip({
                 t.hnwiV21Slug != null && isHnwiPromptTemplateV21Slug(t.hnwiV21Slug)
                   ? t.hnwiV21Slug
                   : null;
+              const optionsDeskHighlight = hnwiKey === "hnwi-v21-options-desk";
               return (
               <div key={t.id} className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
                 <button
                   aria-busy={hnwiKey !== null && busyHnwiSlug === hnwiKey}
                   aria-label={`${t.title}. ${t.subtitle}`}
-                  className="xchat-templates-strip__card xchat-templates-strip__card--pill"
+                  className={`xchat-templates-strip__card xchat-templates-strip__card--pill${optionsDeskHighlight ? " xchat-templates-strip__card--options-desk" : ""}`}
                   disabled={askInFlight || (hnwiKey !== null && Boolean(busyHnwiSlug))}
                   type="button"
                   onClick={() => void applyTemplate(t)}

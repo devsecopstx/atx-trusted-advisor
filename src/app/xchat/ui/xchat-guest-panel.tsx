@@ -19,8 +19,6 @@ import {
     XchatComposerWaveformIcon
 } from "@/app/xchat/ui/xchat-composer-icons";
 
-import { XchatComposerNav } from "./xchat-composer-nav";
-
 type XchatGuestPanelProps = {
   userEmail?: string;
   pendingApproval?: boolean;
@@ -655,11 +653,6 @@ export function XchatGuestPanel({
             </XfHoverHint>
           </div>
         </form>
-        <div className="xchat-composer-shortcuts">
-          <div className="xchat-composer-shortcuts__row">
-            <XchatComposerNav variant="guest" />
-          </div>
-        </div>
         <p className="xchat-composer-hint">
           <span className="xchat-composer-hint__pill">Locked</span>
           <span className="xchat-composer-hint__text">Sign up or sign in for approved access.</span>

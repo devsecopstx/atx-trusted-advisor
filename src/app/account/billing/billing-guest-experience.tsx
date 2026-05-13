@@ -136,7 +136,7 @@ export function BillingGuestExperience({
         body: JSON.stringify({
           email,
           password,
-          next: `/workspace/onboarding?billing_welcome=1`
+          next: "/xchat"
         })
       });
       const loginJson = (await loginTry.json().catch(() => ({}))) as { ok?: boolean; redirect?: string; error?: string };

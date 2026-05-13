@@ -4,6 +4,7 @@ import {
     useEffect,
     useRef,
     useState,
+    type CSSProperties,
     type ClipboardEvent,
     type Dispatch,
     type FocusEvent,
@@ -38,11 +39,11 @@ import { XchatPersonaMenu } from "@/app/xchat/ui/xchat-persona-menu";
 import { XchatReasoningModeToggle } from "@/app/xchat/ui/xchat-reasoning-mode-toggle";
 import { XchatTemplatesStrip } from "@/app/xchat/ui/xchat-templates-strip";
 
+import { useVisualViewportKeyboardInset } from "@/lib/use-visual-viewport-keyboard-inset";
 import { MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK } from "@/modules/xchat/xchat-image-attachment";
 import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
 
 import { XCHAT_ASK_PROGRESS_BADGES } from "./xchat-ask-progress-badges";
-import { XchatComposerNav } from "./xchat-composer-nav";
 import { hnwiComposerSuggestions } from "./xchat-example-prompts";
 import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
 
@@ -126,6 +127,7 @@ export function XchatComposerPanel({
   workspacePortfolioId = null,
   hnwiV21SlugForNextAskRef
 }: XchatComposerPanelProps) {
+  const keyboardInsetPx = useVisualViewportKeyboardInset();
   const reduceMotion = useReducedMotion();
   const [composerFocused, setComposerFocused] = useState(false);
   /** Rotating example placeholders stop while the textarea itself is focused (user can type freely). */
@@ -296,7 +298,15 @@ export function XchatComposerPanel({
   }
 
   return (
-    <div className="xchat-composer-wrap" id="xchat-composer">
+    <div
+      className="xchat-composer-wrap"
+      id="xchat-composer"
+      style={
+        {
+          ["--xchat-keyboard-inset" as string]: `${keyboardInsetPx}px`
+        } as CSSProperties
+      }
+    >
       <XchatTemplatesStrip
         askInFlight={loading}
         composerDraft={input}
@@ -574,6 +584,54 @@ export function XchatComposerPanel({
             )}
           </div>
         </div>
+        <div
+          aria-label="Depth and market data"
+          className="xchat-composer__toolbar-meta"
+          role="region"
+        >
+          <XchatReasoningModeToggle
+            compact
+            disabled={loading}
+            value={reasoningMode}
+            onChange={setReasoningMode}
+          />
+          <div
+            aria-label="Market data freshness"
+            className="xchat-composer-quote-row xchat-composer-quote-row--inline xchat-composer-quote-row--toolbar xchat-composer-quote-row--in-toolbar-meta"
+            role="group"
+          >
+            <span className="xchat-composer-quote-row__label xchat-composer-quote-row__label--compact">
+              <span className="sr-only">Market data</span>
+              <span aria-hidden>Mkt</span>
+            </span>
+            <div className="xchat-composer-quote-row__segments">
+              <button
+                aria-pressed={quoteFreshness === "cached_first"}
+                className={`xchat-composer-quote-row__seg${quoteFreshness === "cached_first" ? " xchat-composer-quote-row__seg--active" : ""}`}
+                disabled={loading}
+                title="Prefer Redis / warmed snapshot during US session for portfolio-style prompts (faster)"
+                type="button"
+                onClick={() => {
+                  onQuoteFreshnessChange("cached_first");
+                }}
+              >
+                Cache
+              </button>
+              <button
+                aria-pressed={quoteFreshness === "live"}
+                className={`xchat-composer-quote-row__seg${quoteFreshness === "live" ? " xchat-composer-quote-row__seg--active" : ""}`}
+                disabled={loading}
+                title="Always allow live Yahoo on cache miss for workspace watchlist quotes"
+                type="button"
+                onClick={() => {
+                  onQuoteFreshnessChange("live");
+                }}
+              >
+                Live
+              </button>
+            </div>
+          </div>
+        </div>
         {dictationError ? (
           <p className="status-text status-error xchat-composer-inline-msg">{dictationError}</p>
         ) : null}
@@ -581,60 +639,6 @@ export function XchatComposerPanel({
           <p className="status-text xchat-composer-attach-note xchat-composer-inline-msg">{attachNote}</p>
         ) : null}
       </motion.form>
-      <div className="xchat-composer-shortcuts xchat-composer-shortcuts--unified">
-        <div className="xchat-composer-shortcuts__row xchat-composer-shortcuts__row--unified">
-          <div className="xchat-composer-shortcuts__left text-xs text-[#64748b]">
-            Enter: Send · Shift+Enter: Newline
-          </div>
-          <div className="xchat-composer-shortcuts__split-nav">
-            <XchatComposerNav />
-          </div>
-          <div className="xchat-composer-secondary-controls">
-            <XchatReasoningModeToggle
-              compact
-              disabled={loading}
-              value={reasoningMode}
-              onChange={setReasoningMode}
-            />
-            <div
-              aria-label="Market data freshness"
-              className="xchat-composer-quote-row xchat-composer-quote-row--inline xchat-composer-quote-row--toolbar"
-              role="group"
-            >
-              <span className="xchat-composer-quote-row__label xchat-composer-quote-row__label--compact">
-                <span className="sr-only">Market data</span>
-                <span aria-hidden>Mkt</span>
-              </span>
-              <div className="xchat-composer-quote-row__segments">
-                <button
-                  aria-pressed={quoteFreshness === "cached_first"}
-                  className={`xchat-composer-quote-row__seg${quoteFreshness === "cached_first" ? " xchat-composer-quote-row__seg--active" : ""}`}
-                  disabled={loading}
-                  title="Prefer Redis / warmed snapshot during US session for portfolio-style prompts (faster)"
-                  type="button"
-                  onClick={() => {
-                    onQuoteFreshnessChange("cached_first");
-                  }}
-                >
-                  Cache
-                </button>
-                <button
-                  aria-pressed={quoteFreshness === "live"}
-                  className={`xchat-composer-quote-row__seg${quoteFreshness === "live" ? " xchat-composer-quote-row__seg--active" : ""}`}
-                  disabled={loading}
-                  title="Always allow live Yahoo on cache miss for workspace watchlist quotes"
-                  type="button"
-                  onClick={() => {
-                    onQuoteFreshnessChange("live");
-                  }}
-                >
-                  Live
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <VoiceModeSession
         disabled={loading}

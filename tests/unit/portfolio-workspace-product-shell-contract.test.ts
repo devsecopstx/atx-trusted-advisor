@@ -18,7 +18,7 @@ describe("PortfolioWorkspaceProductShell contract", () => {
     expect(shellSrc).toContain("xchat-shell");
     expect(shellSrc).toContain("workspace-product-sticky-top");
     expect(shellSrc).toContain("workspace-product-approved-header-slot");
-    expect(shellSrc).toContain("mainFooter={<GlobalFooter");
+    expect(shellSrc).toContain("mainFooter={<WorkspaceProductLegalFooter");
     expect(shellSrc).not.toMatch(/<\/AppUserCollapsibleRailLayout>\s*\n\s*<GlobalFooter/);
     expect(shellSrc).toContain("workspaceProductShellClassName");
     expect(shellSrc).toContain("mainScrollClassName");

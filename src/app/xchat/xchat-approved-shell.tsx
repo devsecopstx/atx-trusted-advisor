@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 
-import { GlobalFooter } from "@/app/ui/global-footer";
+import { WorkspaceProductLegalFooter } from "@/app/ui/workspace-product-legal-footer";
 import { XchatConversationMount } from "@/app/xchat/xchat-conversation-mount";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import {
@@ -155,7 +155,7 @@ export async function XchatApprovedShell({
       <XchatConversationMount
       initialOutlookDesk={initialOutlookDesk}
       googleLinkHref={googleLinkHrefForApproved}
-      mainFooter={<GlobalFooter />}
+      mainFooter={<WorkspaceProductLegalFooter />}
       accountDetails={{
         email: session.email,
         username: session.username,

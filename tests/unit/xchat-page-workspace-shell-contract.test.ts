@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("/xchat workspace shell contract", () => {
   const pageSrc = readFileSync(join(process.cwd(), "src/app/xchat/page.tsx"), "utf8");
+  const loadingSrc = readFileSync(join(process.cwd(), "src/app/xchat/loading.tsx"), "utf8");
   const layoutSrc = readFileSync(join(process.cwd(), "src/app/xchat/layout.tsx"), "utf8");
   const approvedShellSrc = readFileSync(join(process.cwd(), "src/app/xchat/xchat-approved-shell.tsx"), "utf8");
   const conversationSrc = readFileSync(join(process.cwd(), "src/app/xchat/ui/xchat-conversation.tsx"), "utf8");
@@ -14,9 +15,12 @@ describe("/xchat workspace shell contract", () => {
     expect(pageSrc).toContain("workspace-product-sticky-top");
     expect(pageSrc).toContain("workspace-product-approved-header-slot");
     expect(pageSrc).not.toContain("</div>\n      <GlobalFooter />");
-    expect(approvedShellSrc).toContain("mainFooter={<GlobalFooter />}");
+    expect(approvedShellSrc).toContain("<WorkspaceProductLegalFooter />");
     expect(conversationSrc).toContain("mainFooter");
     expect(conversationSrc).toContain("{mainFooter}");
+    expect(loadingSrc).not.toContain("GlobalFooter");
+    expect(pageSrc).not.toContain("GlobalFooter");
+    expect(pageSrc).not.toContain("WorkspaceProductLegalFooter");
   });
 
   it("seeds desk outlook through the approved shell into the welcome header row", () => {

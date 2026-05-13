@@ -2148,3 +2148,11 @@ html[data-xf-ui="soft"] .sidebar-destructive-action__dialog {
 html[data-xf-ui="soft"] .sidebar-destructive-action__desc {
   color: var(--xf-text-200);
 }
+
+/** Narrow phones: workspace main column keeps nearly full width (padding stack was ~3rem total horizontal). */
+@media (max-width: 639px) {
+  .portfolio-page-body .app-user-shell-with-rail--padded {
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+  }
+}

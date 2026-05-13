@@ -686,6 +686,31 @@ button.xf-watchlist-sort-btn:hover {
 }
 
 @media (max-width: 767px) {
+  /** Use nearly full scrollport width on phones (shell + page padding stack otherwise over-narrows the card). */
+  .xf-watchlist-main {
+    padding: 0.85rem 0.35rem 1.25rem;
+  }
+
+  .xf-watchlist-page-nav {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
+
+  .xf-watchlist-card-header {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+
+  .xf-watchlist-exec {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
+
+  .xf-watchlist-toolbar {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+
   .xf-watchlist-table td {
     white-space: normal;
     word-break: break-word;

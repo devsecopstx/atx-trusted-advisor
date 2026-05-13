@@ -1,4 +1,3 @@
-import { GlobalFooter } from "@/app/ui/global-footer";
 import { XchatRouteSkeleton } from "@/app/xchat/ui/xchat-route-skeleton";
 
 export default function XchatLoading() {
@@ -13,7 +12,6 @@ export default function XchatLoading() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <XchatRouteSkeleton />
         </div>
-        <GlobalFooter />
       </div>
     </div>
   );

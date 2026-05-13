@@ -1,4 +1,4 @@
-const STATIC_CACHE = "xf-static-v3";
+const STATIC_CACHE = "xf-static-v4";
 const PWA_ICON_WEBPS = [48, 72, 96, 128, 192, 256, 512].map((s) => `/icons/icon-${s}.webp`);
 const STATIC_ASSETS = ["/manifest.webmanifest", "/pwa/atx-logo-512.png", ...PWA_ICON_WEBPS];
 
@@ -31,6 +31,15 @@ self.addEventListener("fetch", (event) => {
   }
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Never SW-cache Next.js build output. Chunks/css under `/_next/static/**`
+  // are already content-hashed + served with `cache-control: immutable`, so
+  // letting the browser HTTP cache own them avoids the dev-mode footgun where
+  // stable dev chunk filenames + stale-while-revalidate would pin old UI to
+  // installed clients (e.g. the Capacitor iOS WebView pointed at localhost).
+  if (url.pathname.startsWith("/_next/")) {
     return;
   }
 

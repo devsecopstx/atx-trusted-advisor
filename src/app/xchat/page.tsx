@@ -2,7 +2,6 @@ import { Suspense } from "react";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { GlobalFooter } from "@/app/ui/global-footer";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
@@ -114,9 +113,6 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
                 xOAuthLoginHref={xOAuthLoginHref}
               />
             </div>
-            <div className="shrink-0">
-              <GlobalFooter />
-            </div>
           </div>
         </div>
       </div>
@@ -187,7 +183,6 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           </Suspense>
         ) : (
           <XchatGuestReadonlyShell
-            mainFooter={<GlobalFooter />}
             rail={pendingWorkspaceRail ?? undefined}
             showAccessPanel={false}
             workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"

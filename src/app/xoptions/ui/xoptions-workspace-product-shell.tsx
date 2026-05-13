@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { GlobalFooter } from "@/app/ui/global-footer";
+import { WorkspaceProductLegalFooter } from "@/app/ui/workspace-product-legal-footer";
 import type { SessionUser } from "@/lib/auth";
 import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 
@@ -39,7 +39,7 @@ export async function XoptionsWorkspaceProductShell({
       <div className="xchat-body flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-4 min-w-0 md:px-8 md:py-6">
         <AppUserCollapsibleRailLayout
           mainClassName="app-user-shell-with-rail--padded min-h-0 flex-1 overflow-y-auto overscroll-contain min-w-0 w-full max-w-full"
-          mainFooter={<GlobalFooter />}
+          mainFooter={<WorkspaceProductLegalFooter />}
           rail={rail}
           railChrome="workspace-product"
           workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"

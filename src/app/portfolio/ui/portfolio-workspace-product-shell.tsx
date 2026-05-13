@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import type { AppUserProductNavCurrent } from "@/app/ui/app_user-product-nav";
-import { GlobalFooter } from "@/app/ui/global-footer";
+import { WorkspaceProductLegalFooter } from "@/app/ui/workspace-product-legal-footer";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import type { SessionUser } from "@/lib/auth";
 import type { WorkspaceProductSidebarServerProps } from "@/lib/workspace-product-sidebar-server-props";
@@ -83,7 +83,7 @@ export function PortfolioWorkspaceProductShell({
       <div className={bodyClasses} style={bodyStyle}>
         <AppUserCollapsibleRailLayout
           mainClassName={mainScrollClassName}
-          mainFooter={<GlobalFooter />}
+          mainFooter={<WorkspaceProductLegalFooter />}
           rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
           railChrome="workspace-product"
           workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"

@@ -35,6 +35,7 @@ describe("xChat composer Grok shell contract", () => {
     expect(composer).toContain("composerDraft={input}");
     expect(composer).toContain("XchatReasoningModeToggle");
     expect(composer).toContain("reasoningMode");
+    expect(composer).toContain("xchat-composer__toolbar-meta");
     expect(composer).toContain("XchatPersonaMenu");
     expect(composer).toContain("templatesGalleryInitiallyExpanded");
     expect(conversation).toContain("reasoningMode={reasoningMode}");

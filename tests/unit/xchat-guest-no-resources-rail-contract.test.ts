@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest";
  * Pins the `/xchat` guest experience to render without the public **Resources**
  * sidebar (`AppUserResourcesRailSection`, injected as the default rail by
  * `XchatGuestReadonlyShell`). Guests should see the sign-in/register panel
- * full-width with the global footer; the workspace rail is reserved for
- * signed-in pending-approval users (separate branch with an explicit
- * `pendingWorkspaceRail`).
+ * full-width without a page-level legal footer (space + mobile UX). The
+ * workspace rail is reserved for signed-in pending-approval users (separate
+ * branch with an explicit `pendingWorkspaceRail`).
  */
 
 const ROOT = resolve(__dirname, "../..");
@@ -30,12 +30,12 @@ describe("/xchat guest layout — no Resources sidebar for unauthenticated users
     expect(guestBlock).not.toMatch(/<XchatGuestReadonlyShell/);
   });
 
-  it("renders XchatGuestPanel inside a scrollable main column with a GlobalFooter for guests", () => {
+  it("renders XchatGuestPanel inside a scrollable main column without a page footer", () => {
     const guestBranchStart = source.indexOf("if (!session) {");
     const guestBranchEnd = source.indexOf("const approved = canUserLogin");
     const guestBlock = source.slice(guestBranchStart, guestBranchEnd);
     expect(guestBlock).toMatch(/overflow-y-auto overscroll-contain[\s\S]*?<XchatGuestPanel/);
-    expect(guestBlock).toMatch(/<GlobalFooter \/>/);
+    expect(guestBlock).not.toMatch(/<GlobalFooter/);
   });
 
   it("still uses XchatGuestReadonlyShell for signed-in pending-approval users (separate branch)", () => {

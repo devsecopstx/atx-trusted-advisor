@@ -52,7 +52,8 @@ export default async function AccountBillingPage({
   const guestRegisterDefaultPlan: AccessRequestPlanValue =
     parseAccessRequestPlanInput(selectedGuestPlanRaw) ?? "basic";
   const registrationFirst = openRegisterByDefault || typeof selectedGuestPlanRaw === "string";
-  const postAuthLandingPath = registrationFirst ? "/workspace/onboarding?billing_welcome=1" : "/xchat";
+  /** Post-auth always lands on the product surface — no quick-setup detour. */
+  const postAuthLandingPath = "/xchat";
 
   const googleLoginHref = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent(postAuthLandingPath)}`
