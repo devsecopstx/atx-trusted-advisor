@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       if (proxied.status === 404) {
         releaseUnusedProxyResponse(proxied);
       } else {
-        return proxied;
+        return wrapBffProxiedStreamForNextPipe(proxied);
       }
     }
   }
@@ -98,6 +98,50 @@ export async function POST(request: Request) {
       "content-type": askRes.headers.get("content-type") ?? "application/json; charset=utf-8",
     },
   });
+}
+
+/**
+ * Next pipes the route `Response` body to the client. Undici / Spring can throw **`UND_ERR_SOCKET`**
+ * (`other side closed`) after chunks — that surfaces as **`failed to pipe response`** and a bogus **500**.
+ * Re-chunk through a pull-driven stream so read errors **close** the outbound stream instead of rejecting the pipe.
+ */
+function wrapBffProxiedStreamForNextPipe(proxied: Response): Response {
+  const ct = proxied.headers.get("content-type") ?? "";
+  if (!proxied.body || !ct.includes("text/event-stream")) {
+    return proxied;
+  }
+  const reader = proxied.body.getReader();
+  const wrapped = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          controller.close();
+          return;
+        }
+        if (value && value.byteLength > 0) {
+          controller.enqueue(value);
+        }
+      } catch {
+        try {
+          await reader.cancel();
+        } catch {
+          /* ignore */
+        }
+        try {
+          controller.close();
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    }
+  });
+  const headers = new Headers(proxied.headers);
+  headers.delete("content-length");
+  return new Response(wrapped, { status: proxied.status, statusText: proxied.statusText, headers });
 }
 
 function pickXchatLimiterHeaders(src: Headers): Headers {

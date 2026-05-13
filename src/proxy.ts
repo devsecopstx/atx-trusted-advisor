@@ -5,6 +5,12 @@ import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { TENANT_UX_FAIL_CLOSED_DRILL_COOKIE } from "@/modules/platform/tenant-ux-flags";
 import { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
 
+type TenantUxPolicyDecision = {
+  allowed: boolean;
+  redirectPath: string;
+  policyUnavailable?: boolean;
+};
+
 const protectedPathPrefixes = [
   "/admin",
   "/api/admin",
@@ -31,6 +37,8 @@ const protectedPathPrefixes = [
 const publicGuestReadablePaths = ["/account/billing"] as const;
 const TENANT_UX_PROXY_POLICY_TTL_MS = 60_000;
 const tenantUxProxyCache = new Map<string, { allowed: boolean; redirectPath: string; expiresAt: number }>();
+/** Coalesce concurrent edge policy fetches for the same session + path (thundering herd on parallel HTML/RSC). */
+const tenantUxPolicyInflight = new Map<string, Promise<TenantUxPolicyDecision>>();
 const BILLING_PROXY_POLICY_TTL_MS = 30_000;
 const billingProxyCache = new Map<
   string,
@@ -202,12 +210,6 @@ function isTenantUxPolicyFailClosedEnabledForRequest(request: NextRequest): bool
 /** @deprecated Import from `@/modules/platform/tenant-ux-proxy-policy-path` instead. */
 export { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
 
-type TenantUxPolicyDecision = {
-  allowed: boolean;
-  redirectPath: string;
-  policyUnavailable?: boolean;
-};
-
 function logTenantUxPolicyFetchError(payload: Record<string, unknown>): void {
   console.warn(
     JSON.stringify({
@@ -236,49 +238,92 @@ async function resolveTenantUxPolicyDecision(
   if (hit && hit.expiresAt > Date.now()) {
     return { allowed: hit.allowed, redirectPath: hit.redirectPath };
   }
-  const url = new URL("/api/internal/tenant-ux/policy", request.url);
-  url.searchParams.set("pathname", policyPath);
-  try {
-    const fetchStarted = Date.now();
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        cookie: request.headers.get("cookie") ?? ""
-      },
-      cache: "no-store",
-      signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
-    });
-    logTenantUxMetric({
-      metric: "tenant_ux_policy_fetch_latency_ms",
-      policyPath,
-      ms: Date.now() - fetchStarted,
-      httpStatus: res.status,
-      ok: res.ok
-    });
-    if (!res.ok) {
-      logTenantUxPolicyFetchError({
-        policyPath,
-        httpStatus: res.status,
-        ok: false
-      });
-      if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
-        return {
-          allowed: false,
-          redirectPath: "/xchat",
-          policyUnavailable: true
-        };
-      }
-      return { allowed: true, redirectPath: "/xchat" };
-    }
-    let json: { data?: { allowed?: boolean; redirectPath?: string } };
+  const existing = tenantUxPolicyInflight.get(cacheKey);
+  if (existing) {
+    return await existing;
+  }
+  const pending = (async (): Promise<TenantUxPolicyDecision> => {
+    const url = new URL("/api/internal/tenant-ux/policy", request.url);
+    url.searchParams.set("pathname", policyPath);
     try {
-      json = (await res.json()) as { data?: { allowed?: boolean; redirectPath?: string } };
-    } catch (parseErr) {
+      const fetchStarted = Date.now();
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          cookie: request.headers.get("cookie") ?? ""
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
+      });
+      logTenantUxMetric({
+        metric: "tenant_ux_policy_fetch_latency_ms",
+        policyPath,
+        ms: Date.now() - fetchStarted,
+        httpStatus: res.status,
+        ok: res.ok
+      });
+      if (!res.ok) {
+        logTenantUxPolicyFetchError({
+          policyPath,
+          httpStatus: res.status,
+          ok: false
+        });
+        if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
+          return {
+            allowed: false,
+            redirectPath: "/xchat",
+            policyUnavailable: true
+          };
+        }
+        return { allowed: true, redirectPath: "/xchat" };
+      }
+      let json: { data?: { allowed?: boolean; redirectPath?: string } };
+      try {
+        json = (await res.json()) as { data?: { allowed?: boolean; redirectPath?: string } };
+      } catch (parseErr) {
+        logTenantUxPolicyFetchError({
+          policyPath,
+          ok: false,
+          error: parseErr instanceof Error ? parseErr.message : String(parseErr),
+          reason: "tenant_ux_policy_invalid_json"
+        });
+        if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
+          return {
+            allowed: false,
+            redirectPath: "/xchat",
+            policyUnavailable: true
+          };
+        }
+        return { allowed: true, redirectPath: "/xchat" };
+      }
+      const decision: TenantUxPolicyDecision = {
+        allowed: json?.data?.allowed !== false,
+        redirectPath: json?.data?.redirectPath?.trim() || "/xchat"
+      };
+      tenantUxProxyCache.set(cacheKey, {
+        allowed: decision.allowed,
+        redirectPath: decision.redirectPath,
+        expiresAt: Date.now() + TENANT_UX_PROXY_POLICY_TTL_MS
+      });
+      if (tenantUxProxyCache.size > 500) {
+        const first = tenantUxProxyCache.keys().next();
+        if (!first.done) {
+          tenantUxProxyCache.delete(first.value);
+        }
+      }
+      return decision;
+    } catch (err) {
+      logTenantUxMetric({
+        metric: "tenant_ux_policy_fetch_latency_ms",
+        policyPath,
+        ms: -1,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err)
+      });
       logTenantUxPolicyFetchError({
         policyPath,
         ok: false,
-        error: parseErr instanceof Error ? parseErr.message : String(parseErr),
-        reason: "tenant_ux_policy_invalid_json"
+        error: err instanceof Error ? err.message : String(err)
       });
       if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
         return {
@@ -288,45 +333,12 @@ async function resolveTenantUxPolicyDecision(
         };
       }
       return { allowed: true, redirectPath: "/xchat" };
+    } finally {
+      tenantUxPolicyInflight.delete(cacheKey);
     }
-    const decision: TenantUxPolicyDecision = {
-      allowed: json?.data?.allowed !== false,
-      redirectPath: json?.data?.redirectPath?.trim() || "/xchat"
-    };
-    tenantUxProxyCache.set(cacheKey, {
-      allowed: decision.allowed,
-      redirectPath: decision.redirectPath,
-      expiresAt: Date.now() + TENANT_UX_PROXY_POLICY_TTL_MS
-    });
-    if (tenantUxProxyCache.size > 500) {
-      const first = tenantUxProxyCache.keys().next();
-      if (!first.done) {
-        tenantUxProxyCache.delete(first.value);
-      }
-    }
-    return decision;
-  } catch (err) {
-    logTenantUxMetric({
-      metric: "tenant_ux_policy_fetch_latency_ms",
-      policyPath,
-      ms: -1,
-      ok: false,
-      error: err instanceof Error ? err.message : String(err)
-    });
-    logTenantUxPolicyFetchError({
-      policyPath,
-      ok: false,
-      error: err instanceof Error ? err.message : String(err)
-    });
-    if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
-      return {
-        allowed: false,
-        redirectPath: "/xchat",
-        policyUnavailable: true
-      };
-    }
-    return { allowed: true, redirectPath: "/xchat" };
-  }
+  })();
+  tenantUxPolicyInflight.set(cacheKey, pending);
+  return await pending;
 }
 
 async function enforceTenantUxV2(request: NextRequest, pathname: string): Promise<NextResponse | null> {

@@ -8,8 +8,6 @@ import {
     xchatPromptUsageMeterFillVar
 } from "@/modules/xchat/plan-limits";
 
-const POLL_MS = 35_000;
-
 export type XchatPromptUsagePayload = {
   usedToday: number;
   usedThisHour: number;
@@ -21,6 +19,55 @@ export type XchatPromptUsagePayload = {
   workspaceCapsEnforced: boolean;
   limitsFallback?: "plan_defaults";
 };
+
+const POLL_MS = 35_000;
+/** Aligns with route `Cache-Control` (~25s); avoids duplicate work from rail + composer meters. */
+const PROMPT_USAGE_CLIENT_TTL_MS = 20_000;
+
+let promptUsageClientCache: { expiresAt: number; data: XchatPromptUsagePayload } | null = null;
+let promptUsageClientInflight: Promise<XchatPromptUsagePayload> | null = null;
+
+function invalidateXchatPromptUsageClientCache(): void {
+  promptUsageClientCache = null;
+}
+
+/** Shared across rail + composer so only one invalidates per `refreshSignal` bump. */
+let lastAppliedXchatPromptUsageRefresh: number = Number.NaN;
+
+async function fetchXchatPromptUsageShared(): Promise<XchatPromptUsagePayload> {
+  const now = Date.now();
+  if (promptUsageClientCache && promptUsageClientCache.expiresAt > now) {
+    return promptUsageClientCache.data;
+  }
+  if (promptUsageClientInflight) {
+    return promptUsageClientInflight;
+  }
+  promptUsageClientInflight = (async () => {
+    try {
+      const res = await fetch("/api/app-user/xchat/prompt-usage", {
+        credentials: "include"
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        data?: XchatPromptUsagePayload;
+      };
+      if (!res.ok) {
+        throw new Error(body.error ?? `Request failed (${res.status})`);
+      }
+      if (!body.data) {
+        throw new Error("Missing prompt usage payload");
+      }
+      promptUsageClientCache = {
+        expiresAt: Date.now() + PROMPT_USAGE_CLIENT_TTL_MS,
+        data: body.data
+      };
+      return body.data;
+    } finally {
+      promptUsageClientInflight = null;
+    }
+  })();
+  return promptUsageClientInflight;
+}
 
 type FetchState =
   | { status: "loading" }
@@ -37,21 +84,8 @@ export function XchatUsageMeter({ variant, refreshSignal = 0 }: XchatUsageMeterP
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/app-user/xchat/prompt-usage", {
-        credentials: "include",
-        cache: "no-store"
-      });
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        data?: XchatPromptUsagePayload;
-      };
-      if (!res.ok) {
-        throw new Error(body.error ?? `Request failed (${res.status})`);
-      }
-      if (!body.data) {
-        throw new Error("Missing prompt usage payload");
-      }
-      setState({ status: "ok", data: body.data });
+      const data = await fetchXchatPromptUsageShared();
+      setState({ status: "ok", data });
     } catch (e) {
       setState({
         status: "error",
@@ -61,6 +95,10 @@ export function XchatUsageMeter({ variant, refreshSignal = 0 }: XchatUsageMeterP
   }, []);
 
   useEffect(() => {
+    if (!Number.isFinite(lastAppliedXchatPromptUsageRefresh) || lastAppliedXchatPromptUsageRefresh !== refreshSignal) {
+      invalidateXchatPromptUsageClientCache();
+      lastAppliedXchatPromptUsageRefresh = refreshSignal;
+    }
     void load();
     const id = window.setInterval(() => void load(), POLL_MS);
     return () => window.clearInterval(id);

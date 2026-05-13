@@ -44,16 +44,23 @@ export async function GET(request: Request) {
       httpStatus: 200,
       ok: true
     });
-    return NextResponse.json({
-      data: {
-        allowed,
-        pathname,
-        role: policy.role,
-        allowedRoutes: policy.allowedRoutes,
-        redirectPath: policy.defaultLanding,
-        flags: policy.flags
+    return NextResponse.json(
+      {
+        data: {
+          allowed,
+          pathname,
+          role: policy.role,
+          allowedRoutes: policy.allowedRoutes,
+          redirectPath: policy.defaultLanding,
+          flags: policy.flags
+        }
+      },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=15, stale-while-revalidate=30"
+        }
       }
-    });
+    );
   } catch (error) {
     void appendTenantUxObservabilityEvent({
       type: "tenant_ux_policy_fetch_error",
