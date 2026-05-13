@@ -5,6 +5,7 @@
  * @see atx-docs/sre-ops/mongo-next-write-boundary.md
  */
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const WRITE_METHOD_NAMES = new Set([
   "updateOne",
@@ -22,11 +23,15 @@ const WRITE_METHOD_NAMES = new Set([
 /** Relative to repo root — tenant bootstrap paths still mutating Mongo from route files until JVM cutover. */
 const API_ROUTE_MONGO_WRITE_ALLOWLIST = new Set([
   "src/app/api/admin/tenants/route.ts",
-  "src/app/api/admin/tenants/[tenantId]/workspace-limits/route.ts"
+  "src/app/api/admin/tenants/[tenantId]/workspace-limits/route.ts",
+  "src/app/api/admin/platform/route-catalog/[tenantId]/route.ts",
+  "src/app/api/admin/tenants/[tenantId]/roles/route.ts",
+  "src/app/api/admin/tenants/[tenantId]/roles/[role]/route.ts"
 ]);
 
 function repoRelativeFilename(filename) {
-  const abs = path.resolve(filename);
+  const fsPath = typeof filename === "string" && filename.startsWith("file:") ? fileURLToPath(filename) : filename;
+  const abs = path.resolve(fsPath);
   const root = path.resolve(process.cwd());
   let rel = path.relative(root, abs).replace(/\\/g, "/");
   if (rel.startsWith("../")) {

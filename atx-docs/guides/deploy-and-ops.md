@@ -143,7 +143,7 @@ GitHub environment secrets should remain OIDC-only:
 
 **GitHub environment variables (non-secret):**
 
-- `ATXFINANCE_BACKEND_ORIGIN` — required for both `staging` and `production` deploy preflight. Must be backend HTTPS origin (no `:8080` on public hostnames).
+- `ATXFINANCE_BACKEND_ORIGIN` — **required** for both `staging` and `production` GitHub/CLI deploy preflight (backend HTTPS origin; no `:8080` on public hostnames; must not equal the Next public `BASE_URL`). **Runtime:** on Cloud Run, when `NODE_ENV=production` and `ATX_DEPLOY_TARGET` is `stage` or `deploy`, Next **fails startup** if this var is unset (`src/instrumentation.ts` → `assertHostedCloudRunRequiresAtxfinanceBackendOrigin`). **Break-glass:** `ALLOW_MISSING_ATXFINANCE_BACKEND_ORIGIN=1` on the revision only. See **[`spring-read-plane-and-mongo-exit.md`](../sre-ops/spring-read-plane-and-mongo-exit.md)**.
 
 ## Deploy preflight
 

@@ -5,10 +5,13 @@
  * "failed to start and listen on the port … PORT=8080".
  * @see https://nextjs.org/docs/app/guides/instrumentation
  */
+import { assertHostedCloudRunRequiresAtxfinanceBackendOrigin } from "@/lib/hosted-bff-origin-gate";
+
 export function register(): void {
   if (process.env.NEXT_RUNTIME !== "nodejs") {
     return;
   }
+  assertHostedCloudRunRequiresAtxfinanceBackendOrigin();
   void import("@/lib/redis-client")
     .then((mod) => mod.logRedisStartupHealthCheck())
     .catch((error) => {
