@@ -9,7 +9,6 @@ import {
     resolveAppUserBillingAccessState
 } from "@/lib/app-user-billing-state";
 import { requireSessionUser } from "@/lib/auth";
-import { createAuditEvent } from "@/modules/audit/repository";
 import { getEnv, isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
 import { getInvestmentOutlookRefreshEnabled } from "@/lib/feature-flags";
 import { SENSITIVE_APP_USER_CACHE_HEADERS } from "@/lib/sensitive-api-cache-control";
@@ -40,6 +39,7 @@ import {
     resolveXchatSseHeartbeatMs,
     wantsXchatLiveToolLoopSse
 } from "@/lib/xchat-live-sse-policy";
+import { createAuditEvent } from "@/modules/audit/repository";
 import {
     getDefaultPortfolio,
     getUserAdminSettings
@@ -82,7 +82,10 @@ import {
 import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
-import { renderOptionsActionReportMarkdown } from "@/modules/xchat/options-action-scan";
+import {
+    coerceOptionsActionScanRowsFromToolJson,
+    renderOptionsActionReportMarkdown
+} from "@/modules/xchat/options-action-scan";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import {
     MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
@@ -90,6 +93,10 @@ import {
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import { clampMultiAgentParallelismForPlan, clampToolLoopMaxTurnsForSession, clampTopK } from "@/modules/xchat/plan-limits";
+import {
+    isHnwiPromptTemplateV21Slug,
+    type HnwiPromptTemplateV21Slug
+} from "@/modules/xchat/prompt-templates-v21-defaults";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     buildRagLexicalCacheKey,
@@ -110,6 +117,10 @@ import {
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
+import {
+    processDecodedXchatVisionImage,
+    type ProcessedXchatVisionImage
+} from "@/modules/xchat/vision-processor";
 import { postProcessWatchlistMarkdown } from "@/modules/xchat/watchlist-response-postprocess";
 import {
     buildWorkspacePreloadHintForSystemPrompt,
@@ -122,35 +133,22 @@ import {
 } from "@/modules/xchat/xchat-ask-complete-post-loop";
 import { resolveToolLoopConversationInput } from "@/modules/xchat/xchat-ask-history-input";
 import {
-  collectWatchlistPortfolioIdSlot,
-  heavySynthesisIntent,
-  isShowWatchlistIntent,
-  shouldEagerWorkspaceSnapshotPreloadForMessage,
-  shouldOfferStrategyJobPreflight,
-  shouldRunOptionsActionScan,
-  STRATEGY_JOB_PREFLIGHT_MARKDOWN
+    collectWatchlistPortfolioIdSlot,
+    heavySynthesisIntent,
+    isShowWatchlistIntent,
+    shouldEagerWorkspaceSnapshotPreloadForMessage,
+    shouldOfferStrategyJobPreflight,
+    shouldRunOptionsActionScan,
+    STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
-import {
-  isHnwiPromptTemplateV21Slug,
-  type HnwiPromptTemplateV21Slug
-} from "@/modules/xchat/prompt-templates-v21-defaults";
-import { buildHnwiV21DeskReportSystemAddon } from "@/modules/xchat/xchat-hnwi-v21-desk-report";
 import { createXchatLiveSseReadableStream } from "@/modules/xchat/xchat-ask-stream-sse";
+import { buildHnwiV21DeskReportSystemAddon } from "@/modules/xchat/xchat-hnwi-v21-desk-report";
 import {
     MAX_XCHAT_ASK_JSON_BYTES,
     mergeRawAskImageAttachmentsFromAskPayload,
     parseAndValidateXchatPasteImage
 } from "@/modules/xchat/xchat-image-attachment";
 import { insertXchatImageAttachmentRows } from "@/modules/xchat/xchat-image-attachments-repository";
-import { generateXchatVisionAutoCaption } from "@/modules/xchat/xchat-vision-auto-caption";
-import {
-    HNWI_VISION_DESK_REPORT_V21_USER_DIRECTIVE,
-    shouldInjectHnwiVisionDeskDirective
-} from "@/modules/xchat/xchat-vision-hnwi";
-import {
-    processDecodedXchatVisionImage,
-    type ProcessedXchatVisionImage
-} from "@/modules/xchat/vision-processor";
 import {
     computeLimitResetAtIso,
     limiterCircuitAllowDegraded,
@@ -184,6 +182,11 @@ import {
     resolveRecentThreadMessagesPromptBlock,
     type XchatRecentThreadMessage
 } from "@/modules/xchat/xchat-recent-history-prompt";
+import { generateXchatVisionAutoCaption } from "@/modules/xchat/xchat-vision-auto-caption";
+import {
+    HNWI_VISION_DESK_REPORT_V21_USER_DIRECTIVE,
+    shouldInjectHnwiVisionDeskDirective
+} from "@/modules/xchat/xchat-vision-hnwi";
 import { resolveWorkspaceSnapshotQuoteNetwork } from "@/modules/xchat/xchat-workspace-quote-policy";
 
 const xchatPasteImageAttachmentSchema = z.object({
@@ -1512,7 +1515,7 @@ export async function POST(request: Request) {
       if (typeof parsed.error === "string" && parsed.error.trim().length > 0) {
         optionsScanError = parsed.error;
       }
-      optionsRows = Array.isArray(parsed.rows) ? parsed.rows : [];
+      optionsRows = coerceOptionsActionScanRowsFromToolJson(parsed.rows);
       optionsTruncated = parsed.truncated === true;
       optionsGeneratedAt =
         typeof parsed.generatedAt === "string" && parsed.generatedAt.trim().length > 0

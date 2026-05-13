@@ -5,9 +5,12 @@ import com.atxfinance.backend.portfolio.PortfolioCrudService
 import com.atxfinance.backend.portfolio.PortfolioNestedResourceService
 import com.atxfinance.backend.portfolio.PositionsService
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
 import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 data class AtxFunctionOptionsScanResult(
     val markdown: String,
@@ -31,25 +34,36 @@ class AtxFunctionExecutor(
     private val portfolioCrudService: PortfolioCrudService,
     private val portfolioNestedResourceService: PortfolioNestedResourceService,
     private val positionsService: PositionsService,
+    private val optionsActionScanService: OptionsActionScanService,
 ) {
     fun executeOptionsActionScan(ctx: AtxFunctionExecutionContext): AtxFunctionOptionsScanResult {
-        val generatedAt = Instant.now().toString()
-        val rows = buildOptionsScanRows(ctx)
-        val markdown = buildOptionsScanMarkdown(rows)
+        @Suppress("UNCHECKED_CAST")
+        val positions =
+            (loadPositionsSnapshot(ctx)["positions"] as? List<Any?>)
+                ?.mapNotNull { it as? Map<String, Any?> }
+                ?: emptyList()
+        val watchInner = loadWatchlistPayload(ctx)["watchlist"] as? Map<*, *>
+        val built =
+            optionsActionScanService.buildScan(
+                session = ctx.session,
+                portfolioIdHex = ctx.portfolioIdHex,
+                positionsRows = positions,
+                watchlistInner = watchInner,
+            )
         val donePayload =
             directDonePayload(
-                markdown = markdown,
+                markdown = built.asMarkdown,
                 model = "options_action_scan_direct",
                 optionsActionScan =
                     mapOf(
-                        "generatedAt" to generatedAt,
-                        "planTier" to "basic",
-                        "truncated" to false,
-                        "rows" to rows,
-                        "disclaimer" to "Not financial advice.",
+                        "generatedAt" to built.generatedAt,
+                        "planTier" to built.planTier,
+                        "truncated" to built.truncated,
+                        "rows" to built.rows,
+                        "disclaimer" to OPTIONS_ACTION_SCAN_DISCLAIMER,
                     ),
             )
-        return AtxFunctionOptionsScanResult(markdown = markdown, donePayload = donePayload)
+        return AtxFunctionOptionsScanResult(markdown = built.asMarkdown, donePayload = donePayload)
     }
 
     fun executeWatchlistSnapshot(ctx: AtxFunctionExecutionContext): AtxFunctionWatchlistResult {
@@ -81,7 +95,25 @@ class AtxFunctionExecutor(
                 "watchlist_snapshot" -> AtxFunctionToolResult(result = toJson(loadWatchlistPayload(ctx)))
                 "portfolio_summary" -> AtxFunctionToolResult(result = toJson(loadPortfolioSummary(ctx)))
                 "positions_snapshot" -> AtxFunctionToolResult(result = toJson(loadPositionsSnapshot(ctx)))
-                "options_action_scan" -> AtxFunctionToolResult(result = toJson(mapOf("rows" to buildOptionsScanRows(ctx))))
+                "options_action_scan" ->
+                    AtxFunctionToolResult(
+                        result =
+                            toJson(
+                                mapOf(
+                                    "rows" to
+                                        optionsActionScanService.buildScan(
+                                            session = ctx.session,
+                                            portfolioIdHex = ctx.portfolioIdHex,
+                                            positionsRows =
+                                                @Suppress("UNCHECKED_CAST")
+                                                (loadPositionsSnapshot(ctx)["positions"] as? List<Any?>)
+                                                    ?.mapNotNull { it as? Map<String, Any?> }
+                                                    ?: emptyList(),
+                                            watchlistInner = loadWatchlistPayload(ctx)["watchlist"] as? Map<*, *>,
+                                        ).rows,
+                                ),
+                            ),
+                    )
                 else -> AtxFunctionToolResult(result = "", error = "unknown_operation")
             }
         }.getOrElse { ex ->
@@ -174,52 +206,16 @@ class AtxFunctionExecutor(
                         "qty" to ((position["qty"] as? Number)?.toDouble() ?: 0.0),
                         "avgCost" to ((position["avgCost"] as? Number)?.toDouble() ?: 0.0),
                         "accountId" to accountId,
+                        "type" to position.getString("type"),
+                        "optionType" to position.getString("optionType"),
+                        "strike" to (position["strike"] as? Number)?.toDouble(),
+                        "expiration" to expirationIsoForSnapshot(position),
                     ),
                 )
             }
         }
         return mapOf("positions" to rows, "truncated" to false)
     }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun buildOptionsScanRows(ctx: AtxFunctionExecutionContext): List<Map<String, Any?>> {
-        val symbols = linkedSetOf<String>()
-        val positions = loadPositionsSnapshot(ctx)["positions"] as? List<*>
-        positions?.forEach { row ->
-            val symbol = (row as? Map<*, *>)?.get("symbol")?.toString()?.trim()?.uppercase()
-            if (!symbol.isNullOrEmpty()) {
-                symbols.add(symbol)
-            }
-        }
-        val watchlist = loadWatchlistPayload(ctx)["watchlist"] as? Map<*, *>
-        val watchlistSymbols = watchlist?.get("symbols") as? List<*>
-        watchlistSymbols?.forEach { row ->
-            val symbol = (row as? Map<*, *>)?.get("symbol")?.toString()?.trim()?.uppercase()
-            if (!symbol.isNullOrEmpty()) {
-                symbols.add(symbol)
-            }
-        }
-        if (symbols.isEmpty()) {
-            symbols.add("TSLA")
-        }
-        return symbols.take(12).map { symbol ->
-            mapOf(
-                "symbol" to symbol,
-                "action" to "MONITOR",
-                "structure" to "Review options chain",
-                "note" to "Spring workspace scan from Mongo holdings + watchlist.",
-            )
-        }
-    }
-
-    private fun buildOptionsScanMarkdown(rows: List<Map<String, Any?>>): String =
-        buildString {
-            appendLine("## Options action scan")
-            appendLine()
-            for (row in rows) {
-                appendLine("- **${row["symbol"]}** — ${row["action"]} (${row["structure"]})")
-            }
-        }.trimEnd()
 
     @Suppress("UNCHECKED_CAST")
     private fun buildWatchlistMarkdown(payload: Map<String, Any?>): String {
@@ -284,8 +280,19 @@ class AtxFunctionExecutor(
         return objectMapper.writeValueAsString(mapOf("error" to "output_too_large"))
     }
 
+    private fun expirationIsoForSnapshot(position: Document): String? {
+        val d = position.getDate("expiration")
+        if (d != null) {
+            return Instant.ofEpochMilli(d.time).atZone(ZoneOffset.UTC).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        }
+        val s = position.getString("expiration")?.trim().orEmpty()
+        return s.take(10).takeIf { it.length == 10 && it[4] == '-' && it[7] == '-' }
+    }
+
     companion object {
         private const val MAX_OUTPUT_BYTES = 8 * 1024
         private const val MAX_POSITIONS_RETURNED = 200
+        private const val OPTIONS_ACTION_SCAN_DISCLAIMER =
+            "Not financial advice. This is for informational purposes only. Past performance does not guarantee future results."
     }
 }

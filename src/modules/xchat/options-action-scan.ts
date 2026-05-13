@@ -629,3 +629,116 @@ export async function buildOptionsActionReport(
     asMarkdown
   };
 }
+
+function isOptionsActionString(value: string): value is OptionsAction {
+  return (
+    value === "ROLL" ||
+    value === "BTC" ||
+    value === "HOLD" ||
+    value === "LET_EXPIRE" ||
+    value === "STC" ||
+    value === "OPEN" ||
+    value === "MONITOR" ||
+    value === "WAIT"
+  );
+}
+
+function coerceRecommendedAction(value: unknown): OptionsAction {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  if (raw && isOptionsActionString(raw)) {
+    return raw;
+  }
+  return "MONITOR";
+}
+
+/**
+ * Spring/JVM `options_action_scan` stubs (and other partial emitters) may omit `source` / `recommendedAction`
+ * and use `action` + `note` instead. The scan report UI buckets rows by `source`; normalize so tables render.
+ */
+export function coerceOptionsActionScanRowsFromToolJson(rowsInput: unknown): OptionsActionReportRow[] {
+  if (!Array.isArray(rowsInput)) {
+    return [];
+  }
+  const out: OptionsActionReportRow[] = [];
+  for (let i = 0; i < rowsInput.length; i++) {
+    const raw = rowsInput[i];
+    if (!raw || typeof raw !== "object") {
+      continue;
+    }
+    const r = raw as Record<string, unknown>;
+    const source = r.source;
+    const hasCanonicalSource = source === "holding" || source === "watchlist";
+    const recommended = r.recommendedAction ?? r.action;
+    const symbolRaw = r.symbol;
+    const symbol = typeof symbolRaw === "string" ? symbolRaw.trim().toUpperCase() : "";
+    if (hasCanonicalSource && typeof recommended === "string" && symbol) {
+      const row = raw as unknown as OptionsActionReportRow;
+      const coreForId: Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist"> = {
+        source: row.source,
+        symbol: row.symbol,
+        strike: row.strike,
+        exp: row.exp,
+        type: row.type,
+        qty: row.qty,
+        portfolioAccountId: row.portfolioAccountId,
+        portfolioAccountName: row.portfolioAccountName,
+        recommendedAction: row.recommendedAction,
+        why: row.why,
+        urgency: row.urgency,
+        targetWindow: row.targetWindow,
+        confidence: row.confidence
+      };
+      const withApply: OptionsActionReportRow = {
+        ...row,
+        rowId:
+          typeof row.rowId === "string" && row.rowId.trim().length > 0
+            ? row.rowId
+            : buildReportRowId(coreForId, i),
+        applyToWatchlist:
+          row.applyToWatchlist ?? {
+            type: "apply_to_watchlist",
+            symbol: row.symbol.trim().toUpperCase(),
+            allowPriceAlert: true,
+            defaultPriceAlertSeverity: "info"
+          }
+      };
+      out.push(withApply);
+      continue;
+    }
+    if (!symbol) {
+      continue;
+    }
+    const recommendedAction = coerceRecommendedAction(recommended);
+    const why =
+      typeof r.note === "string" && r.note.trim().length > 0
+        ? r.note.trim()
+        : typeof r.why === "string" && r.why.trim().length > 0
+          ? r.why.trim()
+          : typeof r.structure === "string" && r.structure.trim().length > 0
+            ? `${recommendedAction}: ${r.structure}`.trim()
+            : "Workspace scan — review chain, liquidity, and sizing before acting.";
+    const rowStubCore: Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist"> = {
+      source: "watchlist",
+      symbol,
+      recommendedAction,
+      why,
+      urgency: "low",
+      targetWindow: "monthly",
+      confidence: "medium"
+    };
+    out.push({
+      ...rowStubCore,
+      rowId:
+        typeof r.rowId === "string" && r.rowId.trim().length > 0
+          ? r.rowId.trim()
+          : buildReportRowId(rowStubCore, i),
+      applyToWatchlist: {
+        type: "apply_to_watchlist",
+        symbol,
+        allowPriceAlert: true,
+        defaultPriceAlertSeverity: "info"
+      }
+    });
+  }
+  return out;
+}
