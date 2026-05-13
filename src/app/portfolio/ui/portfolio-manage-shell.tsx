@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
-import { EditIcon, ExternalLinkIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
+import { EditIcon, ExternalLinkIcon, FolderPortfolioIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { AccountHoldingsCrudCard } from "@/app/portfolio/ui/account-holdings-crud-card";
 import {
@@ -79,6 +79,8 @@ export function PortfolioManageShell({
 
   const selectedAccountName =
     manageOptions.find((a) => a.id === resolvedSelectedHex)?.name ?? "Selected account";
+
+  const portfoliosHubHref = `/portfolios?portfolioId=${encodeURIComponent(portfolioIdHex)}`;
 
   const allocationCharts = useMemo(() => {
     const classTotal = metrics.classAllocation.totalUsd > 0 ? metrics.classAllocation.totalUsd : 1;
@@ -199,9 +201,9 @@ export function PortfolioManageShell({
             </p>
           </div>
           <div className="portfolio-manage-head__actions">
-            <Link className="portfolio-footer-nav__link portfolio-manage-head__toolbar-link" href="/portfolios">
-              <HomeIcon className="crud-icon" aria-hidden />
-              Home
+            <Link className="portfolio-alerts-console__back" href={portfoliosHubHref}>
+              <FolderPortfolioIcon className="crud-icon" aria-hidden />
+              Portfolios
             </Link>
             {admin ? (
               <Link

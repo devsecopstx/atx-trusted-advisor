@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
+import { FolderPortfolioIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioWorkspaceProductShell } from "@/app/portfolio/ui/portfolio-workspace-product-shell";
 import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
@@ -144,9 +144,9 @@ export default async function WatchlistPage({
               <FolderPortfolioIcon className="crud-icon" />
               Open Portfolio
             </Link>
-            <Link className="cta cta-secondary" href="/">
-              <HomeIcon className="crud-icon" />
-              Home
+            <Link className="cta cta-secondary" href="/portfolios">
+              <FolderPortfolioIcon className="crud-icon" />
+              Portfolios
             </Link>
           </div>
         </div>

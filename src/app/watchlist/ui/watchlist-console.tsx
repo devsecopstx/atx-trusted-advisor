@@ -25,12 +25,12 @@ import {
 import {
     ActivityPulseIcon,
     AddIcon,
-    BackIcon,
     DedupeIcon,
     DeleteIcon,
     DownloadIcon,
     EditIcon,
     ExternalLinkIcon,
+    FolderPortfolioIcon,
     SaveIcon,
     UnlinkIcon,
     UploadIcon,
@@ -2026,12 +2026,46 @@ ${bodyRows}
     overscan: 8
   });
 
+  const portfoliosHubHref = `/portfolios?portfolioId=${encodeURIComponent(portfolioId)}`;
+
   return (
     <div className="xf-watchlist-app w-full max-w-full">
       <div className="xf-watchlist-layout w-full max-w-full">
 
         <div className="xf-watchlist-main w-full max-w-full">
           <div className="xf-watchlist-card xf-noise-overlay w-full max-w-full">
+            {variant === "page" ? (
+              <div className="xf-watchlist-page-nav portfolio-alerts-console__toolbar">
+                {footerMode === "admin" ? (
+                  <>
+                    <Link className="portfolio-alerts-console__back" href="/admin/portfolios">
+                      <FolderPortfolioIcon className="crud-icon" aria-hidden />
+                      Portfolios
+                    </Link>
+                    <Link
+                      className="cta cta-secondary"
+                      href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}
+                    >
+                      <EditIcon className="crud-icon" />
+                      Manage accounts
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link className="portfolio-alerts-console__back" href={portfoliosHubHref}>
+                      <FolderPortfolioIcon className="crud-icon" aria-hidden />
+                      Portfolios
+                    </Link>
+                    {isAdmin ? (
+                      <Link className="cta cta-primary" href="/admin/portfolios">
+                        <ExternalLinkIcon className="crud-icon" />
+                        Open in Hub
+                      </Link>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
             <header className="xf-watchlist-card-header">
               {editMode ? (
                 <input
@@ -2453,39 +2487,6 @@ ${bodyRows}
                   Close
                 </button>
               </div>
-            </div>
-          ) : null}
-
-          {variant === "page" ? (
-            <div className="cta-row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
-              {footerMode === "admin" ? (
-                <>
-                  <Link className="cta cta-secondary" href="/admin/portfolios">
-                    <BackIcon className="crud-icon" />
-                    Portfolios
-                  </Link>
-                  <Link
-                    className="cta cta-secondary"
-                    href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}
-                  >
-                    <EditIcon className="crud-icon" />
-                    Manage accounts
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link className="cta cta-secondary" href="/portfolio">
-                    <BackIcon className="crud-icon" />
-                    Back to portfolio
-                  </Link>
-                  {isAdmin ? (
-                    <Link className="cta cta-primary" href="/admin/portfolios">
-                      <ExternalLinkIcon className="crud-icon" />
-                      Open in Hub
-                    </Link>
-                  ) : null}
-                </>
-              )}
             </div>
           ) : null}
         </div>

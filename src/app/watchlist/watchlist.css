@@ -34,6 +34,15 @@
   overflow: hidden;
 }
 
+.xf-watchlist-page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 1.1rem 0.5rem;
+  margin-top: 0;
+}
+
 .xf-watchlist-card-header {
   padding: 1rem 1.1rem 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);

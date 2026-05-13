@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import "@/app/portfolio/portfolio.css";
 import "@/app/portfolios/portfolios-dashboard.css";
 import "../xchat/xchat.css";
 import "./watchlist.css";

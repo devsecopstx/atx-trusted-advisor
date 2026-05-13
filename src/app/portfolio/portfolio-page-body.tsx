@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { HomeIcon } from "@/app/admin/ui/crud-icons";
+import { FolderPortfolioIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { serializePositionsForUi } from "@/app/portfolio/lib/serialize-positions";
 import type { PortfolioDeskPrefetchStrip } from "@/app/portfolio/ui/portfolio-desk-prefetch";
@@ -195,8 +195,8 @@ export async function PortfolioPageBody({ session }: Props) {
             </div>
             <div className="cta-row" style={{ marginTop: "1rem" }}>
               <Link className="cta cta-secondary" href="/portfolios">
-                <HomeIcon className="crud-icon" />
-                Home
+                <FolderPortfolioIcon className="crud-icon" />
+                Portfolios
               </Link>
             </div>
           </section>

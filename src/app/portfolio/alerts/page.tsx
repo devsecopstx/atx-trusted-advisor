@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
+import { FolderPortfolioIcon } from "@/app/admin/ui/crud-icons";
 import {
     PortfolioAlertsInteractive,
     type PortfolioAlertRowVm
@@ -115,10 +115,9 @@ export default async function PortfolioAlertsPage({
     workspaceError = "Could not load a workspace portfolio. Use Sync from Portfolio or open Portfolio.";
   }
 
-  const portfoliosHubHref =
-    portfolioId && !workspaceError
-      ? `/portfolios?portfolioId=${encodeURIComponent(portfolioId)}`
-      : "/portfolios";
+  const portfoliosHubHref = portfolioId
+    ? `/portfolios?portfolioId=${encodeURIComponent(portfolioId)}`
+    : "/portfolios";
 
   let alertRows: PortfolioAlertRowVm[] = [];
   let alertAccounts: { id: string; label: string }[] = [];
@@ -227,9 +226,9 @@ export default async function PortfolioAlertsPage({
                   <FolderPortfolioIcon className="crud-icon" />
                   Open Portfolio
                 </Link>
-                <Link className="cta cta-secondary" href="/portfolios">
-                  <HomeIcon className="crud-icon" />
-                  Home
+                <Link className="cta cta-secondary" href={portfoliosHubHref}>
+                  <FolderPortfolioIcon className="crud-icon" />
+                  Portfolios
                 </Link>
               </div>
             </div>
