@@ -37,4 +37,14 @@ describe("guestAccessRequestSchema (POST /api/access-requests/public)", () => {
     });
     expect(r.success).toBe(true);
   });
+
+  it("accepts optional country (route normalizes against allowlist)", () => {
+    const r = guestAccessRequestSchema.safeParse({ ...validBase, country: "US" });
+    expect(r.success).toBe(true);
+  });
+
+  it("does not require country (route defaults to US server-side)", () => {
+    const r = guestAccessRequestSchema.safeParse(validBase);
+    expect(r.success).toBe(true);
+  });
 });

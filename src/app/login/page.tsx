@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { isSafeOAuthReturnPath } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 
@@ -31,19 +29,9 @@ export default async function LoginPage({
             {errRaw}
           </p>
         ) : null}
-        <LoginOAuthSection googleLoginHref={googleLoginHref} xOAuthLoginHref={xOAuthLoginHref} />
-        <LoginOAuthDivider />
         <EmailLoginPanel nextPath={nextPath} />
-        <p className="text-xs leading-relaxed text-[var(--xf-text-muted)]">
-          After an admin approves your access request, you may get an email to set your password. Links require{" "}
-          <code className="rounded bg-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] px-1 py-0.5 text-[0.7rem]">
-            PUBLIC_APP_BASE_URL
-          </code>{" "}
-          and desk SMTP when enabled.{" "}
-          <Link href="/xchat" className="text-[var(--xf-gain-green)] underline underline-offset-2 hover:opacity-90">
-            Open xChat
-          </Link>
-        </p>
+        <LoginOAuthDivider label="or continue with" />
+        <LoginOAuthSection googleLoginHref={googleLoginHref} xOAuthLoginHref={xOAuthLoginHref} />
       </div>
     </div>
   );

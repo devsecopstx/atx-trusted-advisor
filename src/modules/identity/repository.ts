@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 
+import { DEFAULT_COUNTRY_CODE as DEFAULT_CORE_USER_COUNTRY_CODE } from "@/lib/country-options";
 import { googleLinkedId, isGoogleLegacyXUserId } from "@/lib/google-oauth-identity";
 import { getDb } from "@/lib/mongodb";
 import { DEFAULT_TENANT_ACCENT_HEX, normalizeXfAccentColor } from "@/lib/tenant-accent-color";
@@ -62,6 +63,16 @@ async function createIdentityIndexes(): Promise<void> {
     db
       .collection<CoreUser>(collections.users)
       .createIndex({ email: 1 }, { unique: true, name: "uniq_core_user_email" }),
+    db
+      .collection<CoreUser>(collections.users)
+      .createIndex(
+        { username: 1 },
+        {
+          unique: true,
+          sparse: true,
+          name: "uniq_core_user_username"
+        }
+      ),
     db
       .collection<CoreUser>(collections.users)
       .createIndex(
@@ -175,6 +186,32 @@ export async function getCoreUserByEmail(email: string): Promise<CoreUser | null
   await ensureIdentityIndexes();
   const db = await getDb();
   return db.collection<CoreUser>(collections.users).findOne({ email: normalizeEmail(email) });
+}
+
+function normalizeCoreUsername(username: string): string {
+  return username.trim().toLowerCase();
+}
+
+export async function getCoreUserByLoginIdentifier(identifier: string): Promise<CoreUser | null> {
+  const trimmed = identifier.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.includes("@")) {
+    return getCoreUserByEmail(trimmed);
+  }
+
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const username = normalizeCoreUsername(trimmed);
+  const oauthUsernamePattern = new RegExp(`^${escapeRegexChars(username)}$`, "i");
+  return db.collection<CoreUser>(collections.users).findOne({
+    $or: [
+      { username },
+      { "xAccount.username": oauthUsernamePattern },
+      { "googleAccount.username": oauthUsernamePattern }
+    ]
+  });
 }
 
 /**
@@ -912,13 +949,27 @@ export async function createCoreUser(input: {
 
 export async function ensureCoreUserByEmail(input: {
   email: string;
+  username?: string;
+  /** ISO 3166-1 alpha-2 country code (uppercase). Defaults to `US` on first insert when omitted. */
+  country?: string;
   defaultRoles?: CoreUser["roles"];
   defaultStatus?: CoreUser["status"];
 }): Promise<CoreUser> {
   await ensureIdentityIndexes();
   const db = await getDb();
   const email = normalizeEmail(input.email);
+  const username = input.username ? normalizeCoreUsername(input.username) : undefined;
+  const country = input.country?.trim().toUpperCase() || undefined;
   const now = new Date();
+  const $set: Partial<CoreUser> & { updatedAt: Date } = {
+    updatedAt: now
+  };
+  if (username) {
+    $set.username = username;
+  }
+  if (country) {
+    $set.country = country;
+  }
 
   await db.collection<CoreUser>(collections.users).updateOne(
     { email },
@@ -929,9 +980,11 @@ export async function ensureCoreUserByEmail(input: {
         status: input.defaultStatus ?? "active",
         accountStatus: "pending_approval" satisfies CoreUserAccountStatus,
         subscriptionPlan: "basic",
+        country: country ?? DEFAULT_CORE_USER_COUNTRY_CODE,
         createdAt: now,
         updatedAt: now
-      }
+      },
+      $set
     },
     { upsert: true }
   );

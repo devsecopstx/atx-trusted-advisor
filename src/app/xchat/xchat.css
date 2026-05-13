@@ -3872,7 +3872,42 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-guest-actions__stack--email-first {
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
+  grid-template-columns: none;
+}
+
+.xchat-guest-actions__cta--email-primary {
+  font-size: 0.95rem;
+  padding-block: 0.85rem;
+}
+
+.xchat-guest-divider--secondary {
+  margin: 0.6rem 0 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.xchat-guest-oauth-row--secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/**
+ * Demote OAuth providers so email + password remains the primary CTA.
+ * Smaller padding, lower text weight, ghost-secondary surface.
+ */
+.xchat-guest-oauth-row--secondary .xchat-guest-actions__cta {
+  padding-block: 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  opacity: 0.92;
+}
+
+.xchat-guest-oauth-row--secondary .xchat-guest-actions__cta:hover {
+  opacity: 1;
 }
 
 .xchat-guest-register-form__eyebrow {

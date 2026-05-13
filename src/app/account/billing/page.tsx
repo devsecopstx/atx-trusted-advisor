@@ -10,7 +10,6 @@ import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { BillingAccessStateBanner } from "@/app/ui/billing-access-state-banner";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
-import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
 import {
     parseAccessRequestPlanInput,
     type AccessRequestPlanValue
@@ -94,7 +93,7 @@ export default async function AccountBillingPage({
           }
         : null;
 
-  const workspaceProductRail = session
+  const workspaceProductRail = approved && session
     ? await AppUserAccountPublicRailForSession({
         session,
         feedbackPageLabel: "Billing",
@@ -116,7 +115,13 @@ export default async function AccountBillingPage({
         <XchatGuestHeader />
       )}
 
-      <div className="xchat-body portfolio-page-body flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        className={
+          approved
+            ? "xchat-body portfolio-page-body flex min-h-0 flex-1 flex-col overflow-hidden"
+            : "xchat-body portfolio-page-body flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+        }
+      >
         {approved && session ? (
           <AppUserCollapsibleRailLayout
             mainClassName="app-user-shell-with-rail--padded min-h-0 flex-1 overflow-y-auto overscroll-contain min-w-0 w-full max-w-full"
@@ -180,17 +185,7 @@ export default async function AccountBillingPage({
             </div>
           </AppUserCollapsibleRailLayout>
         ) : (
-          <XchatGuestReadonlyShell
-            emailPasswordLoginHref={guestEmailLoginHref}
-            googleLoginHref={googleLoginHref}
-            hideComposerPreview
-            openRegisterByDefault={openRegisterByDefault}
-            rail={workspaceProductRail ?? undefined}
-            registerDefaultPlan={guestRegisterDefaultPlan}
-            registrationFirst={registrationFirst}
-            showAccessPanel={false}
-            xOAuthLoginHref={guestXOAuthLoginHref}
-          >
+          <main className="app-user-shell-with-rail--padded min-h-full w-full">
             <div className="billing-page">
               <header className="billing-hero billing-hero--guest-note xf-noise-overlay surface-card xf-widget section-card">
                 <p className="billing-hero__copy billing-hero__copy--compact">
@@ -210,11 +205,11 @@ export default async function AccountBillingPage({
               />
 
               <p className="billing-footnote">
-                <span className="xf-disclaimer-emphasis">Not financial advice.</span> Guest mode is read-only. Sign in
-                for approved access to checkout and account actions.
+                <span className="xf-disclaimer-emphasis">Not financial advice.</span> Guest mode is read-only. Sign in for
+                approved access to checkout and account actions.
               </p>
             </div>
-          </XchatGuestReadonlyShell>
+          </main>
         )}
       </div>
     </div>

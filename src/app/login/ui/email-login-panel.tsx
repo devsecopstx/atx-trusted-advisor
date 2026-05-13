@@ -4,9 +4,9 @@ import Link from "next/link";
 import { type FormEvent, useId, useState } from "react";
 
 export function EmailLoginPanel({ nextPath }: { nextPath: string }) {
-  const emailId = useId();
+  const loginId = useId();
   const passwordId = useId();
-  const [email, setEmail] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,13 +21,13 @@ export function EmailLoginPanel({ nextPath }: { nextPath: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: email.trim(), password, next: nextPath })
+        body: JSON.stringify({ email: loginIdentifier.trim(), password, next: nextPath })
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; redirect?: string };
       if (!res.ok) {
         setError(
           data.error === "invalid_credentials"
-            ? "Invalid email or password."
+            ? "Invalid username, email, or password."
             : data.error === "not_authorized"
               ? "Your account is not approved for sign-in yet."
               : data.error === "email_unverified"
@@ -48,17 +48,22 @@ export function EmailLoginPanel({ nextPath }: { nextPath: string }) {
 
   return (
     <div className="login-email-block w-full space-y-4">
-      <h2 className="text-sm font-semibold text-[var(--xf-text-200)]">Email and password</h2>
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold text-[var(--xf-text-200)]">Username or email</h2>
+        <p className="text-xs leading-relaxed text-[var(--xf-text-muted)]">
+          Use your username or email, or continue with Google or X for your approved workspace account.
+        </p>
+      </div>
       <form onSubmit={onSubmit} className="flex w-full flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm" htmlFor={emailId}>
-          <span className="text-[var(--xf-text-200)]">Email</span>
+        <label className="flex flex-col gap-1 text-sm" htmlFor={loginId}>
+          <span className="text-[var(--xf-text-200)]">Username or email</span>
           <input
-            id={emailId}
-            type="email"
-            autoComplete="email"
+            id={loginId}
+            type="text"
+            autoComplete="username"
             className="crud-input rounded-lg border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] px-3 py-2.5 text-[var(--xf-text-100)]"
-            value={email}
-            onChange={(ev) => setEmail(ev.target.value)}
+            value={loginIdentifier}
+            onChange={(ev) => setLoginIdentifier(ev.target.value)}
             required
           />
         </label>
@@ -109,10 +114,10 @@ export function EmailLoginPanel({ nextPath }: { nextPath: string }) {
         <p className="text-[var(--xf-text-muted)]">
           Don&apos;t have an account?{" "}
           <Link
-            href="/xchat"
+            href="/signup"
             className="font-semibold text-[var(--xf-gain-green)] underline decoration-[color-mix(in_srgb,var(--xf-gain-green)_55%,transparent)] underline-offset-2 hover:opacity-90"
           >
-            Sign up
+            Sign up here
           </Link>
         </p>
       </div>

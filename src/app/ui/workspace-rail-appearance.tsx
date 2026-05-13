@@ -23,10 +23,12 @@ function SunIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
 }
 
 function MoonIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  // Clean Lucide-style crescent — single closed path so it reads as a moon at 16px
+  // instead of the previous concave-bite shape that looked like a curved bracket.
   return (
     <svg aria-hidden fill="none" viewBox="0 0 24 24" className={className} {...props}>
       <path
-        d="M21 14.5A8.5 8.5 0 0111.5 5a8.45 8.45 0 013.14 6.32 3.5 3.5 0 00-4.18 4.18A8.5 8.5 0 0021 14.5z"
+        d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"

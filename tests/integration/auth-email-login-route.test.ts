@@ -9,7 +9,7 @@ const rateLimitMocks = vi.hoisted(() => ({
 }));
 
 const repoMocks = vi.hoisted(() => ({
-  getCoreUserByEmail: vi.fn()
+  getCoreUserByLoginIdentifier: vi.fn()
 }));
 
 const credentialsMocks = vi.hoisted(() => ({
@@ -70,8 +70,9 @@ describe("POST /api/auth/email/login", () => {
   });
 
   it("returns email_unverified and sends verification email for valid new user credentials", async () => {
-    repoMocks.getCoreUserByEmail.mockResolvedValue({
+    repoMocks.getCoreUserByLoginIdentifier.mockResolvedValue({
       _id: new ObjectId("507f1f77bcf86cd799439011"),
+      username: "newuser",
       email: "newuser@example.com",
       passwordHash: "hash",
       roles: ["viewer"],
@@ -98,5 +99,34 @@ describe("POST /api/auth/email/login", () => {
     expect(body.error).toBe("email_unverified");
     expect(credentialsMocks.issueEmailVerificationForUser).toHaveBeenCalledTimes(1);
     expect(emailMessageMocks.sendEmailVerificationEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts a username in the backward-compatible email field", async () => {
+    repoMocks.getCoreUserByLoginIdentifier.mockResolvedValue({
+      _id: new ObjectId("507f1f77bcf86cd799439012"),
+      username: "sam",
+      email: "sam@example.com",
+      emailVerifiedAt: new Date("2026-05-01T00:00:00.000Z"),
+      passwordHash: "hash",
+      roles: ["viewer"],
+      status: "active"
+    });
+    credentialsMocks.verifyUserPassword.mockResolvedValue(true);
+
+    const res = await postEmailLogin(
+      new Request("http://test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "sam",
+          password: "pw",
+          next: "/xchat"
+        })
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: true; redirect: string };
+    expect(body.redirect).toBe("/xchat");
+    expect(repoMocks.getCoreUserByLoginIdentifier).toHaveBeenCalledWith("sam");
   });
 });

@@ -235,7 +235,7 @@ export function XchatGuestPanel({
             ? "Create your account below — plans are on the right. Google and X are optional after email signup."
             : registrationFirst
               ? "Start your Basic trial — no card on this step. Sign up with email first; Google and X are below the form."
-              : "Guest preview: composer is visible; sign in for prompting, portfolio actions, and billing."}
+              : "Sign in with your email and password. Google and X are available below as optional shortcuts."}
         </p>
         {authMessage ? <p className="status-text status-error">{authMessage}</p> : null}
         {authDetails ? <p className="status-text status-error">details: {authDetails}</p> : null}
@@ -400,11 +400,16 @@ export function XchatGuestPanel({
               </div>
             </div>
           ) : (
-            <div className="xchat-guest-actions__stack" id="xchat-guest-access-panel">
-              {oauthProviderStack}
-              {!registrationFirst ? (
-                <a className="cta cta-secondary xchat-guest-actions__cta" href={emailPasswordLoginHref}>
-                  Email + password
+            <div
+              className="xchat-guest-actions__stack xchat-guest-actions__stack--email-first"
+              id="xchat-guest-access-panel"
+            >
+              {!pendingApproval ? (
+                <a
+                  className="cta cta-primary xchat-guest-actions__cta xchat-guest-actions__cta--email-primary"
+                  href={emailPasswordLoginHref}
+                >
+                  Sign in with email + password
                 </a>
               ) : null}
               {!pendingApproval && !registrationFirst ? (
@@ -423,6 +428,10 @@ export function XchatGuestPanel({
                   Register unavailable
                 </button>
               ) : null}
+              <p className="xchat-guest-divider xchat-guest-divider--secondary">Or continue with</p>
+              <div className="xchat-guest-oauth-row xchat-guest-oauth-row--secondary">
+                {oauthProviderStack}
+              </div>
               {registrationFirst ? (
                 <p className="xchat-guest-actions__hint" style={{ marginTop: "0.35rem" }}>
                   <a className="text-[var(--xf-gain-green)] underline-offset-2 hover:underline" href={emailPasswordLoginHref}>

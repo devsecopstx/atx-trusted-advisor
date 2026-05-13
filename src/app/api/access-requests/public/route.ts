@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
+import { DEFAULT_COUNTRY_CODE, parseCountryCode } from "@/lib/country-options";
 import {
     buildRateLimitHeaders,
     checkDistributedRateLimit,
@@ -29,6 +30,8 @@ export const guestAccessRequestSchema = z.object({
     .regex(/^[a-zA-Z0-9]+$/, "Username must contain only letters and numbers"),
   email: z.string().trim().email(),
   requestedPlan: z.string().trim().optional(),
+  /** ISO 3166-1 alpha-2 country code (case-insensitive). Defaults to `US` server-side when omitted or unknown. */
+  country: z.string().trim().min(2).max(8).optional(),
   /** Enables email/password login after access approval without a separate invite token. */
   password: z.string().min(12).max(128)
 });
@@ -81,7 +84,8 @@ export async function POST(request: Request) {
   }
   const requestedRole = "operator" as const;
 
-  const user = await ensureCoreUserByEmail({ email });
+  const country = parseCountryCode(parsed.data.country) ?? DEFAULT_COUNTRY_CODE;
+  const user = await ensureCoreUserByEmail({ email, username: name, country });
   if (!user._id) {
     return NextResponse.json({ error: "Unable to resolve user for access request" }, { status: 500 });
   }

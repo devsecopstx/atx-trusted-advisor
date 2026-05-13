@@ -17,10 +17,11 @@ import {
     verifyUserPassword
 } from "@/modules/identity/email-credentials-repository";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
-import { getCoreUserByEmail } from "@/modules/identity/repository";
+import { getCoreUserByLoginIdentifier } from "@/modules/identity/repository";
 
 const bodySchema = z.object({
-  email: z.string().trim().email(),
+  /** Backward-compatible key: accepts either an email address or an approved workspace username. */
+  email: z.string().trim().min(1).max(320),
   password: z.string().min(1).max(128),
   /** Safe relative path after login. */
   next: z.string().trim().max(512).optional()
@@ -57,8 +58,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const email = parsed.data.email.trim().toLowerCase();
-  const user = await getCoreUserByEmail(email);
+  const loginIdentifier = parsed.data.email.trim();
+  const user = await getCoreUserByLoginIdentifier(loginIdentifier);
   const okPass =
     user &&
     user.passwordHash &&
@@ -73,7 +74,9 @@ export async function POST(request: Request) {
       clientIp: loginMeta.clientIp,
       country: loginMeta.country,
       userAgent: loginMeta.userAgent,
-      email
+      ...(loginIdentifier.includes("@")
+        ? { email: loginIdentifier }
+        : { username: loginIdentifier.trim().toLowerCase() })
     });
     return NextResponse.json({ error: "invalid_credentials" }, { status: 401 });
   }

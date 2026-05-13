@@ -136,6 +136,7 @@ echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run" --
 - For persona/xchat/admin-audit changes, run at least build + typecheck before PR.
 - **Roles:** platform roles vs `tenantRole` — see `DEVELOPMENT.md` → *Platform roles vs tenant membership (session)*. Use `isGlobalAdmin()` / `canUserLogin()` from `@/modules/identity/authorization` (and `requireGlobalAdminSession` for admin APIs); avoid ad-hoc `roles.includes("global_admin")`.
 - **Feature flags:** Use `isFeatureEnabled(tenant, 'flag-key')` from `src/lib/feature-flags.ts` — never `process.env.NEW_EXPERIMENTAL_*`. Admin toggles at `/admin/tenant-preferences` → Feature Flags. Flags stored in `core_tenants.tenantPreferences.featureFlags`. See `atx-docs/feature-flag.md`.
+- **Build policy (`next.config.ts`):** Dev-only origins and standalone-bundle file-tracing allowlists go through **`buildDevOnlyAllowedOrigins`** / **`STANDALONE_OUTPUT_FILE_TRACING_INCLUDES`** in `src/lib/next-build-policy.ts` — never inline `allowedDevOrigins` or `outputFileTracingIncludes` literals into the top-level `nextConfig`. Routes that spawn external scripts (e.g. `POST /api/reports/options-scan` → `services/report-service/options_scan_report.py`) must build their script path at runtime (e.g. `[…].join("/")`) so Turbopack NFT does not over-trace; pair with an entry in `STANDALONE_OUTPUT_FILE_TRACING_INCLUDES`. Locked in by `tests/unit/next-build-policy.test.ts` + `tests/unit/options-scan-report-path-policy.test.ts`. See `.cursor/agents/sre.md`.
 
 ## Cursor Cloud specific instructions
 

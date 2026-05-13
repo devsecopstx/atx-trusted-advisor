@@ -58,6 +58,14 @@ export type CoreUserOptionsScanPreferences = {
 export type CoreUser = {
   _id?: ObjectId;
   email: string;
+  /** Credentials-login handle collected from public signup; canonical lowercase alphanumeric. */
+  username?: string;
+  /**
+   * Country of residence (ISO 3166-1 alpha-2, uppercase). Captured at public
+   * signup; defaults to `US`. Distinct from {@link lastLoginCountry} which is
+   * derived from request headers (e.g. CF-IPCountry).
+   */
+  country?: string;
   roles: CoreUserRole[];
   subscriptionPlan?: SubscriptionPlan;
   /** Set when the user completes Stripe Checkout (webhook); used for Billing Portal deep link. */

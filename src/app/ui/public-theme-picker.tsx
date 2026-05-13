@@ -20,10 +20,11 @@ export const THEME_OPTIONS: { value: XfUiThemePreference; label: string; hint: s
 ];
 
 function MoonIcon({ className }: { className?: string }) {
+  // Lucide-style crescent — same path used by `WorkspaceRailAppearance` for visual parity.
   return (
     <svg aria-hidden className={className} fill="none" height="20" viewBox="0 0 24 24" width="20">
       <path
-        d="M21 14.5A8.5 8.5 0 0111.5 5a8.45 8.45 0 013.14 6.32 3.5 3.5 0 00-4.18 4.18A8.5 8.5 0 0021 14.5z"
+        d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"

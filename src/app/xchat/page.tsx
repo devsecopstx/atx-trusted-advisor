@@ -91,27 +91,33 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   const session = await getSessionUser();
 
   if (!session) {
+    /**
+     * Unauthenticated guests on `/xchat` should see the sign-in/register panel
+     * without the workspace **Resources** sidebar (`AppUserResourcesRailSection`).
+     * Bypass `XchatGuestReadonlyShell` and render the panel directly so the
+     * resources rail (which the shell injects as a default) never mounts.
+     */
     return (
       <div className="xchat-shell flex min-h-0 flex-col overflow-hidden">
         <div className="workspace-product-sticky-top sticky top-0 z-50 flex shrink-0 flex-col bg-[var(--xf-bg-800)]">
           <XchatGuestHeader />
         </div>
         <div className="xchat-body flex min-h-0 flex-1 flex-col overflow-hidden">
-          <XchatGuestReadonlyShell
-            mainFooter={<GlobalFooter />}
-            showAccessPanel={false}
-            workspaceProductGrid
-            workspaceProductShellClassName="min-h-0 flex-1 overflow-hidden"
-          >
-            <XchatGuestPanel
-              authDetails={authDetails}
-              authError={authError}
-              emailPasswordLoginHref={emailPasswordLoginHref}
-              googleLoginHref={googleLoginHrefGuest}
-              pendingXHandle={pendingXHandle}
-              xOAuthLoginHref={xOAuthLoginHref}
-            />
-          </XchatGuestReadonlyShell>
+          <div className="flex h-full max-h-full min-h-0 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <XchatGuestPanel
+                authDetails={authDetails}
+                authError={authError}
+                emailPasswordLoginHref={emailPasswordLoginHref}
+                googleLoginHref={googleLoginHrefGuest}
+                pendingXHandle={pendingXHandle}
+                xOAuthLoginHref={xOAuthLoginHref}
+              />
+            </div>
+            <div className="shrink-0">
+              <GlobalFooter />
+            </div>
+          </div>
         </div>
       </div>
     );
