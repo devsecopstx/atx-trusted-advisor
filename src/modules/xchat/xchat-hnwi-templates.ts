@@ -4,8 +4,13 @@ export type XchatPromptTemplate = {
   title: string;
   /** Secondary line on card (e.g. workspace theme). */
   subtitle: string;
-  /** Full prompt inserted into the composer. */
+  /** Full prompt inserted into the composer (fallback if v2.1 fetch fails). */
   prompt: string;
+  /**
+   * When set, the strip loads composer text via `GET …/prompt-template-v21/{slug}` and tags the next ask
+   * with `hnwiPromptTemplateV21Slug` (Desk Report v2.1). Slugs must match `HNWI_PROMPT_TEMPLATE_V21_SLUGS`.
+   */
+  hnwiV21Slug?: string;
 };
 
 /**
@@ -37,33 +42,45 @@ export function resolveWheelCcScanComposerPrompt(prompt: string): string {
   return XCHAT_WHEEL_CC_SCAN_PROMPT;
 }
 
+/** Curated workspace cards — each maps to a Desk Report v2.1 slug (keep prompt copy aligned with `prompt-templates-v21-defaults`). */
 export const XCHAT_HNWI_PROMPT_TEMPLATES: readonly XchatPromptTemplate[] = [
   {
-    id: "portfolio-concentration",
+    id: "hnwi-v21-concentration",
+    hnwiV21Slug: "hnwi-v21-concentration",
     title: "Concentration review",
-    subtitle: "Risk · workspace",
+    subtitle: "Desk v2.1 · workspace",
     prompt:
       "Review concentration: top notionals, sector skew, one diversify or hedge idea. Use workspace holdings if visible."
   },
   {
-    id: "wheel-income",
+    id: "hnwi-v21-wheel-cc",
+    hnwiV21Slug: "hnwi-v21-wheel-cc",
     title: "Wheel / CC scan",
-    subtitle: "Income · defined risk",
+    subtitle: "Desk v2.1 · income",
     prompt: XCHAT_WHEEL_CC_SCAN_PROMPT
   },
   {
-    id: "protective-puts",
+    id: "hnwi-v21-protective-puts",
+    hnwiV21Slug: "hnwi-v21-protective-puts",
     title: "Protective puts",
-    subtitle: "Downside hedges",
+    subtitle: "Desk v2.1 · hedges",
     prompt:
       "Protective put checklist for largest equity lines: tenor, strike vs cost, rolling — use workspace positions when visible."
   },
   {
-    id: "watchlist-update",
+    id: "hnwi-v21-watchlist-pass",
+    hnwiV21Slug: "hnwi-v21-watchlist-pass",
     title: "Watchlist pass",
-    subtitle: "Desk focus",
+    subtitle: "Desk v2.1 · themes",
     prompt:
       "Summarize workspace watchlist: themes, overlap with holdings, top three names for an options pass this week."
+  },
+  {
+    id: "hnwi-v21-options-desk",
+    hnwiV21Slug: "hnwi-v21-options-desk",
+    title: "Options desk",
+    subtitle: "Holdings + watchlist",
+    prompt: "Scan my options from holdings + watchlist."
   }
 ];
 

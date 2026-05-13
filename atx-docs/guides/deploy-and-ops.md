@@ -125,6 +125,7 @@ Required runtime secrets (core list — always expected in Secret Manager for de
 - `ADMIN_SEED_EMAIL`
 - `REDIS_URL` — Next.js Redis; see `atx-docs/sre-ops/redis-cache-next.md`
 - Optional cache TTLs (cache plane when `REDIS_URL_CACHE` / `REDIS_URL` is set): `REDIS_OUTLOOK_CONTEXT_TTL_SECONDS` (xChat desk outlook context, default **120**), `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS`, `REDIS_RAG_LEXICAL_CACHE_TTL_SECONDS` — see `.env.example` and `atx-docs/sre-ops/redis-cache-next.md`
+- **xChat vision paste (optional hardening):** `XAI_VISION_MODEL` (image-turn model override), `VISION_MAX_DIMENSION` (default **1920**; longest edge after server resize), `VISION_VIRUS_SCAN_ENABLED` (`true` enables **ClamAV** `clamscan` on processed bytes — requires ClamAV on the image or sidecar), `VISION_CLAMSCAN_BIN` (override binary, default `clamscan`). See **`atx-docs/xchat/xchat-vision-paste.md`**.
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe `pk_…` (mounted at runtime)
 - `STRIPE_PUBLIC_KEY` — alias for the same publishable key (often duplicate value)
 - `STRIPE_SECRET_KEY` — Stripe `sk_…` (server-only; Checkout)

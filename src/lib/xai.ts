@@ -591,19 +591,18 @@ async function executePendingToolCallsWithParallelLocal(input: {
 }
 
 /** First-turn multimodal user input for `/v1/responses` (vision), aligned with xAI docs. */
-function buildXaiResponsesVisionUserTurn(userPrompt: string, imageDataUrl: string): unknown {
+function buildXaiResponsesVisionUserTurn(userPrompt: string, imageDataUrls: string[]): unknown {
+  const urls = imageDataUrls.map((u) => u.trim()).filter((u) => u.length > 0);
+  const imageParts = urls.map((image_url) => ({
+    type: "input_image" as const,
+    image_url,
+    /** xAI image docs recommend `high` for screenshots/charts. */
+    detail: "high" as const
+  }));
   return [
     {
-      role: "user",
-      content: [
-        {
-          type: "input_image",
-          image_url: imageDataUrl,
-          /** xAI image docs recommend `high` for screenshots/charts. */
-          detail: "high"
-        },
-        { type: "input_text", text: userPrompt }
-      ]
+      role: "user" as const,
+      content: [...imageParts, { type: "input_text" as const, text: userPrompt }]
     }
   ];
 }
@@ -709,6 +708,8 @@ export async function respondWithXaiToolLoop(input: {
   conversationInput?: unknown;
   /** When set, first request uses vision `input` shape (image + text); see xAI [image analysis](https://docs.x.ai/developers/quickstart#step-5-analyze-an-image). */
   userImageDataUrl?: string;
+  /** Multiple pasted images (same turn). When both are set, URLs are merged in order: `userImageDataUrls` then `userImageDataUrl`. */
+  userImageDataUrls?: string[];
   tools: Array<Record<string, unknown>>;
   toolChoice?: XaiToolChoice;
   maxTurns?: number;
@@ -749,10 +750,12 @@ export async function respondWithXaiToolLoop(input: {
     );
   }
 
-  const trimmedImageUrl = input.userImageDataUrl?.trim();
+  const fromArray = (input.userImageDataUrls ?? []).map((u) => u.trim()).filter((u) => u.length > 0);
+  const single = input.userImageDataUrl?.trim();
+  const mergedImageUrls = single && single.length > 0 ? [...fromArray, single] : fromArray;
   let conversationInput: unknown =
-    trimmedImageUrl && trimmedImageUrl.length > 0
-      ? buildXaiResponsesVisionUserTurn(input.userPrompt, trimmedImageUrl)
+    mergedImageUrls.length > 0
+      ? buildXaiResponsesVisionUserTurn(input.userPrompt, mergedImageUrls)
       : (input.conversationInput ?? input.userPrompt);
   let turnsUsed = 0;
   let lastPayload: Record<string, unknown> = {};

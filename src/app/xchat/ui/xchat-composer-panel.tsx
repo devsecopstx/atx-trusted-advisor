@@ -35,9 +35,9 @@ import { VoiceModeSession } from "@/app/xchat/voice/VoiceModeSession";
 import { XchatPersonaMenu } from "@/app/xchat/ui/xchat-persona-menu";
 import { XchatReasoningModeToggle } from "@/app/xchat/ui/xchat-reasoning-mode-toggle";
 import { XchatTemplatesStrip } from "@/app/xchat/ui/xchat-templates-strip";
-import { XchatHnwiV21QuickActions } from "@/app/xchat/ui/xchat-hnwi-v21-quick-actions";
 
 import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
+import { MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK } from "@/modules/xchat/xchat-image-attachment";
 
 import { XCHAT_ASK_PROGRESS_BADGES } from "./xchat-ask-progress-badges";
 import { XchatComposerNav } from "./xchat-composer-nav";
@@ -59,10 +59,12 @@ export type XchatComposerPanelProps = {
   loading: boolean;
   input: string;
   setInput: (v: string) => void;
-  pendingPasteImage: XchatPendingPasteImage | null;
-  setPendingPasteImage: (next: XchatPendingPasteImage | null) => void;
+  pendingPasteImages: XchatPendingPasteImage[];
+  setPendingPasteImages: (next: XchatPendingPasteImage[]) => void;
   pasteImageError: string | null;
   setPasteImageError: (next: string | null) => void;
+  visionUseWorkspace: boolean;
+  setVisionUseWorkspace: (next: boolean) => void;
   personaSelectRows: Array<{ _id: string; name: string; previewLine?: string }>;
   personaListError: string | null;
   personaPickerLocked: boolean;
@@ -97,10 +99,12 @@ export function XchatComposerPanel({
   loading,
   input,
   setInput,
-  pendingPasteImage,
-  setPendingPasteImage,
+  pendingPasteImages,
+  setPendingPasteImages,
   pasteImageError,
   setPasteImageError,
+  visionUseWorkspace,
+  setVisionUseWorkspace,
   personaSelectRows,
   personaListError,
   personaPickerLocked,
@@ -147,7 +151,7 @@ export function XchatComposerPanel({
   const allowExamplePlaceholderCycle =
     !loading &&
     !dictationActive &&
-    !pendingPasteImage &&
+    !pendingPasteImages.length &&
     !input.trim() &&
     !textareaFocused &&
     reduceMotion !== true;
@@ -167,7 +171,7 @@ export function XchatComposerPanel({
       ? "Wait for reply…"
       : dictationActive
         ? "Listening… tap mic to stop"
-        : pendingPasteImage
+        : pendingPasteImages.length > 0
           ? "Optional caption for your screenshot…"
           : textareaFocused
             ? ""
@@ -175,7 +179,7 @@ export function XchatComposerPanel({
               ? hnwiComposerSuggestions[examplePlaceholderIx] ?? "Ask anything…"
               : "Ask anything…";
 
-  const canSend = Boolean(input.trim()) || Boolean(pendingPasteImage);
+  const canSend = Boolean(input.trim()) || pendingPasteImages.length > 0;
 
   async function onComposerPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
     if (loading) {
@@ -194,6 +198,10 @@ export function XchatComposerPanel({
       if (!file) {
         continue;
       }
+      if (pendingPasteImages.length >= MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK) {
+        setPasteImageError(`You can attach up to ${MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK} images per message.`);
+        return;
+      }
       e.preventDefault();
       const result = await readClipboardImageFileForXchat(file);
       if (!result.ok) {
@@ -201,10 +209,18 @@ export function XchatComposerPanel({
         return;
       }
       setPasteImageError(null);
-      setPendingPasteImage({
-        mediaType: result.mediaType,
-        dataBase64: result.dataBase64,
-        previewUrl: result.previewUrl
+      setPendingPasteImages((prev) => {
+        if (prev.length >= MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            mediaType: result.mediaType,
+            dataBase64: result.dataBase64,
+            previewUrl: result.previewUrl
+          }
+        ].slice(0, MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK);
       });
       return;
     }
@@ -279,19 +295,14 @@ export function XchatComposerPanel({
 
   return (
     <div className="xchat-composer-wrap" id="xchat-composer">
-      <XchatHnwiV21QuickActions
-        askInFlight={loading}
-        composerRef={composerRef}
-        hnwiV21SlugForNextAskRef={hnwiV21SlugForNextAskRef}
-        setInput={setInput}
-        workspacePortfolioId={workspacePortfolioId}
-      />
       <XchatTemplatesStrip
         askInFlight={loading}
         composerDraft={input}
         composerRef={composerRef}
+        hnwiV21SlugForNextAskRef={hnwiV21SlugForNextAskRef}
         initiallyExpanded={templatesGalleryInitiallyExpanded}
         setInput={setInput}
+        workspacePortfolioId={workspacePortfolioId}
       />
       {loading && askProgressPhaseIndex >= 0 ? (
         <div aria-live="polite" className="xchat-composer-progress" role="status">
@@ -332,15 +343,31 @@ export function XchatComposerPanel({
         ref={composerFormRef}
         transition={{ type: "spring", stiffness: 520, damping: 38 }}
       >
-        {pendingPasteImage ? (
+        {pendingPasteImages.length > 0 ? (
           <div className="xchat-composer-paste-preview">
-            <div className="xchat-composer-paste-preview__thumb">
-              {/* Data-URL paste preview — not a remote URL; next/image is a poor fit. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="" height={72} src={pendingPasteImage.previewUrl} width={72} />
+            <div className="xchat-composer-paste-preview__grid">
+              {pendingPasteImages.map((img, idx) => (
+                <div key={`${img.previewUrl.slice(0, 48)}-${idx}`} className="xchat-composer-paste-preview__cell">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img alt="" className="xchat-composer-paste-preview__cell-img" height={72} src={img.previewUrl} width={72} />
+                  <button
+                    className="xchat-composer-paste-preview__cell-remove"
+                    disabled={loading}
+                    type="button"
+                    onClick={() => {
+                      setPendingPasteImages((prev) => prev.filter((_, j) => j !== idx));
+                      if (pendingPasteImages.length <= 1) {
+                        setPasteImageError(null);
+                      }
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
             <div className="xchat-composer-paste-preview__meta">
-              Screenshot ready — add a caption (optional) and send. Vision uses xAI (see{" "}
+              {pendingPasteImages.length} screenshot{pendingPasteImages.length > 1 ? "s" : ""} ready — add a caption (optional) and send. Vision uses xAI (see{" "}
               <a
                 className="xchat-composer-paste-preview__link"
                 href="https://docs.x.ai/developers/quickstart#step-5-analyze-an-image"
@@ -351,16 +378,31 @@ export function XchatComposerPanel({
               </a>
               ).
             </div>
+            {workspacePortfolioId ? (
+              <label className="xchat-composer-paste-preview__portfolio flex cursor-pointer items-center gap-2 text-sm text-[color:var(--xf-text-200)]">
+                <input
+                  checked={visionUseWorkspace}
+                  className="accent-[color:var(--xf-gain-green)]"
+                  disabled={loading}
+                  type="checkbox"
+                  onChange={(ev) => {
+                    setVisionUseWorkspace(ev.target.checked);
+                  }}
+                />
+                Use with my portfolio (preload holdings + watchlist for tools)
+              </label>
+            ) : null}
             <button
               className="xchat-composer-paste-preview__clear"
               disabled={loading}
               type="button"
               onClick={() => {
-                setPendingPasteImage(null);
+                setPendingPasteImages([]);
                 setPasteImageError(null);
+                setVisionUseWorkspace(false);
               }}
             >
-              Remove
+              Clear all
             </button>
           </div>
         ) : null}

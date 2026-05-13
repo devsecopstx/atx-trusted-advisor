@@ -68,6 +68,18 @@ const envSchema = z.object({
    * The id must be valid on xAI **`/v1/responses`** for your key (many accounts reject `grok-imagine-image` there).
    */
   XAI_VISION_MODEL: optionalNonEmptyString,
+  /**
+   * Max width/height (px) for xChat pasted images after server-side resize (EXIF-oriented, metadata stripped).
+   * Default **1920** when unset; clamped **256–8192** at runtime.
+   */
+  VISION_MAX_DIMENSION: optionalNonEmptyString,
+  /**
+   * When true, `POST /api/xchat/ask` runs **ClamAV** (`clamscan` or `VISION_CLAMSCAN_BIN`) on processed image bytes.
+   * Requires ClamAV on the runtime image or a sidecar; failures **fail closed** (HTTP 503) when enabled.
+   */
+  VISION_VIRUS_SCAN_ENABLED: z.union([z.string(), z.boolean()]).optional(),
+  /** Override ClamAV binary path (default `clamscan` on `PATH`). */
+  VISION_CLAMSCAN_BIN: optionalNonEmptyString,
   AUTH_SECRET: optionalAuthSecret,
   ALLOW_ANY_X_USER_LOGIN: z.union([z.string(), z.boolean()]).optional(),
   SLACK_WEBHOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),
@@ -251,6 +263,36 @@ export function getEnv(): Env {
 export function readXaiVisionModelOverrideFromEnv(): string | undefined {
   const raw = process.env.XAI_VISION_MODEL?.trim();
   return raw && raw.length > 0 ? raw : undefined;
+}
+
+/** Longest edge for xChat vision paste after `sharp` resize (256–8192; default 1920). */
+export function readVisionMaxDimensionFromEnv(): number {
+  const raw = process.env.VISION_MAX_DIMENSION?.trim();
+  if (!raw) {
+    return 1920;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    return 1920;
+  }
+  return Math.min(8192, Math.max(256, Math.floor(n)));
+}
+
+export function isVisionVirusScanEnabled(): boolean {
+  const raw = process.env.VISION_VIRUS_SCAN_ENABLED;
+  if (raw === undefined || raw === null || raw === "") {
+    return false;
+  }
+  if (typeof raw === "boolean") {
+    return raw;
+  }
+  const s = String(raw).trim().toLowerCase();
+  return s === "1" || s === "true" || s === "yes";
+}
+
+export function readVisionClamscanBinFromEnv(): string {
+  const raw = process.env.VISION_CLAMSCAN_BIN?.trim();
+  return raw && raw.length > 0 ? raw : "clamscan";
 }
 
 /**

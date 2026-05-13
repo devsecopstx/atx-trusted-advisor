@@ -9,7 +9,7 @@ describe("resolveToolLoopConversationInput", () => {
   it("sends only the current turn when xAI remote continuation is active", () => {
     const userPrompt = "Continue the wheel on NVDA with the same strikes.";
     const input = resolveToolLoopConversationInput({
-      visionImage: false,
+      hasVisionImages: false,
       useRemoteContinuation: true,
       enableLongTermXaiMemory: true,
       recentMessages: [
@@ -26,7 +26,7 @@ describe("resolveToolLoopConversationInput", () => {
 
   it("keeps capped local history when long-term memory is on without remote continuation", () => {
     const input = resolveToolLoopConversationInput({
-      visionImage: false,
+      hasVisionImages: false,
       useRemoteContinuation: false,
       enableLongTermXaiMemory: true,
       recentMessages: [{ role: "user", content: "Earlier turn" }],
@@ -38,5 +38,17 @@ describe("resolveToolLoopConversationInput", () => {
     expect(input).toEqual(
       expect.arrayContaining([expect.objectContaining({ role: "user", content: "Follow-up with tools" })])
     );
+  });
+
+  it("omits structured conversation input on vision turns", () => {
+    const input = resolveToolLoopConversationInput({
+      hasVisionImages: true,
+      useRemoteContinuation: false,
+      enableLongTermXaiMemory: false,
+      recentMessages: [],
+      userPrompt: "Describe",
+      captionForPrompt: "Describe"
+    });
+    expect(input).toBeUndefined();
   });
 });

@@ -1648,7 +1648,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     type: "object",
     required: [],
     description:
-      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot, **PNG or JPEG** only) is required. **Depth routing** overrides persona **`model`** for that turn: **`reasoningMode` omitted / fast** → **`grok-4-1-fast`**; **expert** / **heavy** → **`grok-4.3`** with **`reasoning.effort`** **medium** / **high** per [xAI reasoning](https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter) (no multi-agent `agent_count`). Legacy **`reasoningEffort`** without **`reasoningMode`** maps non–multi-agent personas to **`grok-4.3`** + **`reasoning.effort`** (**`none`** disables reasoning on grok-4.3 only); **multi-agent** personas keep **`grok-4.20-multi-agent`** + plan **`multiAgentParallelMaxAgents`**. Optional **`XAI_VISION_MODEL`** overrides the resolved model **only for image turns** (and drops **`reasoning`** tuning). Multi-agent models fall back to the default chat model for image turns when **`XAI_VISION_MODEL`** is unset.",
+      "Either **message** (trimmed length ≥ 2) or at least one pasted image (**`imageAttachment`** legacy single, and/or **`imageAttachments`** array, max **4** rows; **PNG or JPEG** only) is required. **Depth routing** overrides persona **`model`** for that turn: **`reasoningMode` omitted / fast** → **`grok-4-1-fast`**; **expert** / **heavy** → **`grok-4.3`** with **`reasoning.effort`** **medium** / **high** per [xAI reasoning](https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter) (no multi-agent `agent_count`). Legacy **`reasoningEffort`** without **`reasoningMode`** maps non–multi-agent personas to **`grok-4.3`** + **`reasoning.effort`** (**`none`** disables reasoning on grok-4.3 only); **multi-agent** personas keep **`grok-4.20-multi-agent`** + plan **`multiAgentParallelMaxAgents`**. Optional **`XAI_VISION_MODEL`** overrides the resolved model **only for image turns** (and drops **`reasoning`** tuning). Multi-agent models fall back to the default chat model for image turns when **`XAI_VISION_MODEL`** is unset. **`visionUseWorkspace`** (with a scoped **`portfolioId`**) forces eager workspace preload on image turns so **`atx_function`** can see holdings/watchlist.",
     properties: {
       message: { type: "string", minLength: 0, maxLength: 8000 },
       imageAttachment: {
@@ -1664,6 +1664,36 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
             description: "Base64-encoded image bytes (no data-URL prefix). Max decoded size 4MB."
           }
         }
+      },
+      imageAttachments: {
+        type: "array",
+        maxItems: 4,
+        description:
+          "Optional multi-image paste (PNG/JPEG). When set alongside legacy **`imageAttachment`**, the server merges and caps at four total.",
+        items: {
+          type: "object",
+          required: ["mediaType", "dataBase64"],
+          properties: {
+            mediaType: {
+              type: "string",
+              enum: ["image/png", "image/jpeg"]
+            },
+            dataBase64: {
+              type: "string",
+              description: "Base64-encoded image bytes (no data-URL prefix). Max decoded size 4MB per item."
+            },
+            caption: {
+              type: "string",
+              maxLength: 2000,
+              description: "Optional per-image note merged into the user prompt block."
+            }
+          }
+        }
+      },
+      visionUseWorkspace: {
+        type: "boolean",
+        description:
+          "When **true** with a scoped **`portfolioId`** and pasted image(s), the server eagerly preloads workspace holdings/watchlist for **`atx_function`** on that turn."
       },
       threadId: {
         type: "string",

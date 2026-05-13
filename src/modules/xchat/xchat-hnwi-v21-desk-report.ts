@@ -54,7 +54,15 @@ export function validateHnwiV21DeskReportMarkdown(markdown: string): HnwiV21Desk
   if (!hasHeading("ideas")) {
     missing.push("heading:Ideas");
   }
-  if (!/\|/.test(text) || !/\n\|[-:\s|]+\|\s*\n/.test(text)) {
+  // Avoid `[` / `]` literals in RegExp string fragments — Tailwind v4 can treat `[...]` in TS as
+  // arbitrary-property candidates and emit invalid CSS during PostCSS.
+  const lb = String.fromCharCode(0x5b);
+  const rb = String.fromCharCode(0x5d);
+  const pipe = String.fromCharCode(0x7c);
+  const mdPipeTableDivider = new RegExp(
+    "\\n\\|" + lb + "-" + ":" + "\\s" + pipe + rb + "+" + "\\|\\s*\\n"
+  );
+  if (!/\|/.test(text) || !mdPipeTableDivider.test(text)) {
     missing.push("markdown_table");
   }
   if (!hasHeading("risk & disclaimer") && !hasHeading("risk")) {

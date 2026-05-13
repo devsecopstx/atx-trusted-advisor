@@ -100,6 +100,21 @@ test -f .cursor/agents/sre.md && npm install
 
 **App behavior:** `src/app/api/xchat/ask/route.ts` — If **`changePersonaEnabled`** is true (effective tenant workspace limits + user plan) **or** the session is **`global_admin`**, **`personaId` in the JSON body** is preferred over assigned when both differ. If **`changePersonaEnabled`** is **false**, app users are locked to **assigned only** (request `personaId` ignored); admins still override. See **`atx-docs/sre-ops/tenant-workspace-limits.md`**.
 
+## Hotfix: local Next dev — `127.0.0.1:3000` / `localhost:3000` “won’t load” or times out
+
+**Symptom:** Browser tab spins, proxy/gateway times out, or health checks fail right after **`npm run dev`** / **`npm run dev:frontend`**.
+
+**Cause (usually):** Next **16 + Turbopack** **cold compile** on first requests — **`/`**, **`/admin`**, or **`/api/health`** can take **~15–40s** (see dev terminal: `next.js` + `proxy.ts` + app code). **`127.0.0.1` vs `localhost`** is not the issue: **`next.config.ts`** sets **`allowedDevOrigins: ["127.0.0.1", "localhost"]`**. Short client timeouts (e.g. **5s** `curl --max-time`) often fire **before** the first compile finishes.
+
+**Mitigation:**
+
+1. Wait for **`✓ Ready`** in the dev terminal, then **pre-warm** (use a **≥60s** timeout the first time):  
+   `curl -m 120 -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3000/api/health`  
+   Repeat until **200**; then open the app in the browser.
+2. After **“Finished writing to filesystem cache”** / a few navigations, latency drops sharply (warm Turbopack + route caches).
+3. If startup shows **`[startup/redis/control]`** with very high **`latencyMs`** (~1s+), fix local **Redis** or **`REDIS_URL`** (slow remote adds noise; should not hang forever).
+4. Suspect stale or corrupted dev cache: **`rm -rf .next && npm run dev`** (aligns with **`DEVELOPMENT.md`** / billing refresh notes in this file).
+
 ## Hotfix: xChat template “Scan my options from holdings + watchlist” → `xchat_stream_ask_delegate_failed`
 
 **Symptom:** Workspace template **Scan my options** (prompt `Scan my options from holdings + watchlist.`) returns **`xchat_stream_ask_delegate_failed`** (HTTP **502**) instead of the deterministic options action scan card.

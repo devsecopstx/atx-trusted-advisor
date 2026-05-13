@@ -11,6 +11,9 @@ export type XchatPasteImageMediaType = (typeof XCHAT_PASTE_IMAGE_MEDIA_TYPES)[nu
 /** Decoded image bytes cap (per [xAI vision quickstart](https://docs.x.ai/developers/quickstart#step-5-analyze-an-image) style flows). */
 export const MAX_XCHAT_PASTE_IMAGE_BYTES = 4 * 1024 * 1024;
 
+/** Max pasted images per ask (Responses payload + sharp CPU guard). */
+export const MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK = 4;
+
 /** Max JSON body size for `/api/xchat/ask` when an image is included (base64 expands payload). */
 export const MAX_XCHAT_ASK_JSON_BYTES = 8 * 1024 * 1024;
 
@@ -27,6 +30,29 @@ export type XchatImageAttachmentPayload = {
   mediaType: string;
   dataBase64: string;
 };
+
+export type XchatAskImageWire = {
+  mediaType: string;
+  dataBase64: string;
+  caption?: string;
+};
+
+export function mergeRawAskImageAttachmentsFromAskPayload(input: {
+  legacy?: XchatImageAttachmentPayload | undefined;
+  list?: XchatAskImageWire[] | undefined;
+}): XchatAskImageWire[] {
+  const out: XchatAskImageWire[] = [];
+  if (input.legacy) {
+    out.push({
+      mediaType: input.legacy.mediaType,
+      dataBase64: input.legacy.dataBase64
+    });
+  }
+  for (const row of input.list ?? []) {
+    out.push(row);
+  }
+  return out.slice(0, MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK);
+}
 
 export function parseAndValidateXchatPasteImage(
   raw: XchatImageAttachmentPayload

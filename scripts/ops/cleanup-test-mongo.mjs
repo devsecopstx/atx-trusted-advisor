@@ -233,6 +233,7 @@ async function purgeCoreUserAssociatedData(db, userIdHex, emailNormalizedForKeys
   await db.collection("xchat_logs").deleteMany({
     $or: [{ userId: oid }, { userId: userIdHex }]
   });
+  await db.collection("xchat_image_attachments").deleteMany({ userId: oid });
   await db.collection("xchat_user_preferences").deleteMany({ userId: oid });
   await db.collection("app_feature_daily_usage").deleteMany({ userId: userIdHex });
   await db.collection("strategy_jobs").deleteMany(uidQ);

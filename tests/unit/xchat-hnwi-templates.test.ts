@@ -33,7 +33,7 @@ describe("filterXchatPromptTemplates", () => {
   it("filters by title substring", () => {
     const out = filterXchatPromptTemplates(XCHAT_HNWI_PROMPT_TEMPLATES, "watchlist pass");
     expect(out).toHaveLength(1);
-    expect(out[0]!.id).toBe("watchlist-update");
+    expect(out[0]!.id).toBe("hnwi-v21-watchlist-pass");
   });
 
   it("filters by prompt body", () => {

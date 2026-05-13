@@ -7,14 +7,18 @@ import {
     useMemo,
     useRef,
     useState,
+    type MutableRefObject,
     type KeyboardEvent as ReactKeyboardEvent,
     type RefObject
 } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { applyXchatScanOptionsPrompt } from "@/app/xchat/ui/xchat-templates-workspace-bar";
 import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
+import {
+    isHnwiPromptTemplateV21Slug,
+    type HnwiPromptTemplateV21Slug
+} from "@/modules/xchat/prompt-templates-v21-defaults";
 import {
     filterXchatPromptTemplates,
     resolveWheelCcScanComposerPrompt,
@@ -39,6 +43,9 @@ export type XchatTemplatesStripProps = {
   initiallyExpanded?: boolean;
   /** xChat ask in flight — status line + disabled scan CTA. */
   askInFlight?: boolean;
+  /** Scoped workspace portfolio for HNWI v2.1 template resolution. */
+  workspacePortfolioId?: string | null;
+  hnwiV21SlugForNextAskRef: MutableRefObject<string | null>;
 };
 
 export function XchatTemplatesStrip({
@@ -46,7 +53,9 @@ export function XchatTemplatesStrip({
   setInput,
   composerDraft,
   initiallyExpanded = false,
-  askInFlight = false
+  askInFlight = false,
+  workspacePortfolioId = null,
+  hnwiV21SlugForNextAskRef
 }: XchatTemplatesStripProps) {
   const searchId = useId();
   const saveHeadingId = useId();
@@ -64,6 +73,7 @@ export function XchatTemplatesStrip({
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [busyHnwiSlug, setBusyHnwiSlug] = useState<HnwiPromptTemplateV21Slug | null>(null);
   const moreWrapRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const moreMenuId = useId();
@@ -157,10 +167,9 @@ export function XchatTemplatesStrip({
     [mergedTemplates, query]
   );
 
-  const scrollerTemplates = filtered.slice(0, 4);
+  const scrollerTemplates = filtered.slice(0, 8);
 
-  function applyTemplate(t: StripTemplate) {
-    setInput(resolveWheelCcScanComposerPrompt(t.prompt));
+  const focusComposerAndResize = useCallback(() => {
     queueMicrotask(() => {
       const el = composerRef.current;
       if (el) {
@@ -169,7 +178,49 @@ export function XchatTemplatesStrip({
         el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
       }
     });
-  }
+  }, [composerRef]);
+
+  const applyTemplate = useCallback(
+    async (t: StripTemplate) => {
+      const slugRaw = t.hnwiV21Slug;
+      if (slugRaw && isHnwiPromptTemplateV21Slug(slugRaw)) {
+        if (askInFlight || busyHnwiSlug) {
+          return;
+        }
+        setBusyHnwiSlug(slugRaw);
+        try {
+          const q = workspacePortfolioId?.trim()
+            ? `?portfolioId=${encodeURIComponent(workspacePortfolioId.trim())}`
+            : "";
+          const res = await fetch(
+            `/api/app-user/xchat/prompt-template-v21/${encodeURIComponent(slugRaw)}${q}`,
+            { credentials: "include" }
+          );
+          const body = (await res.json().catch(() => ({}))) as {
+            data?: { composerText?: string };
+          };
+          if (res.ok && body.data?.composerText) {
+            hnwiV21SlugForNextAskRef.current = slugRaw;
+            setInput(body.data.composerText);
+          } else {
+            hnwiV21SlugForNextAskRef.current = null;
+            setInput(resolveWheelCcScanComposerPrompt(t.prompt));
+          }
+        } catch {
+          hnwiV21SlugForNextAskRef.current = null;
+          setInput(resolveWheelCcScanComposerPrompt(t.prompt));
+        } finally {
+          setBusyHnwiSlug(null);
+        }
+        focusComposerAndResize();
+        return;
+      }
+      hnwiV21SlugForNextAskRef.current = null;
+      setInput(resolveWheelCcScanComposerPrompt(t.prompt));
+      focusComposerAndResize();
+    },
+    [askInFlight, busyHnwiSlug, focusComposerAndResize, hnwiV21SlugForNextAskRef, setInput, workspacePortfolioId]
+  );
 
   async function removeSaved(docId: string) {
     try {
@@ -310,6 +361,7 @@ export function XchatTemplatesStrip({
                 type="button"
                 onClick={() => {
                   setMoreMenuOpen(false);
+                  hnwiV21SlugForNextAskRef.current = null;
                   setInput("");
                   queueMicrotask(() => composerRef.current?.focus());
                 }}
@@ -355,18 +407,6 @@ export function XchatTemplatesStrip({
               ▾
             </span>
           </button>
-          {!libraryExpanded ? (
-            <button
-              aria-busy={askInFlight}
-              aria-label="Scan my options"
-              className="xchat-templates-strip__card xchat-templates-strip__card--pill xchat-templates-strip__card--scan"
-              disabled={askInFlight}
-              type="button"
-              onClick={() => applyXchatScanOptionsPrompt(setInput, composerRef)}
-            >
-              <span className="xchat-templates-strip__card-title">Scan my options</span>
-            </button>
-          ) : null}
         </div>
         {libraryExpanded ? (
           <div className="xchat-templates-strip__header-actions">{templatesRowTail}</div>
@@ -399,24 +439,20 @@ export function XchatTemplatesStrip({
 
       {!libraryExpanded ? null : seeAllOpen ? (
         <div className="xchat-templates-strip__grid-full">
-          <button
-            aria-busy={askInFlight}
-            aria-label="Insert scan my options prompt into composer, then review and send"
-            className="xchat-templates-strip__grid-card xchat-templates-strip__grid-card--scan"
-            disabled={askInFlight}
-            type="button"
-            onClick={() => applyXchatScanOptionsPrompt(setInput, composerRef)}
-          >
-            <span className="xchat-templates-strip__grid-card-title">Scan my options</span>
-            <span className="xchat-templates-strip__grid-card-meta">Holdings + watchlist</span>
-          </button>
-          {filtered.map((t) => (
+          {filtered.map((t) => {
+            const hnwiKey =
+              t.hnwiV21Slug != null && isHnwiPromptTemplateV21Slug(t.hnwiV21Slug)
+                ? t.hnwiV21Slug
+                : null;
+            return (
             <div key={t.id} className="xchat-templates-strip__card-wrap">
               <button
+                aria-busy={hnwiKey !== null && busyHnwiSlug === hnwiKey}
                 aria-label={`${t.title}. ${t.subtitle}`}
                 className="xchat-templates-strip__grid-card"
+                disabled={askInFlight || (hnwiKey !== null && Boolean(busyHnwiSlug))}
                 type="button"
-                onClick={() => applyTemplate(t)}
+                onClick={() => void applyTemplate(t)}
               >
                 <span className="xchat-templates-strip__grid-card-title">{t.title}</span>
                 <span className="xchat-templates-strip__grid-card-meta">{t.subtitle}</span>
@@ -435,12 +471,14 @@ export function XchatTemplatesStrip({
                 </button>
               ) : null}
             </div>
-          ))}
+            );
+          })}
           <button
             aria-label="Custom prompt — clear composer and write your own message"
             className="xchat-templates-strip__grid-card xchat-templates-strip__grid-card--add"
             type="button"
             onClick={() => {
+              hnwiV21SlugForNextAskRef.current = null;
               setInput("");
               queueMicrotask(() => composerRef.current?.focus());
             }}
@@ -463,28 +501,20 @@ export function XchatTemplatesStrip({
             tabIndex={0}
             onKeyDown={onScrollerKeyDown}
           >
-            <div className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
-              <button
-                aria-busy={askInFlight}
-                aria-label="Scan my options from holdings and watchlist — inserts prompt into composer; review and send"
-                className="xchat-templates-strip__card xchat-templates-strip__card--pill xchat-templates-strip__card--scan"
-                disabled={askInFlight}
-                type="button"
-                onClick={() => applyXchatScanOptionsPrompt(setInput, composerRef)}
-              >
-                <span className="xchat-templates-strip__card-title">Scan my options</span>
-                <span className="xchat-templates-strip__card-meta xchat-templates-strip__sr-only">
-                  Holdings + watchlist
-                </span>
-              </button>
-            </div>
-            {scrollerTemplates.map((t) => (
+            {scrollerTemplates.map((t) => {
+              const hnwiKey =
+                t.hnwiV21Slug != null && isHnwiPromptTemplateV21Slug(t.hnwiV21Slug)
+                  ? t.hnwiV21Slug
+                  : null;
+              return (
               <div key={t.id} className="xchat-templates-strip__card-wrap xchat-templates-strip__card-wrap--scroll">
                 <button
+                  aria-busy={hnwiKey !== null && busyHnwiSlug === hnwiKey}
                   aria-label={`${t.title}. ${t.subtitle}`}
                   className="xchat-templates-strip__card xchat-templates-strip__card--pill"
+                  disabled={askInFlight || (hnwiKey !== null && Boolean(busyHnwiSlug))}
                   type="button"
-                  onClick={() => applyTemplate(t)}
+                  onClick={() => void applyTemplate(t)}
                 >
                   <span className="xchat-templates-strip__card-title">{t.title}</span>
                   <span className="xchat-templates-strip__card-meta xchat-templates-strip__sr-only">
@@ -505,12 +535,14 @@ export function XchatTemplatesStrip({
                   </button>
                 ) : null}
               </div>
-            ))}
+              );
+            })}
             <button
               aria-label="Custom prompt — clear composer and write your own message"
               className="xchat-templates-strip__card xchat-templates-strip__card--pill xchat-templates-strip__card--add"
               type="button"
               onClick={() => {
+                hnwiV21SlugForNextAskRef.current = null;
                 setInput("");
                 queueMicrotask(() => composerRef.current?.focus());
               }}

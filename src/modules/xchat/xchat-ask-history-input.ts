@@ -62,14 +62,14 @@ export function buildInputWithHistory(
 }
 
 export function resolveToolLoopConversationInput(input: {
-  visionImage: boolean;
+  hasVisionImages: boolean;
   useRemoteContinuation: boolean;
   enableLongTermXaiMemory: boolean;
   recentMessages: XchatRecentThreadMessage[];
   userPrompt: string;
   captionForPrompt: string;
 }): unknown | undefined {
-  if (input.visionImage) {
+  if (input.hasVisionImages) {
     return undefined;
   }
   if (input.useRemoteContinuation) {

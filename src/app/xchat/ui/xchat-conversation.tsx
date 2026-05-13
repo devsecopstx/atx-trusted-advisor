@@ -397,8 +397,9 @@ export function XchatConversation({
   const [input, setInput] = useState(() => initialComposerHandoff.prompt);
   const [reasoningMode, setReasoningMode] = useState<XchatReasoningMode>("fast");
   const [quoteFreshness, setQuoteFreshness] = useState<"cached_first" | "live">("cached_first");
-  const [pendingPasteImage, setPendingPasteImage] = useState<XchatPendingPasteImage | null>(null);
+  const [pendingPasteImages, setPendingPasteImages] = useState<XchatPendingPasteImage[]>([]);
   const [pasteImageError, setPasteImageError] = useState<string | null>(null);
+  const [visionUseWorkspace, setVisionUseWorkspace] = useState(false);
   const [promptUsageRefreshKey, setPromptUsageRefreshKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
@@ -1351,8 +1352,8 @@ export function XchatConversation({
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const prompt = input.trim();
-    const pastedImage = pendingPasteImage;
-    const hasPasteImage = Boolean(pastedImage);
+    const pastedImages = pendingPasteImages;
+    const hasPasteImage = pastedImages.length > 0;
     if ((!prompt && !hasPasteImage) || loading || sendSubmittingRef.current) return;
     sendSubmittingRef.current = true;
 
@@ -1370,10 +1371,15 @@ export function XchatConversation({
       id: `user-${Date.now()}`,
       role: "user",
       content: prompt,
-      ...(pastedImage ? { attachmentPreviewUrl: pastedImage.previewUrl } : {}),
+      ...(pastedImages[0] ? { attachmentPreviewUrl: pastedImages[0].previewUrl } : {}),
       timestamp: Date.now()
     };
-    const pairedUserPromptForTurn = hasPasteImage && !prompt ? "[Pasted image]" : prompt;
+    const pairedUserPromptForTurn =
+      hasPasteImage && !prompt
+        ? pastedImages.length > 1
+          ? `[Pasted ${pastedImages.length} images]`
+          : "[Pasted image]"
+        : prompt;
     const nextStrategyOptOut = strategyJobOptOut || shouldStayInChatFromReply(prompt);
     if (nextStrategyOptOut !== strategyJobOptOut) {
       setStrategyJobOptOut(nextStrategyOptOut);
@@ -1393,8 +1399,9 @@ export function XchatConversation({
     askAbortRef.current = askController;
     const askSignal = askController.signal;
     if (hasPasteImage) {
-      setPendingPasteImage(null);
+      setPendingPasteImages([]);
       setPasteImageError(null);
+      setVisionUseWorkspace(false);
     }
 
     if (hasPendingStrategyJobOffer(messages) && shouldLaunchStrategyJobFromReply(prompt)) {
@@ -1488,6 +1495,8 @@ export function XchatConversation({
       const askBody: {
         message: string;
         imageAttachment?: { mediaType: XchatPendingPasteImage["mediaType"]; dataBase64: string };
+        imageAttachments?: Array<{ mediaType: XchatPendingPasteImage["mediaType"]; dataBase64: string }>;
+        visionUseWorkspace?: boolean;
         scope: string;
         threadId: string;
         strategyJobOptOut: boolean;
@@ -1505,11 +1514,14 @@ export function XchatConversation({
         recentMessages: buildAskRecentMessages(messages, 10),
         quoteFreshness
       };
-      if (hasPasteImage && pastedImage) {
-        askBody.imageAttachment = {
-          mediaType: pastedImage.mediaType,
-          dataBase64: pastedImage.dataBase64
-        };
+      if (hasPasteImage && pastedImages.length > 0) {
+        askBody.imageAttachments = pastedImages.map((img) => ({
+          mediaType: img.mediaType,
+          dataBase64: img.dataBase64
+        }));
+      }
+      if (visionUseWorkspace && hasPasteImage) {
+        askBody.visionUseWorkspace = true;
       }
       const normalizedWorkspacePortfolioId = workspacePortfolioId?.trim();
       if (normalizedWorkspacePortfolioId) {
@@ -2237,7 +2249,7 @@ export function XchatConversation({
             onCancelAsk={cancelAskInFlight}
             onQuoteFreshnessChange={persistQuoteFreshness}
             pasteImageError={pasteImageError}
-            pendingPasteImage={pendingPasteImage}
+            pendingPasteImages={pendingPasteImages}
             personaListError={personaListError}
             personaPickerLocked={personaPickerLocked}
             personaSelectRows={personaSelectRows}
@@ -2246,12 +2258,14 @@ export function XchatConversation({
             selectedPersonaId={selectedPersonaId}
             setInput={setInput}
             setPasteImageError={setPasteImageError}
-            setPendingPasteImage={setPendingPasteImage}
+            setPendingPasteImages={setPendingPasteImages}
             setReasoningMode={setReasoningMode}
             setSelectedPersonaId={setSelectedPersonaId}
+            setVisionUseWorkspace={setVisionUseWorkspace}
             sourcesRailHref={sourcesRailHref}
             tenantFileUploadEnabled={tenantFileUploadEnabled}
             userPickedPersonaRef={userPickedPersonaRef}
+            visionUseWorkspace={visionUseWorkspace}
             voiceSessionPersonaLabel={activePersonaName}
             workspacePortfolioId={workspacePortfolioId?.trim() ? workspacePortfolioId.trim() : null}
             hnwiV21SlugForNextAskRef={hnwiV21SlugForNextAskRef}

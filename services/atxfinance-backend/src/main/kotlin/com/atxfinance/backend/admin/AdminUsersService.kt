@@ -296,6 +296,15 @@ class AdminUsersService(
             ),
             props.xchatLogsCollection,
         )
+        mongoTemplate.remove(
+            Query.query(
+                Criteria().orOperator(
+                    Criteria.where("userId").`is`(oid),
+                    Criteria.where("userId").`is`(userId),
+                ),
+            ),
+            "xchat_image_attachments",
+        )
         mongoTemplate.remove(Query.query(Criteria.where("userId").`is`(userId)), "app_feature_daily_usage")
         mongoTemplate.remove(Query.query(uidCrit), props.strategyJobsCollection)
 

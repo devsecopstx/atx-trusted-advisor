@@ -2365,9 +2365,43 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
 
 .xchat-composer-paste-preview {
   display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.45rem;
   padding: 0.35rem 0 0;
+}
+
+.xchat-composer-paste-preview__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.xchat-composer-paste-preview__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: stretch;
+}
+
+.xchat-composer-paste-preview__cell-img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--xf-bg-900);
+}
+
+.xchat-composer-paste-preview__cell-remove {
+  font-size: 0.7rem;
+  color: var(--xf-gain-green);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-align: left;
 }
 
 .xchat-composer-paste-preview__thumb {
@@ -2387,10 +2421,12 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
 }
 
 .xchat-composer-paste-preview__meta {
-  flex: 1;
-  min-width: 0;
   font-size: 0.75rem;
   color: var(--xf-text-400);
+}
+
+.xchat-composer-paste-preview__portfolio {
+  width: 100%;
 }
 
 .xchat-composer-paste-preview__link {
@@ -2399,6 +2435,7 @@ html[data-xf-ui="soft"] .xchat-msg-ai-toolbar {
 }
 
 .xchat-composer-paste-preview__clear {
+  align-self: flex-start;
   flex-shrink: 0;
   font-size: 0.75rem;
   color: var(--xf-gain-green);
@@ -7927,52 +7964,6 @@ html[data-xf-ui="soft"] .xchat-workspace-bar {
     white-space: nowrap;
     padding: 0.45rem 0.75rem;
   }
-}
-
-/* HNWI Desk Report v2.1 — composer quick actions */
-.xchat-hnwi-v21 {
-  margin: 0.35rem 0 0.5rem;
-  padding: 0.45rem 0.5rem 0.55rem;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
-  background: color-mix(in srgb, var(--xf-bg-900) 88%, transparent);
-}
-
-.xchat-hnwi-v21__heading {
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--xf-text-100) 55%, transparent);
-  margin-bottom: 0.35rem;
-}
-
-.xchat-hnwi-v21__grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.xchat-hnwi-v21__btn {
-  display: block;
-  width: 100%;
-  text-align: left;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  padding: 0.45rem 0.55rem;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
-  color: var(--xf-text-100);
-  background: color-mix(in srgb, var(--xf-gain-green) 6%, transparent);
-  cursor: pointer;
-}
-
-.xchat-hnwi-v21__btn:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 55%, transparent);
-}
-
-.xchat-hnwi-v21__btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 /* ── Reduced motion ── */

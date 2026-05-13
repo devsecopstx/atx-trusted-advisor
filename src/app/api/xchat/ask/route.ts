@@ -9,6 +9,7 @@ import {
     resolveAppUserBillingAccessState
 } from "@/lib/app-user-billing-state";
 import { requireSessionUser } from "@/lib/auth";
+import { createAuditEvent } from "@/modules/audit/repository";
 import { getEnv, isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
 import { getInvestmentOutlookRefreshEnabled } from "@/lib/feature-flags";
 import { SENSITIVE_APP_USER_CACHE_HEADERS } from "@/lib/sensitive-api-cache-control";
@@ -137,8 +138,19 @@ import { buildHnwiV21DeskReportSystemAddon } from "@/modules/xchat/xchat-hnwi-v2
 import { createXchatLiveSseReadableStream } from "@/modules/xchat/xchat-ask-stream-sse";
 import {
     MAX_XCHAT_ASK_JSON_BYTES,
+    mergeRawAskImageAttachmentsFromAskPayload,
     parseAndValidateXchatPasteImage
 } from "@/modules/xchat/xchat-image-attachment";
+import { insertXchatImageAttachmentRows } from "@/modules/xchat/xchat-image-attachments-repository";
+import { generateXchatVisionAutoCaption } from "@/modules/xchat/xchat-vision-auto-caption";
+import {
+    HNWI_VISION_DESK_REPORT_V21_USER_DIRECTIVE,
+    shouldInjectHnwiVisionDeskDirective
+} from "@/modules/xchat/xchat-vision-hnwi";
+import {
+    processDecodedXchatVisionImage,
+    type ProcessedXchatVisionImage
+} from "@/modules/xchat/vision-processor";
 import {
     computeLimitResetAtIso,
     limiterCircuitAllowDegraded,
@@ -179,10 +191,18 @@ const xchatPasteImageAttachmentSchema = z.object({
   dataBase64: z.string().min(8).max(6_000_000)
 });
 
+const xchatPasteImageAttachmentItemSchema = z.object({
+  mediaType: z.enum(["image/png", "image/jpeg"]),
+  dataBase64: z.string().min(8).max(6_000_000),
+  caption: z.string().max(2_000).optional()
+});
+
 const askSchema = z
   .object({
     message: z.string().max(8_000),
     imageAttachment: xchatPasteImageAttachmentSchema.optional(),
+    imageAttachments: z.array(xchatPasteImageAttachmentItemSchema).max(4).optional(),
+    visionUseWorkspace: z.boolean().optional(),
     threadId: z.string().trim().min(1).max(128).optional(),
     strategyJobOptOut: z.boolean().optional(),
     recentMessages: z
@@ -204,12 +224,22 @@ const askSchema = z
     hnwiPromptTemplateV21Slug: z.string().min(1).max(64).optional()
   })
   .superRefine((data, ctx) => {
+    const legacy = data.imageAttachment;
+    const list = data.imageAttachments ?? [];
+    const attachmentCount = list.length + (legacy ? 1 : 0);
     const t = data.message.trim();
-    if (t.length < 2 && !data.imageAttachment) {
+    if (t.length < 2 && attachmentCount === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Enter a message (2+ characters) or paste an image.",
         path: ["message"]
+      });
+    }
+    if (attachmentCount > 4) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At most 4 image attachments per message.",
+        path: ["imageAttachments"]
       });
     }
     if (data.reasoningMode !== undefined && data.reasoningEffort !== undefined) {
@@ -425,19 +455,19 @@ export async function POST(request: Request) {
 
   const messageRaw = parsed.data.message;
   const messageTrimmed = messageRaw.trim();
-  const visionParsed = parsed.data.imageAttachment
-    ? parseAndValidateXchatPasteImage(parsed.data.imageAttachment)
-    : null;
-  if (visionParsed && !visionParsed.ok) {
-    return NextResponse.json({ error: visionParsed.error }, { status: 400 });
-  }
-  const visionImage = visionParsed?.ok ? visionParsed.value : null;
+  const visionUseWorkspace = parsed.data.visionUseWorkspace === true;
+  let processedVisionImages: ProcessedXchatVisionImage[] = [];
+  const threadId = parsed.data.threadId?.trim() || randomUUID();
+  const askCorrelationId =
+    request.headers.get("x-correlation-id")?.trim() ||
+    request.headers.get("x-request-id")?.trim() ||
+    randomUUID();
 
   const recordAskLatencyIfEnabled = (mode: string): void => {
     if (!isXchatPromptLatencyMetricsEnabled()) {
       return;
     }
-    const promptType = visionImage ? `vision_${mode}` : mode;
+    const promptType = processedVisionImages.length > 0 ? `vision_${mode}` : mode;
     void recordXchatPromptLatencySample({
       tenantId: session.tenantId.trim(),
       promptType,
@@ -447,15 +477,8 @@ export async function POST(request: Request) {
 
   const xchatImageCaptionFallback =
     "Analyze this screenshot or pasted image. If it shows tickers, options, charts, or portfolio data, describe what you see and anything actionable. If it is not finance-related, say so briefly.";
-  const captionForPrompt = messageTrimmed || (visionImage ? xchatImageCaptionFallback : "");
-  const messageForPersistence = visionImage
-    ? `[image:${visionImage.mediaType}] ${messageTrimmed || "(paste)"}`
-    : messageRaw;
-  const threadId = parsed.data.threadId?.trim() || randomUUID();
-  const askCorrelationId =
-    request.headers.get("x-correlation-id")?.trim() ||
-    request.headers.get("x-request-id")?.trim() ||
-    randomUUID();
+  let captionForPrompt = messageTrimmed;
+  let messageForPersistence = messageRaw;
   let workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
   const hnwiSlug: HnwiPromptTemplateV21Slug | undefined =
     parsed.data.hnwiPromptTemplateV21Slug &&
@@ -622,6 +645,115 @@ export async function POST(request: Request) {
     hasDailyCap: typeof dailyPromptCap === "number",
     hasHourlyCap: typeof hourlyPromptCap === "number"
   });
+
+  const rawVisionRows = mergeRawAskImageAttachmentsFromAskPayload({
+    legacy: parsed.data.imageAttachment,
+    list: parsed.data.imageAttachments
+  });
+  const visionProcessStartedAt = Date.now();
+  const builtProcessed: ProcessedXchatVisionImage[] = [];
+  for (const row of rawVisionRows) {
+    const parsedImg = parseAndValidateXchatPasteImage({
+      mediaType: row.mediaType,
+      dataBase64: row.dataBase64
+    });
+    if (!parsedImg.ok) {
+      return NextResponse.json(
+        { error: parsedImg.error, correlationId: askCorrelationId },
+        { status: 400 }
+      );
+    }
+    const b64 = row.dataBase64.replace(/\s/g, "");
+    const decoded = Buffer.from(b64, "base64");
+    const pr = await processDecodedXchatVisionImage({
+      decoded,
+      declaredMediaType: parsedImg.value.mediaType
+    });
+    if (!pr.ok) {
+      if (pr.code === "vision_threat_detected") {
+        try {
+          await createAuditEvent({
+            entityType: "xchat_session",
+            entityId: askCorrelationId,
+            action: "xchat_vision_attachment_rejected",
+            actor: {
+              userId: session.userId,
+              email: session.email,
+              username: session.username
+            },
+            details: {
+              correlationId: askCorrelationId,
+              code: pr.code,
+              threadIdPrefix: threadId.slice(0, 48)
+            }
+          });
+        } catch (auditError) {
+          console.error("[xchat/ask] vision rejection audit failed", {
+            correlationId: askCorrelationId,
+            error: auditError instanceof Error ? auditError.message : String(auditError)
+          });
+        }
+        return NextResponse.json(
+          {
+            error: pr.error,
+            code: pr.code,
+            correlationId: askCorrelationId
+          },
+          { status: 422 }
+        );
+      }
+      if (pr.code === "vision_scan_unavailable") {
+        return NextResponse.json(
+          {
+            error: pr.error,
+            code: pr.code,
+            correlationId: askCorrelationId
+          },
+          { status: 503 }
+        );
+      }
+      return NextResponse.json(
+        { error: pr.error, code: pr.code, correlationId: askCorrelationId },
+        { status: 400 }
+      );
+    }
+    builtProcessed.push(pr.value);
+  }
+  processedVisionImages = builtProcessed;
+  markPerf("vision_process", visionProcessStartedAt, {
+    count: processedVisionImages.length,
+    visionUseWorkspace
+  });
+
+  const hasVisionImages = processedVisionImages.length > 0;
+  let visionAutoCaption: string | undefined;
+  if (hasVisionImages && !messageTrimmed) {
+    try {
+      visionAutoCaption = await generateXchatVisionAutoCaption({
+        imageDataUrls: processedVisionImages.map((img) => img.dataUrl),
+        signal: request.signal
+      });
+    } catch (error) {
+      console.warn("[xchat/ask] vision auto-caption failed", {
+        correlationId: askCorrelationId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  if (hasVisionImages) {
+    captionForPrompt =
+      messageTrimmed || visionAutoCaption?.trim() || xchatImageCaptionFallback;
+    messageForPersistence = `[images:${processedVisionImages.length}] ${messageTrimmed || "(paste)"}`;
+    const captionsFromClient = rawVisionRows
+      .map((r, idx) => {
+        const cap = typeof r.caption === "string" ? r.caption.trim() : "";
+        return cap ? `[#${idx + 1}] ${cap}` : "";
+      })
+      .filter((s) => s.length > 0);
+    if (captionsFromClient.length > 0) {
+      captionForPrompt = `${captionForPrompt}\n\n[User attachment captions]\n${captionsFromClient.join("\n")}`;
+    }
+  }
 
   const personaResolveStartedAt = Date.now();
   const defaultPersona = await loadDefaultXchatPersonaForSessionDeduped(session.roles);
@@ -807,7 +939,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (visionImage) {
+  if (hasVisionImages) {
     parallelAgentConfig = undefined;
     const visionModelOverride = readXaiVisionModelOverrideFromEnv();
     if (visionModelOverride) {
@@ -833,7 +965,7 @@ export async function POST(request: Request) {
     session.tenantId ?? "tenant:none",
     resolvedPersonaIdOverride ?? persona?._id?.toHexString() ?? persona?.name ?? "persona:none",
     messageRaw,
-    visionImage?.contentFingerprint ?? "",
+    processedVisionImages.map((v) => v.contentFingerprint).join(":"),
     executionModel,
     scope
   );
@@ -937,7 +1069,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!strategyJobOptOut && !visionImage && shouldOfferStrategyJobPreflight(messageTrimmed)) {
+  if (!strategyJobOptOut && !hasVisionImages && shouldOfferStrategyJobPreflight(messageTrimmed)) {
     const responseMarkdown = preprocessXchatMarkdown(STRATEGY_JOB_PREFLIGHT_MARKDOWN);
     const preflightRequestId = buildDeterministicId(
       "xpref",
@@ -1008,7 +1140,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!visionImage && showWatchlistIntent && watchlistPortfolioSlot.needsPortfolioId) {
+  if (!hasVisionImages && showWatchlistIntent && watchlistPortfolioSlot.needsPortfolioId) {
     const responseMarkdown = preprocessXchatMarkdown(
       "I can show that watchlist once I know which portfolio you mean. Please share the `portfolioId` (24-char id) or open the portfolio first and retry."
     );
@@ -1102,15 +1234,16 @@ export async function POST(request: Request) {
   const workspaceIncomeIdeasPreload =
     shouldEagerWorkspaceSnapshotPreloadForMessage(messageTrimmed);
   const incomeIdeasOptimizationCandidate =
-    !visionImage &&
+    !hasVisionImages &&
     shouldOptimizeIncomeIdeasPrompt(messageTrimmed) &&
     workspaceIncomeIdeasPreload;
   const likelyDirectWorkspaceToolPath =
-    !visionImage &&
-    (showWatchlistIntent ||
-      shouldRunOptionsActionScan(messageTrimmed) ||
-      workspacePortfolioScoped ||
-      workspaceIncomeIdeasPreload);
+    (!hasVisionImages &&
+      (showWatchlistIntent ||
+        shouldRunOptionsActionScan(messageTrimmed) ||
+        workspacePortfolioScoped ||
+        workspaceIncomeIdeasPreload)) ||
+    (hasVisionImages && visionUseWorkspace && workspacePortfolioScoped);
   const shouldEagerWorkspacePreload = hasXfinanceTool && likelyDirectWorkspaceToolPath;
   const workspacePortfolioIdTrimmed = workspacePortfolioId?.trim() ?? "";
   const ragAndPreloadStartedAt = Date.now();
@@ -1347,7 +1480,7 @@ export async function POST(request: Request) {
       ? { workspacePreload: eagerWorkspacePreload }
       : { workspaceLazyLoad: workspaceSnapshotCtx };
 
-  if (!visionImage && hasXfinanceTool && shouldRunOptionsActionScan(messageTrimmed)) {
+  if (!hasVisionImages && hasXfinanceTool && shouldRunOptionsActionScan(messageTrimmed)) {
     const executor = createXfinanceToolExecutor({
       userId: session.userId,
       tenantId: session.tenantId,
@@ -1500,7 +1633,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!visionImage && hasXfinanceTool && showWatchlistIntent) {
+  if (!hasVisionImages && hasXfinanceTool && showWatchlistIntent) {
     const executor = createXfinanceToolExecutor({
       userId: session.userId,
       tenantId: session.tenantId,
@@ -1664,7 +1797,7 @@ export async function POST(request: Request) {
     enableLongTermXaiMemory &&
     persona?.keepXchatHistory !== false &&
     Boolean(userId) &&
-    !visionImage;
+    !hasVisionImages;
 
   const tenantWorkspaceCtxBase =
     typeof tenantWorkspaceContextBlock === "string" ? tenantWorkspaceContextBlock.trim() : "";
@@ -1784,6 +1917,18 @@ export async function POST(request: Request) {
   if (incomeIdeasOptimization) {
     userPrompt = `${userPrompt}\n\n${buildIncomeIdeasUserSuffix()}`;
   }
+  if (
+    shouldInjectHnwiVisionDeskDirective({
+      hasVisionImages,
+      personaName: persona?.name,
+      hnwiSlug,
+      visionUseWorkspace,
+      workspacePortfolioScoped,
+      eagerWorkspacePreload
+    })
+  ) {
+    userPrompt = `${userPrompt}\n\n${HNWI_VISION_DESK_REPORT_V21_USER_DIRECTIVE}`;
+  }
 
   if (!userId) {
     return NextResponse.json(
@@ -1792,8 +1937,33 @@ export async function POST(request: Request) {
     );
   }
 
+  if (processedVisionImages.length > 0) {
+    try {
+      await insertXchatImageAttachmentRows({
+        tenantId,
+        userId,
+        threadId,
+        correlationId,
+        requestId,
+        items: processedVisionImages.map((img) => ({
+          mediaType: img.mediaType,
+          caption: captionForPrompt.slice(0, 4000),
+          originalSha256Hex: img.originalSha256Hex,
+          processedSha256Hex: img.processedSha256Hex,
+          width: img.width,
+          height: img.height
+        }))
+      });
+    } catch (error) {
+      console.error("[xchat/ask] xchat_image_attachments insert failed", {
+        correlationId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
   const toolLoopConversationInput = resolveToolLoopConversationInput({
-    visionImage: Boolean(visionImage),
+    hasVisionImages,
     useRemoteContinuation: Boolean(useRemoteConversationHistory && previousResponseId),
     enableLongTermXaiMemory,
     recentMessages: recentThreadMessages,
@@ -1885,7 +2055,9 @@ export async function POST(request: Request) {
     systemPrompt,
     userPrompt,
     conversationInput: toolLoopConversationInput,
-    userImageDataUrl: visionImage?.dataUrl,
+    ...(processedVisionImages.length > 0
+      ? { userImageDataUrls: processedVisionImages.map((v) => v.dataUrl) }
+      : {}),
     tools: xaiTools,
     toolChoice: xapiConfig.toolChoice,
     maxTurns: effectiveMaxTurns,

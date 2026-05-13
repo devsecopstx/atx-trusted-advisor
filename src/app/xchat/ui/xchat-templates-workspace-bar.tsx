@@ -1,28 +1,5 @@
 "use client";
 
-import type { RefObject } from "react";
-
-import { getXchatComposerTextareaMaxPx } from "@/lib/xchat/xchat-composer-textarea-max";
-
-/** Matches `shouldRunOptionsActionScan` routing — natural language trigger for options scan. */
-export const XCHAT_SCAN_OPTIONS_PROMPT =
-  "Scan my options from holdings + watchlist.";
-
-export function applyXchatScanOptionsPrompt(
-  setInput: (v: string) => void,
-  composerRef: RefObject<HTMLTextAreaElement | null>
-): void {
-  setInput(XCHAT_SCAN_OPTIONS_PROMPT);
-  queueMicrotask(() => {
-    const el = composerRef.current;
-    if (el) {
-      el.focus();
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, getXchatComposerTextareaMaxPx())}px`;
-    }
-  });
-}
-
 type XchatTemplatesWorkspaceBarProps = {
   promptLibraryCount: number;
   askInFlight: boolean;
