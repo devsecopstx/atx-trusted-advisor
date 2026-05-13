@@ -45,8 +45,12 @@ type PythonExecResult = {
   exitCode: number;
 };
 
-/** Repo-relative path — avoids `path.join(process.cwd(), …)` so Turbopack NFT does not trace the whole tree. */
-const OPTIONS_SCAN_REPORT_REL = "services/report-service/options_scan_report.py";
+/**
+ * Repo-relative path — built at runtime so Turbopack NFT cannot pick up a literal string
+ * reference to a non-JS file (which would over-trace the project). The script is shipped
+ * with the standalone build via `outputFileTracingIncludes` in `next.config.ts`.
+ */
+const OPTIONS_SCAN_REPORT_REL = ["services", "report-service", "options_scan_report.py"].join("/");
 
 async function runPythonReportGenerator(payload: unknown): Promise<PythonExecResult> {
   const scriptArg =

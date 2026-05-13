@@ -1,10 +1,30 @@
 import type { NextConfig } from "next";
 
+import {
+  STANDALONE_OUTPUT_FILE_TRACING_INCLUDES,
+  buildDevOnlyAllowedOrigins
+} from "./src/lib/next-build-policy";
+
+const devOnlyAllowedOrigins = buildDevOnlyAllowedOrigins(process.env.NODE_ENV);
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   serverExternalPackages: ["mongodb", "redis"],
-  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  ...(devOnlyAllowedOrigins ? { allowedDevOrigins: [...devOnlyAllowedOrigins] } : {}),
+  /**
+   * Ship runtime-spawned scripts (e.g. the Python ReportLab generator under
+   * `services/report-service/**` for `POST /api/reports/options-scan`) with the
+   * standalone build. Source of truth: `STANDALONE_OUTPUT_FILE_TRACING_INCLUDES`
+   * in `src/lib/next-build-policy.ts`. Avoids Turbopack NFT over-tracing from a
+   * literal path string in route handlers.
+   */
+  outputFileTracingIncludes: Object.fromEntries(
+    Object.entries(STANDALONE_OUTPUT_FILE_TRACING_INCLUDES).map(([route, globs]) => [
+      route,
+      [...globs]
+    ])
+  ),
   images: {
     remotePatterns: [
       {
