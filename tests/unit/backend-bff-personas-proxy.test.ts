@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { shouldProxyPersonasRequestsToBackend } from "@/lib/backend-bff";
+import {
+    shouldProxyAdminUsersToBackend,
+    shouldProxyPersonasRequestsToBackend
+} from "@/lib/backend-bff";
 
 describe("shouldProxyPersonasRequestsToBackend", () => {
   const original = { ...process.env };
@@ -12,11 +15,20 @@ describe("shouldProxyPersonasRequestsToBackend", () => {
 
   beforeEach(() => {
     delete process.env.ATXFINANCE_BACKEND_ORIGIN;
+    vi.stubEnv("NODE_ENV", "development");
   });
 
-  it("is always false (Next owns personas HTTP)", () => {
-    expect(shouldProxyPersonasRequestsToBackend()).toBe(false);
-    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal");
-    expect(shouldProxyPersonasRequestsToBackend()).toBe(false);
+  it("matches shouldProxyAdminUsersToBackend in all env combinations", () => {
+    expect(shouldProxyPersonasRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
+
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
+    expect(shouldProxyPersonasRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
+
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
+    expect(shouldProxyPersonasRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
+
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
+    expect(shouldProxyPersonasRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
   });
 });

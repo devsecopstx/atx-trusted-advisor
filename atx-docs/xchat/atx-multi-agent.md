@@ -58,13 +58,13 @@ Thin HTTP handlers; async default; idempotent retries; hourly caps limit cost.
 
 ## 3. Scale & ops
 
-Async jobs meet SLOs; **idempotency** via `Idempotency-Key` or deterministic hash on `(userId, emailAccountId, jobId, step, message)`. Redis/Mongo queries filter **`userId` + `emailAccountId`**. **xChat streaming (shipped):** Next emits SSE during the tool loop; Spring **`POST /api/xchat/ask/stream`** optional behind **`XCHAT_SSE_PROXY_BACKEND`**. Strategy artifacts: **job-backed**, async default; UI polls or push.
+Async jobs meet SLOs; **idempotency** via `Idempotency-Key` or deterministic hash on `(userId, emailAccountId, jobId, step, message)`. Redis/Mongo queries filter **`userId` + `emailAccountId`**. **xChat streaming (shipped):** Next emits SSE during the tool loop; Spring **`POST /api/xchat/ask/stream`** is BFF-forwarded when the product BFF gate is on (**`XCHAT_SSE_PROXY_BACKEND=0|false|no|off`** forces Next-only). Strategy artifacts: **job-backed**, async default; UI polls or push.
 
 ---
 
 ## Changelog
 
-- **2026-05-07** — Document **live token SSE** for xChat ask on Next (per-turn `stream: true`, `done` = full JSON `data`); optional JVM **`/api/xchat/ask/stream`** BFF when **`XCHAT_SSE_PROXY_BACKEND`** is on. Artifact **v2** JSON Schema remains **deferred**.
+- **2026-05-07** — Document **live token SSE** for xChat ask on Next (per-turn `stream: true`, `done` = full JSON `data`); JVM **`/api/xchat/ask/stream`** BFF follows the main **`ATXFINANCE_BACKEND_ORIGIN`** gate with **`XCHAT_SSE_PROXY_BACKEND`** as an ops opt-out to Next-only streaming. Artifact **v2** JSON Schema remains **deferred**.
 - **2026-04-03** — Non-negotiable Phase 1 list expanded (v2 schema deferred; `slots_complete`→artifact SLO anchor; routing + `clampMultiAgentParallelismForPlan`; Redis cap key aligned to `tenantId`+`userId`+`emailAccountId`; GET/turns enforce `emailAccountId` match).
 - **2026-03-23** — Consolidated docs + locked boundaries (server orchestrator, v1 artifact format, async SLOs, isolation, caps, BFF-only).
 - **2026-03-24** — Phase 1 xAI: TEAM_XAI + `XAI_TEAM_ID` only; legacy default/bootstrap collection work out of Phase 1 scope.

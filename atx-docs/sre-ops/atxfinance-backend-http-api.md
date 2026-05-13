@@ -101,11 +101,13 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). This endpoint is the JVM-
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/api/xchat/ask/stream` | **401** without session cookie. **200** `Content-Type: text/event-stream` — emits **`meta`**, **`turn`**, **`tool_status`**, **`delta`**, **`provider`**, **`done`** (and **`error`** on failure) for direct **`options_action_scan`** / **`watchlist_snapshot`** intents and the xAI Responses tool loop (persona, RAG context, usage limits, audit). BFF-proxied from Next only when **`XCHAT_SSE_PROXY_BACKEND`** is explicitly enabled and **`ATXFINANCE_BACKEND_ORIGIN`** is set. Shipped parity notes: [xchat-bffparity.md](./xchat-bffparity.md). |
+| POST | `/api/xchat/ask/stream` | **401** without session cookie. **200** `Content-Type: text/event-stream` — emits **`meta`**, **`turn`**, **`tool_status`**, **`delta`**, **`provider`**, **`done`** (and **`error`** on failure) for direct **`options_action_scan`** / **`watchlist_snapshot`** intents and the xAI Responses tool loop (persona, RAG context, usage limits, audit). **BFF:** Next forwards to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is set and the product BFF gate is on (`isXchatSseProxyBackendEnabled`); set **`XCHAT_SSE_PROXY_BACKEND=0|false|no|off`** on Next to keep in-process streaming. Shipped parity notes: [xchat-bffparity.md](./xchat-bffparity.md). |
 
 ## Admin (global_admin session)
 
 **Next-only admin routes (not implemented on this JVM service):** Options-strategy catalog and Mongo-backed preferences — `GET|POST /api/admin/options-strategy`, `GET|PATCH|DELETE /api/admin/options-strategy/{strategyId}`, `GET /api/admin/options-strategy-preferences`, `GET|PATCH /api/admin/options-strategy-preferences/{preferenceId}`. Documented under the core app OpenAPI tag **`admin-options-strategy`** and [`guides/api-endpoints.md`](../guides/api-endpoints.md).
+
+**BFF — admin scheduled tasks:** When **`ATXFINANCE_BACKEND_ORIGIN`** is set and the admin BFF gate is on (`shouldProxyAdminScheduledTasksToBackend` — same rules as `shouldProxyAdminUsersToBackend`), Next forwards **`GET`/`POST /api/admin/tasks`**, **`PATCH`/`DELETE /api/admin/tasks/{taskId}`**, **`POST /api/admin/tasks/{taskId}/run`**, **`GET /api/admin/task-runs`**, and **`POST /api/admin/scheduler/tick`** to **`AdminScheduledTasksController`** (same Mongo collections as Next). Unset origin or loopback + dev/test ⇒ handlers stay on Next + Mongo.
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -164,6 +166,8 @@ RAG **file inventory** is stored in Mongo collection **`xai_collections`** (lega
 | GET | `/api/rag/files/{fileId}/readiness` | **Global admin only.** Polls xAI file metadata, updates Mongo `xaiProcessingStatus`, returns **200** `{ "data": { "fileId", "xaiFileId", "readiness", "processingStatus", "message?", "checkedAt" } }`. **404** file not found. **400** invalid file id. |
 
 ## Personas (`xchat_personas`, session + roles)
+
+When **`ATXFINANCE_BACKEND_ORIGIN`** is set and the Next BFF gate is on (`shouldProxyPersonasRequestsToBackend`, same rules as admin portfolio BFF), the browser calls same-origin **`/api/personas*`** on Next and those list/detail/mutation routes forward to **`PersonasController`** below. Publish/archive/versions/collections/sync remain Next-only routes.
 
 Session cookie must include **`roles`** (JSON array) so Kotlin can enforce **`global_admin`** for mutations (same as Next `requireAdminSession`). Legacy role `admin` is treated as `global_admin`.
 

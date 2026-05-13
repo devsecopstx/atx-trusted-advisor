@@ -605,13 +605,12 @@ export function getStrategyJobsBffUnavailableMessage(): string {
 }
 
 /**
- * `/api/admin/tasks*`, `/api/admin/task-runs`, `/api/admin/scheduler/tick`.
- *
- * **Always Next + Mongo** — the BFF never forwards these to Spring (same DB as `seed:admin` / `ops:scheduled-tasks:sync`).
- * Spring still exposes parity HTTP for JVM-native callers; see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
+ * **`/api/admin/tasks*`**, **`/api/admin/task-runs`**, **`/api/admin/scheduler/tick`** — forward to Spring when
+ * {@link shouldProxyAdminUsersToBackend} is true (same BFF gate as admin portfolios, personas, access-requests).
+ * Next route handlers remain the fallback when the gate is off (unset origin or loopback + dev/test).
  */
 export function shouldProxyAdminScheduledTasksToBackend(): boolean {
-  return false;
+  return shouldProxyAdminUsersToBackend();
 }
 
 /** Admin scheduled-task BFF → Spring; returns `null` when proxy disabled. */
@@ -677,10 +676,13 @@ export async function proxyAdminDeliveryChannelsRequestToBackend(
 }
 
 /**
- * `/api/personas*` — **always Next + Mongo** (BFF never proxies personas; avoids JVM/Next persona store drift).
+ * **`/api/personas`** and **`/api/personas/{personaId}`** (GET/POST/PUT/DELETE) — forward to Spring when
+ * {@link shouldProxyAdminUsersToBackend} is true (`ATXFINANCE_BACKEND_ORIGIN` set; loopback + dev/test skips proxy).
+ *
+ * Next-only persona routes (publish, archive, versions, collections, sync-from-xai, etc.) do not call this helper.
  */
 export function shouldProxyPersonasRequestsToBackend(): boolean {
-  return false;
+  return shouldProxyAdminUsersToBackend();
 }
 
 /** Personas BFF → Spring; returns `null` unless {@link shouldProxyPersonasRequestsToBackend} is true. */

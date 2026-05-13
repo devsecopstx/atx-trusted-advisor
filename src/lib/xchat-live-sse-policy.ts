@@ -1,3 +1,5 @@
+import { shouldProxyPortfolioRequestsToBackend } from "@/lib/backend-bff";
+
 /**
  * Live token SSE for `POST /api/xchat/ask` when `Accept` includes `text/event-stream`.
  *
@@ -45,7 +47,17 @@ export function resolveXchatStreamInternalSecretHeader(): Record<string, string>
   return secret ? { "x-xchat-stream-internal": secret } : {};
 }
 
+/**
+ * When true, `POST /api/xchat/ask/stream` BFF-forwards to Spring (same gate as
+ * {@link shouldProxyPortfolioRequestsToBackend} / `ATXFINANCE_BACKEND_ORIGIN` + dev/loopback rules).
+ *
+ * Set **`XCHAT_SSE_PROXY_BACKEND`** to **`0` / `false` / `no` / `off`** to keep in-process Next streaming even if the
+ * product BFF gate is on (explicit opt-out).
+ */
 export function isXchatSseProxyBackendEnabled(): boolean {
   const raw = process.env.XCHAT_SSE_PROXY_BACKEND?.trim().toLowerCase();
-  return raw === "1" || raw === "true" || raw === "yes";
+  if (raw === "0" || raw === "false" || raw === "no" || raw === "off") {
+    return false;
+  }
+  return shouldProxyPortfolioRequestsToBackend();
 }

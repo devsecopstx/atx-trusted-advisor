@@ -8,9 +8,11 @@
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
  * App-user portfolio CRUD; **`PATCH /api/portfolios/{portfolioId}/watchlist`** proxies when the BFF gate is on; **`GET`/`POST`**
  * for that path stay on Next (quotes / multi-watchlist). **`/api/admin/access-requests*`** write paths proxy when the gate is on.
- * `/api/personas*` stays on Next Mongo.
+ * **`GET`/`POST /api/personas`** and **`GET`/`PUT`/`DELETE /api/personas/{personaId}`** proxy when the admin BFF gate is on (`shouldProxyPersonasRequestsToBackend`); persona governance subroutes (publish, versions, …) stay Next-only.
  * Admin **portfolio** subtree (accounts, **`PATCH …/watchlist`**, positions list + **DELETE** by `positionId`, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`; **`GET …/admin/portfolios/{id}/watchlist`** stays on Next (quotes + desk enrichments).
- * **`/api/admin/delivery-channels*`** (tenant + portfolio-nested) proxies when the admin BFF gate is on. Scheduled tasks stay Next-only. Portfolio-console uses POST /api/admin/import/broker for CSV imports.
+ * **`/api/admin/delivery-channels*`** (tenant + portfolio-nested) proxies when the admin BFF gate is on. **`/api/admin/tasks*`**,
+ * **`GET /api/admin/task-runs`**, and **`POST /api/admin/scheduler/tick`** proxy when **`shouldProxyAdminScheduledTasksToBackend`**
+ * is on (same gate as admin users BFF). Portfolio-console uses POST /api/admin/import/broker for CSV imports.
  * **`GET /api/admin/tenants`**, **`GET /api/admin/users`**, **`GET /api/admin/login-audit`**, **`GET /api/admin/audit`:**
  * Next-only when BFF is on — see `ADMIN_USERS_BFF_NEXT_ONLY_GET_PATHS` / `shouldSkipAdminUsersBffProxyForRequest` in
  * `backend-bff.ts` (tenant register, `tenantMemberships`, login-audit collection, audit `entityType` parity).
@@ -21,8 +23,8 @@
  * **`GET /api/strategy-options/expirations`:** Next-only Yahoo (`expirations/route.ts`) — not listed below; Spring still
  * exposes the route for direct JVM clients, but the app does not proxy so prod matches local latency and avoids hangs.
  *
- * Deferred vertical slice: full xChat tool-loop SSE on Spring — `POST /api/xchat/ask/stream` is registered for BFF
- * and ships a JVM **stub** stream until the tool loop is wired; see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
+ * **`POST /api/xchat/ask/stream`:** BFF to Spring when the product gate is on (`isXchatSseProxyBackendEnabled`); set
+ * **`XCHAT_SSE_PROXY_BACKEND=0|false|no|off`** to keep Next in-process streaming. See `atx-docs/sre-ops/xchat-bffparity.md`.
  * PLAN 707 adds Spring-authoritative engine recommendations for xChat tools while Next keeps ask ownership.
  */
 export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

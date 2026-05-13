@@ -14,24 +14,16 @@ export type RegisteredWriteDisposition = {
 /**
  * Static disposition of each **write** row in {@link BFF_PROXY_ROUTES} when the product BFF gate is on
  * (`shouldProxyAdminUsersToBackend()`), mirroring `src/lib/backend-bff.ts` skip flags (GET-only admin watchlist,
- * personas, scheduled tasks, xChat SSE default, etc.). Not runtime request
- * telemetry — use for ownership inventory and onboarding.
+ * etc.). Personas, admin scheduled tasks, and **`POST /api/xchat/ask/stream`** follow the same product gate in
+ * production; **`XCHAT_SSE_PROXY_BACKEND=0|false|no|off`** is a **runtime** opt-out for SSE only (this table stays
+ * “Spring when gate on”). Not runtime request telemetry — use for ownership inventory and onboarding.
  */
 export function neverSpringReasonForBffRegisteredWrite(
   method: BffProxyHttpMethod,
-  pathTemplate: string
+  _pathTemplate: string
 ): string | null {
   if (!WRITE_METHODS.has(method)) {
     return null;
-  }
-  if (pathTemplate.startsWith("/api/personas")) {
-    return "Personas stay on Next Mongo (`shouldProxyPersonasRequestsToBackend` is false).";
-  }
-  if (pathTemplate.startsWith("/api/admin/tasks") || pathTemplate === "/api/admin/scheduler/tick") {
-    return "Admin scheduled tasks stay on Next (`shouldProxyAdminScheduledTasksToBackend` is false).";
-  }
-  if (pathTemplate === "/api/xchat/ask/stream" && method === "POST") {
-    return "xChat SSE defaults to in-process Next; Spring only when XCHAT_SSE_PROXY_BACKEND is on.";
   }
   return null;
 }
