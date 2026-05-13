@@ -26,7 +26,7 @@ Listed as **user-facing GET / server loaders** or high-frequency API routes wher
 | `POST /api/xchat/ask`, xChat history, token stats, attachments | Yes (core product) | **2026 Q4** — phased; ask body may stay Next until stream parity (see `api-consolidation-spring-backend.md`). |
 | `GET /api/app-user/find-options/bootstrap`, `GET …/context`, symbol chart | Yes (Next-only by design today) | **2026 Q3** — Spring read facade slice or materialized bootstrap doc. |
 | `GET /api/strategy-options/expirations` | Yes (Yahoo from Next) | **2026 Q3** — optional JVM mirror or keep Next if latency OK. |
-| `GET /api/portfolios/{id}/watchlist` (app user) | Yes (BFF off for watchlist per `shouldProxyAppUserPortfolioWatchlistToBackend`) | **2026 Q2** — flip proxy + JVM quotes or document permanent Next ownership. |
+| `GET /api/portfolios/{id}/watchlist` (app user) | Yes (`PATCH` proxies when BFF on; `GET`/`POST` stay Next) | **2026 Q2** — JVM quotes for `GET` or document permanent Next read ownership. |
 | `GET /api/portfolios/{id}/alerts` (app user) | Yes | **2026 Q3** — align with Spring or keep Next with ADR update. |
 | `GET /api/admin/tenants`, `GET /api/admin/login-audit`, `GET /api/admin/audit` (subset) | Yes when BFF skips admin GETs | **2026 Q2–Q3** — per-entity Kotlin parity + remove `ADMIN_USERS_BFF_NEXT_ONLY_GET_PATHS` entries. |
 | `GET /api/admin/tasks`, task-runs, scheduler tick | Yes (Next-orchestrated) | **2026 Q4** — only if product moves scheduler authority to JVM; else mark **permanent Next**. |

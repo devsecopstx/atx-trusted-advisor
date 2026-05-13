@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     shouldProxyAdminUsersToBackend,
+    shouldProxyAppUserPortfolioWatchlistPatchToBackend,
     shouldProxyAppUserPortfolioWatchlistToBackend,
     shouldProxyPortfolioRequestsToBackend
 } from "@/lib/backend-bff";
@@ -54,10 +55,19 @@ describe("shouldProxyAdminUsersToBackend", () => {
     expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
   });
 
-  it("shouldProxyAppUserPortfolioWatchlistToBackend is always false (watchlist stays on Next)", () => {
+  it("shouldProxyAppUserPortfolioWatchlistToBackend is deprecated and stays false", () => {
     expect(shouldProxyAppUserPortfolioWatchlistToBackend()).toBe(false);
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
     expect(shouldProxyAppUserPortfolioWatchlistToBackend()).toBe(false);
+  });
+
+  it("shouldProxyAppUserPortfolioWatchlistPatchToBackend matches portfolio gate (PATCH proxies when gate on)", () => {
+    expect(shouldProxyAppUserPortfolioWatchlistPatchToBackend()).toBe(false);
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
+    expect(shouldProxyAppUserPortfolioWatchlistPatchToBackend()).toBe(false);
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
+    expect(shouldProxyAppUserPortfolioWatchlistPatchToBackend()).toBe(true);
   });
 });

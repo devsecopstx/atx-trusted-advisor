@@ -19,7 +19,7 @@
 
 ## Short-term (4–6 weeks)
 
-Move **writes** for **`portfolio_positions`**, **watchlist**, **`admin_scheduled_tasks`** (tenant tasks remain Next-orchestrated today — see `backend-bff.ts` `shouldProxyAdminScheduledTasksToBackend`), **`xchat_user_preferences`**, and **`strategy_jobs`** to Spring; keep Next **GET** hot paths on Mongo until explicitly migrated.
+Move **writes** for **`portfolio_positions`**, **`admin_scheduled_tasks`** (tenant tasks remain Next-orchestrated today — see `backend-bff.ts` `shouldProxyAdminScheduledTasksToBackend`), **`xchat_user_preferences`**, and **`strategy_jobs`** to Spring; **app-user watchlist `PATCH`**, **`PATCH /api/admin/portfolios/{portfolioId}/watchlist`**, **admin access-requests**, and **admin delivery-channels** BFF to Spring when the gate is on (**`GET`** admin/app-user watchlist and access-request list/detail remain Next-rich where needed). Keep Next **GET** hot paths on Mongo until explicitly migrated.
 
 ## Related
 

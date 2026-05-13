@@ -19,9 +19,8 @@
 Some routes remain **deliberately** on Next + Mongo even though they appear in the BFF parity inventory or share DTOs with Spring. Examples today (see `src/lib/backend-bff.ts`):
 
 - **Personas** — governance and persona store stay on Next to avoid JVM/Next divergence.
-- **Admin access-requests** — full approve/patch contract and tenant targeting live in Next.
-- **Admin scheduled tasks**, **admin delivery-channels** (tenant-level and portfolio-nested), and **admin delivery-channel test** — tenant ops stay on Next.
-- **App-user and admin watchlist `PATCH`** — desk fields / Yahoo quote parity.
+- **Admin scheduled tasks** — tenant task orchestration stays on Next.
+- **App-user watchlist `GET`/`POST`** and **admin portfolio watchlist `GET`** — richer reads and admin desk parity stay on Next; **app-user watchlist `PATCH`**, **`PATCH` admin portfolio watchlist**, **admin access-requests**, and **admin delivery-channels** (including test POST) go through Spring when the BFF gate is on.
 - **xChat** — ask, logging, and xAI tool loop stay **Next-only for now**; optional JVM SSE exists behind an explicit flag only.
 
 These are **policy choices**, not exceptions to sneak around the rule.

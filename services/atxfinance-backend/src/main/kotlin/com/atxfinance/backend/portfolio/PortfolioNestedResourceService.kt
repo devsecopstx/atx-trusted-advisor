@@ -15,6 +15,15 @@ import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 import java.util.Date
 
+/** Desk field patch for app-user watchlist documents (`riskProfile`, `outlook`). */
+sealed interface WatchlistDeskScalarPatch {
+    data object NoChange : WatchlistDeskScalarPatch
+
+    data object Unset : WatchlistDeskScalarPatch
+
+    data class Set(val value: String) : WatchlistDeskScalarPatch
+}
+
 @Service
 class PortfolioNestedResourceService(
     private val mongoTemplate: MongoTemplate,
@@ -470,11 +479,24 @@ class PortfolioNestedResourceService(
         removeSymbols: List<String>?,
         dedupe: Boolean?,
         name: String?,
+        riskProfile: WatchlistDeskScalarPatch = WatchlistDeskScalarPatch.NoChange,
+        outlook: WatchlistDeskScalarPatch = WatchlistDeskScalarPatch.NoChange,
     ): Map<String, Any?>? {
         if (getWatchlistOrProvision(session, portfolioId) == null) {
             return null
         }
-        val updated = mutateWatchlistDocument(session, portfolioId, addSymbols, addEntries, removeSymbols, dedupe, name)
+        val updated =
+            mutateWatchlistDocument(
+                session,
+                portfolioId,
+                addSymbols,
+                addEntries,
+                removeSymbols,
+                dedupe,
+                name,
+                riskProfile,
+                outlook,
+            )
             ?: return null
         return buildWatchlistJson(updated, quotes)
     }
@@ -520,6 +542,8 @@ class PortfolioNestedResourceService(
         removeSymbols: List<String>?,
         dedupe: Boolean?,
         newName: String?,
+        riskProfile: WatchlistDeskScalarPatch = WatchlistDeskScalarPatch.NoChange,
+        outlook: WatchlistDeskScalarPatch = WatchlistDeskScalarPatch.NoChange,
     ): Document? {
         if (!ObjectId.isValid(portfolioId)) {
             return null
@@ -601,6 +625,24 @@ class PortfolioNestedResourceService(
         newName?.trim()?.takeIf { it.isNotEmpty() }?.let {
             update.set("name", it.take(128))
         }
+        when (riskProfile) {
+            is WatchlistDeskScalarPatch.Set ->
+                if (riskProfile.value in deskRiskProfiles) {
+                    update.set("riskProfile", riskProfile.value)
+                }
+            WatchlistDeskScalarPatch.Unset -> update.unset("riskProfile")
+            WatchlistDeskScalarPatch.NoChange -> Unit
+        }
+        when (outlook) {
+            is WatchlistDeskScalarPatch.Set -> {
+                val canon = deskOutlookAliases[outlook.value] ?: outlook.value
+                if (canon in deskOutlookCanonical) {
+                    update.set("outlook", canon)
+                }
+            }
+            WatchlistDeskScalarPatch.Unset -> update.unset("outlook")
+            WatchlistDeskScalarPatch.NoChange -> Unit
+        }
         mongoTemplate.updateFirst(
             Query.query(Criteria.where("_id").`is`(doc.getObjectId("_id"))),
             update,
@@ -647,6 +689,9 @@ class PortfolioNestedResourceService(
         d.getString("strategy")?.let { m["strategy"] = it }
         (d["quantity"] as? Number)?.toDouble()?.let { m["quantity"] = it }
         (d["entryPrice"] as? Number)?.toDouble()?.let { m["entryPrice"] = it }
+        d.getString("rationale")?.let { m["rationale"] = it }
+        d.getString("rowStatus")?.let { m["rowStatus"] = it }
+        (d["priceAlertMinAbsMovePercent"] as? Number)?.toDouble()?.let { m["priceAlertMinAbsMovePercent"] = it }
         return m
     }
 

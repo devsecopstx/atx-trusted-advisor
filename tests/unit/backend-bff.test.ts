@@ -104,7 +104,7 @@ describe("proxyRequestToBackend (default BFF, env)", () => {
   });
 });
 
-describe("proxyPortfolioRequestToBackend (watchlist bypass)", () => {
+describe("proxyPortfolioRequestToBackend (watchlist routing)", () => {
   const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
   beforeEach(() => {
@@ -126,6 +126,21 @@ describe("proxyPortfolioRequestToBackend (watchlist bypass)", () => {
     );
     await expect(proxyPortfolioRequestToBackend(req)).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forwards app-user portfolio watchlist PATCH when BFF gate is on", async () => {
+    vi.resetModules();
+    const { proxyPortfolioRequestToBackend } = await import("@/lib/backend-bff");
+    const req = new Request("http://next.local/api/portfolios/507f1f77bcf86cd799439011/watchlist", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addSymbols: ["NVDA"] })
+    });
+    await proxyPortfolioRequestToBackend(req);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      "https://kotlin-backend.example.run.app/api/portfolios/507f1f77bcf86cd799439011/watchlist"
+    );
   });
 
   it("still forwards portfolio root GET", async () => {
@@ -236,23 +251,25 @@ describe("proxyAdminUsersRequestToBackend (Next-first tenants + user list)", () 
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("does not forward PATCH /api/admin/portfolios/{id}/watchlist", async () => {
+  it("forwards PATCH /api/admin/portfolios/{id}/watchlist when BFF gate is on", async () => {
     vi.resetModules();
     const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
-    await expect(
-      proxyAdminUsersRequestToBackend(
-        new Request("https://next.local/api/admin/portfolios/507f1f77bcf86cd799439033/watchlist", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ addSymbols: ["AAPL"] })
-        })
-      )
-    ).resolves.toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    const req = new Request("https://next.local/api/admin/portfolios/507f1f77bcf86cd799439033/watchlist", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addSymbols: ["AAPL"] })
+    });
+    await proxyAdminUsersRequestToBackend(req);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const target = fetchMock.mock.calls[0][0];
+    const url = typeof target === "string" ? target : (target as Request).url;
+    expect(url).toContain("https://kotlin-backend.example.run.app/api/admin/portfolios/507f1f77bcf86cd799439033/watchlist");
+    const init = fetchMock.mock.calls[0][1] as RequestInit | undefined;
+    expect((init?.method ?? "GET").toUpperCase()).toBe("PATCH");
   });
 });
 
-describe("proxyAdminAccessRequestsRequestToBackend (Next-first approve contract)", () => {
+describe("proxyAdminAccessRequestsRequestToBackend (Spring BFF)", () => {
   const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
   beforeEach(() => {
@@ -268,33 +285,40 @@ describe("proxyAdminAccessRequestsRequestToBackend (Next-first approve contract)
     delete process.env.ATXFINANCE_BACKEND_ORIGIN;
   });
 
-  it("does not forward PUT /api/admin/access-requests/{id} (canonical Next + Mongo)", async () => {
+  it("forwards PUT /api/admin/access-requests/{id} when BFF gate is on", async () => {
     vi.resetModules();
     const { proxyAdminAccessRequestsRequestToBackend } = await import("@/lib/backend-bff");
-    await expect(
-      proxyAdminAccessRequestsRequestToBackend(
-        new Request("https://next.local/api/admin/access-requests/507f1f77bcf86cd799439022", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "approved",
-            requestedPlan: "basic",
-            requestedRole: "operator",
-            targetTenantId: "507f1f77bcf86cd799439033"
-          })
-        })
-      )
-    ).resolves.toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    const req = new Request("https://next.local/api/admin/access-requests/507f1f77bcf86cd799439022", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "approved",
+        requestedPlan: "basic",
+        requestedRole: "operator",
+        targetTenantId: "507f1f77bcf86cd799439033"
+      })
+    });
+    const proxied = await proxyAdminAccessRequestsRequestToBackend(req);
+    expect(proxied).not.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const target = fetchMock.mock.calls[0][0];
+    const url = typeof target === "string" ? target : (target as Request).url;
+    expect(url).toContain("https://kotlin-backend.example.run.app/api/admin/access-requests/");
+    const init = fetchMock.mock.calls[0][1] as RequestInit | undefined;
+    expect((init?.method ?? "GET").toUpperCase()).toBe("PUT");
   });
 
-  it("does not forward GET /api/admin/access-requests", async () => {
+  it("forwards GET /api/admin/access-requests when BFF gate is on", async () => {
     vi.resetModules();
     const { proxyAdminAccessRequestsRequestToBackend } = await import("@/lib/backend-bff");
-    await expect(
-      proxyAdminAccessRequestsRequestToBackend(new Request("https://next.local/api/admin/access-requests?status=open"))
-    ).resolves.toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    const proxied = await proxyAdminAccessRequestsRequestToBackend(
+      new Request("https://next.local/api/admin/access-requests?status=open")
+    );
+    expect(proxied).not.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const target = fetchMock.mock.calls[0][0];
+    const url = typeof target === "string" ? target : (target as Request).url;
+    expect(url).toContain("kotlin-backend.example.run.app/api/admin/access-requests?status=open");
   });
 });
 

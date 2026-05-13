@@ -509,11 +509,15 @@ export function shouldSkipAdminUsersBffProxyForMongoOnlyUserSubresourcePosts(req
 }
 
 /**
- * Admin **`/api/admin/portfolios/{id}/watchlist`** — **Next + Mongo** (same rationale / `rowStatus` / Yahoo
- * parity as app-user watchlist). Spring parity DTOs can omit desk fields; keep reads/writes on Next.
+ * Admin **`GET /api/admin/portfolios/{id}/watchlist`** — stay on **Next + Mongo** (desk fields, Yahoo quotes,
+ * `rowStatus` parity). **`PATCH`** for the same path forwards via {@link proxyAdminUsersRequestToBackend} when the
+ * admin BFF gate is on (Spring `AdminPortfolioWatchlistController`).
  */
-export function shouldSkipAdminUsersBffProxyForAdminPortfolioWatchlist(request: Request): boolean {
+export function shouldSkipAdminUsersBffProxyForAdminPortfolioWatchlistGet(request: Request): boolean {
   try {
+    if (request.method.toUpperCase() !== "GET") {
+      return false;
+    }
     const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
     return /^\/api\/admin\/portfolios\/[^/]+\/watchlist$/.test(path);
   } catch {
@@ -526,7 +530,7 @@ export async function proxyAdminUsersRequestToBackend(request: Request): Promise
   if (!shouldProxyAdminUsersToBackend()) {
     return null;
   }
-  if (shouldSkipAdminUsersBffProxyForAdminPortfolioWatchlist(request)) {
+  if (shouldSkipAdminUsersBffProxyForAdminPortfolioWatchlistGet(request)) {
     return null;
   }
   if (shouldSkipAdminUsersBffProxyForRequest(request)) {
@@ -547,12 +551,16 @@ export function shouldProxyPortfolioRequestsToBackend(): boolean {
 }
 
 /**
- * App-user **`GET`/`PATCH /api/portfolios/{portfolioId}/watchlist`** and **`GET`/`DELETE …/alerts`** — **always Next + Mongo**.
+ * App-user **`PATCH /api/portfolios/{portfolioId}/watchlist`** — forward to Spring when the portfolio BFF gate is on.
  *
- * Spring exposes parity HTTP, but the BFF does not forward: Kotlin path omitted Yahoo quotes and could 404 when
- * session/tenant/portfolio resolution differed from Next (`ensurePortfolioWatchlistForUser`). Same pattern as
- * admin scheduled tasks staying on Next.
+ * **`GET`** / **`POST`** for that path stay on Next (Yahoo quotes, `watchlistId` picker, multi-watchlist create, and
+ * read-time desk enrichments). **`GET`/`DELETE …/alerts`** stay on Next — see {@link isAppUserPortfolioAlertsPath}.
  */
+export function shouldProxyAppUserPortfolioWatchlistPatchToBackend(): boolean {
+  return shouldProxyPortfolioRequestsToBackend();
+}
+
+/** @deprecated Use {@link shouldProxyAppUserPortfolioWatchlistPatchToBackend}; GET/POST watchlist stay Next-only. */
 export function shouldProxyAppUserPortfolioWatchlistToBackend(): boolean {
   return false;
 }
@@ -570,11 +578,17 @@ export async function proxyPortfolioRequestToBackend(request: Request): Promise<
   if (!shouldProxyPortfolioRequestsToBackend()) {
     return null;
   }
-  if (!shouldProxyAppUserPortfolioWatchlistToBackend() && isAppUserPortfolioWatchlistPath(new URL(request.url).pathname)) {
-    return null;
+  const pathname = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+  if (isAppUserPortfolioWatchlistPath(pathname)) {
+    if (request.method.toUpperCase() !== "PATCH") {
+      return null;
+    }
+    if (!shouldProxyAppUserPortfolioWatchlistPatchToBackend()) {
+      return null;
+    }
   }
   /** Alerts list + bulk delete stay on Next (Mongo); Spring parity not required for app-user bulk clear / CSV flow. */
-  if (isAppUserPortfolioAlertsPath(new URL(request.url).pathname)) {
+  if (isAppUserPortfolioAlertsPath(pathname)) {
     return null;
   }
   return proxyRequestToBackend(request);
@@ -634,44 +648,25 @@ export function shouldProxyAdminAccessRequestsToBackend(): boolean {
   return shouldProxyAdminUsersToBackend();
 }
 
-/**
- * Admin **`/api/admin/access-requests*`** — **always Next + Mongo** (do not forward to Spring).
- *
- * Spring's HTTP controller historically validated legacy subscription slugs only (`free`/`pro`/`enterprise`) and a
- * narrower PATCH body than the product UI (`basic`/`premium`/`premium_plus`, **targetTenantId**, review notes, full
- * approve payload). The canonical workflow lives in `src/app/api/admin/access-requests/**`.
- */
-export function shouldSkipAdminAccessRequestsBffProxy(request: Request): boolean {
-  try {
-    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
-    return path === "/api/admin/access-requests" || path.startsWith("/api/admin/access-requests/");
-  } catch {
-    return false;
-  }
-}
-
-/** Admin access-requests — Spring parity is intentionally not proxied; see {@link shouldSkipAdminAccessRequestsBffProxy}. */
+/** Admin **`/api/admin/access-requests*`** — forward to Spring when {@link shouldProxyAdminAccessRequestsToBackend} is on. */
 export async function proxyAdminAccessRequestsRequestToBackend(
   request: Request
 ): Promise<Response | null> {
   if (!shouldProxyAdminAccessRequestsToBackend()) {
     return null;
   }
-  if (shouldSkipAdminAccessRequestsBffProxy(request)) {
-    return null;
-  }
   return proxyRequestToBackend(request);
 }
 
 /**
- * Tenant + portfolio-nested **`/api/admin/delivery-channels*`** — **always Next + Mongo** (BFF never forwards).
- * Spring implements parity for direct JVM callers; product UI hits Next only (release **3.0.25**+).
+ * Tenant + portfolio-nested **`/api/admin/delivery-channels*`** — forward to Spring when
+ * {@link shouldProxyAdminUsersToBackend} is on (same gate as other admin BFF routes).
  */
 export function shouldProxyAdminDeliveryChannelsToBackend(): boolean {
-  return false;
+  return shouldProxyAdminUsersToBackend();
 }
 
-/** Would proxy tenant delivery-channels to Spring if enabled; currently always disabled. */
+/** Admin delivery-channels BFF → Spring; returns `null` when proxy disabled. */
 export async function proxyAdminDeliveryChannelsRequestToBackend(
   request: Request
 ): Promise<Response | null> {

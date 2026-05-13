@@ -13,7 +13,8 @@ export type RegisteredWriteDisposition = {
 
 /**
  * Static disposition of each **write** row in {@link BFF_PROXY_ROUTES} when the product BFF gate is on
- * (`shouldProxyAdminUsersToBackend()`), mirroring `src/lib/backend-bff.ts` skip flags. Not runtime request
+ * (`shouldProxyAdminUsersToBackend()`), mirroring `src/lib/backend-bff.ts` skip flags (GET-only admin watchlist,
+ * personas, scheduled tasks, xChat SSE default, etc.). Not runtime request
  * telemetry — use for ownership inventory and onboarding.
  */
 export function neverSpringReasonForBffRegisteredWrite(
@@ -26,24 +27,8 @@ export function neverSpringReasonForBffRegisteredWrite(
   if (pathTemplate.startsWith("/api/personas")) {
     return "Personas stay on Next Mongo (`shouldProxyPersonasRequestsToBackend` is false).";
   }
-  if (pathTemplate === "/api/admin/access-requests" || pathTemplate.startsWith("/api/admin/access-requests/")) {
-    return "Admin access-requests stay on Next (`shouldSkipAdminAccessRequestsBffProxy`).";
-  }
   if (pathTemplate.startsWith("/api/admin/tasks") || pathTemplate === "/api/admin/scheduler/tick") {
     return "Admin scheduled tasks stay on Next (`shouldProxyAdminScheduledTasksToBackend` is false).";
-  }
-  if (
-    pathTemplate.startsWith("/api/admin/delivery-channels") ||
-    (pathTemplate.startsWith("/api/admin/portfolios/") && pathTemplate.includes("/delivery-channels"))
-  ) {
-    return "Admin delivery-channels stay on Next (`shouldProxyAdminDeliveryChannelsToBackend` is false).";
-  }
-  if (
-    (pathTemplate === "/api/portfolios/{portfolioId}/watchlist" ||
-      pathTemplate === "/api/admin/portfolios/{portfolioId}/watchlist") &&
-    method === "PATCH"
-  ) {
-    return "Watchlist PATCH stays on Next (desk/Yahoo parity; admin + app-user BFF skips).";
   }
   if (pathTemplate === "/api/xchat/ask/stream" && method === "POST") {
     return "xChat SSE defaults to in-process Next; Spring only when XCHAT_SSE_PROXY_BACKEND is on.";

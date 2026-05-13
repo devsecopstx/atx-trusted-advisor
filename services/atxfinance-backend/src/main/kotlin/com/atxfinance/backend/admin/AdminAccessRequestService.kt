@@ -174,65 +174,216 @@ class AdminAccessRequestService(
 
     sealed class ReviewResult {
         data class Ok(val data: Map<String, Any?>) : ReviewResult()
-        data class PlanOnly(val data: Map<String, Any?>) : ReviewResult()
         data class Error(val status: HttpStatus, val body: Map<String, Any?>) : ReviewResult()
     }
 
-    fun reviewOrUpdatePlan(
-        session: ResolvedSession,
-        requestId: String,
-        requestedPlan: String?,
-        status: String?,
-    ): ReviewResult {
+    private val subscriptionPlanAliases: Map<String, String> =
+        mapOf(
+            "basic" to "basic",
+            "free" to "basic",
+            "premium" to "premium",
+            "pro" to "premium",
+            "premium_monthly" to "premium",
+            "premium_plus" to "premium_plus",
+            "enterprise" to "premium_plus",
+            "premium+" to "premium_plus",
+            "premium_plus_monthly" to "premium_plus",
+            "premium_plus_yearly" to "premium_plus",
+        )
+
+    private fun parseStrictRequestedPlan(raw: String): String? {
+        val n = raw.trim().lowercase()
+        return subscriptionPlanAliases[n]
+    }
+
+    private fun upsertDefaultTenantMembership(userId: ObjectId, tenantId: ObjectId) {
+        val now = Date()
+        mongoTemplate.upsert(
+            Query.query(Criteria.where("userId").`is`(userId).and("tenantId").`is`(tenantId)),
+            Update()
+                .setOnInsert("createdAt", now)
+                .set("role", "member")
+                .set("isDefaultTenant", true)
+                .set("updatedAt", now),
+            props.coreTenantMembershipsCollection,
+        )
+    }
+
+    /**
+     * Composite PATCH/PUT for admin access requests — matches Next `handleUpdate` field order:
+     * plan → tenant → role → optional approve/reject with tenant required on approve.
+     * JVM does not yet mirror Next `assertTenantHasRoomForAnotherUser` / workspace membership caps — TODO parity.
+     */
+    fun applyCompositeUpdate(session: ResolvedSession, requestId: String, body: Map<String, Any?>): ReviewResult {
         if (!ObjectId.isValid(requestId)) {
-            return ReviewResult.Error(
-                HttpStatus.BAD_REQUEST,
-                mapOf("error" to "Invalid id"),
-            )
+            return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid id"))
         }
-        val existing = mongoTemplate.findById(ObjectId(requestId), Document::class.java, props.accessRequestsCollection)
-            ?: return ReviewResult.Error(HttpStatus.NOT_FOUND, mapOf("error" to "Access request not found"))
-        val st = existing.getString("status") ?: ""
-        if (st !in actionableStatuses) {
+        val hasStatus = body.containsKey("status") && body["status"] != null
+        val hasPlanKey = body.containsKey("requestedPlan")
+        val hasRoleKey = body.containsKey("requestedRole")
+        val hasTenantKey = body.containsKey("targetTenantId")
+        if (!hasStatus && !hasPlanKey && !hasRoleKey && !hasTenantKey) {
+            return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid request payload"))
+        }
+
+        val oid = ObjectId(requestId)
+        val existing =
+            mongoTemplate.findById(oid, Document::class.java, props.accessRequestsCollection)
+                ?: return ReviewResult.Error(HttpStatus.NOT_FOUND, mapOf("error" to "Access request not found"))
+        val st0 = existing.getString("status") ?: ""
+        if (st0 !in actionableStatuses) {
             return ReviewResult.Error(
                 HttpStatus.CONFLICT,
                 mapOf("error" to "Access request already reviewed", "data" to documentToAccessRequestMap(existing)),
             )
         }
-        val planCanonOrNull = requestedPlan?.let { canonicalSubscriptionPlan(it) }
-        if (planCanonOrNull != null) {
+
+        if (hasPlanKey) {
+            when (val raw = body["requestedPlan"]) {
+                is String -> {
+                    val parsed = parseStrictRequestedPlan(raw)
+                    if (parsed == null) {
+                        return ReviewResult.Error(
+                            HttpStatus.BAD_REQUEST,
+                            mapOf("error" to "Invalid requestedPlan. Expected Basic, Premium, or Premium+."),
+                        )
+                    }
+                    mongoTemplate.updateFirst(
+                        Query.query(
+                            Criteria().andOperator(
+                                Criteria.where("_id").`is`(oid),
+                                Criteria.where("status").`in`(actionableStatuses.toList()),
+                            ),
+                        ),
+                        Update().set("requestedPlan", parsed),
+                        props.accessRequestsCollection,
+                    )
+                    auditEventService.insertEvent(
+                        entityType = "access_request",
+                        entityId = requestId,
+                        action = "updated_plan",
+                        session = session,
+                        details = mapOf("requestedPlan" to parsed),
+                    )
+                }
+                null -> Unit
+                else ->
+                    return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid request payload"))
+            }
+        }
+
+        if (hasTenantKey) {
+            when (val rawTenant = body["targetTenantId"]) {
+                is String -> {
+                    val tenantStr = rawTenant.trim()
+                    val update =
+                        if (tenantStr.isEmpty()) {
+                            Update().unset("tenantId")
+                        } else {
+                            if (!ObjectId.isValid(tenantStr)) {
+                                return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid targetTenantId"))
+                            }
+                            Update().set("tenantId", ObjectId(tenantStr))
+                        }
+                    mongoTemplate.updateFirst(
+                        Query.query(
+                            Criteria().andOperator(
+                                Criteria.where("_id").`is`(oid),
+                                Criteria.where("status").`in`(actionableStatuses.toList()),
+                            ),
+                        ),
+                        update,
+                        props.accessRequestsCollection,
+                    )
+                    auditEventService.insertEvent(
+                        entityType = "access_request",
+                        entityId = requestId,
+                        action = "assigned_tenant",
+                        session = session,
+                        details = mapOf("targetTenantId" to tenantStr.ifEmpty { null }),
+                    )
+                }
+                null -> {
+                    mongoTemplate.updateFirst(
+                        Query.query(
+                            Criteria().andOperator(
+                                Criteria.where("_id").`is`(oid),
+                                Criteria.where("status").`in`(actionableStatuses.toList()),
+                            ),
+                        ),
+                        Update().unset("tenantId"),
+                        props.accessRequestsCollection,
+                    )
+                    auditEventService.insertEvent(
+                        entityType = "access_request",
+                        entityId = requestId,
+                        action = "assigned_tenant",
+                        session = session,
+                        details = mapOf("targetTenantId" to null),
+                    )
+                }
+                else ->
+                    return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid targetTenantId"))
+            }
+        }
+
+        if (hasRoleKey) {
+            val roleRaw = body["requestedRole"]
+            val rr =
+                (roleRaw as? String)?.trim()?.lowercase()
+                    ?: return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid request payload"))
+            if (rr !in grantableRoles) {
+                return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid request payload"))
+            }
             mongoTemplate.updateFirst(
                 Query.query(
                     Criteria().andOperator(
-                        Criteria.where("_id").`is`(ObjectId(requestId)),
+                        Criteria.where("_id").`is`(oid),
                         Criteria.where("status").`in`(actionableStatuses.toList()),
                     ),
                 ),
-                Update().set("requestedPlan", planCanonOrNull),
+                Update().set("requestedRole", rr),
                 props.accessRequestsCollection,
             )
-        }
-        if (requestedPlan != null && status == null) {
-            val updated = mongoTemplate.findById(ObjectId(requestId), Document::class.java, props.accessRequestsCollection)
-                ?: return ReviewResult.Error(HttpStatus.NOT_FOUND, mapOf("error" to "Access request not found"))
             auditEventService.insertEvent(
                 entityType = "access_request",
                 entityId = requestId,
-                action = "updated_plan",
+                action = "updated_role",
                 session = session,
-                details = mapOf("requestedPlan" to planCanonOrNull!!),
+                details = mapOf("requestedRole" to rr),
             )
-            return ReviewResult.PlanOnly(documentToAccessRequestMap(updated))
         }
+
+        val status = (body["status"] as? String)?.trim()?.lowercase()
         if (status == null) {
-            return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Missing review status"))
+            val updated =
+                mongoTemplate.findById(oid, Document::class.java, props.accessRequestsCollection)
+                    ?: return ReviewResult.Error(HttpStatus.NOT_FOUND, mapOf("error" to "Access request not found"))
+            return ReviewResult.Ok(documentToAccessRequestMap(updated))
         }
+
         if (status !in setOf("approved", "rejected")) {
-            return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid status"))
+            return ReviewResult.Error(HttpStatus.BAD_REQUEST, mapOf("error" to "Invalid request payload"))
         }
-        val refreshed = mongoTemplate.findById(ObjectId(requestId), Document::class.java, props.accessRequestsCollection)!!
-        val effectivePlan = canonicalSubscriptionPlan(requestedPlan ?: refreshed.getString("requestedPlan"))
+
+        val refreshed =
+            mongoTemplate.findById(oid, Document::class.java, props.accessRequestsCollection)
+                ?: return ReviewResult.Error(HttpStatus.NOT_FOUND, mapOf("error" to "Access request not found"))
+        val requestedPlanRaw = body["requestedPlan"] as? String
+        val effectivePlan = canonicalSubscriptionPlan(requestedPlanRaw ?: refreshed.getString("requestedPlan"))
         val targetUserId = refreshed.getString("userId")?.trim() ?: ""
+
+        if (status == "rejected" && ObjectId.isValid(targetUserId)) {
+            val u = coreUserService.getById(targetUserId)
+            if ((u?.getString("accountStatus") ?: "") == "pending_approval") {
+                mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("_id").`is`(ObjectId(targetUserId))),
+                    Update().set("accountStatus", "rejected").set("updatedAt", Date()),
+                    props.coreUsersCollection,
+                )
+            }
+        }
+
         if (status == "approved") {
             if (!ObjectId.isValid(targetUserId)) {
                 return ReviewResult.Error(
@@ -247,11 +398,30 @@ class AdminAccessRequestService(
                     mapOf("error" to "Invalid requestedRole on access request"),
                 )
             }
-            val oid = ObjectId(targetUserId)
-            coreUserService.addRole(oid, roleToGrant)
-            coreUserService.setSubscriptionPlan(oid, effectivePlan)
+            val tenantOnRequest = refreshed["tenantId"]
+            val tenantOid =
+                when (tenantOnRequest) {
+                    is ObjectId -> tenantOnRequest
+                    else ->
+                        return ReviewResult.Error(
+                            HttpStatus.BAD_REQUEST,
+                            mapOf(
+                                "error" to
+                                    "Target tenant is required before approval. Select a tenant (or send targetTenantId in this request), then approve.",
+                                "code" to "access_request_tenant_required",
+                            ),
+                        )
+                }
+            val userOid = ObjectId(targetUserId)
+            coreUserService.addRole(userOid, roleToGrant)
+            coreUserService.setSubscriptionPlan(userOid, effectivePlan)
+            upsertDefaultTenantMembership(userOid, tenantOid)
+            mongoTemplate.updateFirst(
+                Query.query(Criteria.where("_id").`is`(userOid)),
+                Update().set("accountStatus", "approved").set("updatedAt", Date()),
+                props.coreUsersCollection,
+            )
             try {
-                // Default book: portfolio + paper account ($25k) + TSLA watchlist (DefaultPortfolioProvisionService)
                 defaultPortfolioProvisionService.provisionForAccessRequestApprovedUser(targetUserId)
             } catch (e: Exception) {
                 return ReviewResult.Error(
@@ -263,23 +433,33 @@ class AdminAccessRequestService(
                 )
             }
         }
+
         val reviewedAt = Date()
-        mongoTemplate.updateFirst(
-            Query.query(Criteria.where("_id").`is`(ObjectId(requestId))),
+        val update =
             Update()
                 .set("status", status)
                 .set("reviewedBy", session.userId)
-                .set("reviewedAt", reviewedAt),
-            props.accessRequestsCollection,
-        )
-        val reviewed = mongoTemplate.findById(ObjectId(requestId), Document::class.java, props.accessRequestsCollection)
-            ?: return ReviewResult.Error(HttpStatus.NOT_FOUND, mapOf("error" to "Access request not found"))
+                .set("reviewedAt", reviewedAt)
+        if (body.containsKey("reviewNote")) {
+            val note = body["reviewNote"]
+            if (note is String) {
+                update.set("reviewNote", note.trim().take(500))
+            }
+        }
+        mongoTemplate.updateFirst(Query.query(Criteria.where("_id").`is`(oid)), update, props.accessRequestsCollection)
+        val reviewed =
+            mongoTemplate.findById(oid, Document::class.java, props.accessRequestsCollection)
+                ?: return ReviewResult.Error(HttpStatus.NOT_FOUND, mapOf("error" to "Access request not found"))
+        val details = mutableMapOf<String, Any?>("requestedPlan" to effectivePlan)
+        if (body.containsKey("reviewNote") && body["reviewNote"] is String) {
+            details["reviewNote"] = (body["reviewNote"] as String).trim().take(500)
+        }
         auditEventService.insertEvent(
             entityType = "access_request",
             entityId = requestId,
             action = if (status == "approved") "approved" else "rejected",
             session = session,
-            details = mapOf("requestedPlan" to effectivePlan),
+            details = details,
         )
         if (status == "approved") {
             val u = coreUserService.getById(targetUserId)

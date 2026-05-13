@@ -28,7 +28,7 @@ Canonical proxied routes live in `src/lib/bff-proxy-routes.ts` (see `tests/smoke
 | Area | Notes |
 |------|--------|
 | **Portfolio list / CRUD** | `GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE /api/admin/portfolios/{portfolioId}` — `AdminPortfoliosController` + `AdminPortfoliosService` (Mongo parity with Next `admin/portfolios` routes). Nested **accounts** on `AdminPortfolioAccountsController`. |
-| **Watchlist + account positions** | `GET/PATCH …/portfolios/{portfolioId}/watchlist` (`AdminPortfolioWatchlistController`); `GET/POST …/accounts/{accountId}/positions` (`AdminPortfolioPositionsController`). |
+| **Watchlist + account positions** | **`GET` …/admin/portfolios/{portfolioId}/watchlist** — Next-only (quotes + desk). **`PATCH`** same path — BFF → `AdminPortfolioWatchlistController` when admin gate on. `GET/POST …/accounts/{accountId}/positions` (`AdminPortfolioPositionsController`). |
 | **Nested portfolio admin** | `GET/POST/PATCH/DELETE …/recommendations`, `…/alerts`, `…/delivery-channels`. (Portfolio-scoped scheduled tasks removed — use tenant `/admin/tasks`.) |
 
 ## Still Next-primary / future

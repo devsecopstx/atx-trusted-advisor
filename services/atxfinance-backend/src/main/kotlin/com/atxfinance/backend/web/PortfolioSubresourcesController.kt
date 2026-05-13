@@ -4,6 +4,7 @@ import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.portfolio.BsonJson
 import com.atxfinance.backend.portfolio.PortfolioNestedResourceService
 import com.atxfinance.backend.portfolio.PortfolioSnapshotService
+import com.atxfinance.backend.portfolio.WatchlistDeskScalarPatch
 import com.atxfinance.backend.session.SessionCookieParser
 import jakarta.servlet.http.HttpServletRequest
 import org.bson.Document
@@ -148,17 +149,71 @@ class PortfolioSubresourcesController(
         val addEntries = mapList(body["addEntries"])?.take(props.maxWatchlistSymbolsPerPatch)
         val dedupe = body["dedupe"] as? Boolean
         val name = (body["name"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+        val deskRiskKeys = setOf("conservative", "balanced", "growth")
+        val deskOutlookKeys = setOf("bullish", "neutral", "bearish")
+        val riskProfile =
+            if (body.containsKey("riskProfile")) {
+                when (val v = body["riskProfile"]) {
+                    null -> WatchlistDeskScalarPatch.Unset
+                    is String -> {
+                        val s = v.trim().lowercase()
+                        if (s.isEmpty()) {
+                            WatchlistDeskScalarPatch.Unset
+                        } else if (s in deskRiskKeys) {
+                            WatchlistDeskScalarPatch.Set(s)
+                        } else {
+                            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid payload"))
+                        }
+                    }
+                    else -> return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid payload"))
+                }
+            } else {
+                WatchlistDeskScalarPatch.NoChange
+            }
+        val outlook =
+            if (body.containsKey("outlook")) {
+                when (val v = body["outlook"]) {
+                    null -> WatchlistDeskScalarPatch.Unset
+                    is String -> {
+                        val s = v.trim().lowercase()
+                        if (s.isEmpty()) {
+                            WatchlistDeskScalarPatch.Unset
+                        } else if (s in deskOutlookKeys) {
+                            WatchlistDeskScalarPatch.Set(s)
+                        } else {
+                            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid payload"))
+                        }
+                    }
+                    else -> return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid payload"))
+                }
+            } else {
+                WatchlistDeskScalarPatch.NoChange
+            }
         val hasMutation =
             name != null ||
                 !addSymbols.isNullOrEmpty() ||
                 !addEntries.isNullOrEmpty() ||
                 !removeSymbols.isNullOrEmpty() ||
-                dedupe == true
+                dedupe == true ||
+                riskProfile != WatchlistDeskScalarPatch.NoChange ||
+                outlook != WatchlistDeskScalarPatch.NoChange
         if (!hasMutation) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid payload"))
         }
         val quotes = request.getParameter("quotes") == "1"
-        val payload = nested.patchWatchlist(session, portfolioId, quotes, addSymbols, addEntries, removeSymbols, dedupe, name)
+        val payload =
+            nested.patchWatchlist(
+                session,
+                portfolioId,
+                quotes,
+                addSymbols,
+                addEntries,
+                removeSymbols,
+                dedupe,
+                name,
+                riskProfile,
+                outlook,
+            )
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Watchlist not found"))
         portfolioSnapshotService.invalidateWorkspaceSnapshotCache(session, portfolioId)
         return ResponseEntity.ok(payload)

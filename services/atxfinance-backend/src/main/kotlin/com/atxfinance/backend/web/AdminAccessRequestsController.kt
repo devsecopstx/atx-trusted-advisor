@@ -165,21 +165,8 @@ class AdminAccessRequestsController(
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON"))
         }
-        val status = (body["status"] as? String)?.trim()?.lowercase()
-        val requestedPlanRaw = (body["requestedPlan"] as? String)?.trim()?.lowercase()
-        val requestedPlanNormalized = requestedPlanRaw?.let { normalizeSubscriptionPlanSlug(it) }
-        if (status == null && requestedPlanRaw == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
-        }
-        if (requestedPlanNormalized != null && requestedPlanNormalized !in CANONICAL_SUBSCRIPTION_PLANS) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
-        }
-        if (status != null && status !in setOf("approved", "rejected")) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
-        }
-        return when (val result = adminAccessRequestService.reviewOrUpdatePlan(session, requestId, requestedPlanNormalized, status)) {
+        return when (val result = adminAccessRequestService.applyCompositeUpdate(session, requestId, body)) {
             is AdminAccessRequestService.ReviewResult.Ok -> ResponseEntity.ok(mapOf("data" to result.data))
-            is AdminAccessRequestService.ReviewResult.PlanOnly -> ResponseEntity.ok(mapOf("data" to result.data))
             is AdminAccessRequestService.ReviewResult.Error -> ResponseEntity.status(result.status).body(result.body)
         }
     }

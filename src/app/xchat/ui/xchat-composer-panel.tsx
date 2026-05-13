@@ -5,11 +5,13 @@ import {
     useRef,
     useState,
     type ClipboardEvent,
+    type Dispatch,
     type FocusEvent,
     type FormEvent,
     type KeyboardEvent,
     type MutableRefObject,
-    type RefObject
+    type RefObject,
+    type SetStateAction
 } from "react";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -36,8 +38,8 @@ import { XchatPersonaMenu } from "@/app/xchat/ui/xchat-persona-menu";
 import { XchatReasoningModeToggle } from "@/app/xchat/ui/xchat-reasoning-mode-toggle";
 import { XchatTemplatesStrip } from "@/app/xchat/ui/xchat-templates-strip";
 
-import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
 import { MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK } from "@/modules/xchat/xchat-image-attachment";
+import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
 
 import { XCHAT_ASK_PROGRESS_BADGES } from "./xchat-ask-progress-badges";
 import { XchatComposerNav } from "./xchat-composer-nav";
@@ -60,7 +62,7 @@ export type XchatComposerPanelProps = {
   input: string;
   setInput: (v: string) => void;
   pendingPasteImages: XchatPendingPasteImage[];
-  setPendingPasteImages: (next: XchatPendingPasteImage[]) => void;
+  setPendingPasteImages: Dispatch<SetStateAction<XchatPendingPasteImage[]>>;
   pasteImageError: string | null;
   setPasteImageError: (next: string | null) => void;
   visionUseWorkspace: boolean;

@@ -69,6 +69,16 @@ object WatchlistSymbolCodec {
                 parseFiniteNumber(o["priceAlertMinAbsMovePercent"])?.takeIf { it > 0 }?.let { v ->
                     doc["priceAlertMinAbsMovePercent"] = v.coerceIn(0.1, 100.0)
                 }
+                (o["rationale"] as? String)?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                    doc["rationale"] = it.take(4000)
+                }
+                val rs = o["rowStatus"] as? String
+                if (rs != null) {
+                    val s = rs.trim().lowercase()
+                    if (s == "draft" || s == "active" || s == "review") {
+                        doc["rowStatus"] = s
+                    }
+                }
                 return doc
             }
             is Document -> {
@@ -122,6 +132,32 @@ object WatchlistSymbolCodec {
                 parseFiniteNumber(p)?.takeIf { it > 0 }?.let { v ->
                     next["priceAlertMinAbsMovePercent"] = v.coerceIn(0.1, 100.0)
                 } ?: next.remove("priceAlertMinAbsMovePercent")
+            }
+        }
+        if (entry.containsKey("rationale")) {
+            val r = entry["rationale"]
+            if (r == null) {
+                next.remove("rationale")
+            } else {
+                val v = (r as? String)?.trim()?.take(4000) ?: ""
+                if (v.isEmpty()) {
+                    next.remove("rationale")
+                } else {
+                    next["rationale"] = v
+                }
+            }
+        }
+        if (entry.containsKey("rowStatus")) {
+            val rs = entry["rowStatus"]
+            if (rs == null) {
+                next.remove("rowStatus")
+            } else {
+                val s = (rs as? String)?.trim()?.lowercase() ?: ""
+                if (s == "draft" || s == "active" || s == "review") {
+                    next["rowStatus"] = s
+                } else {
+                    next.remove("rowStatus")
+                }
             }
         }
         return next

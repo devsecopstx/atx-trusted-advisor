@@ -166,7 +166,7 @@ Mongo collections: **`user_tasks`**, **`user_task_runs`**. **`prompt`** tasks ex
 Admin portfolio routes include:
 
 - `PATCH /api/admin/portfolios/:portfolioId`
-- `GET|PATCH /api/admin/portfolios/:portfolioId/watchlist`
+- `GET|PATCH /api/admin/portfolios/:portfolioId/watchlist` — **GET** Next; **PATCH** BFF → Spring when admin BFF gate on
 - `POST /api/admin/import/broker`
 - `POST /api/import/broker` — app-user Merrill/Fidelity **holdings** CSV (session); dry-run preview or apply via staged `app_broker_import_jobs` + immediate `sync-broker` task (`/import-activity` UI). **`mappings`** = broker account key → core account id; keys may be a **subset** of accounts parsed from the CSV (omit rows to skip import); at least one mapping required when the file contains accounts. Keys align with parser: **`accountRef || label || "default"`**
 - `POST /api/import/broker/clean` — app-user **destructive** reset: deletes all positions for the portfolio, `app_broker_import_jobs` rows for that user/book, and portfolio-bound `sync-broker` scheduled tasks (session + portfolio must belong to user)

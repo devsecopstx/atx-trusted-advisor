@@ -6,9 +6,11 @@
  * `atx-docs/sre-ops/atxfinance-backend-http-api.md`.
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
- * App-user portfolio CRUD/watchlist/positions/recommendations/strategy-jobs. `/api/personas*` stays on Next Mongo.
- * Admin **portfolio** subtree (accounts, watchlist, positions list + **DELETE** by `positionId`, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`.
- * Tenant delivery-channels and scheduled tasks stay Next-only. Portfolio-console uses POST /api/admin/import/broker for CSV imports.
+ * App-user portfolio CRUD; **`PATCH /api/portfolios/{portfolioId}/watchlist`** proxies when the BFF gate is on; **`GET`/`POST`**
+ * for that path stay on Next (quotes / multi-watchlist). **`/api/admin/access-requests*`** write paths proxy when the gate is on.
+ * `/api/personas*` stays on Next Mongo.
+ * Admin **portfolio** subtree (accounts, **`PATCH …/watchlist`**, positions list + **DELETE** by `positionId`, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`; **`GET …/admin/portfolios/{id}/watchlist`** stays on Next (quotes + desk enrichments).
+ * **`/api/admin/delivery-channels*`** (tenant + portfolio-nested) proxies when the admin BFF gate is on. Scheduled tasks stay Next-only. Portfolio-console uses POST /api/admin/import/broker for CSV imports.
  * **`GET /api/admin/tenants`**, **`GET /api/admin/users`**, **`GET /api/admin/login-audit`**, **`GET /api/admin/audit`:**
  * Next-only when BFF is on — see `ADMIN_USERS_BFF_NEXT_ONLY_GET_PATHS` / `shouldSkipAdminUsersBffProxyForRequest` in
  * `backend-bff.ts` (tenant register, `tenantMemberships`, login-audit collection, audit `entityType` parity).
