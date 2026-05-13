@@ -21,6 +21,7 @@ export const SCHEDULED_TASK_CATEGORIES = [
   "xchat_spend_alert",
   "tenant_export_worker",
   "investment_outlook_scanner",
+  "portfolio_email_digest"
 ] as const;
 
 export type ScheduledTaskCategory = (typeof SCHEDULED_TASK_CATEGORIES)[number];
@@ -55,7 +56,9 @@ export const SCHEDULED_TASK_CATEGORY_DEFAULT_CRON: Record<ScheduledTaskCategory,
   /** Drains `tenant_admin_export_jobs` (live YAML + bootstrap CSV exports). Prefer one tenant-scoped row + manual Run; excluded from bulk spec sync. */
   tenant_export_worker: "*/15 * * * *",
   /** Pre-computes wheel/CSP strikes into `investment_outlooks` (off hot xChat path); same Mongo scheduler + JVM ShedLock poller as other admin tasks. */
-  investment_outlook_scanner: EOD_US_CRON_UTC
+  investment_outlook_scanner: EOD_US_CRON_UTC,
+  /** Portfolio digest email (weekly + daily) — daily Mon–Fri 23:30 UTC catches both cadences via per-portfolio preference. */
+  portfolio_email_digest: "30 23 * * 1-5"
 };
 
 export const scheduledTaskCategorySchema = z.enum(SCHEDULED_TASK_CATEGORIES);

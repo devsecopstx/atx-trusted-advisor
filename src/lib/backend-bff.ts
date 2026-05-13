@@ -714,15 +714,38 @@ export async function proxyAdminDeliveryChannelsRequestToBackend(
  * {@link shouldProxyAdminUsersToBackend} is true (`ATXFINANCE_BACKEND_ORIGIN` set; loopback + dev/test skips unless
  * **`ATXFINANCE_BFF_PROXY_LOOPBACK`** is on).
  *
+ * **`GET /api/personas`** is handled on Next (see {@link shouldSkipPersonasBffProxyForPersonasListGet}) so app_user
+ * xChat persona list does not depend on JVM session cookie acceptance.
+ *
  * Next-only persona routes (publish, archive, versions, collections, sync-from-xai, etc.) do not call this helper.
  */
 export function shouldProxyPersonasRequestsToBackend(): boolean {
   return shouldProxyAdminUsersToBackend();
 }
 
+/**
+ * **`GET /api/personas`** — stay on **Next + Mongo** when the personas BFF gate is on.
+ * Spring may return **401** for app_user xChat because the JVM session parser does not always accept the same
+ * Next-signed `xf_core_session` cookie as the Next route handler. The xChat persona picker only needs this list.
+ */
+export function shouldSkipPersonasBffProxyForPersonasListGet(request: Request): boolean {
+  try {
+    if (request.method.toUpperCase() !== "GET") {
+      return false;
+    }
+    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    return path === "/api/personas";
+  } catch {
+    return false;
+  }
+}
+
 /** Personas BFF → Spring; returns `null` unless {@link shouldProxyPersonasRequestsToBackend} is true. */
 export async function proxyPersonasRequestToBackend(request: Request): Promise<Response | null> {
   if (!shouldProxyPersonasRequestsToBackend()) {
+    return null;
+  }
+  if (shouldSkipPersonasBffProxyForPersonasListGet(request)) {
     return null;
   }
   return proxyRequestToBackend(request);

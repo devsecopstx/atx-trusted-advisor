@@ -108,9 +108,9 @@ export default async function WorkspaceOnboardingPage({
       <BillingWelcomeToast initialVisible={billingWelcomeFlag} planLabel={billingWelcomePlanLabel} />
       <AppUserApprovedHeader current={null} feedbackPageLabel="Welcome" session={session} />
 
-      <div className="xchat-body portfolio-page-body">
+      <div className="xchat-body portfolio-page-body flex min-h-0 flex-1 flex-col overflow-hidden">
         <AppUserCollapsibleRailLayout
-          mainClassName="app-user-shell-with-rail--padded"
+          mainClassName="app-user-shell-with-rail--padded min-h-0 flex-1 overflow-y-auto overscroll-contain min-w-0 w-full max-w-full"
           rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
           railChrome="workspace-product"
         >

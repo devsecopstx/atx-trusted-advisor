@@ -802,6 +802,8 @@ export async function POST(request: Request) {
     return effectivePersonaId ? [effectivePersonaId] : [];
   })();
   let resolvedPersonaIdOverride: string | undefined;
+  let lastPersonaAccessFailure: AskPersonaAccessResult | null = null;
+  const multiCandidate = personaOverrideCandidates.length > 1;
   for (const candidatePersonaId of personaOverrideCandidates) {
     const requestedPersona = await getPersonaByIdCached(candidatePersonaId);
     if (!requestedPersona) {
@@ -813,6 +815,9 @@ export async function POST(request: Request) {
           userId: session.userId,
           assignedPersonaId: candidatePersonaId
         });
+        continue;
+      }
+      if (multiCandidate) {
         continue;
       }
       return NextResponse.json(
@@ -828,6 +833,25 @@ export async function POST(request: Request) {
       isAssignedPersona: Boolean(assignedPersonaId && candidatePersonaId === assignedPersonaId)
     });
     if (!access.ok) {
+      const assignedMatch = Boolean(assignedPersonaId && candidatePersonaId === assignedPersonaId);
+      const blockedGlobalDefaultRequest =
+        !multiCandidate &&
+        requestedPersona.status === "published" &&
+        APP_USER_BLOCKED_PERSONA_KEYS.has(normalizeNameKey(requestedPersona.name)) &&
+        !assignedMatch;
+      if (blockedGlobalDefaultRequest) {
+        console.warn("[xchat/ask] explicit blocked default persona id ignored; using default persona", {
+          userId: session.userId,
+          personaName: requestedPersona.name,
+          candidatePersonaId
+        });
+        lastPersonaAccessFailure = null;
+        break;
+      }
+      lastPersonaAccessFailure = access;
+      if (multiCandidate) {
+        continue;
+      }
       return NextResponse.json(
         { error: access.error, code: access.code },
         { status: access.status }
@@ -835,7 +859,17 @@ export async function POST(request: Request) {
     }
     persona = requestedPersona;
     resolvedPersonaIdOverride = candidatePersonaId;
+    lastPersonaAccessFailure = null;
     break;
+  }
+  if (lastPersonaAccessFailure) {
+    return NextResponse.json(
+      {
+        error: lastPersonaAccessFailure.error,
+        code: lastPersonaAccessFailure.code
+      },
+      { status: lastPersonaAccessFailure.status }
+    );
   }
   markPerf("persona_resolution", personaResolveStartedAt, {
     hasRequestedPersonaId: Boolean(requestedPersonaId),

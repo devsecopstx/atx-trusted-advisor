@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 
 import type { SessionUser } from "@/lib/auth";
 import { signSessionCookieValueForAutomation } from "@/lib/auth";
-import { sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
+import { getDeskSmtpConfig, sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import { computeNextRunAtFromSchedule } from "@/lib/scheduled-task-schedule";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { createAuditEvent } from "@/modules/audit/repository";
@@ -117,9 +117,22 @@ async function deliverEmailIfNeeded(task: UserTask, subject: string, body: strin
   const user = await getCoreUserById(task.userId);
   const email = user?.email?.trim();
   if (!email) {
+    console.warn("[user_tasks/email] skip: user has no email", { taskId: task._id?.toHexString() });
     return;
   }
-  await sendDeskPlainEmailWithRetry(email, subject, body);
+  if (!getDeskSmtpConfig()) {
+    console.warn(
+      "[user_tasks/email] skip: desk SMTP not configured (set SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM)"
+    );
+    return;
+  }
+  const sent = await sendDeskPlainEmailWithRetry(email, subject, body);
+  if (!sent) {
+    console.warn("[user_tasks/email] send failed after retries", {
+      taskId: task._id?.toHexString(),
+      to: email.replace(/(^.).*(@.*)$/, "$1***$2")
+    });
+  }
 }
 
 async function resolveEffectiveTaskPersona(task: UserTask): Promise<EffectiveTaskPersona> {

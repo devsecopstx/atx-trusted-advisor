@@ -14,6 +14,8 @@ export type AuditEntityType =
   | "core_scanner"
   | "rental_ai"
   | "user_task"
+  | "email_template"
+  | "portfolio_email_preference"
   | "system";
 
 export type AuditActor = {

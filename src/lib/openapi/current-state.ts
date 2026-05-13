@@ -580,6 +580,31 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/email-templates",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-system"
+  },
+  {
+    path: "/api/admin/email-templates/{slug}",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-system"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/email-preferences",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/marketing/templates",
     operations: [
       { method: "GET", auth: "admin" },

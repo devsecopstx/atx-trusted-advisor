@@ -1246,6 +1246,95 @@ describe("xchat ask route collection retrieval", () => {
     );
   });
 
+  it("falls through to assigned persona when request persona is blocked global-default advisor", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce({
+      assignedPersonaId: "507f1f77bcf86cd799439088"
+    });
+    repositoryMocks.getPersonaById.mockImplementation((id: string) => {
+      if (id === "507f1f77bcf86cd799439077") {
+        return Promise.resolve(
+          buildPersona({
+            _id: new ObjectId("507f1f77bcf86cd799439077"),
+            name: "advisor",
+            nameNormalized: "advisor",
+            status: "published"
+          })
+        );
+      }
+      if (id === "507f1f77bcf86cd799439088") {
+        return Promise.resolve(
+          buildPersona({
+            _id: new ObjectId("507f1f77bcf86cd799439088"),
+            name: "atx-trusted-advisor",
+            nameNormalized: "atx-trusted-advisor",
+            status: "published"
+          })
+        );
+      }
+      return Promise.resolve(buildPersona());
+    });
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439077",
+          message: "somegoodnewstx"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.getPersonaById).toHaveBeenNthCalledWith(1, "507f1f77bcf86cd799439077");
+    expect(repositoryMocks.getPersonaById).toHaveBeenNthCalledWith(2, "507f1f77bcf86cd799439088");
+  });
+
+  it("uses default persona when app_user sends only blocked global-default advisor id (no assigned override)", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce({});
+    repositoryMocks.getPersonaById.mockImplementation((id: string) => {
+      if (id === "507f1f77bcf86cd799439077") {
+        return Promise.resolve(
+          buildPersona({
+            _id: new ObjectId("507f1f77bcf86cd799439077"),
+            name: "advisor",
+            nameNormalized: "advisor",
+            status: "published"
+          })
+        );
+      }
+      return Promise.resolve(buildPersona());
+    });
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439077",
+          message: "somegoodnewstx"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439077");
+  });
+
   it("uses assigned persona only when changePersonaEnabled is false for app_user", async () => {
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",

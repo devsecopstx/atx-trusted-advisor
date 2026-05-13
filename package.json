@@ -117,7 +117,8 @@
     "ops:users:find-orphans": "node --env-file=.env scripts/ops/find-orphan-core-users.mjs",
     "ops:scheduled-tasks:sync": "node --env-file=.env --import tsx scripts/ops/sync-scheduled-tasks-from-spec.ts",
     "ops:rental:mint-key": "node --env-file=.env --import tsx scripts/ops/mint-rental-api-key.ts",
-    "seed:prompt-templates-v21": "node --env-file=.env --import tsx scripts/ops/seed-prompt-templates-v21.ts"
+    "seed:prompt-templates-v21": "node --env-file=.env --import tsx scripts/ops/seed-prompt-templates-v21.ts",
+    "seed:email-templates": "node --env-file=.env --import tsx scripts/ops/seed-email-templates.ts"
   },
   "keywords": [],
   "author": "",
@@ -125,6 +126,8 @@
   "private": true,
   "type": "module",
   "overrides": {
+    "tar": "^7.5.15",
+    "minimatch": "^9.0.5",
     "follow-redirects": "^1.16.0",
     "axios": "^1.16.0",
     "@tootallnate/once": "^3.0.1",

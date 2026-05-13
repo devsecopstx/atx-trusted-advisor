@@ -133,6 +133,12 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     defaultJobName: "investment-outlook-scanner-job",
     description:
       "Refreshes **`investment_outlooks`** pre-computed covered-call / CSP strike candidates per portfolio (Yahoo chains + Mongo cache). Runs on the **Next.js task-runner** via **`admin_scheduled_tasks`** — same JVM **ShedLock** poller as other scheduled categories (`AdminSchedulerPoller` → Mongo due tasks). **Not** the interactive Premium `POST /api/strategy-jobs` orchestrator (that path remains for xOptions slot jobs). Disable with env **`INVESTMENT_OUTLOOK_SCANNER_ENABLED=0`** on the worker or omit/disable the scheduled row."
+  },
+  portfolio_email_digest: {
+    displayName: "Portfolio digest email (weekday 23:30 UTC)",
+    defaultJobName: "portfolio-email-digest-job",
+    description:
+      "Tenant-scoped: iterates `tenant_portfolio` rows, resolves each portfolio's effective `email_templates` row (override → tenant default → global default) per `portfolio_email_preferences`, builds context (events, positions snapshot, P&L, AI narrative), renders Markdown→HTML via the in-tree `mustache-render` + `markdown-render`, and sends to enabled `email` rows in `portfolio_delivery_channels` via `desk-smtp`. SMTP unconfigured → logs `smtp_unavailable` per portfolio (no retry storm)."
   }
 } satisfies Record<ScheduledTaskCategory, ScheduledTaskCategoryCatalogEntry>;
 

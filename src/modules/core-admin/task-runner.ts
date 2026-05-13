@@ -10,6 +10,7 @@ import {
 import { notifyScheduledTaskSlackSummary } from "@/modules/core-admin/scheduled-task-slack-notify";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requests-task";
+import { runPortfolioEmailDigestTask } from "@/modules/email-templates/portfolio-email-digest-task";
 import { runMarketingPostTask } from "@/modules/marketing/publisher";
 import { runTenantExportWorkerTask } from "@/modules/platform/tenant-export-worker-task";
 import { runScheduledAppBrokerImportTask } from "@/modules/portfolio-import/app-broker-import-job";
@@ -211,6 +212,9 @@ async function runScheduledCategory(
   }
   if (task.category === "rebalance") {
     return runRebalanceScanner(task);
+  }
+  if (task.category === "portfolio_email_digest") {
+    return runPortfolioEmailDigestTask(task);
   }
   const waitMs = 120 + Math.floor(Math.random() * 220);
   await new Promise((resolve) => setTimeout(resolve, waitMs));

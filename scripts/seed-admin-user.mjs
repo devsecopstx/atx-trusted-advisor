@@ -213,6 +213,27 @@ function runPostSeedPromptTemplatesV21() {
   }
 }
 
+function runPostSeedEmailTemplates() {
+  const s = String(process.env.SKIP_SEED_EMAIL_TEMPLATES ?? "").toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") {
+    console.log("[seed:admin] SKIP_SEED_EMAIL_TEMPLATES set — skipping email_templates upsert");
+    return;
+  }
+  const script = join(SEED_SCRIPT_DIR, "ops/seed-email-templates.ts");
+  console.log("[seed:admin] upserting global email_templates + ensuring indexes…");
+  const r = spawnSync(process.execPath, ["--import", "tsx", script], {
+    cwd: REPO_ROOT,
+    env: childEnvWithSeedParentMongoDb(),
+    stdio: "inherit"
+  });
+  if (r.status !== 0 && r.status != null) {
+    console.error(
+      "[seed:admin] email_templates seed failed — run `npm run seed:email-templates` or set SKIP_SEED_EMAIL_TEMPLATES=1"
+    );
+    process.exit(r.status ?? 1);
+  }
+}
+
 function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
@@ -880,6 +901,7 @@ async function seed() {
     await upsertSeedAdminDeliveryChannels(db, tenant._id, now);
     runPostSeedScheduledTasksSync();
     runPostSeedPromptTemplatesV21();
+    runPostSeedEmailTemplates();
 
     const personaAfterDisk = await db
       .collection("xchat_personas")

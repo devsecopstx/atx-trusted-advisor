@@ -120,11 +120,21 @@ export function UserTasksClient({ initialPortfolioId, mode = "account" }: Props)
     try {
       const res = await fetch(`/api/tasks/${id}/run`, { method: "POST" });
       const json = (await res.json().catch(() => ({}))) as {
-        data?: { snippet?: string; linkHint?: string; errorCode?: string };
+        data?: {
+          snippet?: string;
+          linkHint?: string;
+          errorCode?: string;
+          status?: "success" | "failed" | "skipped";
+        };
         error?: string;
       };
       if (!res.ok) {
         throw new Error(json.error ?? "Run failed");
+      }
+      const runStatus = json.data?.status;
+      if (runStatus === "failed" || runStatus === "skipped") {
+        const detail = [json.data?.snippet, json.data?.errorCode].filter(Boolean).join(" — ");
+        throw new Error(detail.length > 0 ? detail : runStatus === "skipped" ? "Run skipped" : "Run failed");
       }
       const hint = json.data?.linkHint?.trim();
       setNotice(

@@ -116,10 +116,10 @@ export default async function AccountBillingPage({
         <XchatGuestHeader />
       )}
 
-      <div className="xchat-body portfolio-page-body">
+      <div className="xchat-body portfolio-page-body flex min-h-0 flex-1 flex-col overflow-hidden">
         {approved && session ? (
           <AppUserCollapsibleRailLayout
-            mainClassName="app-user-shell-with-rail--padded"
+            mainClassName="app-user-shell-with-rail--padded min-h-0 flex-1 overflow-y-auto overscroll-contain min-w-0 w-full max-w-full"
             rail={workspaceProductRail}
             railChrome="workspace-product"
           >
