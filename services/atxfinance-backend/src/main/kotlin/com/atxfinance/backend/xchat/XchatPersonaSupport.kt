@@ -74,7 +74,8 @@ object XchatPersonaSupport {
         mapOf(
             "type" to "function",
             "name" to "atx_function",
-            "description" to "Workspace portfolio, watchlist, positions, and options scan helpers.",
+            "description" to
+                "Workspace portfolio, watchlist, positions, options scan, and Premium+ NL price alerts (price_alert_manage).",
             "parameters" to
                 mapOf(
                     "type" to "object",
@@ -83,7 +84,48 @@ object XchatPersonaSupport {
                             "operation" to
                                 mapOf(
                                     "type" to "string",
-                                    "description" to "portfolio_summary | watchlist_snapshot | positions_snapshot | options_action_scan",
+                                    "description" to
+                                        "portfolio_summary | watchlist_snapshot | positions_snapshot | options_action_scan | price_alert_manage",
+                                ),
+                            "priceAlertOp" to
+                                mapOf(
+                                    "type" to "string",
+                                    "enum" to listOf("list", "add", "remove_symbol", "clear_all"),
+                                    "description" to "Required when operation is price_alert_manage.",
+                                ),
+                            "symbol" to
+                                mapOf(
+                                    "type" to "string",
+                                    "description" to "Ticker for price_alert_manage add/remove_symbol.",
+                                ),
+                            "symbols" to
+                                mapOf(
+                                    "type" to "array",
+                                    "items" to mapOf("type" to "string"),
+                                    "description" to "Optional ticker list (first symbol used for NL add/remove).",
+                                ),
+                            "targetPrice" to
+                                mapOf(
+                                    "type" to "number",
+                                    "description" to "USD threshold for price_alert_manage add (aliases: price, level).",
+                                ),
+                            "ruleKind" to
+                                mapOf(
+                                    "type" to "string",
+                                    "enum" to listOf("above", "below", "crosses"),
+                                    "description" to "Required for price_alert_manage add.",
+                                ),
+                            "portfolioHint" to
+                                mapOf(
+                                    "type" to "string",
+                                    "description" to "Optional portfolio or account nickname for price_alert_manage add.",
+                                ),
+                            "inPortfolio" to
+                                mapOf("type" to "string", "description" to "Alias for portfolioHint."),
+                            "confirmDestructive" to
+                                mapOf(
+                                    "type" to "boolean",
+                                    "description" to "Must be true for price_alert_manage remove_symbol / clear_all after user confirms.",
                                 ),
                         ),
                     "required" to listOf("operation"),

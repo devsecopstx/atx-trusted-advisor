@@ -3,6 +3,7 @@ package com.atxfinance.backend.xchat
 import com.atxfinance.backend.portfolio.DefaultPortfolioProvisionService
 import com.atxfinance.backend.portfolio.PortfolioCrudService
 import com.atxfinance.backend.portfolio.PortfolioNestedResourceService
+import com.atxfinance.backend.portfolio.PortfolioPriceAlertNlService
 import com.atxfinance.backend.portfolio.PositionsService
 import com.atxfinance.backend.strategy.StrategyOptionsYahooClient
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -37,6 +38,7 @@ class AtxFunctionExecutor(
     private val positionsService: PositionsService,
     private val optionsActionScanService: OptionsActionScanService,
     private val yahooClient: StrategyOptionsYahooClient,
+    private val portfolioPriceAlertNlService: PortfolioPriceAlertNlService,
 ) {
     fun executeOptionsActionScan(ctx: AtxFunctionExecutionContext): AtxFunctionOptionsScanResult {
         @Suppress("UNCHECKED_CAST")
@@ -120,6 +122,10 @@ class AtxFunctionExecutor(
                                         ).rows,
                                 ),
                             ),
+                    )
+                "price_alert_manage" ->
+                    AtxFunctionToolResult(
+                        result = toJson(portfolioPriceAlertNlService.executePriceAlertManage(args, ctx)),
                     )
                 else -> AtxFunctionToolResult(result = "", error = "unknown_operation")
             }
