@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
+import { bustUserPromptTemplatesListServerCache } from "@/modules/xchat/xchat-user-prompt-templates-list-cache";
 import { deleteUserPromptTemplate } from "@/modules/xchat/xchat-user-prompt-templates-repository";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -29,5 +30,6 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
     return NextResponse.json({ error: "Template not found", code: "not_found" }, { status: 404 });
   }
 
+  bustUserPromptTemplatesListServerCache(session.userId);
   return NextResponse.json({ data: { deleted: true } });
 }

@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
-  requireSessionUser: vi.fn()
+  getSessionUser: vi.fn()
 }));
 
 const policyCacheMocks = vi.hoisted(() => ({
@@ -21,10 +20,14 @@ import { GET } from "@/app/api/internal/tenant-ux/policy/route";
 describe("internal tenant ux policy route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authMocks.requireSessionUser.mockResolvedValue({
+    authMocks.getSessionUser.mockResolvedValue({
       userId: "u1",
       tenantId: "t1",
-      roles: ["viewer"]
+      email: "viewer@test.local",
+      roles: ["viewer"],
+      tenantRole: "member",
+      xUserId: "x1",
+      username: "viewer"
     });
     policyCacheMocks.getCachedTenantUxPolicyForSession.mockResolvedValue({
       role: "viewer",
@@ -65,12 +68,17 @@ describe("internal tenant ux policy route", () => {
     expect(((await coach.json()) as { data: { allowed: boolean } }).data.allowed).toBe(true);
   });
 
-  it("passes through unauthorized responses", async () => {
-    authMocks.requireSessionUser.mockResolvedValueOnce(
-      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    );
+  it("returns guest fail-open when session is absent (edge parity, no 401 noise)", async () => {
+    authMocks.getSessionUser.mockResolvedValueOnce(null);
     const res = await GET(new Request("http://test/api/internal/tenant-ux/policy?pathname=/xchat"));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: { allowed: boolean; role: string; pathname: string; redirectPath: string };
+    };
+    expect(body.data.allowed).toBe(true);
+    expect(body.data.role).toBe("guest");
+    expect(body.data.pathname).toBe("/xchat");
+    expect(body.data.redirectPath).toBe("/xchat");
   });
 
   it("returns 503 when policy resolver throws", async () => {

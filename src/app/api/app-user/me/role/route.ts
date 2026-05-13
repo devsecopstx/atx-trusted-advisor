@@ -10,13 +10,20 @@ export async function GET() {
   }
 
   const policy = await getCachedTenantUxPolicyForSession(session);
-  return NextResponse.json({
-    data: {
-      platformRole: policy.role,
-      allowedRoutes: policy.allowedRoutes,
-      defaultLanding: policy.defaultLanding,
-      flags: policy.flags,
-      tenantRoleOverrides: null
+  return NextResponse.json(
+    {
+      data: {
+        platformRole: policy.role,
+        allowedRoutes: policy.allowedRoutes,
+        defaultLanding: policy.defaultLanding,
+        flags: policy.flags,
+        tenantRoleOverrides: null
+      }
+    },
+    {
+      headers: {
+        "Cache-Control": "private, max-age=15, stale-while-revalidate=45"
+      }
     }
-  });
+  );
 }

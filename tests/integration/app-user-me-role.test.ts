@@ -37,6 +37,7 @@ describe("app-user me role endpoint", () => {
   it("returns effective role policy for session", async () => {
     const res = await GET();
     expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toContain("private");
     const body = (await res.json()) as {
       data: { platformRole: string; defaultLanding: string; flags: { canUseXChat: boolean } };
     };

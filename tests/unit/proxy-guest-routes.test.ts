@@ -172,6 +172,45 @@ describe("proxy (middleware) guest HTML routes", () => {
     }
   });
 
+  it("dedupes concurrent session-grounding fetches for the same session cookie", async () => {
+    let sessionGroundingInFlight = 0;
+    let sessionGroundingMaxConcurrent = 0;
+    const origFetch = globalThis.fetch.bind(globalThis);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : (input as Request).url;
+      if (url.includes("/api/internal/authz/session-grounding")) {
+        sessionGroundingInFlight += 1;
+        sessionGroundingMaxConcurrent = Math.max(
+          sessionGroundingMaxConcurrent,
+          sessionGroundingInFlight
+        );
+        await new Promise((r) => setTimeout(r, 25));
+        sessionGroundingInFlight -= 1;
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+      if (url.includes("/api/internal/authz/billing-access")) {
+        return new Response(JSON.stringify({ data: { requiresBilling: false } }), { status: 200 });
+      }
+      return origFetch(input as RequestInfo, init as RequestInit);
+    });
+    try {
+      const cookie = "signed-session";
+      await Promise.all([
+        proxy(request("/api/personas", cookie)),
+        proxy(request("/api/personas", cookie)),
+        proxy(request("/api/personas", cookie))
+      ]);
+      expect(sessionGroundingMaxConcurrent).toBe(1);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it("still denies when session-grounding returns 401 (invalid session)", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url =

@@ -19,10 +19,12 @@ vi.mock("@/modules/xchat/xchat-user-prompt-templates-repository", () => repoMock
 
 import { DELETE } from "@/app/api/app-user/xchat/prompt-templates/[id]/route";
 import { GET, POST } from "@/app/api/app-user/xchat/prompt-templates/route";
+import { resetUserPromptTemplatesListServerCacheForTests } from "@/modules/xchat/xchat-user-prompt-templates-list-cache";
 
 describe("/api/app-user/xchat/prompt-templates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetUserPromptTemplatesListServerCacheForTests();
     authMocks.requireApprovedAppUserSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -53,11 +55,40 @@ describe("/api/app-user/xchat/prompt-templates", () => {
   it("GET lists templates for approved app user", async () => {
     const res = await GET();
     expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toContain("private");
     const body = (await res.json()) as {
       data: { templates: Array<{ id: string }> };
     };
     expect(body.data.templates).toHaveLength(1);
     expect(repoMocks.listUserPromptTemplates).toHaveBeenCalledTimes(1);
+  });
+
+  it("GET reuses server cache until POST busts", async () => {
+    await GET();
+    await GET();
+    expect(repoMocks.listUserPromptTemplates).toHaveBeenCalledTimes(1);
+    const postRes = await POST(
+      new Request("http://test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "T", prompt: "P" })
+      })
+    );
+    expect(postRes.status).toBe(201);
+    await GET();
+    expect(repoMocks.listUserPromptTemplates).toHaveBeenCalledTimes(2);
+  });
+
+  it("GET reuses server cache until DELETE busts", async () => {
+    await GET();
+    await GET();
+    expect(repoMocks.listUserPromptTemplates).toHaveBeenCalledTimes(1);
+    const delRes = await DELETE(new Request("http://test"), {
+      params: Promise.resolve({ id: "507f1f77bcf86cd799439033" })
+    });
+    expect(delRes.status).toBe(200);
+    await GET();
+    expect(repoMocks.listUserPromptTemplates).toHaveBeenCalledTimes(2);
   });
 
   it("POST creates a template", async () => {

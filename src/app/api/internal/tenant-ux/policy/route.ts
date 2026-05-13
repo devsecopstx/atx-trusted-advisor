@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireSessionUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { isTenantRolePolicyPathAllowed } from "@/modules/platform/tenant-route-policy";
 import { appendTenantUxObservabilityEvent } from "@/modules/platform/tenant-ux-observability-repository";
@@ -17,12 +17,38 @@ function normalizePathname(pathname: string): string {
   return withLeading;
 }
 
+const GUEST_FLAGS = {
+  canMutatePortfolios: false,
+  canUseXChat: false,
+  canRunTasks: false
+} as const;
+
 export async function GET(request: Request) {
-  const session = await requireSessionUser();
-  if (session instanceof NextResponse) {
-    return session;
-  }
   const pathname = normalizePathname(new URL(request.url).searchParams.get("pathname") ?? "/");
+  const session = await getSessionUser();
+  if (!session) {
+    /**
+     * Edge proxy fail-opens on non-OK policy fetches; returning **401** here only produced noisy
+     * dev logs (e.g. prefetch / guest HTML) without tightening auth — route handlers still enforce sessions.
+     */
+    return NextResponse.json(
+      {
+        data: {
+          allowed: true,
+          pathname,
+          role: "guest",
+          allowedRoutes: [] as string[],
+          redirectPath: "/xchat",
+          flags: { ...GUEST_FLAGS }
+        }
+      },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=15, stale-while-revalidate=30"
+        }
+      }
+    );
+  }
   const started = Date.now();
   try {
     const policy = await getCachedTenantUxPolicyForSession(session);

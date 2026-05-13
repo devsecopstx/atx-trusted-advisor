@@ -19,7 +19,9 @@ export function useTenantUxPolicy() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch("/api/app-user/me/role", { cache: "no-store" });
+        const res = await fetch("/api/app-user/me/role", {
+          credentials: "same-origin"
+        });
         if (!res.ok) {
           return;
         }

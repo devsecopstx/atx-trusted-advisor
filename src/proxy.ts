@@ -40,15 +40,17 @@ const tenantUxProxyCache = new Map<string, { allowed: boolean; redirectPath: str
 /** Coalesce concurrent edge policy fetches for the same session + path (thundering herd on parallel HTML/RSC). */
 const tenantUxPolicyInflight = new Map<string, Promise<TenantUxPolicyDecision>>();
 const BILLING_PROXY_POLICY_TTL_MS = 30_000;
-const billingProxyCache = new Map<
-  string,
-  { requiresBilling: boolean; state: string; redirectPath: string; expiresAt: number }
->();
+type BillingProxyDecision = { requiresBilling: boolean; state: string; redirectPath: string };
+const billingProxyCache = new Map<string, BillingProxyDecision & { expiresAt: number }>();
+/** Coalesce concurrent billing-access fetches for the same session cookie. */
+const billingProxyInflight = new Map<string, Promise<BillingProxyDecision>>();
 
 const SESSION_GROUNDING_CACHE_TTL_MS = 15_000;
 /** Same-origin internal checks from the edge proxy — bounded wait avoids hung middleware (timeouts fail-open below). */
 const PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS = 10_000;
 const sessionGroundingCache = new Map<string, { ok: boolean; expiresAt: number }>();
+/** Coalesce concurrent session-grounding fetches (parallel HTML/RSC + API under the matcher). */
+const sessionGroundingInflight = new Map<string, Promise<boolean>>();
 
 export function isSessionEdgeGroundingEnabled(raw = process.env.SESSION_EDGE_GROUNDING): boolean {
   if (raw === undefined || raw.trim() === "") {
@@ -83,48 +85,58 @@ async function resolveSessionGroundingOk(request: NextRequest): Promise<boolean>
   if (hit && hit.expiresAt > Date.now()) {
     return hit.ok;
   }
+  const inflight = sessionGroundingInflight.get(sessionCookie);
+  if (inflight) {
+    return await inflight;
+  }
   const url = new URL("/api/internal/authz/session-grounding", request.url);
-  try {
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        cookie: request.headers.get("cookie") ?? ""
-      },
-      cache: "no-store",
-      signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
-    });
+  const pending = (async (): Promise<boolean> => {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          cookie: request.headers.get("cookie") ?? ""
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
+      });
 
-    // Fail-open on transient origin errors so refresh / first API call does not wipe a valid session.
-    // Route handlers still enforce `requireSessionUser` + Mongo authorization.
-    if (res.status >= 500 || res.status === 429) {
+      // Fail-open on transient origin errors so refresh / first API call does not wipe a valid session.
+      // Route handlers still enforce `requireSessionUser` + Mongo authorization.
+      if (res.status >= 500 || res.status === 429) {
+        logSessionGroundingFetchError({
+          failOpen: true,
+          httpStatus: res.status,
+          reason: "session_grounding_upstream_transient"
+        });
+        return true;
+      }
+
+      const ok = res.ok;
+      sessionGroundingCache.set(sessionCookie, {
+        ok,
+        expiresAt: Date.now() + SESSION_GROUNDING_CACHE_TTL_MS
+      });
+      if (sessionGroundingCache.size > 500) {
+        const first = sessionGroundingCache.keys().next();
+        if (!first.done) {
+          sessionGroundingCache.delete(first.value);
+        }
+      }
+      return ok;
+    } catch (err) {
       logSessionGroundingFetchError({
         failOpen: true,
-        httpStatus: res.status,
-        reason: "session_grounding_upstream_transient"
+        error: err instanceof Error ? err.message : String(err),
+        reason: "session_grounding_fetch_throw_or_timeout"
       });
       return true;
+    } finally {
+      sessionGroundingInflight.delete(sessionCookie);
     }
-
-    const ok = res.ok;
-    sessionGroundingCache.set(sessionCookie, {
-      ok,
-      expiresAt: Date.now() + SESSION_GROUNDING_CACHE_TTL_MS
-    });
-    if (sessionGroundingCache.size > 500) {
-      const first = sessionGroundingCache.keys().next();
-      if (!first.done) {
-        sessionGroundingCache.delete(first.value);
-      }
-    }
-    return ok;
-  } catch (err) {
-    logSessionGroundingFetchError({
-      failOpen: true,
-      error: err instanceof Error ? err.message : String(err),
-      reason: "session_grounding_fetch_throw_or_timeout"
-    });
-    return true;
-  }
+  })();
+  sessionGroundingInflight.set(sessionCookie, pending);
+  return await pending;
 }
 
 async function enforceSessionGrounding(
@@ -427,45 +439,55 @@ async function resolveBillingDecision(
       redirectPath: hit.redirectPath
     };
   }
-  const url = new URL("/api/internal/authz/billing-access", request.url);
-  try {
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        cookie: request.headers.get("cookie") ?? ""
-      },
-      cache: "no-store",
-      signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
-    });
-    if (!res.ok) {
-      return { requiresBilling: false, state: "approved_unpaid", redirectPath: "/account/billing" };
-    }
-    const json = (await res.json()) as {
-      data?: {
-        requiresBilling?: boolean;
-        billingState?: string;
-        redirectPath?: string;
-      };
-    };
-    const decision = {
-      requiresBilling: json?.data?.requiresBilling === true,
-      state: json?.data?.billingState?.trim() || "approved_unpaid",
-      redirectPath: json?.data?.redirectPath?.trim() || "/account/billing"
-    };
-    billingProxyCache.set(cacheKey, {
-      ...decision,
-      expiresAt: Date.now() + BILLING_PROXY_POLICY_TTL_MS
-    });
-    if (billingProxyCache.size > 500) {
-      const first = billingProxyCache.keys().next();
-      if (!first.done) {
-        billingProxyCache.delete(first.value);
-      }
-    }
-    return decision;
-  } catch {
-    return { requiresBilling: false, state: "approved_unpaid", redirectPath: "/account/billing" };
+  const inflight = billingProxyInflight.get(cacheKey);
+  if (inflight) {
+    return await inflight;
   }
+  const url = new URL("/api/internal/authz/billing-access", request.url);
+  const pending = (async (): Promise<BillingProxyDecision> => {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          cookie: request.headers.get("cookie") ?? ""
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS)
+      });
+      if (!res.ok) {
+        return { requiresBilling: false, state: "approved_unpaid", redirectPath: "/account/billing" };
+      }
+      const json = (await res.json()) as {
+        data?: {
+          requiresBilling?: boolean;
+          billingState?: string;
+          redirectPath?: string;
+        };
+      };
+      const decision: BillingProxyDecision = {
+        requiresBilling: json?.data?.requiresBilling === true,
+        state: json?.data?.billingState?.trim() || "approved_unpaid",
+        redirectPath: json?.data?.redirectPath?.trim() || "/account/billing"
+      };
+      billingProxyCache.set(cacheKey, {
+        ...decision,
+        expiresAt: Date.now() + BILLING_PROXY_POLICY_TTL_MS
+      });
+      if (billingProxyCache.size > 500) {
+        const first = billingProxyCache.keys().next();
+        if (!first.done) {
+          billingProxyCache.delete(first.value);
+        }
+      }
+      return decision;
+    } catch {
+      return { requiresBilling: false, state: "approved_unpaid", redirectPath: "/account/billing" };
+    } finally {
+      billingProxyInflight.delete(cacheKey);
+    }
+  })();
+  billingProxyInflight.set(cacheKey, pending);
+  return await pending;
 }
 
 async function enforceBillingAccess(request: NextRequest, pathname: string): Promise<NextResponse | null> {

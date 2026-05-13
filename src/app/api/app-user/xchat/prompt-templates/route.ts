@@ -5,9 +5,10 @@ import { z } from "zod";
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
 import { getDb } from "@/lib/mongodb";
 import {
-    insertUserPromptTemplate,
-    listUserPromptTemplates
-} from "@/modules/xchat/xchat-user-prompt-templates-repository";
+    bustUserPromptTemplatesListServerCache,
+    getUserPromptTemplatesListWithServerCache
+} from "@/modules/xchat/xchat-user-prompt-templates-list-cache";
+import { insertUserPromptTemplate, listUserPromptTemplates } from "@/modules/xchat/xchat-user-prompt-templates-repository";
 
 const postBodySchema = z.object({
   title: z.string().min(1).max(80),
@@ -23,9 +24,19 @@ export async function GET() {
   if (!ObjectId.isValid(session.userId)) {
     return NextResponse.json({ error: "Invalid session user" }, { status: 400 });
   }
-  const db = await getDb();
-  const templates = await listUserPromptTemplates(db, new ObjectId(session.userId));
-  return NextResponse.json({ data: { templates } });
+  const userId = new ObjectId(session.userId);
+  const templates = await getUserPromptTemplatesListWithServerCache(session.userId, async () => {
+    const db = await getDb();
+    return listUserPromptTemplates(db, userId);
+  });
+  return NextResponse.json(
+    { data: { templates } },
+    {
+      headers: {
+        "Cache-Control": "private, max-age=15, stale-while-revalidate=45"
+      }
+    }
+  );
 }
 
 export async function POST(request: Request) {
@@ -71,5 +82,6 @@ export async function POST(request: Request) {
     );
   }
 
+  bustUserPromptTemplatesListServerCache(session.userId);
   return NextResponse.json({ data: { template: result.template } }, { status: 201 });
 }
