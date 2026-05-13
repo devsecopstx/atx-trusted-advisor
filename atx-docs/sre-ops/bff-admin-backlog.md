@@ -35,7 +35,7 @@ Canonical proxied routes live in `src/lib/bff-proxy-routes.ts` (see `tests/smoke
 
 | Area | Notes |
 |------|--------|
-| **Admin position by id** | `PATCH/DELETE …/accounts/{accountId}/positions/{positionId}` — add to BFF registry + Kotlin when needed. |
+| **Admin position by id** | **DELETE** `…/accounts/{accountId}/positions/{positionId}` — Kotlin + BFF + Next proxy when origin set. |
 | Alerts (future) | TBD; pair with `ALERTS_PUBSUB_TOPIC` + `publishAppUserAlertEvent` |
 
 ## Recommendations Pub/Sub

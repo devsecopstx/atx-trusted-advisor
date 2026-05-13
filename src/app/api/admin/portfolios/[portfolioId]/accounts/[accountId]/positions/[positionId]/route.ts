@@ -2,13 +2,19 @@ import { NextResponse } from "next/server";
 
 import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import { adminDeletePositionForPortfolioAccount } from "@/modules/core-admin/repository";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string; accountId: string; positionId: string }>;
 };
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const proxied = await proxyAdminUsersRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

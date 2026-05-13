@@ -7,7 +7,7 @@
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
  * App-user portfolio CRUD/watchlist/positions/recommendations/strategy-jobs. `/api/personas*` stays on Next Mongo.
- * Admin **portfolio** subtree (accounts, watchlist, positions, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`.
+ * Admin **portfolio** subtree (accounts, watchlist, positions list + **DELETE** by `positionId`, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`.
  * Tenant delivery-channels and scheduled tasks stay Next-only. Portfolio-console uses POST /api/admin/import/broker for CSV imports.
  * **`GET /api/admin/tenants`**, **`GET /api/admin/users`**, **`GET /api/admin/login-audit`**, **`GET /api/admin/audit`:**
  * Next-only when BFF is on — see `ADMIN_USERS_BFF_NEXT_ONLY_GET_PATHS` / `shouldSkipAdminUsersBffProxyForRequest` in
@@ -115,6 +115,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}/watchlist" },
   { method: "GET", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions" },
   { method: "POST", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions" },
+  { method: "DELETE", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}" },
   { method: "GET", path: "/api/admin/portfolios/{portfolioId}/recommendations" },
   { method: "POST", path: "/api/admin/portfolios/{portfolioId}/recommendations" },
   { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}/recommendations/{recommendationId}" },

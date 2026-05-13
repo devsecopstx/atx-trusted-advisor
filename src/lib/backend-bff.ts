@@ -243,6 +243,10 @@ export const nextBffApi = {
       pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions",
       methods: ["GET", "POST"]
     },
+    portfolioAccountPositionById: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}",
+      methods: ["DELETE"]
+    },
     portfolioRecommendationsIndex: {
       pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations",
       methods: ["GET", "POST"]

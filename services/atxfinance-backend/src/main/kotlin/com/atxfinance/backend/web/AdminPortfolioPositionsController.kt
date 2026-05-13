@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest
 import org.bson.types.ObjectId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -72,6 +73,36 @@ class AdminPortfolioPositionsController(
         } catch (e: PositionValidationException) {
             validationResponse(e)
         }
+    }
+
+    @DeleteMapping("/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}")
+    fun delete(
+        request: HttpServletRequest,
+        @PathVariable portfolioId: String,
+        @PathVariable accountId: String,
+        @PathVariable positionId: String,
+    ): ResponseEntity<Map<String, Any?>> {
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
+        }
+        g as AdminGate.Ok
+        if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId) || !ObjectId.isValid(positionId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid id"))
+        }
+        val deleted =
+            adminPortfolioPositionsService.deletePositionForPortfolioAccount(
+                g.session,
+                portfolioId,
+                accountId,
+                positionId,
+            )
+        if (!deleted) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                mapOf("error" to "Position or account not found"),
+            )
+        }
+        return ResponseEntity.ok(mapOf("ok" to true))
     }
 
     private fun validationResponse(e: PositionValidationException): ResponseEntity<Map<String, Any?>> {

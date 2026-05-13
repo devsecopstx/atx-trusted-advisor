@@ -64,6 +64,10 @@ const expectedRoutes: readonly ExpectedRoute[] = [
     pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions",
     methods: ["GET", "POST"]
   },
+  {
+    pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}",
+    methods: ["DELETE"]
+  },
   { pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations", methods: ["GET", "POST"] },
   {
     pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations/{recommendationId}",

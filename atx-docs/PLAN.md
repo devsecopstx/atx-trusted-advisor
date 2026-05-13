@@ -245,7 +245,9 @@ Broker import `POST /api/import/broker/clean`: [api-endpoints.md](./guides/api-e
 
 ### BFF / consolidation
 
-xChat routes, persona governance, and some admin mutations remain on Next until registry parity — [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md). **xChat ask stream:** JVM parity shipped; **`XCHAT_SSE_PROXY_BACKEND`** stays off by default (ops opt-in) — [xchat-bffparity.md](./sre-ops/xchat-bffparity.md). Workspace snapshot Redis + JVM **`GET /api/portfolios/{id}/snapshot`**: [current-state-features.md](./design-system/current-state-features.md).
+xChat routes, persona governance, and some admin mutations remain on Next until registry parity — [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md). **Next → Mongo write rule** (ESLint + allowlist): [mongo-next-write-boundary.md](./sre-ops/mongo-next-write-boundary.md). **Short-term:** move writes for **`portfolio_positions`**, watchlist, **`admin_scheduled_tasks`**, **`xchat_user_preferences`**, **`strategy_jobs`** to Spring; keep hot **GET** reads on Next until migrated.
+
+**xChat ask stream:** JVM parity shipped; **`XCHAT_SSE_PROXY_BACKEND`** stays off by default (ops opt-in) — [xchat-bffparity.md](./sre-ops/xchat-bffparity.md). Workspace snapshot Redis + JVM **`GET /api/portfolios/{id}/snapshot`**: [current-state-features.md](./design-system/current-state-features.md).
 
 **Ops:** `ATXFINANCE_BACKEND_ORIGIN` = backend HTTPS origin when Spring enabled — [deploy-and-ops.md](./guides/deploy-and-ops.md).
 

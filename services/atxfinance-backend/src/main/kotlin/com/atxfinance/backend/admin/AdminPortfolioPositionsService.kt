@@ -13,6 +13,7 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
+import com.mongodb.client.result.DeleteResult
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -60,6 +61,52 @@ class AdminPortfolioPositionsService(
                     "positions" to positions.map { serializePosition(it) },
                 ),
         )
+    }
+
+    /**
+     * Global-admin delete of a single position row (parity with Next
+     * `DELETE .../admin/portfolios/.../accounts/.../positions/{positionId}`).
+     */
+    fun deletePositionForPortfolioAccount(
+        session: ResolvedSession,
+        portfolioId: String,
+        accountId: String,
+        positionId: String,
+    ): Boolean {
+        val pair = adminPortfolioAccountsService.findAccountInPortfolio(portfolioId, accountId) ?: return false
+        val (portfolio, account) = pair
+        val ownerId = portfolioUserIdString(portfolio) ?: return false
+        val tenantHex = portfolioTenantIdHex(portfolio)
+        if (!ObjectId.isValid(positionId)) {
+            return false
+        }
+        val pid = portfolio.getObjectId("_id") ?: return false
+        val aid = account.getObjectId("_id") ?: return false
+        val filter =
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                Criteria().andOperator(
+                    Criteria.where("_id").`is`(ObjectId(positionId)),
+                    PortfolioMongoFilter.userIdCriteria(ownerId),
+                    Criteria.where("portfolioId").`is`(pid),
+                    Criteria.where("accountId").`is`(aid),
+                ),
+                tenantHex,
+            )
+        val result: DeleteResult = mongoTemplate.remove(Query.query(filter), props.positionsCollection)
+        val deleted = result.deletedCount == 1L
+        if (deleted) {
+            auditEventService.insertEvent(
+                AdminPortfolioAudit.ENTITY_TYPE,
+                portfolioId,
+                "position_deleted",
+                session,
+                mapOf(
+                    "accountId" to accountId,
+                    "positionId" to positionId,
+                ),
+            )
+        }
+        return deleted
     }
 
     /** Same as Next `serializePosition` + `POST` response `data` object. */
