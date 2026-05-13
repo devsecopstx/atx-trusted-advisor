@@ -28,6 +28,10 @@ import {
     type PersonaConfig
 } from "@/modules/xchat/types";
 import {
+    formatUserWorkspaceSummaryBlock,
+    loadUserWorkspaceSummaryForPrompt
+} from "@/modules/xchat/user-workspace-summary-for-prompt";
+import {
     formatWorkspaceServerSnapshotBlock,
     loadWorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
@@ -171,13 +175,21 @@ export async function submitBatchJob(
     itemContextMap.set(item.itemId, ragContext);
 
     let workspaceServerSnapshot: string | null = null;
+    let userWorkspaceSummaryBlock: string | null = null;
     if (hasAtxFunctionPersonaTool) {
       try {
-        const preload = await loadWorkspaceSnapshotPreload({
-          userId: input.userId,
-          tenantId: input.tenantId
-        });
+        const [preload, summary] = await Promise.all([
+          loadWorkspaceSnapshotPreload({
+            userId: input.userId,
+            tenantId: input.tenantId
+          }),
+          loadUserWorkspaceSummaryForPrompt({
+            userId: input.userId,
+            tenantId: input.tenantId
+          })
+        ]);
         workspaceServerSnapshot = preload ? formatWorkspaceServerSnapshotBlock(preload) : null;
+        userWorkspaceSummaryBlock = summary ? formatUserWorkspaceSummaryBlock(summary) : null;
       } catch (error) {
         console.warn("[xchat/batch] workspace server snapshot failed (non-fatal)", {
           itemId: item.itemId,
@@ -192,6 +204,7 @@ export async function submitBatchJob(
       personaSystem: input.persona.systemPrompt?.trim() ?? "",
       fallbackPersonaSystem: "You are a helpful assistant.",
       ragContext,
+      userWorkspaceSummaryBlock,
       workspaceSnapshot: workspaceServerSnapshot,
       sessionToolInstructions: buildSessionToolInstructions({
         hostedSearch: hasHostedSearchPersonaTool,

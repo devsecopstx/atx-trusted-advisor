@@ -15,7 +15,7 @@ const XCHAT_CITATION_MARKDOWN_CONTRACT = `Citation chips (xChat UI): When a sent
 const XCHAT_NO_CITATIONS_INSTRUCTION = `Output style: Do not use xChat citation chips. Do not write bracket tokens like [@citation:…] or [@tool:…], xf-citation fenced blocks, or <grok:render> citation markup. Answer in plain prose without source chips.`;
 
 const ATX_FUNCTION_TOOL_COPY = `Workspace tools (this signed-in user only):
-**Live portfolio, watchlist, and balances are not pre-loaded into the system prompt.** Use **atx_function** when you need workspace facts: **portfolio_summary** (overview, per-account cashBalance, position counts, watchlist on the default portfolio), **positions_snapshot** (symbol, qty, avgCost per account; may truncate), **watchlist_snapshot** (watchlist-only), **account_health** (balances + default account). Prefer the smallest call that answers the question; avoid redundant tool calls after you already have current data for this turn.
+**Multi-portfolio names + a compact holdings/cash line per book** are injected server-side when \`atx_function\` is enabled (see **User workspace summary** in the system prompt). Use **user_workspace_summary** only if you need a fresh JSON refresh in the tool loop. For deeper rows, **portfolio_summary** (active/default portfolio overview + watchlist), **positions_snapshot** (symbol, qty, avgCost per account; may truncate), **watchlist_snapshot** (watchlist-only), **account_health** (balances + default account). Prefer the smallest call that answers the question; avoid redundant tool calls after you already have current data for this turn.
 When a **workspace snapshot** block is present, watchlist symbols include **spotPriceDisplay** (Yahoo last, USD); **targetEntryNotional100xUsdDisplay** and **targetEntryNotional100xDisplay** (100× Yahoo quote—Watchlist **Target entry** column; USD string vs plain number string); **addedAtDisplay** (omit when the user only wants prices); **targetEntryDisplay** / **entryPrice** / **targetEntryPrice** (stored **desk entry price** in USD). When listing like the Watchlist **table**, lead with spot + **targetEntryNotional100xUsdDisplay** (or notional display); mention desk **targetEntryDisplay** only when the user cares about saved entry price.
 When presenting a watchlist from **tool output** only, prefer **spotPriceDisplay** and **targetEntryNotional100xUsdDisplay** in USD; desk/stored price = **targetEntryDisplay** or \`entryPrice\` / \`targetEntryPrice\`.
 If the user asks to "show my watchlist" (or equivalent), enumerate **every symbol returned** in the tool result (do not sample or truncate short lists).
@@ -47,7 +47,7 @@ If the tool returns no_default_portfolio, no_watchlist, or empty positions, say 
 
 /** Omits long HNWI-style **options_scan** desk table contracts; keeps workspace + NL discipline. */
 const ATX_FUNCTION_TOOL_COPY_SLIM = `Workspace tools (this signed-in user only):
-**Live portfolio, watchlist, and balances are not pre-loaded into the system prompt.** Use **atx_function** when you need workspace facts: **portfolio_summary**, **positions_snapshot**, **watchlist_snapshot**, **account_health**. Prefer the smallest call that answers the question; avoid redundant tool calls after you already have current data for this turn.
+**Named portfolios + compact holdings** are pre-injected when enabled (User workspace summary). **user_workspace_summary** refreshes that JSON if needed; else **portfolio_summary**, **positions_snapshot**, **watchlist_snapshot**, **account_health**. Prefer the smallest call; avoid redundant tool calls after you have current data for this turn.
 When a **workspace snapshot** block is present, watchlist symbols include **spotPriceDisplay** (Yahoo last, USD); **targetEntryNotional100xUsdDisplay** and desk **targetEntryDisplay** / **entryPrice**. When listing like the Watchlist **table**, lead with spot + target notional USD.
 If the user asks to "show my watchlist" (or equivalent), enumerate **every symbol returned** in the tool result (do not sample or truncate short lists).
 When the user asks to add or remove watchlist symbols, call watchlist_add_symbols or watchlist_remove_symbols—then confirm briefly.
@@ -165,6 +165,8 @@ export type BuildXchatSystemPromptInput = {
   ragContext: string;
   /** Prior turns from Mongo `xchat_logs` (same tenant); omitted when empty. */
   recentHistoryBlock?: string | null;
+  /** Multi-portfolio NL preflight (friendly names + ids); injected before workspace snapshot hint. */
+  userWorkspaceSummaryBlock?: string | null;
   workspaceSnapshot: string | null | undefined;
   sessionToolInstructions: string;
   /** Ask route: enforced retrieval/tools/multi-agent policy blurb. */
@@ -197,7 +199,7 @@ export function formatTenantWorkspaceContextBlockForXchat(input: {
 /**
  * Locked order for **xAI prompt caching** (stable prefix first, volatile suffix last):
  * tenant display (optional) → persona → session tools → routing policy → citation policy → beta UI →
- * RAG snippets → recent history → workspace snapshot.
+ * RAG snippets → recent history → user workspace summary → workspace snapshot.
  */
 export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): string {
   const citationsEnabled = input.citationsEnabled !== false;
@@ -237,6 +239,13 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
       : "";
   if (hist) {
     volatileParts.push(hist);
+  }
+  const wsSummary =
+    typeof input.userWorkspaceSummaryBlock === "string" && input.userWorkspaceSummaryBlock.trim().length > 0
+      ? input.userWorkspaceSummaryBlock.trim()
+      : "";
+  if (wsSummary) {
+    volatileParts.push(wsSummary);
   }
   const snap =
     typeof input.workspaceSnapshot === "string" && input.workspaceSnapshot.trim().length > 0

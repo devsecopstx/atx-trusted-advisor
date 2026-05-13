@@ -22,6 +22,9 @@ import java.util.Date
 /**
  * JVM parity for Next `price_alert_manage` in [com.atxfinance.backend.xchat.AtxFunctionExecutor]
  * (`portfolio_price_alerts` + optional desk preview rows).
+ *
+ * **Workspace NL preflight:** use [nlPriceAlertPreflightSummary] for counts + deep links embedded in
+ * [UserWorkspaceSummaryNlService] — this class is **not** deprecated; it owns all price-alert mutations.
  */
 @Service
 class PortfolioPriceAlertNlService(
@@ -69,6 +72,27 @@ class PortfolioPriceAlertNlService(
 
     private fun deskDeepLink(portfolioIdHex: String): String =
         "/portfolio/alerts?portfolioId=" + URLEncoder.encode(portfolioIdHex, StandardCharsets.UTF_8)
+
+    /**
+     * Read-only attachment for multi-portfolio workspace summary (Next + JVM NL preflight).
+     * Mutations remain on [executePriceAlertManage].
+     */
+    fun nlPriceAlertPreflightSummary(
+        session: ResolvedSession,
+        workspacePortfolioIdHex: String,
+    ): Map<String, Any?> {
+        val activeCount = listActiveForUser(session).size
+        val link =
+            if (ObjectId.isValid(workspacePortfolioIdHex.trim())) {
+                deskDeepLink(workspacePortfolioIdHex.trim())
+            } else {
+                "/portfolio/alerts"
+            }
+        return mapOf(
+            "activeNlAlertCount" to activeCount,
+            "alertsDeepLink" to link,
+        )
+    }
 
     private fun resolveWorkspacePortfolioDoc(ctx: AtxFunctionExecutionContext): Document? {
         val explicit = ctx.portfolioIdHex?.trim()?.takeIf { ObjectId.isValid(it) }

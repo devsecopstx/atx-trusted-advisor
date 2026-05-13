@@ -143,7 +143,8 @@ export type WatchlistPortfolioSlotCollectionResult = {
  * When true (with `hasXfinanceTool`), `/api/xchat/ask` eagerly runs `loadWorkspaceSnapshotPreload`
  * in parallel with RAG so first-turn `atx_function` calls (`portfolio_summary`, `watchlist_snapshot`,
  * `positions_snapshot`, `account_health`) short-circuit via `PRELOAD_SHORT_CIRCUIT_OPS` instead of
- * lazy Mongo + duplicate fetches.
+ * lazy Mongo + duplicate fetches. **Multi-portfolio friendly names** are always prefetched via
+ * `loadUserWorkspaceSummaryForPrompt` when `atx_function` is enabled (separate from this flag).
  */
 export function shouldEagerWorkspaceSnapshotPreloadForMessage(message: string): boolean {
   const m = message.trim().toLowerCase();

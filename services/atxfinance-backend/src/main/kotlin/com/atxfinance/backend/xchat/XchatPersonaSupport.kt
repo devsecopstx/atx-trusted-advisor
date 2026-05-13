@@ -75,7 +75,7 @@ object XchatPersonaSupport {
             "type" to "function",
             "name" to "atx_function",
             "description" to
-                "Workspace portfolio, watchlist, positions, options scan, and Premium+ NL price alerts (price_alert_manage).",
+                "Workspace portfolio, watchlist, positions, options scan, user_workspace_summary (multi-book NL preflight), and Premium+ NL price alerts (price_alert_manage).",
             "parameters" to
                 mapOf(
                     "type" to "object",
@@ -85,7 +85,7 @@ object XchatPersonaSupport {
                                 mapOf(
                                     "type" to "string",
                                     "description" to
-                                        "portfolio_summary | watchlist_snapshot | positions_snapshot | options_action_scan | price_alert_manage",
+                                        "portfolio_summary | user_workspace_summary | watchlist_snapshot | positions_snapshot | options_action_scan | price_alert_manage",
                                 ),
                             "priceAlertOp" to
                                 mapOf(

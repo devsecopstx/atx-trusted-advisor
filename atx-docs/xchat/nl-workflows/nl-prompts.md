@@ -1,5 +1,11 @@
 > **Backlog summary:** [PLAN.md — NL and strategy preflight](../../PLAN.md#nl-and-strategy-preflight). This document is the **deep spec** (examples, snippets, UX copy).
 
+## Workspace context preflight (multi-portfolio NL)
+
+- **Server:** `POST /api/xchat/ask` loads **`loadUserWorkspaceSummaryForPrompt`** in parallel with RAG when the persona exposes **`atx_function`**. The JSON is injected into the system prompt (before the optional single-portfolio workspace preload hint) under **User workspace summary**, with fixed NL discipline text (exact portfolio names; no generic multi-account answers unless the user asks for an overview).
+- **Tool:** `atx_function` → **`operation: user_workspace_summary`** returns the same shape if the model needs a refresh mid-thread.
+- **Shape:** `{ workspace: { activePortfolio, activePortfolioId, nlPriceAlerts?, portfolios: [{ name, id, holdings, cash, riskLevel }] } }` — `nlPriceAlerts` (when `activePortfolioId` is set) reuses the same counts/deep link semantics as `price_alert_manage` list; mutations stay on **`price_alert_manage`** (Next `tool-executor` + JVM `PortfolioPriceAlertNlService`).
+
 # xchat-end-user-response formatting
 Best way to apply formatting for end user (production-ready, minimal code)
 

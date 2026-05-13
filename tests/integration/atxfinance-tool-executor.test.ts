@@ -458,6 +458,7 @@ describe("atxfinance tool executor", () => {
     expect(ATXFINANCE_TOOL_DEFINITION.function.name).toBe("atx_function");
     expect(ATXFINANCE_TOOL_DEFINITION.function.parameters.properties.operation.enum).toEqual([
       "portfolio_summary",
+      "user_workspace_summary",
       "positions_snapshot",
       "watchlist_snapshot",
       "watchlist_add_symbols",

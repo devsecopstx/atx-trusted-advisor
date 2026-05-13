@@ -451,6 +451,7 @@ export function inferCitationSlugFromGrokInner(inner: string): string {
     t.includes("atxfinance") ||
     t.includes("positions_snapshot") ||
     t.includes("portfolio_summary") ||
+    t.includes("user_workspace_summary") ||
     t.includes("watchlist_snapshot") ||
     t.includes("account_health") ||
     t.includes("workspace snapshot")

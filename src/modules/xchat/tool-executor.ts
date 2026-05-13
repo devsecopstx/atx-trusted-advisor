@@ -57,6 +57,7 @@ import {
     ATXFINANCE_TOOL_DEFINITION,
     YAHOO_FINANCE_TOOL_DEFINITION
 } from "@/modules/xchat/tool-definitions";
+import { loadUserWorkspaceSummaryForPrompt } from "@/modules/xchat/user-workspace-summary-for-prompt";
 import {
     formatWatchlistAddedAtUtc,
     formatWatchlistSpotPriceUsd,
@@ -610,6 +611,16 @@ function buildOperations(
         })),
         watchlist
       };
+    },
+
+    user_workspace_summary: async (_args, ctx) => {
+      return (
+        (await loadUserWorkspaceSummaryForPrompt({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          workspacePortfolioId: ctx.workspacePortfolioId
+        })) ?? { error: "no_portfolios" }
+      );
     },
 
     watchlist_snapshot: async (_args, ctx) => {

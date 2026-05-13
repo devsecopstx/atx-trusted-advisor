@@ -5,6 +5,7 @@ import com.atxfinance.backend.portfolio.PortfolioCrudService
 import com.atxfinance.backend.portfolio.PortfolioNestedResourceService
 import com.atxfinance.backend.portfolio.PortfolioPriceAlertNlService
 import com.atxfinance.backend.portfolio.PositionsService
+import com.atxfinance.backend.portfolio.UserWorkspaceSummaryNlService
 import com.atxfinance.backend.strategy.StrategyOptionsYahooClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.bson.Document
@@ -39,6 +40,7 @@ class AtxFunctionExecutor(
     private val optionsActionScanService: OptionsActionScanService,
     private val yahooClient: StrategyOptionsYahooClient,
     private val portfolioPriceAlertNlService: PortfolioPriceAlertNlService,
+    private val userWorkspaceSummaryNlService: UserWorkspaceSummaryNlService,
 ) {
     fun executeOptionsActionScan(ctx: AtxFunctionExecutionContext): AtxFunctionOptionsScanResult {
         @Suppress("UNCHECKED_CAST")
@@ -123,6 +125,8 @@ class AtxFunctionExecutor(
                                 ),
                             ),
                     )
+                "user_workspace_summary" ->
+                    AtxFunctionToolResult(result = toJson(userWorkspaceSummaryNlService.buildUserWorkspaceSummary(ctx)))
                 "price_alert_manage" ->
                     AtxFunctionToolResult(
                         result = toJson(portfolioPriceAlertNlService.executePriceAlertManage(args, ctx)),

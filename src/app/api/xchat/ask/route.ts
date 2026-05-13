@@ -118,6 +118,10 @@ import {
 } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 import {
+    formatUserWorkspaceSummaryBlock,
+    loadUserWorkspaceSummaryForPrompt
+} from "@/modules/xchat/user-workspace-summary-for-prompt";
+import {
     processDecodedXchatVisionImage,
     type ProcessedXchatVisionImage
 } from "@/modules/xchat/vision-processor";
@@ -1251,7 +1255,8 @@ export async function POST(request: Request) {
   const workspacePortfolioIdTrimmed = workspacePortfolioId?.trim() ?? "";
   const ragAndPreloadStartedAt = Date.now();
 
-  const [ragBundle, eagerWorkspacePreload, outlookCtx, limitsForOutlook] = await Promise.all([
+  const [ragBundle, eagerWorkspacePreload, outlookCtx, limitsForOutlook, userWorkspaceSummaryJson] =
+    await Promise.all([
     (async (): Promise<{
       contextSource: "none" | "xai_collection";
       collectionContextReferences: Array<{
@@ -1394,7 +1399,8 @@ export async function POST(request: Request) {
         portfolioIdHex: portfolioHexForOutlook
       });
     })(),
-    effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan)
+    effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan),
+    hasXfinanceTool ? loadUserWorkspaceSummaryForPrompt(workspaceSnapshotCtx) : Promise.resolve(null)
   ]);
   const accountOutlookAugment = outlookCtx
     ? formatAccountOutlookPromptInjection(
@@ -1410,7 +1416,8 @@ export async function POST(request: Request) {
     shouldEagerWorkspacePreload,
     workspaceIncomeIdeasPreload,
     workspaceSnapshotQuoteNetwork,
-    hasOutlookContext: Boolean(outlookCtx)
+    hasOutlookContext: Boolean(outlookCtx),
+    hasUserWorkspaceSummary: Boolean(userWorkspaceSummaryJson)
   });
   if (isXchatPromptLatencyMetricsEnabled()) {
     void recordXchatPromptLatencySample({
@@ -1878,6 +1885,11 @@ export async function POST(request: Request) {
         : buildWorkspacePreloadHintForSystemPrompt(eagerWorkspacePreload)
       : null;
 
+  const userWorkspaceSummaryBlock =
+    hasXfinanceTool && userWorkspaceSummaryJson
+      ? formatUserWorkspaceSummaryBlock(userWorkspaceSummaryJson)
+      : null;
+
   const builtSystemPrompt = buildXchatSystemPrompt({
     tenantWorkspaceContextBlock:
       effectiveTenantWorkspaceContextBlock.trim().length > 0
@@ -1887,6 +1899,7 @@ export async function POST(request: Request) {
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
     recentHistoryBlock,
+    userWorkspaceSummaryBlock,
     workspaceSnapshot: workspaceSnapshotForPrompt,
     sessionToolInstructions: buildSessionToolInstructions(
       {
