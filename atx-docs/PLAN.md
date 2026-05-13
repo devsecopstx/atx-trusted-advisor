@@ -6,6 +6,18 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 ---
 
+<a id="shipped-platform-may-2026"></a>
+
+## Shipped (May 2026 — platform / SRE)
+
+- **JVM internal scheduler daemon observability:** **`GET /api/backend/health`** returns a **`scheduler`** object (`lastPollAt`, `lastSuccessfulRun`, `tasksEnqueuedLastPoll`, `status`, …) so operators can confirm the admin-scheduler poller / Quartz path without relying on logs alone — [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md). (Earlier “today’s delivery focus” notes for the Spring internal admin scheduler lived in [release-notes.md](./sre-ops/release-notes.md) around **3.5.2**; capability is **shipped** in current worker images.)
+
+### Hotfixes / incidents (May 2026)
+
+- **Portfolio alerts + xAI narrative:** After adding a desk alert (example: **TSLA above $420** in a **Roth IRA** book), **`POST /api/portfolios/{portfolioId}/alerts/{alertId}/narrative`** may fail against **xAI Responses** with **`404 Not Found`** and an HTML body mentioning **`nginx`** or **Cloudflare challenge** scripts (upstream edge / bot interstitial, not our in-app “route missing” 404). **Mitigation:** treat as transient provider or egress/WAF behavior; retry narrative or surface **`503`** `narrative_unavailable`; verify **`XAI_API_KEY`** and that server-side calls reach **`api.x.ai`** without an HTML challenge page in the server path.
+
+---
+
 ## Priority tracks
 
 | ID | Track | Priority | Pointer / contract |
@@ -248,7 +260,7 @@ xChat routes, persona governance, and some admin mutations remain on Next until 
 
 **xChat ask stream:** JVM parity shipped; BFF follows the main **`ATXFINANCE_BACKEND_ORIGIN`** gate; **`XCHAT_SSE_PROXY_BACKEND`** is an ops **opt-out** to keep SSE on Next — [xchat-bffparity.md](./sre-ops/xchat-bffparity.md). Workspace snapshot Redis + JVM **`GET /api/portfolios/{id}/snapshot`**: [current-state-features.md](./design-system/current-state-features.md).
 
-**Ops:** `ATXFINANCE_BACKEND_ORIGIN` = backend HTTPS origin when Spring enabled — [deploy-and-ops.md](./guides/deploy-and-ops.md).
+**Ops:** `ATXFINANCE_BACKEND_ORIGIN` = backend HTTPS origin when Spring enabled — [deploy-and-ops.md](./guides/deploy-and-ops.md). **Shipped:** backend **`scheduler`** block on **`GET /api/backend/health`** (see [Shipped (May 2026 — platform / SRE)](#shipped-platform-may-2026) above).
 
 ---
 

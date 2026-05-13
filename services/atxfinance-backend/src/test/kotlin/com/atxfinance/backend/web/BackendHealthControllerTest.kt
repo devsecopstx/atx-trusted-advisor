@@ -1,5 +1,6 @@
 package com.atxfinance.backend.web
 
+import com.atxfinance.backend.scheduling.SchedulerPollTelemetry
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.MongoIterable
@@ -21,6 +22,22 @@ class BackendHealthControllerTest {
         return p
     }
 
+    private fun schedulerTelemetryStub(): SchedulerPollTelemetry {
+        val t = mock(SchedulerPollTelemetry::class.java)
+        `when`(t.healthPayload()).thenReturn(
+            mapOf(
+                "lastPollAt" to null,
+                "lastSuccessfulRun" to null,
+                "tasksEnqueuedLastPoll" to 0,
+                "status" to "unknown",
+                "driver" to "quartz",
+                "pollIntervalMs" to 60_000L,
+                "lastError" to null,
+            ),
+        )
+        return t
+    }
+
     private fun buildControllerWith(
         mongoOk: Boolean,
         uri: String = "mongodb://user:secret@localhost:27017/atxfinance?authSource=admin",
@@ -40,7 +57,7 @@ class BackendHealthControllerTest {
             `when`(db.runCommand(Document("ping", 1))).thenThrow(RuntimeException("ping failed"))
         }
 
-        return BackendHealthController(env, mongoClient, emptyRedisProvider())
+        return BackendHealthController(env, mongoClient, emptyRedisProvider(), schedulerTelemetryStub())
     }
 
     @Test
@@ -87,7 +104,7 @@ class BackendHealthControllerTest {
         `when`(mongoClient.listDatabaseNames()).thenReturn(names)
         `when`(names.first()).thenReturn("admin")
 
-        val controller = BackendHealthController(env, mongoClient, emptyRedisProvider())
+        val controller = BackendHealthController(env, mongoClient, emptyRedisProvider(), schedulerTelemetryStub())
         val response = controller.apiHealthCompat()
 
         assertEquals(HttpStatus.OK, response.statusCode)

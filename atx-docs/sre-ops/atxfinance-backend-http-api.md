@@ -11,7 +11,7 @@ Canonical route list is enforced by `tests/smoke/backend-http-api-parity.test.ts
 |--------|------|---------|
 | GET | `/actuator/health` | Spring Boot Actuator liveness/readiness (`management.*`). Response is standard actuator JSON (e.g. `{ "status": "UP" }` when authorized to see details per config). |
 | GET | `/api/health` | **Compatibility shim:** Mongo via `MongoClient`; **presence-only** secrets flags; **`details.redis`**: `ok` \| `error` \| `skipped` (skipped when `REDIS_URL` unset). |
-| GET | `/api/backend/health` | **SRE / diagnostics:** service name, UTC time, `activeProfiles`, masked Mongo URI (`uriMasked`), mongo ping, **`details.redis`** (same semantics as `/api/health`), env flags including `REDIS_URL_present`. HTTP **200** even when nested `details.mongo.status` is `error` (inspect body). |
+| GET | `/api/backend/health` | **SRE / diagnostics:** service name, UTC time, `activeProfiles`, **`scheduler`**: `lastPollAt`, `lastSuccessfulRun`, `tasksEnqueuedLastPoll`, `status` (`healthy` \| `unknown` \| `stale` \| `error` \| `disabled`), optional `lastError`, plus `driver` / `pollIntervalMs` (in-memory JVM poller / Quartz bridge only; not HTTP `POST /api/admin/scheduler/tick`). Masked Mongo URI (`uriMasked`), mongo ping, **`details.redis`** (same semantics as `/api/health`), env flags including `REDIS_URL_present`. HTTP **200** even when nested `details.mongo.status` is `error` (inspect body). |
 
 ## Portfolios (session cookie, Mongo CRUD)
 
@@ -57,6 +57,12 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 |--------|------|---------|
 | GET | `/api/portfolios/{portfolioId}/recommendations` | **200** `{ "data": [...] }` or **404** if portfolio not accessible. |
 | POST | `/api/portfolios/{portfolioId}/recommendations` | **201** `{ "data": ... }` or **404** / **400** (invalid payload). |
+
+## App user portfolio desk alerts (`portfolio_alerts`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/portfolios/{portfolioId}/alerts` | **201** `{ "data": ... }` — desk alert row; body `title` (required), optional `body`, `severity` (`info`\|`warning`\|`critical`, default `info`), `symbol`, `accountId` (must belong to portfolio). **401** / **404** portfolio not owned / **400** validation. **Note:** Next-only `dispatchPortfolioDeskEvents` (Slack/email fan-out) does not run on this JVM path — BFF POST persists Mongo only; use Next-local POST if desk channels must fire immediately. |
 
 ## Strategy options (Yahoo + synthetic fallback)
 

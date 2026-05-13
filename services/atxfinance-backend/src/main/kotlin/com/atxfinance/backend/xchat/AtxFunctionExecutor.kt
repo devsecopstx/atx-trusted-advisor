@@ -4,6 +4,7 @@ import com.atxfinance.backend.portfolio.DefaultPortfolioProvisionService
 import com.atxfinance.backend.portfolio.PortfolioCrudService
 import com.atxfinance.backend.portfolio.PortfolioNestedResourceService
 import com.atxfinance.backend.portfolio.PositionsService
+import com.atxfinance.backend.strategy.StrategyOptionsYahooClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.bson.Document
 import org.bson.types.ObjectId
@@ -35,6 +36,7 @@ class AtxFunctionExecutor(
     private val portfolioNestedResourceService: PortfolioNestedResourceService,
     private val positionsService: PositionsService,
     private val optionsActionScanService: OptionsActionScanService,
+    private val yahooClient: StrategyOptionsYahooClient,
 ) {
     fun executeOptionsActionScan(ctx: AtxFunctionExecutionContext): AtxFunctionOptionsScanResult {
         @Suppress("UNCHECKED_CAST")
@@ -83,6 +85,11 @@ class AtxFunctionExecutor(
         ctx: AtxFunctionExecutionContext,
     ): AtxFunctionToolResult {
         val normalized = toolName.trim().lowercase()
+        if (normalized == "yahoo_finance") {
+            return runCatching { executeYahooFinanceQuote(args) }.getOrElse { ex ->
+                AtxFunctionToolResult(result = "", error = ex.message ?: "yahoo_finance_error")
+            }
+        }
         if (normalized != "atx_function" && normalized != "atxfinance") {
             return AtxFunctionToolResult(result = "", error = "unsupported_tool")
         }
@@ -119,6 +126,33 @@ class AtxFunctionExecutor(
         }.getOrElse { ex ->
             AtxFunctionToolResult(result = "", error = ex.message ?: "executor_error")
         }
+    }
+
+    private fun executeYahooFinanceQuote(args: Map<String, Any?>): AtxFunctionToolResult {
+        val raw = (args["symbol"] as? String)?.trim()?.uppercase().orEmpty()
+        val sym =
+            if (raw.isNotEmpty() && Regex("^[A-Z0-9.^-]{1,15}$").matches(raw)) {
+                raw
+            } else {
+                "TSLA"
+            }
+        val q = yahooClient.fetchUnderlyingQuote(sym)
+            ?: return AtxFunctionToolResult(
+                result = toJson(mapOf("error" to "quote_unavailable", "symbol" to sym)),
+                error = "quote_unavailable",
+            )
+        val price = (q["regularMarketPrice"] as? Number)?.toDouble() ?: 0.0
+        val payload =
+            linkedMapOf<String, Any?>(
+                "symbol" to (q["symbol"] ?: sym),
+                "price" to price,
+                "previousClose" to (q["regularMarketPreviousClose"] as? Number)?.toDouble(),
+                "change" to (q["regularMarketChange"] as? Number)?.toDouble(),
+                "changePercent" to (q["regularMarketChangePercent"] as? Number)?.toDouble(),
+                "currency" to q["currency"],
+                "source" to "yahoo-finance2",
+            )
+        return AtxFunctionToolResult(result = toJson(payload))
     }
 
     @Suppress("UNCHECKED_CAST")

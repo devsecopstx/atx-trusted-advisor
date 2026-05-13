@@ -132,6 +132,10 @@ class BackendHttpApiCrudIntegrationTest {
         val backendHealth = json("/api/backend/health", HttpMethod.GET, null, HttpHeaders())
         assertEquals("ok", backendHealth.path("status").asText())
         assertEquals("atxfinance-backend", backendHealth.path("service").asText())
+        val sched = backendHealth.path("scheduler")
+        assertTrue(sched.isObject, "scheduler object missing")
+        assertEquals("disabled", sched.path("status").asText())
+        assertTrue(sched.path("driver").asText().isNotEmpty())
 
         val ch = cookieHeaders()
         ch.contentType = MediaType.APPLICATION_JSON
@@ -193,6 +197,18 @@ class BackendHttpApiCrudIntegrationTest {
             )
         assertEquals("growth", deskPatched.path("data").path("riskProfile").asText())
         assertEquals("bearish", deskPatched.path("data").path("outlook").asText())
+
+        val deskAlert =
+            json(
+                "/api/portfolios/$portfolioId/alerts",
+                HttpMethod.POST,
+                """{"title":"Desk alert JVM","severity":"warning","symbol":"TSLA","body":"BFF parity"}""",
+                ch,
+            )
+        assertTrue(deskAlert.path("data").path("_id").asText().isNotEmpty())
+        assertEquals("Desk alert JVM", deskAlert.path("data").path("title").asText())
+        assertEquals("warning", deskAlert.path("data").path("severity").asText())
+        assertEquals("TSLA", deskAlert.path("data").path("symbol").asText())
 
         val wl = json("/api/portfolios/$portfolioId/watchlist", HttpMethod.GET, null, ch)
         assertTrue(wl.path("data").path("symbols").isArray)

@@ -123,11 +123,12 @@ class XaiToolLoopService(
                 }
 
                 val operation = (call.args["operation"] as? String)?.trim()
-                streamHooks.onToolStatus("atx_function", operation, "running")
+                val toolLabel = call.name.trim().lowercase()
+                streamHooks.onToolStatus(toolLabel, operation, "running")
                 val started = System.currentTimeMillis()
                 val executorResult = atxFunctionExecutor.executeToolCall(call.name, call.args, executionContext)
                 val durationMs = (System.currentTimeMillis() - started).coerceAtLeast(0)
-                streamHooks.onToolStatus("atx_function", operation, "done")
+                streamHooks.onToolStatus(toolLabel, operation, "done")
                 toolCalls.add(
                     mapOf(
                         "name" to call.name,
@@ -212,6 +213,7 @@ class XaiToolLoopService(
                 }
                 "function" -> out.add(tool)
                 "atx_function", "atxfinance" -> out.add(XchatPersonaSupport.defaultAtxFunctionTool())
+                "yahoo_finance" -> out.add(XchatPersonaSupport.defaultYahooFinanceTool())
                 else -> {
                     val function = tool["function"] as? Map<*, *>
                     if (function != null) {
@@ -227,14 +229,20 @@ class XaiToolLoopService(
                 }
             }
         }
-        if (out.none { it["name"] == "atx_function" }) {
-            out.add(XchatPersonaSupport.wireTools(null).first { it["name"] == "atx_function" })
+        val dedup = LinkedHashMap<String, Map<String, Any?>>()
+        for (t in out) {
+            val name = t["name"]?.toString()?.trim() ?: continue
+            dedup.putIfAbsent(name, t)
         }
-        return out.take(32)
+        val merged = dedup.values.toMutableList()
+        if (merged.none { it["name"] == "atx_function" }) {
+            merged.add(XchatPersonaSupport.wireTools(null).first { it["name"] == "atx_function" })
+        }
+        return merged.take(32)
     }
 
     companion object {
-        private val LOCAL_TOOL_NAMES = setOf("atx_function", "atxfinance")
+        private val LOCAL_TOOL_NAMES = setOf("atx_function", "atxfinance", "yahoo_finance")
         private val HOSTED_TOOL_NAMES =
             setOf(
                 "web_search",

@@ -26,6 +26,7 @@ import java.util.Date
 @Conditional(SchedulerSimplePollerCondition::class)
 class AdminSchedulerPoller(
     private val adminScheduledTasksService: AdminScheduledTasksService,
+    private val schedulerPollTelemetry: SchedulerPollTelemetry,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -36,13 +37,21 @@ class AdminSchedulerPoller(
         lockAtLeastFor = "PT5S",
     )
     fun pollDueTasks() {
-        val accepted = adminScheduledTasksService.enqueueDueTasksForSystemPoll(Date())
-        if (accepted.isNotEmpty()) {
-            log.info(
-                "[admin/scheduler] {} enqueued {} task(s)",
-                AdminScheduledTasksService.SYSTEM_SCHEDULER_TRIGGER,
-                accepted.size,
-            )
+        schedulerPollTelemetry.recordPollStarted()
+        try {
+            val accepted = adminScheduledTasksService.enqueueDueTasksForSystemPoll(Date())
+            schedulerPollTelemetry.recordPollSuccess(accepted.size)
+            if (accepted.isNotEmpty()) {
+                log.info(
+                    "[admin/scheduler] {} enqueued {} task(s)",
+                    AdminScheduledTasksService.SYSTEM_SCHEDULER_TRIGGER,
+                    accepted.size,
+                )
+            }
+        } catch (t: Throwable) {
+            schedulerPollTelemetry.recordPollFailure(t)
+            log.error("[admin/scheduler] system poll failed", t)
+            throw t
         }
     }
 }

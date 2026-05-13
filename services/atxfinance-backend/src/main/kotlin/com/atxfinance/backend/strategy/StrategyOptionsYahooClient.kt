@@ -141,6 +141,9 @@ class StrategyOptionsYahooClient(
         return mapOf(
             "symbol" to q.path("symbol").asText(u),
             "regularMarketPrice" to q.path("regularMarketPrice").asDouble(0.0),
+            "regularMarketPreviousClose" to q.path("regularMarketPreviousClose").asDouble(0.0),
+            "regularMarketChange" to q.path("regularMarketChange").asDouble(0.0),
+            "regularMarketChangePercent" to q.path("regularMarketChangePercent").asDouble(0.0),
             "currency" to q.path("currency").asText(""),
             "regularMarketTime" to q.path("regularMarketTime").asLong(0L),
         )

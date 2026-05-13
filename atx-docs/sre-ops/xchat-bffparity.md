@@ -13,7 +13,7 @@
 - **Spring** (`XchatAskStreamController.kt` + `XchatAskService.kt`):
   - Virtual-thread controller with distributed usage limits (**`XchatUsageLimitService`**, 429 + limit headers aligned with Next).
   - Direct **`options_action_scan`** / **`watchlist_snapshot`** intents with **`meta`**, **`turn`**, **`tool_status`**, **`delta`**, **`provider`**, **`done`**, **`error`**.
-  - xAI Responses tool loop (**`XaiToolLoopService`**) with **`AtxFunctionExecutor`**, persona resolution, RAG context (**`XchatRagContextService`**), session log persistence, and **`admin_audit_events`** hooks.
+  - xAI Responses tool loop (**`XaiToolLoopService`**) with **`AtxFunctionExecutor`**, persona resolution, RAG context (**`XchatRagContextService`**), session log persistence, and **`admin_audit_events`** hooks. Persona **`yahoo_finance`** markers are normalized to **`type: function`** wire tools (xAI rejects bare `yahoo_finance`); **`AtxFunctionExecutor`** runs Yahoo spot quotes via **`StrategyOptionsYahooClient`**.
   - BFF from Next when **`isXchatSseProxyBackendEnabled()`** is true — delegates to **`shouldProxyPortfolioRequestsToBackend()`** (unset origin ⇒ false; loopback + dev/test ⇒ false unless **`ATXFINANCE_BFF_PROXY_LOOPBACK`**; otherwise true unless **`XCHAT_SSE_PROXY_BACKEND`** opts out).
 
 **Non-goals (unchanged):** Streaming raw tokens from Spring to xAI (non-streaming Responses + emitted deltas); multi-agent parallel reasoning on the JVM path.

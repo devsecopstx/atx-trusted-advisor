@@ -90,6 +90,26 @@ object XchatPersonaSupport {
                 ),
         )
 
+    fun defaultYahooFinanceTool(): Map<String, Any?> =
+        mapOf(
+            "type" to "function",
+            "name" to "yahoo_finance",
+            "description" to
+                "Fetch market quote data from Yahoo Finance. Return price, previousClose, change, and changePercent from the JSON in your answer.",
+            "parameters" to
+                mapOf(
+                    "type" to "object",
+                    "properties" to
+                        mapOf(
+                            "symbol" to
+                                mapOf(
+                                    "type" to "string",
+                                    "description" to "Ticker symbol to quote (e.g. TSLA). Optional; defaults to TSLA.",
+                                ),
+                        ),
+                ),
+        )
+
     private fun documentToMap(doc: Document): Map<String, Any?> {
         val out = linkedMapOf<String, Any?>()
         doc.forEach { (k, v) -> out[k] = v }

@@ -1,6 +1,7 @@
 package com.atxfinance.backend.web
 
 import com.atxfinance.backend.config.MongoUriResolver
+import com.atxfinance.backend.scheduling.SchedulerPollTelemetry
 import com.mongodb.client.MongoClient
 import org.bson.Document
 import org.springframework.beans.factory.ObjectProvider
@@ -18,6 +19,7 @@ class BackendHealthController(
     private val env: Environment,
     private val mongoClient: MongoClient,
     private val stringRedisTemplate: ObjectProvider<StringRedisTemplate>,
+    private val schedulerPollTelemetry: SchedulerPollTelemetry,
 ) {
 
     /** Compatibility shim for load balancers / parity with core app health shape (see atx-docs/sre-ops/atxfinance-backend-http-api.md). */
@@ -106,6 +108,7 @@ class BackendHealthController(
             "service" to (env.getProperty("spring.application.name") ?: "atxfinance-backend"),
             "time" to now,
             "activeProfiles" to profiles,
+            "scheduler" to schedulerPollTelemetry.healthPayload(),
             "details" to mapOf(
                 "mongo" to mongoDetails,
                 "redis" to redisDetails,

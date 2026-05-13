@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const repositoryMocks = vi.hoisted(() => ({
   DEFAULT_ACCOUNT_CASH_BALANCE: 25_000,
   getDefaultPortfolio: vi.fn(),
+  getPortfolioByIdForSessionUser: vi.fn(),
   ensurePortfolioWatchlistForUser: vi.fn(),
   provisionDefaultPortfolioForUser: vi.fn(),
   listPortfolioAccounts: vi.fn(),
@@ -39,6 +40,40 @@ const yahooLookupMocks = vi.hoisted(() => ({
 vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
   lookupSymbols: yahooLookupMocks.lookupSymbols,
   LOOKUP_ROUTE: "yahoo-finance2"
+}));
+
+const nlPriceAlertMocks = vi.hoisted(() => ({
+  upsertActivePortfolioPriceAlert: vi.fn(),
+  listActivePortfolioPriceAlertsForUser: vi.fn(),
+  countActivePortfolioPriceAlertsForTenant: vi.fn(),
+  migrateLegacyNlPriceAlertsIfNeeded: vi.fn(),
+  ensureUserAlertManagerScheduledTaskForTenant: vi.fn()
+}));
+
+const resolvePortfolioHintMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/modules/price-alerts/portfolio-price-alerts-repository", () => ({
+  upsertActivePortfolioPriceAlert: nlPriceAlertMocks.upsertActivePortfolioPriceAlert,
+  listActivePortfolioPriceAlertsForUser: nlPriceAlertMocks.listActivePortfolioPriceAlertsForUser,
+  countActivePortfolioPriceAlertsForTenant: nlPriceAlertMocks.countActivePortfolioPriceAlertsForTenant,
+  deleteActivePortfolioPriceAlertForUserSymbol: vi.fn(),
+  deleteAllActivePortfolioPriceAlertsForUser: vi.fn()
+}));
+
+vi.mock("@/modules/price-alerts/migrate-legacy-nl-price-alerts", () => ({
+  migrateLegacyNlPriceAlertsIfNeeded: nlPriceAlertMocks.migrateLegacyNlPriceAlertsIfNeeded
+}));
+
+vi.mock("@/modules/price-alerts/ensure-user-alert-manager-task", () => ({
+  ensureUserAlertManagerScheduledTaskForTenant: nlPriceAlertMocks.ensureUserAlertManagerScheduledTaskForTenant
+}));
+
+vi.mock("@/modules/price-alerts/resolve-portfolio-hint", () => ({
+  resolvePortfolioHintFromNl: resolvePortfolioHintMock
+}));
+
+vi.mock("@/modules/audit/repository", () => ({
+  createAuditEvent: vi.fn(() => Promise.resolve(undefined))
 }));
 
 const workspaceLoadMocks = vi.hoisted(() => ({
@@ -94,6 +129,11 @@ describe("atxfinance tool executor", () => {
     workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockReset();
     workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     repositoryMocks.getDefaultPortfolio.mockResolvedValue({
+      _id: portfolioId,
+      name: "Default Portfolio",
+      isDefault: true
+    });
+    repositoryMocks.getPortfolioByIdForSessionUser.mockResolvedValue({
       _id: portfolioId,
       name: "Default Portfolio",
       isDefault: true
@@ -227,6 +267,12 @@ describe("atxfinance tool executor", () => {
       ],
       asMarkdown: "### Options action scan"
     });
+    nlPriceAlertMocks.listActivePortfolioPriceAlertsForUser.mockResolvedValue([]);
+    nlPriceAlertMocks.countActivePortfolioPriceAlertsForTenant.mockResolvedValue(0);
+    nlPriceAlertMocks.migrateLegacyNlPriceAlertsIfNeeded.mockResolvedValue(undefined);
+    nlPriceAlertMocks.ensureUserAlertManagerScheduledTaskForTenant.mockResolvedValue(undefined);
+    nlPriceAlertMocks.upsertActivePortfolioPriceAlert.mockReset();
+    resolvePortfolioHintMock.mockReset();
   });
 
   it("portfolio_summary returns portfolio with accounts", async () => {
@@ -424,6 +470,55 @@ describe("atxfinance tool executor", () => {
       "market_quote",
       "price_alert_manage"
     ]);
+  });
+
+  it("price_alert_manage add (xChat atx_function) upserts NL rule for Premium+ advisor", async () => {
+    resolvePortfolioHintMock.mockResolvedValue({
+      ok: true,
+      portfolioIdHex: portfolioId.toHexString(),
+      portfolioName: "Default Portfolio"
+    });
+    const ruleId = new ObjectId();
+    nlPriceAlertMocks.upsertActivePortfolioPriceAlert.mockResolvedValue({
+      doc: { _id: ruleId },
+      replaced: false
+    });
+    const executor = createXfinanceToolExecutor({
+      ...ctx,
+      tenantId: "507f1f77bcf86cd799439022",
+      subscriptionPlan: "premium_plus",
+      platformRoles: ["advisor"],
+      workspacePortfolioId: portfolioId.toHexString()
+    });
+    const result = await executor("atx_function", {
+      operation: "price_alert_manage",
+      priceAlertOp: "add",
+      symbol: "TSLA",
+      targetPrice: 420,
+      ruleKind: "above"
+    });
+    const data = JSON.parse(result.result) as {
+      ok?: boolean;
+      symbol?: string;
+      targetPriceUsd?: number;
+      ruleKind?: string;
+      error?: string;
+    };
+    expect(data.error).toBeUndefined();
+    expect(data.ok).toBe(true);
+    expect(data.symbol).toBe("TSLA");
+    expect(data.targetPriceUsd).toBe(420);
+    expect(data.ruleKind).toBe("above");
+    expect(nlPriceAlertMocks.upsertActivePortfolioPriceAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: ctx.userId,
+        tenantId: "507f1f77bcf86cd799439022",
+        portfolioIdHex: portfolioId.toHexString(),
+        symbolUpper: "TSLA",
+        targetPriceUsd: 420,
+        ruleKind: "above"
+      })
+    );
   });
 
   it("options_action_scan returns deterministic report payload", async () => {

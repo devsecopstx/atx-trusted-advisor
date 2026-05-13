@@ -80,6 +80,12 @@ export const nextBffApi = {
       methods: ["GET", "POST"]
     }
   },
+  portfolioAlerts: {
+    index: {
+      pathTemplate: "/api/portfolios/{portfolioId}/alerts",
+      methods: ["POST"]
+    }
+  },
   strategyOptions: {
     chain: {
       pathTemplate: "/api/strategy-options",
@@ -569,7 +575,8 @@ export function shouldProxyPortfolioRequestsToBackend(): boolean {
  * App-user **`PATCH /api/portfolios/{portfolioId}/watchlist`** — forward to Spring when the portfolio BFF gate is on.
  *
  * **`GET`** / **`POST`** for that path stay on Next (Yahoo quotes, `watchlistId` picker, multi-watchlist create, and
- * read-time desk enrichments). **`GET`/`DELETE …/alerts`** stay on Next — see {@link isAppUserPortfolioAlertsPath}.
+ * read-time desk enrichments). **`GET`/`DELETE …/alerts`** stay on Next; **`POST …/alerts`** (desk create) forwards when
+ * the gate is on — see {@link isAppUserPortfolioAlertsCollectionPath}.
  */
 export function shouldProxyAppUserPortfolioWatchlistPatchToBackend(): boolean {
   return shouldProxyPortfolioRequestsToBackend();
@@ -584,7 +591,7 @@ function isAppUserPortfolioWatchlistPath(pathname: string): boolean {
   return /^\/api\/portfolios\/[^/]+\/watchlist\/?$/.test(pathname);
 }
 
-function isAppUserPortfolioAlertsPath(pathname: string): boolean {
+function isAppUserPortfolioAlertsCollectionPath(pathname: string): boolean {
   return /^\/api\/portfolios\/[^/]+\/alerts\/?$/.test(pathname);
 }
 
@@ -602,8 +609,11 @@ export async function proxyPortfolioRequestToBackend(request: Request): Promise<
       return null;
     }
   }
-  /** Alerts list + bulk delete stay on Next (Mongo); Spring parity not required for app-user bulk clear / CSV flow. */
-  if (isAppUserPortfolioAlertsPath(pathname)) {
+  /**
+   * Alerts list + bulk delete stay on Next (Mongo + desk fan-out on local POST). **`POST`** create forwards to Spring
+   * when the portfolio BFF gate is on.
+   */
+  if (isAppUserPortfolioAlertsCollectionPath(pathname) && request.method.toUpperCase() !== "POST") {
     return null;
   }
   return proxyRequestToBackend(request);

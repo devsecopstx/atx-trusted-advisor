@@ -16,7 +16,7 @@ vi.mock("@/lib/backend-bff", () => ({
 
 vi.mock("@/lib/api-auth", () => authMocks);
 
-import { GET as getAlerts } from "@/app/api/admin/portfolios/[portfolioId]/alerts/route";
+import { GET as getAlerts, POST as postAlerts } from "@/app/api/admin/portfolios/[portfolioId]/alerts/route";
 import { POST as postChannels } from "@/app/api/admin/portfolios/[portfolioId]/delivery-channels/route";
 import { DELETE as deleteReco, PATCH as patchReco } from "@/app/api/admin/portfolios/[portfolioId]/recommendations/[recommendationId]/route";
 import { GET as getReco, POST as postReco } from "@/app/api/admin/portfolios/[portfolioId]/recommendations/route";
@@ -79,11 +79,24 @@ describe("admin portfolio nested REST BFF proxy (recommendations, alerts, channe
     expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
   });
 
-  it("proxies GET …/alerts and POST …/delivery-channels", async () => {
+  it("proxies GET …/alerts, POST …/alerts, and POST …/delivery-channels", async () => {
     bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: [] }), { status: 200 }));
     const g1 = new Request(`http://t/api/admin/portfolios/${portfolioId}/alerts`);
     await getAlerts(g1, { params: Promise.resolve({ portfolioId }) });
     expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenLastCalledWith(g1);
+
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { _id: childId, title: "t", severity: "info", status: "active" } }), {
+        status: 201
+      })
+    );
+    const postA = new Request(`http://t/api/admin/portfolios/${portfolioId}/alerts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "t", severity: "info", status: "active" })
+    });
+    await postAlerts(postA, { params: Promise.resolve({ portfolioId }) });
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenLastCalledWith(postA);
 
     bffMocks.proxyAdminDeliveryChannelsRequestToBackend.mockResolvedValueOnce(
       new Response(JSON.stringify({ data: {} }), { status: 201 })
