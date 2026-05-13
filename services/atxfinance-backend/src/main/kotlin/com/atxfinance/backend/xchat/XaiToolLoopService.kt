@@ -40,7 +40,7 @@ class XaiToolLoopService(
         val apiKey =
             xaiResponsesClient.apiKeyOrNull()
                 ?: throw IllegalStateException("XAI_API_KEY is required for xChat tool loop")
-        val wireTools = normalizeWireTools(tools)
+        val wireTools = XchatWireToolsForResponses.normalize(tools)
         val cappedTurns = maxTurns.coerceIn(1, 10)
         val perRequestMaxTurns = cappedTurns.coerceAtMost(16)
         var conversationInput: Any = userPrompt
@@ -176,69 +176,6 @@ class XaiToolLoopService(
             throw IllegalStateException("xAI responses failed: ${response.statusCode} ${response.body}")
         }
         return objectMapper.readTree(response.body ?: "{}")
-    }
-
-    private fun normalizeWireTools(tools: List<Map<String, Any?>>): List<Map<String, Any?>> {
-        val out = mutableListOf<Map<String, Any?>>()
-        for (tool in tools) {
-            val type = tool["type"]?.toString()
-            when (type) {
-                "collections_search" -> {
-                    val ids = (tool["collection_ids"] as? List<*>)?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }.orEmpty()
-                    if (ids.isNotEmpty()) {
-                        out.add(
-                            mapOf(
-                                "type" to "file_search",
-                                "name" to "file_search",
-                                "source" to mapOf("collection_ids" to ids),
-                            ),
-                        )
-                    }
-                }
-                "file_search" -> {
-                    val source = tool["source"] as? Map<*, *>
-                    val ids =
-                        (source?.get("collection_ids") as? List<*>)?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }
-                            ?: (tool["collection_ids"] as? List<*>)?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }
-                            ?: emptyList()
-                    if (ids.isNotEmpty()) {
-                        out.add(
-                            mapOf(
-                                "type" to "file_search",
-                                "name" to "file_search",
-                                "source" to mapOf("collection_ids" to ids),
-                            ),
-                        )
-                    }
-                }
-                "function" -> out.add(tool)
-                "atx_function", "atxfinance" -> out.add(XchatPersonaSupport.defaultAtxFunctionTool())
-                "yahoo_finance" -> out.add(XchatPersonaSupport.defaultYahooFinanceTool())
-                else -> {
-                    val function = tool["function"] as? Map<*, *>
-                    if (function != null) {
-                        val flattened = LinkedHashMap<String, Any?>()
-                        flattened["type"] = "function"
-                        flattened["name"] = function["name"] ?: tool["name"]
-                        flattened["description"] = function["description"] ?: tool["description"]
-                        flattened["parameters"] = function["parameters"] ?: tool["parameters"]
-                        out.add(flattened)
-                    } else {
-                        out.add(tool)
-                    }
-                }
-            }
-        }
-        val dedup = LinkedHashMap<String, Map<String, Any?>>()
-        for (t in out) {
-            val name = t["name"]?.toString()?.trim() ?: continue
-            dedup.putIfAbsent(name, t)
-        }
-        val merged = dedup.values.toMutableList()
-        if (merged.none { it["name"] == "atx_function" }) {
-            merged.add(XchatPersonaSupport.wireTools(null).first { it["name"] == "atx_function" })
-        }
-        return merged.take(32)
     }
 
     companion object {

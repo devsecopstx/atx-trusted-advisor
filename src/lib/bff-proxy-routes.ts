@@ -7,7 +7,7 @@
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
  * App-user portfolio CRUD; **`PATCH /api/portfolios/{portfolioId}/watchlist`** proxies when the BFF gate is on; **`GET`/`POST`**
- * for that path stay on Next (quotes / multi-watchlist). **`POST /api/portfolios/{portfolioId}/alerts`** (desk alert create) proxies when the gate is on; **`GET`/`DELETE …/alerts`** stay on Next (list/bulk clear + desk channel fan-out on local create). **`/api/admin/access-requests*`** write paths proxy when the gate is on.
+ * for that path stay on Next (quotes / multi-watchlist). **`POST /api/portfolios/{portfolioId}/alerts`** (desk alert create) proxies when the gate is on; **`GET`/`DELETE …/alerts`** stay on Next (list/bulk clear + desk channel fan-out on local create). App-user **`/api/portfolios/{portfolioId}/price-alerts*`** (NL price rules) stay on Next (not proxied — Spring has no route). **`/api/admin/access-requests*`** write paths proxy when the gate is on.
  * **`GET`/`POST /api/personas`** and **`GET`/`PUT`/`DELETE /api/personas/{personaId}`** proxy when the admin BFF gate is on (`shouldProxyPersonasRequestsToBackend`); persona governance subroutes (publish, versions, …) stay Next-only.
  * Admin **portfolio** subtree (accounts, **`PATCH …/watchlist`**, positions list + **DELETE** by `positionId`, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`; **`GET …/admin/portfolios/{id}/watchlist`** stays on Next (quotes + desk enrichments).
  * **`/api/admin/delivery-channels*`** (tenant + portfolio-nested) proxies when the admin BFF gate is on. **`/api/admin/tasks*`**,

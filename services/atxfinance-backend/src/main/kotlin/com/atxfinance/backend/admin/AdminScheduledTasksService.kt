@@ -84,6 +84,46 @@ class AdminScheduledTasksService(
         return mapOf("data" to serializeScheduledTask(inserted))
     }
 
+    /**
+     * Idempotent tenant-level `user_alert_manager` row — mirrors Next
+     * `ensureUserAlertManagerScheduledTaskForTenant` when the first NL price alert is created.
+     */
+    fun ensureUserAlertManagerScheduledTaskForTenant(tenantHex: String) {
+        val tenantHexTrim = tenantHex.trim()
+        if (tenantHexTrim.isEmpty()) {
+            return
+        }
+        val tenantLevelOnly =
+            Criteria().orOperator(
+                Criteria.where("portfolioId").exists(false),
+                Criteria.where("portfolioId").`is`(null),
+            )
+        val base =
+            Criteria().andOperator(
+                Criteria.where("category").`is`("user_alert_manager"),
+                tenantLevelOnly,
+            )
+        val crit = PortfolioMongoFilter.scheduledTaskTenantReadCriteria(base, tenantHexTrim)
+        if (mongoTemplate.exists(Query.query(crit), props.scheduledTasksCollection)) {
+            return
+        }
+        val tenantOid = PortfolioMongoFilter.tenantObjectId(tenantHexTrim) ?: return
+        val now = Date()
+        val cron = "0 14-21 * * 1-5"
+        val nextRunAt =
+            computeNextRunAt(cron, now) ?: Date(now.time + ONE_HOUR_MS)
+        val doc = Document()
+        doc["name"] = "User price alert manager"
+        doc["category"] = "user_alert_manager"
+        doc["scheduleCron"] = cron
+        doc["enabled"] = true
+        doc["nextRunAt"] = nextRunAt
+        doc["tenantId"] = tenantOid
+        doc["createdAt"] = now
+        doc["updatedAt"] = now
+        mongoTemplate.insert(doc, props.scheduledTasksCollection)
+    }
+
     fun getTaskForTenant(taskId: String, session: ResolvedSession): Document? {
         if (!ObjectId.isValid(taskId)) {
             return null
@@ -641,6 +681,7 @@ class AdminScheduledTasksService(
                 "xchat_spend_alert",
             )
         private const val FIVE_MIN_MS = 5L * 60L * 1000L
+        private const val ONE_HOUR_MS = 60L * 60L * 1000L
         private const val ONE_DAY_MS = 24L * 60L * 60L * 1000L
     }
 }

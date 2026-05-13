@@ -31,6 +31,20 @@ class PortfolioCrudService(
         return mongoTemplate.count(Query.query(crit), props.portfoliosCollection)
     }
 
+    /** Parity with Next `listPortfoliosForSessionUser` (default portfolio first). */
+    fun listPortfoliosForSessionUser(session: ResolvedSession): List<Document> {
+        val crit =
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                PortfolioMongoFilter.userIdCriteria(session.userId),
+                session.tenantId,
+            )
+        val q =
+            Query.query(crit).with(
+                Sort.by(Sort.Order.desc("isDefault"), Sort.Order.asc("createdAt")),
+            )
+        return mongoTemplate.find(q, Document::class.java, props.portfoliosCollection)
+    }
+
     /**
      * App-user portfolio create (parity with Next `POST /api/portfolios`).
      * Returns null when limit reached or payload invalid.

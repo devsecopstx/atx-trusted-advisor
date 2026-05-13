@@ -150,6 +150,22 @@ describe("proxyPortfolioRequestToBackend (watchlist routing)", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/api/portfolios/507f1f77bcf86cd799439011");
   });
+
+  it("does not forward app-user portfolio NL price-alerts (GET/POST/DELETE)", async () => {
+    const { proxyPortfolioRequestToBackend } = await import("@/lib/backend-bff");
+    fetchMock.mockClear();
+    const base = "http://next.local/api/portfolios/507f1f77bcf86cd799439011/price-alerts";
+    await expect(proxyPortfolioRequestToBackend(new Request(base))).resolves.toBeNull();
+    await expect(
+      proxyPortfolioRequestToBackend(
+        new Request(base, { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } })
+      )
+    ).resolves.toBeNull();
+    await expect(
+      proxyPortfolioRequestToBackend(new Request(`${base}/a1b2c3d4e5f6a7b8c9d0e1f2`, { method: "DELETE" }))
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("proxyAdminUsersRequestToBackend (Next-first tenants + user list)", () => {

@@ -35,4 +35,19 @@ object XchatPlanLimits {
             else -> "basic"
         }
     }
+
+    /** Mirrors `getPlanLimits(...).nlPriceAlertManagementEnabled` in `src/modules/xchat/plan-limits.ts`. */
+    fun nlPriceAlertManagementEnabled(plan: String?): Boolean =
+        normalizePlanSlug(plan) == "premium_plus"
+
+    /** Mirrors `hasNlPriceAlertDeskRole` — advisor or global admin (legacy `admin` maps to global in session). */
+    fun hasNlPriceAlertDeskRole(roles: List<String>): Boolean =
+        roles.any { role ->
+            val r = role.trim().lowercase()
+            val n = if (r == "admin") "global_admin" else r
+            n == "advisor" || n == "global_admin"
+        }
+
+    fun canManageNlPriceAlerts(plan: String?, roles: List<String>): Boolean =
+        nlPriceAlertManagementEnabled(plan) && hasNlPriceAlertDeskRole(roles)
 }

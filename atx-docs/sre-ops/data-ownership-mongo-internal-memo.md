@@ -21,6 +21,7 @@ Some routes remain **deliberately** on Next + Mongo even though they appear in t
 - **Personas** — governance and persona store stay on Next to avoid JVM/Next divergence.
 - **Admin scheduled tasks** — tenant task orchestration stays on Next.
 - **App-user watchlist `GET`/`POST`** and **admin portfolio watchlist `GET`** — richer reads and admin desk parity stay on Next; **app-user watchlist `PATCH`**, **`PATCH` admin portfolio watchlist**, **admin access-requests**, and **admin delivery-channels** (including test POST) go through Spring when the BFF gate is on.
+- **App-user NL price alerts** — **`GET`/`POST /api/portfolios/{portfolioId}/price-alerts`** and **`DELETE …/price-alerts/{alertId}`** stay on Next (`portfolio_price_alerts` in Mongo). The BFF does not proxy these paths (Spring has no controller; blind proxy returned **404**).
 - **xChat** — ask, logging, and xAI tool loop stay **Next-only for now**; optional JVM SSE exists behind an explicit flag only.
 
 These are **policy choices**, not exceptions to sneak around the rule.

@@ -576,7 +576,8 @@ export function shouldProxyPortfolioRequestsToBackend(): boolean {
  *
  * **`GET`** / **`POST`** for that path stay on Next (Yahoo quotes, `watchlistId` picker, multi-watchlist create, and
  * read-time desk enrichments). **`GET`/`DELETE …/alerts`** stay on Next; **`POST …/alerts`** (desk create) forwards when
- * the gate is on — see {@link isAppUserPortfolioAlertsCollectionPath}.
+ * the gate is on — see {@link isAppUserPortfolioAlertsCollectionPath}. **`GET`/`POST …/price-alerts`** and
+ * **`DELETE …/price-alerts/{alertId}`** stay on Next (Mongo NL rules; no Spring controller — proxying would 404).
  */
 export function shouldProxyAppUserPortfolioWatchlistPatchToBackend(): boolean {
   return shouldProxyPortfolioRequestsToBackend();
@@ -595,12 +596,20 @@ function isAppUserPortfolioAlertsCollectionPath(pathname: string): boolean {
   return /^\/api\/portfolios\/[^/]+\/alerts\/?$/.test(pathname);
 }
 
+/** NL / natural-language price rules (`portfolio_price_alerts`) — Next + Mongo only; JVM has no matching routes. */
+function isAppUserPortfolioPriceAlertsPath(pathname: string): boolean {
+  return /^\/api\/portfolios\/[^/]+\/price-alerts(?:\/[^/]+)?$/.test(pathname);
+}
+
 /** Spring BFF for {@link shouldProxyPortfolioRequestsToBackend} routes; `null` → Next Mongo handlers. */
 export async function proxyPortfolioRequestToBackend(request: Request): Promise<Response | null> {
   if (!shouldProxyPortfolioRequestsToBackend()) {
     return null;
   }
   const pathname = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+  if (isAppUserPortfolioPriceAlertsPath(pathname)) {
+    return null;
+  }
   if (isAppUserPortfolioWatchlistPath(pathname)) {
     if (request.method.toUpperCase() !== "PATCH") {
       return null;
