@@ -29,6 +29,24 @@ describe("shouldProxyAdminUsersToBackend", () => {
     expect(shouldProxyAdminUsersToBackend()).toBe(false);
   });
 
+  it("returns true for loopback in development when ATXFINANCE_BFF_PROXY_LOOPBACK is enabled", () => {
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
+    vi.stubEnv("ATXFINANCE_BFF_PROXY_LOOPBACK", "1");
+    expect(shouldProxyAdminUsersToBackend()).toBe(true);
+  });
+
+  it("returns true for loopback in test when ATXFINANCE_BFF_PROXY_LOOPBACK is on", () => {
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://localhost:8080");
+    vi.stubEnv("ATXFINANCE_BFF_PROXY_LOOPBACK", "yes");
+    expect(shouldProxyAdminUsersToBackend()).toBe(true);
+  });
+
+  it("returns false when only ATXFINANCE_BFF_PROXY_LOOPBACK is set (origin still required)", () => {
+    vi.stubEnv("ATXFINANCE_BFF_PROXY_LOOPBACK", "1");
+    expect(shouldProxyAdminUsersToBackend()).toBe(false);
+  });
+
   it("returns true for loopback when NODE_ENV is production", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");

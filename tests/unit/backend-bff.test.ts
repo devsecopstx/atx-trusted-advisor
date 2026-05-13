@@ -343,5 +343,6 @@ describe("getStrategyJobsBffUnavailableMessage", () => {
     process.env.ATXFINANCE_BACKEND_ORIGIN = "http://127.0.0.1:8080";
     const { getStrategyJobsBffUnavailableMessage } = await import("@/lib/backend-bff");
     expect(getStrategyJobsBffUnavailableMessage()).toMatch(/BFF|development|localhost/i);
+    expect(getStrategyJobsBffUnavailableMessage()).toContain("ATXFINANCE_BFF_PROXY_LOOPBACK");
   });
 });

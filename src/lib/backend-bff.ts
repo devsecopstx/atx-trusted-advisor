@@ -435,15 +435,30 @@ function isDevLikeNodeEnv(): boolean {
 }
 
 /**
+ * Opt-in: proxy BFF writes to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is **loopback** and **`NODE_ENV`** is
+ * **`development`** or **`test`** (normally skipped so local Next + auth stay on the same Mongo).
+ *
+ * Truthy: **`1`**, **`true`**, **`yes`**, **`on`** (case-insensitive).
+ */
+function isAtxfinanceBffLoopbackProxyOverrideEnabled(): boolean {
+  const raw = process.env.ATXFINANCE_BFF_PROXY_LOOPBACK?.trim().toLowerCase();
+  if (!raw) {
+    return false;
+  }
+  return ["1", "true", "yes", "on"].includes(raw);
+}
+
+/**
  * Spring BFF gate for admin users, app-user portfolios, strategy-options, admin access-requests, etc.
  *
  * - **`ATXFINANCE_BACKEND_ORIGIN` unset:** never proxy (Next + Mongo).
- * - **Loopback origin + `NODE_ENV` `development` or `test`:** never proxy (local Next uses the same Mongo as auth).
+ * - **Loopback origin + `NODE_ENV` `development` or `test`:** never proxy unless **`ATXFINANCE_BFF_PROXY_LOOPBACK`** is
+ *   truthy (opt-in so local JVM can own writes while sharing Mongo with Next).
  * - **Otherwise:** proxy when origin is set (staging/prod JVM URL — must not be the Next app’s own public URL).
  *
- * No separate `ATXFINANCE_BACKEND_PROXY_*` env vars — disable BFF by unsetting **`ATXFINANCE_BACKEND_ORIGIN`** or using
- * loopback + dev above. For local JVM on `127.0.0.1:8080`, run a **production** Next build/serve or use a non-loopback
- * host in `ORIGIN` (e.g. LAN IP) if you need BFF from `next dev`.
+ * Disable BFF by unsetting **`ATXFINANCE_BACKEND_ORIGIN`**. For **`next dev`** + JVM on loopback without the override,
+ * use **`NODE_ENV=production`** next serve, a non-loopback **`ATXFINANCE_BACKEND_ORIGIN`**, or set
+ * **`ATXFINANCE_BFF_PROXY_LOOPBACK=1`**.
  */
 export function shouldProxyAdminUsersToBackend(): boolean {
   const origin = getAtxfinanceBackendOrigin();
@@ -451,7 +466,7 @@ export function shouldProxyAdminUsersToBackend(): boolean {
     return false;
   }
   if (isDevLikeNodeEnv() && isLoopbackBackendOrigin(origin)) {
-    return false;
+    return isAtxfinanceBffLoopbackProxyOverrideEnabled();
   }
   return true;
 }
@@ -601,7 +616,7 @@ export function getStrategyJobsBffUnavailableMessage(): string {
   if (!getAtxfinanceBackendOrigin()) {
     return "Strategy orchestrator runs in atxfinance-backend (Spring). Set ATXFINANCE_BACKEND_ORIGIN to the JVM base URL (e.g. http://127.0.0.1:8080).";
   }
-  return "Strategy jobs BFF is off: with ATXFINANCE_BACKEND_ORIGIN on localhost/127.0.0.1, Next skips proxy in development/test so local Mongo matches auth. Use a production Next run, a non-loopback ORIGIN, or a remote backend URL to hit Spring from this app.";
+  return "Strategy jobs BFF is off: with ATXFINANCE_BACKEND_ORIGIN on localhost/127.0.0.1, Next skips proxy in development/test so local Mongo matches auth. Set ATXFINANCE_BFF_PROXY_LOOPBACK=1 to BFF to local Spring anyway, or use a production Next run, a non-loopback ORIGIN, or a remote backend URL.";
 }
 
 /**
@@ -677,7 +692,8 @@ export async function proxyAdminDeliveryChannelsRequestToBackend(
 
 /**
  * **`/api/personas`** and **`/api/personas/{personaId}`** (GET/POST/PUT/DELETE) — forward to Spring when
- * {@link shouldProxyAdminUsersToBackend} is true (`ATXFINANCE_BACKEND_ORIGIN` set; loopback + dev/test skips proxy).
+ * {@link shouldProxyAdminUsersToBackend} is true (`ATXFINANCE_BACKEND_ORIGIN` set; loopback + dev/test skips unless
+ * **`ATXFINANCE_BFF_PROXY_LOOPBACK`** is on).
  *
  * Next-only persona routes (publish, archive, versions, collections, sync-from-xai, etc.) do not call this helper.
  */

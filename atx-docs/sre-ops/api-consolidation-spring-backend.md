@@ -186,6 +186,7 @@ When `proxyRequestToBackend` returns a Spring `Response`, the Next handler’s s
 ## Env hooks (repo)
 
 - `ATXFINANCE_BACKEND_ORIGIN` — BFF proxy target (`src/lib/backend-bff.ts`); read via `getAtxfinanceBackendOrigin()` from **`process.env`** (not `getEnv()` zod) so App Router handlers and Vitest do not need xAI/OAuth keys just to evaluate “proxy off”.
+- `ATXFINANCE_BFF_PROXY_LOOPBACK` — optional; when truthy (**`1`**, **`true`**, **`yes`**, **`on`**) and **`NODE_ENV`** is **`development`** or **`test`**, **`shouldProxyAdminUsersToBackend()`** is true even for **`localhost` / `127.0.0.1`** origins (default remains skip so Next + session share one Mongo).
 - `NEXT_PUBLIC_ATXFINANCE_BACKEND_ORIGIN` — optional; `getPublicAtxfinanceBackendOrigin()` for direct browser → Spring (CORS on Kotlin). Commented in `.env.example`.
 
 ## Testing gate
