@@ -9,6 +9,10 @@ import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-port
 import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import {
+    computePortfolioAccountLiveRollups,
+    type PortfolioAccountLiveRollup
+} from "@/lib/portfolio-account-live-metrics";
 import { tryIbkrLinkedAccountsSnapshotForSession } from "@/lib/portfolio-ibkr-ssr";
 import { computePortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import {
@@ -165,6 +169,20 @@ export async function PortfolioPageBody({ session }: Props) {
     }
   }
 
+  let liveByAccountHex: Record<string, PortfolioAccountLiveRollup> = {};
+  if (portfolioIdHex && accounts.length > 0 && !accountsLoadError && !portfolioLoadError) {
+    try {
+      liveByAccountHex = await computePortfolioAccountLiveRollups({
+        positionsByAccount,
+        accounts,
+        defaultCashBalance: DEFAULT_ACCOUNT_CASH_BALANCE
+      });
+    } catch (error) {
+      const detail = caughtErrorMessage(error);
+      console.warn(`[portfolio] live account rollup failed userId=${session.userId} detail=${detail}`);
+    }
+  }
+
   return (
     <>
       {portfolioLoadError ? (
@@ -241,6 +259,7 @@ export async function PortfolioPageBody({ session }: Props) {
           admin={admin}
           accounts={accounts}
           deskPrefetch={deskPrefetch}
+          liveByAccountHex={liveByAccountHex}
           metrics={metrics}
           portfolioDisplayName={portfolioDisplayName}
           portfolioIdHex={portfolioIdHex}

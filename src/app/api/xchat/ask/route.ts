@@ -1677,7 +1677,12 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!hasVisionImages && hasXfinanceTool && showWatchlistIntent) {
+  /** Watchlist snapshot is user-scoped Mongo + Yahoo; run even when the persona omits `atx_function` so "show my watchlist" always returns the formatted report. */
+  const watchlistExecutorWorkspaceOpts = hasXfinanceTool
+    ? atxWorkspaceExecutorOpts
+    : { workspaceLazyLoad: workspaceSnapshotCtx };
+
+  if (!hasVisionImages && showWatchlistIntent) {
     const executor = createXfinanceToolExecutor({
       userId: session.userId,
       tenantId: session.tenantId,
@@ -1685,7 +1690,7 @@ export async function POST(request: Request) {
       platformRoles: session.roles,
       sessionCookie,
       workspacePortfolioId,
-      ...atxWorkspaceExecutorOpts
+      ...watchlistExecutorWorkspaceOpts
     });
     const watchlistCallStartedAt = Date.now();
     const watchlistToolResult = await executor("atx_function", { operation: "watchlist_snapshot" });
@@ -1703,9 +1708,11 @@ export async function POST(request: Request) {
           addedAt?: string;
           lineType?: string;
           strategy?: string;
+          quantity?: number;
           targetEntryPrice?: number;
           entryPrice?: number;
           spotPriceDisplay?: string;
+          targetEntryDisplay?: string;
           /** 100× live quote notional — same as Watchlist page "Target entry" column. */
           targetEntryNotional100xDisplay?: string;
           /** Same basis as notional column, USD currency string. */
@@ -1745,9 +1752,14 @@ export async function POST(request: Request) {
               symbol: row.symbol!.trim().toUpperCase(),
               spotPriceDisplay:
                 typeof row.spotPriceDisplay === "string" ? row.spotPriceDisplay : undefined,
+              lineType: typeof row.lineType === "string" ? row.lineType : undefined,
+              strategy: typeof row.strategy === "string" ? row.strategy : undefined,
+              quantity: typeof row.quantity === "number" ? row.quantity : undefined,
               entryPrice: typeof row.entryPrice === "number" ? row.entryPrice : undefined,
               targetEntryPrice:
                 typeof row.targetEntryPrice === "number" ? row.targetEntryPrice : undefined,
+              targetEntryDisplay:
+                typeof row.targetEntryDisplay === "string" ? row.targetEntryDisplay : undefined,
               targetEntryNotional100xUsdDisplay:
                 typeof row.targetEntryNotional100xUsdDisplay === "string"
                   ? row.targetEntryNotional100xUsdDisplay

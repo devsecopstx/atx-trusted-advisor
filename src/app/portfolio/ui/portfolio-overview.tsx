@@ -1,6 +1,7 @@
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { buildPortfolioAccountTableRows } from "@/app/portfolio/ui/build-portfolio-account-table-rows";
 import { PortfolioManageShell } from "@/app/portfolio/ui/portfolio-manage-shell";
+import type { PortfolioAccountLiveRollup } from "@/lib/portfolio-account-live-metrics";
 import type { PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import type { Account } from "@/modules/core-admin/types";
 
@@ -15,6 +16,8 @@ type PortfolioOverviewProps = {
   metrics: PortfolioOverviewMetrics;
   admin: boolean;
   positionsByAccount: Record<string, SerializablePosition[]>;
+  /** Live marks / day P&L from Yahoo (same rules as Holdings); empty when omitted. */
+  liveByAccountHex?: Record<string, PortfolioAccountLiveRollup>;
   deskPrefetch?: PortfolioDeskPrefetchStrip | null;
 };
 
@@ -25,6 +28,7 @@ export function PortfolioOverview({
   metrics,
   admin,
   positionsByAccount,
+  liveByAccountHex = {},
   deskPrefetch = null
 }: PortfolioOverviewProps) {
   const defaultAccountHex =
@@ -38,7 +42,7 @@ export function PortfolioOverview({
       isDefault: Boolean(account.isDefault)
     }));
 
-  const tableRows = buildPortfolioAccountTableRows(accounts, metrics);
+  const tableRows = buildPortfolioAccountTableRows(accounts, metrics, liveByAccountHex);
 
   return (
     <PortfolioManageShell

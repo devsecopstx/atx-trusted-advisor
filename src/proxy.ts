@@ -112,6 +112,17 @@ async function resolveSessionGroundingOk(request: NextRequest): Promise<boolean>
         return true;
       }
 
+      // Next dev (Turbopack): App Router handlers can briefly 404 until the route module finishes compiling.
+      // Treat like transient unavailability — explicit auth denial remains `401` from the grounding route.
+      if (res.status === 404) {
+        logSessionGroundingFetchError({
+          failOpen: true,
+          httpStatus: 404,
+          reason: "session_grounding_upstream_not_found"
+        });
+        return true;
+      }
+
       const ok = res.ok;
       sessionGroundingCache.set(sessionCookie, {
         ok,

@@ -18,10 +18,17 @@ export type PortfolioAccountTableRow = {
   brokerIconUrl: string | null;
   extAccountId: string;
   positionsLabel: string;
+  /** Book-style cost basis (cash + lots + option premium) when positions exist; otherwise "—". */
   costBasisFormatted: string;
+  currentValueFormatted: string;
+  todayGainLossFormatted: string;
+  todayGainLossTone: "gain" | "loss" | "neutral" | "muted";
+  pctOfPortfolioFormatted: string;
+  quantityLabel: string;
   riskDotClassName: string;
 };
 
+const ACCOUNTS_TABLE_COLS = 9;
 const ACCOUNTS_VIRTUAL_MIN_ROWS = 14;
 const ACCOUNTS_VIRTUAL_ROW_EST_PX = 56;
 
@@ -41,6 +48,13 @@ type AccountRowProps = {
   focusAccountId: string;
   onSelectedAccountHexChange: (accountIdHex: string) => void;
 };
+
+function todayGainClass(tone: PortfolioAccountTableRow["todayGainLossTone"]): string {
+  if (tone === "gain") return "value-gain value-currency portfolio-manage-table__num";
+  if (tone === "loss") return "value-loss value-currency portfolio-manage-table__num";
+  if (tone === "neutral") return "value-neutral value-currency portfolio-manage-table__num";
+  return "portfolio-manage-table__muted portfolio-manage-table__num value-currency";
+}
 
 function PortfolioAccountTableDataRow({
   row,
@@ -79,10 +93,15 @@ function PortfolioAccountTableDataRow({
         <div className="portfolio-manage-table__ref">{row.extAccountId || "—"}</div>
       </td>
       <td className="portfolio-manage-table__num">{row.positionsLabel}</td>
-      <td className="portfolio-manage-table__num portfolio-manage-table__emph">{row.costBasisFormatted}</td>
-      <td className="portfolio-manage-table__muted" title="Open the Holdings tab for live marks">
-        —
+      <td className="portfolio-manage-table__num portfolio-manage-table__emph value-currency">
+        {row.currentValueFormatted}
       </td>
+      <td className={todayGainClass(row.todayGainLossTone)}>{row.todayGainLossFormatted}</td>
+      <td className="portfolio-manage-table__num value-currency" title="Share of total portfolio market value (all accounts)">
+        {row.pctOfPortfolioFormatted}
+      </td>
+      <td className="portfolio-manage-table__num portfolio-manage-table__mono">{row.quantityLabel}</td>
+      <td className="portfolio-manage-table__num portfolio-manage-table__emph value-currency">{row.costBasisFormatted}</td>
       <td className="portfolio-manage-table__td-actions">
         <PortfolioAccountActionsCell
           portfolioIdHex={portfolioIdHex}
@@ -148,8 +167,13 @@ export function PortfolioAccountsSection({
               <th scope="col">Account</th>
               <th scope="col">Broker / ref</th>
               <th scope="col">Positions</th>
+              <th scope="col">Current value</th>
+              <th scope="col">{`Today's P&L`}</th>
+              <th scope="col" title="Percent of total portfolio market value (all accounts)">
+                % of portfolio
+              </th>
+              <th scope="col">Qty</th>
               <th scope="col">Cost basis</th>
-              <th scope="col">Market value</th>
               <th scope="col">Actions</th>
             </tr>
           </thead>
@@ -164,7 +188,7 @@ export function PortfolioAccountsSection({
                   <>
                     {padTop > 0 ? (
                       <tr aria-hidden style={{ height: padTop }}>
-                        <td colSpan={6} style={{ padding: 0, border: "none" }} />
+                        <td colSpan={ACCOUNTS_TABLE_COLS} style={{ padding: 0, border: "none" }} />
                       </tr>
                     ) : null}
                     {vItems.map((vr) => {
@@ -182,7 +206,7 @@ export function PortfolioAccountsSection({
                     })}
                     {padBottom > 0 ? (
                       <tr aria-hidden style={{ height: padBottom }}>
-                        <td colSpan={6} style={{ padding: 0, border: "none" }} />
+                        <td colSpan={ACCOUNTS_TABLE_COLS} style={{ padding: 0, border: "none" }} />
                       </tr>
                     ) : null}
                   </>

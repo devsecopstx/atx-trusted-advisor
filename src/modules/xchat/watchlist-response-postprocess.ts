@@ -6,6 +6,10 @@ type WatchlistStructuredRow = {
   entryPrice?: number;
   targetEntryPrice?: number;
   targetEntryNotional100xUsdDisplay?: string;
+  targetEntryDisplay?: string;
+  lineType?: string;
+  strategy?: string;
+  quantity?: number;
 };
 
 type ParsedLegacyWatchlistRow = {
@@ -19,6 +23,11 @@ type EnhancedWatchlistRenderRow = {
   livePrice?: number;
   targetEntryPrice?: number;
   marketPulse?: SymbolLookupResult;
+  lineType?: string;
+  strategy?: string;
+  quantity?: number;
+  targetNotional100xUsd?: string;
+  deskEntryDisplay?: string;
 };
 
 type PostProcessWatchlistMarkdownInput = {
@@ -132,10 +141,25 @@ function structuredRowsToRenderRows(rows: WatchlistStructuredRow[]): EnhancedWat
           : typeof row.entryPrice === "number" && Number.isFinite(row.entryPrice)
             ? row.entryPrice
             : undefined;
+      const desk =
+        typeof row.targetEntryDisplay === "string" && row.targetEntryDisplay.trim().length > 0
+          ? row.targetEntryDisplay.trim()
+          : undefined;
+      const notion =
+        typeof row.targetEntryNotional100xUsdDisplay === "string" &&
+        row.targetEntryNotional100xUsdDisplay.trim().length > 0 &&
+        row.targetEntryNotional100xUsdDisplay.trim() !== "—"
+          ? row.targetEntryNotional100xUsdDisplay.trim()
+          : undefined;
       return {
         symbol,
         livePrice,
-        targetEntryPrice: targetFromRow
+        targetEntryPrice: targetFromRow,
+        lineType: row.lineType?.trim(),
+        strategy: row.strategy?.trim(),
+        quantity: row.quantity,
+        targetNotional100xUsd: notion,
+        deskEntryDisplay: desk
       };
     })
     .filter((row) => row.symbol.length > 0);
@@ -159,16 +183,23 @@ async function enrichRowsWithMarketPulse(
   });
 }
 
+function formatQty(q: number | undefined): string {
+  if (typeof q !== "number" || !Number.isFinite(q)) {
+    return "—";
+  }
+  return Number.isInteger(q) ? q.toLocaleString("en-US") : q.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
 function renderEnhancedTableMarkdown(input: {
   watchlistName?: string;
   rows: EnhancedWatchlistRenderRow[];
   portfolioId?: string;
 }): string {
   const title = input.watchlistName?.trim() || "watchlist";
-  const header = `Your ${title} has ${input.rows.length} symbol${input.rows.length === 1 ? "" : "s"}:`;
+  const header = `### Watchlist — ${title}\n\n${input.rows.length} symbol${input.rows.length === 1 ? "" : "s"} (Spot and **Target entry** use live marks where available; desk **Entry** is your saved price).`;
   const tableLines = [
-    "| Symbol | Spot | 1D Delta | Distance to Target | xOptions CTA |",
-    "|---|---:|---:|---:|---|"
+    "| Symbol | Type | Strategy | Qty | Spot | Target entry (100×) | Desk entry | 1D Δ | To target | xOptions |",
+    "|---|---|---|---:|---:|---:|---:|---:|---:|---|"
   ];
   for (const row of input.rows) {
     const symbol = row.symbol;
@@ -182,22 +213,37 @@ function renderEnhancedTableMarkdown(input: {
     });
     const distance = formatSignedPercent(distancePct);
     const ctaHref = buildXoptionsSymbolHref(symbol, input.portfolioId);
-    const cta = `[Open ${symbol} in xOptions](${ctaHref} "Open xOptions for ${symbol}")`;
-    tableLines.push(`| ${symbol} | ${spot} | ${delta} | ${distance} | ${cta} |`);
+    const cta = `[Open ${symbol}](${ctaHref} "Open xOptions for ${symbol}")`;
+    const lineType = row.lineType && row.lineType.length > 0 ? row.lineType : "—";
+    const strategy = row.strategy && row.strategy.length > 0 ? row.strategy : "—";
+    const qty = formatQty(row.quantity);
+    const target100 = row.targetNotional100xUsd ?? "—";
+    const desk =
+      row.deskEntryDisplay && row.deskEntryDisplay.length > 0
+        ? row.deskEntryDisplay
+        : formatUsd(row.targetEntryPrice);
+    tableLines.push(
+      `| ${symbol} | ${lineType} | ${strategy} | ${qty} | ${spot} | ${target100} | ${desk} | ${delta} | ${distance} | ${cta} |`
+    );
   }
   return [
     header,
     "",
     ...tableLines,
     "",
-    "_Accessibility note: each CTA includes the symbol in visible link text and title for clearer screen-reader narration._"
+    "_Not investment advice. Quotes are indicative._"
   ].join("\n");
 }
 
 export async function postProcessWatchlistMarkdown(
   input: PostProcessWatchlistMarkdownInput
 ): Promise<string> {
-  if (input.rawMarkdown.includes("| Symbol |") && input.rawMarkdown.includes("| Spot |")) {
+  const hasStructured = Array.isArray(input.structuredRows) && input.structuredRows.length > 0;
+  if (
+    !hasStructured &&
+    input.rawMarkdown.includes("| Symbol |") &&
+    input.rawMarkdown.includes("| Spot |")
+  ) {
     return input.rawMarkdown;
   }
 

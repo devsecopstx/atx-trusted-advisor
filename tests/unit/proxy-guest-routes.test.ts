@@ -110,6 +110,27 @@ describe("proxy (middleware) guest HTML routes", () => {
     }
   });
 
+  it("fail-opens session grounding on 404 from session-grounding route (dev cold compile / not ready)", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : (input as Request).url;
+      if (url.includes("/api/internal/authz/session-grounding")) {
+        return new Response("Not Found", { status: 404 });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    try {
+      const res = await proxy(request("/api/personas", "signed-session-404-grounding"));
+      expect(res.status).not.toBe(401);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it("fail-opens tenant ux policy when internal route returns 200 with invalid JSON (V2 on, fail-open)", async () => {
     vi.stubEnv("TENANT_UX_ENFORCEMENT_V2", "true");
     vi.stubEnv("TENANT_UX_POLICY_FAIL_CLOSED", "false");
@@ -227,7 +248,7 @@ describe("proxy (middleware) guest HTML routes", () => {
       throw new Error(`unexpected fetch ${url}`);
     });
     try {
-      const res = await proxy(request("/api/personas", "signed-session"));
+      const res = await proxy(request("/api/personas", "signed-session-grounding-401"));
       expect(res.status).toBe(401);
       const json = (await res.json()) as { code?: string };
       expect(json.code).toBe("session_not_grounded");

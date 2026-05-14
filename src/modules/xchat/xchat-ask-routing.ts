@@ -130,7 +130,8 @@ export function isShowWatchlistIntent(message: string): boolean {
     normalized.includes("show watchlist") ||
     normalized.includes("show my watchlist") ||
     normalized.includes("list my watchlist") ||
-    normalized.includes("what is in my watchlist")
+    normalized.includes("what is in my watchlist") ||
+    /\b(show|list|view|see|display)\s+(me\s+)?(my|our)\s+watchlist\b/.test(normalized)
   );
 }
 

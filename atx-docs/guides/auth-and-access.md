@@ -29,7 +29,7 @@ Session payload distinguishes:
 
 **Fails:** **401** JSON **`code`**: `invalid_session`, `user_ineligible`, `account_not_approved`, `no_tenant_membership`. On protected **API** paths the proxy returns **401** **`session_not_grounded`** and clears the session cookie; on **HTML** paths → redirect **`/xchat?error=session_not_grounded`** + cookie clear.
 
-**Transient failures (fail-open):** If the edge **`fetch`** to **`session-grounding`** **throws** (network, timeout ~10s) or the route returns **5xx** / **429**, the proxy **does not** deny or clear the cookie — route handlers still run **`requireSessionUser`** and Mongo checks. Logs **`session_grounding_fetch_error`** with **`failOpen: true`** / **`reason`** (`session_grounding_fetch_throw_or_timeout` or **`session_grounding_upstream_transient`**). This avoids logging users out on refresh when the internal check flakes.
+**Transient failures (fail-open):** If the edge **`fetch`** to **`session-grounding`** **throws** (network, timeout ~10s) or the route returns **5xx** / **429**, the proxy **does not** deny or clear the cookie — route handlers still run **`requireSessionUser`** and Mongo checks. Logs **`session_grounding_fetch_error`** with **`failOpen: true`** / **`reason`** (`session_grounding_fetch_throw_or_timeout` or **`session_grounding_upstream_transient`**). **`404`** from the same-origin check is also fail-open (**`reason`**: **`session_grounding_upstream_not_found`**) so **`next dev` (Turbopack)** cold compiles do not clear **`xf_core_session`** while App Router handlers are still registering. This avoids logging users out on refresh when the internal check flakes.
 
 **Disable (break-glass only):** **`SESSION_EDGE_GROUNDING=0`**, **`false`**, or **`no`** — see **`.env.example`**.
 
@@ -130,7 +130,7 @@ Keep these aligned to avoid missing cookie context and callback failures:
 - `access_request_pending`: account exists but lacks login-allowed role
 - `email_unverified`: account has login role but `core_users.emailVerifiedAt` is missing; verification token/email was (best-effort) issued and OAuth session is denied until verify-email completes
 - `bootstrap_failed`: post-auth bootstrap failed (membership/session persistence path)
-- `session_not_grounded`: edge proxy rejected the session after **`GET /api/internal/authz/session-grounding`** failed (stale cookie, suspended/rejected/unapproved user, missing membership, or internal fetch error when fail-closed)
+- `session_not_grounded`: edge proxy rejected the session after **`GET /api/internal/authz/session-grounding`** returned **401** (stale cookie, suspended/rejected/unapproved user, missing membership) or another **non-2xx** response that is **not** in the proxy’s fail-open set (see § Edge session grounding)
 
 ## App_user HTTP 500 triage
 
