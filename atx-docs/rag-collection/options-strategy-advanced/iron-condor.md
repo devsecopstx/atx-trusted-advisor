@@ -1,7 +1,13 @@
 ---
-id: xfinance-strategy-iron-condor
-name: xfinance-strategy-iron-condor
-description: Iron condor — short OTM put spread + short OTM call spread; range income with defined wings (advanced depth).
+id: xfinance-strategy-iron-condor-advanced
+name: xfinance-strategy-iron-condor-advanced
+description: Iron condor — short OTM put spread + short OTM call spread; range income with defined wings (advanced depth)
+strategy_type: iron_condor
+risk_level: balanced
+market_condition: range_bound
+complexity: advanced
+underlying_type: index
+tags: [income, defined_risk, four_leg, range_bound]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->

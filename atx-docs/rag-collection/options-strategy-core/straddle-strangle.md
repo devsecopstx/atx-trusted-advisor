@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-straddle-strangle
 name: xfinance-strategy-straddle-strangle
-description: Long straddle / strangle — buy call + put (same or different strikes) for volatility or gap expression; defined premium at risk.
+description: Long straddle / strangle — long call + put for volatility or gap expression; full debit at risk
+strategy_type: straddle
+risk_level: aggressive
+market_condition: high_volatility
+complexity: core
+underlying_type: stock
+tags: [volatility, debit, strangle, catalyst, theta_negative]
 ---
 
 # xFinance Strategy: Straddle & strangle (long)

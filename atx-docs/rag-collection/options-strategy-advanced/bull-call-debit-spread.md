@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-bull-call-debit-spread
 name: xfinance-strategy-bull-call-debit-spread
-description: Bull call debit spread — long lower call, short higher call; defined risk bullish leverage.
+description: Bull call debit spread — long lower call, short higher call; defined risk bullish leverage
+strategy_type: bull_call_debit_spread
+risk_level: balanced
+market_condition: bullish
+complexity: advanced
+underlying_type: stock
+tags: [debit_spread, defined_risk, bullish, vertical]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->

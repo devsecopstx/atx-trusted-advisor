@@ -1,7 +1,13 @@
 ---
-id: xfinance-strategy-iron-condor
-name: xfinance-strategy-iron-condor
-description: Iron Condor and Jade Lizard – defined-risk premium collection strategies for range-bound markets.
+id: xfinance-strategy-iron-condor-jade-lizard
+name: xfinance-strategy-iron-condor-jade-lizard
+description: Iron condor and jade lizard — range-bound premium with defined-risk wings
+strategy_type: iron_condor
+risk_level: balanced
+market_condition: range_bound
+complexity: core
+underlying_type: index
+tags: [income, defined_risk, jade_lizard, skew, range_bound]
 ---
 
 # xFinance Strategy: Iron Condor & Jade Lizard

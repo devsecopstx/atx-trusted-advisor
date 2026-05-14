@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-wheel
 name: xfinance-strategy-wheel
-description: Wheel strategy (CSP to Covered Call cycle) – income generation with defined risk and systematic premium collection.
+description: Wheel strategy (CSP → Covered Call cycle) for systematic premium collection and assignment-aware income
+strategy_type: wheel
+risk_level: balanced
+market_condition: neutral_to_bullish
+complexity: core
+underlying_type: stock
+tags: [income, assignment, cost_basis_reduction, defined_risk]
 ---
 
 # xFinance Strategy: Wheel Strategy

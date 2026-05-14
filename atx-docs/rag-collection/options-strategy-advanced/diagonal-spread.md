@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-diagonal-spread
 name: xfinance-strategy-diagonal-spread
-description: Diagonal spread — long far option + short near option at different strikes; theta harvest with directional bias.
+description: Diagonal spread — long far option + short near option at different strikes; theta harvest with directional bias
+strategy_type: diagonal_spread
+risk_level: aggressive
+market_condition: bullish
+complexity: advanced
+underlying_type: stock
+tags: [time_spread, rolls, theta, leveraged_carry]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->

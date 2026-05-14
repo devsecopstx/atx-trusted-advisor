@@ -1,7 +1,13 @@
 ---
 id: xfinance-meta-volatility-iv-rank
 name: xfinance-meta-volatility-iv-rank
-description: IV rank vs IV percentile and post-event IV crush — regime vocabulary for premium sellers and vol buyers (educational).
+description: IV rank vs IV percentile and post-event IV crush — regime vocabulary for premium sellers and vol buyers (educational)
+strategy_type: volatility_indicators
+risk_level: balanced
+market_condition: high_volatility
+complexity: core
+underlying_type: stock
+tags: [iv_rank, iv_crush, regime_filter, premium_selling, vol_buying]
 ---
 
 # xFinance desk: Volatility rank & IV crush (core)

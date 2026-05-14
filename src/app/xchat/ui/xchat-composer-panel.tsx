@@ -86,6 +86,8 @@ export type XchatComposerPanelProps = {
   voiceSessionPersonaLabel: string;
   reasoningMode: XchatReasoningMode;
   setReasoningMode: (mode: XchatReasoningMode) => void;
+  /** Short-lived notice (e.g. persona auto-switch for Heavy depth). */
+  depthModeToast?: string | null;
   /** -1 = hidden; 0–3 = phased status copy while ask is in flight */
   askProgressPhaseIndex: number;
   quoteFreshness: "cached_first" | "live";
@@ -121,6 +123,7 @@ export function XchatComposerPanel({
   voiceSessionPersonaLabel,
   reasoningMode,
   setReasoningMode,
+  depthModeToast = null,
   askProgressPhaseIndex,
   quoteFreshness,
   onQuoteFreshnessChange,
@@ -589,6 +592,11 @@ export function XchatComposerPanel({
           className="xchat-composer__toolbar-meta"
           role="region"
         >
+          {depthModeToast ? (
+            <p className="status-text xchat-depth-mode-toast" role="status">
+              {depthModeToast}
+            </p>
+          ) : null}
           <XchatReasoningModeToggle
             compact
             disabled={loading}

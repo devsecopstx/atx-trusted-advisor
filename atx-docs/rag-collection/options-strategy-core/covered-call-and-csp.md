@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-covered-call-csp
 name: xfinance-strategy-covered-call-csp
-description: Covered Call and Cash-Secured Put strategies – core income generation tools with defined mechanics and risk management.
+description: Covered call and cash-secured put — core single-leg income tools with defined mechanics
+strategy_type: covered_call
+risk_level: balanced
+market_condition: neutral_to_bullish
+complexity: core
+underlying_type: stock
+tags: [income, premium, assignment, cash_secured_put, wheel_component]
 ---
 
 # xFinance Strategy: Covered Call & Cash-Secured Put (CSP)

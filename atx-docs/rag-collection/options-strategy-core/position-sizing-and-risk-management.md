@@ -1,7 +1,13 @@
 ---
 id: xfinance-meta-position-sizing
 name: xfinance-meta-position-sizing
-description: Cross-strategy position sizing and risk budget rules for options overlays on HNWI books (not a single payoff structure).
+description: Cross-strategy position sizing and risk budget rules for options overlays on HNWI books (not a single payoff structure)
+strategy_type: position_sizing
+risk_level: balanced
+market_condition: neutral
+complexity: core
+underlying_type: stock
+tags: [risk_management, portfolio, sizing, hnwi, cross_cutting]
 ---
 
 # xFinance desk: Position sizing & risk management (core)

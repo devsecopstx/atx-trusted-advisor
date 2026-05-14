@@ -1,6 +1,6 @@
 "use client";
 
-import type { XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
+import { xchatDepthComposerCaption, type XchatReasoningMode } from "@/modules/xchat/xchat-reasoning-mode";
 
 export type XchatComposerRailLastTurnRouting = {
   executionModel?: string;
@@ -76,7 +76,8 @@ export function XchatComposerRailRouting({
         <span className="xchat-rail-token-stats__value">{configuredModel || "loading…"}</span>
       </p>
       <p className="status-text xchat-rail-token-stats__line">
-        Depth · <span className="xchat-rail-token-stats__value">{reasoningMode}</span>
+        Depth ·{" "}
+        <span className="xchat-rail-token-stats__value">{xchatDepthComposerCaption(reasoningMode)}</span>
       </p>
       <p className="status-text xchat-rail-token-stats__line">
         Last turn model ·{" "}

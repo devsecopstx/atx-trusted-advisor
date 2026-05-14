@@ -1,7 +1,13 @@
 ---
 id: xfinance-meta-payoff-templates
 name: xfinance-meta-payoff-templates
-description: Payoff building blocks — vertical, iron condor, single-leg — max profit / max loss / breakeven cheat sheet (illustrative numbers).
+description: Payoff building blocks — vertical, iron condor, single-leg — max profit / max loss / breakeven cheat sheet (illustrative numbers)
+strategy_type: payoff_reference
+risk_level: balanced
+market_condition: neutral
+complexity: core
+underlying_type: stock
+tags: [reference, breakeven, templates, vertical_spread, education]
 ---
 
 # xFinance desk: Payoff templates & examples (core)

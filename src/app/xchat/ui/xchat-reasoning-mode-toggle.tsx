@@ -2,7 +2,9 @@
 
 import {
     XCHAT_DEPTH_MODE_GROUP_HINT,
-    XCHAT_DEPTH_ROUTING_MODEL_LABELS,
+    xchatDepthComposerCaption,
+    xchatDepthCostTier,
+    xchatDepthPresetLabel,
     type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
 
@@ -14,10 +16,10 @@ export type XchatReasoningModeToggleProps = {
   compact?: boolean;
 };
 
-const MODES: Array<{ id: XchatReasoningMode; label: string; hint: string }> = [
-  { id: "fast", label: "Fast", hint: "Grok 4.1 Fast — lowest latency for this turn" },
-  { id: "expert", label: "Expert", hint: "Grok 4.3 — medium reasoning effort" },
-  { id: "heavy", label: "Heavy", hint: "Grok 4.3 — high reasoning effort" }
+const MODES: Array<{ id: XchatReasoningMode; hint: string }> = [
+  { id: "fast", hint: "Grok 4.1 Fast — lowest latency for this turn" },
+  { id: "expert", hint: "Grok 4.3 — medium reasoning effort" },
+  { id: "heavy", hint: "Grok 4.3 — high reasoning effort" }
 ];
 
 export function XchatReasoningModeToggle({
@@ -46,12 +48,15 @@ export function XchatReasoningModeToggle({
             type="button"
             onClick={() => onChange(m.id)}
           >
-            {m.label}
+            <span className="xchat-reasoning-mode__seg-label">{xchatDepthPresetLabel(m.id)}</span>
+            <span className="xchat-reasoning-mode__seg-cost" aria-hidden>
+              {xchatDepthCostTier(m.id)}
+            </span>
           </button>
         ))}
       </div>
       <span className="xchat-reasoning-mode__model-id" title={XCHAT_DEPTH_MODE_GROUP_HINT}>
-        {XCHAT_DEPTH_ROUTING_MODEL_LABELS[value]}
+        {xchatDepthComposerCaption(value)}
       </span>
     </div>
   );

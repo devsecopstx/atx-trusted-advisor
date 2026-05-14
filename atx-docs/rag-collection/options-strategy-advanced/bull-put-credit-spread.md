@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-bull-put-credit-spread
 name: xfinance-strategy-bull-put-credit-spread
-description: Bull put credit spread — short higher put, long lower put; collect credit for bullish / mild-bull premium with defined risk.
+description: Bull put credit spread — short higher put, long lower put; collect credit for bullish / mild-bull premium with defined risk
+strategy_type: bull_put_credit_spread
+risk_level: balanced
+market_condition: bullish
+complexity: advanced
+underlying_type: stock
+tags: [credit_spread, defined_risk, bullish, premium]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->

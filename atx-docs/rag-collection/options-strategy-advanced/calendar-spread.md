@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-calendar-spread
 name: xfinance-strategy-calendar-spread
-description: Calendar spread — same strike, different expiries; trade near-term decay vs longer-dated vega.
+description: Calendar spread — same strike, different expiries; trade near-term decay vs longer-dated vega
+strategy_type: calendar_spread
+risk_level: balanced
+market_condition: neutral
+complexity: advanced
+underlying_type: stock
+tags: [time_spread, vega, theta, term_structure]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->

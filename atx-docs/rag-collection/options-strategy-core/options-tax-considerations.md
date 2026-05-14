@@ -1,7 +1,13 @@
 ---
 id: xfinance-meta-options-tax-hnwi
 name: xfinance-meta-options-tax-hnwi
-description: High-signal US options tax & assignment checklist for HNWI desks — educational, not personalized tax advice.
+description: High-signal US options tax & assignment checklist for HNWI desks — educational, not personalized tax advice
+strategy_type: tax_compliance
+risk_level: conservative
+market_condition: neutral
+complexity: core
+underlying_type: stock
+tags: [tax, assignment, hnwi, compliance_aware, checklist]
 ---
 
 # xFinance desk: Options tax & assignment (HNWI checklist)

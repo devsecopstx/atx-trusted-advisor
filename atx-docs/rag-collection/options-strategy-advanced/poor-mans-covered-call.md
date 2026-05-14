@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-poor-mans-covered-call
 name: xfinance-strategy-poor-mans-covered-call
-description: Poor man's covered call — long LEAP call as stock substitute + short OTM calls for income; leverage + decay risk.
+description: Poor man's covered call — long LEAP call as stock substitute + short OTM calls for income; leverage + decay risk
+strategy_type: poor_mans_covered_call
+risk_level: conservative
+market_condition: bullish
+complexity: advanced
+underlying_type: stock
+tags: [income, leap, leverage, pmcc, covered_call_style]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->

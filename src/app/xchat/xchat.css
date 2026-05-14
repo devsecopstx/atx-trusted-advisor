@@ -4906,6 +4906,9 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-reasoning-mode__seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
   border: none;
   margin: 0;
   padding: 0.28rem 0.65rem;
@@ -4915,6 +4918,17 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   cursor: pointer;
   color: var(--xf-text-400);
   background: transparent;
+}
+
+.xchat-reasoning-mode__seg-cost {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--xf-text-400) 85%, transparent);
+}
+
+.xchat-reasoning-mode__seg--active .xchat-reasoning-mode__seg-cost {
+  color: color-mix(in srgb, var(--xf-bg-950, #050505) 72%, var(--xf-text-400));
 }
 
 .xchat-reasoning-mode__seg:hover:not(:disabled) {
@@ -5748,6 +5762,17 @@ html:not([data-xf-ui="soft"]) .xchat-composer__textarea--grok {
   margin: 0;
   font-size: 0.76rem;
   line-height: 1.35;
+}
+
+.xchat-depth-mode-toast {
+  margin: 0 0 0.25rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--xf-text-200);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 38%, transparent);
 }
 
 .xchat-composer-attach-note {

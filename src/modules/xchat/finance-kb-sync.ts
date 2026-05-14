@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
+import { parse as parseYaml } from "yaml";
+
 import { addFileToXaiCollection, uploadFileToXai } from "@/lib/xai";
 import {
     getXaiFinanceCollectionId,
@@ -10,6 +12,42 @@ import {
 
 const INGEST_EXTENSIONS = new Set([".md", ".markdown", ".yaml", ".yml"]);
 const SKIP_FILE_NAMES = new Set(["readme.md", ".ds_store"]);
+
+/** YAML keys merged into `xfinance-kb-metadata` on upload (Finance KB markdown frontmatter). */
+const FINANCE_KB_FRONTMATTER_METADATA_KEYS = new Set([
+  "id",
+  "name",
+  "description",
+  "strategy_type",
+  "risk_level",
+  "market_condition",
+  "complexity",
+  "underlying_type",
+  "tags"
+]);
+
+export function extractFinanceKbFrontmatterMetadata(raw: string): Record<string, unknown> {
+  const m = raw.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!m?.[1]) {
+    return {};
+  }
+  let parsed: unknown;
+  try {
+    parsed = parseYaml(m[1]);
+  } catch {
+    return {};
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {};
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+    if (FINANCE_KB_FRONTMATTER_METADATA_KEYS.has(k) && v !== undefined && v !== null) {
+      out[k] = v;
+    }
+  }
+  return out;
+}
 
 export type FinanceKbSyncError = {
   source: string;
@@ -156,13 +194,19 @@ export async function syncFinanceKnowledgeBaseToXai(input: {
         continue;
       }
       const bytes = await readFile(file.abs);
+      const text = bytes.toString("utf8");
       const riskProfile = inferRiskProfile(file.rel);
+      const fm =
+        file.rel.toLowerCase().endsWith(".md") || file.rel.toLowerCase().endsWith(".markdown")
+          ? extractFinanceKbFrontmatterMetadata(text)
+          : {};
       const metadata = {
         source: file.source,
         slug: file.rel.replace(/\.[^.]+$/, ""),
         ...(riskProfile ? { risk_profile: riskProfile } : {}),
         category: file.source,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
+        ...fm
       };
       const logicalFilename = normalizeLogicalUploadName(file.source, file.rel);
       const payload = Buffer.concat([

@@ -77,11 +77,11 @@ import {
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
-import {
-  XCHAT_REASONING_MODE_STORAGE_KEY,
-  type XchatReasoningMode
-} from "@/modules/xchat/xchat-reasoning-mode";
 import { isHnwiPromptTemplateV21Slug } from "@/modules/xchat/prompt-templates-v21-defaults";
+import {
+    XCHAT_REASONING_MODE_STORAGE_KEY,
+    type XchatReasoningMode
+} from "@/modules/xchat/xchat-reasoning-mode";
 
 /** Client fallback when `serverBootstrap.liveSseEnabled` is absent (SSR dynamic route edge cases). */
 const XCHAT_LIVE_SSE_ENV_FALLBACK = resolveXchatClientLiveSseEnabled();
@@ -479,6 +479,11 @@ export function XchatConversation({
   const sendSubmittingRef = useRef(false);
   const hnwiV21SlugForNextAskRef = useRef<string | null>(null);
 
+  const prevPersonaIdForReasoningHydrateRef = useRef("");
+  const skipNextPersonaReasoningHydrateRef = useRef(false);
+  const depthModeToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [depthModeToast, setDepthModeToast] = useState<string | null>(null);
+
   const tenantFileUploadEnabled = useMemo(
     () =>
       canAccessPremiumTenantAttachments(
@@ -704,6 +709,7 @@ export function XchatConversation({
     setStrategyJobOptOut(false);
     setThreadHistoryExpanded(false);
     setThreadUiCollapsed(false);
+    setReasoningMode("fast");
     queueMicrotask(() => composerRef.current?.focus());
   }, []);
 
@@ -743,6 +749,49 @@ export function XchatConversation({
   }, [workspacePortfolioId, requestedWorkspaceAccountId]);
 
   const personaSelectRows = useMemo(() => personaPickerRows, [personaPickerRows]);
+
+  const reasoningStorageKeyForPersona = useCallback((personaId: string) => {
+    const id = personaId.trim();
+    return id.length > 0 ? `${XCHAT_REASONING_MODE_STORAGE_KEY}:${id}` : null;
+  }, []);
+
+  const clearDepthModeToastSoon = useCallback((msg: string) => {
+    if (depthModeToastTimerRef.current != null) {
+      clearTimeout(depthModeToastTimerRef.current);
+    }
+    setDepthModeToast(msg);
+    depthModeToastTimerRef.current = setTimeout(() => {
+      setDepthModeToast(null);
+      depthModeToastTimerRef.current = null;
+    }, 4200);
+  }, []);
+
+  const applyReasoningModeChange = useCallback(
+    (next: XchatReasoningMode) => {
+      if (next === "heavy" && !personaPickerLocked && personaSelectRows.length > 0) {
+        const advisorRow = personaSelectRows.find((p) => p.name.trim().toLowerCase() === "advisor");
+        const currentRow = personaSelectRows.find((p) => p._id === selectedPersonaId.trim());
+        const curName = currentRow?.name.trim().toLowerCase() ?? "";
+        if (advisorRow && curName !== "advisor") {
+          skipNextPersonaReasoningHydrateRef.current = true;
+          userPickedPersonaRef.current = true;
+          setSelectedPersonaId(advisorRow._id);
+          clearDepthModeToastSoon("Switched to Deep Research Mode — Advisor persona for Heavy depth.");
+        }
+      }
+      setReasoningMode(next);
+    },
+    [clearDepthModeToastSoon, personaPickerLocked, personaSelectRows, selectedPersonaId]
+  );
+
+  useEffect(
+    () => () => {
+      if (depthModeToastTimerRef.current != null) {
+        clearTimeout(depthModeToastTimerRef.current);
+      }
+    },
+    []
+  );
   const selectedPersonaModel = useMemo(() => {
     const id = selectedPersonaId.trim();
     if (!id) {
@@ -1203,23 +1252,60 @@ export function XchatConversation({
   ]);
 
   useEffect(() => {
+    const id = selectedPersonaId.trim();
+    if (!personaListFetched || id.length === 0) {
+      return;
+    }
+    if (prevPersonaIdForReasoningHydrateRef.current === id) {
+      return;
+    }
+    if (skipNextPersonaReasoningHydrateRef.current) {
+      skipNextPersonaReasoningHydrateRef.current = false;
+      prevPersonaIdForReasoningHydrateRef.current = id;
+      return;
+    }
+    const row = personaPickerRows.find((p) => p._id === id);
+    const isFinanceAdvisor = row?.name.trim().toLowerCase() === "finance-advisor";
+    const key = reasoningStorageKeyForPersona(id);
+    if (!key) {
+      return;
+    }
     try {
-      const raw = localStorage.getItem(XCHAT_REASONING_MODE_STORAGE_KEY);
+      let raw = localStorage.getItem(key);
+      if (raw == null && !isFinanceAdvisor) {
+        const legacy = localStorage.getItem(XCHAT_REASONING_MODE_STORAGE_KEY);
+        if (legacy === "fast" || legacy === "expert" || legacy === "heavy") {
+          raw = legacy;
+          localStorage.setItem(key, legacy);
+        }
+      }
       if (raw === "fast" || raw === "expert" || raw === "heavy") {
         setReasoningMode(raw);
+      } else if (isFinanceAdvisor) {
+        setReasoningMode("fast");
       }
     } catch {
       /* ignore */
     }
-  }, []);
+    prevPersonaIdForReasoningHydrateRef.current = id;
+  }, [
+    personaListFetched,
+    personaPickerRows,
+    reasoningStorageKeyForPersona,
+    selectedPersonaId
+  ]);
 
   useEffect(() => {
+    const key = reasoningStorageKeyForPersona(selectedPersonaId);
+    if (!key) {
+      return;
+    }
     try {
-      localStorage.setItem(XCHAT_REASONING_MODE_STORAGE_KEY, reasoningMode);
+      localStorage.setItem(key, reasoningMode);
     } catch {
       /* ignore */
     }
-  }, [reasoningMode]);
+  }, [reasoningMode, reasoningStorageKeyForPersona, selectedPersonaId]);
 
   useEffect(() => {
     const focusComposer = () => {
@@ -1332,6 +1418,7 @@ export function XchatConversation({
       setActiveThreadId(createThreadId());
       setThreadHistoryExpanded(false);
       setStrategyJobOptOut(false);
+      setReasoningMode("fast");
       setHistoryStats((prev) =>
         prev
           ? {
@@ -2243,6 +2330,7 @@ export function XchatConversation({
             composerFormRef={composerFormRef}
             composerRef={composerRef}
             templatesGalleryInitiallyExpanded={initialXchatItem === "examples"}
+            depthModeToast={depthModeToast}
             handleSend={handleSend}
             input={input}
             loading={loading}
@@ -2259,7 +2347,7 @@ export function XchatConversation({
             setInput={setInput}
             setPasteImageError={setPasteImageError}
             setPendingPasteImages={setPendingPasteImages}
-            setReasoningMode={setReasoningMode}
+            setReasoningMode={applyReasoningModeChange}
             setSelectedPersonaId={setSelectedPersonaId}
             setVisionUseWorkspace={setVisionUseWorkspace}
             sourcesRailHref={sourcesRailHref}

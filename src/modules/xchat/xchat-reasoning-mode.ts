@@ -19,13 +19,40 @@ export const XCHAT_DEPTH_ROUTING_MODEL_LABELS: Record<XchatReasoningMode, string
   heavy: "Grok 4.3"
 };
 
+const XCHAT_DEPTH_PRESET_LABELS: Record<XchatReasoningMode, string> = {
+  fast: "Fast",
+  expert: "Expert",
+  heavy: "Heavy"
+};
+
+/** UI preset name (Depth control). */
+export function xchatDepthPresetLabel(mode: XchatReasoningMode): string {
+  return XCHAT_DEPTH_PRESET_LABELS[mode];
+}
+
+/** Relative cost hint for depth presets (not vendor pricing). */
+export function xchatDepthCostTier(mode: XchatReasoningMode): string {
+  if (mode === "fast") {
+    return "$";
+  }
+  if (mode === "expert") {
+    return "$$";
+  }
+  return "$$$";
+}
+
+/** Composer / rail: preset + routed model (matches ask-route overrides for that turn). */
+export function xchatDepthComposerCaption(mode: XchatReasoningMode): string {
+  return `${xchatDepthPresetLabel(mode)} · ${XCHAT_DEPTH_ROUTING_MODEL_LABELS[mode]}`;
+}
+
 /** User-facing model label for the composer Depth preset (matches ask-route overrides). */
 export function xchatDepthRoutingModelLabel(mode: XchatReasoningMode): string {
   return XCHAT_DEPTH_ROUTING_MODEL_LABELS[mode];
 }
 
 export const XCHAT_DEPTH_MODE_GROUP_HINT =
-  "Fast = Grok 4.1 Fast · Expert = Grok 4.3 (medium reasoning) · Heavy = Grok 4.3 (high reasoning)";
+  "Fast ($) = Grok 4.1 Fast · Expert ($$) = Grok 4.3 medium reasoning · Heavy ($$$) = Grok 4.3 high reasoning";
 
 /** Legacy body control; includes **`none`** for grok-4.3 (disables reasoning per xAI docs). */
 export type RequestedReasoningEffortInput = "none" | "low" | "medium" | "high" | "xhigh";

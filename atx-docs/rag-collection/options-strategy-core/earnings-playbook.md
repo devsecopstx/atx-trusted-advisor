@@ -1,7 +1,13 @@
 ---
 id: xfinance-meta-earnings-playbook
 name: xfinance-meta-earnings-playbook
-description: Earnings-window playbook — reduce size, define invalidation, and separate vol trade from directional thesis (educational).
+description: Earnings-window playbook — reduce size, define invalidation, and separate vol trade from directional thesis (educational)
+strategy_type: earnings_event
+risk_level: aggressive
+market_condition: high_volatility
+complexity: core
+underlying_type: stock
+tags: [earnings, event_risk, sizing, catalyst, playbook]
 ---
 
 # xFinance desk: Earnings playbook (core)

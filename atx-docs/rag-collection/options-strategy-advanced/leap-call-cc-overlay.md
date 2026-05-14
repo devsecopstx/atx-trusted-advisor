@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-leap-call-cc-overlay
 name: xfinance-strategy-leap-call-cc-overlay
-description: LEAP call plus covered-call-style short overlays — aggressive bullish carry with path risk.
+description: LEAP call plus covered-call-style short overlays — aggressive bullish carry with path risk
+strategy_type: leap_call_overlay
+risk_level: aggressive
+market_condition: bullish
+complexity: advanced
+underlying_type: stock
+tags: [leap, covered_call_overlay, income, leverage]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
