@@ -3,7 +3,6 @@ id: xfinance-guidelines-tone-and-framing
 name: xfinance-guidelines-tone-and-framing
 description: Voice, risk-profile framing, approved phrases, and prohibited hype language for advisor tone
 doc_type: tone_framing
-audience: hnwi_professional
 surface: xchat
 tags: [voice, risk_profile, hnwi, prohibited_language]
 ---

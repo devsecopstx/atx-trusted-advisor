@@ -3,7 +3,6 @@ id: xfinance-guidelines-response-structure
 name: xfinance-guidelines-response-structure
 description: Mandatory xChat reply outline from opening through closing and length guidance
 doc_type: response_structure
-audience: hnwi_professional
 surface: xchat
 tags: [layout, recommendations, risk_section, word_count]
 ---

@@ -3,7 +3,6 @@ id: xfinance-guidelines-report-structure
 name: xfinance-guidelines-report-structure
 description: Branded report sections from executive summary through appendix and delivery expectations
 doc_type: report_template
-audience: hnwi_professional
 surface: reports
 tags: [pdf, executive_summary, portfolio_snapshot, compliance_section]
 ---

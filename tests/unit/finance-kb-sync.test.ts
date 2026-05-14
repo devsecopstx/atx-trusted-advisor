@@ -49,9 +49,7 @@ id: xfinance-guidelines-citation-format
 name: xfinance-guidelines-citation-format
 description: Cite sources
 doc_type: citation_format
-audience: hnwi_professional
 surface: xchat
-compliance_scope: none
 tags: [citations]
 strategy_type: wheel
 ---
@@ -63,9 +61,7 @@ strategy_type: wheel
       name: "xfinance-guidelines-citation-format",
       description: "Cite sources",
       doc_type: "citation_format",
-      audience: "hnwi_professional",
       surface: "xchat",
-      compliance_scope: "none",
       tags: ["citations"]
     });
   });

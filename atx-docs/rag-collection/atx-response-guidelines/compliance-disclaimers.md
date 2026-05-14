@@ -3,8 +3,6 @@ id: xfinance-guidelines-compliance-disclaimers
 name: xfinance-guidelines-compliance-disclaimers
 description: Required and strategy-specific disclaimers for xChat and report outputs (educational, not legal advice)
 doc_type: compliance
-audience: hnwi_professional
-surface: xchat
 compliance_scope: universal_and_strategy
 tags: [disclaimer, regulatory, options_risk, tax_awareness]
 ---

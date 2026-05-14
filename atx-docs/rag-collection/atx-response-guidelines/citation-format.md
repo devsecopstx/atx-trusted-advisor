@@ -3,7 +3,6 @@ id: xfinance-guidelines-citation-format
 name: xfinance-guidelines-citation-format
 description: Inline and footer citation rules for market data, RAG, and Finance KB references
 doc_type: citation_format
-audience: hnwi_professional
 surface: xchat
 tags: [citations, grounding, rag, market_data]
 ---
