@@ -31,7 +31,7 @@ type WalkedFile = {
 };
 
 /** Strategy folder slug (nested `slug/slug.md`) or flat file stem (`stem.md`). */
-function strategySlugFromRelativePath(relativePath: string): string {
+export function strategySlugFromRelativePath(relativePath: string): string {
   const posix = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
   const parts = posix.split("/").filter(Boolean);
   if (parts.length >= 2) {
@@ -41,7 +41,7 @@ function strategySlugFromRelativePath(relativePath: string): string {
   return file.replace(/\.[^.]+$/i, "").toLowerCase();
 }
 
-function inferRiskProfile(relativePath: string): string | undefined {
+export function inferRiskProfile(relativePath: string): string | undefined {
   const slug = strategySlugFromRelativePath(relativePath);
   const conservative = new Set([
     "cash-secured-puts",
@@ -113,11 +113,12 @@ async function walkIngestFiles(rootDir: string, source: string): Promise<WalkedF
   return out;
 }
 
-function resolveFinanceKbRoots(repoRoot: string): Array<{ dir: string; source: string }> {
+export function resolveFinanceKbRoots(repoRoot: string): Array<{ dir: string; source: string }> {
   const roots: Array<{ dir: string; source: string }> = [];
   const candidates: Array<{ segments: string[]; source: string }> = [
     { segments: ["atx-docs", "rag-collection", "options-strategy-core"], source: "options-strategy-core" },
     { segments: ["atx-docs", "rag-collection", "options-strategy-advanced"], source: "options-strategy-advanced" },
+    { segments: ["atx-docs", "rag-collection", "atx-response-guidelines"], source: "atx-response-guidelines" },
     { segments: ["atx-docs", "rag-collection", "finance"], source: "finance" },
     { segments: ["atx-docs", "rag-collection", "finance-reference-docs"], source: "finance-reference-docs" }
   ];

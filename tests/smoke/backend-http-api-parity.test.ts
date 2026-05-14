@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { BFF_PROXY_ROUTES, toKotlinBffMappingNeedle } from "@/lib/bff-proxy-routes";
+import { BFF_PROXY_ROUTES } from "@/lib/bff-proxy-routes";
 
 const REPO_ROOT = process.cwd();
 const BACKEND_KOTLIN_MAIN = resolve(REPO_ROOT, "services/atxfinance-backend/src/main/kotlin");
@@ -12,8 +12,6 @@ const SPEC_PATH = resolve(REPO_ROOT, "atx-docs/sre-ops/atxfinance-backend-http-a
 const REQUIRED_GET_ROUTES = ["/api/health", "/api/backend/health"] as const;
 
 const REQUIRED_AUTH_GET_ROUTES = ["/api/auth/x/login", "/api/auth/x/callback"] as const;
-
-const REQUIRED_PORTFOLIO_BFF_MAPPINGS = BFF_PROXY_ROUTES.map(toKotlinBffMappingNeedle);
 
 function readTreeFiles(dir: string, acc: string[] = []): string[] {
   for (const name of readdirSync(dir, { withFileTypes: true })) {

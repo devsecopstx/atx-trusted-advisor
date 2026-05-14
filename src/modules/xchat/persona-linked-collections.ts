@@ -94,8 +94,9 @@ export const MAX_XCHAT_TEAM_KB_COLLECTION_IDS = 2;
  * Does **not** merge `resolveTeamKbCollectionId()` — avoids injecting `collections_search` / RAG from env alone.
  */
 export function resolveXchatPersonaDeclaredCollectionIds(
-  _persona: PersonaLinkedIdSource | null | undefined
+  persona: PersonaLinkedIdSource | null | undefined
 ): string[] {
+  void persona;
   return [getXaiFinanceCollectionId()];
 }
 

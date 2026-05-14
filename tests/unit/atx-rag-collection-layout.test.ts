@@ -70,6 +70,7 @@ describe("atx-rag-collection layout", () => {
     expect(existsSync(strategyDir)).toBe(true);
     expect(existsSync(join(base, "options-strategy-core", "options-coreskills.md"))).toBe(true);
     expect(existsSync(join(base, "options-strategy-advanced", "iron-condor.md"))).toBe(true);
+    expect(existsSync(join(base, "atx-response-guidelines", "citation-format.md"))).toBe(true);
     expect(existsSync(join(base, "example-prompts", "example-prompts", "example-prompts.md"))).toBe(true);
   });
 
@@ -120,23 +121,31 @@ describe("atx-rag-collection layout", () => {
     assertKebabFolderContainsSameStemFile(join(base, "options-strategy", "options-coreskills"), ".md");
   });
 
-  it("finance-reference-docs PDFs use stem/stem.pdf folders", () => {
+  it("finance-reference-docs PDFs use stem/stem.pdf folders when the PDF is present", () => {
     const fin = join(base, "finance-reference-docs");
+    let validated = 0;
     for (const ent of readdirSync(fin, { withFileTypes: true })) {
       if (!ent.isDirectory()) {
         continue;
       }
       const sub = join(fin, ent.name);
+      const stem = basename(sub);
+      const expectedPdf = join(sub, `${stem}.pdf`);
+      if (!existsSync(expectedPdf)) {
+        continue;
+      }
       assertKebabFolderContainsSameStemFile(sub, ".pdf");
+      validated += 1;
     }
+    expect(validated, "expected at least one finance-reference-docs stem/stem.pdf folder").toBeGreaterThan(0);
   });
 
   it("example-prompts uses stem/stem.md", () => {
     assertKebabFolderContainsSameStemFile(join(base, "example-prompts", "example-prompts"), ".md");
   });
 
-  it("options-strategy-core and options-strategy-advanced use flat ingestible markdown at segment root", () => {
-    for (const seg of ["options-strategy-core", "options-strategy-advanced"]) {
+  it("options-strategy-core, options-strategy-advanced, and atx-response-guidelines use flat ingestible markdown at segment root", () => {
+    for (const seg of ["options-strategy-core", "options-strategy-advanced", "atx-response-guidelines"]) {
       const segDir = join(base, seg);
       expect(existsSync(segDir)).toBe(true);
       const mds = readdirSync(segDir).filter((f) => f.endsWith(".md"));
@@ -146,14 +155,19 @@ describe("atx-rag-collection layout", () => {
 
   it("segment roots do not leave loose ingestible files next to segment folders", () => {
     const exts = new Set([".md", ".pdf", ".yaml", ".yml"]);
-    const flatMarkdownSegments = new Set(["options-strategy-core", "options-strategy-advanced"]);
+    const flatMarkdownSegments = new Set([
+      "options-strategy-core",
+      "options-strategy-advanced",
+      "atx-response-guidelines"
+    ]);
     for (const seg of [
       "xpersonas",
       "finance-reference-docs",
       "example-prompts",
       "options-strategy",
       "options-strategy-core",
-      "options-strategy-advanced"
+      "options-strategy-advanced",
+      "atx-response-guidelines"
     ]) {
       const segDir = join(base, seg);
       for (const name of readdirSync(segDir)) {

@@ -13,6 +13,7 @@
   - [options-strategy](#options-strategy) (Mongo catalog, nested)
   - [options-strategy-core](#options-strategy-core) (Finance KB, lean)
   - [options-strategy-advanced](#options-strategy-advanced) (Finance KB, full playbooks)
+  - [atx-response-guidelines](#atx-response-guidelines) (Finance KB, response framing)
 - [Persona YAML schema](#persona-yaml-schema)
 - [Hygiene](#hygiene)
 - [Tests and automation](#tests-and-automation)
@@ -30,6 +31,7 @@
 | **`options-strategy/`** | `options-strategy` | **Mongo-only** seed: nested `slug/slug.md` narratives for **`options_strategy`** / admin xOptions catalog (**`npm run seed:options-strategy*`**). **Not** uploaded by **`refresh-finance`** (use **core** + **advanced** for xAI). |
 | **`options-strategy-core/`** | *(uploaded as part of shared Finance collection)* | Lean options desk copy + **[`options-coreskills.md`](./options-strategy-core/options-coreskills.md)** — **`finance-advisor`** `always_include` **only** (not advanced). |
 | **`options-strategy-advanced/`** | *(same)* | Full multi-leg / overlay playbooks — **`advisor`** `always_include` **only** (not core). |
+| **`atx-response-guidelines/`** | *(same)* | xChat response structure, citations, tone, compliance copy — uploaded with **`refresh-finance`**; not a separate persona `always_include` tree (shared Finance collection). |
 
 Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, **`atx-personas-trusted-family`**, **`atx-xchat-example-prompts`**, **`atx-options-strategy`** are still **ingest path fallbacks** (see seed script).
 
@@ -37,7 +39,7 @@ Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, 
 
 ## RAG path layout
 
-**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`). **`options-strategy-core`** and **`options-strategy-advanced`** are **exceptions**: flat **`*.md`** files live directly under the segment root for a smaller Finance KB upload surface (validated in **`tests/unit/atx-rag-collection-layout.test.ts`**).
+**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`). **`options-strategy-core`**, **`options-strategy-advanced`**, and **`atx-response-guidelines`** are **exceptions**: flat **`*.md`** files live directly under the segment root for a smaller Finance KB upload surface (validated in **`tests/unit/atx-rag-collection-layout.test.ts`**).
 
 **xpersonas:** Each subfolder holds **exactly one** persona `*.yaml`. Many personas use **`folder/folder.yaml`** (folder name equals file stem), e.g. `advisor/advisor.yaml`, `exam-coach/exam-coach.yaml`, `trusted-advisor/trusted-advisor.yaml`. Others use a **suffix stem** under a short bucket, e.g. `legal/legal-advisor.yaml`. This segment is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
 
@@ -108,6 +110,12 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 | Path |
 | --- |
 | `bull-call-debit-spread.md`, `bull-put-credit-spread.md`, `calendar-spread.md`, `diagonal-spread.md`, `iron-condor.md`, `leap-call-cc-overlay.md`, `poor-mans-covered-call.md`, `ratio-spread.md`, `broken-wing-butterfly.md`, `zebra.md` |
+
+### atx-response-guidelines
+
+| Path |
+| --- |
+| `citation-format.md`, `compliance-disclaimers.md`, `report-structure.md`, `response-structure.md`, `tone-and-framing.md` |
 
 ---
 

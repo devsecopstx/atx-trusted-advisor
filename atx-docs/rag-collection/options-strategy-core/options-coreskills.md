@@ -14,9 +14,9 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 
 - [Content review framework (every strategy file)](#content-review-framework-every-strategy-file)
 - [How this tree is organized](#how-this-tree-is-organized)
-- [Strategy map — core (lean)](#strategy-map--core-lean)
-- [Strategy map — advanced (full depth)](#strategy-map--advanced-full-depth)
-- [Output contract (holdings + watchlist / Wheel · CC scan)](#output-contract-holdings--watchlist--wheel--cc-scan)
+- [Strategy map — core (lean)](#strategy-map-core-lean)
+- [Strategy map — advanced (full depth)](#strategy-map-advanced-full-depth)
+- [Output contract (holdings + watchlist / Wheel · CC scan)](#output-contract-holdings-watchlist-wheel-cc-scan)
 - [Related indexes](#related-indexes)
 
 ---
@@ -46,8 +46,9 @@ Meta topics (**tax**, **earnings**, **sizing**, **vol rank**, **payoff templates
 |-------|----------|------|
 | **Core narratives (flat)** | [`options-strategy-core/*.md`](./covered-call-and-csp.md) | Lean Finance KB slice — **default `finance-advisor` persona** disk scope. |
 | **Advanced narratives (flat)** | [`../options-strategy-advanced/`](../options-strategy-advanced/bull-call-debit-spread.md) | Full playbooks — **`advisor` persona** disk scope. |
+| **Response guidelines (flat)** | [`../atx-response-guidelines/`](../atx-response-guidelines/citation-format.md) | Same Finance collection on **`refresh-finance`** — structure, citations, tone, disclaimers (shared KB; not split by **`finance-advisor`** vs **`advisor`** `always_include`). |
 | **Mongo catalog (nested)** | [`../options-strategy/<slug>/<slug>.md`](../options-strategy/wheel/wheel.md) | **Seed-only** `options_strategy` / admin xOptions; not uploaded by `refresh-finance`. |
-| **Agent skills** | [`.cursor/skills/skill-*/SKILL.md`](../../../../.cursor/skills/skill-wheel-strategy/SKILL.md) | Deep playbooks for Cursor. |
+| **Agent skills** | [`.cursor/skills/skill-*/SKILL.md`](../../../.cursor/skills/skill-wheel-strategy/SKILL.md) | Deep playbooks for Cursor. |
 | **This index** | [`options-coreskills.md`](./options-coreskills.md) | Strategy ↔ doc ↔ **risk bucket** ↔ **outlook** ↔ `xfinance-strategy-*` ↔ skill. |
 
 **Mongo:** `seed:admin` / `seed:options-strategy-*` sync this tree into **`options_strategy`** (and prefs). **xAI:** canonical **Finance** collection (`XAI_FINANCE_COLLECTION_ID`, default `collection_b75e188e-e7e6-4aa8-8e01-23caf0946236`) — sync via **`npm run seed:finance-xai-collection`** or **Admin → Personas → Sync Finance Collection to xAI**; do not duplicate full narrative MD into Mongo **`xchat_rag_chunks`**. **Doc entry:** [`atx-docs/README.md`](../../../README.md) § *Options (RAG + seed)*.
@@ -58,14 +59,14 @@ Meta topics (**tax**, **earnings**, **sizing**, **vol rank**, **payoff templates
 
 | Strategy | Narrative doc | Risk bucket | Outlook | `xfinance-strategy-*` id | Cursor skill |
 |----------|----------------|-------------|---------|---------------------------|----------------|
-| **Covered call + CSP** | [covered-call-and-csp.md](./covered-call-and-csp.md) | Balanced | Neutral–bullish / willing to own lower | `xfinance-strategy-cash-secured-puts` (file covers both) | [`skill-covered-calls`](../../../../.cursor/skills/skill-covered-calls/SKILL.md) · [`skill-cash-secured-puts`](../../../../.cursor/skills/skill-cash-secured-puts/SKILL.md) |
-| **Wheel** | [wheel-strategy.md](./wheel-strategy.md) | Balanced (→Aggressive if oversized) | Bullish CSP→CC cycle | `xfinance-strategy-wheel` | [`skill-wheel-strategy`](../../../../.cursor/skills/skill-wheel-strategy/SKILL.md) |
-| **Iron condor + jade lizard (overview)** | [iron-condor-jade-lizard.md](./iron-condor-jade-lizard.md) | Balanced | Range / skewed premium | `xfinance-strategy-iron-condor-jade-lizard` | [`skill-iron-condor`](../../../../.cursor/skills/skill-iron-condor/SKILL.md) · [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
-| **Cross-cutting sizing** | [position-sizing-and-risk-management.md](./position-sizing-and-risk-management.md) | — | — | *(meta)* | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
-| **Earnings playbook** | [earnings-playbook.md](./earnings-playbook.md) | — | Event / vol | *(meta)* | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
-| **Vol / IV rank** | [volatility-rank-and-iv-crush.md](./volatility-rank-and-iv-crush.md) | — | Regime filter | *(meta)* | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
-| **Straddle / strangle** | [straddle-strangle.md](./straddle-strangle.md) | Aggressive (long) / Balanced (income variants) | Vol / direction | *(see file)* | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
-| **Payoff templates** | [payoff-templates-and-examples.md](./payoff-templates-and-examples.md) | — | — | *(meta)* | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Covered call + CSP** | [covered-call-and-csp.md](./covered-call-and-csp.md) | Balanced | Neutral–bullish / willing to own lower | `xfinance-strategy-cash-secured-puts` (file covers both) | [`skill-covered-calls`](../../../.cursor/skills/skill-covered-calls/SKILL.md) · [`skill-cash-secured-puts`](../../../.cursor/skills/skill-cash-secured-puts/SKILL.md) |
+| **Wheel** | [wheel-strategy.md](./wheel-strategy.md) | Balanced (→Aggressive if oversized) | Bullish CSP→CC cycle | `xfinance-strategy-wheel` | [`skill-wheel-strategy`](../../../.cursor/skills/skill-wheel-strategy/SKILL.md) |
+| **Iron condor + jade lizard (overview)** | [iron-condor-jade-lizard.md](./iron-condor-jade-lizard.md) | Balanced | Range / skewed premium | `xfinance-strategy-iron-condor-jade-lizard` | [`skill-iron-condor`](../../../.cursor/skills/skill-iron-condor/SKILL.md) · [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Cross-cutting sizing** | [position-sizing-and-risk-management.md](./position-sizing-and-risk-management.md) | — | — | *(meta)* | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Earnings playbook** | [earnings-playbook.md](./earnings-playbook.md) | — | Event / vol | *(meta)* | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Vol / IV rank** | [volatility-rank-and-iv-crush.md](./volatility-rank-and-iv-crush.md) | — | Regime filter | *(meta)* | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Straddle / strangle** | [straddle-strangle.md](./straddle-strangle.md) | Aggressive (long) / Balanced (income variants) | Vol / direction | `xfinance-strategy-straddle-strangle` | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Payoff templates** | [payoff-templates-and-examples.md](./payoff-templates-and-examples.md) | — | — | *(meta)* | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
 | **Tax & assignment** | [options-tax-considerations.md](./options-tax-considerations.md) | — | HNWI checklist | *(meta)* | — |
 
 ---
@@ -74,20 +75,20 @@ Meta topics (**tax**, **earnings**, **sizing**, **vol rank**, **payoff templates
 
 | Strategy | Narrative doc | Risk bucket | Outlook | `xfinance-strategy-*` id | Cursor skill |
 |----------|----------------|-------------|---------|---------------------------|----------------|
-| **Bull call debit spread** | [bull-call-debit-spread.md](../options-strategy-advanced/bull-call-debit-spread.md) | Balanced | Bullish | `xfinance-strategy-bull-call-debit-spread` | [`skill-bull-call-debit-spread`](../../../../.cursor/skills/skill-bull-call-debit-spread/SKILL.md) |
-| **Bull put credit spread** | [bull-put-credit-spread.md](../options-strategy-advanced/bull-put-credit-spread.md) | Balanced | Bullish / buy dips | `xfinance-strategy-bull-put-credit-spread` | [`skill-bull-put-credit-spread`](../../../../.cursor/skills/skill-bull-put-credit-spread/SKILL.md) |
-| **Calendar spread** | [calendar-spread.md](../options-strategy-advanced/calendar-spread.md) | Balanced | Neutral–directional / term structure | `xfinance-strategy-calendar-spread` | [`skill-calendar-spread`](../../../../.cursor/skills/skill-calendar-spread/SKILL.md) |
-| **Diagonal spread** | [diagonal-spread.md](../options-strategy-advanced/diagonal-spread.md) | Aggressive | Bullish + rolls | `xfinance-strategy-diagonal-spread` | [`skill-diagonal-spread`](../../../../.cursor/skills/skill-diagonal-spread/SKILL.md) |
-| **Iron condor** | [iron-condor.md](../options-strategy-advanced/iron-condor.md) | Balanced | Range-bound | `xfinance-strategy-iron-condor` | [`skill-iron-condor`](../../../../.cursor/skills/skill-iron-condor/SKILL.md) |
-| **Poor man’s covered call** | [poor-mans-covered-call.md](../options-strategy-advanced/poor-mans-covered-call.md) | Aggressive | Bullish LEAP + income | `xfinance-strategy-poor-mans-covered-call` | [`skill-poor-mans-covered-call`](../../../../.cursor/skills/skill-poor-mans-covered-call/SKILL.md) |
-| **LEAP + CC overlay** | [leap-call-cc-overlay.md](../options-strategy-advanced/leap-call-cc-overlay.md) | Aggressive | Bullish leverage | `xfinance-strategy-leap-call-cc-overlay` | [`skill-leap-call-cc-overlay`](../../../../.cursor/skills/skill-leap-call-cc-overlay/SKILL.md) |
-| **Broken wing butterfly** | [broken-wing-butterfly.md](../options-strategy-advanced/broken-wing-butterfly.md) | Balanced | Neutral–skewed | `xfinance-strategy-broken-wing-butterfly` | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
-| **Ratio spread** | [ratio-spread.md](../options-strategy-advanced/ratio-spread.md) | Aggressive | Directional / vol | `xfinance-strategy-ratio-spread` | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
-| **ZEBRA** | [zebra.md](../options-strategy-advanced/zebra.md) | Aggressive | Directional | `xfinance-strategy-zebra` | [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Bull call debit spread** | [bull-call-debit-spread.md](../options-strategy-advanced/bull-call-debit-spread.md) | Balanced | Bullish | `xfinance-strategy-bull-call-debit-spread` | [`skill-bull-call-debit-spread`](../../../.cursor/skills/skill-bull-call-debit-spread/SKILL.md) |
+| **Bull put credit spread** | [bull-put-credit-spread.md](../options-strategy-advanced/bull-put-credit-spread.md) | Balanced | Bullish / buy dips | `xfinance-strategy-bull-put-credit-spread` | [`skill-bull-put-credit-spread`](../../../.cursor/skills/skill-bull-put-credit-spread/SKILL.md) |
+| **Calendar spread** | [calendar-spread.md](../options-strategy-advanced/calendar-spread.md) | Balanced | Neutral–directional / term structure | `xfinance-strategy-calendar-spread` | [`skill-calendar-spread`](../../../.cursor/skills/skill-calendar-spread/SKILL.md) |
+| **Diagonal spread** | [diagonal-spread.md](../options-strategy-advanced/diagonal-spread.md) | Aggressive | Bullish + rolls | `xfinance-strategy-diagonal-spread` | [`skill-diagonal-spread`](../../../.cursor/skills/skill-diagonal-spread/SKILL.md) |
+| **Iron condor** | [iron-condor.md](../options-strategy-advanced/iron-condor.md) | Balanced | Range-bound | `xfinance-strategy-iron-condor` | [`skill-iron-condor`](../../../.cursor/skills/skill-iron-condor/SKILL.md) |
+| **Poor man’s covered call** | [poor-mans-covered-call.md](../options-strategy-advanced/poor-mans-covered-call.md) | Aggressive | Bullish LEAP + income | `xfinance-strategy-poor-mans-covered-call` | [`skill-poor-mans-covered-call`](../../../.cursor/skills/skill-poor-mans-covered-call/SKILL.md) |
+| **LEAP + CC overlay** | [leap-call-cc-overlay.md](../options-strategy-advanced/leap-call-cc-overlay.md) | Aggressive | Bullish leverage | `xfinance-strategy-leap-call-cc-overlay` | [`skill-leap-call-cc-overlay`](../../../.cursor/skills/skill-leap-call-cc-overlay/SKILL.md) |
+| **Broken wing butterfly** | [broken-wing-butterfly.md](../options-strategy-advanced/broken-wing-butterfly.md) | Balanced | Neutral–skewed | `xfinance-strategy-broken-wing-butterfly` | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **Ratio spread** | [ratio-spread.md](../options-strategy-advanced/ratio-spread.md) | Aggressive | Directional / vol | `xfinance-strategy-ratio-spread` | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
+| **ZEBRA** | [zebra.md](../options-strategy-advanced/zebra.md) | Aggressive | Directional | `xfinance-strategy-zebra` | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
 
 **Mongo seed (nested, admin/xOptions catalog):** still under [`../options-strategy/`](../options-strategy/README.md) — one folder per slug; not the same paths as Finance KB flat files.
 
-Shared principles: [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md).
+Shared principles: [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md).
 
 ### HNWI Desk Report v2.1 — xChat quick-action slugs (risk / outlook defaults)
 
@@ -145,7 +146,7 @@ Return **up to three** `ideas` when the book and watchlist support it.
 ## Related indexes
 
 - [Documentation index (atx-docs)](../../../README.md) — ops, xChat, options, backlog.
-- [Cursor skills index](../../../../.cursor/skills/README.md) — all `skill-*` folders.
+- [Cursor skills index](../../../.cursor/skills/README.md) — all `skill-*` folders.
 
 ---
 

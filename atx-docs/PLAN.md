@@ -55,7 +55,7 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-tool copy, options_scan caches/guards, SSE default, plan tool-loop caps): [release-notes.md](./sre-ops/release-notes.md) **3.18.8**.
 
-**Shipped (May 2026):** Options markdown for the shared Finance xAI KB is split **`atx-docs/rag-collection/options-strategy-core/**`** (lean) vs **`options-strategy-advanced/**`** (full playbooks). Persona disk scope: **`finance-advisor`** → core **`always_include` only**; **`advisor`** → advanced **`always_include` only** (both segments still upload on **`refresh-finance`** into one collection). Nested **`options-strategy/**`** remains Mongo seed for **`options_strategy`** — see [`atx-docs/README.md`](./README.md) § Options.
+**Shipped (May 2026):** Options markdown for the shared Finance xAI KB is split **`atx-docs/rag-collection/options-strategy-core/**`** (lean) vs **`options-strategy-advanced/**`** (full playbooks), with **`atx-response-guidelines/**`** also uploaded on the same refresh. Persona disk scope: **`finance-advisor`** → core **`always_include` only**; **`advisor`** → advanced **`always_include` only** (core + advanced + response-guidelines segments upload on **`refresh-finance`** into one collection). Nested **`options-strategy/**`** remains Mongo seed for **`options_strategy`** — see [`atx-docs/README.md`](./README.md) § Options.
 
 **Remaining work (priority score — higher = sooner):**
 

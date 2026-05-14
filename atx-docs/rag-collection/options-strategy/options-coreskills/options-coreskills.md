@@ -1,5 +1,7 @@
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
 
+> **Canonical Finance KB index:** [`../../options-strategy-core/options-coreskills.md`](../../options-strategy-core/options-coreskills.md). This file remains the **Mongo `options-strategy`** nested catalog hub (stem/stem.md links); lean + advanced playbooks live under **`options-strategy-core/**`** and **`options-strategy-advanced/**`**.
+
 # atx-options — strategy reference
 
 **aTx Finance · options education & agent context**

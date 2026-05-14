@@ -18,10 +18,7 @@ export type RegisteredWriteDisposition = {
  * production; **`XCHAT_SSE_PROXY_BACKEND=0|false|no|off`** is a **runtime** opt-out for SSE only (this table stays
  * “Spring when gate on”). Not runtime request telemetry — use for ownership inventory and onboarding.
  */
-export function neverSpringReasonForBffRegisteredWrite(
-  method: BffProxyHttpMethod,
-  _pathTemplate: string
-): string | null {
+export function neverSpringReasonForBffRegisteredWrite(method: BffProxyHttpMethod): string | null {
   if (!WRITE_METHODS.has(method)) {
     return null;
   }
@@ -30,7 +27,7 @@ export function neverSpringReasonForBffRegisteredWrite(
 
 export function listBffRegisteredWriteDispositions(): readonly RegisteredWriteDisposition[] {
   return BFF_PROXY_ROUTES.filter((r) => WRITE_METHODS.has(r.method)).map((r) => {
-    const reason = neverSpringReasonForBffRegisteredWrite(r.method, r.path);
+    const reason = neverSpringReasonForBffRegisteredWrite(r.method);
     return {
       method: r.method,
       pathTemplate: r.path,

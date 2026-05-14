@@ -186,13 +186,6 @@ function normWatchlistField(s?: string): string {
   return (s ?? "").trim();
 }
 
-function rowStatusFromSelectValue(v: string): WatchlistRowStatus {
-  if (v === "active" || v === "review") {
-    return v;
-  }
-  return "draft";
-}
-
 function cloneWatchlistRow(r: WatchlistRow): WatchlistRow {
   return { ...r };
 }
@@ -794,24 +787,21 @@ function WatchlistRowActionsInner(
   );
 }
 
-const WatchlistRowTr = memo(function WatchlistRowTr({
-  row,
-  editMode,
-  mutating,
-  removingThisSymbol,
-  updateDraftRow,
-  onRemoveSymbol,
-  rowClassName,
-  rowStyle,
-  portfolioTotalUsd,
-  patchRowMeta,
-  patchRowEntryPrice,
-  aiSuggestBusy,
-  onAiSuggest,
-  onShowQuote,
-  onXchatPreflight,
-  visibleDeskColumnIds: visibleColsProp
-}: WatchlistRowTrProps) {
+const WatchlistRowTr = memo(function WatchlistRowTr(props: WatchlistRowTrProps) {
+  const {
+    row,
+    editMode,
+    mutating,
+    removingThisSymbol,
+    updateDraftRow,
+    onRemoveSymbol,
+    rowClassName,
+    rowStyle,
+    patchRowMeta,
+    onShowQuote,
+    onXchatPreflight,
+    visibleDeskColumnIds: visibleColsProp
+  } = props;
   const visibleDeskColumnIds = visibleColsProp ?? WATCHLIST_DESK_COLUMN_ORDER;
   const ivRank = getIvRankSortValue(row);
   const optionsVolume = getOptionVolumeSortValue(row);
@@ -1004,11 +994,7 @@ const WatchlistMobileCard = memo(function WatchlistMobileCard(props: WatchlistRo
     removingThisSymbol,
     updateDraftRow,
     onRemoveSymbol,
-    portfolioTotalUsd,
     patchRowMeta,
-    patchRowEntryPrice,
-    aiSuggestBusy,
-    onAiSuggest,
     onShowQuote,
     onXchatPreflight
   } = props;
