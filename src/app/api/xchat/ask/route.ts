@@ -135,7 +135,10 @@ import {
     completeXchatAskAfterModelLoop,
     type XchatAskCompletePostLoopCtx
 } from "@/modules/xchat/xchat-ask-complete-post-loop";
-import { resolveToolLoopConversationInput } from "@/modules/xchat/xchat-ask-history-input";
+import {
+    resolveToolLoopConversationInput,
+    XCHAT_ASK_MAX_TOOL_HISTORY_TURNS
+} from "@/modules/xchat/xchat-ask-history-input";
 import {
     collectWatchlistPortfolioIdSlot,
     heavySynthesisIntent,
@@ -1848,9 +1851,10 @@ export async function POST(request: Request) {
    */
   const hasHostedSearchTool = xapiConfig.tools.some((t) => t.type === "web_search" || t.type === "x_search");
 
+  /** Prefer xAI `previous_response_id` after turn 1 whenever persistence is on — does not require long-term toggle. */
   const useRemoteConversationHistory =
     isXchatRemoteHistoryEnabled() &&
-    enableLongTermXaiMemory &&
+    shouldPersistHistory &&
     persona?.keepXchatHistory !== false &&
     Boolean(userId) &&
     !hasVisionImages;
@@ -1906,7 +1910,7 @@ export async function POST(request: Request) {
       content: row.content.trim()
     }))
     .filter((row) => row.content.length > 0)
-    .slice(-32);
+    .slice(-(XCHAT_ASK_MAX_TOOL_HISTORY_TURNS * 2));
   const recentHistoryBlock =
     useRemoteConversationHistory && previousResponseId
       ? ""
@@ -2064,6 +2068,8 @@ export async function POST(request: Request) {
         error: "local_tool_not_configured_for_persona"
       });
 
+  let responseServedFromCache = false;
+
   const askCompleteCtx = (): XchatAskCompletePostLoopCtx => ({
     session,
     persona: { _id: persona._id, name: persona.name },
@@ -2101,7 +2107,8 @@ export async function POST(request: Request) {
     limiterRemainingDay,
     limiterHourlyLimit,
     limiterDailyLimit,
-    hnwiPromptTemplateV21Slug: hnwiSlug
+    hnwiPromptTemplateV21Slug: hnwiSlug,
+    responseServedFromCache
   });
 
   /** Scope cache by persona so switching persona mid-thread never reuses prior instructions bytes. */
@@ -2178,6 +2185,7 @@ export async function POST(request: Request) {
   if (incomeIdeasCacheKey && incomeIdeasOptimization) {
     const cachedIncomeIdeas = await tryGetIncomeIdeasResponseCache(incomeIdeasCacheKey);
     if (cachedIncomeIdeas) {
+      responseServedFromCache = true;
       const cachedLoopResult: XaiToolLoopResult = {
         model: executionModel,
         outputText: cachedIncomeIdeas,
@@ -2249,6 +2257,7 @@ export async function POST(request: Request) {
       cacheSseHeaders.set("cache-control", "no-cache, no-transform");
       cacheSseHeaders.set("connection", "keep-alive");
       cacheSseHeaders.set("x-accel-buffering", "no");
+      cacheSseHeaders.set("x-cache-hit", "1");
       return new NextResponse(cacheStream, { headers: cacheSseHeaders });
     }
   }

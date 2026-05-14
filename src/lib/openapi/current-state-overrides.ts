@@ -119,6 +119,15 @@ function xchatLimiterHeaders(includeRetryAfter: boolean): NonNullable<OpenApiRes
       description:
         "Configured daily ask cap from merged tenant workspace limits (`userChatLimit`); aligns with the UTC day bucket in `ask-usage-limits`.",
       schema: { type: "string" }
+    },
+    "x-latency-ms": {
+      description:
+        "Wall-clock milliseconds from ask handler entry through model loop completion (JSON `200` path).",
+      schema: { type: "string" }
+    },
+    "x-cache-hit": {
+      description: "`1` when the response was served from a server-side short-circuit cache (e.g. income-ideas Redis); `0` otherwise.",
+      schema: { type: "string" }
     }
   };
   if (includeRetryAfter) {
@@ -383,7 +392,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single **non-streaming** `/v1/responses` tool-loop execution path (no chat-completions fallback; no SSE streaming in this route). Hosted RAG pre-search uses **persona-linked** xAI collection ids (`resolveXchatPersonaDeclaredCollectionIds` — `xaiCollection`, `teamCollection`, tool `collection_ids`; no implicit deploy env team KB merge). When **`XCHAT_USE_REMOTE_HISTORY=true`**, persona `keepXchatHistory` is true, `threadId` is present, and a prior turn stored `xaiResponseId`, ask sends `store_messages` + `previous_response_id` and omits client recent-turn injection for that continuation; otherwise recent messages from the request are still merged into the system prompt. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes **`atx_function`** (workspace tool; UI citations use slug **`atx_function`**, legacy **`atxfinance`** normalizes the same), the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same persona-linked id list wired into tools. Successful **`200`** includes **`data.content`** (markdown alias of **`data.response`**) and **`data.metadata`** (`durationMs`, `sourcesUsed`, `personaId`, `model`, `threadId` echo) alongside **`interactionMeta`**. Successful JSON may include optional **`xaiUsage`** (token counts from the Responses API `usage` object) for client session stats and admin cost rollups.",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single **non-streaming** `/v1/responses` tool-loop execution path (no chat-completions fallback; no SSE streaming in this route). Hosted RAG pre-search uses **persona-linked** xAI collection ids (`resolveXchatPersonaDeclaredCollectionIds` — `xaiCollection`, `teamCollection`, tool `collection_ids`; no implicit deploy env team KB merge). At most **four turns** (~eight `recentMessages` rows) are forwarded to the model for latency; UI “keep last 10” affects Mongo persistence, not this cap. When **`XCHAT_USE_REMOTE_HISTORY=true`**, persona `keepXchatHistory` is true, **Keep last 10 messages** is on, `threadId` is present, and a prior turn stored `xaiResponseId`, ask sends `store_messages` + `previous_response_id` and omits client recent-turn injection for that continuation (no separate **long-term xAI memory** toggle required). Otherwise recent messages from the request are still merged into the system prompt when long-term memory is off. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes **`atx_function`** (workspace tool; UI citations use slug **`atx_function`**, legacy **`atxfinance`** normalizes the same), the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same persona-linked id list wired into tools. Successful **`200`** includes **`data.content`** (markdown alias of **`data.response`**) and **`data.metadata`** (`durationMs`, `sourcesUsed`, `personaId`, `model`, `threadId` echo) alongside **`interactionMeta`**. Successful JSON may include optional **`xaiUsage`** (token counts from the Responses API `usage` object) for client session stats and admin cost rollups.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")

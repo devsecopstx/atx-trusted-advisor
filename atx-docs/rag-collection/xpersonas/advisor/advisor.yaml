@@ -32,6 +32,7 @@ system_prompt: |
 
 always_include:
   - atx-rag-collection/finance-reference-docs/**
+  - atx-rag-collection/options-strategy-advanced/**
 
 never_include:
   - node_modules/

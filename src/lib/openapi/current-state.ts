@@ -1461,7 +1461,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "admin-marketing":
     "Marketing scheduler endpoints: template catalog, recurring social schedules, run-now execution, and posting history.",
   "admin-options-strategy":
-    "Global admin CRUD for tenant options-strategy catalog and Mongo-backed `options_strategy_preferences` (markdown seed from `atx-docs/rag-collection/options-strategy` via `npm run seed:options-strategy-prefs`). Next-authoritative — not proxied to Spring.",
+    "Global admin CRUD for tenant options-strategy catalog and Mongo-backed `options_strategy_preferences` (markdown seed from nested `atx-docs/rag-collection/options-strategy` via `npm run seed:options-strategy-prefs`). Finance xAI KB sync uploads `options-strategy-core` + `options-strategy-advanced` (persona disk scope: finance-advisor → core only, advisor → advanced only). Next-authoritative — not proxied to Spring.",
   "admin-tasks":
     "Admin task catalog and task-run controls; internal `POST /api/internal/scheduler/execute-task` for JVM→Next scheduled execution (shared secret, not session).",
   "user-tasks":

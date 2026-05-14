@@ -44,7 +44,7 @@ system_prompt: |
 
 always_include:
   - atx-rag-collection/finance-reference-docs/**
-  - atx-rag-collection/options-strategy/**
+  - atx-rag-collection/options-strategy-core/**
 
 never_include:
   - node_modules/

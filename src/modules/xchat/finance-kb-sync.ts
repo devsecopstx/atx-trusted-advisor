@@ -30,8 +30,19 @@ type WalkedFile = {
   source: string;
 };
 
+/** Strategy folder slug (nested `slug/slug.md`) or flat file stem (`stem.md`). */
+function strategySlugFromRelativePath(relativePath: string): string {
+  const posix = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
+  const parts = posix.split("/").filter(Boolean);
+  if (parts.length >= 2) {
+    return parts[0]!.toLowerCase();
+  }
+  const file = parts[0] ?? "";
+  return file.replace(/\.[^.]+$/i, "").toLowerCase();
+}
+
 function inferRiskProfile(relativePath: string): string | undefined {
-  const slug = relativePath.split("/").filter(Boolean)[0]?.toLowerCase() ?? "";
+  const slug = strategySlugFromRelativePath(relativePath);
   const conservative = new Set([
     "cash-secured-puts",
     "covered-calls",
@@ -46,6 +57,14 @@ function inferRiskProfile(relativePath: string): string | undefined {
     "jade-lizard"
   ]);
   const aggressive = new Set(["ratio-spread", "zebra", "diagonal-spread", "broken-wing-butterfly"]);
+  const conservativeAliases = new Set(["wheel-strategy", "covered-call-and-csp"]);
+  const balancedAliases = new Set(["iron-condor-jade-lizard", "straddle-strangle"]);
+  if (conservativeAliases.has(slug)) {
+    return "conservative";
+  }
+  if (balancedAliases.has(slug)) {
+    return "balanced";
+  }
   if (conservative.has(slug)) {
     return "conservative";
   }
@@ -97,7 +116,8 @@ async function walkIngestFiles(rootDir: string, source: string): Promise<WalkedF
 function resolveFinanceKbRoots(repoRoot: string): Array<{ dir: string; source: string }> {
   const roots: Array<{ dir: string; source: string }> = [];
   const candidates: Array<{ segments: string[]; source: string }> = [
-    { segments: ["atx-docs", "rag-collection", "options-strategy"], source: "options-strategy" },
+    { segments: ["atx-docs", "rag-collection", "options-strategy-core"], source: "options-strategy-core" },
+    { segments: ["atx-docs", "rag-collection", "options-strategy-advanced"], source: "options-strategy-advanced" },
     { segments: ["atx-docs", "rag-collection", "finance"], source: "finance" },
     { segments: ["atx-docs", "rag-collection", "finance-reference-docs"], source: "finance-reference-docs" }
   ];

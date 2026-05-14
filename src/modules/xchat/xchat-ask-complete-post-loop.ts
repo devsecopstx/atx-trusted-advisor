@@ -8,12 +8,12 @@ import type { ToolCallLog, XaiToolLoopResult } from "@/lib/xai";
 import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import { createAuditEvent } from "@/modules/audit/repository";
+import type { HnwiPromptTemplateV21Slug } from "@/modules/xchat/prompt-templates-v21-defaults";
 import { saveXChatLog } from "@/modules/xchat/repository";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import type { PersonaXapiConfig, XChatXaiUsageSnapshot } from "@/modules/xchat/types";
-import type { HnwiPromptTemplateV21Slug } from "@/modules/xchat/prompt-templates-v21-defaults";
 import {
-  validateHnwiV21DeskReportMarkdown
+    validateHnwiV21DeskReportMarkdown
 } from "@/modules/xchat/xchat-hnwi-v21-desk-report";
 
 type AskModelSelectionSource =
@@ -66,6 +66,8 @@ export type XchatAskCompletePostLoopCtx = {
   limiterHourlyLimit: number | undefined;
   limiterDailyLimit: number | undefined;
   hnwiPromptTemplateV21Slug?: HnwiPromptTemplateV21Slug;
+  /** True when ask short-circuited on a server-side cache (e.g. income-ideas Redis). */
+  responseServedFromCache?: boolean;
 };
 
 function maskIdentifier(value: string | undefined): string | undefined {
@@ -381,13 +383,17 @@ export async function completeXchatAskAfterModelLoop(
       )
     },
     {
-      headers: buildLimiterHeaders({
-        remainingMinute: ctx.limiterRemainingMinute,
-        remainingHour: ctx.limiterRemainingHour,
-        remainingDay: ctx.limiterRemainingDay,
-        hourlyLimit: ctx.limiterHourlyLimit,
-        dailyLimit: ctx.limiterDailyLimit
-      })
+      headers: {
+        ...buildLimiterHeaders({
+          remainingMinute: ctx.limiterRemainingMinute,
+          remainingHour: ctx.limiterRemainingHour,
+          remainingDay: ctx.limiterRemainingDay,
+          hourlyLimit: ctx.limiterHourlyLimit,
+          dailyLimit: ctx.limiterDailyLimit
+        }),
+        "x-latency-ms": String(Math.max(0, Date.now() - ctx.askProcessingStartedAt)),
+        "x-cache-hit": ctx.responseServedFromCache === true ? "1" : "0"
+      }
     }
   );
 }

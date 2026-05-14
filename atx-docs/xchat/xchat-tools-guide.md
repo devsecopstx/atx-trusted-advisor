@@ -54,9 +54,13 @@ flowchart TD
 
 **Continuity mode (ask):**
 
-- `XCHAT_USE_REMOTE_HISTORY=true` (preferred): use xAI hosted state via `store_messages` + `previous_response_id`.
-- unset / `false`: no cross-turn continuity is injected.
-- Mongo logs are still written for audit/debug/UI rails; they are not injected into ask prompts.
+- `XCHAT_USE_REMOTE_HISTORY=true` + **Keep last 10 messages** + persona **`keepXchatHistory`**: use xAI hosted state via `store_messages` + `previous_response_id` when a prior `xaiResponseId` exists for the same `threadId` + persona (does **not** require the separate long-term xAI memory toggle).
+- unset / `false`: no xAI remote chain; recent thread text may still be merged into **`instructions`** when long-term memory is off (capped).
+- Mongo logs are still written for audit/debug/UI rails.
+
+**Multi-turn discipline (latency):** at most **four** transcript turns (~eight chat rows) are forwarded to the model (`XCHAT_ASK_MAX_TOOL_HISTORY_TURNS`, `recentMessages` clamp, `resolveRecentThreadMessagesPromptBlock` / Grok 4.3 clamps). JSON **`200`** responses add **`x-latency-ms`** and **`x-cache-hit`** on the finalize path (`xchat-ask-complete-post-loop.ts`).
+
+**Roadmap — Redis semantic cache:** short-circuit **before** xAI for canonical definitional queries; **15–60s** TTL memoization for Yahoo quotes / workspace snapshot payloads where safe; optional HNWI “last good answer” replay for audit when productized (reuse existing Redis / Memorystore wiring).
 
 **Workspace portfolio scope (ask):** optional JSON **`portfolioId`** (24-char hex, user-owned) on `POST /api/xchat/ask` and optional **`/xchat?portfolioId=`** on the page load — both feed `workspacePortfolioId` into `loadWorkspaceSnapshotPreload` / `createXfinanceToolExecutor` so watchlist and positions match **`/watchlist?portfolioId=`**. Watchlist symbol JSON includes **`spotPriceDisplay`**, **`targetEntryNotional100xUsdDisplay`** (USD **`$…`** for the **100×** notional), legacy **`targetEntryNotional100xDisplay`** (plain digits), and desk **`targetEntryDisplay`** / **`entryPrice`**. The direct **“show my watchlist”** path formats **Spot** + **Target entry** in USD and skips added-at lines.
 

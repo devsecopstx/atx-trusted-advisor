@@ -55,6 +55,8 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 
 Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-tool copy, options_scan caches/guards, SSE default, plan tool-loop caps): [release-notes.md](./sre-ops/release-notes.md) **3.18.8**.
 
+**Shipped (May 2026):** Options markdown for the shared Finance xAI KB is split **`atx-docs/rag-collection/options-strategy-core/**`** (lean) vs **`options-strategy-advanced/**`** (full playbooks). Persona disk scope: **`finance-advisor`** → core **`always_include` only**; **`advisor`** → advanced **`always_include` only** (both segments still upload on **`refresh-finance`** into one collection). Nested **`options-strategy/**`** remains Mongo seed for **`options_strategy`** — see [`atx-docs/README.md`](./README.md) § Options.
+
 **Remaining work (priority score — higher = sooner):**
 
 | Score | Item |
@@ -69,7 +71,7 @@ Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-too
 
 ## Engine × xAI conversational layer (xChat / recommendations)
 
-**Goal:** Every conversational turn can cite engine scores and RAG (e.g. options-strategy slug) instead of inventing structure.
+**Goal:** Every conversational turn can cite engine scores and RAG (e.g. `options-strategy-core` / `options-strategy-advanced` slug) instead of inventing structure.
 
 | Area | Work |
 | ---- | ---- |
@@ -165,6 +167,7 @@ Use **`grok-4.20-multi-agent`** only for narrow cases (open-ended synthesis, ide
 - Watchlist quote freshness: background cadence + last-updated + stale badge.
 - **Options scan share/report:** watermark/recipient banner for `/reports/scan/{token}`, signed-download audit, configurable TTL beyond default 24h.
 - **Edit Account → scanner thresholds:** Row binding to price-alert service, scheduled thresholds from desk fields, option marks when chain data wired — [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md).
+- **RAG isolation hardening** — Add **`XAI_FINANCE_CORE_COLLECTION_ID`** + **`XAI_FINANCE_ADVANCED_COLLECTION_ID`**, update **`refresh-finance`** / Finance seed to upload into the matching collections, and rely on **admin persona → collection** linking in console (post-deploy). Pursue if **`finance-advisor`** does not consistently meet **&lt;2.5s p95** once operators have linked personas and you have measured ask latency in prod/staging.
 
 ### Desk email & delivery
 

@@ -266,7 +266,7 @@ export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }
           className="cta cta-secondary"
           disabled={loading || actionLoading === "sync-finance-kb"}
           onClick={() => void handleSyncFinanceKb()}
-          title="Upload options-strategy and finance markdown from the repo into the canonical shared Finance xAI collection."
+          title="Upload options-strategy-core, options-strategy-advanced, and finance markdown from the repo into the canonical shared Finance xAI collection."
           type="button"
         >
           Sync Finance Collection to xAI

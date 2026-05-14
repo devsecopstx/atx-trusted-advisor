@@ -16,10 +16,10 @@ describe("isGrok43FamilyModelId", () => {
 });
 
 describe("clampGrok43MaxPriorThreadMessages", () => {
-  it("defaults to 5 and clamps to 4–6", () => {
-    expect(clampGrok43MaxPriorThreadMessages(undefined)).toBe(5);
+  it("defaults to 8 and clamps to 4–8", () => {
+    expect(clampGrok43MaxPriorThreadMessages(undefined)).toBe(8);
     expect(clampGrok43MaxPriorThreadMessages(3)).toBe(4);
-    expect(clampGrok43MaxPriorThreadMessages(9)).toBe(6);
+    expect(clampGrok43MaxPriorThreadMessages(9)).toBe(8);
     expect(clampGrok43MaxPriorThreadMessages(4)).toBe(4);
   });
 });
@@ -30,14 +30,14 @@ describe("resolveRecentThreadMessagesPromptBlock", () => {
     content: `m${i} `.repeat(20).trim()
   }));
 
-  it("keeps up to 10 messages for non–Grok 4.3 models", () => {
+  it("keeps up to 8 messages for non–Grok 4.3 models", () => {
     const block = resolveRecentThreadMessagesPromptBlock({
       messages: msgs,
       executionModel: "grok-4-1-fast"
     });
     expect(block).toContain("Recent thread messages");
-    expect(block?.match(/User:/g)?.length).toBe(5);
-    expect(block?.match(/Assistant:/g)?.length).toBe(5);
+    expect(block?.match(/User:/g)?.length).toBe(4);
+    expect(block?.match(/Assistant:/g)?.length).toBe(4);
     expect(block).not.toContain("Conversation summary (earlier thread turns");
   });
 

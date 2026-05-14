@@ -1,7 +1,8 @@
 import type { XChatHistoryItem } from "@/modules/xchat/types";
 
 const DEFAULT_MAX_CHARS = 6_000;
-const DEFAULT_MAX_MESSAGES = 10;
+/** Model-facing cap: **4 turns** (8 user/assistant rows) even when UI persists more. */
+const DEFAULT_MAX_MESSAGES = 8;
 
 /**
  * Formats prior Mongo `xchat_logs` turns (same user + tenant) for the ask system prompt.
@@ -51,16 +52,16 @@ export function isGrok43FamilyModelId(model: string | undefined | null): boolean
   return m.includes("grok-4.3");
 }
 
-/** Platform override from `xchat_platform_settings.xchatGrok43MaxPriorThreadMessages` (clamped 4–6). */
+/** Platform override from `xchat_platform_settings.xchatGrok43MaxPriorThreadMessages` (clamped 4–8). */
 export function clampGrok43MaxPriorThreadMessages(platformOverride: number | undefined): number {
   if (platformOverride === undefined || platformOverride === null) {
-    return 5;
+    return 8;
   }
   const n = Math.round(Number(platformOverride));
   if (!Number.isFinite(n)) {
-    return 5;
+    return 8;
   }
-  return Math.min(6, Math.max(4, n));
+  return Math.min(8, Math.max(4, n));
 }
 
 /**

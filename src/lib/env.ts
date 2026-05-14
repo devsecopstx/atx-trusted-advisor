@@ -106,8 +106,8 @@ const envSchema = z.object({
   ADMIN_X_USERNAMES: z.string().optional(),
   /**
    * When true, `POST /api/xchat/ask` uses xAI hosted continuity (`store_messages` + `previous_response_id`)
-   * for turns with `threadId`, skipping Mongo recent-turn injection when a prior response id exists.
-   * Persona `keepXchatHistory: false` disables this path per persona.
+   * for turns with `threadId` when **Keep last 10 messages** is on, skipping Mongo recent-turn injection when a prior
+   * response id exists. Does **not** require the separate long-term xAI memory toggle. Persona `keepXchatHistory: false` disables this path per persona.
    */
   XCHAT_USE_REMOTE_HISTORY: z.preprocess(
     (v) => {

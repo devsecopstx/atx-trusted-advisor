@@ -102,22 +102,25 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** `
 
 ## Options (RAG + seed)
 
-**Canonical tree (physical):** `**[atx-docs/rag-collection/options-strategy/](./rag-collection/options-strategy/README.md)`** — Markdown narratives sync to Mongo with `**seed:admin**` / `**seed:options-strategy-***`. `**seed:admin` does not upload** to xAI team collections; populate team KB separately if you need `file_search` on those files (`**scripts/lib/seed-xai-rag-ingest.mjs`** is library-only, not invoked by seed). There is no separate `atx-docs/atx-options/` tree; use this RAG segment + **options-coreskills** below.
+**Mongo catalog (nested):** [`atx-docs/rag-collection/options-strategy/`](./rag-collection/options-strategy/README.md) — `options-strategy/<slug>/<slug>.md` syncs to **`options_strategy`** / prefs with **`seed:admin`** / **`seed:options-strategy-*`**. **`seed:admin` does not upload** to xAI.
 
-**Reviewer / agent quick index:** `**[options-coreskills.md](./rag-collection/options-strategy/options-coreskills/options-coreskills.md)`** — `**xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to `**.cursor/skills/skill-*/SKILL.md`**.
+**Finance xAI KB (shared `XAI_FINANCE_COLLECTION_ID`):** Markdown is split **[`options-strategy-core/`](./rag-collection/options-strategy-core/)** (lean desk + **[`options-coreskills.md`](./rag-collection/options-strategy-core/options-coreskills.md)**) and **[`options-strategy-advanced/`](./rag-collection/options-strategy-advanced/)** (full multi-leg playbooks). **`npm run seed:finance-xai-collection`** / **`POST /api/admin/rag/refresh-finance`** uploads **both** trees into the **same** Finance collection (nested **`options-strategy/**`** is **not** uploaded — avoids duplicate vectors vs flat playbooks). **Persona `always_include` (operator contract):** **`finance-advisor`** → **`options-strategy-core/**`** only (default HNWI product persona); **`advisor`** → **`options-strategy-advanced/**`** only (global-admin default / deep playbooks). Each YAML also lists **`finance-reference-docs/**`**.
+
+**Reviewer / agent quick index:** **[`options-coreskills.md`](./rag-collection/options-strategy-core/options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/skill-*/SKILL.md`**.
 
 
 | Doc                                                                                                     | Purpose                                                                                          |
 | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **[options-coreskills.md](./rag-collection/options-strategy/options-coreskills/options-coreskills.md)** | **★ Canonical index:** strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ id ↔ Cursor skill         |
-| **[options-strategy README](./rag-collection/options-strategy/README.md)**                              | Segment entry + layout rule                                                                      |
-| *(no `atx-options/` stub)*                                                                              | Options docs live under `**atx-docs/rag-collection/options-strategy/`** + **options-coreskills** |
+| **[options-coreskills.md](./rag-collection/options-strategy-core/options-coreskills.md)** | **★ Canonical index:** strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ id ↔ Cursor skill         |
+| **[options-strategy README](./rag-collection/options-strategy/README.md)**                              | Nested segment entry + Mongo seed layout (xOptions admin catalog)                               |
+| **[options-strategy-core](./rag-collection/options-strategy-core/)** (flat `*.md`)                     | Lean slice → Finance KB; **`finance-advisor`** `always_include` only                              |
+| **[options-strategy-advanced](./rag-collection/options-strategy-advanced/)** (flat `*.md`)             | Full-depth playbooks → Finance KB; **`advisor`** `always_include` only                             |
 | **[RAG collection README](./rag-collection/README.md)**                                                 | Full segment TOC + RAG folder convention                                                         |
 
 
-**Folder convention (logical tag in files):** `atx-rag-collection/options-strategy/<slug>/<slug>.md` — the first-line tag stays the same for stable RAG paths; physical files live under `atx-docs/rag-collection`. Frontmatter `xfinance-strategy-*`. Full playbooks: `.cursor/skills/skill-*/SKILL.md`. 
+**Folder convention:** Nested Mongo seed paths keep the logical tag `atx-rag-collection/options-strategy/<slug>/<slug>.md`. **Core** and **advanced** use **flat** `*.md` stems under their segment roots (allowed by layout tests). Frontmatter `xfinance-strategy-*`. Full Cursor playbooks: `.cursor/skills/skill-*/SKILL.md`.
 
-**Legacy paths:** Older docs referred to `**atx-options-strategy/`** and `**atx-options-coreskills.md**`; the repo canonical names are `**options-strategy/**` and `**options-coreskills/options-coreskills.md**`.
+**Legacy paths:** Older docs referred to **`atx-options-strategy/`** and **`atx-options-coreskills.md`**; canonical names are **`options-strategy/`** (Mongo), **`options-strategy-core/options-coreskills.md`** (index), and **`options-strategy-advanced/`**.
 
 ---
 

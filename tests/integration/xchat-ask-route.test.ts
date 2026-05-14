@@ -303,6 +303,8 @@ describe("xchat ask route collection retrieval", () => {
       })
     );
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-cache-hit")).toBe("0");
+    expect(response.headers.get("x-latency-ms")).toMatch(/^\d+$/);
     const payload = (await response.json()) as {
       data: {
         xaiUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
@@ -507,6 +509,51 @@ describe("xchat ask route collection retrieval", () => {
         systemPrompt: string;
       };
       expect(call.systemPrompt).not.toContain("Recent thread messages");
+    } finally {
+      vi.unstubAllEnvs();
+      repositoryMocks.getLatestXchatLogByThread.mockResolvedValue(null);
+    }
+  });
+
+  it("when XCHAT_USE_REMOTE_HISTORY and prior xaiResponseId, uses remote continuation with keep-last-10 only (no long-term toggle)", async () => {
+    vi.stubEnv("XCHAT_USE_REMOTE_HISTORY", "true");
+    prefsMocks.getXchatUserPreferences.mockResolvedValueOnce({
+      keepLastTenMessages: true,
+      enableLongTermXaiMemory: false
+    });
+    try {
+      repositoryMocks.getLatestXchatLogByThread.mockImplementation(
+        async (input: { personaId?: ObjectId }) => {
+          if (input.personaId) {
+            return { xaiResponseId: "resp_remote_prev_lt_off" } as {
+              xaiResponseId: string;
+            };
+          }
+          return null;
+        }
+      );
+
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            personaId: "507f1f77bcf86cd799439055",
+            message: "Second turn no LT",
+            threadId: "thread-remote-lt-off",
+            recentMessages: [{ role: "user", content: "First from client" }],
+            topK: 4
+          })
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+        expect.objectContaining({
+          previousResponseId: "resp_remote_prev_lt_off",
+          storeMessages: true
+        })
+      );
     } finally {
       vi.unstubAllEnvs();
       repositoryMocks.getLatestXchatLogByThread.mockResolvedValue(null);

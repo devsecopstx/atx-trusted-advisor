@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    buildFullHistoryMessages,
     buildInputWithHistory,
-    resolveToolLoopConversationInput
+    resolveToolLoopConversationInput,
+    XCHAT_ASK_MAX_TOOL_HISTORY_TURNS
 } from "@/modules/xchat/xchat-ask-history-input";
 
 describe("resolveToolLoopConversationInput", () => {
@@ -50,5 +52,38 @@ describe("resolveToolLoopConversationInput", () => {
       captionForPrompt: "Describe"
     });
     expect(input).toBeUndefined();
+  });
+
+  it("caps long-term thread input at four turns (eight messages) before the current user row", () => {
+    const recent = Array.from({ length: 20 }, (_, i) => ({
+      role: (i % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
+      content: `turn-${i}`
+    }));
+    const input = resolveToolLoopConversationInput({
+      hasVisionImages: false,
+      useRemoteContinuation: false,
+      enableLongTermXaiMemory: true,
+      recentMessages: recent,
+      userPrompt: "latest with tools",
+      captionForPrompt: "latest"
+    });
+    expect(Array.isArray(input)).toBe(true);
+    const arr = input as { role: string; content: string }[];
+    expect(arr.length).toBeLessThanOrEqual(XCHAT_ASK_MAX_TOOL_HISTORY_TURNS * 2 + 1);
+    expect(arr[0]?.content).toBe("turn-12");
+    expect(arr[arr.length - 1]?.content).toBe("latest with tools");
+  });
+});
+
+describe("buildFullHistoryMessages", () => {
+  it("uses XCHAT_ASK_MAX_TOOL_HISTORY_TURNS as default max", () => {
+    const recent = Array.from({ length: 20 }, (_, i) => ({
+      role: (i % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
+      content: `m${i}`
+    }));
+    const out = buildFullHistoryMessages(recent, "current");
+    expect(out.length).toBe(XCHAT_ASK_MAX_TOOL_HISTORY_TURNS * 2 + 1);
+    expect(out[0]?.content).toBe("m12");
+    expect(out[out.length - 1]?.content).toBe("current");
   });
 });

@@ -10,7 +10,9 @@
   - [xpersonas](#xpersonas)
   - [finance-reference-docs](#finance-reference-docs)
   - [example-prompts](#example-prompts)
-  - [options-strategy](#options-strategy)
+  - [options-strategy](#options-strategy) (Mongo catalog, nested)
+  - [options-strategy-core](#options-strategy-core) (Finance KB, lean)
+  - [options-strategy-advanced](#options-strategy-advanced) (Finance KB, full playbooks)
 - [Persona YAML schema](#persona-yaml-schema)
 - [Hygiene](#hygiene)
 - [Tests and automation](#tests-and-automation)
@@ -25,7 +27,9 @@
 | **`xpersonas/`** | `xpersonas` | xPersona seed specs — **exactly one `*.yaml` per subfolder** (Mongo via **`npm run seed:xpersonas`** / **`seed:admin`**; no `.md` in this segment). **`seed:admin` does not upload** YAML to xAI; team KB is out-of-band if needed (**`scripts/lib/seed-xai-rag-ingest.mjs`** is library-only). |
 | **`finance-reference-docs/`** | *(same folder name)* | Reference PDFs (disclosures, licensing). |
 | **`example-prompts/`** | `example-prompts` | Example user prompts / scenario copy for UX and KB samples. |
-| **`options-strategy/`** | `options-strategy` | Strategy Markdown (`xfinance-strategy-*` frontmatter) + hub index — see **[`options-strategy/README.md`](./options-strategy/README.md)**. |
+| **`options-strategy/`** | `options-strategy` | **Mongo-only** seed: nested `slug/slug.md` narratives for **`options_strategy`** / admin xOptions catalog (**`npm run seed:options-strategy*`**). **Not** uploaded by **`refresh-finance`** (use **core** + **advanced** for xAI). |
+| **`options-strategy-core/`** | *(uploaded as part of shared Finance collection)* | Lean options desk copy + **[`options-coreskills.md`](./options-strategy-core/options-coreskills.md)** — **`finance-advisor`** `always_include` **only** (not advanced). |
+| **`options-strategy-advanced/`** | *(same)* | Full multi-leg / overlay playbooks — **`advisor`** `always_include` **only** (not core). |
 
 Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, **`atx-personas-trusted-family`**, **`atx-xchat-example-prompts`**, **`atx-options-strategy`** are still **ingest path fallbacks** (see seed script).
 
@@ -33,7 +37,7 @@ Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, 
 
 ## RAG path layout
 
-**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`).
+**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`). **`options-strategy-core`** and **`options-strategy-advanced`** are **exceptions**: flat **`*.md`** files live directly under the segment root for a smaller Finance KB upload surface (validated in **`tests/unit/atx-rag-collection-layout.test.ts`**).
 
 **xpersonas:** Each subfolder holds **exactly one** persona `*.yaml`. Many personas use **`folder/folder.yaml`** (folder name equals file stem), e.g. `advisor/advisor.yaml`, `exam-coach/exam-coach.yaml`, `trusted-advisor/trusted-advisor.yaml`. Others use a **suffix stem** under a short bucket, e.g. `legal/legal-advisor.yaml`. This segment is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
 
@@ -81,7 +85,6 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 | Path |
 | --- |
 | [`README.md`](./options-strategy/README.md) (docs only; not ingested as content) |
-| [`options-coreskills/options-coreskills.md`](./options-strategy/options-coreskills/options-coreskills.md) |
 | `bull-call-debit-spread/bull-call-debit-spread.md` |
 | `bull-put-credit-spread/bull-put-credit-spread.md` |
 | `calendar-spread/calendar-spread.md` |
@@ -92,6 +95,19 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 | `leap-call-cc-overlay/leap-call-cc-overlay.md` |
 | `poor-mans-covered-call/poor-mans-covered-call.md` |
 | `wheel/wheel.md` |
+
+### options-strategy-core
+
+| Path |
+| --- |
+| [`options-coreskills.md`](./options-strategy-core/options-coreskills.md) (canonical index — **★**) |
+| `covered-call-and-csp.md`, `wheel-strategy.md`, `iron-condor-jade-lizard.md`, plus supplementary flat stems (earnings, sizing, tax, vol, straddle/strangle) |
+
+### options-strategy-advanced
+
+| Path |
+| --- |
+| `bull-call-debit-spread.md`, `bull-put-credit-spread.md`, `calendar-spread.md`, `diagonal-spread.md`, `iron-condor.md`, `leap-call-cc-overlay.md`, `poor-mans-covered-call.md`, `ratio-spread.md`, `broken-wing-butterfly.md`, `zebra.md` |
 
 ---
 
