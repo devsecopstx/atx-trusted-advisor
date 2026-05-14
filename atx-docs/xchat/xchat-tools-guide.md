@@ -16,9 +16,9 @@
 flowchart TD
   A["POST /api/xchat/ask"] --> B["Persona + effective tools\nnormalize → Super-Agent defaults → persona-linked ids → withLinked"]
   B --> C["RAG: persona-linked TEAM xAI collections then Mongo scope"]
-  C --> D["buildXchatSystemPrompt\n(persona → RAG → snapshot → buildSessionToolInstructions)"]
-  D --> E["User: override + message + appendXchatKbMetadata"]
-  E --> F["respondWithXaiToolLoop /v1/responses"]
+  C --> D["buildXchatSystemPrompt\n(stable: tenant → persona system → persona override → session tools → routing → citations → beta;\nvolatile: RAG → history → workspace snapshot)"]
+  D --> E["User: live message + appendXchatKbMetadata"]
+  E --> F["respondWithXaiToolLoop /v1/responses\n(prompt_cache_key per thread)"]
 ```
 
 - **Effective tools:** ask uses the persona tool config plus `ensureSuperAgentDefaultTools` where applicable. `mergeXchatHostedToolBaseline` is compatibility glue and must not be treated as an unconditional hosted-tool injector.
@@ -45,8 +45,9 @@ flowchart TD
 
 | Layer | Builder | Notes |
 |--------|---------|--------|
-| System | `buildXchatSystemPrompt` | Order: persona text → RAG line or “No RAG…” → optional workspace snapshot (`atxfinance`) → `buildSessionToolInstructions` (hosted + custom copy from effective tools). |
-| User | `appendXchatKbMetadata` | Same KB suffix for ask and batch: resolved collection ids + tool list. |
+| System (`instructions`) | `buildXchatSystemPrompt` | **Stable prefix first** (xAI prompt caching): optional tenant → persona `systemPrompt` → persona `overridePrompt` → `buildSessionToolInstructions` → routing blurb → citation policy → beta UI copy. **Volatile suffix:** RAG block → optional recent history → user workspace summary → workspace snapshot. |
+| User (`input`) | `appendXchatKbMetadata` + live caption | Persona override text is **not** duplicated here (moved into `instructions` for cacheable prefix alignment). Same KB suffix pattern for ask and batch. |
+| xAI routing | `respondWithXaiToolLoop` | Sends **`prompt_cache_key`** on **every** `/v1/responses` HTTP round-trip when `threadId` is known (including tool-loop continuations and `previous_response_id` chains) — same semantics as **`x-grok-conv-id`** per [xAI prompt caching](https://docs.x.ai/docs/advanced-api-usage/prompt-caching). `instructions` are only sent when **not** using `previous_response_id`. |
 | Tools wire | `personaXapiToolsToXaiRequestTools` → `toXaiRequestTools(..., { forXaiResponsesApi: true })` | **`/v1/responses`** expects **flat** function tools (`type`, `name`, `parameters` at root). OpenAI-style nesting under `function` causes **422** and the request never runs hosted **web_search** / **x_search**. Chat Completions uses `toXaiRequestTools` without the flag (nested shape). |
 
 **Model (ask):** persona `model`, else `XAI_CHAT_MODEL` or **`grok-4-1-fast-reasoning`** (`getDefaultPersonaChatModelId` in `ask/route.ts`); optional `reasoningEffort` for multi-agent ids only.

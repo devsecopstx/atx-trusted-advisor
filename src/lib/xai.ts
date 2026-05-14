@@ -720,8 +720,9 @@ export async function respondWithXaiToolLoop(input: {
   previousResponseId?: string;
   storeMessages?: boolean;
   /**
-   * xAI Responses **prompt caching** (see xAI “Prompt caching” advanced usage docs): stable key per thread/session.
-   * Sent only when `instructions` is present (first chain turn); omitted on `previous_response_id` continuations.
+   * xAI Responses **prompt caching** / sticky routing (see xAI “Prompt caching”): stable id per thread/session.
+   * Sent on **every** `/v1/responses` turn when set (including `previous_response_id` continuations) so routing
+   * matches the first turn; `instructions` are still only sent when `previous_response_id` is absent.
    */
   promptCacheKey?: string;
   /**
@@ -787,10 +788,10 @@ export async function respondWithXaiToolLoop(input: {
     } else {
       /** Per xAI docs, do not send `instructions` with `previous_response_id` (continuation turns). */
       requestBody.instructions = input.systemPrompt;
-      const cacheKey = input.promptCacheKey?.trim();
-      if (cacheKey) {
-        requestBody.prompt_cache_key = cacheKey.slice(0, 256);
-      }
+    }
+    const cacheKey = input.promptCacheKey?.trim();
+    if (cacheKey) {
+      requestBody.prompt_cache_key = cacheKey.slice(0, 256);
     }
     if (input.parallelism) {
       requestBody.agent_count = input.parallelism.agentCount;

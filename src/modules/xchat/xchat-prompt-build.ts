@@ -122,6 +122,8 @@ export function buildSessionToolInstructions(
  */
 export type XchatRemoteChainFingerprintInput = {
   personaSystem: string;
+  /** Persona `overridePrompt` (trimmed); empty when absent — edits must restart xAI remote chains. */
+  personaOverridePrompt?: string;
   personaUpdatedAtMs: number;
   strategyJobOptOut: boolean;
   hostedSearch: boolean;
@@ -142,8 +144,11 @@ export function computeXchatRemoteChainInstructionsFingerprint(
       : "";
   const hnwiSlug =
     typeof input.hnwiPromptTemplateV21Slug === "string" ? input.hnwiPromptTemplateV21Slug.trim() : "";
+  const override =
+    typeof input.personaOverridePrompt === "string" ? input.personaOverridePrompt.trim() : "";
   const raw = [
     typeof input.personaSystem === "string" ? input.personaSystem : "",
+    override,
     String(Number.isFinite(input.personaUpdatedAtMs) ? input.personaUpdatedAtMs : 0),
     input.strategyJobOptOut ? "1" : "0",
     input.hostedSearch ? "1" : "0",
@@ -160,6 +165,11 @@ export type BuildXchatSystemPromptInput = {
   tenantWorkspaceContextBlock?: string | null;
   /** Trimmed or raw persona `systemPrompt`; empty uses `fallbackPersonaSystem`. */
   personaSystem: string;
+  /**
+   * Persona `overridePrompt` (stable per persona) — kept in **instructions** before volatile RAG/history/snapshot
+   * so xAI prompt-caching can reuse the KV prefix across turns.
+   */
+  personaOverrideInstructions?: string | null;
   fallbackPersonaSystem: string;
   /** Snippet text only (no wrapper); empty → “No RAG context available.” */
   ragContext: string;
@@ -198,8 +208,8 @@ export function formatTenantWorkspaceContextBlockForXchat(input: {
 
 /**
  * Locked order for **xAI prompt caching** (stable prefix first, volatile suffix last):
- * tenant display (optional) → persona → session tools → routing policy → citation policy → beta UI →
- * RAG snippets → recent history → user workspace summary → workspace snapshot.
+ * tenant display (optional) → persona system → persona override template (optional) → session tools → routing policy
+ * → citation policy → beta UI → RAG snippets → recent history → user workspace summary → workspace snapshot.
  */
 export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): string {
   const citationsEnabled = input.citationsEnabled !== false;
@@ -211,6 +221,8 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
     typeof input.personaSystem === "string" && input.personaSystem.trim().length > 0
       ? input.personaSystem.trim()
       : input.fallbackPersonaSystem.trim();
+  const overrideRaw =
+    typeof input.personaOverrideInstructions === "string" ? input.personaOverrideInstructions.trim() : "";
   const rag =
     typeof input.ragContext === "string" && input.ragContext.trim().length > 0
       ? `Use the following RAG context if relevant:\n${input.ragContext.trim()}`
@@ -220,6 +232,12 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
     stableParts.push(tenantCtx);
   }
   stableParts.push(base);
+  if (overrideRaw.length > 0) {
+    stableParts.push(
+      "Persona output template (stable — apply on every turn before answering the latest user message):\n" +
+        overrideRaw
+    );
+  }
   const session = input.sessionToolInstructions.trim();
   if (session) {
     stableParts.push(session);

@@ -1863,6 +1863,7 @@ export async function POST(request: Request) {
 
   const remoteChainInstructionsFingerprint = computeXchatRemoteChainInstructionsFingerprint({
     personaSystem: persona?.systemPrompt ?? "",
+    personaOverridePrompt: persona?.overridePrompt?.trim() ?? "",
     personaUpdatedAtMs: persona?.updatedAt?.getTime() ?? 0,
     strategyJobOptOut,
     hostedSearch: hasHostedSearchTool,
@@ -1942,6 +1943,7 @@ export async function POST(request: Request) {
         ? effectiveTenantWorkspaceContextBlock
         : tenantWorkspaceContextBlock,
     personaSystem: persona?.systemPrompt ?? "",
+    personaOverrideInstructions: persona?.overridePrompt ?? null,
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
     recentHistoryBlock,
@@ -1966,10 +1968,7 @@ export async function POST(request: Request) {
   if (hnwiSlug) {
     systemPrompt = `${systemPrompt}\n\n${buildHnwiV21DeskReportSystemAddon(hnwiSlug)}`;
   }
-  const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
-  const userPromptBase = userPromptTemplate
-    ? `${userPromptTemplate}\n\nUser message:\n${captionForPrompt}`
-    : captionForPrompt;
+  const userPromptBase = captionForPrompt;
   const personaKbAugmentation = appendXchatKbMetadata({
     tools: xapiConfig.tools,
     linkedCollectionIds,
@@ -2107,10 +2106,10 @@ export async function POST(request: Request) {
 
   /** Scope cache by persona so switching persona mid-thread never reuses prior instructions bytes. */
   const personaCacheSegment = persona?._id?.toHexString() ?? "persona";
-  const promptCacheKey =
-    threadId?.trim() && !previousResponseId
-      ? `xf-xchat:${threadId.trim().slice(0, 160)}:${personaCacheSegment}`.slice(0, 256)
-      : undefined;
+  /** Sticky routing + KV reuse per xAI prompt caching (`prompt_cache_key` ≡ conv id on Responses). */
+  const promptCacheKey = threadId?.trim()
+    ? `xf-xchat:${threadId.trim().slice(0, 160)}:${personaCacheSegment}`.slice(0, 256)
+    : undefined;
 
   const toolLoopShared = {
     model: executionModel,

@@ -136,6 +136,15 @@ describe("computeXchatRemoteChainInstructionsFingerprint", () => {
     });
     expect(a).not.toBe(b);
   });
+
+  it("changes when persona override prompt changes", () => {
+    const a = computeXchatRemoteChainInstructionsFingerprint(base);
+    const b = computeXchatRemoteChainInstructionsFingerprint({
+      ...base,
+      personaOverridePrompt: "Always reply in YAML."
+    });
+    expect(a).not.toBe(b);
+  });
 });
 
 describe("formatTenantWorkspaceContextBlockForXchat", () => {
@@ -168,10 +177,11 @@ describe("buildXchatSystemPrompt", () => {
     expect(out.indexOf("P")).toBeGreaterThan(0);
   });
 
-  it("locks order: stable prefix (persona, session, citations, beta) then volatile (RAG, history, user workspace summary, snapshot)", () => {
+  it("locks order: stable prefix (persona, optional override, session, citations, beta) then volatile (RAG, history, user workspace summary, snapshot)", () => {
     const out = buildXchatSystemPrompt({
       personaSystem: "P",
       fallbackPersonaSystem: "F",
+      personaOverrideInstructions: "OV",
       ragContext: "rag",
       recentHistoryBlock: "HIST",
       userWorkspaceSummaryBlock: "UWS",
@@ -179,6 +189,7 @@ describe("buildXchatSystemPrompt", () => {
       sessionToolInstructions: "SESS"
     });
     const iP = out.indexOf("P");
+    const iOv = out.indexOf("OV");
     const iRag = out.indexOf("Use the following RAG");
     const iHist = out.indexOf("HIST");
     const iUws = out.indexOf("UWS");
@@ -187,7 +198,8 @@ describe("buildXchatSystemPrompt", () => {
     const iCite = out.indexOf("Citation chips");
     const iBeta = out.indexOf("Client UI (beta)");
     expect(iP).toBe(0);
-    expect(iSess).toBeGreaterThan(iP);
+    expect(iOv).toBeGreaterThan(iP);
+    expect(iSess).toBeGreaterThan(iOv);
     expect(iCite).toBeGreaterThan(iSess);
     expect(iBeta).toBeGreaterThan(iCite);
     expect(iRag).toBeGreaterThan(iBeta);

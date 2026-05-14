@@ -45,6 +45,7 @@ export async function generateMarketingMarkdownWithXchat(
   const personaSystem = persona?.systemPrompt?.trim();
   const systemPrompt = buildXchatSystemPrompt({
     personaSystem: personaSystem && personaSystem.length > 0 ? personaSystem : "",
+    personaOverrideInstructions: persona?.overridePrompt ?? null,
     fallbackPersonaSystem:
       "You are xChat, creating concise, compliant social posts for atxFinance marketing operations.",
     ragContext: "",

@@ -129,7 +129,8 @@ describe("respondWithXaiToolLoop", () => {
       userPrompt: "Go",
       tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       maxTurns: 5,
-      executor: async () => ({ result: "{}" })
+      executor: async () => ({ result: "{}" }),
+      promptCacheKey: "xf-tool-loop-chain"
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -137,11 +138,13 @@ describe("respondWithXaiToolLoop", () => {
     const body0 = JSON.parse(String(init0.body)) as Record<string, unknown>;
     expect(body0.instructions).toBe("SYS");
     expect(body0.previous_response_id).toBeUndefined();
+    expect(body0.prompt_cache_key).toBe("xf-tool-loop-chain");
     const [, init1] = fetchMock.mock.calls[1] as [string, RequestInit];
     const body1 = JSON.parse(String(init1.body)) as Record<string, unknown>;
     expect(body1.previous_response_id).toBe("resp_first");
     expect(body1).not.toHaveProperty("instructions");
     expect(body1).not.toHaveProperty("system_prompt");
+    expect(body1.prompt_cache_key).toBe("xf-tool-loop-chain");
   });
 
   it("starts from previous response id and enables store_messages when requested", async () => {
@@ -160,7 +163,8 @@ describe("respondWithXaiToolLoop", () => {
       tools: [{ type: "web_search" }],
       executor: async () => ({ result: "{}" }),
       previousResponseId: "resp_prev_1",
-      storeMessages: true
+      storeMessages: true,
+      promptCacheKey: "xf-thread-sticky"
     });
 
     expect(result.responseId).toBe("resp_next_1");
@@ -169,6 +173,7 @@ describe("respondWithXaiToolLoop", () => {
     expect(body0.previous_response_id).toBe("resp_prev_1");
     expect(body0).not.toHaveProperty("instructions");
     expect(body0.store_messages).toBe(true);
+    expect(body0.prompt_cache_key).toBe("xf-thread-sticky");
   });
 
   it("runs atx_function executor when model prints fenced JSON instead of function_call", async () => {

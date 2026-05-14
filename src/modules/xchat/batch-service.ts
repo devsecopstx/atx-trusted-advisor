@@ -202,6 +202,7 @@ export async function submitBatchJob(
     const systemPrompt = buildXchatSystemPrompt({
       tenantWorkspaceContextBlock: input.tenantWorkspaceContextBlock ?? null,
       personaSystem: input.persona.systemPrompt?.trim() ?? "",
+      personaOverrideInstructions: input.persona.overridePrompt ?? null,
       fallbackPersonaSystem: "You are a helpful assistant.",
       ragContext,
       userWorkspaceSummaryBlock,
@@ -213,9 +214,7 @@ export async function submitBatchJob(
       citationsEnabled: input.persona.citationsEnabled !== false
     });
 
-    const userPromptBase = input.persona.overridePrompt?.trim()
-      ? `${input.persona.overridePrompt}\n\nUser message:\n${item.message}`
-      : item.message;
+    const userPromptBase = item.message;
 
     const batchMeta = appendXchatKbMetadata({
       tools: xapiConfigMerged.tools,
