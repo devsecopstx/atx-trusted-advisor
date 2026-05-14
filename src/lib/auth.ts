@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { cache } from "react";
 
 import { getEnv } from "@/lib/env";
+import { isSafeOAuthReturnPath } from "@/lib/oauth-return-path";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { normalizeCoreRoles } from "@/modules/identity/authorization";
 const OAUTH_STATE_COOKIE_NAME = "xf_x_oauth_state";
@@ -219,23 +220,7 @@ export function applyOAuthFlowCookiesToRedirect(
   response.cookies.set(OAUTH_VERIFIER_COOKIE_NAME, verifier, baseCookie);
 }
 
-/** Rejects open redirects and path traversal; only same-origin relative paths. */
-export function isSafeOAuthReturnPath(path: string): boolean {
-  const p = path.trim();
-  if (!p.startsWith("/") || p.startsWith("//")) {
-    return false;
-  }
-  if (p.includes("..")) {
-    return false;
-  }
-  if (p.length > 512) {
-    return false;
-  }
-  if (/[\r\n\0]/.test(p)) {
-    return false;
-  }
-  return true;
-}
+export { isSafeOAuthReturnPath } from "@/lib/oauth-return-path";
 
 export function applyOAuthReturnPathCookie(response: NextResponse, returnPath: string | null): void {
   if (!returnPath || !isSafeOAuthReturnPath(returnPath)) {

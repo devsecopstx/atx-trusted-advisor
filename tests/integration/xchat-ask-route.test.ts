@@ -1971,16 +1971,16 @@ describe("xchat ask route collection retrieval", () => {
       const text = payload.data?.response ?? "";
       expect(text).toContain("TSLA");
       expect(text).toContain("NVDA");
-      expect(text).toContain("| Symbol | Spot | 1D Delta | Distance to Target | xOptions CTA |");
-      expect(text).toContain("| TSLA | $245.00 | +$5.25 (+2.19%)");
-      expect(text).toContain("| NVDA | $488.00 | -$3.10 (-0.63%)");
+      expect(text).toContain("| Symbol | Type | Strategy | Qty | Spot | Target entry (100×) | Desk entry | 1D Δ | To target | xOptions |");
+      expect(text).toContain("| TSLA | — | — | — | $245.00 | $24,500 | — | +$5.25 (+2.19%) | — |");
+      expect(text).toContain("| NVDA | — | — | — | $488.00 | $48,800 | $120.50 | -$3.10 (-0.63%) | -75.31% |");
       expect(text).toContain(
-        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044"
+        '[Open TSLA](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044 "Open xOptions for TSLA")'
       );
       expect(text).toContain(
-        "[Open NVDA in xOptions](/xoptions?symbol=NVDA&action=build&portfolioId=507f1f77bcf86cd799439044"
+        '[Open NVDA](/xoptions?symbol=NVDA&action=build&portfolioId=507f1f77bcf86cd799439044 "Open xOptions for NVDA")'
       );
-      expect(text).toContain("Accessibility note:");
+      expect(text).toContain("Not investment advice");
       expect(text).not.toMatch(/added /i);
       expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
       expect(createSpy).toHaveBeenCalledWith(
@@ -2087,7 +2087,7 @@ describe("xchat ask route collection retrieval", () => {
         })
       );
       expect(payload.data?.response ?? "").toContain(
-        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044"
+        '[Open TSLA](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044 "Open xOptions for TSLA")'
       );
     } finally {
       createSpy.mockRestore();
@@ -2136,10 +2136,10 @@ describe("xchat ask route collection retrieval", () => {
       expect(response.status).toBe(200);
       const payload = (await response.json()) as { data?: { response?: string } };
       const text = payload.data?.response ?? "";
-      expect(text).toContain("| Symbol | Spot | 1D Delta | Distance to Target | xOptions CTA |");
-      expect(text).toContain("| TSLA | $245.00 | — | — |");
+      expect(text).toContain("| Symbol | Type | Strategy | Qty | Spot | Target entry (100×) | Desk entry | 1D Δ | To target | xOptions |");
+      expect(text).toContain("| TSLA | — | — | — | $245.00 | $24,500 | — | — | — |");
       expect(text).toContain(
-        "[Open TSLA in xOptions](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044"
+        '[Open TSLA](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044 "Open xOptions for TSLA")'
       );
     } finally {
       createSpy.mockRestore();

@@ -1,9 +1,12 @@
 import { isSafeOAuthReturnPath } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 
-import { EmailLoginPanel } from "./ui/email-login-panel";
-import { LoginOAuthDivider, LoginOAuthSection } from "./ui/login-oauth-section";
-import { LoginPageHeader } from "./ui/login-page-header";
+import { AuthMarketingLayout } from "./ui/auth-marketing-layout";
+import { LoginAuthSurfaceClient } from "./ui/login-auth-surface-client";
+
+const LOGIN_QUERY_ERROR_COPY: Record<string, string> = {
+  session_not_grounded: "Your session ended. Sign in again to continue."
+};
 
 export default async function LoginPage({
   searchParams
@@ -14,6 +17,7 @@ export default async function LoginPage({
   const rawNext = typeof sp.next === "string" ? sp.next.trim() : Array.isArray(sp.next) ? sp.next[0]?.trim() ?? "" : "";
   const nextPath = rawNext && isSafeOAuthReturnPath(rawNext) ? rawNext : "/xchat";
   const errRaw = typeof sp.error === "string" ? sp.error.trim() : Array.isArray(sp.error) ? sp.error[0]?.trim() : "";
+  const errorMessage = errRaw ? (LOGIN_QUERY_ERROR_COPY[errRaw] ?? errRaw) : null;
 
   const googleLoginHref = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent(nextPath)}`
@@ -21,18 +25,13 @@ export default async function LoginPage({
   const xOAuthLoginHref = `/api/auth/x/login?next=${encodeURIComponent(nextPath)}`;
 
   return (
-    <div className="min-h-screen bg-[var(--xf-bg-900)] text-[var(--xf-text-100)] px-4 py-10 sm:px-6">
-      <div className="mx-auto flex w-full max-w-md flex-col gap-8">
-        <LoginPageHeader />
-        {errRaw ? (
-          <p className="status-text status-error text-sm" role="alert">
-            {errRaw}
-          </p>
-        ) : null}
-        <EmailLoginPanel nextPath={nextPath} />
-        <LoginOAuthDivider label="or continue with" />
-        <LoginOAuthSection googleLoginHref={googleLoginHref} xOAuthLoginHref={xOAuthLoginHref} />
-      </div>
-    </div>
+    <AuthMarketingLayout>
+      <LoginAuthSurfaceClient
+        errorMessage={errorMessage}
+        googleLoginHref={googleLoginHref}
+        nextPath={nextPath}
+        xOAuthLoginHref={xOAuthLoginHref}
+      />
+    </AuthMarketingLayout>
   );
 }

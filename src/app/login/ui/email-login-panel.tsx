@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { type FormEvent, useId, useState } from "react";
 
-export function EmailLoginPanel({ nextPath }: { nextPath: string }) {
+type EmailLoginPanelProps = {
+  nextPath: string;
+  /** Hide intro copy when the panel is revealed from a secondary control. */
+  compact?: boolean;
+  /** When false, the parent renders the sign-up link (avoids duplicate CTAs). */
+  showSignupLink?: boolean;
+};
+
+export function EmailLoginPanel({
+  nextPath,
+  compact = false,
+  showSignupLink = true
+}: EmailLoginPanelProps) {
   const loginId = useId();
   const passwordId = useId();
   const [loginIdentifier, setLoginIdentifier] = useState("");
@@ -48,13 +60,23 @@ export function EmailLoginPanel({ nextPath }: { nextPath: string }) {
 
   return (
     <div className="login-email-block w-full space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold text-[var(--xf-text-200)]">Username or email</h2>
-        <p className="text-xs leading-relaxed text-[var(--xf-text-muted)]">
-          Use your username or email, or continue with Google or X for your approved workspace account.
-        </p>
-      </div>
-      <form onSubmit={onSubmit} className="flex w-full flex-col gap-4">
+      {!compact ? (
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-[var(--xf-text-200)]">Username or email</h2>
+          <p className="text-xs leading-relaxed text-[var(--xf-text-muted)]">
+            Use your username or email, or continue with Google or X for your approved workspace account.
+          </p>
+        </div>
+      ) : (
+        <h2 className="text-sm font-semibold text-[var(--xf-text-200)]" id="login-email-heading">
+          Email or username + password
+        </h2>
+      )}
+      <form
+        onSubmit={onSubmit}
+        className="flex w-full flex-col gap-4"
+        aria-labelledby={compact ? "login-email-heading" : undefined}
+      >
         <label className="flex flex-col gap-1 text-sm" htmlFor={loginId}>
           <span className="text-[var(--xf-text-200)]">Username or email</span>
           <input
@@ -111,15 +133,17 @@ export function EmailLoginPanel({ nextPath }: { nextPath: string }) {
         >
           Forgot password?
         </Link>
-        <p className="text-[var(--xf-text-muted)]">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/signup"
-            className="font-semibold text-[var(--xf-gain-green)] underline decoration-[color-mix(in_srgb,var(--xf-gain-green)_55%,transparent)] underline-offset-2 hover:opacity-90"
-          >
-            Sign up here
-          </Link>
-        </p>
+        {showSignupLink ? (
+          <p className="text-[var(--xf-text-muted)]">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/signup"
+              className="font-semibold text-[var(--xf-gain-green)] underline decoration-[color-mix(in_srgb,var(--xf-gain-green)_55%,transparent)] underline-offset-2 hover:opacity-90"
+            >
+              Sign up here
+            </Link>
+          </p>
+        ) : null}
       </div>
     </div>
   );

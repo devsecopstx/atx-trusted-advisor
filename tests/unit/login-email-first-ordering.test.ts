@@ -4,14 +4,8 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Pins the email-first hierarchy on the public sign-in surfaces so the email +
- * password form always renders before the OAuth shortcuts (Google + X). If
- * this test breaks, restore the order or update both surfaces together —
- * never let one surface drift to OAuth-first.
- *
- * Surfaces:
- *  - `/login` page (`src/app/login/page.tsx`)
- *  - xChat guest panel default flow (`src/app/xchat/ui/xchat-guest-panel.tsx`)
+ * `/login` is intentionally **X-primary** (HNWI trust / Grok-aligned entry).
+ * xChat guest panel remains **email-first** for the in-product guest shell.
  */
 
 const ROOT = resolve(__dirname, "../..");
@@ -20,18 +14,25 @@ function readSource(relativePath: string): string {
   return readFileSync(resolve(ROOT, relativePath), "utf8");
 }
 
-describe("login page — email + password is primary, OAuth is secondary", () => {
-  const source = readSource("src/app/login/page.tsx");
+describe("login page — X-primary marketing shell", () => {
+  const pageSource = readSource("src/app/login/page.tsx");
+  const surfaceSource = readSource("src/app/login/ui/login-auth-surface-client.tsx");
 
-  it("renders <EmailLoginPanel /> before <LoginOAuthSection />", () => {
-    const emailPanelIdx = source.indexOf("<EmailLoginPanel ");
-    const oauthSectionIdx = source.indexOf("<LoginOAuthSection ");
-    expect(emailPanelIdx).toBeGreaterThanOrEqual(0);
-    expect(oauthSectionIdx).toBeGreaterThan(emailPanelIdx);
+  it("wraps the client auth surface in AuthMarketingLayout", () => {
+    expect(pageSource).toMatch(/<AuthMarketingLayout>/);
+    expect(pageSource).toMatch(/<LoginAuthSurfaceClient/);
   });
 
-  it("uses the secondary 'or continue with' divider label", () => {
-    expect(source).toMatch(/<LoginOAuthDivider\s+label="or continue with"/);
+  it("surfaces Continue with X before the expandable email path", () => {
+    const xIdx = surfaceSource.indexOf("Continue with X");
+    const emailToggleIdx = surfaceSource.indexOf("Sign in with email & password");
+    expect(xIdx).toBeGreaterThanOrEqual(0);
+    expect(emailToggleIdx).toBeGreaterThan(xIdx);
+  });
+
+  it("uses framer-motion affordances on primary actions", () => {
+    expect(surfaceSource).toMatch(/from "framer-motion"/);
+    expect(surfaceSource).toMatch(/<motion\.a/);
   });
 });
 
@@ -73,8 +74,8 @@ describe("/signup page — tastytrade-style account creation flow", () => {
   const pageSource = readSource("src/app/signup/page.tsx");
   const formSource = readSource("src/app/signup/ui/signup-form.tsx");
 
-  it("page mounts the SignupForm under the shared LoginPageHeader", () => {
-    expect(pageSource).toMatch(/<LoginPageHeader \/>/);
+  it("page mounts SignupForm inside the same marketing shell as /login", () => {
+    expect(pageSource).toMatch(/<AuthMarketingLayout>/);
     expect(pageSource).toMatch(/<SignupForm \/>/);
   });
 

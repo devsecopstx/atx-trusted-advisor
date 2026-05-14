@@ -33,9 +33,11 @@ describe("proxy (middleware) guest HTML routes", () => {
     expect((await proxy(request("/portfolio/accounts/507f1f77bcf86cd799439011"))).headers.get("location")).toBeNull();
   });
 
-  it("still redirects unauthenticated /watchlist to /xchat", async () => {
+  it("still redirects unauthenticated /watchlist to /login with next=/watchlist", async () => {
     const res = await proxy(request("/watchlist"));
-    expect(res.headers.get("location")).toMatch(/\/xchat$/);
+    const loc = res.headers.get("location");
+    expect(loc).toMatch(/\/login\?/);
+    expect(loc).toContain("next=%2Fwatchlist");
   });
 
   it("returns 401 for unauthenticated API matched by middleware (e.g. /api/admin)", async () => {

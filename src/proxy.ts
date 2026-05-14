@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { isSafeOAuthReturnPath } from "@/lib/oauth-return-path";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { TENANT_UX_FAIL_CLOSED_DRILL_COOKIE } from "@/modules/platform/tenant-ux-flags";
 import { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
@@ -172,8 +173,12 @@ async function enforceSessionGrounding(
     clearSessionCookieOn(res);
     return res;
   }
-  const redirectUrl = new URL("/xchat", request.url);
+  const search = request.nextUrl.search;
+  const nextCandidate = `${pathname}${search}`;
+  const next = isSafeOAuthReturnPath(nextCandidate) ? nextCandidate : "/xchat";
+  const redirectUrl = new URL("/login", request.url);
   redirectUrl.searchParams.set("error", "session_not_grounded");
+  redirectUrl.searchParams.set("next", next);
   const res = NextResponse.redirect(redirectUrl);
   clearSessionCookieOn(res);
   return res;
@@ -590,7 +595,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  return NextResponse.redirect(new URL("/xchat", request.url));
+  const nextCandidate = `${pathname}${request.nextUrl.search}`;
+  const next = isSafeOAuthReturnPath(nextCandidate) ? nextCandidate : "/xchat";
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("next", next);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
