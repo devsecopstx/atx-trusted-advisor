@@ -1,30 +1,46 @@
 ---
 id: xfinance-strategy-diagonal-spread
 name: xfinance-strategy-diagonal-spread
-description: Diagonal Spread playbook using long-dated LEAP calls and short near-term calls on TSLA and selected proxies.
+description: Diagonal spread — long far option + short near option at different strikes; theta harvest with directional bias.
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
 
-# xFinance Strategy: Diagonal Spread
+# xFinance Strategy: Diagonal spread
 
-## How Commonly Used
+**One-sentence definition:** Hold a **longer-dated** option and repeatedly sell **shorter-dated** options against it (often **different strikes**), blending **calendar** and **vertical** behavior.
 
-Medium-High
+**Best market conditions:** **Bullish** (call diagonal) or **bearish** (put diagonal) with plan to **roll shorts**; back month **liquid**.
 
-## Strategy
+**Risk bucket:** **Aggressive** vs single verticals — path, **vega**, and **roll cadence** dominate outcomes.
 
-Use a long far-term LEAP call plus a short near-term call on TSLA/proxies to combine theta capture and upside participation.
+**Payoff profile:** **Path-dependent** — use platform risk graph; **practical max loss** often anchored to **net debit** + management rules.
 
-## Risk Profile
+| | |
+|--|--|
+| **Max profit** | Model at short expiries — not a single formula |
+| **Max loss (policy)** | Desk may cap at **initial debit + roll debits** |
+| **Breakeven** | Two-sided — model |
 
-Moderate-Aggressive (time/volatility flexibility risk)
+**Position sizing rules:** **≤0.5–1%** NAV per diagonal chain for first tranche; scale only after roll P/L distribution known.
+
+**Worked example (illustrative):** **NVDA** call diagonal: long **Jan** **$100** call, roll **weekly** **$110** short calls against it — each roll is its own **credit/debit** event; track **cumulative** roll P/L separate from LEAP mark.
+
+**When to avoid:** Illiquid LEAPs; trend that blows through short strike without roll liquidity; inability to monitor **weekly**.
+
+**Tax & assignment (HNWI — not tax advice):** Frequent rolls → many **short-term** events; LEAP may be **LT** if held >1y separately — **straddle** tax rules may apply if positions offset — CPA mandatory for large notionals.
+
+**Quick reference**
+
+| Leg | Role |
+|-----|------|
+| Long back | **+Vega**, **−Θ** |
+| Short front | **+Θ**, stabilizes carry |
 
 ## Guardrails
 
-- Keep long-leg duration materially beyond short-leg expiration.
-- Track term-structure and volatility shifts per roll decision.
-- Enforce consistent strike laddering and max open diagonal count.
+- Long leg **DTE** should materially exceed shorts (e.g. **≥3×**).
+- Cap **open rolls** if cumulative credits cannot offset a gap move.
 
 ## Output contract
 
@@ -51,7 +67,6 @@ Return **only** valid JSON (no markdown fences, no commentary). For holdings + w
 }
 ```
 
-**assignmentRiskNote** (≤180 chars): start with risk level (**Low**, **Low-moderate**, **Moderate**, **High**); include % OTM or buffer; end with position impact. Example: `Moderate. Short leg ~6% OTM. Roll short if delta rises.`
+**assignmentRiskNote** (≤180 chars): risk level + % OTM/buffer + position impact.
 
-**rationale** (≤220 chars): strategy logic + liquidity + outlook alignment only.
-
+**rationale** (≤220 chars): strategy logic + liquidity + outlook only.

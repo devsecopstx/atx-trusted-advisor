@@ -1,30 +1,47 @@
 ---
 id: xfinance-strategy-bull-call-debit-spread
 name: xfinance-strategy-bull-call-debit-spread
-description: Bull Call Debit Spread framework for leveraged bullish TSLA moves with capped risk and capped reward.
+description: Bull call debit spread — long lower call, short higher call; defined risk bullish leverage.
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
 
-# xFinance Strategy: Bull Call Debit Spread
+# xFinance Strategy: Bull call debit spread
 
-## How Commonly Used
+**One-sentence definition:** Buy a **lower-strike** call and sell a **higher-strike** call in the same expiry for a **net debit**, gaining leveraged upside with **capped risk**.
 
-Medium-High
+**Best market conditions:** Moderately **bullish**; prefer **IV not extreme** on entry (debit structures hurt if you buy rich vol without follow-through).
 
-## Strategy
+**Risk bucket:** **Balanced** (max loss = debit; max gain capped).
 
-Buy a lower-strike call and sell a higher-strike call on TSLA for leveraged bullish exposure with net debit.
+**Payoff profile (width W = K₂ − K₁, debit D per spread, ×100):**
 
-## Risk Profile
+| | |
+|--|--|
+| **Max profit** | **(W × 100) − D** at expiry if **≥ K₂** |
+| **Max loss** | **D** if **≤ K₁** |
+| **Breakeven** | **K₁ + (D / 100)** per share |
 
-Moderate (capped risk/reward)
+**Position sizing rules:** Risk **1R = D**; typical **≤0.5–1.5%** NAV per spread cluster unless policy allows more.
+
+**Worked example (illustrative):** **SPY** **$500**, buy **$500** call, sell **$510** call, **30 DTE**, pay **$3.20** ($320). **W = $10** → max value **$1,000** → max profit **$680**; max loss **$320**; BE **$503.20**.
+
+**When to avoid:** Strong bearish trend; very wide bid-ask on **OTM** short; earnings binary without sized risk.
+
+**Tax & assignment (HNWI — not tax advice):** Early exercise uncommon on **OTM** shorts but monitor **dividends** on deep ITM shorts; closing spreads is usually a simple 1099-B line — lot sync with CPA.
+
+**Quick reference**
+
+| | Long call | Short call |
+|--|-----------|------------|
+| **Δ** | + | − |
+| **Θ** | − | + |
+| **Margin** | Debit paid | Defined by spread |
 
 ## Guardrails
 
-- Define max debit per spread and aggregate portfolio exposure.
-- Require target/stop logic relative to spread value, not underlying only.
-- Avoid earnings/event windows unless explicitly intended.
+- Short strike must be **≥** long strike + **1** strike step; verify width vs move needed.
+- Exit if **−40 to −50%** of debit at policy drawdown unless roll thesis exists.
 
 ## Output contract
 
@@ -51,7 +68,6 @@ Return **only** valid JSON (no markdown fences, no commentary). For holdings + w
 }
 ```
 
-**assignmentRiskNote** (≤180 chars): start with risk level (**Low**, **Low-moderate**, **Moderate**, **High**); include % OTM or buffer; end with position impact. Example: `Moderate. Long leg ITM buffer. Debit capped at spread width.`
+**assignmentRiskNote** (≤180 chars): risk level + % OTM/buffer + position impact.
 
-**rationale** (≤220 chars): strategy logic + liquidity + outlook alignment only.
-
+**rationale** (≤220 chars): strategy logic + liquidity + outlook only.

@@ -1,35 +1,50 @@
 ---
 id: xfinance-strategy-zebra
 name: xfinance-strategy-zebra
-description: ZEBRA (zero-extrinsic back ratio) — back-ratio style directional structure with reduced extrinsic; advanced Greeks and capital discipline.
+description: ZEBRA — zero extrinsic back ratio style construction; advanced directional with path risk.
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
 
-# xFinance Strategy: ZEBRA (zero-extrinsic back ratio)
+# xFinance Strategy: ZEBRA (zero extrinsic back ratio)
 
-## How Commonly Used
+**One-sentence definition:** A **ratio-style** options construction (e.g. sell **1** ATM-ish, buy **2** OTM on same side) engineered to **reduce extrinsic** vs naive debit spreads — still **directional** with **path-dependent** payoff.
 
-Low–medium (niche; advanced)
+**Best market conditions:** When desk model shows **edge** vs vanilla vertical on **same view**; **liquid** chain; ability to **adjust** fast.
 
-## Strategy
+**Risk bucket:** **Aggressive** (debit at risk; **gamma** near ATM; complexity).
 
-A **ZEBRA** is a **back-ratio–style** construction (e.g. sell one ATM-ish option, buy two further OTM options on the same side, or the mirror for bearish setups) arranged so **extrinsic** is reduced relative to a naive debit spread or stock replacement story. Treat as **directional** with payoff shape driven by strikes, DTE, and net debit — not a generic “always lower capital than shares” claim without modeling.
+**Payoff profile:** **Model-only** — no single universal formula; verify **max loss** includes gap scenarios.
 
-## Risk Profile
+| | |
+|--|--|
+| **Max profit** | Zone-based — risk graph |
+| **Max loss** | Often **net debit** + adverse path; tail cases worse if unbalanced |
+| **Breakeven** | Two roots typical — model |
 
-Aggressive (directional; path-dependent; debit at risk; complexity in rolls and assignment)
+**Position sizing rules:** **≤0.25–0.75%** NAV per ZEBRA for exploratory; scale only with **replay** history.
+
+**Worked example (illustrative):** **NVDA** bullish ZEBRA-style sketch: sell **1× $130** call, buy **2× $145** calls, net **debit $D** — **must** run broker risk graph; numbers here are **placeholders** only.
+
+**When to avoid:** Wide spreads; inability to babysit **last week**; unclear margin on ratio.
+
+**Tax & assignment (HNWI — not tax advice):** Exercise/assignment on ratio legs → **complex** stock/option mix — CPA if material.
+
+**Quick reference**
+
+| | |
+|--|--|
+| **Edge claim** | Must be **model-verified**, not marketing |
+| **Roll** | Pre-scripted |
 
 ## Guardrails
 
-- Model delta, gamma, and theta through the intended hold window; ratio structures flip character quickly near ATM.
-- Plan exit or roll rules before **very short DTE** where gamma dominates.
-- Use only in liquid names unless slippage is explicitly budgeted.
-- Educational context only; not financial advice — no implied guarantees vs stock or other structures.
+- Paper-trade **3** cycles before live if desk is new to ZEBRAs.
+- Hard **time stop** if thesis not working by **T−5** to expiry.
 
 ## Output contract
 
-Return **only** valid JSON (no markdown fences, no commentary). For holdings + watchlist prompts, return up to **three** `ideas` when supported.
+Return **only** valid JSON (no markdown fences, no commentary).
 
 ```json
 {
@@ -52,7 +67,6 @@ Return **only** valid JSON (no markdown fences, no commentary). For holdings + w
 }
 ```
 
-**assignmentRiskNote** (≤180 chars): start with risk level (**Low**, **Low-moderate**, **Moderate**, **High**); include % OTM or buffer; end with position impact. Example: `High. Directional skew. Defined risk only if fully legged.`
+**assignmentRiskNote** (≤180 chars): risk level + % OTM/buffer + position impact.
 
-**rationale** (≤220 chars): strategy logic + liquidity + outlook alignment only.
-
+**rationale** (≤220 chars): strategy logic + liquidity + outlook only.

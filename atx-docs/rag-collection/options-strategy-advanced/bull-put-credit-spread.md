@@ -1,30 +1,46 @@
 ---
 id: xfinance-strategy-bull-put-credit-spread
 name: xfinance-strategy-bull-put-credit-spread
-description: Bull Put Credit Spread guide for defined-risk premium capture on TSLA pullbacks with reinvestment discipline.
+description: Bull put credit spread — short higher put, long lower put; collect credit for bullish / mild-bull premium with defined risk.
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
 
-# xFinance Strategy: Bull Put Credit Spread
+# xFinance Strategy: Bull put credit spread
 
-## How Commonly Used
+**One-sentence definition:** Sell a **higher-strike** put and buy a **lower-strike** put (same expiry) for **net credit**, profiting if the underlying stays **above the short put** at expiry.
 
-High
+**Best market conditions:** **Bullish** to **neutral**; elevated put IV vs your view; willing to cap loss at **width − credit**.
 
-## Strategy
+**Risk bucket:** **Balanced** (defined max loss).
 
-Sell OTM put spreads on TSLA dips for defined-risk income; reinvest proceeds into TSLA.
+**Payoff profile (width W = short − long strikes, credit C, ×100):**
 
-## Risk Profile
+| | |
+|--|--|
+| **Max profit** | **C** if **≥ short strike** |
+| **Max loss** | **(W × 100) − C** if **≤ long put** |
+| **Breakeven** | **Short strike − (C / 100)** |
 
-Moderate (limited max loss)
+**Position sizing rules:** **1R = (W×100) − C**; cap concurrent spreads so sum **1R** meets NAV policy.
+
+**Worked example (illustrative):** **NVDA** **$120**, short **$110** put, long **$105** put, credit **$1.40** ($140). **W = $5** → max loss **$500 − $140 = $360**; max gain **$140**; BE **$108.60**.
+
+**When to avoid:** Hard bearish trend; gap risk into short strike without roll plan; earnings if implied move can jump through width.
+
+**Tax & assignment (HNWI — not tax advice):** Assignment can land **stock** if one leg exercises asymmetrically — monitor **ex-div** on ITM shorts; CPA for large notionals.
+
+**Quick reference**
+
+| Greek desk read | Short put | Long put |
+|-----------------|-----------|----------|
+| **Δ** | + (bullish premium) | − hedge |
+| **Θ** | + collect | − pay |
 
 ## Guardrails
 
-- Keep spread width aligned with defined max-loss limits.
-- Require explicit invalidation and exit logic.
-- Avoid overlapping spread clusters around key event dates.
+- Keep short strike **below** spot only if thesis supports; deeper OTM lowers credit but raises POP vs max loss efficiency trade-off.
+- Predefine **roll to next cycle** vs **close at −X% max loss** rule.
 
 ## Output contract
 
@@ -51,7 +67,6 @@ Return **only** valid JSON (no markdown fences, no commentary). For holdings + w
 }
 ```
 
-**assignmentRiskNote** (≤180 chars): start with risk level (**Low**, **Low-moderate**, **Moderate**, **High**); include % OTM or buffer; end with position impact. Example: `Low-moderate. Short strike ~8% OTM. Defined max loss at spread width.`
+**assignmentRiskNote** (≤180 chars): risk level + % OTM/buffer + position impact.
 
-**rationale** (≤220 chars): strategy logic + liquidity + outlook alignment only.
-
+**rationale** (≤220 chars): strategy logic + liquidity + outlook only.

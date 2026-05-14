@@ -1,35 +1,50 @@
 ---
 id: xfinance-strategy-broken-wing-butterfly
 name: xfinance-strategy-broken-wing-butterfly
-description: Broken wing butterfly — asymmetric long wings for defined risk and a skewed payoff vs a symmetric butterfly or iron fly.
+description: Broken wing butterfly — asymmetric wings for skewed payoff vs symmetric fly; defined risk when fully closed.
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
 
-# xFinance Strategy: Broken wing butterfly
+# xFinance Strategy: Broken wing butterfly (BWB)
 
-## How Commonly Used
+**One-sentence definition:** A **butterfly** with **unequal wings** (one side wider) so max profit / max loss / breakevens **shift** vs a symmetric fly — still **defined risk** if there is **no extra naked leg**.
 
-Medium (advanced)
+**Best market conditions:** Mild **directional skew** with desire to reduce one-side cost vs symmetric fly; **IV** view on body vs wings.
 
-## Strategy
+**Risk bucket:** **Balanced** (defined risk when fully boxed; verify net debit/credit and strikes).
 
-Build a **butterfly** with **intentionally unequal wings**: e.g. long one lower strike, short two middle strikes, long one higher strike where the upper (or lower) wing is **wider** than the other. Shifts max-profit zone and buying power vs a symmetric fly; payoff is still **defined risk** when fully long/short as a closed structure (no extra naked pieces).
+**Payoff profile (net debit D common; widths per wing; ×100):**
 
-## Risk Profile
+| | |
+|--|--|
+| **Max profit** | **Plateau** near body — model (often **fly width − D** in ideal zone) |
+| **Max loss** | **Wider wing side** dominates worst case — compute per construction |
+| **Breakeven** | **Two** strikes — model |
 
-Moderate (defined risk when structured as a closed butterfly; outcome depends on width, net debit/credit, and where spot settles)
+**Position sizing rules:** **1R = modeled max loss**; keep **≤1–2%** NAV per fly for balanced desks.
+
+**Worked example (illustrative):** **SPY** put BWB: long **$480**, short **2× $490**, long **$495** — **asymmetric** put wings shift risk vs **$480/490/500** symmetric — **model** max loss if SPY **<< $480**.
+
+**When to avoid:** If any leg leaves **unintended naked** exposure after partial fill; illiquid wings.
+
+**Tax & assignment (HNWI — not tax advice):** Exercise on one wing only can break symmetry — **close combo** before expiry if policy requires.
+
+**Quick reference**
+
+| vs symmetric fly | BWB |
+|------------------|-----|
+| **Cost** | Often different debit/credit |
+| **Skew** | Expresses directional bias |
 
 ## Guardrails
 
-- Label max profit, max loss, and breakeven(s) after fills; broken wings skew all three vs a symmetric fly.
-- Avoid illiquid strikes; multi-leg inventory is hard to adjust in wide markets.
-- Reconcile with margin and “worst case” at expiration under your broker’s methodology.
-- Educational context only; not financial advice.
+- Label **max profit / max loss / BE** **after** fills in ticket system.
+- Confirm **margin** on skewed flies with broker **before** size-up.
 
 ## Output contract
 
-Return **only** valid JSON (no markdown fences, no commentary). For holdings + watchlist prompts, return up to **three** `ideas` when supported.
+Return **only** valid JSON (no markdown fences, no commentary).
 
 ```json
 {
@@ -52,7 +67,6 @@ Return **only** valid JSON (no markdown fences, no commentary). For holdings + w
 }
 ```
 
-**assignmentRiskNote** (≤180 chars): start with risk level (**Low**, **Low-moderate**, **Moderate**, **High**); include % OTM or buffer; end with position impact. Example: `Moderate. Body near spot. Max loss equals net debit paid.`
+**assignmentRiskNote** (≤180 chars): risk level + % OTM/buffer + position impact.
 
-**rationale** (≤220 chars): strategy logic + liquidity + outlook alignment only.
-
+**rationale** (≤220 chars): strategy logic + liquidity + outlook only.

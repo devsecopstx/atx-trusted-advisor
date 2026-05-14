@@ -1,35 +1,50 @@
 ---
 id: xfinance-strategy-ratio-spread
 name: xfinance-strategy-ratio-spread
-description: Ratio spreads (e.g. 1×2, 1×3) — unequal legs for directional or vol skew; advanced capital efficiency with tail risk to manage.
+description: Ratio spread — unequal number of long vs short options; capital efficiency with tail risk to size explicitly.
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
 
 # xFinance Strategy: Ratio spread
 
-## How Commonly Used
+**One-sentence definition:** Open **more shorts than longs** (or the mirror) at related strikes to shape payoff — **extra naked wings** can create **large tail risk** if not boxed or hedged.
 
-Medium (advanced / pro-oriented)
+**Best market conditions:** Skew / vol views where you **intentionally** accept asymmetric tail for credit or cheaper debit; **pro** desk with risk software.
 
-## Strategy
+**Risk bucket:** **Aggressive** (uncapped or large tail on the unbalanced side).
 
-Open a **ratio spread**: typically buy one closer strike and sell two (or more) further OTM strikes on the same side (calls or puts), or the inverse pattern depending on bias. Used for skewed payoff and capital efficiency versus a simple vertical; the **short extra longs** create **tail risk** that must be sized and monitored.
+**Payoff profile:** **Structure-specific** — example **1×2 call ratio** (long 1 lower, short 2 higher): max loss can be **unbounded** above upper strikes if uncovered — **always** model.
 
-## Risk Profile
+| | |
+|--|--|
+| **Max profit** | Often **capped plateau** in a zone — model |
+| **Max loss** | Can be **large / unlimited** if naked |
+| **Breakeven** | One or two roots — model |
 
-Aggressive (uncapped or large tail risk on the “naked” side of the ratio without further protection)
+**Position sizing rules:** Only run with **explicit worst-case** at **±X%** gap; cap **contracts** so tail loss **≤** policy **1R** *including gap*.
+
+**Worked example (illustrative):** **SPY** **1×2** call ratio: long **$500**, short **2× $510** — profits if SPY pins **near $510** at expiry but **loses** accelerate above **~$520** region (illustrative; **verify**).
+
+**When to avoid:** Retail-sized accounts without margin clarity; single-leg “fixes” that accidentally leave **naked** shorts.
+
+**Tax & assignment (HNWI — not tax advice):** Assignment on ratio legs can create **odd stock** hedges — reconcile same day; CPA for straddle/identification if mixing long/short in same name.
+
+**Quick reference**
+
+| Check | Pass/Fail |
+|-------|-----------|
+| **Tail modeled** | Must pass |
+| **Margin** | SPAN / house worst case |
 
 ## Guardrails
 
-- Size the short leg count so a gap move cannot exceed the account’s risk budget; assume assignment and gap risk explicitly.
-- Prefer liquid series; wide bid/ask on ratio structures magnifies model error.
-- Plan adjustments or exits **before** the structure becomes a one-sided naked profile you did not intend.
-- Educational context only; not financial advice — confirm suitability with your own policy and compliance constraints.
+- Prefer **fully closed** ratio boxes unless mandate allows naked.
+- **Liquidity** on **all** strikes — ratios are fragile to slippage.
 
 ## Output contract
 
-Return **only** valid JSON (no markdown fences, no commentary). For holdings + watchlist prompts, return up to **three** `ideas` when supported.
+Return **only** valid JSON (no markdown fences, no commentary).
 
 ```json
 {
@@ -52,7 +67,6 @@ Return **only** valid JSON (no markdown fences, no commentary). For holdings + w
 }
 ```
 
-**assignmentRiskNote** (≤180 chars): start with risk level (**Low**, **Low-moderate**, **Moderate**, **High**); include % OTM or buffer; end with position impact. Example: `High. Short leg ratio > long. Tail risk if move overshoots.`
+**assignmentRiskNote** (≤180 chars): risk level + % OTM/buffer + position impact.
 
-**rationale** (≤220 chars): strategy logic + liquidity + outlook alignment only.
-
+**rationale** (≤220 chars): strategy logic + liquidity + outlook only.

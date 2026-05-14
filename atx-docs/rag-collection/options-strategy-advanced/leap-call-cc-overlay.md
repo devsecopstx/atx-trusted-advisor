@@ -1,40 +1,56 @@
 ---
 id: xfinance-strategy-leap-call-cc-overlay
 name: xfinance-strategy-leap-call-cc-overlay
-description: LEAP Call plus Covered Call Overlay for aggressive TSLA exposure using long-dated ITM LEAPs and short weekly calls.
+description: LEAP call plus covered-call-style short overlays — aggressive bullish carry with path risk.
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
 
-# xFinance Strategy: LEAP Call + CC Overlay
+# xFinance Strategy: LEAP call + covered-call overlay
 
-## How Commonly Used
+**One-sentence definition:** Own a **long-dated ITM call** and sell **short-dated OTM calls** (often weekly) against it to harvest **premium** while keeping **levered upside** until shorts cap further gains.
 
-Medium
+**Best market conditions:** **Bullish** grind-up; **liquid** LEAP and weeklies; operator bandwidth to **roll shorts**.
 
-## Strategy
+**Risk bucket:** **Aggressive** (leverage + gamma on shorts + LEAP decay if stock stalls).
 
-Hold a long 2028 ITM TSLA LEAP and sell weekly covered-call style overlays for accelerated income and growth.
+**Payoff profile:** Same family as **PMCC** — model on platform; **policy max loss** often **LEAP debit + rolls**.
 
-## Risk Profile
+| | |
+|--|--|
+| **Max profit** | Path: short credits + LEAP intrinsic rise (capped by short strikes over window) |
+| **Max loss** | Anchor **LEAP debit** if thesis breaks |
+| **Breakeven** | Multi-segment — model |
 
-Aggressive (high leverage and decay)
+**Position sizing rules:** Treat overlay book as **single risk chain**; cap **≤1–2%** NAV on LEAP debit; shorts **never** exceed long contracts.
+
+**Worked example (illustrative):** **NVDA** LEAP **$90** call **Jan next** @ **$42** ($4,200); sell **$140** weekly call @ **$1.20** — track **cumulative short credits** vs LEAP mark weekly.
+
+**When to avoid:** Earnings without width to breathe; IV collapse on LEAP; inability to manage **rolls**.
+
+**Tax & assignment (HNWI — not tax advice):** Short assignment can create **hedge stock** or exercise chain — broker-dependent; CPA for large books.
+
+**Quick reference**
+
+| Risk | Mitigation |
+|------|------------|
+| **Short ITM** | Roll **up/out** or buy back |
+| **LEAP IV down** | Size smaller; diversify expiries |
 
 ## Guardrails
 
-- Enforce leverage caps relative to total portfolio NAV.
-- Require monthly stress checks for gap-risk and volatility shocks.
-- Track LEAP theta/vega decay separately from overlay income.
+- Stress **−30%** underlying + **−10 IV pts** on LEAP before entry.
+- Stop adding shorts if **3** consecutive rolls net **debit**.
 
 ## Output contract
 
-Return **only** valid JSON (no markdown fences, no commentary). For holdings + watchlist prompts, return up to **three** `ideas` when supported.
+Return **only** valid JSON (no markdown fences, no commentary). Use **`diagonal_spread`** `ideaType` for LEAP + short-call overlay unless your enum adds `leap_overlay`.
 
 ```json
 {
   "ideas": [
     {
-      "ideaType": "covered_call",
+      "ideaType": "diagonal_spread",
       "underlying": "[TICKER]",
       "strike": [NUMBER],
       "expiry": "YYYY-MM-DD",
@@ -51,7 +67,6 @@ Return **only** valid JSON (no markdown fences, no commentary). For holdings + w
 }
 ```
 
-**assignmentRiskNote** (≤180 chars): start with risk level (**Low**, **Low-moderate**, **Moderate**, **High**); include % OTM or buffer; end with position impact. Example: `Low-moderate. ~8% OTM. Call-away caps upside above strike on share inventory.`
+**assignmentRiskNote** (≤180 chars): risk level + % OTM/buffer + position impact.
 
-**rationale** (≤220 chars): strategy logic + liquidity + outlook alignment only.
-
+**rationale** (≤220 chars): strategy logic + liquidity + outlook only.
