@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-broken-wing-butterfly
 name: xfinance-strategy-broken-wing-butterfly
-description: Broken wing butterfly — asymmetric wings for skewed payoff vs symmetric fly; defined risk when fully closed.
+description: Broken wing butterfly — asymmetric wings for skewed payoff vs symmetric fly; defined risk when fully closed
+strategy_type: broken_wing_butterfly
+risk_level: balanced
+market_condition: neutral
+complexity: advanced
+underlying_type: stock
+tags: [butterfly, skew, defined_risk, asymmetric]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->

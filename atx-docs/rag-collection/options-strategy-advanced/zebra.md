@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-zebra
 name: xfinance-strategy-zebra
-description: ZEBRA — zero extrinsic back ratio style construction; advanced directional with path risk.
+description: ZEBRA — zero extrinsic back ratio style construction; advanced directional with path risk
+strategy_type: zebra
+risk_level: aggressive
+market_condition: bullish
+complexity: advanced
+underlying_type: stock
+tags: [ratio, directional, path_dependent, extrinsic]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->

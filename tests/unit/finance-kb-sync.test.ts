@@ -3,12 +3,46 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+    extractFinanceKbFrontmatterMetadata,
     inferRiskProfile,
     resolveFinanceKbRoots,
     strategySlugFromRelativePath
 } from "@/modules/xchat/finance-kb-sync";
 
 describe("finance-kb-sync helpers", () => {
+  it("extractFinanceKbFrontmatterMetadata returns whitelisted keys from YAML block", () => {
+    const raw = `---
+id: xfinance-strategy-wheel
+name: xfinance-strategy-wheel
+description: Wheel narrative
+strategy_type: wheel
+risk_level: balanced
+market_condition: neutral_to_bullish
+complexity: core
+underlying_type: stock
+tags: [income, assignment]
+extra_ignored: true
+---
+
+# Body
+`;
+    expect(extractFinanceKbFrontmatterMetadata(raw)).toEqual({
+      id: "xfinance-strategy-wheel",
+      name: "xfinance-strategy-wheel",
+      description: "Wheel narrative",
+      strategy_type: "wheel",
+      risk_level: "balanced",
+      market_condition: "neutral_to_bullish",
+      complexity: "core",
+      underlying_type: "stock",
+      tags: ["income", "assignment"]
+    });
+  });
+
+  it("extractFinanceKbFrontmatterMetadata returns {} when no frontmatter", () => {
+    expect(extractFinanceKbFrontmatterMetadata("# Title only\n")).toEqual({});
+  });
+
   it("strategySlugFromRelativePath uses nested folder slug", () => {
     expect(strategySlugFromRelativePath("iron-condor/iron-condor.md")).toBe("iron-condor");
     expect(strategySlugFromRelativePath("foo/bar/baz.md")).toBe("foo");

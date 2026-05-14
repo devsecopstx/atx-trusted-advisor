@@ -1,7 +1,13 @@
 ---
 id: xfinance-strategy-ratio-spread
 name: xfinance-strategy-ratio-spread
-description: Ratio spread — unequal number of long vs short options; capital efficiency with tail risk to size explicitly.
+description: Ratio spread — unequal number of long vs short options; capital efficiency with tail risk to size explicitly
+strategy_type: ratio_spread
+risk_level: aggressive
+market_condition: high_volatility
+complexity: advanced
+underlying_type: stock
+tags: [naked_wing_risk, directional, leverage, tail_risk]
 ---
 
 <!-- OUTPUT CONTRACT: Always return valid JSON matching the standardized schema below -->
