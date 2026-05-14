@@ -8,6 +8,7 @@
     "dev:frontend": "next dev",
     "cap:sync:ios": "npx cap sync ios",
     "icons:pwa": "node scripts/generate-pwa-icons.mjs",
+    "icons:ios": "bash scripts/sync-ios-app-icons.sh",
     "dev:backend": "docker compose --env-file .env up",
     "dev:stack": "node scripts/dev/start-dev-stack.mjs",
     "dev:stack:fresh": "DEV_WIPE_LOCAL_MONGO=1 node scripts/dev/start-dev-stack.mjs",
