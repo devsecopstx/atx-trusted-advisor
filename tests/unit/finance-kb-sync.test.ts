@@ -43,6 +43,33 @@ extra_ignored: true
     expect(extractFinanceKbFrontmatterMetadata("# Title only\n")).toEqual({});
   });
 
+  it("extractFinanceKbFrontmatterMetadata uses guideline key set for atx-response-guidelines segment", () => {
+    const raw = `---
+id: xfinance-guidelines-citation-format
+name: xfinance-guidelines-citation-format
+description: Cite sources
+doc_type: citation_format
+audience: hnwi_professional
+surface: xchat
+compliance_scope: none
+tags: [citations]
+strategy_type: wheel
+---
+
+# Body
+`;
+    expect(extractFinanceKbFrontmatterMetadata(raw, { kbSegment: "atx-response-guidelines" })).toEqual({
+      id: "xfinance-guidelines-citation-format",
+      name: "xfinance-guidelines-citation-format",
+      description: "Cite sources",
+      doc_type: "citation_format",
+      audience: "hnwi_professional",
+      surface: "xchat",
+      compliance_scope: "none",
+      tags: ["citations"]
+    });
+  });
+
   it("strategySlugFromRelativePath uses nested folder slug", () => {
     expect(strategySlugFromRelativePath("iron-condor/iron-condor.md")).toBe("iron-condor");
     expect(strategySlugFromRelativePath("foo/bar/baz.md")).toBe("foo");

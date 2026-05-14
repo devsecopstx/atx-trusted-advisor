@@ -13,8 +13,16 @@ import {
 const INGEST_EXTENSIONS = new Set([".md", ".markdown", ".yaml", ".yml"]);
 const SKIP_FILE_NAMES = new Set(["readme.md", ".ds_store"]);
 
-/** YAML keys merged into `xfinance-kb-metadata` on upload (Finance KB markdown frontmatter). */
-const FINANCE_KB_FRONTMATTER_METADATA_KEYS = new Set([
+/** Segment id from `resolveFinanceKbRoots` → `walkIngestFiles` (`WalkedFile.source`). */
+export type FinanceKbUploadSegment =
+  | "options-strategy-core"
+  | "options-strategy-advanced"
+  | "atx-response-guidelines"
+  | "finance"
+  | "finance-reference-docs";
+
+/** YAML keys merged for options-strategy-* markdown (Finance KB). */
+const FINANCE_KB_STRATEGY_FRONTMATTER_METADATA_KEYS = new Set([
   "id",
   "name",
   "description",
@@ -26,7 +34,34 @@ const FINANCE_KB_FRONTMATTER_METADATA_KEYS = new Set([
   "tags"
 ]);
 
-export function extractFinanceKbFrontmatterMetadata(raw: string): Record<string, unknown> {
+/** YAML keys merged for `atx-response-guidelines` (xChat / report voice & contracts). */
+const FINANCE_KB_RESPONSE_GUIDELINES_FRONTMATTER_METADATA_KEYS = new Set([
+  "id",
+  "name",
+  "description",
+  "tags",
+  "doc_type",
+  "audience",
+  "surface",
+  "compliance_scope"
+]);
+
+function financeKbFrontmatterKeySetForSegment(segment: FinanceKbUploadSegment | string): Set<string> {
+  if (segment === "atx-response-guidelines") {
+    return FINANCE_KB_RESPONSE_GUIDELINES_FRONTMATTER_METADATA_KEYS;
+  }
+  return FINANCE_KB_STRATEGY_FRONTMATTER_METADATA_KEYS;
+}
+
+export type ExtractFinanceKbFrontmatterMetadataOptions = {
+  /** When set to `atx-response-guidelines`, allows guideline fields (`doc_type`, `audience`, …). */
+  kbSegment?: FinanceKbUploadSegment | string;
+};
+
+export function extractFinanceKbFrontmatterMetadata(
+  raw: string,
+  options?: ExtractFinanceKbFrontmatterMetadataOptions
+): Record<string, unknown> {
   const m = raw.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n/);
   if (!m?.[1]) {
     return {};
@@ -40,9 +75,10 @@ export function extractFinanceKbFrontmatterMetadata(raw: string): Record<string,
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return {};
   }
+  const allowed = financeKbFrontmatterKeySetForSegment(options?.kbSegment ?? "");
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-    if (FINANCE_KB_FRONTMATTER_METADATA_KEYS.has(k) && v !== undefined && v !== null) {
+    if (allowed.has(k) && v !== undefined && v !== null) {
       out[k] = v;
     }
   }
@@ -198,7 +234,7 @@ export async function syncFinanceKnowledgeBaseToXai(input: {
       const riskProfile = inferRiskProfile(file.rel);
       const fm =
         file.rel.toLowerCase().endsWith(".md") || file.rel.toLowerCase().endsWith(".markdown")
-          ? extractFinanceKbFrontmatterMetadata(text)
+          ? extractFinanceKbFrontmatterMetadata(text, { kbSegment: file.source })
           : {};
       const metadata = {
         source: file.source,

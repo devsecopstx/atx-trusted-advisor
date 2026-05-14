@@ -1,3 +1,14 @@
+---
+id: xfinance-guidelines-compliance-disclaimers
+name: xfinance-guidelines-compliance-disclaimers
+description: Required and strategy-specific disclaimers for xChat and report outputs (educational, not legal advice)
+doc_type: compliance
+audience: hnwi_professional
+surface: xchat
+compliance_scope: universal_and_strategy
+tags: [disclaimer, regulatory, options_risk, tax_awareness]
+---
+
 # atX Finance Compliance & Disclaimer Library (v1.2 – May 2026)
 
 **Always include the appropriate disclaimer(s) at the end of every response.**
