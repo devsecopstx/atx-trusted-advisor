@@ -185,6 +185,10 @@ export const nextBffApi = {
       pathTemplate: "/api/admin/users/{userId}/resend-credential-invite",
       methods: ["POST"]
     },
+    userResendEmailVerification: {
+      pathTemplate: "/api/admin/users/{userId}/resend-email-verification",
+      methods: ["POST"]
+    },
     tasksIndex: {
       pathTemplate: "/api/admin/tasks",
       methods: ["GET", "POST"]
@@ -516,6 +520,7 @@ export function shouldSkipAdminUsersBffProxyForRequest(request: Request): boolea
  * Mongo-only admin user subresource POSTs (Spring BFF must not absorb these).
  * - Metered usage reset
  * - Credential invite resend (desk SMTP + Mongo token)
+ * - Email verification resend (clears password + verification state, desk SMTP)
  */
 export function shouldSkipAdminUsersBffProxyForMongoOnlyUserSubresourcePosts(request: Request): boolean {
   try {
@@ -523,7 +528,9 @@ export function shouldSkipAdminUsersBffProxyForMongoOnlyUserSubresourcePosts(req
     if (request.method.toUpperCase() !== "POST") {
       return false;
     }
-    return /^\/api\/admin\/users\/[^/]+\/(?:metered-usage\/reset|resend-credential-invite)$/.test(path);
+    return /^\/api\/admin\/users\/[^/]+\/(?:metered-usage\/reset|resend-credential-invite|resend-email-verification)$/.test(
+      path
+    );
   } catch {
     return false;
   }

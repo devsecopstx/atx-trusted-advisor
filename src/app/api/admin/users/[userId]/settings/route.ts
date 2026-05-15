@@ -9,10 +9,11 @@ import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
 import { withDefaultInvestmentStrategy } from "@/modules/core-admin/portfolio-preference-labels";
 import {
+    buildDefaultUserAdminSettingsDocument,
     getUserAdminSettings,
     upsertUserAdminSettings
 } from "@/modules/core-admin/repository";
-import { getCoreUserById } from "@/modules/identity/repository";
+import { getCoreUserById, listAdminTenantMembershipsByUserIds } from "@/modules/identity/repository";
 import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 
 /** JSON/Mongo often send explicit null; treat like omitted for optional string fields. */
@@ -73,12 +74,31 @@ export async function GET(request: Request, context: RouteContext) {
   if (!ObjectId.isValid(userId)) {
     return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
   }
-  const settings = await getUserAdminSettings(userId, {
+  let settings = await getUserAdminSettings(userId, {
     tenantId: session.tenantId
   });
 
   if (!settings) {
-    return NextResponse.json({ error: "User settings not found" }, { status: 404 });
+    const user = await getCoreUserById(new ObjectId(userId));
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    const sessionTenant = typeof session.tenantId === "string" ? session.tenantId.trim() : "";
+    const membershipMap = await listAdminTenantMembershipsByUserIds([new ObjectId(userId)]);
+    const memberships = membershipMap.get(userId) ?? [];
+    const inSessionTenant =
+      sessionTenant.length > 0 && memberships.some((m) => m.tenantId === sessionTenant);
+    const targetIsGlobalAdmin = Array.isArray(user.roles) && user.roles.includes("global_admin");
+    if (!inSessionTenant && !targetIsGlobalAdmin) {
+      return NextResponse.json(
+        {
+          error: "No admin settings for this user in the current tenant",
+          code: "user_settings_tenant_mismatch"
+        },
+        { status: 404 }
+      );
+    }
+    settings = buildDefaultUserAdminSettingsDocument(userId, session.tenantId);
   }
 
   const linkedCollections = await resolveUserLinkedCollections({

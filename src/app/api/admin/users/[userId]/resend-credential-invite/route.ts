@@ -1,17 +1,26 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
+import { resolveAccessApprovalNotifyEmail } from "@/lib/access-request-notify-email";
 import {
     assertUserEligibleForCredentialInviteResend,
-    getAdminUserCredentialInviteFields
+    getAdminUserCredentialInviteFields,
+    resolveResendCredentialInviteForceDenial
 } from "@/lib/admin-user-credential-invite";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
-import { resolveAccessApprovalNotifyEmail } from "@/lib/access-request-notify-email";
 import { sendAccessApprovedPasswordInviteEmail } from "@/lib/send-email-credential-messages";
 import { createAuditEvent } from "@/modules/audit/repository";
-import { issueCredentialInviteForUser } from "@/modules/identity/email-credentials-repository";
+import {
+    adminClearPasswordAndLoginTokens,
+    issueCredentialInviteForUser
+} from "@/modules/identity/email-credentials-repository";
 import { getCoreUserById } from "@/modules/identity/repository";
+
+const postBodySchema = z.object({
+  forcePasswordRotate: z.boolean().optional()
+});
 
 type RouteContext = {
   params: Promise<{ userId: string }>;
@@ -33,17 +42,50 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
   }
 
-  const user = await getCoreUserById(new ObjectId(userId));
+  const userOid = new ObjectId(userId);
+  const user = await getCoreUserById(userOid);
   if (!user?._id) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const denial = assertUserEligibleForCredentialInviteResend(user);
+  let bodyJson: unknown;
+  try {
+    bodyJson = await request.json();
+  } catch {
+    bodyJson = {};
+  }
+  const parsedBody = postBodySchema.safeParse(bodyJson);
+  const forcePasswordRotate = parsedBody.success ? Boolean(parsedBody.data.forcePasswordRotate) : false;
+
+  let forcedPasswordClear = false;
+  if (user.passwordHash && user.passwordHash.length > 0) {
+    if (!forcePasswordRotate) {
+      return NextResponse.json(
+        { error: "User already has a password set.", code: "credential_invite_resend_blocked" },
+        { status: 409 }
+      );
+    }
+    const forceDenial = resolveResendCredentialInviteForceDenial(user);
+    if (forceDenial) {
+      return NextResponse.json(
+        { error: forceDenial, code: "credential_invite_force_blocked" },
+        { status: 409 }
+      );
+    }
+    const cleared = await adminClearPasswordAndLoginTokens(userOid);
+    if (!cleared) {
+      return NextResponse.json({ error: "Failed to clear password for invite" }, { status: 503 });
+    }
+    forcedPasswordClear = true;
+  }
+
+  const userForInvite = (await getCoreUserById(userOid)) ?? user;
+  const denial = assertUserEligibleForCredentialInviteResend(userForInvite);
   if (denial) {
     return NextResponse.json({ error: denial, code: "credential_invite_resend_blocked" }, { status: 409 });
   }
 
-  const notifyEmail = resolveAccessApprovalNotifyEmail(user, {});
+  const notifyEmail = resolveAccessApprovalNotifyEmail(userForInvite, {});
   if (!notifyEmail) {
     return NextResponse.json(
       { error: "No deliverable email on file.", code: "credential_invite_resend_blocked" },
@@ -51,7 +93,7 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const issued = await issueCredentialInviteForUser(user._id);
+  const issued = await issueCredentialInviteForUser(userOid);
   if (!issued) {
     await createAuditEvent({
       entityType: "core_user",
@@ -67,13 +109,15 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Failed to issue invite token" }, { status: 503 });
   }
 
-  const userAfterIssue = await getCoreUserById(new ObjectId(userId));
+  const userAfterIssue = await getCoreUserById(userOid);
   const credentialInviteExpiresAt = userAfterIssue
     ? getAdminUserCredentialInviteFields(userAfterIssue).credentialInviteExpiresAt
     : null;
 
   const display =
-    user.googleAccount?.displayName?.trim() || user.xAccount?.displayName?.trim() || "";
+    userForInvite.googleAccount?.displayName?.trim() ||
+    userForInvite.xAccount?.displayName?.trim() ||
+    "";
   const firstName = display ? display.split(/\s+/)[0] : undefined;
 
   const sent = await sendAccessApprovedPasswordInviteEmail({
@@ -124,7 +168,8 @@ export async function POST(request: Request, context: RouteContext) {
       username: session.username
     },
     details: {
-      emailedTo: notifyEmail
+      emailedTo: notifyEmail,
+      ...(forcedPasswordClear ? { forcedPasswordClear: true } : {})
     }
   });
 

@@ -10,7 +10,8 @@ const identityMocks = vi.hoisted(() => ({
 }));
 
 const inviteMocks = vi.hoisted(() => ({
-  issueCredentialInviteForUser: vi.fn()
+  issueCredentialInviteForUser: vi.fn(),
+  adminClearPasswordAndLoginTokens: vi.fn()
 }));
 
 const emailMocks = vi.hoisted(() => ({
@@ -55,6 +56,7 @@ describe("POST /api/admin/users/[userId]/resend-credential-invite", () => {
       username: "admin"
     });
     inviteMocks.issueCredentialInviteForUser.mockResolvedValue({ rawToken: "fresh-token" });
+    inviteMocks.adminClearPasswordAndLoginTokens.mockResolvedValue(true);
     emailMocks.sendAccessApprovedPasswordInviteEmail.mockResolvedValue(true);
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     identityMocks.getCoreUserById.mockReset();
@@ -93,17 +95,51 @@ describe("POST /api/admin/users/[userId]/resend-credential-invite", () => {
     );
   });
 
-  it("returns 409 when user already has a password", async () => {
+  it("returns 409 when user already has a password and force flag is off", async () => {
     identityMocks.getCoreUserById.mockReset();
     identityMocks.getCoreUserById.mockResolvedValue({
       ...activeViewerNoPassword,
       passwordHash: "hashed"
     });
-    const res = await postResendCredentialInvite(new Request("http://test/", { method: "POST" }), {
-      params: Promise.resolve({ userId: USER_ID })
-    });
+    const res = await postResendCredentialInvite(
+      new Request("http://test/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      }),
+      {
+        params: Promise.resolve({ userId: USER_ID })
+      }
+    );
     expect(res.status).toBe(409);
     expect(inviteMocks.issueCredentialInviteForUser).not.toHaveBeenCalled();
+    expect(inviteMocks.adminClearPasswordAndLoginTokens).not.toHaveBeenCalled();
+  });
+
+  it("clears password and issues invite when forcePasswordRotate is true", async () => {
+    identityMocks.getCoreUserById.mockReset();
+    identityMocks.getCoreUserById
+      .mockResolvedValueOnce({
+        ...activeViewerNoPassword,
+        passwordHash: "hashed"
+      })
+      .mockResolvedValue({
+        ...activeViewerNoPassword,
+        credentialInviteExpiresAt: new Date("2026-12-31T00:00:00.000Z")
+      });
+    const res = await postResendCredentialInvite(
+      new Request("http://test/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forcePasswordRotate: true })
+      }),
+      {
+        params: Promise.resolve({ userId: USER_ID })
+      }
+    );
+    expect(res.status).toBe(200);
+    expect(inviteMocks.adminClearPasswordAndLoginTokens).toHaveBeenCalledTimes(1);
+    expect(inviteMocks.issueCredentialInviteForUser).toHaveBeenCalledTimes(1);
   });
 
   it("returns 409 when sign-in-only mode is enabled", async () => {

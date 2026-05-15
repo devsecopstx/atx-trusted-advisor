@@ -971,7 +971,7 @@ export async function ensureCoreUserByEmail(input: {
     $set.country = country;
   }
 
-  await db.collection<CoreUser>(collections.users).updateOne(
+  const upsertResult = await db.collection<CoreUser>(collections.users).updateOne(
     { email },
     {
       $setOnInsert: {
@@ -980,16 +980,21 @@ export async function ensureCoreUserByEmail(input: {
         status: input.defaultStatus ?? "active",
         accountStatus: "pending_approval" satisfies CoreUserAccountStatus,
         subscriptionPlan: "basic",
-        country: country ?? DEFAULT_CORE_USER_COUNTRY_CODE,
         createdAt: now,
-        updatedAt: now
+        ...(!country ? { country: DEFAULT_CORE_USER_COUNTRY_CODE } : {})
       },
       $set
     },
     { upsert: true }
   );
 
-  const user = await db.collection<CoreUser>(collections.users).findOne({ email });
+  let user: CoreUser | null = null;
+  if (upsertResult.upsertedId) {
+    user = await db.collection<CoreUser>(collections.users).findOne({ _id: upsertResult.upsertedId });
+  }
+  if (!user) {
+    user = await db.collection<CoreUser>(collections.users).findOne({ email });
+  }
   if (!user?._id) {
     throw new Error("Failed to ensure core user");
   }

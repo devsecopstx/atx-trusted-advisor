@@ -6,6 +6,7 @@ import { resolveAccessApprovalNotifyEmail } from "@/lib/access-request-notify-em
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminAccessRequestsRequestToBackend } from "@/lib/backend-bff";
+import { consumeLastDeskSmtpSendError, explainDeskSmtpConfigBlock, getDeskSmtpConfig } from "@/lib/desk-smtp";
 import { getEnv } from "@/lib/env";
 import {
     sendAccessApprovedPasswordInviteEmail,
@@ -66,6 +67,21 @@ type RouteContext = {
   params: Promise<{
     requestId: string;
   }>;
+};
+
+/** Included in PATCH/PUT approve responses so admins see why mail may be missing (e.g. local SMTP off). */
+type AccessRequestApprovalEmailMeta = {
+  deskSmtpConfigured: boolean;
+  sent: boolean;
+  channel?: "credential_invite" | "sign_in_reminder";
+  skipped?: true;
+  skipReason?: "no_user" | "no_deliverable_email";
+  failed?: true;
+  failureReason?: "smtp_not_configured" | "smtp_send_failed";
+  /** Populated when `deskSmtpConfigured` is false — why env did not load (no secrets). */
+  configHint?: string;
+  /** Populated when SMTP was configured but `sendMail` threw (truncated). */
+  sendErrorHint?: string;
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
@@ -401,6 +417,8 @@ async function handleUpdate(request: Request, context: RouteContext) {
     }
   });
 
+  let approvalEmailMeta: AccessRequestApprovalEmailMeta | undefined;
+
   if (parsed.data.status === "approved") {
     const approvedUser = approvedUserObjectId
       ? await getCoreUserById(approvedUserObjectId)
@@ -409,6 +427,12 @@ async function handleUpdate(request: Request, context: RouteContext) {
       approvedUser != null ? resolveAccessApprovalNotifyEmail(approvedUser, existing) : null;
 
     if (!approvedUser?._id) {
+      approvalEmailMeta = {
+        deskSmtpConfigured: getDeskSmtpConfig() !== null,
+        sent: false,
+        skipped: true,
+        skipReason: "no_user"
+      };
       await createAuditEvent({
         entityType: "access_request",
         entityId: requestId,
@@ -424,6 +448,12 @@ async function handleUpdate(request: Request, context: RouteContext) {
         }
       });
     } else if (!notifyEmail) {
+      approvalEmailMeta = {
+        deskSmtpConfigured: getDeskSmtpConfig() !== null,
+        sent: false,
+        skipped: true,
+        skipReason: "no_deliverable_email"
+      };
       await createAuditEvent({
         entityType: "access_request",
         entityId: requestId,
@@ -443,6 +473,9 @@ async function handleUpdate(request: Request, context: RouteContext) {
         }
       });
     } else {
+      const deskSmtpConfigured = getDeskSmtpConfig() !== null;
+      let sent = false;
+      let channel: "credential_invite" | "sign_in_reminder" | undefined;
       const display =
         approvedUser.googleAccount?.displayName?.trim() ||
         approvedUser.xAccount?.displayName?.trim() ||
@@ -454,13 +487,14 @@ async function handleUpdate(request: Request, context: RouteContext) {
       if (approvedUserObjectId && !hasPassword && !approvalEmailSignInOnly) {
         const issued = await issueCredentialInviteForUser(approvedUserObjectId);
         if (issued) {
-          const sent = await sendAccessApprovedPasswordInviteEmail({
+          sent = await sendAccessApprovedPasswordInviteEmail({
             request,
             to: notifyEmail,
             rawToken: issued.rawToken,
             ...(firstName ? { firstName } : {})
           });
           if (sent) {
+            channel = "credential_invite";
             await createAuditEvent({
               entityType: "access_request",
               entityId: requestId,
@@ -514,6 +548,10 @@ async function handleUpdate(request: Request, context: RouteContext) {
             to: notifyEmail,
             ...(firstName ? { firstName } : {})
           });
+          sent = fallbackSent;
+          if (fallbackSent) {
+            channel = "sign_in_reminder";
+          }
           if (!fallbackSent) {
             await createAuditEvent({
               entityType: "access_request",
@@ -532,12 +570,13 @@ async function handleUpdate(request: Request, context: RouteContext) {
           }
         }
       } else if (hasPassword || approvalEmailSignInOnly) {
-        const sent = await sendAccessApprovedSignInEmail({
+        sent = await sendAccessApprovedSignInEmail({
           request,
           to: notifyEmail,
           ...(firstName ? { firstName } : {})
         });
         if (sent) {
+          channel = "sign_in_reminder";
           await createAuditEvent({
             entityType: "access_request",
             entityId: requestId,
@@ -568,6 +607,22 @@ async function handleUpdate(request: Request, context: RouteContext) {
           });
         }
       }
+      const sendErr = !sent && deskSmtpConfigured ? consumeLastDeskSmtpSendError() : undefined;
+      approvalEmailMeta = {
+        deskSmtpConfigured,
+        sent,
+        ...(channel ? { channel } : {}),
+        ...(!sent
+          ? {
+              failed: true as const,
+              failureReason: deskSmtpConfigured
+                ? ("smtp_send_failed" as const)
+                : ("smtp_not_configured" as const),
+              ...(!deskSmtpConfigured ? { configHint: explainDeskSmtpConfigBlock() } : {}),
+              ...(sendErr ? { sendErrorHint: sendErr } : {})
+            }
+          : {})
+      };
       try {
         await enqueueAccessRequestBootstrap({
           requestId,
@@ -604,7 +659,14 @@ async function handleUpdate(request: Request, context: RouteContext) {
     }
   }
 
-  return NextResponse.json({ data: serializeAccessRequest(reviewed) });
+  const responseBody: {
+    data: ReturnType<typeof serializeAccessRequest>;
+    meta?: { approvalEmail: AccessRequestApprovalEmailMeta };
+  } = { data: serializeAccessRequest(reviewed) };
+  if (approvalEmailMeta !== undefined) {
+    responseBody.meta = { approvalEmail: approvalEmailMeta };
+  }
+  return NextResponse.json(responseBody);
 }
 
 export async function DELETE(request: Request, context: RouteContext) {

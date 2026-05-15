@@ -46,6 +46,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/admin/users/{userId}/settings", methods: ["GET", "PUT"] },
   { pathTemplate: "/api/admin/users/{userId}/metered-usage/reset", methods: ["POST"] },
   { pathTemplate: "/api/admin/users/{userId}/resend-credential-invite", methods: ["POST"] },
+  { pathTemplate: "/api/admin/users/{userId}/resend-email-verification", methods: ["POST"] },
   { pathTemplate: "/api/admin/tasks", methods: ["GET", "POST"] },
   { pathTemplate: "/api/admin/tasks/{taskId}", methods: ["PATCH", "DELETE"] },
   { pathTemplate: "/api/admin/tasks/{taskId}/run", methods: ["POST"] },

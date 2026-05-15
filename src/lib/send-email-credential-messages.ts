@@ -1,4 +1,4 @@
-import { sendDeskPlainEmail } from "@/lib/desk-smtp";
+import { sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import { resolvePublicAppOrigin } from "@/lib/public-app-origin";
 
 export async function sendAccessApprovedPasswordInviteEmail(input: {
@@ -37,7 +37,7 @@ export async function sendAccessApprovedPasswordInviteEmail(input: {
     "",
     "P.S. All communications are secured end-to-end and your data is never shared."
   ].join("\n");
-  return sendDeskPlainEmail({ to: input.to, subject, text });
+  return sendDeskPlainEmailWithRetry(input.to, subject, text);
 }
 
 export async function sendAccessApprovedSignInEmail(input: {
@@ -76,7 +76,7 @@ export async function sendAccessApprovedSignInEmail(input: {
     "",
     "P.S. All communications are secured end-to-end and your data is never shared."
   ].join("\n");
-  return sendDeskPlainEmail({ to: input.to, subject, text });
+  return sendDeskPlainEmailWithRetry(input.to, subject, text);
 }
 
 export async function sendPasswordResetEmail(input: {
@@ -95,7 +95,7 @@ export async function sendPasswordResetEmail(input: {
     "",
     "If you did not request a reset, you can ignore this email."
   ].join("\n");
-  return sendDeskPlainEmail({ to: input.to, subject, text });
+  return sendDeskPlainEmailWithRetry(input.to, subject, text);
 }
 
 export async function sendEmailVerificationEmail(input: {
@@ -114,5 +114,5 @@ export async function sendEmailVerificationEmail(input: {
     "",
     "If you did not request this, you can ignore this email."
   ].join("\n");
-  return sendDeskPlainEmail({ to: input.to, subject, text });
+  return sendDeskPlainEmailWithRetry(input.to, subject, text);
 }

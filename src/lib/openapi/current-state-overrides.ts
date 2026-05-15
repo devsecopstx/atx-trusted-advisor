@@ -1121,16 +1121,51 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   },
   "POST /api/admin/users/{userId}/resend-credential-invite": {
     summary:
-      "Reissue password-setup invite token and resend approval email (Mongo + desk SMTP). For users without a password who already have a login role.",
+      "Reissue password-setup invite token and resend approval email (Mongo + desk SMTP). For users without a password who already have a login role. Optional JSON `{ \"forcePasswordRotate\": true }` clears an existing password first (same eligibility as normal invite otherwise).",
+    requestBody: {
+      required: false,
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            properties: {
+              forcePasswordRotate: {
+                type: "boolean",
+                description:
+                  "When true and the user currently has a password, clears it then issues a new 7-day set-password invite."
+              }
+            }
+          }
+        }
+      }
+    },
     responses: {
       "200": jsonResponse("Invite emailed.", "AdminCredentialInviteResendResponseEnvelope"),
       "400": jsonResponse("Invalid user id.", "ErrorResponse"),
       "401": json401Session(),
       "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("User not found.", "ErrorResponse"),
-      "409": jsonResponse("User cannot receive a password invite in current state.", "ErrorResponse"),
+      "409": jsonResponse(
+        "User cannot receive a password invite in current state, or password-rotate path is blocked.",
+        "ErrorResponse"
+      ),
       "502": jsonResponse("Token reissued but outbound email failed.", "AdminCredentialInviteResendPartialFailureEnvelope"),
       "503": jsonResponse("Failed to issue invite token.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
+  "POST /api/admin/users/{userId}/resend-email-verification": {
+    summary:
+      "Clears password, verification tokens, and emailVerifiedAt; issues a new verify-email token and sends desk mail (global_admin). Forces the user to re-verify and set a new password via a follow-up password invite.",
+    responses: {
+      "200": jsonResponse("Verification emailed.", "AdminEmailVerificationResendResponseEnvelope"),
+      "400": jsonResponse("Invalid user id.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("User not found.", "ErrorResponse"),
+      "409": jsonResponse("User cannot receive a verification resend in current state.", "ErrorResponse"),
+      "502": jsonResponse("Token reissued but outbound email failed.", "AdminEmailVerificationResendPartialFailureEnvelope"),
+      "503": jsonResponse("Failed to reset auth state or issue verification token.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -2694,6 +2729,25 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "string",
         nullable: true,
         description: "When resend is unavailable, a short admin-facing reason."
+      },
+      resendPasswordInviteForceAvailable: {
+        type: "boolean",
+        description:
+          "When true, POST …/resend-credential-invite with `{ \"forcePasswordRotate\": true }` can clear an existing password and send a new invite."
+      },
+      resendPasswordInviteForceBlockedReason: {
+        type: "string",
+        nullable: true,
+        description: "When force-rotate invite is unavailable, a short admin-facing reason."
+      },
+      resendEmailVerificationAvailable: {
+        type: "boolean",
+        description: "Whether POST …/resend-email-verification is expected to succeed for this user."
+      },
+      resendEmailVerificationBlockedReason: {
+        type: "string",
+        nullable: true,
+        description: "When verification resend is unavailable, a short admin-facing reason."
       }
     }
   },
@@ -2825,6 +2879,38 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           userId: { type: "string" },
           emailedTo: { type: "string", format: "email" },
           credentialInviteExpiresAt: { type: "string", format: "date-time", nullable: true }
+        }
+      }
+    }
+  },
+  AdminEmailVerificationResendResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["userId", "emailedTo", "emailVerificationExpiresAt"],
+        properties: {
+          userId: { type: "string" },
+          emailedTo: { type: "string", format: "email" },
+          emailVerificationExpiresAt: { type: "string", format: "date-time", nullable: true }
+        }
+      }
+    }
+  },
+  AdminEmailVerificationResendPartialFailureEnvelope: {
+    type: "object",
+    required: ["error", "code", "data"],
+    properties: {
+      error: { type: "string" },
+      code: { type: "string", enum: ["email_verification_email_failed"] },
+      data: {
+        type: "object",
+        required: ["userId", "emailedTo", "emailVerificationExpiresAt"],
+        properties: {
+          userId: { type: "string" },
+          emailedTo: { type: "string", format: "email" },
+          emailVerificationExpiresAt: { type: "string", format: "date-time", nullable: true }
         }
       }
     }

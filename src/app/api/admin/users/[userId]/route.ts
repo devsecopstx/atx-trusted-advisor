@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAdminUserCredentialInviteFields } from "@/lib/admin-user-credential-invite";
+import { getAdminUserEmailVerificationResendFields } from "@/lib/admin-user-email-verification";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import { normalizeSubscriptionPlan, zSubscriptionPlan } from "@/lib/subscription-plan";
@@ -271,6 +272,7 @@ function serializeUser(user: CoreUser) {
   const billingOverride = user.billing?.override;
   return {
     ...getAdminUserCredentialInviteFields(user),
+    ...getAdminUserEmailVerificationResendFields(user),
     _id: user._id?.toHexString(),
     email: user.email,
     roles: user.roles,

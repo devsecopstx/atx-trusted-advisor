@@ -15,7 +15,8 @@ const bootstrapMocks = vi.hoisted(() => ({
 }));
 
 const identityMocks = vi.hoisted(() => ({
-  getCoreUserById: vi.fn()
+  getCoreUserById: vi.fn(),
+  listAdminTenantMembershipsByUserIds: vi.fn()
 }));
 
 const xchatRepositoryMocks = vi.hoisted(() => ({
@@ -31,7 +32,14 @@ const teamXaiMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
-vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
+vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/core-admin/repository")>();
+  return {
+    ...actual,
+    getUserAdminSettings: coreAdminRepositoryMocks.getUserAdminSettings,
+    upsertUserAdminSettings: coreAdminRepositoryMocks.upsertUserAdminSettings
+  };
+});
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/xchat/repository", async (importOriginal) => {
@@ -103,6 +111,22 @@ describe("admin user settings route", () => {
       }
     });
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
+    identityMocks.listAdminTenantMembershipsByUserIds.mockResolvedValue(
+      new Map([
+        [
+          "507f1f77bcf86cd799439033",
+          [
+            {
+              tenantId: "507f1f77bcf86cd799439022",
+              slug: "seed",
+              name: "Seed",
+              tenantRole: "member",
+              isDefaultSessionTenant: true
+            }
+          ]
+        ]
+      ])
+    );
   });
 
   it("GET returns settings and linked collection metadata", async () => {
@@ -278,5 +302,76 @@ describe("admin user settings route", () => {
       params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
     });
     expect(response.status).toBe(403);
+  });
+
+  it("GET returns in-memory defaults when no settings row exists and user belongs to session tenant", async () => {
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce(null);
+    const response = await GET(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+    });
+    const payload = (await response.json()) as {
+      data: { userId: string; assignedPersonaId?: string; broker: { provider: string } };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.userId).toBe("507f1f77bcf86cd799439033");
+    expect(payload.data.assignedPersonaId).toBeUndefined();
+    expect(payload.data.broker.provider).toBe("paper");
+  });
+
+  it("GET returns defaults for global_admin target without tenant membership in session tenant", async () => {
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce(null);
+    identityMocks.listAdminTenantMembershipsByUserIds.mockResolvedValueOnce(new Map());
+    identityMocks.getCoreUserById.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      roles: ["global_admin"]
+    });
+
+    const response = await GET(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439099" })
+    });
+    const payload = (await response.json()) as { data: { userId: string } };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.userId).toBe("507f1f77bcf86cd799439099");
+  });
+
+  it("GET returns 404 tenant mismatch when no settings row and user is not in session tenant", async () => {
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce(null);
+    identityMocks.listAdminTenantMembershipsByUserIds.mockResolvedValueOnce(
+      new Map([
+        [
+          "507f1f77bcf86cd799439033",
+          [
+            {
+              tenantId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+              slug: "other",
+              name: "Other",
+              tenantRole: "member",
+              isDefaultSessionTenant: true
+            }
+          ]
+        ]
+      ])
+    );
+
+    const response = await GET(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+    });
+    const payload = (await response.json()) as { code?: string };
+
+    expect(response.status).toBe(404);
+    expect(payload.code).toBe("user_settings_tenant_mismatch");
+  });
+
+  it("GET returns 404 when no settings row and core user is missing", async () => {
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce(null);
+    identityMocks.getCoreUserById.mockResolvedValueOnce(null);
+
+    const response = await GET(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+    });
+
+    expect(response.status).toBe(404);
   });
 });

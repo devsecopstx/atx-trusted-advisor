@@ -232,6 +232,57 @@ export async function completePasswordReset(input: {
   return { ok: true, userId: user._id };
 }
 
+/**
+ * Clears password + invite/reset tokens so a fresh credential invite can be issued.
+ * Used when an admin forces a new password-setup flow for a user who already had a password.
+ */
+export async function adminClearPasswordAndLoginTokens(userId: ObjectId): Promise<boolean> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const res = await db.collection<CoreUser>(USERS).updateOne(
+    { _id: userId },
+    {
+      $set: { updatedAt: now },
+      $unset: {
+        passwordHash: "",
+        credentialInviteTokenHash: "",
+        credentialInviteExpiresAt: "",
+        passwordResetTokenHash: "",
+        passwordResetExpiresAt: ""
+      }
+    }
+  );
+  return res.matchedCount === 1;
+}
+
+/**
+ * Clears password, invite/reset tokens, email verification state, and `emailVerifiedAt`
+ * so the user must re-verify and set a new password (admin-driven reset).
+ */
+export async function adminClearVerificationAndPasswordState(userId: ObjectId): Promise<boolean> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const res = await db.collection<CoreUser>(USERS).updateOne(
+    { _id: userId },
+    {
+      $set: { updatedAt: now },
+      $unset: {
+        passwordHash: "",
+        credentialInviteTokenHash: "",
+        credentialInviteExpiresAt: "",
+        passwordResetTokenHash: "",
+        passwordResetExpiresAt: "",
+        emailVerificationTokenHash: "",
+        emailVerificationExpiresAt: "",
+        emailVerifiedAt: ""
+      }
+    }
+  );
+  return res.matchedCount === 1;
+}
+
 export async function issueEmailVerificationForUser(userId: ObjectId): Promise<{ rawToken: string } | null> {
   await ensureIdentityIndexes();
   const db = await getDb();

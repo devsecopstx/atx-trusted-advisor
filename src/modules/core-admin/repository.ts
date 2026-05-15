@@ -1371,14 +1371,59 @@ export async function listTaskRuns(options?: {
     .toArray();
 }
 
+/**
+ * Defaults for a user who has no `admin_user_settings` row yet (admin panel GET synthesis).
+ * Not persisted until PUT `upsertUserAdminSettings`.
+ */
+export function buildDefaultUserAdminSettingsDocument(
+  userId: string,
+  tenantHex?: string
+): UserAdminSettings {
+  const tenantId = toTenantObjectId(tenantHex);
+  return {
+    ...(tenantId ? { tenantId } : {}),
+    userId,
+    broker: { provider: "paper", accountRef: "paper-main", enabled: true },
+    portfolio: {
+      riskProfile: "balanced",
+      investmentStrategy: "balanced",
+      baseCurrency: "USD",
+      rebalanceFrequencyDays: 14
+    },
+    account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
+    notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 },
+    updatedAt: new Date(0)
+  };
+}
+
 export async function getUserAdminSettings(
   userId: string,
   options?: TenantScopedOptions
 ): Promise<UserAdminSettings | null> {
   const db = await getDb();
-  return db
-    .collection<UserAdminSettings>(collections.userSettings)
-    .findOne(withTenantScope({ userId }, options?.tenantId));
+  const coll = db.collection<UserAdminSettings>(collections.userSettings);
+  const uidFilter = mongoUserIdQuery(userId);
+  const tenantOid = toTenantObjectId(options?.tenantId);
+
+  if (!tenantOid) {
+    return coll.findOne(withTenantScope(uidFilter as Record<string, unknown>, options?.tenantId));
+  }
+
+  const strict: Filter<UserAdminSettings> = {
+    $and: [uidFilter as Filter<UserAdminSettings>, { tenantId: tenantOid }]
+  };
+  const exact = await coll.findOne(strict);
+  if (exact) {
+    return exact;
+  }
+
+  const legacy: Filter<UserAdminSettings> = {
+    $and: [
+      uidFilter as Filter<UserAdminSettings>,
+      { $or: [{ tenantId: { $exists: false } }, { tenantId: { $type: "null" } }] }
+    ]
+  };
+  return coll.findOne(legacy);
 }
 
 export async function upsertUserAdminSettings(
@@ -1391,7 +1436,7 @@ export async function upsertUserAdminSettings(
 
   const tenantId = toTenantObjectId(options?.tenantId);
   await db.collection<UserAdminSettings>(collections.userSettings).updateOne(
-    withTenantScope({ userId }, options?.tenantId, "allowMissingTenantKey"),
+    withTenantScope(mongoUserIdQuery(userId) as Record<string, unknown>, options?.tenantId, "allowMissingTenantKey"),
     {
       $set: {
         tenantId,
@@ -5171,10 +5216,16 @@ async function purgeCoreUserAssociatedData(
   const db = await getDb();
   const oid = new ObjectId(userIdHex);
   const uidQ = userIdQuery(userIdHex);
+  const accessRequestUserIdOr: Record<string, unknown>[] = [{ userId: userIdHex }];
+  if (ObjectId.isValid(userIdHex)) {
+    accessRequestUserIdOr.push({ userId: oid });
+  }
 
   await db.collection("core_tenant_memberships").deleteMany({ userId: oid });
-  await db.collection<AccessRequest>(collections.accessRequests).deleteMany({ userId: userIdHex });
-  await db.collection<UserAdminSettings>(collections.userSettings).deleteMany({ userId: userIdHex });
+  await db.collection<AccessRequest>(collections.accessRequests).deleteMany({ $or: accessRequestUserIdOr });
+  await db.collection<UserAdminSettings>(collections.userSettings).deleteMany({
+    $or: accessRequestUserIdOr
+  } as Filter<UserAdminSettings>);
 
   await db.collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences).deleteMany(uidQ);
   await db.collection("app_user_recommendations").deleteMany(uidQ);

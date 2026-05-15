@@ -301,13 +301,51 @@ export function AccessRequestsConsole() {
       if (reviewNoteRaw) {
         body.reviewNote = reviewNoteRaw;
       }
-      await parseJson(await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
-        method: "PUT",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      }));
+      const payload = await parseJson<{
+        data: unknown;
+        meta?: {
+          approvalEmail?: {
+            deskSmtpConfigured: boolean;
+            sent: boolean;
+            skipped?: boolean;
+            skipReason?: string;
+            configHint?: string;
+            sendErrorHint?: string;
+          };
+        };
+      }>(
+        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
+          method: "PUT",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        })
+      );
       await refreshAccessRequests();
+      let done =
+        statusValue === "approved" ? "Access request approved" : "Access request rejected";
+      if (statusValue === "approved" && payload.meta?.approvalEmail) {
+        const m = payload.meta.approvalEmail;
+        if (m.skipped && m.skipReason === "no_deliverable_email") {
+          done += " — No deliverable email (set a real contact email on the request).";
+        } else if (m.skipped && m.skipReason === "no_user") {
+          done += " — User row missing; no email sent.";
+        } else if (!m.sent && !m.deskSmtpConfigured) {
+          done +=
+            " — Desk SMTP not configured (set SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM in .env).";
+          if (m.configHint) {
+            done += ` (${m.configHint})`;
+          }
+        } else if (!m.sent) {
+          done += " — Approval email failed to send (check server logs / SMTP).";
+          if (m.sendErrorHint) {
+            done += ` (${m.sendErrorHint})`;
+          }
+        } else {
+          done += " — Notification email sent.";
+        }
+      }
+      setStatus(done);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to update request");
     }

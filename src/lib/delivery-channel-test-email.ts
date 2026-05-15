@@ -24,6 +24,7 @@ export type ResolveDeliveryChannelTestEmailResult =
 /**
  * Resolves To + subject for admin **Send test** on email delivery channels only.
  * - Optional **`DESK_DELIVERY_CHANNEL_TEST_TO`**: when set to a valid email, tests send there (ops-safe) instead of the channel `emailTo`.
+ *   **Does not apply** to access-request approval mail — those always go to the applicant (`resolveAccessApprovalNotifyEmail`).
  * - Optional **`DESK_DELIVERY_CHANNEL_TEST_SUBJECT`**: overrides the test email subject (max 200 chars); default {@link DELIVERY_CHANNEL_TEST_EMAIL_DEFAULT_SUBJECT}.
  * Scheduled/task delivery continues to use the channel row as stored — this affects tests only.
  */

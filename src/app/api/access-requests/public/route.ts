@@ -1,3 +1,4 @@
+import { MongoServerError } from "mongodb";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -37,6 +38,35 @@ export const guestAccessRequestSchema = z.object({
 });
 
 const ACCESS_REQUEST_PUBLIC_POLICY = getBffRouteRateLimitPolicy("access_requests_public_create");
+
+function duplicateCoreUserIndexField(error: unknown): "username" | "email" | "x_user" | "google" | null {
+  if (!(error instanceof MongoServerError) || error.code !== 11000) {
+    return null;
+  }
+  const pattern = error.keyPattern;
+  if (pattern && typeof pattern === "object") {
+    if ("username" in pattern) {
+      return "username";
+    }
+    if ("email" in pattern) {
+      return "email";
+    }
+    if ("xAccount.xUserId" in pattern) {
+      return "x_user";
+    }
+    if ("googleAccount.sub" in pattern) {
+      return "google";
+    }
+  }
+  const msg = (error.message || "").toLowerCase();
+  if (msg.includes("uniq_core_user_username")) {
+    return "username";
+  }
+  if (msg.includes("uniq_core_user_email")) {
+    return "email";
+  }
+  return null;
+}
 
 export async function POST(request: Request) {
   const limit = await checkDistributedRateLimit({
@@ -85,7 +115,44 @@ export async function POST(request: Request) {
   const requestedRole = "operator" as const;
 
   const country = parseCountryCode(parsed.data.country) ?? DEFAULT_COUNTRY_CODE;
-  const user = await ensureCoreUserByEmail({ email, username: name, country });
+
+  let user: Awaited<ReturnType<typeof ensureCoreUserByEmail>>;
+  try {
+    user = await ensureCoreUserByEmail({ email, username: name, country });
+  } catch (error) {
+    const dup = duplicateCoreUserIndexField(error);
+    if (dup === "username") {
+      return NextResponse.json(
+        {
+          error: "That username is already taken. Choose a different username and try again.",
+          code: "username_taken"
+        },
+        { status: 409 }
+      );
+    }
+    if (dup === "email") {
+      return NextResponse.json(
+        { error: "That email is already registered.", code: "email_taken" },
+        { status: 409 }
+      );
+    }
+    if (dup === "x_user" || dup === "google") {
+      return NextResponse.json(
+        {
+          error:
+            "This email conflicts with an account that is linked to X or Google. Sign in with that provider or use a different email.",
+          code: "identity_provider_conflict"
+        },
+        { status: 409 }
+      );
+    }
+    console.error("[access-requests/public] ensureCoreUserByEmail failed", error);
+    return NextResponse.json(
+      { error: "Unable to complete registration. Please try again in a moment." },
+      { status: 500 }
+    );
+  }
+
   if (!user._id) {
     return NextResponse.json({ error: "Unable to resolve user for access request" }, { status: 500 });
   }
@@ -99,6 +166,16 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "This email already has a password. Sign in instead or use forgot password." },
         { status: 409 }
+      );
+    }
+    if (pw.code === "not_found") {
+      return NextResponse.json(
+        {
+          error:
+            "We could not save your password for this account. Refresh and try again, or sign in if you already completed signup.",
+          code: "account_not_found_after_provision"
+        },
+        { status: 503 }
       );
     }
     return NextResponse.json({ error: "Unable to save credentials for this account." }, { status: 500 });

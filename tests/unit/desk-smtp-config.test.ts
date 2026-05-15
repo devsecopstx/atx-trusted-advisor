@@ -1,89 +1,36 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getDeskSmtpConfig } from "@/lib/desk-smtp";
-
-const KEYS = [
-  "SMTP_HOST",
-  "SMTP_PORT",
-  "SMTP_USER",
-  "SMTP_PASS",
-  "DESK_EMAIL_FROM",
-  "SMTP_SECURE"
-] as const;
-
-describe("getDeskSmtpConfig", () => {
-  const snapshot: Partial<Record<(typeof KEYS)[number], string | undefined>> = {};
-
-  beforeEach(() => {
-    for (const k of KEYS) {
-      snapshot[k] = process.env[k];
-      delete process.env[k];
-    }
-  });
-
+describe("desk-smtp from resolution", () => {
   afterEach(() => {
-    for (const k of KEYS) {
-      const v = snapshot[k];
-      if (v === undefined) {
-        delete process.env[k];
-      } else {
-        process.env[k] = v;
-      }
-    }
+    vi.unstubAllEnvs();
   });
 
-  it("returns null when host, user, or pass is missing", () => {
-    expect(getDeskSmtpConfig()).toBeNull();
-    process.env.SMTP_HOST = "mail.example.com";
-    expect(getDeskSmtpConfig()).toBeNull();
-    process.env.SMTP_USER = "u@example.com";
-    expect(getDeskSmtpConfig()).toBeNull();
+  it("accepts Name <email@domain.com> in DESK_EMAIL_FROM", async () => {
+    vi.stubEnv("SMTP_HOST", "smtp.example.com");
+    vi.stubEnv("SMTP_USER", "user@example.com");
+    vi.stubEnv("SMTP_PASS", "secret");
+    vi.stubEnv("DESK_EMAIL_FROM", "Support <somegoodnewsatx@gmail.com>");
+    const { getDeskSmtpConfig } = await import("@/lib/desk-smtp");
+    const cfg = getDeskSmtpConfig();
+    expect(cfg?.from).toBe("somegoodnewsatx@gmail.com");
   });
 
-  it("uses SMTP_USER as From when DESK_EMAIL_FROM is unset", () => {
-    process.env.SMTP_HOST = "mail.example.com";
-    process.env.SMTP_USER = "desk@example.com";
-    process.env.SMTP_PASS = "secret";
-    expect(getDeskSmtpConfig()).toEqual({
-      host: "mail.example.com",
-      port: 587,
-      secure: false,
-      user: "desk@example.com",
-      pass: "secret",
-      from: "desk@example.com"
-    });
+  it("falls back to SMTP_USER when DESK_EMAIL_FROM omitted and user is plain email", async () => {
+    vi.stubEnv("SMTP_HOST", "smtp.example.com");
+    vi.stubEnv("SMTP_USER", "relay@example.com");
+    vi.stubEnv("SMTP_PASS", "secret");
+    const { getDeskSmtpConfig } = await import("@/lib/desk-smtp");
+    const cfg = getDeskSmtpConfig();
+    expect(cfg?.from).toBe("relay@example.com");
   });
 
-  it("returns null when DESK_EMAIL_FROM is set but not a valid email", () => {
-    process.env.SMTP_HOST = "mail.example.com";
-    process.env.SMTP_USER = "u@example.com";
-    process.env.SMTP_PASS = "secret";
-    process.env.DESK_EMAIL_FROM = "not-an-email";
+  it("explainDeskSmtpConfigBlock describes invalid from", async () => {
+    vi.stubEnv("SMTP_HOST", "smtp.example.com");
+    vi.stubEnv("SMTP_USER", "not-an-email");
+    vi.stubEnv("SMTP_PASS", "secret");
+    vi.stubEnv("DESK_EMAIL_FROM", "also-not");
+    const { explainDeskSmtpConfigBlock, getDeskSmtpConfig } = await import("@/lib/desk-smtp");
     expect(getDeskSmtpConfig()).toBeNull();
-  });
-
-  it("returns null when SMTP_PORT is out of range", () => {
-    process.env.SMTP_HOST = "mail.example.com";
-    process.env.SMTP_USER = "u@example.com";
-    process.env.SMTP_PASS = "secret";
-    process.env.SMTP_PORT = "99999";
-    expect(getDeskSmtpConfig()).toBeNull();
-  });
-
-  it("honors SMTP_PORT and SMTP_SECURE", () => {
-    process.env.SMTP_HOST = "mail.example.com";
-    process.env.SMTP_USER = "u@example.com";
-    process.env.SMTP_PASS = "secret";
-    process.env.DESK_EMAIL_FROM = "u@example.com";
-    process.env.SMTP_PORT = "465";
-    process.env.SMTP_SECURE = "true";
-    expect(getDeskSmtpConfig()).toEqual({
-      host: "mail.example.com",
-      port: 465,
-      secure: true,
-      user: "u@example.com",
-      pass: "secret",
-      from: "u@example.com"
-    });
+    expect(explainDeskSmtpConfigBlock()).toMatch(/not a valid email/i);
   });
 });

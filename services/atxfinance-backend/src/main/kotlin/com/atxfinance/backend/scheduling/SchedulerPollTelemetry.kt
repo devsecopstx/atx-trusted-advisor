@@ -55,12 +55,12 @@ class SchedulerPollTelemetry(
         val enqueued = tasksEnqueuedLastPoll.get()
         val err = lastError.get()
         val staleAfterMs = maxOf(intervalMs * 3, 120_000L)
-        val ageMs = ChronoUnit.MILLIS.between(pollAt, now).coerceAtLeast(0)
+        val ageMs = pollAt?.let { ChronoUnit.MILLIS.between(it, now).coerceAtLeast(0) }
         val status =
             when {
                 pollAt == null -> "unknown"
                 err != null -> "error"
-                ageMs > staleAfterMs -> "stale"
+                ageMs != null && ageMs > staleAfterMs -> "stale"
                 else -> "healthy"
             }
         return mapOf(

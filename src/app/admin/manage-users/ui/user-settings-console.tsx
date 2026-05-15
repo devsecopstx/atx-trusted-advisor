@@ -8,6 +8,7 @@ import {
     CopyIcon,
     DeleteIcon,
     EditIcon,
+    MailIcon,
     RefreshIcon,
     RejectAccessIcon,
     SaveIcon,
@@ -133,6 +134,10 @@ type ApprovedUser = {
   credentialInviteExpiresAt?: string | null;
   resendPasswordInviteAvailable?: boolean;
   resendPasswordInviteBlockedReason?: string | null;
+  resendPasswordInviteForceAvailable?: boolean;
+  resendPasswordInviteForceBlockedReason?: string | null;
+  resendEmailVerificationAvailable?: boolean;
+  resendEmailVerificationBlockedReason?: string | null;
   approvedAt?: string;
   latestAuditEvent?: {
     action: string;
@@ -163,6 +168,10 @@ type ApiUser = {
   credentialInviteExpiresAt?: string | null;
   resendPasswordInviteAvailable?: boolean;
   resendPasswordInviteBlockedReason?: string | null;
+  resendPasswordInviteForceAvailable?: boolean;
+  resendPasswordInviteForceBlockedReason?: string | null;
+  resendEmailVerificationAvailable?: boolean;
+  resendEmailVerificationBlockedReason?: string | null;
   tenantMemberships?: UserTenantMembershipRow[];
   xAccount?: {
     username?: string;
@@ -193,6 +202,27 @@ const ROLE_SELECT_OPTIONS: ReadonlyArray<ApprovedUser["role"]> = [
   "operator",
   "viewer"
 ];
+
+function canResendPasswordInvite(user: ApprovedUser): boolean {
+  return Boolean(
+    user.resendPasswordInviteAvailable ||
+      (user.hasPassword && user.resendPasswordInviteForceAvailable)
+  );
+}
+
+function passwordInviteHoverHint(user: ApprovedUser): string {
+  if (user.resendPasswordInviteAvailable) {
+    return "Reissue password-setup email (7-day link; prior links invalidate)";
+  }
+  if (user.hasPassword && user.resendPasswordInviteForceAvailable) {
+    return "Clear current password and send a new 7-day password-setup link";
+  }
+  return (
+    user.resendPasswordInviteForceBlockedReason ??
+    user.resendPasswordInviteBlockedReason ??
+    "Password invite not available"
+  );
+}
 
 function shortMongoObjectIdHex(id: string | null | undefined): string {
   if (!id?.trim()) {
@@ -608,8 +638,12 @@ export function UserSettingsConsole() {
   }
 
   async function resendCredentialInvite(userId: string, emailLabel: string) {
+    const row = approvedUsers.find((u) => u.userId === userId);
+    const forcePasswordRotate = Boolean(row?.hasPassword && row.resendPasswordInviteForceAvailable);
     const ok = window.confirm(
-      `Send a new password-setup email to ${emailLabel}? Previous invite links stop working once a new token is issued.`
+      forcePasswordRotate
+        ? `Clear ${emailLabel}'s current password and send a new 7-day password-setup link? They must choose a new password.`
+        : `Send a new password-setup email to ${emailLabel}? Previous invite links stop working once a new token is issued.`
     );
     if (!ok) {
       return;
@@ -620,7 +654,9 @@ export function UserSettingsConsole() {
         data: { emailedTo: string; credentialInviteExpiresAt: string | null };
       }>(
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}/resend-credential-invite`, {
-          method: "POST"
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(forcePasswordRotate ? { forcePasswordRotate: true } : {})
         })
       );
       const exp = payload.data.credentialInviteExpiresAt
@@ -630,6 +666,36 @@ export function UserSettingsConsole() {
       await refreshDirectory();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to resend invite");
+    }
+  }
+
+  async function resendEmailVerification(userId: string, emailLabel: string) {
+    const ok = window.confirm(
+      [
+        `Send a new email verification link to ${emailLabel}?`,
+        "",
+        "This clears their saved password and un-verifies their email until they complete the new link — they must set a new password afterward (send password setup email if needed)."
+      ].join("\n")
+    );
+    if (!ok) {
+      return;
+    }
+    setStatus(`Resending verification email to ${emailLabel}…`);
+    try {
+      const payload = await parseJson<{
+        data: { emailedTo: string; emailVerificationExpiresAt: string | null };
+      }>(
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/resend-email-verification`, {
+          method: "POST"
+        })
+      );
+      const exp = payload.data.emailVerificationExpiresAt
+        ? new Date(payload.data.emailVerificationExpiresAt).toLocaleString()
+        : "unknown";
+      setStatus(`Verification email sent to ${payload.data.emailedTo} (link expires ${exp}).`);
+      await refreshDirectory();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to resend verification");
     }
   }
 
@@ -823,7 +889,19 @@ export function UserSettingsConsole() {
       if (reviewNoteRaw) {
         body.reviewNote = reviewNoteRaw;
       }
-      await parseJson(
+      const payload = await parseJson<{
+        data: unknown;
+        meta?: {
+          approvalEmail?: {
+            deskSmtpConfigured: boolean;
+            sent: boolean;
+            skipped?: boolean;
+            skipReason?: string;
+            configHint?: string;
+            sendErrorHint?: string;
+          };
+        };
+      }>(
         await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
           method: "PUT",
           cache: "no-store",
@@ -833,7 +911,30 @@ export function UserSettingsConsole() {
       );
       setSelectedAccessRequestId(null);
       await refreshDirectory();
-      setStatus(statusValue === "approved" ? "Access request approved" : "Access request rejected");
+      let done =
+        statusValue === "approved" ? "Access request approved" : "Access request rejected";
+      if (statusValue === "approved" && payload.meta?.approvalEmail) {
+        const m = payload.meta.approvalEmail;
+        if (m.skipped && m.skipReason === "no_deliverable_email") {
+          done += " — No deliverable email (set a real contact email on the request).";
+        } else if (m.skipped && m.skipReason === "no_user") {
+          done += " — User row missing; no email sent.";
+        } else if (!m.sent && !m.deskSmtpConfigured) {
+          done +=
+            " — Desk SMTP not configured (set SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM in .env).";
+          if (m.configHint) {
+            done += ` (${m.configHint})`;
+          }
+        } else if (!m.sent) {
+          done += " — Approval email failed to send (check server logs / SMTP).";
+          if (m.sendErrorHint) {
+            done += ` (${m.sendErrorHint})`;
+          }
+        } else {
+          done += " — Notification email sent.";
+        }
+      }
+      setStatus(done);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to update request");
     }
@@ -1830,22 +1931,33 @@ export function UserSettingsConsole() {
                                   <SyncArrowsIcon className="crud-icon" />
                                 </button>
                               </XfHoverHint>
-                              <XfHoverHint
-                                hint={
-                                  user.resendPasswordInviteAvailable
-                                    ? "Reissue password-setup email (7-day link; prior links invalidate)"
-                                    : (user.resendPasswordInviteBlockedReason ??
-                                      "Password invite not available")
-                                }
-                              >
+                              <XfHoverHint hint={passwordInviteHoverHint(user)}>
                                 <button
                                   aria-label="Resend password invite"
                                   className="tiny-button xf-icon-edit-btn--icon-only"
-                                  disabled={!user.resendPasswordInviteAvailable}
+                                  disabled={!canResendPasswordInvite(user)}
                                   onClick={() => void resendCredentialInvite(user.userId, user.email)}
                                   type="button"
                                 >
                                   <SendIcon className="crud-icon" />
+                                </button>
+                              </XfHoverHint>
+                              <XfHoverHint
+                                hint={
+                                  user.resendEmailVerificationAvailable
+                                    ? "Clear password + un-verify email, then send a new verification link (24h)"
+                                    : (user.resendEmailVerificationBlockedReason ??
+                                      "Verification resend not available")
+                                }
+                              >
+                                <button
+                                  aria-label="Resend email verification"
+                                  className="tiny-button xf-icon-edit-btn--icon-only"
+                                  disabled={!user.resendEmailVerificationAvailable}
+                                  onClick={() => void resendEmailVerification(user.userId, user.email)}
+                                  type="button"
+                                >
+                                  <MailIcon className="crud-icon" />
                                 </button>
                               </XfHoverHint>
                               <XfHoverHint hint="Permanently delete user and related data">
@@ -2371,6 +2483,28 @@ export function UserSettingsConsole() {
                   >
                     <SaveIcon className="crud-icon" /> Save profile
                   </button>
+                  {!selectedUserRow.pendingAccess ? (
+                    <>
+                      <button
+                        className="cta cta-secondary"
+                        disabled={!canResendPasswordInvite(selectedUserRow)}
+                        onClick={() => void resendCredentialInvite(selectedUserId, selectedUserRow.email)}
+                        type="button"
+                      >
+                        <SendIcon className="crud-icon" /> Password setup email
+                      </button>
+                      <button
+                        className="cta cta-secondary"
+                        disabled={!selectedUserRow.resendEmailVerificationAvailable}
+                        onClick={() =>
+                          void resendEmailVerification(selectedUserId, selectedUserRow.email)
+                        }
+                        type="button"
+                      >
+                        <MailIcon className="crud-icon" /> Resend verification
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </article>
@@ -2398,6 +2532,10 @@ function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
     credentialInviteExpiresAt: user.credentialInviteExpiresAt ?? null,
     resendPasswordInviteAvailable: user.resendPasswordInviteAvailable ?? false,
     resendPasswordInviteBlockedReason: user.resendPasswordInviteBlockedReason ?? null,
+    resendPasswordInviteForceAvailable: user.resendPasswordInviteForceAvailable ?? false,
+    resendPasswordInviteForceBlockedReason: user.resendPasswordInviteForceBlockedReason ?? null,
+    resendEmailVerificationAvailable: user.resendEmailVerificationAvailable ?? false,
+    resendEmailVerificationBlockedReason: user.resendEmailVerificationBlockedReason ?? null,
     approvedAt: user.updatedAt,
     latestAuditEvent: user.latestAuditEvent ?? null
   };
