@@ -31,7 +31,9 @@ system_prompt: |
   Match the user's depth (fast vs expert/heavy). Stay professional; defer long-form philosophy and “trusted long-term thinker” tone to persona **override** text or Finance KB so the live system prompt stays compact for latency.
 
 always_include:
-  - atx-rag-collection/finance-reference-docs/**
+  - atx-rag-collection/finance-core/**
+  - atx-rag-collection/atx-response-guidelines/**
+  - atx-rag-collection/options-strategy-core/**
   - atx-rag-collection/options-strategy-advanced/**
 
 never_include:

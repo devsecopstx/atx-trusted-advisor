@@ -2,7 +2,6 @@ import { ObjectId } from "mongodb";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import { getDb } from "@/lib/mongodb";
-import { searchDocumentsInCollections } from "@/lib/xai";
 import {
     createBatchJob,
     getBatchJobStatus,
@@ -16,6 +15,7 @@ import {
 import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
+import { searchFinanceKbCollectionForXchatPreRag } from "@/modules/xchat/finance-kb-rag-search";
 import {
     resolveXchatPersonaDeclaredCollectionIds,
     withLinkedCollectionTools
@@ -151,10 +151,12 @@ export async function submitBatchJob(
 
     if (input.persona.enableRag !== false && linkedCollectionIds.length > 0) {
       try {
-        const snippets = await searchDocumentsInCollections({
+        const snippets = await searchFinanceKbCollectionForXchatPreRag({
           query: item.message,
-          collectionIds: linkedCollectionIds,
-          limit: 4
+          limit: 4,
+          userMessage: item.message,
+          workspaceSummary: null,
+          surface: "xchat"
         });
         if (snippets.length > 0) {
           ragContext = snippets

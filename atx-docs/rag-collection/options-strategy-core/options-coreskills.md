@@ -58,7 +58,7 @@ Meta topics (**tax**, **earnings**, **sizing**, **vol rank**, **payoff templates
 |-------|----------|------|
 | **Core narratives (flat)** | [`options-strategy-core/*.md`](./covered-call-and-csp.md) | Lean Finance KB slice — **default `finance-advisor` persona** disk scope. |
 | **Advanced narratives (flat)** | [`../options-strategy-advanced/`](../options-strategy-advanced/bull-call-debit-spread.md) | Full playbooks — **`advisor` persona** disk scope. |
-| **Response guidelines (flat)** | [`../atx-response-guidelines/`](../atx-response-guidelines/citation-format.md) | Same Finance collection on **`refresh-finance`** — structure, citations, tone, disclaimers (shared KB; not split by **`finance-advisor`** vs **`advisor`** `always_include`). |
+| **Response guidelines (flat)** | [`../atx-response-guidelines/`](../atx-response-guidelines/citation-format.md) | Same Finance collection on **`refresh-finance`** — structure, citations, tone, disclaimers; every shipped **`xpersonas/*.yaml`** lists **`atx-rag-collection/atx-response-guidelines/**`** in **`always_include`** (with **`finance-reference-docs/**`**; **`advisor`** / **`finance-advisor`** also declare their **`options-strategy-*`** slice). |
 | **Mongo catalog (nested)** | [`../options-strategy/<slug>/<slug>.md`](../options-strategy/wheel/wheel.md) | **Seed-only** `options_strategy` / admin xOptions; not uploaded by `refresh-finance`. |
 | **Agent skills** | [`.cursor/skills/skill-*/SKILL.md`](../../../.cursor/skills/skill-wheel-strategy/SKILL.md) | Deep playbooks for Cursor. |
 | **This index** | [`options-coreskills.md`](./options-coreskills.md) | Strategy ↔ doc ↔ **risk bucket** ↔ **outlook** ↔ `xfinance-strategy-*` ↔ skill. |

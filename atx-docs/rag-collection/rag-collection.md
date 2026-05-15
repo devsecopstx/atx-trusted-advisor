@@ -14,6 +14,7 @@
   - [options-strategy-core](#options-strategy-core) (Finance KB, lean)
   - [options-strategy-advanced](#options-strategy-advanced) (Finance KB, full playbooks)
   - [atx-response-guidelines](#atx-response-guidelines) (Finance KB, response framing)
+  - [finance-core](#finance-core) (cross-cutting desk literacy; not yet in `refresh-finance` roots)
 - [Persona YAML schema](#persona-yaml-schema)
 - [Hygiene](#hygiene)
 - [Tests and automation](#tests-and-automation)
@@ -31,7 +32,8 @@
 | **`options-strategy/`** | `options-strategy` | **Mongo-only** seed: nested `slug/slug.md` narratives for **`options_strategy`** / admin xOptions catalog (**`npm run seed:options-strategy*`**). **Not** uploaded by **`refresh-finance`** (use **core** + **advanced** for xAI). |
 | **`options-strategy-core/`** | *(uploaded as part of shared Finance collection)* | Lean options desk copy + **[`options-coreskills.md`](./options-strategy-core/options-coreskills.md)** — **`finance-advisor`** `always_include` **only** (not advanced). |
 | **`options-strategy-advanced/`** | *(same)* | Full multi-leg / overlay playbooks — **`advisor`** `always_include` **only** (not core). |
-| **`atx-response-guidelines/`** | *(same)* | xChat response structure, citations, tone, compliance copy — uploaded with **`refresh-finance`**; not a separate persona `always_include` tree (shared Finance collection). |
+| **`atx-response-guidelines/`** | *(same)* | xChat/report response structure, citations, tone, compliance — uploaded with **`refresh-finance`**; all shipped **`xpersonas/*.yaml`** include **`atx-rag-collection/atx-response-guidelines/**`** in **`always_include`** (with **`finance-reference-docs/**`**; **`advisor`** / **`finance-advisor`** also list their **`options-strategy-*`** slice). |
+| **`finance-core/`** | *(not wired to `refresh-finance` yet)* | Cross-cutting primitives, risk education, short desk refs + small PDFs, HNWI glossary — flat **`*.md`** at segment root; see **[`README.md`](./finance-core/README.md)**. |
 
 Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, **`atx-personas-trusted-family`**, **`atx-xchat-example-prompts`**, **`atx-options-strategy`** are still **ingest path fallbacks** (see seed script).
 
@@ -116,6 +118,17 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 | Path |
 | --- |
 | `citation-format.md`, `compliance-disclaimers.md`, `report-structure.md`, `response-structure.md`, `tone-and-framing.md` |
+
+### finance-core
+
+| Path | Notes |
+| --- | --- |
+| [`README.md`](./finance-core/README.md) | Segment index; not uploaded when wired (ingest skips `readme.md` / `README.md` casing) |
+| `primitives-and-mechanics.md` | Orders, settlement, margin, chains/quotes |
+| `risk-and-product-education.md` | IV/OI, assignment, risk primers |
+| `short-desk-references.md` | PDF pointers (e.g. `options-risks-toc_supplement.pdf`) |
+| `glossary-hnwi-desk-101.md` | Reusable desk vocabulary |
+| `options-risks-toc_supplement.pdf` | Small reference PDF |
 
 ---
 

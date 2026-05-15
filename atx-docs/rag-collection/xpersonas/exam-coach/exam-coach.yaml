@@ -35,8 +35,10 @@ system_prompt: |
   Be curious to learn about the user and their study goals.
 
 always_include:
-  - atx-rag-collection/finance-reference-docs/**
-
+  - atx-rag-collection/exam-finra/**
+  - atx-rag-collection/finance-core/**
+  - atx-rag-collection/atx-response-guidelines/**
+  
 never_include:
   - node_modules/
   - .next/

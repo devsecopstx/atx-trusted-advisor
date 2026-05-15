@@ -30,4 +30,19 @@ describe("buildRagLexicalCacheKey", () => {
     });
     expect(a).not.toBe(b);
   });
+
+  it("changes when keySuffix changes", () => {
+    const base = buildRagLexicalCacheKey({
+      collectionIds: ["x"],
+      query: "q",
+      limit: 5
+    });
+    const suffixed = buildRagLexicalCacheKey({
+      collectionIds: ["x"],
+      query: "q",
+      limit: 5,
+      keySuffix: "finance_kb_metadata_v1"
+    });
+    expect(base).not.toBe(suffixed);
+  });
 });

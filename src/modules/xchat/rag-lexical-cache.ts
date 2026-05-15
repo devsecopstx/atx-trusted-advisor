@@ -39,10 +39,16 @@ export function buildRagLexicalCacheKey(input: {
   collectionIds: string[];
   query: string;
   limit: number;
+  /** Bumps cache namespace when RAG retrieval strategy changes (e.g. Finance KB metadata filters). */
+  keySuffix?: string | null;
 }): string {
   const normIds = [...input.collectionIds].map((s) => s.trim()).filter(Boolean).sort().join("\n");
   const normQ = input.query.trim().toLowerCase().slice(0, 4000);
-  const payload = `${normIds}\n---\n${normQ}\n---\n${String(input.limit)}`;
+  const suf =
+    typeof input.keySuffix === "string" && input.keySuffix.trim().length > 0
+      ? `\n---\n${input.keySuffix.trim()}`
+      : "";
+  const payload = `${normIds}\n---\n${normQ}\n---\n${String(input.limit)}${suf}`;
   const h = createHash("sha256").update(payload).digest("hex").slice(0, 40);
   return `xf:rag:lexical:v1:${h}`;
 }

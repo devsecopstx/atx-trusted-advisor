@@ -6,9 +6,9 @@ export type FinanceKbRagSurface = "xchat" | "reports";
 
 const STRATEGY_TOKEN_TO_TYPES: ReadonlyArray<{ re: RegExp; types: string[] }> = [
   { re: /\bwheel\b/i, types: ["wheel"] },
-  { re: /\biron\s*condor\b|\bic\b(?!\w)/i, types: ["iron_condor"] },
+  { re: /\biron\s*condor\b/i, types: ["iron_condor"] },
   { re: /\bjade\s*lizard\b/i, types: ["iron_condor"] },
-  { re: /\bcovered\s*call\b|\bcc\b(?!\w)/i, types: ["covered_call"] },
+  { re: /\bcovered\s*call\b|\bcc\s+position\b|\bshort\s+calls?\b/i, types: ["covered_call"] },
   { re: /\bcash[-\s]?secured\s*put\b|\bcsp\b/i, types: ["covered_call", "wheel"] },
   { re: /\bput\s*credit\s*spread\b|\bbpcs\b|\bbull\s*put\b/i, types: ["bull_put_credit_spread"] },
   { re: /\bcall\s*debit\s*spread\b|\bcds\b|\bbull\s*call\b/i, types: ["bull_call_debit_spread"] },

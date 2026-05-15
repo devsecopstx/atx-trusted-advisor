@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 
-import { respondWithXai, searchDocumentsInCollections } from "@/lib/xai";
+import { respondWithXai } from "@/lib/xai";
+import { searchFinanceKbCollectionForXchatPreRag } from "@/modules/xchat/finance-kb-rag-search";
 import { getYahooMarketQuote, type MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 import { resolveXchatPersonaDeclaredCollectionIds } from "@/modules/xchat/persona-linked-collections";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
@@ -374,10 +375,12 @@ export async function gatherMultiSourceWorkspaceContext(
 
   const xaiRagP =
     ragEnabled && xaiSearchAllowed && linkedCollectionIds.length > 0
-      ? searchDocumentsInCollections({
+      ? searchFinanceKbCollectionForXchatPreRag({
           query: input.message,
-          collectionIds: linkedCollectionIds,
-          limit: topK
+          limit: topK,
+          userMessage: input.message,
+          workspaceSummary: null,
+          surface: "xchat"
         }).catch((e) => {
           pushError(errors, "xai_collection_rag", e);
           return [] as Array<{ text: string; documentName?: string; documentId?: string }>;
