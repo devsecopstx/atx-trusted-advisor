@@ -172,3 +172,5 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 - **`generate-docs`** § *RAG collection sources* — update when folders or seed contract change.
 - **Runtime model** for app personas follows **`XAI_CHAT_MODEL`** (default **`grok-4-1-fast-reasoning`** in **`.env.example`**).
 - Engineering index: **`atx-docs/README.md`** (options narratives + links into this tree).
+- **Reviewer gate:** **`.cursor/agents/reviewer.md`** — RAG segment / persona YAML / Finance KB refresh changes should update this file, segment **`README.md`** files, **`atx-docs/README.md`** § Options, and layout tests (**`tests/unit/atx-rag-collection-layout.test.ts`**) when ingest paths move.
+- **Related runtime (not RAG ingest):** xChat **prompt caps** and the composer/rail meter are **Mongo `xchat_usage_limits`** + **`GET /api/app-user/xchat/prompt-usage`** — see **`atx-docs/sre-ops/tenant-workspace-limits.md`**, **`atx-docs/xchat-harden.md`**, **`atx-docs/sre-ops/xchat-bffparity.md`** (Spring BFF must write the same bucket key format as Next **`ask-usage-limits.ts`**). Do not confuse persona **`always_include`** RAG paths with usage metering.

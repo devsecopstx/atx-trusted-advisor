@@ -35,6 +35,8 @@ xoptions deck usage, or `/api/admin/tenants/.../workspace-limits`), verify OpenA
 `atx-docs/sre-ops/tenant-workspace-limits.md` is accurate, and tests cover merge/parse or critical API paths where
 feasible.
 
+**xChat prompt meter / BFF usage keys:** If a PR touches **`xchat_usage_limits`**, **`enforceDistributedAskUsageLimit`**, Spring **`XchatUsageLimitService`**, **`GET /api/app-user/xchat/prompt-usage`**, or **`XchatUsageMeter`**, confirm Next + Spring bucket **`key`** ISO segments stay aligned (**`Date.toISOString()`** with millis), **`peekXchatAskUsageCounts`** still reads legacy keys when present, and docs (**`xchat-harden.md`**, **`xchat-bffparity.md`**, **`api-endpoints.md`**, **`tenant-workspace-limits.md`**) match **`Cache-Control: no-store`** on prompt-usage.
+
 **xChat NL price alerts (`atx_function.price_alert_manage`):** Confirm **`getPlanLimits.nlPriceAlertManagementEnabled`** stays aligned with product (Premium+ / HNWI path); portfolio + tenant scoping matches **`portfolioScopedWriteContext`**; destructive ops require **`confirmDestructive`**; scanner hook parity in **`watchlist_price_scanner`** output; docs (**`current-state-features.md`**, **`PLAN.md`**, OpenAPI summaries) updated when behavior changes. **`/account/billing` (including signed-in guests / pending approval):** list amounts must come from the
 resolved tenant’s `workspaceLimits.planOverrides.<tier>.price` when set; otherwise **`catalogListPriceUsdForPlan`** /
 `ATX_BILLING_PLAN_LIMIT_ROWS` **Price** row (Stripe list defaults) — not ad-hoc UI literals.

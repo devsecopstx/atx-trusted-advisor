@@ -30,7 +30,7 @@ Keyed by retail tier id: `basic`, `premium_monthly`, `premium_plus_monthly`. Leg
 ## Mongo collections
 
 - **`core_tenants`**: optional `workspaceLimits` subdocument.
-- **`xchat_usage_limits`**: per-user/tenant minute, hour, and day buckets for `POST /api/xchat/ask` (TTL on `expiresAt`).
+- **`xchat_usage_limits`**: per-user/tenant minute, hour, and day buckets for `POST /api/xchat/ask` (TTL on `expiresAt`). Document **`key`** format: `{kind}:{userId}:{tenantId|tenant:none}:{bucketStartIso}` where **`bucketStartIso`** is UTC-aligned and uses JavaScript **`Date.toISOString()`** (`.000Z` millis). Next **`ask-usage-limits.ts`** and Spring **`XchatUsageLimitService`** must stay aligned when BFF proxies **`POST /api/xchat/ask/stream`**; **`peekXchatAskUsageCounts`** sums legacy keys (pre-parity **`Instant.toString()`** without millis) for reads only.
 - **`app_feature_daily_usage`**: usage rows with TTL on `expiresAt` (~35d). Indexes: unique `key`, TTL on `expiresAt`.
 
 Indexes are created best-effort on first use (same pattern as other identity usage helpers).

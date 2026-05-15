@@ -1,6 +1,6 @@
 # xChat Hardening Plan (Production Reliability for HNWI Advisor Sessions)
 
-**Status:** Implementation Spec & Bugfix Roadmap — **Phase 1 `v3.18.6`** (limiter + meter parity); **Phase 2 `v3.18.7`** (observability + circuit breaker + admin usage + 429 UX); Phases 3–4 pending  
+**Status:** Implementation Spec & Bugfix Roadmap — **Phase 1 `v3.18.6`** (limiter + meter parity); **Phase 2 `v3.18.7`** (observability + circuit breaker + admin usage + 429 UX); **hotfix `v3.20.5`** (BFF bucket key ISO parity + prompt-usage no-store); Phases 3–4 pending  
 **Owner:** The Architect  
 **Date:** 2026-05-10  
 **Priority:** Critical — rate-limit bug observed in prod (hourly cap triggered on first prompt) + general production hardening for live options-trading conversations.
@@ -15,6 +15,8 @@
 | Tests | `tests/unit/xchat-usage-limits-enforcement.test.ts`, `tests/integration/plan-limits.test.ts` (non-positive `userChatLimit`). |
 
 **Files:** `src/modules/xchat/ask-usage-limits.ts`, `src/modules/xchat/plan-limits.ts`, `src/app/api/xchat/ask/route.ts` (positive-only tenant daily override passed to limiter).
+
+**Hotfix shipped (`v3.20.5`):** When Next BFF-forwards **`POST /api/xchat/ask/stream`** to Spring, usage increments landed under legacy **`Instant.toString()`** bucket keys while **`peekXchatAskUsageCounts`** read **`Date.toISOString()`** keys — meter stuck at **0/N**. Fixed: Spring writes JS-compatible ISO (`.SSS` before `Z`); Next peek merges legacy + canonical keys; **`GET /api/app-user/xchat/prompt-usage`** + **`XchatUsageMeter`** use **`no-store`**. See **`sre-ops/xchat-bffparity.md`**.
 
 **Still verify in prod:** Tenant/plan rows with explicit `userChatLimit: 1` or `userChatHourlyLimit: 1` will legitimately cap after one successful prompt — distinguish from false positives via structured logs (Phase 2).
 

@@ -34,7 +34,7 @@
 | Risk | Mitigation | Owner |
 | ---- | ---------- | ----- |
 | Spring tool loop slower | Timeout + Next fallback on proxy failure | Backend |
-| Usage limit drift | Shared Mongo counters + same limit headers | Backend |
+| Usage limit drift | Shared Mongo **`xchat_usage_limits`** + same limit headers; bucket **`key`** ISO segment must match **`Date.toISOString()`** (Next + Spring **`XchatUsageLimitService`**) so **`GET /api/app-user/xchat/prompt-usage`** reads the same rows BFF increments | Backend |
 | Client breakage | Keep exact SSE event shape | Frontend |
 
 ---
