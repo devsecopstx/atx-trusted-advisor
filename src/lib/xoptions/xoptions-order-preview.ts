@@ -279,6 +279,13 @@ export type XoptionsOrderReview = {
   cappedUpsideDisplay: string | null;
   /** One-line broker-style ticket: side, symbol, strike, right, exp, limit, est premium, max loss. */
   brokerTicketLine: string;
+  /**
+   * Sell-to-open: gross premium ÷ secured notional (strike × contracts × 100) for the period, percent.
+   * Null for buy-to-open or when not applicable.
+   */
+  premiumYieldPercentOfSecuredNotional: number | null;
+  /** Credit (sell) or debit (buy) in USD at limit × contracts × 100. */
+  grossPremiumUsd: number;
 };
 
 function buildBrokerTicketLine(input: {
@@ -513,6 +520,8 @@ export function buildXoptionsOrderReview(
     dollarDeltaApproxUsd,
     samplePortfolioDeltaLine,
     cappedUpsideDisplay,
-    brokerTicketLine
+    brokerTicketLine,
+    premiumYieldPercentOfSecuredNotional: potentialEarningPct,
+    grossPremiumUsd: grossValue
   };
 }

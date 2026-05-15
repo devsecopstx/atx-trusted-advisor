@@ -113,6 +113,8 @@ describe("buildXoptionsOrderReview", () => {
     expect(r.brokerTicketLine).toContain("NVDA");
     expect(r.brokerTicketLine).toContain("Est premium");
     expect(r.brokerTicketLine).toContain("Max loss");
+    expect(r.premiumYieldPercentOfSecuredNotional).toBeNull();
+    expect(r.grossPremiumUsd).toBeCloseTo(4650, 5);
   });
 
   it("formats plain text with metrics, narrative, and footnote by default", () => {
@@ -192,6 +194,8 @@ describe("buildXoptionsOrderReview", () => {
     expect(r.narrative).not.toContain("maximum debit");
     expect(r.brokerTicketLine).toContain("SELL TO OPEN");
     expect(r.brokerTicketLine).toContain("RDW");
+    expect(r.premiumYieldPercentOfSecuredNotional).toBeCloseTo(4.5, 5);
+    expect(r.grossPremiumUsd).toBeCloseTo(450, 5);
   });
 
   it("calculates potential earning percent for covered-call credit example", () => {
@@ -209,5 +213,7 @@ describe("buildXoptionsOrderReview", () => {
     });
     expect(r.narrative).toContain("maximum credit of $975.00");
     expect(r.narrative).toContain("Potential earning: 6.8% of secured notional ($14,250.00).");
+    expect(r.premiumYieldPercentOfSecuredNotional).toBeCloseTo(6.842105263157895, 5);
+    expect(r.grossPremiumUsd).toBeCloseTo(975, 5);
   });
 });

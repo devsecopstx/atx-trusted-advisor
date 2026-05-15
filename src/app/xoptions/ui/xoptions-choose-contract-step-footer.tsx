@@ -13,6 +13,10 @@ type XoptionsChooseContractStepFooterProps = {
   onReviewOrderDetails: () => void;
 };
 
+function formatStep4Usd(n: number): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+}
+
 function estimatedGrossPremiumDisplay(orderReview: XoptionsOrderReview | null): string {
   if (!orderReview) {
     return "—";
@@ -71,6 +75,27 @@ export function XoptionsChooseContractStepFooter({
               <p className="xoptions-step4-order-summary__metric-value">
                 {estimatedGrossPremiumDisplay(orderReview)}
               </p>
+            </div>
+            <div className="xoptions-step4-order-summary__metric xoptions-step4-order-summary__metric--potential-earnings">
+              <p className="xoptions-step4-order-summary__metric-label">Potential earnings</p>
+              {!orderReview ? (
+                <p className="xoptions-step4-order-summary__metric-value">—</p>
+              ) : orderReview.premiumYieldPercentOfSecuredNotional != null ? (
+                <div className="xoptions-step4-order-summary__earnings-stack">
+                  <p className="xoptions-step4-order-summary__earnings-pct">
+                    {orderReview.premiumYieldPercentOfSecuredNotional.toFixed(1)}%
+                  </p>
+                  <p className="xoptions-step4-order-summary__earnings-sub">of secured notional</p>
+                  <p className="xoptions-step4-order-summary__earnings-premium">
+                    ({formatStep4Usd(orderReview.grossPremiumUsd)})
+                  </p>
+                </div>
+              ) : (
+                <div className="xoptions-step4-order-summary__earnings-stack">
+                  <p className="xoptions-step4-order-summary__metric-value">—</p>
+                  <p className="xoptions-step4-order-summary__earnings-sub">Sell-to-open vs collateral</p>
+                </div>
+              )}
             </div>
           </div>
           <p className="xoptions-step4-order-summary__ticket">

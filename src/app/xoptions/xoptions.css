@@ -3173,6 +3173,12 @@ html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
   gap: 0.45rem 0.75rem;
 }
 
+@media (min-width: 36rem) {
+  .xoptions-step4-order-summary__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .xoptions-step4-order-summary__metric-label {
   margin: 0;
   font-size: 0.5625rem;
@@ -3188,6 +3194,41 @@ html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
   font-size: 0.8125rem;
   font-weight: 700;
   color: var(--xf-text-100);
+}
+
+.xoptions-step4-order-summary__metric--potential-earnings {
+  min-width: 0;
+}
+
+.xoptions-step4-order-summary__earnings-stack {
+  margin: 0.1rem 0 0;
+}
+
+.xoptions-step4-order-summary__earnings-pct {
+  margin: 0;
+  font-family: var(--xf-font-mono);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--xf-text-100);
+}
+
+.xoptions-step4-order-summary__earnings-sub {
+  margin: 0.12rem 0 0;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+  line-height: 1.25;
+}
+
+.xoptions-step4-order-summary__earnings-premium {
+  margin: 0.1rem 0 0;
+  font-family: var(--xf-font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--xf-text-200);
 }
 
 .xoptions-step4-order-summary__ticket {
