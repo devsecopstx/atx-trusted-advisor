@@ -80,6 +80,12 @@ import {
     setIncomeIdeasResponseCache,
     tryGetIncomeIdeasResponseCache
 } from "@/modules/xchat/income-ideas-response-cache";
+import {
+    buildMonteCarloToolArgsFromNl,
+    parseMonteCarloAskNlParams,
+    renderMonteCarloTailRiskMarkdown
+} from "@/modules/xchat/monte-carlo-ask-routing";
+import { runMonteCarloTailRiskTool } from "@/modules/xchat/monte-carlo-tail-risk-tool";
 import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
 import type { OptionsActionReportRow } from "@/modules/xchat/options-action-scan";
@@ -129,6 +135,7 @@ import {
 import { postProcessWatchlistMarkdown } from "@/modules/xchat/watchlist-response-postprocess";
 import {
     buildWorkspacePreloadHintForSystemPrompt,
+    formatWorkspaceServerSnapshotBlock,
     loadWorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
@@ -182,6 +189,7 @@ import {
     recordXchatPromptLatencySample
 } from "@/modules/xchat/xchat-prompt-latency-metrics";
 import {
+    isQuantTraderPersona,
     resolveReasoningEffortFromAskPayload,
     XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID,
     XCHAT_DEPTH_FAST_MODEL_ID
@@ -1278,6 +1286,7 @@ export async function POST(request: Request) {
   });
   const workspacePortfolioScoped =
     typeof workspacePortfolioId === "string" && workspacePortfolioId.trim().length > 0;
+  const quantTraderDesk = isQuantTraderPersona(persona);
   const workspaceIncomeIdeasPreload =
     shouldEagerWorkspaceSnapshotPreloadForMessage(messageTrimmed);
   const incomeIdeasOptimizationCandidate =
@@ -1285,6 +1294,7 @@ export async function POST(request: Request) {
     shouldOptimizeIncomeIdeasPrompt(messageTrimmed) &&
     workspaceIncomeIdeasPreload;
   const likelyDirectWorkspaceToolPath =
+    quantTraderDesk ||
     (!hasVisionImages &&
       (showWatchlistIntent ||
         shouldRunOptionsActionScan(messageTrimmed) ||
@@ -1544,6 +1554,95 @@ export async function POST(request: Request) {
     : eagerWorkspacePreload
       ? { workspacePreload: eagerWorkspacePreload }
       : { workspaceLazyLoad: workspaceSnapshotCtx };
+
+  const monteCarloNlParams =
+    quantTraderDesk && !hasVisionImages && hasXfinanceTool
+      ? parseMonteCarloAskNlParams(messageTrimmed)
+      : null;
+
+  if (monteCarloNlParams) {
+    const mcStartedAt = Date.now();
+    const mcToolArgs = buildMonteCarloToolArgsFromNl(monteCarloNlParams);
+    const mcResult = await runMonteCarloTailRiskTool(mcToolArgs, {
+      userId: session.userId,
+      tenantId: session.tenantId,
+      workspacePortfolioId
+    });
+    const mcDurationMs = Math.max(0, Date.now() - mcStartedAt);
+
+    if (mcResult.ok) {
+      const responseMarkdown = renderMonteCarloTailRiskMarkdown(mcResult, {
+        mentionedPortfolioCount: monteCarloNlParams.mentionedPortfolioCount
+      });
+      const output = preprocessXchatMarkdown(responseMarkdown);
+      const mcMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+        ragChunks: contextCount,
+        toolInvocations: 1,
+        personaCollections: linkedCollectionIds.length
+      });
+      const mcSerialized = JSON.stringify(mcResult);
+
+      const chatLogId = shouldPersistHistory
+        ? await saveXChatLog({
+            threadId,
+            requestId,
+            correlationId,
+            userId,
+            tenantId: tenantId ?? undefined,
+            userEmail: session.email,
+            requestedBy: session.username,
+            personaId: persona?._id,
+            personaName: persona.name,
+            scope,
+            message: messageForPersistence,
+            response: output,
+            contextChunkIds: [],
+            model: "monte_carlo_tail_risk_direct",
+            strategyJobOptOut,
+            retentionExpiresAt,
+            interactionGenerationMs: mcMeta.generationMs,
+            xapiToolCalls: [
+              {
+                name: "atx_function",
+                args: { operation: "monte_carlo_tail_risk", ...mcToolArgs },
+                resultHash: buildSha256Hex(mcSerialized),
+                durationMs: mcDurationMs
+              }
+            ]
+          })
+        : null;
+
+      return NextResponse.json(
+        {
+          data: withXchatAskContentAndMetadata(
+            {
+              response: output,
+              model: "monte_carlo_tail_risk_direct",
+              personaName: persona.name,
+              modelSelectionSource,
+              contextCount: 0,
+              contextSource: "none",
+              collectionSearchStatus: "skipped_no_collections",
+              collectionSearchNonReadyFileCount: 0,
+              logId: chatLogId?.toHexString(),
+              toolCalls: [{ name: "atx_function", durationMs: mcDurationMs }],
+              interactionMeta: mcMeta
+            },
+            { persona, threadId }
+          )
+        },
+        {
+          headers: buildLimiterHeaders({
+            remainingMinute: limiterRemainingMinute,
+            remainingHour: limiterRemainingHour,
+            remainingDay: limiterRemainingDay,
+            hourlyLimit: limiterHourlyLimit,
+            dailyLimit: limiterDailyLimit
+          })
+        }
+      );
+    }
+  }
 
   if (!hasVisionImages && hasXfinanceTool && shouldRunOptionsActionScan(messageTrimmed)) {
     const executor = createXfinanceToolExecutor({
@@ -1944,7 +2043,9 @@ export async function POST(request: Request) {
   const sessionToolCopyMode =
     useRemoteConversationHistory && previousResponseId
       ? ("full" as const)
-      : classifyXchatSessionToolCopyMode(messageTrimmed);
+      : quantTraderDesk
+        ? ("full" as const)
+        : classifyXchatSessionToolCopyMode(messageTrimmed);
 
   const workspaceSnapshotForPrompt =
     shouldEagerWorkspacePreload && eagerWorkspacePreload
@@ -1952,12 +2053,14 @@ export async function POST(request: Request) {
         ? formatIncomeIdeasWorkspaceBlock(
             buildIncomeIdeasCompactPayload(eagerWorkspacePreload, incomeIdeasQuoteMap)
           )
-        : buildWorkspacePreloadHintForSystemPrompt(eagerWorkspacePreload)
+        : quantTraderDesk
+          ? formatWorkspaceServerSnapshotBlock(eagerWorkspacePreload)
+          : buildWorkspacePreloadHintForSystemPrompt(eagerWorkspacePreload)
       : null;
 
   const userWorkspaceSummaryBlock =
     hasXfinanceTool && userWorkspaceSummaryJson
-      ? formatUserWorkspaceSummaryBlock(userWorkspaceSummaryJson)
+      ? formatUserWorkspaceSummaryBlock(userWorkspaceSummaryJson, { quantTraderDesk })
       : null;
 
   const builtSystemPrompt = buildXchatSystemPrompt({
@@ -1977,7 +2080,8 @@ export async function POST(request: Request) {
         hostedSearch: hasHostedSearchTool,
         atxFunction: hasXfinanceTool
       },
-      sessionToolCopyMode
+      sessionToolCopyMode,
+      { quantTraderDesk }
     ),
     routingPolicyBlock: XCHAT_SERVER_ROUTING_POLICY_BLOCK,
     citationsEnabled: persona?.citationsEnabled !== false,

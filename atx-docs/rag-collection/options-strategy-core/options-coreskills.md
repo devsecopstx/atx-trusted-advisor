@@ -81,6 +81,16 @@ Meta topics (**tax**, **earnings**, **sizing**, **vol rank**, **payoff templates
 | **Payoff templates** | [payoff-templates-and-examples.md](./payoff-templates-and-examples.md) | — | — | *(meta)* | [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md) |
 | **Tax & assignment** | [options-tax-considerations.md](./options-tax-considerations.md) | — | HNWI checklist | *(meta)* | — |
 
+### Quant desk (`quant-trader` — nested `options-strategy/` + Finance KB upload)
+
+| Topic | Narrative doc | Risk bucket | Outlook | `xfinance-strategy-*` id |
+|-------|----------------|-------------|---------|---------------------------|
+| **Monte Carlo wheel** | [quant-monte-carlo-wheel.md](../options-strategy/quant-monte-carlo-wheel/quant-monte-carlo-wheel.md) | Balanced | High-IV wheel | `xfinance-strategy-monte-carlo-wheel` |
+| **Multi-portfolio aggregation** | [portfolio-level-quant-aggregation.md](../options-strategy/portfolio-level-quant-aggregation/portfolio-level-quant-aggregation.md) | — | Multi-book | `xfinance-strategy-portfolio-quant-aggregation` |
+| **Drawdown / VaR / CVaR** | [drawdown-and-risk-metric-playbook.md](../options-strategy/drawdown-and-risk-metric-playbook/drawdown-and-risk-metric-playbook.md) | — | Tail metrics | `xfinance-strategy-drawdown-risk-metrics` |
+| **IV rank filtering** | [iv-rank-strategy-selection-and-filtering.md](../options-strategy/iv-rank-strategy-selection-and-filtering/iv-rank-strategy-selection-and-filtering.md) | — | High vol | `xfinance-strategy-iv-rank-filtering` |
+| **Risk tier parameters** | [conservative-balanced-aggressive-quant-parameters.md](../options-strategy/conservative-balanced-aggressive-quant-parameters/conservative-balanced-aggressive-quant-parameters.md) | All tiers | Cross-cutting | `xfinance-strategy-quant-risk-tiers` |
+
 ---
 
 ## Strategy map — advanced (full depth)

@@ -79,7 +79,10 @@ import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-actio
 import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
 import { isHnwiPromptTemplateV21Slug } from "@/modules/xchat/prompt-templates-v21-defaults";
 import {
+    personaDefaultReasoningMode,
+    shouldForceReasoningModeForPersona,
     XCHAT_REASONING_MODE_STORAGE_KEY,
+    XPERSONA_NAME_QUANT_TRADER,
     type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
 
@@ -772,7 +775,7 @@ export function XchatConversation({
         const advisorRow = personaSelectRows.find((p) => p.name.trim().toLowerCase() === "advisor");
         const currentRow = personaSelectRows.find((p) => p._id === selectedPersonaId.trim());
         const curName = currentRow?.name.trim().toLowerCase() ?? "";
-        if (advisorRow && curName !== "advisor") {
+        if (curName !== XPERSONA_NAME_QUANT_TRADER && advisorRow && curName !== "advisor") {
           skipNextPersonaReasoningHydrateRef.current = true;
           userPickedPersonaRef.current = true;
           setSelectedPersonaId(advisorRow._id);
@@ -1265,14 +1268,24 @@ export function XchatConversation({
       return;
     }
     const row = personaPickerRows.find((p) => p._id === id);
-    const isFinanceAdvisor = row?.name.trim().toLowerCase() === "finance-advisor";
+    const personaNameNorm = row?.name.trim().toLowerCase() ?? "";
+    const forcedMode = shouldForceReasoningModeForPersona(personaNameNorm);
+    if (forcedMode) {
+      setReasoningMode(forcedMode);
+      if (personaNameNorm === XPERSONA_NAME_QUANT_TRADER) {
+        clearDepthModeToastSoon("Quant Trader uses Heavy depth for Monte Carlo and multi-agent quant runs.");
+      }
+      prevPersonaIdForReasoningHydrateRef.current = id;
+      return;
+    }
+    const personaDefault = personaDefaultReasoningMode(personaNameNorm);
     const key = reasoningStorageKeyForPersona(id);
     if (!key) {
       return;
     }
     try {
       let raw = localStorage.getItem(key);
-      if (raw == null && !isFinanceAdvisor) {
+      if (raw == null && personaDefault == null) {
         const legacy = localStorage.getItem(XCHAT_REASONING_MODE_STORAGE_KEY);
         if (legacy === "fast" || legacy === "expert" || legacy === "heavy") {
           raw = legacy;
@@ -1281,14 +1294,15 @@ export function XchatConversation({
       }
       if (raw === "fast" || raw === "expert" || raw === "heavy") {
         setReasoningMode(raw);
-      } else if (isFinanceAdvisor) {
-        setReasoningMode("fast");
+      } else if (personaDefault) {
+        setReasoningMode(personaDefault);
       }
     } catch {
       /* ignore */
     }
     prevPersonaIdForReasoningHydrateRef.current = id;
   }, [
+    clearDepthModeToastSoon,
     personaListFetched,
     personaPickerRows,
     reasoningStorageKeyForPersona,

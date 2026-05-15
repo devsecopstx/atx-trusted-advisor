@@ -1,6 +1,7 @@
 package com.atxfinance.backend.strategy
 
 import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.ratelimit.RateLimitService
 import com.atxfinance.backend.session.ResolvedSession
 import org.bson.Document
 import org.bson.types.ObjectId
@@ -24,7 +25,7 @@ private data class SlotDef(
 class StrategyJobService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
-    private val strategyJobRedisQuota: ObjectProvider<StrategyJobRedisQuota>,
+    private val rateLimitService: RateLimitService,
     private val finalizerCoordinator: ObjectProvider<StrategyJobFinalizerCoordinator>,
 ) {
 
@@ -53,33 +54,15 @@ class StrategyJobService(
             }
         }
 
-        val quota = strategyJobRedisQuota.ifAvailable
-        val since = Date(System.currentTimeMillis() - HOUR_MS)
-        var softWarn: Boolean
-        var jobsInLastHourAfterCreate: Int
-        if (quota != null) {
-            try {
-                val after = quota.tryReserveSlot(session.tenantId, session.userId, emailAccountId)
-                    ?: return CreateJobOutcome.RateLimited
-                val mongoCount = countJobsSince(session, emailAccountId, since)
-                softWarn = mongoCount >= props.strategySoftWarnJobsHourly
-                jobsInLastHourAfterCreate = maxOf(after, mongoCount + 1L).toInt()
-            } catch (_: Exception) {
-                val count = countJobsSince(session, emailAccountId, since)
-                if (count >= props.strategyMaxJobsHourly) {
-                    return CreateJobOutcome.RateLimited
-                }
-                softWarn = count >= props.strategySoftWarnJobsHourly
-                jobsInLastHourAfterCreate = count + 1
-            }
-        } else {
-            val count = countJobsSince(session, emailAccountId, since)
-            if (count >= props.strategyMaxJobsHourly) {
-                return CreateJobOutcome.RateLimited
-            }
-            softWarn = count >= props.strategySoftWarnJobsHourly
-            jobsInLastHourAfterCreate = count + 1
-        }
+        val countAfter =
+            rateLimitService.consumeStrategyJobHourlyCreate(
+                tenantId = session.tenantId,
+                userId = session.userId,
+                normalizedEmailAccountScope = emailAccountId,
+                maxPerHour = props.strategyMaxJobsHourly,
+            ) ?: return CreateJobOutcome.RateLimited
+        val softWarn = countAfter >= props.strategySoftWarnJobsHourly
+        val jobsInLastHourAfterCreate = countAfter
 
         val id = ObjectId()
         val correlationId = UUID.randomUUID().toString()
@@ -107,7 +90,7 @@ class StrategyJobService(
         try {
             mongoTemplate.insert(doc, props.strategyJobsCollection)
         } catch (e: Exception) {
-            quota?.releaseSlot(session.tenantId, session.userId, emailAccountId)
+            rateLimitService.rollbackStrategyJobHourlyCreate(session.tenantId, session.userId, emailAccountId)
             throw e
         }
         return CreateJobOutcome.Created(
@@ -210,17 +193,6 @@ class StrategyJobService(
         return PostTurnOutcome.Ok(updated)
     }
 
-    private fun countJobsSince(session: ResolvedSession, emailAccountId: String, since: Date): Int =
-        mongoTemplate.count(
-            Query.query(
-                Criteria.where("userId").`is`(session.userId)
-                    .and("tenantId").`is`(session.tenantId)
-                    .and("emailAccountId").`is`(emailAccountId)
-                    .and("createdAt").gte(since),
-            ),
-            props.strategyJobsCollection,
-        ).toInt()
-
     private fun resolveSlotValue(def: SlotDef, message: String?, choiceIndex: Int?): String? {
         if (def.choices != null && def.choices.isNotEmpty()) {
             val idx = choiceIndex ?: message?.trim()?.toIntOrNull()
@@ -237,7 +209,6 @@ class StrategyJobService(
     }
 
     companion object {
-        private const val HOUR_MS = 3_600_000L
         private const val IDEMPOTENCY_WINDOW_MS = 86_400_000L
         const val STATUS_COLLECTING = "collecting"
         const val STATUS_SLOTS_COMPLETE = "slots_complete"

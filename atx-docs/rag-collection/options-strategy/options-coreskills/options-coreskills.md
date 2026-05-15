@@ -55,6 +55,18 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 
 Shared principles (not a single strategy): [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md).
 
+### Quant desk (quant-trader persona — Monte Carlo / multi-book)
+
+| Topic | Narrative doc | Risk | Outlook | `xfinance-strategy-*` id |
+|-------|----------------|------|---------|---------------------------|
+| **Monte Carlo wheel** | [quant-monte-carlo-wheel.md](../quant-monte-carlo-wheel/quant-monte-carlo-wheel.md) | Balanced | High-IV income / wheel | `xfinance-strategy-monte-carlo-wheel` |
+| **Multi-portfolio aggregation** | [portfolio-level-quant-aggregation.md](../portfolio-level-quant-aggregation/portfolio-level-quant-aggregation.md) | — | Multi-book | `xfinance-strategy-portfolio-quant-aggregation` |
+| **VaR / CVaR / drawdown gates** | [drawdown-and-risk-metric-playbook.md](../drawdown-and-risk-metric-playbook/drawdown-and-risk-metric-playbook.md) | — | Tail metrics | `xfinance-strategy-drawdown-risk-metrics` |
+| **IV rank filtering** | [iv-rank-strategy-selection-and-filtering.md](../iv-rank-strategy-selection-and-filtering/iv-rank-strategy-selection-and-filtering.md) | — | High vol / premium sell | `xfinance-strategy-iv-rank-filtering` |
+| **Risk tier parameters** | [conservative-balanced-aggressive-quant-parameters.md](../conservative-balanced-aggressive-quant-parameters/conservative-balanced-aggressive-quant-parameters.md) | All tiers | Cross-cutting | `xfinance-strategy-quant-risk-tiers` |
+
+Uploaded to Finance KB via **`refresh-finance`** (nested quant folders only — not the full `options-strategy/**` tree). **`quant-trader`** persona **`always_include`** lists **`options-strategy/**`** + core/advanced.
+
 ### HNWI Desk Report v2.1 — xChat quick-action slugs (risk / outlook defaults)
 
 | Template slug (`prompt_templates.slug`) | Desk focus | Default risk bias | Default outlook bias |

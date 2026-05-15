@@ -13,6 +13,44 @@ export const XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID = "grok-4.3" as const;
 
 export const XCHAT_REASONING_MODE_STORAGE_KEY = "xf_xchat_reasoning_mode";
 
+/** Published xPersona `name` / `nameNormalized` for the quant Monte Carlo desk. */
+export const XPERSONA_NAME_QUANT_TRADER = "quant-trader";
+
+/** Persona-specific composer depth when no per-persona localStorage value exists. */
+export function personaDefaultReasoningMode(personaNameNormalized: string): XchatReasoningMode | null {
+  const n = personaNameNormalized.trim().toLowerCase();
+  if (n === "finance-advisor") {
+    return "fast";
+  }
+  if (n === XPERSONA_NAME_QUANT_TRADER) {
+    return "heavy";
+  }
+  return null;
+}
+
+/** Quant Trader always runs Heavy depth (multi-agent + high reasoning) when selected. */
+export function shouldForceReasoningModeForPersona(personaNameNormalized: string): XchatReasoningMode | null {
+  const n = personaNameNormalized.trim().toLowerCase();
+  if (n === XPERSONA_NAME_QUANT_TRADER) {
+    return "heavy";
+  }
+  return null;
+}
+
+export function isQuantTraderPersonaName(nameOrNormalized: string): boolean {
+  return nameOrNormalized.trim().toLowerCase() === XPERSONA_NAME_QUANT_TRADER;
+}
+
+export function isQuantTraderPersona(
+  persona: { name?: string; nameNormalized?: string } | null | undefined
+): boolean {
+  if (!persona) {
+    return false;
+  }
+  const key = (persona.nameNormalized ?? persona.name ?? "").trim();
+  return isQuantTraderPersonaName(key);
+}
+
 export const XCHAT_DEPTH_ROUTING_MODEL_LABELS: Record<XchatReasoningMode, string> = {
   fast: "Grok 4.1 Fast",
   expert: "Grok 4.3",

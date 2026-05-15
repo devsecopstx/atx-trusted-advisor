@@ -11,11 +11,11 @@ If **`REDIS_URL`** / **`REDIS_URL_CONTROL`** / **`REDIS_URL_CACHE`** (or Spring 
 | **Lettuce connections** | `AtxRedisConfiguration` — **one** pooled connection per JVM by default (`REDIS_POOL_MAX_ACTIVE=1`); control + cache templates share the same factory when URLs match. |
 | **OAuth PKCE** | `OAuthPkceRedisStore` — key `xf:oauth:pkce:{state}`, TTL `OAUTH_PKCE_REDIS_TTL_SECONDS` (default **600**). `GET /api/auth/x/login` writes verifier; `GET /api/auth/x/callback` consumes it if cookies are missing. |
 | **Auth rate limits** | `AuthPathRateLimitFilter` — per client IP, rolling minute bucket (`X-Forwarded-For` first hop). Defaults: login **30**/min, callback **60**/min. Set to **0** to disable a limit. Env: `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE`, `AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE`. |
-| **Strategy jobs** | `StrategyJobRedisQuota` — UTC hour bucket `xf:sj:hourly:{userId}:{yyyyMMddHH}`; primary fuse when Redis is on (Mongo count still read for `softWarn` / meta). On failed insert, quota is decremented. |
+| **Strategy jobs** | Hourly create cap: Mongo **`rate_limits`** + **`RateLimitService`** (atomic upsert + `$inc`, mirrors Next `xchat_usage_limits`). Failed job insert rolls back the counter. **Redis is not used** for this fuse. |
 | **Portfolio workspace snapshot cache** | **`GET /api/portfolios/{portfolioId}/snapshot`** — read-through Redis for materialized xChat preload (`xf:wsnap:v1:*`), with **version-key invalidation** (`xf:wsnap:v1:cv:*`) instead of wildcard key scans. TTL **60s** when US regular session is likely **open** and **300s** when likely **closed** (`PORTFOLIO_SNAPSHOT_TTL_OPEN_SECONDS` / `PORTFOLIO_SNAPSHOT_TTL_CLOSED_SECONDS`). |
 | **Health** | `/api/health` and `/api/backend/health` include **`redis`** / `details.redis`: `ok` \| `error` \| `skipped`. |
 
-When **`REDIS_URL` is unset**, none of the above beans load; behavior matches pre-600 JVM (cookies-only OAuth context, Mongo-only strategy rate count, no auth filter, no snapshot Redis cache).
+When **`REDIS_URL` is unset**, none of the above beans load; behavior matches pre-600 JVM (cookies-only OAuth context, Mongo `rate_limits` strategy job hourly cap, no auth filter, no snapshot Redis cache).
 
 ## TLS / `rediss://` vs plain
 

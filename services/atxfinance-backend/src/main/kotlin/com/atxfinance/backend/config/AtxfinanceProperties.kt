@@ -42,6 +42,11 @@ data class AtxfinanceProperties(
     val ragChunksCollection: String = "xchat_rag_chunks",
     val xchatLogsCollection: String = "xchat_logs",
     val xchatUsageLimitsCollection: String = "xchat_usage_limits",
+    /**
+     * Atomic hourly (and future) counters — same upsert + `$inc` pattern as Next `xchat_usage_limits`.
+     * Strategy job hourly caps use `jobType=strategy_job_hourly` rows (`RateLimitService`).
+     */
+    val rateLimitsCollection: String = "rate_limits",
     val xchatUserPreferencesCollection: String = "xchat_user_preferences",
     val xchatPlatformSettingsCollection: String = "xchat_platform_settings",
     /** Per-user rolling minute cap for `POST /api/xchat/ask/stream` (mirrors Next `ASK_RATE_MAX`). */

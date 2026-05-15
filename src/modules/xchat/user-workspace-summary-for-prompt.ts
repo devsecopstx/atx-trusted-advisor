@@ -216,16 +216,28 @@ export async function loadUserWorkspaceSummaryForPrompt(
   };
 }
 
+/** Quant Trader desk: multi-book NL discipline on top of the standard workspace summary block. */
+export const XCHAT_QUANT_TRADER_WORKSPACE_INSTRUCTION = `**Quant Trader context (mandatory before Monte Carlo or structure ranking):**
+Read the **User workspace summary** JSON first — it lists every owned portfolio with exact \`name\`, \`id\`, compact \`holdings\`, \`cash\`, and mapped \`riskLevel\` (conservative | moderate | aggressive). Anchor all simulations to those ids; never invent books or tickers.
+When a **Workspace snapshot** JSON block is present for the active portfolio, treat it as authoritative for \`watchlist.riskProfile\`, \`watchlist.outlook\`, \`investmentOutlook\`, \`bookTailRisk\`, account risk/outlook, and positions preview — use it before calling tools.
+Map user risk language to MC tiers: conservative → \`conservative\`; balanced/moderate → \`moderate\`; growth/aggressive → \`aggressive\`. When the user omits risk, default from the active book's \`riskLevel\` in the workspace summary, else \`moderate\`.
+Only call **user_workspace_summary** mid-thread when the user changed portfolios, imported holdings, or you need a refresh after a mutation — not on every turn when preflight JSON is already in context.
+**Never ask portfolio-scope clarification** when the user says "all portfolios", "across my portfolios", "my three portfolios", or similar — run **monte_carlo_tail_risk** with \`portfolioScope: "all"\` on every book in the workspace summary (even if the count differs from what they said). Note the count mismatch in the reply after results.`;
+
 export const XCHAT_USER_WORKSPACE_SUMMARY_INSTRUCTION = `You are always given the user's current workspace context in the JSON block below (server preflight).
 When the user refers to portfolio names, nicknames, or account labels that match this summary (for example "Rollover IRA", "ROTH IRA", "my growth book"), you must anchor answers to the exact named portfolio id from that JSON.
 If \`nlPriceAlerts\` is present, use \`activeNlAlertCount\` and \`alertsDeepLink\` for NL price-rule context; use \`price_alert_manage\` to list/add/remove rules (Premium+ advisor path).
 Never give generic multi-account answers unless the user explicitly asks for an overview of all accounts or compares books.`;
 
-export function formatUserWorkspaceSummaryBlock(summary: UserWorkspaceSummaryJson): string {
+export function formatUserWorkspaceSummaryBlock(
+  summary: UserWorkspaceSummaryJson,
+  options?: { quantTraderDesk?: boolean }
+): string {
   const json = JSON.stringify(summary);
   return [
     "User workspace summary (getUserWorkspaceSummary / server preflight — authoritative friendly names for this request):",
     XCHAT_USER_WORKSPACE_SUMMARY_INSTRUCTION,
+    ...(options?.quantTraderDesk ? [XCHAT_QUANT_TRADER_WORKSPACE_INSTRUCTION] : []),
     "```json",
     json,
     "```"

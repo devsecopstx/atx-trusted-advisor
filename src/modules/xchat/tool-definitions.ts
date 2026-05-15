@@ -27,11 +27,12 @@ export const ATXFINANCE_TOOL_DEFINITION = {
             "options_scan",
             "options_action_scan",
             "strategy_recommendations",
+            "monte_carlo_tail_risk",
             "market_quote",
             "price_alert_manage"
           ],
           description:
-            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt, entryPrice/targetEntryPrice when set) on the default portfolio; use watchlist_snapshot for watchlist-only. user_workspace_summary: all portfolios the user owns with friendly names, ids, compact holdings line, cash rollup, and mapped risk level — same JSON the server injects at NL preflight; call only when you need a refresh. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. options_scan: scan Yahoo option chains by filters (optionType, DTE, delta, IV, OI, bid); accepts either structured fields or a natural-language `query` such as 'RDW CSP scan put DTE<=7 delta 0.15-0.30 vol>40 OI>500 bid>0.10'. options_action_scan: deterministic options action report across live option holdings + watchlist symbols with recommended actions (ROLL/BTC/HOLD/LET_EXPIRE/STC/OPEN/MONITOR). strategy_recommendations: use the JVM OptionsStrategyEngine for ranked strategy recommendation JSON; requires symbols, outlook, risk, and horizonDays; narrate only from returned legs/scores/rationale. market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers. price_alert_manage: Premium+HNWI NL desk price rules on the **workspace portfolio** (see priceAlertOp + confirmDestructive); fires during tenant watchlist price scanner when Yahoo quotes cross armed thresholds; email uses desk delivery channels when configured."
+            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt, entryPrice/targetEntryPrice when set) on the default portfolio; use watchlist_snapshot for watchlist-only. user_workspace_summary: all portfolios the user owns with friendly names, ids, compact holdings line, cash rollup, and mapped risk level — same JSON the server injects at NL preflight; call only when you need a refresh. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. options_scan: scan Yahoo option chains by filters (optionType, DTE, delta, IV, OI, bid); accepts either structured fields or a natural-language `query` such as 'RDW CSP scan put DTE<=7 delta 0.15-0.30 vol>40 OI>500 bid>0.10'. options_action_scan: deterministic options action report across live option holdings + watchlist symbols with recommended actions (ROLL/BTC/HOLD/LET_EXPIRE/STC/OPEN/MONITOR). strategy_recommendations: use the JVM OptionsStrategyEngine for ranked strategy recommendation JSON; requires symbols, outlook, risk, and horizonDays; narrate only from returned legs/scores/rationale. monte_carlo_tail_risk: book-level Monte Carlo tail metrics (VaR/CVaR, drawdown probabilities, stress scenarios, Greeks rollup); requires risk; optional portfolioIds (max 5), portfolioScope=all for every owned book, horizonDays (default 45), minIvRankPct, maxDrawdownPct gate. market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers. price_alert_manage: Premium+HNWI NL desk price rules on the **workspace portfolio** (see priceAlertOp + confirmDestructive); fires during tenant watchlist price scanner when Yahoo quotes cross armed thresholds; email uses desk delivery channels when configured."
         },
         symbol: {
           type: "string",
@@ -121,6 +122,30 @@ export const ATXFINANCE_TOOL_DEFINITION = {
         maxResults: {
           type: "number",
           description: "strategy_recommendations result cap (1..10; default 5)."
+        },
+        portfolioIds: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "monte_carlo_tail_risk: up to 5 owned portfolio Mongo ids (24-char hex). Omit with portfolioScope=all to run every owned book."
+        },
+        portfolioScope: {
+          type: "string",
+          enum: ["all", "workspace_all"],
+          description: "monte_carlo_tail_risk: when set to all, simulate every portfolio the user owns (capped at 5)."
+        },
+        minIvRankPct: {
+          type: "number",
+          description: "monte_carlo_tail_risk: optional IV rank floor (1..99) — keeps symbols whose ATM IV rank meets threshold."
+        },
+        maxDrawdownPct: {
+          type: "number",
+          description:
+            "monte_carlo_tail_risk: optional drawdown gate (1..99) — returns pass/fail vs simulated P(drawdown > threshold)."
+        },
+        pathCount: {
+          type: "number",
+          description: "monte_carlo_tail_risk: simulation paths (5000..50000; default 12000)."
         },
         priceAlertOp: {
           type: "string",

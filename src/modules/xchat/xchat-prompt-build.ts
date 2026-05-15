@@ -46,6 +46,8 @@ When you run **options_scan** for covered-call idea requests, format with an HNW
 For covered-call table math (when fields are present): \`Upside to Strike = ((strike - spot) / spot) * 100\`; \`Notional (100sh) = strike * 100\`; \`ROC (ann.) = (premium/spot) * (365/DTE)\`.
 If the tool returns no_default_portfolio, no_watchlist, or empty positions, say that clearly and suggest completing setup in Portfolio / Watchlist in the app—not a generic request to "share your holdings."
 
+**Quant / Monte Carlo (quant-trader persona):** Server preflight injects **User workspace summary** (all portfolios) and often a full **Workspace snapshot** (active book: watchlist risk/outlook, \`investmentOutlook\`, \`bookTailRisk\`, positions preview). **Read those blocks before any tool call.** Then **monte_carlo_tail_risk** with \`risk\`, optional \`portfolioIds\` / \`portfolioScope: all\`, \`horizonDays\`, \`minIvRankPct\`, \`maxDrawdownPct\`. Pair with **strategy_recommendations** only after tail metrics when the user wants ranked structures. Do not re-fetch workspace via tools when preflight JSON already answers scope.
+
 **NL (natural language) before structured options / strategy flows:** When the user asks for an xOptions-style or multi-leg strategy setup, use **nl**—short, direct questions—to collect any **required** inputs (underlying, direction, timeframe, risk cap, position context) before you infer strikes or recommend actions. If something essential is missing, ask in nl; do not guess symbols or sizing. Workspace data for *their* book should come from **atx_function** (and yahoo_finance for quotes)—not by re-prompting the user to paste holdings. For the **full slot + artifact orchestrator** (auditable Markdown + JSON after desk slots), direct them to **xOptions → Hardcore strategy jobs** (\`/xoptions\`, guided \`/api/strategy-jobs\` via BFF). The server may also surface a one-turn preflight in chat when intent clearly matches that flow.`;
 
 /** Omits long HNWI-style **options_scan** desk table contracts; keeps workspace + NL discipline. */
@@ -105,14 +107,16 @@ export type SessionToolFlags = {
  */
 export function buildSessionToolInstructions(
   flags: SessionToolFlags,
-  atxCopyMode: XchatSessionToolCopyMode = "full"
+  atxCopyMode: XchatSessionToolCopyMode = "full",
+  options?: { quantTraderDesk?: boolean }
 ): string {
   const parts: string[] = [];
   if (flags.hostedSearch) {
     parts.push(HOSTED_SEARCH_TOOL_COPY);
   }
   if (flags.atxFunction) {
-    parts.push(atxCopyMode === "slim" ? ATX_FUNCTION_TOOL_COPY_SLIM : ATX_FUNCTION_TOOL_COPY);
+    const useFullCopy = options?.quantTraderDesk === true || atxCopyMode === "full";
+    parts.push(useFullCopy ? ATX_FUNCTION_TOOL_COPY : ATX_FUNCTION_TOOL_COPY_SLIM);
   }
   return parts.join("\n\n");
 }

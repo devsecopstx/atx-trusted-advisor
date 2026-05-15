@@ -6,6 +6,17 @@
 - **Tool:** `atx_function` → **`operation: user_workspace_summary`** returns the same shape if the model needs a refresh mid-thread.
 - **Shape:** `{ workspace: { activePortfolio, activePortfolioId, nlPriceAlerts?, portfolios: [{ name, id, holdings, cash, riskLevel }] } }` — `nlPriceAlerts` (when `activePortfolioId` is set) reuses the same counts/deep link semantics as `price_alert_manage` list; mutations stay on **`price_alert_manage`** (Next `tool-executor` + JVM `PortfolioPriceAlertNlService`).
 
+## Quant Trader desk (Monte Carlo / multi-book)
+
+- **Persona:** published **`quant-trader`** (`atx-docs/rag-collection/xpersonas/quant-trader/quant-trader.yaml`); composer depth forced to **Heavy**; model **`grok-4.20-multi-agent`**.
+- **Server preflight (every ask with `atx_function`):**
+  - **User workspace summary** — all owned portfolios (names, ids, holdings line, cash, `riskLevel`); quant-specific NL discipline appended when persona is quant-trader.
+  - **Workspace snapshot** — full JSON for the **active** workspace portfolio when quant-trader is selected (includes `watchlist` risk/outlook, `investmentOutlook`, `bookTailRisk`, positions preview, accounts). Other personas usually get a compact hint only.
+  - **Account outlook injection** — tenant workspace block may include desk market outlook + risk guardrails for the workspace book (same path as other advisor personas).
+- **Tool order:** read preflight → **`monte_carlo_tail_risk`** (`risk` required; optional `portfolioIds`, `portfolioScope: all`, `horizonDays`, `minIvRankPct`, `maxDrawdownPct`) → optional **`strategy_recommendations`** → strategy-job handoff (`/xoptions`).
+- **NL scope:** match user nicknames to portfolio ids from preflight; one clarifying question when multi-book scope is ambiguous; default `risk` from workspace `riskLevel` when the user omits tier.
+- **Refresh:** **`user_workspace_summary`** mid-thread only after portfolio/watchlist mutations or when the user asks to refresh books — not on every turn.
+
 # xchat-end-user-response formatting
 Best way to apply formatting for end user (production-ready, minimal code)
 

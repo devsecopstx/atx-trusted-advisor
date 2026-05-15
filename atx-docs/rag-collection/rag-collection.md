@@ -41,7 +41,7 @@ Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, 
 
 **Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `options-risks-toc_supplement/options-risks-toc_supplement.pdf`). **`options-strategy-core`**, **`options-strategy-advanced`**, and **`atx-response-guidelines`** use flat **`*.md`** at the segment root for a smaller Finance KB upload surface (validated in **`tests/unit/atx-rag-collection-layout.test.ts`**). **`finance-core`** keeps **flat primer `*.md`** at the root **and** optional **nested topic `*.md`** (e.g. `finance-core/tax-strategies/…`) plus **`stem/stem.pdf`** PDF folders.
 
-**xpersonas:** Each subfolder holds **exactly one** persona `*.yaml`. Many personas use **`folder/folder.yaml`** (folder name equals file stem), e.g. `advisor/advisor.yaml`, `exam-coach/exam-coach.yaml`, `trusted-advisor/trusted-advisor.yaml`. Others use a **suffix stem** under a short bucket, e.g. `legal/legal-advisor.yaml`. This segment is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
+**xpersonas:** Each subfolder holds **exactly one** persona `*.yaml`. Many personas use **`folder/folder.yaml`** (folder name equals file stem), e.g. `advisor/advisor.yaml`, `exam-coach/exam-coach.yaml`, `quant-trader/quant-trader.yaml`. Others use a **suffix stem** under a short bucket, e.g. `legal/legal-advisor.yaml`, `tax-expert/atx-tax-expert-advisor.yaml`. This segment is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
 
 Segment-level **`README.md`** files are for humans; ingest skips lowercase `readme.md` by name.
 
@@ -56,13 +56,10 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 | Path | Notes |
 | --- | --- |
 | `advisor/advisor.yaml` | Persona spec (global-admin default **Advisor** seed) |
-| `trusted-advisor/trusted-advisor.yaml` | Persona spec (app-user **trusted-advisor** stack) |
 | `exam-coach/exam-coach.yaml` | Persona spec |
-| `finance-xoptions/finance-xoptions.yaml` | Persona spec |
+| `finance-advisor/finance-advisor.yaml` | Persona spec |
 | `legal/legal-advisor.yaml` | Persona spec |
-| `marriage-planner/marriage-planner-advisor.yaml` | Persona spec |
-| `medical/medical-advisor.yaml` | Persona spec |
-| `options-trader/options-trader-advisor.yaml` | Persona spec |
+| `quant-trader/quant-trader.yaml` | Persona spec (Monte Carlo tail-risk, quant desk) |
 | `tax-expert/atx-tax-expert-advisor.yaml` | Persona spec |
 
 ### example-prompts

@@ -320,6 +320,38 @@ async function walkIngestFiles(rootDir: string, source: string): Promise<WalkedF
   return out;
 }
 
+/** Nested `options-strategy/<slug>/<slug>.md` quant desk playbooks uploaded via `refresh-finance` (single source; not full nested tree). */
+export const QUANT_DESK_OPTIONS_STRATEGY_SUBDIRS = [
+  "quant-monte-carlo-wheel",
+  "portfolio-level-quant-aggregation",
+  "drawdown-and-risk-metric-playbook",
+  "iv-rank-strategy-selection-and-filtering",
+  "conservative-balanced-aggressive-quant-parameters"
+] as const;
+
+export type WalkedFinanceKbFile = {
+  abs: string;
+  rel: string;
+  source: FinanceKbUploadSegment | string;
+};
+
+/** Resolve quant desk markdown from nested options-strategy folders for Finance KB sync. */
+export function resolveQuantDeskKbFiles(repoRoot: string): WalkedFinanceKbFile[] {
+  const base = join(repoRoot, "atx-docs", "rag-collection", "options-strategy");
+  const out: WalkedFinanceKbFile[] = [];
+  for (const sub of QUANT_DESK_OPTIONS_STRATEGY_SUBDIRS) {
+    const abs = join(base, sub, `${sub}.md`);
+    if (existsSync(abs)) {
+      out.push({
+        abs,
+        rel: `${sub}/${sub}.md`,
+        source: "options-strategy-core"
+      });
+    }
+  }
+  return out;
+}
+
 export function resolveFinanceKbRoots(repoRoot: string): Array<{ dir: string; source: string }> {
   const roots: Array<{ dir: string; source: string }> = [];
   const candidates: Array<{ segments: string[]; source: string }> = [
@@ -351,6 +383,7 @@ export async function syncFinanceKnowledgeBaseToXai(input: {
   for (const root of roots) {
     files.push(...(await walkIngestFiles(root.dir, root.source)));
   }
+  files.push(...resolveQuantDeskKbFiles(input.repoRoot));
 
   let documentsByLogicalName = new Map<string, string>();
   try {

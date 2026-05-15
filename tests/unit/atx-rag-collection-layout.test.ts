@@ -96,7 +96,7 @@ describe("atx-rag-collection layout", () => {
   });
 
   it("xpersonas folders that match filename stem use stem/stem.yaml", () => {
-    for (const name of ["exam-coach", "advisor", "finance-advisor"]) {
+    for (const name of ["exam-coach", "advisor", "finance-advisor", "quant-trader"]) {
       assertKebabFolderContainsSameStemFile(join(xpersonasDir, name), ".yaml");
     }
   });

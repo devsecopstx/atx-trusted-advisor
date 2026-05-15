@@ -67,6 +67,7 @@ app:
     strategy-finalizer-multi-agent-for-global-admin: ${STRATEGY_FINALIZER_MULTI_AGENT_FOR_GLOBAL_ADMIN:true}
     strategy-finalizer-use-xai-batch: ${STRATEGY_FINALIZER_USE_XAI_BATCH:false}
     strategy-team-kb-collection-id: ${STRATEGY_TEAM_KB_COLLECTION_ID:}
+    rate-limits-collection: ${RATE_LIMITS_COLLECTION:rate_limits}
     portfolio-workspace-snapshots-collection: ${PORTFOLIO_WORKSPACE_SNAPSHOTS_COLLECTION:portfolio_workspace_snapshots}
     portfolio-workspace-snapshot-purge-enabled: ${PORTFOLIO_WORKSPACE_SNAPSHOT_PURGE_ENABLED:true}
     portfolio-workspace-snapshot-purge-retention-days: ${PORTFOLIO_WORKSPACE_SNAPSHOT_PURGE_RETENTION_DAYS:14}

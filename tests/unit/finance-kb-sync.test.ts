@@ -10,6 +10,7 @@ import {
     indexFinanceKbRemoteDocumentsByLogicalName,
     inferRiskProfile,
     resolveFinanceKbRoots,
+    resolveQuantDeskKbFiles,
     strategySlugFromRelativePath
 } from "@/modules/xchat/finance-kb-sync";
 
@@ -186,6 +187,14 @@ strategy_type: wheel
       docType: "guide",
       lastUpdated: "2026-01-01T00:00:00.000Z"
     });
+  });
+
+  it("resolveQuantDeskKbFiles lists nested quant playbooks for Finance KB sync", () => {
+    const repoRoot = join(process.cwd());
+    const files = resolveQuantDeskKbFiles(repoRoot);
+    expect(files.length).toBeGreaterThanOrEqual(5);
+    expect(files.some((f) => f.rel === "quant-monte-carlo-wheel/quant-monte-carlo-wheel.md")).toBe(true);
+    expect(files.every((f) => f.source === "options-strategy-core")).toBe(true);
   });
 
   it("indexFinanceKbRemoteDocumentsByLogicalName is last-wins on duplicate names", () => {

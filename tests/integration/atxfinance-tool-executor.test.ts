@@ -468,6 +468,7 @@ describe("atxfinance tool executor", () => {
       "options_scan",
       "options_action_scan",
       "strategy_recommendations",
+      "monte_carlo_tail_risk",
       "market_quote",
       "price_alert_manage"
     ]);

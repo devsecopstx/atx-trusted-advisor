@@ -20,7 +20,12 @@ export function heavySynthesisIntent(message: string): boolean {
     /\bexhaustive (research|analysis)\b/,
     /\bdeep (dive|research)\b.*\b(and|with|across)\b/,
     /\bcompare (the )?(bull|bear).*(bear|bull)\b/,
-    /\bscenario analysis\b.*\band\b.*\band\b/
+    /\bscenario analysis\b.*\band\b.*\band\b/,
+    /\bmonte\s*carlo\b/,
+    /\btail[\s-]?risk\b/,
+    /\b(var|cvar)\b/,
+    /\bdrawdown (sim|simulation|stress)\b/,
+    /\bprobability distribution\b/
   ];
   return patterns.some((p) => p.test(lower));
 }
@@ -188,6 +193,11 @@ export function shouldEagerWorkspaceSnapshotPreloadForMessage(message: string): 
     /\boptions?\s*(scan|action)\b/.test(m) ||
     /\bscan my options\b/.test(m);
 
+  const monteCarloCue =
+    /\bmonte\s*carlo\b/.test(m) ||
+    /\btail[\s-]?risk\b/.test(m) ||
+    (/\b(var|cvar)\b/.test(m) && /\b(portfolio|book|holdings)\b/.test(m));
+
   const ideasIncomeCue =
     /\bideas?\b/.test(m) &&
     (incomeOrScanCue || wheelIdeasPhrase || /\bcovered[- ]calls?\b/.test(m) || /\bcovered call\b/.test(m));
@@ -196,7 +206,8 @@ export function shouldEagerWorkspaceSnapshotPreloadForMessage(message: string): 
     holdingsPlusWatchlistPhrase ||
     (bookCue && incomeOrScanCue) ||
     wheelIdeasPhrase ||
-    ideasIncomeCue
+    ideasIncomeCue ||
+    monteCarloCue
   );
 }
 

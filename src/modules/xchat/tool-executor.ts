@@ -40,6 +40,7 @@ import {
 } from "@/modules/watchlist/default-upsert-fields";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
+import { runMonteCarloTailRiskTool } from "@/modules/xchat/monte-carlo-tail-risk-tool";
 import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
 import {
     buildOptionsScanFingerprint,
@@ -89,7 +90,7 @@ const CACHEABLE_OPERATIONS = new Set(["watchlist_snapshot", "account_health"]);
  * Skip byte-cap truncation — it can slice UTF-8 mid-sequence and yields invalid JSON.
  * `options_action_scan` is parsed by `/api/xchat/ask` (direct “scan my options” path); rows are already capped in `buildOptionsActionReport`.
  */
-const NO_TRUNCATE_JSON_OPERATIONS = new Set(["options_action_scan"]);
+const NO_TRUNCATE_JSON_OPERATIONS = new Set(["options_action_scan", "monte_carlo_tail_risk"]);
 
 /**
  * Creates a horizontal bar chart showing percentage allocation per position
@@ -1029,6 +1030,14 @@ function buildOperations(
     strategy_recommendations: async (args, ctx: ExecutorContext) => {
       return runStrategyRecommendationsTool(args, {
         sessionCookie: ctx.sessionCookie,
+        workspacePortfolioId: ctx.workspacePortfolioId
+      });
+    },
+
+    monte_carlo_tail_risk: async (args, ctx: ExecutorContext) => {
+      return runMonteCarloTailRiskTool(args, {
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
         workspacePortfolioId: ctx.workspacePortfolioId
       });
     },
