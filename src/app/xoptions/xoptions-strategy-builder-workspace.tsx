@@ -20,6 +20,7 @@ import {
 import { WORKSPACE_PORTFOLIO_CHANGED_EVENT } from "@/lib/workspace-portfolio-selection";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 import { isValidXoptionsUnderlyingSymbol, normalizeXoptionsUnderlyingSymbol } from "@/lib/xoptions/xoptions-desk-deep-link";
+import { setQuantTraderEnabled } from "@/lib/xoptions/xoptions-education-preferences";
 import type { XoptionsOrderReview } from "@/lib/xoptions/xoptions-order-preview";
 import type { StrategyGreeksSummary } from "@/lib/xoptions/xoptions-strategy-greeks-summary";
 
@@ -560,6 +561,21 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
     mq.addEventListener("change", fn);
     return () => mq.removeEventListener("change", fn);
   }, []);
+
+  /** `/xoptions?tab=quant` enables Quant Trader sidebar and opens step 4 when symbol is ready. */
+  useEffect(() => {
+    const q = readXoptionsUrlSearchParams();
+    if ((q.get("tab") ?? "").trim().toLowerCase() !== "quant") {
+      return;
+    }
+    setQuantTraderEnabled(true);
+    const sym = normalizeXoptionsUnderlyingSymbol(symbol);
+    if (!isValidXoptionsUnderlyingSymbol(sym) || snapLoading) {
+      return;
+    }
+    setUnlockedStep((u) => Math.max(u, 4));
+    setActiveStep(4);
+  }, [symbol, snapLoading, searchParamsKey]);
 
   /** Alerts desk deep-link: `/xoptions?symbol=…&step=4|5&portfolioId=…` opens contract or review. */
   useEffect(() => {

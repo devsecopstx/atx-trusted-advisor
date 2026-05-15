@@ -54,3 +54,23 @@ Research and chain tools remain available when `optionsApproved` is false; the n
 
 - Under **xOptions** in the left rail, a checkbox row **xStrategybuilder** controls whether the **Hardcore strategy jobs** panel is visible.
 - Toggle state is client-persisted in local storage (`xf_xoptions_strategy_builder_visible_v1`) and synced live across xOptions sidebar/workspace via a custom browser event (`xoptions:strategy-builder-visibility-changed`).
+
+## Quant Trader desk (Monte Carlo)
+
+HNWI quant surface inside xOptions — same workspace portfolio cookie + bootstrap context as xChat **`quant-trader`**.
+
+| Entry | Behavior |
+| ----- | -------- |
+| **`/xoptions?tab=quant`** | Enables Quant Trader sidebar (`xf_xoptions_quant_trader_v1`) and opens **step 4** when symbol is ready |
+| **`/xoptions/quant-trader`** | Full-page quant desk |
+| **Step 4 header** | **Enable Quant Trader** toggle (mirrors rail checkbox) |
+| **Workspace rail** | **Quant Trader** nested link + **Enable Quant Trader** checkbox |
+
+**APIs**
+
+- **`GET /api/app-user/xoptions/quant-trader/context`** — owned portfolio count, desk risk/outlook, hot watchlist symbols, default params (45d, IV rank ≥ 60%, max 15% drawdown, multi-book scope).
+- **`POST /api/app-user/xoptions/quant-trader/run`** — delegates to **`monte_carlo_tail_risk`** (Student-t + jumps, Redis cache). Body: `horizonDays`, `minIvRankPct`, `maxDrawdownPct`, `pathCount`, `risk`, `perPortfolioRisk`, `portfolioScope`.
+
+**Panel (`QuantTraderPanel`)** — auto-runs on mount; VaR/CVaR, drawdown gate, Greeks heatmap, ApexCharts tail-risk bars, optional payoff overlay from selected contract; actions: **Save as Strategy Job** (`jobType: monte-carlo-run`), CSV/PDF export, **Apply to xChat Quant Trader** (`xf_xchat_pending_prompt_v1` + persona **`quant-trader`**).
+
+Compliance footer on every result: *Not investment advice. Simulations are model-based estimates.*

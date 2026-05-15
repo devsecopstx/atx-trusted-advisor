@@ -3,12 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     XOPTIONS_EDUCATION_PREFS_CHANGED_EVENT,
     getPayoffPreviewSyncSnapshot,
+    getQuantTraderSyncSnapshot,
     isPayoffPreviewEnabled,
+    isQuantTraderEnabled,
     setPayoffPreviewEnabled,
+    setQuantTraderEnabled,
     subscribeXoptionsEducationPrefs
 } from "@/lib/xoptions/xoptions-education-preferences";
 
 const KEY_PAYOFF_PREVIEW = "xf_xoptions_show_payoff_preview_v1";
+const KEY_QUANT_TRADER = "xf_xoptions_quant_trader_v1";
 
 describe("xoptions education preferences (payoff preview)", () => {
   const store = new Map<string, string>();
@@ -81,5 +85,14 @@ describe("xoptions education preferences (payoff preview)", () => {
     unsubscribe();
     setPayoffPreviewEnabled(false);
     expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("exposes quant trader toggle for useSyncExternalStore", () => {
+    expect(getQuantTraderSyncSnapshot()).toBe(false);
+    expect(isQuantTraderEnabled()).toBe(false);
+    store.set(KEY_QUANT_TRADER, "1");
+    expect(getQuantTraderSyncSnapshot()).toBe(true);
+    setQuantTraderEnabled(false);
+    expect(isQuantTraderEnabled()).toBe(false);
   });
 });

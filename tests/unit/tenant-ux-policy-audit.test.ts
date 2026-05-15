@@ -9,6 +9,8 @@ describe("tenant ux proxy policy path audit", () => {
       ["/api/xchat/ask/stream", "/xchat"],
       ["/api/app-user/xchat/voice-transcribe", "/xchat"],
       ["/api/app-user/find-options/bootstrap", "/xoptions"],
+      ["/api/app-user/xoptions/quant-trader/context", "/xoptions"],
+      ["/api/app-user/xoptions/quant-trader/run", "/xoptions"],
       ["/api/strategy-options", "/xoptions"],
       ["/api/strategy-options/expirations", "/xoptions"],
       ["/api/portfolios/507f1f77bcf86cd799439011/alerts", "/portfolio"],

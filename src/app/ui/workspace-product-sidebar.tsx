@@ -61,10 +61,12 @@ import {
 } from "@/lib/xoptions-strategy-builder-visibility";
 import {
     getPayoffPreviewSyncSnapshot,
+    getQuantTraderSyncSnapshot,
     isShowGreeksCalcLogicEnabled,
     isShowStrategySizingEnabled,
     isTaxEducationEnabled,
     setPayoffPreviewEnabled,
+    setQuantTraderEnabled,
     setShowGreeksCalcLogicEnabled,
     setShowStrategySizingEnabled,
     setTaxEducationEnabled,
@@ -687,6 +689,11 @@ export function WorkspaceProductSidebar({
     getPayoffPreviewSyncSnapshot,
     () => false
   );
+  const quantTraderEnabled = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    getQuantTraderSyncSnapshot,
+    () => false
+  );
   const importHref =
     defaultPortfolioId !== null
       ? `/import-activity?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
@@ -946,6 +953,9 @@ export function WorkspaceProductSidebar({
           <SidebarLink href="/xoptions/wheel" nested title="xWheel Studio — wheel ideas and reports">
             xWheel Studio
           </SidebarLink>
+          <SidebarLink href="/xoptions/quant-trader" nested title="Quant Trader — Monte Carlo desk">
+            Quant Trader
+          </SidebarLink>
           {showXoptionsToggle ? (
             <>
               <div className="xchat-sidebar-privacy-row">
@@ -998,6 +1008,21 @@ export function WorkspaceProductSidebar({
                   <input
                     checked={showGreeksCalcLogic}
                     onChange={(e) => setShowGreeksCalcLogicEnabled(e.target.checked)}
+                    type="checkbox"
+                  />
+                </label>
+              </div>
+              <div className="xchat-sidebar-privacy-row">
+                <span
+                  className="xchat-sidebar-privacy-row__label"
+                  title="Monte Carlo quant desk sidebar on step 4"
+                >
+                  Enable Quant Trader
+                </span>
+                <label className="xchat-sidebar-privacy-row__control" aria-label="Enable Quant Trader panel">
+                  <input
+                    checked={quantTraderEnabled}
+                    onChange={(e) => setQuantTraderEnabled(e.target.checked)}
                     type="checkbox"
                   />
                 </label>

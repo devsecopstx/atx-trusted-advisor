@@ -33,6 +33,7 @@ class StrategyJobService(
         session: ResolvedSession,
         emailAccountIdRaw: String?,
         idempotencyKey: String?,
+        jobTypeRaw: String? = null,
     ): CreateJobOutcome {
         val emailAccountId = normalizeEmailAccountId(session, emailAccountIdRaw)
 
@@ -87,6 +88,8 @@ class StrategyJobService(
         if (!idempotencyKey.isNullOrBlank()) {
             doc["idempotencyKey"] = idempotencyKey.trim()
         }
+        val jobType = jobTypeRaw?.trim()?.takeIf { it.isNotEmpty() } ?: JOB_TYPE_SLOT_COLLECTOR
+        doc["jobType"] = jobType
         try {
             mongoTemplate.insert(doc, props.strategyJobsCollection)
         } catch (e: Exception) {
@@ -212,6 +215,8 @@ class StrategyJobService(
         private const val IDEMPOTENCY_WINDOW_MS = 86_400_000L
         const val STATUS_COLLECTING = "collecting"
         const val STATUS_SLOTS_COMPLETE = "slots_complete"
+        const val JOB_TYPE_SLOT_COLLECTOR = "slot_collector"
+        const val JOB_TYPE_MONTE_CARLO_RUN = "monte-carlo-run"
 
         private val SLOT_ORDER = listOf("outlook", "risk", "horizon", "underlying", "capital")
 

@@ -9,6 +9,7 @@ import {
     useSyncExternalStore
 } from "react";
 
+import { QuantTraderPanel } from "@/app/xoptions/ui/quant-trader-panel";
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
 import { XoptionsGreekCalcExplainer } from "@/app/xoptions/xoptions-greek-calc-explainer";
 import { XoptionsPositionReview } from "@/app/xoptions/xoptions-position-review";
@@ -44,8 +45,10 @@ import {
 } from "@/lib/xoptions/xoptions-chain-helpers";
 import {
     getPayoffPreviewSyncSnapshot,
+    getQuantTraderSyncSnapshot,
     isShowGreeksCalcLogicEnabled,
     isTaxEducationEnabled,
+    setQuantTraderEnabled,
     subscribeXoptionsEducationPrefs
 } from "@/lib/xoptions/xoptions-education-preferences";
 import {
@@ -386,6 +389,11 @@ export function XoptionsChooseContract({
   const payoffPreviewEnabled = useSyncExternalStore(
     subscribeXoptionsEducationPrefs,
     getPayoffPreviewSyncSnapshot,
+    () => false
+  );
+  const quantTraderEnabled = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    getQuantTraderSyncSnapshot,
     () => false
   );
 
@@ -1180,7 +1188,9 @@ export function XoptionsChooseContract({
 
       {u ? (
         <div
-          className={`xoptions-contract__split${!payoffPreviewEnabled ? " xoptions-contract__split--no-aside" : ""}`}
+          className={`xoptions-contract__split${
+            !payoffPreviewEnabled && !quantTraderEnabled ? " xoptions-contract__split--no-aside" : ""
+          }`}
         >
           <div className="xoptions-contract__split-main">
             <div
@@ -1197,14 +1207,28 @@ export function XoptionsChooseContract({
                       Option chain · {side === "call" ? "Calls" : "Puts"} · spot{" "}
                       <span className="font-mono">{chain.stockPrice.toFixed(2)}</span>
                     </p>
-                    <button
-                      type="button"
-                      className="xoptions-contract__chain-greeks-toggle shrink-0 rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] px-2 py-0.5 text-[0.58rem] font-medium text-[var(--xf-text-300)] hover:border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] hover:text-[var(--xf-text-200)]"
-                      onClick={() => setChainGreeksExpanded((v) => !v)}
-                      aria-expanded={chainGreeksExpanded}
-                    >
-                      {chainGreeksExpanded ? "Hide Greeks" : "Show Greeks"}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <button
+                        type="button"
+                        className="xoptions-contract__chain-greeks-toggle shrink-0 rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] px-2 py-0.5 text-[0.58rem] font-medium text-[var(--xf-text-300)] hover:border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] hover:text-[var(--xf-text-200)]"
+                        onClick={() => setChainGreeksExpanded((v) => !v)}
+                        aria-expanded={chainGreeksExpanded}
+                      >
+                        {chainGreeksExpanded ? "Hide Greeks" : "Show Greeks"}
+                      </button>
+                      <button
+                        type="button"
+                        className={`xoptions-contract__chain-greeks-toggle shrink-0 rounded-md border px-2 py-0.5 text-[0.58rem] font-medium ${
+                          quantTraderEnabled
+                            ? "border-[color-mix(in_srgb,var(--xf-gain-green)_45%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_12%,transparent)] text-[var(--xf-gain-green)]"
+                            : "border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] text-[var(--xf-text-300)] hover:border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] hover:text-[var(--xf-text-200)]"
+                        }`}
+                        aria-pressed={quantTraderEnabled}
+                        onClick={() => setQuantTraderEnabled(!quantTraderEnabled)}
+                      >
+                        {quantTraderEnabled ? "Quant Trader on" : "Enable Quant Trader"}
+                      </button>
+                    </div>
                   </div>
                   <div
                     className={
@@ -1622,6 +1646,30 @@ export function XoptionsChooseContract({
                 quantity={qtyOk ? qtyNum : 1}
                 limitPricePerShare={premiumNum}
                 side={side}
+              />
+            </aside>
+          ) : null}
+          {quantTraderEnabled ? (
+            <aside className="xoptions-contract__split-aside xoptions-contract__quant-aside" aria-label="Quant Trader">
+              <QuantTraderPanel
+                compact
+                symbol={u}
+                strategyLabel={strategyLabel}
+                payoffOverlay={
+                  chain && selectedRow && dataReady
+                    ? {
+                        side,
+                        strike: selectedRow.strike,
+                        premium: premiumNum,
+                        spot: chain.stockPrice,
+                        ivPercent:
+                          (side === "call"
+                            ? selectedRow.call?.implied_volatility
+                            : selectedRow.put?.implied_volatility) ?? null,
+                        expirationYyyyMmDd: expiration
+                      }
+                    : null
+                }
               />
             </aside>
           ) : null}

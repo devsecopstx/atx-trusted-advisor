@@ -6,6 +6,7 @@ const KEY_GREEKS = "xf_xoptions_show_greeks_calc_v1";
 const KEY_TAX = "xf_xoptions_tax_education_v1";
 const KEY_SHOW_STRATEGY_SIZING = "xf_xoptions_show_strategy_sizing_v1";
 const KEY_PAYOFF_PREVIEW = "xf_xoptions_show_payoff_preview_v1";
+const KEY_QUANT_TRADER = "xf_xoptions_quant_trader_v1";
 
 function dispatch(): void {
   if (typeof window === "undefined") {
@@ -84,6 +85,28 @@ export function setPayoffPreviewEnabled(enabled: boolean): void {
     return;
   }
   window.localStorage.setItem(KEY_PAYOFF_PREVIEW, enabled ? "1" : "0");
+  dispatch();
+}
+
+/** Monte Carlo quant desk sidebar on step 4 / quant-trader route. Default off. */
+function readQuantTraderFlag(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return window.localStorage.getItem(KEY_QUANT_TRADER) === "1";
+}
+
+export function isQuantTraderEnabled(): boolean {
+  return readQuantTraderFlag();
+}
+
+export const getQuantTraderSyncSnapshot = (): boolean => readQuantTraderFlag();
+
+export function setQuantTraderEnabled(enabled: boolean): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(KEY_QUANT_TRADER, enabled ? "1" : "0");
   dispatch();
 }
 

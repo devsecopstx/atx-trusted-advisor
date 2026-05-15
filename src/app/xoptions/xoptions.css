@@ -3521,3 +3521,124 @@ html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
     padding: 1rem;
   }
 }
+
+/* Quant Trader sidebar / full desk */
+.quant-trader-panel {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-xoptions-surface) 94%, transparent);
+  padding: 0.75rem;
+}
+
+.quant-trader-panel--compact {
+  font-size: 0.8125rem;
+}
+
+.quant-trader-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.quant-trader-panel__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.quant-trader-panel__sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.625rem;
+  color: var(--xf-text-400);
+}
+
+.quant-trader-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.625rem;
+  color: var(--xf-text-400);
+}
+
+.quant-trader-field input,
+.quant-trader-field select {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-200);
+}
+
+.quant-trader-metric {
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+  padding: 0.45rem 0.5rem;
+}
+
+.quant-trader-metric__label {
+  display: block;
+  font-size: 0.5625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--xf-text-500);
+}
+
+.quant-trader-metric__value {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+}
+
+.quant-trader-metric__value--gain {
+  color: var(--xf-gain-green);
+}
+
+.quant-trader-greeks__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.625rem;
+}
+
+.quant-trader-greeks__table th,
+.quant-trader-greeks__table td {
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  text-align: right;
+}
+
+.quant-trader-greeks__table th:first-child,
+.quant-trader-greeks__table td:first-child {
+  text-align: left;
+}
+
+.quant-trader-greek--pos {
+  color: var(--xf-gain-green);
+}
+
+.quant-trader-greek--neg {
+  color: var(--xf-loss-red, #ef4444);
+}
+
+.quant-trader-greek--neutral {
+  color: var(--xf-text-400);
+}
+
+.quant-trader-disclaimer {
+  margin: 0;
+}
+
+.xoptions-contract__quant-aside {
+  min-width: 0;
+}
+
+.xoptions-quant-trader-page .quant-trader-panel {
+  padding: 1rem;
+}

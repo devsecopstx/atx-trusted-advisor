@@ -152,6 +152,16 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xoptions"
   },
   {
+    path: "/api/app-user/xoptions/quant-trader/context",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xoptions"
+  },
+  {
+    path: "/api/app-user/xoptions/quant-trader/run",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xoptions"
+  },
+  {
     path: "/api/app-user/xoptions/review",
     operations: [{ method: "GET", auth: "session" }],
     tag: "xoptions"

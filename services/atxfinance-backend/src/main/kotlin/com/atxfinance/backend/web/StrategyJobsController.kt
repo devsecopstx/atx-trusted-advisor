@@ -58,12 +58,14 @@ class StrategyJobsController(
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(mapOf("error" to "Forbidden"))
         }
         val emailAccountId = body?.get("emailAccountId") as? String
+        val jobType = body?.get("jobType") as? String
         val idempotencyKey = request.getHeader("Idempotency-Key")?.trim()?.takeIf { it.isNotEmpty() }
         when (
             val outcome = strategyJobService.createJob(
                 session = session,
                 emailAccountIdRaw = emailAccountId,
                 idempotencyKey = idempotencyKey,
+                jobTypeRaw = jobType,
             )
         ) {
             CreateJobOutcome.RateLimited -> {
@@ -218,6 +220,7 @@ class StrategyJobsController(
             put("jobId", doc.getObjectId("_id").toHexString())
             put("correlationId", doc.getString("correlationId"))
             put("status", doc.getString("status"))
+            doc.getString("jobType")?.let { put("jobType", it) }
             if (createdAt != null) {
                 put("createdAt", createdAt)
             }
