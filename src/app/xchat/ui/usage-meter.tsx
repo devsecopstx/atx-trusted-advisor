@@ -45,7 +45,8 @@ async function fetchXchatPromptUsageShared(): Promise<XchatPromptUsagePayload> {
   promptUsageClientInflight = (async () => {
     try {
       const res = await fetch("/api/app-user/xchat/prompt-usage", {
-        credentials: "include"
+        credentials: "include",
+        cache: "no-store"
       });
       const body = (await res.json().catch(() => ({}))) as {
         error?: string;

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -242,13 +243,20 @@ class XchatUsageLimitService(
         bucketStart: Instant,
     ): String {
         val tenantSegment = tenantId?.trim()?.takeIf { it.isNotEmpty() } ?: "tenant:none"
-        return "$kind:$userId:$tenantSegment:${bucketStart.toString()}"
+        return "$kind:$userId:$tenantSegment:${formatBucketStartForUsageKey(bucketStart)}"
     }
+
+    /** Match Next.js `Date.toISOString()` (always includes `.SSS` before `Z`). */
+    private fun formatBucketStartForUsageKey(bucketStart: Instant): String =
+        USAGE_BUCKET_KEY_ISO.format(bucketStart)
 
     companion object {
         private const val ONE_MINUTE_MS = 60_000L
         private const val ONE_HOUR_MS = 3_600_000L
         private const val ONE_DAY_MS = 86_400_000L
+
+        private val USAGE_BUCKET_KEY_ISO: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
     }
 }
 

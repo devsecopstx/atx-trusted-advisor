@@ -7,6 +7,16 @@ const ONE_MINUTE_MS = 60_000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Canonical bucket ISO — must match Spring `XchatUsageLimitService` and `Date.toISOString()`. */
+export function formatXchatUsageBucketStartIso(bucketStart: Date): string {
+  return bucketStart.toISOString();
+}
+
+/** Legacy Spring `Instant.toString()` when fractional seconds are zero (pre-parity keys). */
+export function legacyXchatUsageBucketStartIso(bucketStart: Date): string {
+  return bucketStart.toISOString().replace(/\.000Z$/, "Z");
+}
+
 type UsageBucketKind = "minute" | "hour" | "day";
 
 type UsageBucketDocument = {
@@ -216,33 +226,47 @@ export async function peekXchatAskUsageCounts(input: {
   const minuteStart = getBucketStart("minute", now);
   const hourStart = getBucketStart("hour", now);
   const dayStart = getBucketStart("day", now);
-  const keys = [
-    buildUsageKey({
-      kind: "minute",
-      userId: input.userId,
-      tenantId: input.tenantId,
-      bucketStart: minuteStart
-    }),
-    buildUsageKey({
+  const keys = usagePeekKeysForBucket({
+    kind: "minute",
+    userId: input.userId,
+    tenantId: input.tenantId,
+    bucketStart: minuteStart
+  }).concat(
+    usagePeekKeysForBucket({
       kind: "hour",
       userId: input.userId,
       tenantId: input.tenantId,
       bucketStart: hourStart
     }),
-    buildUsageKey({
+    usagePeekKeysForBucket({
       kind: "day",
       userId: input.userId,
       tenantId: input.tenantId,
       bucketStart: dayStart
     })
-  ];
+  );
   const coll = (await getDb()).collection<UsageBucketDocument>(XCHAT_USAGE_COLLECTION);
   const docs = await coll.find({ key: { $in: keys } }).project({ key: 1, count: 1 }).toArray();
   const map = new Map(docs.map((d) => [d.key, d.count]));
   return {
-    minuteCount: map.get(keys[0]) ?? 0,
-    hourCount: map.get(keys[1]) ?? 0,
-    dayCount: map.get(keys[2]) ?? 0
+    minuteCount: resolveUsageBucketCount(map, {
+      kind: "minute",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      bucketStart: minuteStart
+    }),
+    hourCount: resolveUsageBucketCount(map, {
+      kind: "hour",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      bucketStart: hourStart
+    }),
+    dayCount: resolveUsageBucketCount(map, {
+      kind: "day",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      bucketStart: dayStart
+    })
   };
 }
 
@@ -338,5 +362,41 @@ function buildUsageKey(input: {
   bucketStart: Date;
 }): string {
   const tenantSegment = input.tenantId?.trim() ? input.tenantId.trim() : "tenant:none";
-  return `${input.kind}:${input.userId}:${tenantSegment}:${input.bucketStart.toISOString()}`;
+  return `${input.kind}:${input.userId}:${tenantSegment}:${formatXchatUsageBucketStartIso(input.bucketStart)}`;
+}
+
+function usagePeekKeysForBucket(input: {
+  kind: UsageBucketKind;
+  userId: string;
+  tenantId?: string;
+  bucketStart: Date;
+}): string[] {
+  const canonical = buildUsageKey(input);
+  const legacyIso = legacyXchatUsageBucketStartIso(input.bucketStart);
+  const canonicalIso = formatXchatUsageBucketStartIso(input.bucketStart);
+  if (legacyIso === canonicalIso) {
+    return [canonical];
+  }
+  const tenantSegment = input.tenantId?.trim() ? input.tenantId.trim() : "tenant:none";
+  const legacyKey = `${input.kind}:${input.userId}:${tenantSegment}:${legacyIso}`;
+  return legacyKey === canonical ? [canonical] : [canonical, legacyKey];
+}
+
+function resolveUsageBucketCount(
+  map: Map<string, number>,
+  input: {
+    kind: UsageBucketKind;
+    userId: string;
+    tenantId?: string;
+    bucketStart: Date;
+  }
+): number {
+  let total = 0;
+  for (const key of usagePeekKeysForBucket(input)) {
+    const count = map.get(key);
+    if (typeof count === "number") {
+      total += count;
+    }
+  }
+  return total;
 }

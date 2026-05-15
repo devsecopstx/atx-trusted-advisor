@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.bson.Document
+import org.springframework.data.mongodb.core.query.Criteria
+import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory
 
@@ -39,6 +42,38 @@ class XchatUsageLimitServiceTest {
                 },
             )
         }
+    }
+
+    @Test
+    fun `usage bucket keys use JS toISOString millis format`() {
+        val service = XchatUsageLimitService(mongoTemplate, AtxfinanceProperties())
+        val userId = "user-key-format-${System.nanoTime()}"
+        service.enforceDistributedAskUsageLimit(
+            XchatUsageLimitInput(
+                userId = userId,
+                tenantId = "tenant-a",
+                subscriptionPlan = "basic",
+                perMinuteLimit = 0,
+                enforceDailyLimit = false,
+                dailyPromptLimit = 5,
+                hourlyPromptLimit = null,
+            ),
+        )
+        val docs =
+            mongoTemplate.find(
+                Query.query(Criteria.where("userId").`is`(userId).and("kind").`is`("day")),
+                Document::class.java,
+                "xchat_usage_limits",
+            )
+        assertEquals(1, docs.size)
+        val key = docs[0].getString("key")
+        assertTrue(
+            key.matches(
+                Regex("""day:$userId:tenant-a:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z"""),
+            ),
+            "expected millis in bucket ISO segment, got $key",
+        )
+        assertEquals(1, (docs[0].get("count") as Number).toInt())
     }
 
     @Test

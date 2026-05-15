@@ -20,7 +20,11 @@ vi.mock("@/lib/mongodb", () => ({
   }))
 }));
 
-import { enforceDistributedAskUsageLimit, peekXchatAskUsageCounts } from "@/modules/xchat/ask-usage-limits";
+import {
+    enforceDistributedAskUsageLimit,
+    legacyXchatUsageBucketStartIso,
+    peekXchatAskUsageCounts
+} from "@/modules/xchat/ask-usage-limits";
 
 describe("enforceDistributedAskUsageLimit — metering when daily caps not enforced", () => {
   beforeEach(() => {
@@ -50,6 +54,31 @@ describe("peekXchatAskUsageCounts", () => {
   beforeEach(() => {
     findOneAndUpdate.mockClear();
     createIndex.mockClear();
+  });
+
+  it("reads day bucket count from legacy Spring Instant.toString() keys", async () => {
+    const { getDb } = await import("@/lib/mongodb");
+    const now = new Date(Date.UTC(2026, 0, 15, 14, 30, 0));
+    const dayStart = new Date(Date.UTC(2026, 0, 15, 0, 0, 0));
+    const legacyDayKey = `day:u1:t1:${legacyXchatUsageBucketStartIso(dayStart)}`;
+    vi.mocked(getDb).mockResolvedValueOnce({
+      collection: () => ({
+        createIndex: createIndex.mockResolvedValue(undefined),
+        find: vi.fn().mockReturnValue({
+          project: vi.fn().mockReturnValue({
+            toArray: vi.fn().mockResolvedValue([{ key: legacyDayKey, count: 3 }])
+          })
+        }),
+        findOneAndUpdate
+      })
+    } as never);
+
+    const counts = await peekXchatAskUsageCounts({
+      userId: "u1",
+      tenantId: "t1",
+      now
+    });
+    expect(counts.dayCount).toBe(3);
   });
 
   it("reads day bucket count from Mongo (key matches buildUsageKey tenant segment)", async () => {

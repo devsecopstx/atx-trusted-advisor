@@ -75,7 +75,7 @@ describe("GET /api/app-user/xchat/prompt-usage", () => {
     expect(body.data.hourlyCap).toBe(20);
     expect(body.data.workspaceCapsEnforced).toBe(true);
     expect(peekMocks.peekXchatAskUsageCounts).toHaveBeenCalled();
-    expect(res.headers.get("Cache-Control")).toContain("max-age=25");
+    expect(res.headers.get("Cache-Control")).toContain("no-store");
   });
 
   it("marks limitsFallback when workspace resolution throws", async () => {

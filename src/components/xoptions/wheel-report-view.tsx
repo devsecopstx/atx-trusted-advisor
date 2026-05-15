@@ -4,8 +4,9 @@ import type { ApexOptions } from "apexcharts";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
+import { resolveDesignTokenColor } from "@/lib/resolve-design-token-color";
 import { yieldPerCyclePctOfCapital } from "@/modules/xoptions/wheel-metrics";
 import type { WheelGeneratedPayload, WheelIdea } from "@/modules/xoptions/wheel-types";
 
@@ -37,8 +38,31 @@ function percent(value: number, digits = 1): string {
   return `${value.toFixed(digits)}%`;
 }
 
-function exportWheelPdf(report: WheelGeneratedPayload, generatedByName: string): void {
+export type WheelPdfChartAssets = {
+  assignmentProbabilitiesChartPng?: string | null;
+  incomeYieldChartPng?: string | null;
+};
+
+async function captureApexChartDataUri(chartId: string): Promise<string | null> {
+  try {
+    const ApexCharts = (await import("apexcharts")).default;
+    const out = (await ApexCharts.exec(chartId, "dataURI", { scale: 2 })) as { imgURI?: string } | undefined;
+    return typeof out?.imgURI === "string" ? out.imgURI : null;
+  } catch {
+    return null;
+  }
+}
+
+function exportWheelPdf(
+  report: WheelGeneratedPayload,
+  generatedByName: string,
+  charts?: WheelPdfChartAssets
+): void {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 42;
+  const contentW = pageW - margin * 2;
+  const chartImgH = 148;
   const generatedLabel = new Date(report.generatedAtIso).toLocaleString();
   doc.setFillColor(7, 23, 16);
   doc.rect(0, 0, 612, 72, "F");
@@ -72,8 +96,30 @@ function exportWheelPdf(report: WheelGeneratedPayload, generatedByName: string):
     { maxWidth: 528 }
   );
 
+  let tableStartY = 186;
+  if (charts?.assignmentProbabilitiesChartPng || charts?.incomeYieldChartPng) {
+    tableStartY = 194;
+    if (charts.assignmentProbabilitiesChartPng) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(14, 23, 42);
+      doc.text("Risk & probability analysis (scenario comparison)", margin, tableStartY);
+      tableStartY += 14;
+      doc.addImage(charts.assignmentProbabilitiesChartPng, "PNG", margin, tableStartY, contentW, chartImgH);
+      tableStartY += chartImgH + 14;
+    }
+    if (charts.incomeYieldChartPng) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("Income & yield by scenario", margin, tableStartY);
+      tableStartY += 14;
+      doc.addImage(charts.incomeYieldChartPng, "PNG", margin, tableStartY, contentW, chartImgH);
+      tableStartY += chartImgH + 18;
+    }
+  }
+
   autoTable(doc, {
-    startY: 186,
+    startY: tableStartY,
     head: [["Idea", "Capital", "Income / cycle", "Cycle yield", "Annualized", "Assign %", "Call-away %"]],
     body: report.ideas.map((idea) => [
       idea.headline,
@@ -141,6 +187,10 @@ export function WheelReportView({
   showPdfButton = true,
   onEdit
 }: WheelReportViewProps) {
+  const chartIdSuffix = useId().replace(/:/g, "");
+  const wheelProbChartId = `wheel-pdf-prob-${chartIdSuffix}`;
+  const wheelYieldChartId = `wheel-pdf-yield-${chartIdSuffix}`;
+
   const [activeIdeaId, setActiveIdeaId] = useState(report.ideas[0]?.ideaId ?? "");
   const [shareBusy, setShareBusy] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -148,6 +198,7 @@ export function WheelReportView({
   const [relatedWlBusy, setRelatedWlBusy] = useState(false);
   const [relatedWlMsg, setRelatedWlMsg] = useState<string | null>(null);
   const [relatedWlErr, setRelatedWlErr] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const selectedIdea = useMemo(
     () => report.ideas.find((idea) => idea.ideaId === activeIdeaId) ?? bestIdea(report.ideas),
@@ -185,8 +236,9 @@ export function WheelReportView({
   const chartOptions = useMemo<ApexOptions>(
     () => ({
       chart: {
+        id: wheelProbChartId,
         type: "bar",
-        background: "transparent",
+        background: resolveDesignTokenColor("--xf-bg-900", "background", "rgb(15, 23, 42)"),
         toolbar: { show: false },
         fontFamily: "var(--xf-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)"
       },
@@ -212,14 +264,15 @@ export function WheelReportView({
         y: { formatter: (value: number) => `${value.toFixed(1)}%` }
       }
     }),
-    [report.ideas, report.rootSnapshot.ticker]
+    [report.ideas, report.rootSnapshot.ticker, wheelProbChartId]
   );
 
   const chartOptionsYield = useMemo<ApexOptions>(
     () => ({
       chart: {
+        id: wheelYieldChartId,
         type: "bar",
-        background: "transparent",
+        background: resolveDesignTokenColor("--xf-bg-900", "background", "rgb(15, 23, 42)"),
         toolbar: { show: false },
         fontFamily: "var(--xf-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)"
       },
@@ -263,8 +316,27 @@ export function WheelReportView({
         y: { formatter: (value: number) => `${value.toFixed(1)}%` }
       }
     }),
-    [report.ideas, report.rootSnapshot.ticker]
+    [report.ideas, report.rootSnapshot.ticker, wheelYieldChartId]
   );
+
+  async function handleGenerateProfessionalPdf(): Promise<void> {
+    setPdfBusy(true);
+    try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      const [assignmentProbabilitiesChartPng, incomeYieldChartPng] = await Promise.all([
+        captureApexChartDataUri(wheelProbChartId),
+        captureApexChartDataUri(wheelYieldChartId)
+      ]);
+      exportWheelPdf(report, generatedByName, {
+        assignmentProbabilitiesChartPng,
+        incomeYieldChartPng
+      });
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   async function createShareLink() {
     setShareBusy(true);
@@ -363,9 +435,10 @@ export function WheelReportView({
             <button
               className="xchat-scan-action-btn xchat-scan-action-btn--accent"
               type="button"
-              onClick={() => exportWheelPdf(report, generatedByName)}
+              disabled={pdfBusy}
+              onClick={() => void handleGenerateProfessionalPdf()}
             >
-              Generate Professional PDF
+              {pdfBusy ? "Generating PDF…" : "Generate Professional PDF"}
             </button>
           ) : null}
           {shareEnabled ? (

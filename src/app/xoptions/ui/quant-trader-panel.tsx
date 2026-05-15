@@ -7,16 +7,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
     QuantTraderDistributionChart,
+    type QuantTraderDistributionChartHandle,
     type QuantTraderDistributionPoint
 } from "@/app/xoptions/ui/quant-trader-distribution-chart";
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
 import { writeXchatPendingComposerHandoff } from "@/lib/xchat/xchat-pending-prompt";
 import {
+    buildQuantTraderExportMeta,
     buildQuantTraderXchatPrompt,
     estimateProbProfitPct,
+    formatQuantTraderParamsSummary,
     mcTierLabel,
     QUANT_TRADER_DEFAULT_PARAMS,
-    quantTraderResultsToCsv,
+    quantTraderExportFilenameStem,
+    quantTraderResultsToCsvWithMeta,
     type QuantTraderRunParams
 } from "@/lib/xoptions/quant-trader-helpers";
 import type { McRiskTolerance } from "@/modules/strategy-options/monte-carlo-tail-risk";
@@ -72,6 +76,16 @@ export function QuantTraderPanel({ symbol, strategyLabel, payoffOverlay, compact
   const [error, setError] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const autoRan = useRef(false);
+  const chartRef = useRef<QuantTraderDistributionChartHandle>(null);
+
+  const effectiveParams = useMemo(
+    (): QuantTraderRunParams => ({
+      ...params,
+      strategyLabel: strategyLabel ?? params.strategyLabel,
+      symbol: symbol ?? params.symbol
+    }),
+    [params, strategyLabel, symbol]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -173,36 +187,97 @@ export function QuantTraderPanel({ symbol, strategyLabel, payoffOverlay, compact
     return result.portfolios.flatMap((p) => p.greeksExposure).slice(0, 12);
   }, [result]);
 
+  const buildExportMeta = useCallback(
+    (generatedAt = new Date()) =>
+      buildQuantTraderExportMeta({
+        params: effectiveParams,
+        generatedAt,
+        workspacePortfolioName: context?.workspacePortfolioName ?? null,
+        simulationGeneratedAt: result?.generatedAt ?? null
+      }),
+    [context?.workspacePortfolioName, effectiveParams, result?.generatedAt]
+  );
+
   const exportCsv = useCallback(() => {
     if (!result) {
       return;
     }
-    const blob = new Blob([quantTraderResultsToCsv(result)], { type: "text/csv;charset=utf-8" });
+    const exportedAt = new Date();
+    const meta = buildExportMeta(exportedAt);
+    const blob = new Blob([quantTraderResultsToCsvWithMeta(result, meta)], {
+      type: "text/csv;charset=utf-8"
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `quant-trader-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${quantTraderExportFilenameStem(exportedAt)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [result]);
+  }, [buildExportMeta, result]);
 
-  const exportPdf = useCallback(() => {
+  const exportPdf = useCallback(async () => {
     if (!result) {
       return;
     }
+    const exportedAt = new Date();
+    const meta = buildExportMeta(exportedAt);
+    const chartUri = await chartRef.current?.captureDataUri();
+
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
+    const pageW = doc.internal.pageSize.getWidth();
+
+    doc.setFillColor(7, 23, 16);
+    doc.rect(0, 0, pageW, 72, "F");
+    doc.setTextColor(189, 255, 77);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("xFinance Quant Trader — Monte Carlo Summary", 42, 48);
+    doc.text("xFinance Quant Trader — Monte Carlo Summary", 42, 40);
+    doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`/xoptions/quant-trader · exported ${meta.generatedAtLocal}`, 42, 58);
+
+    doc.setTextColor(30, 41, 59);
     doc.setFontSize(10);
-    doc.text(
-      `${params.horizonDays}-day horizon · IV rank > ${params.minIvRankPct}% · max DD ${params.maxDrawdownPct}%`,
-      42,
-      64
-    );
+    doc.text("Report parameters", 42, 92);
+    doc.setFontSize(9);
+    const paramLines = [
+      formatQuantTraderParamsSummary(meta.params),
+      `Monte Carlo paths: ${meta.params.pathCount.toLocaleString()}`,
+      `Risk outlook: ${meta.params.perPortfolioRisk ? "Per portfolio (desk profile)" : mcTierLabel(meta.params.risk)}`,
+      `Portfolio scope: ${meta.params.portfolioScope === "all" ? "All owned portfolios" : "Workspace active portfolio"}`,
+      ...(context?.workspacePortfolioName
+        ? [`Active workspace portfolio: ${context.workspacePortfolioName}`]
+        : []),
+      `Simulation generated (UTC): ${meta.simulationGeneratedAt ?? result.generatedAt}`,
+      `Report exported (UTC): ${meta.generatedAtUtc}`
+    ];
+    let y = 108;
+    for (const line of paramLines) {
+      doc.text(line, 42, y, { maxWidth: pageW - 84 });
+      y += 14;
+    }
+
+    y += 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Tail-risk distribution", 42, y);
+    y += 12;
+
+    if (chartUri) {
+      const chartW = pageW - 84;
+      const chartH = 170;
+      doc.addImage(chartUri, "PNG", 42, y, chartW, chartH);
+      y += chartH + 16;
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text("Chart unavailable — re-run simulation and export again.", 42, y);
+      y += 20;
+    }
+
     autoTable(doc, {
-      startY: 80,
+      startY: y,
       head: [["Portfolio", "VaR 1D", "CVaR 1D", "P(DD>20%)", "Gate"]],
       body: result.portfolios.map((p) => [
         p.portfolioName,
@@ -212,10 +287,35 @@ export function QuantTraderPanel({ symbol, strategyLabel, payoffOverlay, compact
         p.drawdownGate ? (p.drawdownGate.passed ? "Pass" : "Review") : "—"
       ])
     });
+
+    const tableEndY =
+      (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? y + 40;
+
+    if (result.combinedTailRisk) {
+      const combinedY = tableEndY + 16;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("Combined book (weighted)", 42, combinedY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(
+        `1D VaR ${result.combinedTailRisk.var1dPct95.toFixed(1)}% · CVaR ${result.combinedTailRisk.cvar1dPct95.toFixed(1)}% · P(DD>20%) ${(result.combinedTailRisk.probDrawdownGt20Pct * 100).toFixed(1)}%`,
+        42,
+        combinedY + 14,
+        { maxWidth: pageW - 84 }
+      );
+    }
+
     doc.setFontSize(8);
-    doc.text(result.disclaimer, 42, doc.internal.pageSize.getHeight() - 24, { maxWidth: 528 });
-    doc.save(`quant-trader-${new Date().toISOString().slice(0, 10)}.pdf`);
-  }, [params.horizonDays, params.maxDrawdownPct, params.minIvRankPct, result]);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `Not investment advice. Simulations are model-based estimates. ${result.disclaimer}`,
+      42,
+      doc.internal.pageSize.getHeight() - 24,
+      { maxWidth: pageW - 84 }
+    );
+    doc.save(`${quantTraderExportFilenameStem(exportedAt)}.pdf`);
+  }, [buildExportMeta, context?.workspacePortfolioName, result]);
 
   const sendToXchat = useCallback(() => {
     const prompt = buildQuantTraderXchatPrompt({
@@ -412,7 +512,7 @@ export function QuantTraderPanel({ symbol, strategyLabel, payoffOverlay, compact
             </div>
           </div>
 
-          <QuantTraderDistributionChart series={chartSeries} />
+          <QuantTraderDistributionChart ref={chartRef} series={chartSeries} />
 
           {payoffOverlay ? (
             <details className="xoptions-payoff-card quant-trader-payoff-overlay">
@@ -476,7 +576,7 @@ export function QuantTraderPanel({ symbol, strategyLabel, payoffOverlay, compact
             <button type="button" className="xoptions-text-link" onClick={exportCsv}>
               Export CSV
             </button>
-            <button type="button" className="xoptions-text-link" onClick={exportPdf}>
+            <button type="button" className="xoptions-text-link" onClick={() => void exportPdf()}>
               Export PDF
             </button>
             <button type="button" className="xoptions-text-link" onClick={sendToXchat}>
