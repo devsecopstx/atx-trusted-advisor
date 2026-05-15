@@ -47,9 +47,9 @@ vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 
 import {
-  DELETE as deletePersonaById,
-  GET as getPersonaByIdRoute,
-  PUT as putPersonaById
+    DELETE as deletePersonaById,
+    GET as getPersonaByIdRoute,
+    PUT as putPersonaById
 } from "@/app/api/personas/[personaId]/route";
 import { POST as postVerifyPersonaCollection } from "@/app/api/personas/[personaId]/verify-collection/route";
 import { GET as getPersonas, POST as postPersona } from "@/app/api/personas/route";
@@ -716,6 +716,45 @@ describe("persona API routes", () => {
 
     expect(response.status).toBe(200);
     expect(repositoryMocks.deletePersona).toHaveBeenCalledWith("507f1f77bcf86cd799439055");
+  });
+
+  it("rejects delete when persona is system-seeded", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Advisor",
+      nameNormalized: "advisor",
+      systemPrompt: "You are the advisor.",
+      overridePrompt: "",
+      isSystem: true,
+      status: "published",
+      version: 3,
+      xaiCollection: {
+        collectionId: "collection_advisor",
+        collectionName: "Advisor KB"
+      },
+      model: "grok-4-latest",
+      temperature: 0.2,
+      enableRag: true,
+      defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: []
+      },
+      createdAt: now,
+      updatedAt: now
+    });
+
+    const response = await deletePersonaById(new Request("http://test"), {
+      params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+    });
+
+    expect(response.status).toBe(403);
+    expect(repositoryMocks.deletePersona).not.toHaveBeenCalled();
+    const payload = (await response.json()) as { code?: string; error?: string };
+    expect(payload.code).toBe("persona_system_protected");
+    expect(payload.error).toMatch(/System-seeded/i);
   });
 
   it("triggers persona collection recheck for admin", async () => {

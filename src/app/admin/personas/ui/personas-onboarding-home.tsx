@@ -4,9 +4,10 @@ import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditLink } from "@/app/ui/icon-edit-control";
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { personaSystemPromptPreview } from "@/lib/persona-system-prompt-preview";
 import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
@@ -22,6 +23,7 @@ type PersonaListItem = {
   status: PersonaStatus;
   version: number;
   publishedAt: string | null;
+  isSystem?: boolean;
   xapi: {
     mode: "responses" | "chat_completions";
     toolChoice: "auto" | "required" | "none";
@@ -216,6 +218,26 @@ export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }
     }
   }
 
+  async function handleDelete(personaId: string, personaName: string) {
+    if (
+      !window.confirm(
+        `Delete persona “${personaName}” permanently? This removes the Mongo document and cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setActionLoading(personaId);
+    try {
+      await parseJson(await fetch(`/api/personas/${personaId}`, { method: "DELETE" }));
+      setStatus("Persona deleted");
+      await refresh();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Delete failed");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function handleRollback(personaId: string, version: number) {
     if (version < 1) {
       setStatus("No previous version to rollback to");
@@ -355,6 +377,29 @@ export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }
                       label="Edit persona"
                       variant="tiny"
                     />
+                    <XfHoverHint
+                      hint={
+                        persona.isSystem
+                          ? "System-seeded personas cannot be deleted"
+                          : "Delete persona permanently"
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="tiny-button xf-icon-edit-btn--icon-only"
+                        aria-label={
+                          persona.isSystem ? "Delete blocked (system persona)" : "Delete persona"
+                        }
+                        disabled={isActioning || Boolean(persona.isSystem)}
+                        onClick={() =>
+                          persona._id &&
+                          !persona.isSystem &&
+                          void handleDelete(persona._id, persona.name)
+                        }
+                      >
+                        <DeleteIcon className="crud-icon" />
+                      </button>
+                    </XfHoverHint>
                     {persona.status !== "published" ? (
                       <button
                         className="tiny-button"

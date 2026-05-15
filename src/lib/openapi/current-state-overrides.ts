@@ -241,7 +241,9 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("Persona deleted.", "PersonaDeleteResponseEnvelope"),
       "401": json401Session(),
-      "403": json403Admin("Session is valid, but admin role is required."),
+      "403": json403Admin(
+        "Session is valid, but admin role is required — or persona is system-seeded (`isSystem`) and cannot be deleted."
+      ),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }

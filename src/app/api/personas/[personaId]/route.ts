@@ -155,6 +155,12 @@ export async function DELETE(request: Request, context: RouteContext) {
   if (!existing) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }
+  if (existing.isSystem === true) {
+    return NextResponse.json(
+      { error: "System-seeded personas cannot be deleted", code: "persona_system_protected" },
+      { status: 403 }
+    );
+  }
   const deleted = await deletePersona(personaId);
   if (!deleted) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
