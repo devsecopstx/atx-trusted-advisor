@@ -118,6 +118,11 @@ export function buildOptionsPlaybooksAip160Filter(input: {
   return parts.join(" AND ");
 }
 
+/** Desk literacy segment uploaded with `category = "finance-core"` metadata. */
+export function buildFinanceCoreDeskAip160Filter(): string {
+  return 'category = "finance-core"';
+}
+
 function escapeAip160String(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
@@ -181,9 +186,10 @@ async function searchCollectionWithFilterFallback(input: {
 }
 
 /**
- * Pre-search for the shared Finance xAI collection: guidelines (surface + compliance) and
- * options playbooks (metadata-aligned), merged up to `limit`. Falls back to unfiltered search
- * per leg when filters return nothing or the vendor rejects the filter string.
+ * Pre-search for the shared Finance xAI collection: response guidelines, finance-core desk
+ * literacy (`category = "finance-core"`), and options playbooks (metadata-aligned), merged up to
+ * `limit`. Falls back to unfiltered search per leg when filters return nothing or the vendor rejects
+ * the filter string.
  */
 export async function searchFinanceKbCollectionForXchatPreRag(input: {
   query: string;
@@ -208,8 +214,9 @@ export async function searchFinanceKbCollectionForXchatPreRag(input: {
   }
 
   const surface = input.surface ?? "xchat";
-  const guidelinesLimit = Math.max(2, Math.min(limit, Math.ceil(limit * 0.45)));
-  const optionsLimit = Math.max(2, limit - guidelinesLimit + 1);
+  const guidelinesLimit = Math.max(2, Math.floor(limit * 0.32));
+  const financeCoreLimit = Math.max(1, Math.floor(limit * 0.22));
+  const optionsLimit = Math.max(2, limit - guidelinesLimit - financeCoreLimit);
 
   const guidelinesFilter = buildResponseGuidelinesAip160Filter(surface);
   const guidelinesSnippets = await searchCollectionWithFilterFallback({
@@ -218,6 +225,15 @@ export async function searchFinanceKbCollectionForXchatPreRag(input: {
     limit: guidelinesLimit,
     filter: guidelinesFilter,
     logLabel: "guidelines"
+  });
+
+  const financeCoreFilter = buildFinanceCoreDeskAip160Filter();
+  const financeCoreSnippets = await searchCollectionWithFilterFallback({
+    query: input.query,
+    collectionIds,
+    limit: financeCoreLimit,
+    filter: financeCoreFilter,
+    logLabel: "finance_core"
   });
 
   const strategyTypes = inferStrategyTypesFromUserMessage(input.userMessage);
@@ -240,7 +256,8 @@ export async function searchFinanceKbCollectionForXchatPreRag(input: {
     logLabel: "options_playbooks"
   });
 
-  const merged = mergeDedupeFinanceKbSnippets(guidelinesSnippets, optionsSnippets, limit);
+  const mergedGo = mergeDedupeFinanceKbSnippets(guidelinesSnippets, optionsSnippets, limit);
+  const merged = mergeDedupeFinanceKbSnippets(mergedGo, financeCoreSnippets, limit);
   if (merged.length > 0) {
     return merged;
   }

@@ -102,7 +102,7 @@ function normalizeExpectedCollections({ latestSummary, trustedAdvisorDeploySlug 
   const names = [
     root,
     `${root}/xchat-history`,
-    `${root}/finance-reference-docs`,
+    `${root}/finance-core`,
     `${root}/xpersonas`,
     `${root}/example-prompts`,
     `${root}/options-strategy`

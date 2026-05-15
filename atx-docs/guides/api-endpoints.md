@@ -235,7 +235,7 @@ Browsers call these on the **Next** origin; Next forwards to Kotlin when the bac
 
 ## Admin — options-strategy catalog & preferences (Next only)
 
-**Disk seed:** `atx-docs/rag-collection/options-strategy/**` (nested slugs) → **`npm run seed:options-strategy-prefs`** → **`options_strategy_preferences`**. **Finance xAI KB** (shared collection refresh) uploads **`options-strategy-core`**, **`options-strategy-advanced`**, **`atx-response-guidelines`**, and **`finance-reference-docs`** (same collection; persona YAML scopes lean vs full — **`finance-advisor`** / **`advisor`**) — see [`atx-docs/README.md`](../README.md) § Options.
+**Disk seed:** `atx-docs/rag-collection/options-strategy/**` (nested slugs) → **`npm run seed:options-strategy-prefs`** → **`options_strategy_preferences`**. **Finance xAI KB** (shared collection refresh) uploads **`options-strategy-core`**, **`options-strategy-advanced`**, **`atx-response-guidelines`**, and **`finance-core`** (same collection; persona YAML scopes lean vs full — **`finance-advisor`** / **`advisor`**) — see [`atx-docs/README.md`](../README.md) § Options.
 
 - `GET /api/admin/options-strategy`
 - `POST /api/admin/options-strategy`

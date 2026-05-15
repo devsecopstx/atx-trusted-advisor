@@ -9,4 +9,4 @@ Cross-cutting **finance and options literacy** for the desk: primitives, risk ed
 | [`short-desk-references.md`](./short-desk-references.md) | Pointers + small PDFs (e.g. options risks TOC supplement) |
 | [`glossary-hnwi-desk-101.md`](./glossary-hnwi-desk-101.md) | Definitions and framing reused across strategies |
 
-**Ingest:** This folder is **not** yet registered in `finance-kb-sync` `resolveFinanceKbRoots`; add it there (and optional persona `always_include`) before `refresh-finance` will upload these files. `README.md` is skipped by ingest (same rule as `readme.md`).
+**Ingest:** `resolveFinanceKbRoots` in `finance-kb-sync` includes this segment; `npm run seed:finance-xai-collection` / `POST /api/admin/rag/refresh-finance` uploads it into the shared Finance xAI collection with `category = "finance-core"`. `README.md` is skipped by ingest (same rule as `readme.md`).

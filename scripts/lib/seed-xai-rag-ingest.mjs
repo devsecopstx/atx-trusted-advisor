@@ -250,7 +250,7 @@ function dedupeIds(ids) {
 
 /**
  * Creates team-scoped xAI collections `atx-trusted-advisor-<dev|stage|prod>` plus segment buckets and uploads
- * `atx-rag-collection/{finance-reference-docs,xpersonas,example-prompts,options-strategy}` (legacy folder names still resolved as fallbacks).
+ * `atx-rag-collection/{finance-core,xpersonas,example-prompts,options-strategy}` (legacy folder names still resolved as fallbacks where applicable).
  * Call explicitly when you need team KB sync — **not** part of `seed:admin`.
  *
  * @param {{
@@ -309,7 +309,7 @@ export async function runSeedXaiRagIngest(opts) {
         `Reserved for per-user chat sync into xAI; populated by the app after sessions.\n` +
         `Suggested logical document path format: \`xchat-<user>-<date>\`.\n`
     },
-    { suffix: "finance-reference-docs", repoCandidates: ["finance-reference-docs"] },
+    { suffix: "finance-core", repoCandidates: ["finance-core"] },
     {
       suffix: "xpersonas",
       repoCandidates: ["xpersonas", "personas-trusted-family", "atx-personas-trusted-family"]

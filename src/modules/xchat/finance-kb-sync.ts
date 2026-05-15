@@ -19,7 +19,7 @@ export type FinanceKbUploadSegment =
   | "options-strategy-advanced"
   | "atx-response-guidelines"
   | "finance"
-  | "finance-reference-docs";
+  | "finance-core";
 
 /** YAML keys merged for options-strategy-* markdown (Finance KB). */
 const FINANCE_KB_STRATEGY_FRONTMATTER_METADATA_KEYS = new Set([
@@ -194,7 +194,7 @@ export function resolveFinanceKbRoots(repoRoot: string): Array<{ dir: string; so
     { segments: ["atx-docs", "rag-collection", "options-strategy-advanced"], source: "options-strategy-advanced" },
     { segments: ["atx-docs", "rag-collection", "atx-response-guidelines"], source: "atx-response-guidelines" },
     { segments: ["atx-docs", "rag-collection", "finance"], source: "finance" },
-    { segments: ["atx-docs", "rag-collection", "finance-reference-docs"], source: "finance-reference-docs" }
+    { segments: ["atx-docs", "rag-collection", "finance-core"], source: "finance-core" }
   ];
   for (const row of candidates) {
     const dir = join(repoRoot, ...row.segments);

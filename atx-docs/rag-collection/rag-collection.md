@@ -8,13 +8,12 @@
 - [RAG path layout](#rag-path-layout)
 - [Segment file listing](#segment-file-listing)
   - [xpersonas](#xpersonas)
-  - [finance-reference-docs](#finance-reference-docs)
   - [example-prompts](#example-prompts)
   - [options-strategy](#options-strategy) (Mongo catalog, nested)
   - [options-strategy-core](#options-strategy-core) (Finance KB, lean)
   - [options-strategy-advanced](#options-strategy-advanced) (Finance KB, full playbooks)
   - [atx-response-guidelines](#atx-response-guidelines) (Finance KB, response framing)
-  - [finance-core](#finance-core) (cross-cutting desk literacy; not yet in `refresh-finance` roots)
+  - [finance-core](#finance-core) (Finance KB, cross-cutting desk literacy)
 - [Persona YAML schema](#persona-yaml-schema)
 - [Hygiene](#hygiene)
 - [Tests and automation](#tests-and-automation)
@@ -27,13 +26,12 @@
 | Segment | xAI collection suffix (after `atx-trusted-advisor-<dev|stage|prod>-`) | Role |
 | --- | --- | --- |
 | **`xpersonas/`** | `xpersonas` | xPersona seed specs — **exactly one `*.yaml` per subfolder** (Mongo via **`npm run seed:xpersonas`** / **`seed:admin`**; no `.md` in this segment). **`seed:admin` does not upload** YAML to xAI; team KB is out-of-band if needed (**`scripts/lib/seed-xai-rag-ingest.mjs`** is library-only). |
-| **`finance-reference-docs/`** | *(same folder name)* | Reference PDFs (disclosures, licensing). |
 | **`example-prompts/`** | `example-prompts` | Example user prompts / scenario copy for UX and KB samples. |
 | **`options-strategy/`** | `options-strategy` | **Mongo-only** seed: nested `slug/slug.md` narratives for **`options_strategy`** / admin xOptions catalog (**`npm run seed:options-strategy*`**). **Not** uploaded by **`refresh-finance`** (use **core** + **advanced** for xAI). |
 | **`options-strategy-core/`** | *(uploaded as part of shared Finance collection)* | Lean options desk copy + **[`options-coreskills.md`](./options-strategy-core/options-coreskills.md)** — **`finance-advisor`** `always_include` **only** (not advanced). |
 | **`options-strategy-advanced/`** | *(same)* | Full multi-leg / overlay playbooks — **`advisor`** `always_include` **only** (not core). |
-| **`atx-response-guidelines/`** | *(same)* | xChat/report response structure, citations, tone, compliance — uploaded with **`refresh-finance`**; all shipped **`xpersonas/*.yaml`** include **`atx-rag-collection/atx-response-guidelines/**`** in **`always_include`** (with **`finance-reference-docs/**`**; **`advisor`** / **`finance-advisor`** also list their **`options-strategy-*`** slice). |
-| **`finance-core/`** | *(not wired to `refresh-finance` yet)* | Cross-cutting primitives, risk education, short desk refs + small PDFs, HNWI glossary — flat **`*.md`** at segment root; see **[`README.md`](./finance-core/README.md)**. |
+| **`atx-response-guidelines/`** | *(same)* | xChat/report response structure, citations, tone, compliance — uploaded with **`refresh-finance`**; all shipped **`xpersonas/*.yaml`** include **`atx-rag-collection/atx-response-guidelines/**`** and **`atx-rag-collection/finance-core/**`** in **`always_include`** (**`advisor`** / **`finance-advisor`** also list their **`options-strategy-*`** slice). |
+| **`finance-core/`** | *(same)* | Cross-cutting primitives, risk education, short desk refs + small PDFs, HNWI glossary — flat **`*.md`** at segment root plus **`stem/stem.pdf`** folders; see **[`README.md`](./finance-core/README.md)**. |
 
 Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, **`atx-personas-trusted-family`**, **`atx-xchat-example-prompts`**, **`atx-options-strategy`** are still **ingest path fallbacks** (see seed script).
 
@@ -41,7 +39,7 @@ Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, 
 
 ## RAG path layout
 
-**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`). **`options-strategy-core`**, **`options-strategy-advanced`**, and **`atx-response-guidelines`** are **exceptions**: flat **`*.md`** files live directly under the segment root for a smaller Finance KB upload surface (validated in **`tests/unit/atx-rag-collection-layout.test.ts`**).
+**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `options-risks-toc_supplement/options-risks-toc_supplement.pdf`). **`options-strategy-core`**, **`options-strategy-advanced`**, **`atx-response-guidelines`**, and **`finance-core`** (markdown only) are **exceptions**: flat **`*.md`** files live directly under those segment roots for a smaller Finance KB upload surface (validated in **`tests/unit/atx-rag-collection-layout.test.ts`**). **`finance-core`** PDFs still use **`stem/stem.pdf`** subfolders.
 
 **xpersonas:** Each subfolder holds **exactly one** persona `*.yaml`. Many personas use **`folder/folder.yaml`** (folder name equals file stem), e.g. `advisor/advisor.yaml`, `exam-coach/exam-coach.yaml`, `trusted-advisor/trusted-advisor.yaml`. Others use a **suffix stem** under a short bucket, e.g. `legal/legal-advisor.yaml`. This segment is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
 
@@ -66,17 +64,6 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 | `medical/medical-advisor.yaml` | Persona spec |
 | `options-trader/options-trader-advisor.yaml` | Persona spec |
 | `tax-expert/atx-tax-expert-advisor.yaml` | Persona spec |
-
-### finance-reference-docs
-
-| Path |
-| --- |
-| `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf` |
-| `MerrillEdge-Retail-Option-application/MerrillEdge-Retail-Option-application.pdf` |
-| `MerrillEdge-Transfers-Withdrawals/MerrillEdge-Transfers-Withdrawals.pdf` |
-| `options-risks-toc_supplement/options-risks-toc_supplement.pdf` |
-| `Series 65-LEM-12E/Series 65-LEM-12E.pdf` |
-| `Series7-LEM-3E-REV5-secured/Series7-LEM-3E-REV5-secured.pdf` |
 
 ### example-prompts
 
@@ -128,7 +115,7 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 | `risk-and-product-education.md` | IV/OI, assignment, risk primers |
 | `short-desk-references.md` | PDF pointers (e.g. `options-risks-toc_supplement.pdf`) |
 | `glossary-hnwi-desk-101.md` | Reusable desk vocabulary |
-| `options-risks-toc_supplement.pdf` | Small reference PDF |
+| `options-risks-toc_supplement/options-risks-toc_supplement.pdf` | Small reference PDF (stem/stem layout) |
 
 ---
 

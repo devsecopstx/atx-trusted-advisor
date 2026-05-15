@@ -15,7 +15,7 @@ Use this segment for **short markdown** that points to **small PDFs** or externa
 
 ## In-repo PDF (example)
 
-- **`options-risks-toc_supplement.pdf`** — table-of-contents style supplement for options risks; use when the user needs a **scannable outline** of risk topics, not a full treatise. Prefer summarizing 3–5 bullets from retrieved context rather than dumping the PDF.
+- **`options-risks-toc_supplement/options-risks-toc_supplement.pdf`** — table-of-contents style supplement for options risks; use when the user needs a **scannable outline** of risk topics, not a full treatise. Prefer summarizing 3–5 bullets from retrieved context rather than dumping the PDF.
 
 ## When to cite vs summarize
 
@@ -25,7 +25,7 @@ Use this segment for **short markdown** that points to **small PDFs** or externa
 ## What belongs here vs elsewhere
 
 - **Here** — TOC supplements, one-pagers, checklists, “open these sections when…” maps.
-- **`finance-reference-docs/`** — full broker applications, long regulatory PDFs, custodian-specific packs.
+- **Large custodian PDFs** — when you ingest them, use **`finance-core/<stem>/<stem>.pdf`** (directory name equals filename stem) so upload paths and metadata stay aligned; keep very large packs external unless policy requires local ingest.
 - **`options-strategy-*`** — payoff and trade-structure narratives.
 
 ## Upload hygiene

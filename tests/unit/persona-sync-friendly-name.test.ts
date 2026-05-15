@@ -18,7 +18,13 @@ describe("friendlyStemFromXaiIngestFileName", () => {
     ).toBe("marriage_planner_advisor");
   });
 
-  it("strips finance_reference_docs apex", () => {
+  it("strips finance_core apex", () => {
+    expect(
+      friendlyStemFromXaiIngestFileName("finance_core__primitives-and-mechanics__primitives-and-mechanics_md")
+    ).toBe("primitives-and-mechanics");
+  });
+
+  it("strips legacy finance_reference_docs apex", () => {
     expect(
       friendlyStemFromXaiIngestFileName("finance_reference_docs__wheel__wheel_yaml")
     ).toBe("wheel");

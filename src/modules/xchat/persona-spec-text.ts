@@ -148,6 +148,8 @@ function isProbablyBinaryText(t: string): boolean {
 const INGEST_ROOT_PREFIX_RES: RegExp[] = [
   /^xai:/i,
   /^xpersonas__/i,
+  /^finance_core__/i,
+  /^finance-core__/i,
   /^finance_reference_docs__/i,
   /^finance-reference-docs__/i,
   /^example_prompts__/i,
@@ -237,6 +239,8 @@ export function yamlNameLooksLikeIngestPath(raw: string): boolean {
     return true;
   }
   const roots = [
+    "finance_core",
+    "finance-core",
     "finance_reference_docs",
     "finance-reference-docs",
     "example_prompts",

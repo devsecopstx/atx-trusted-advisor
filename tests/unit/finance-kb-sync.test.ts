@@ -92,7 +92,7 @@ strategy_type: wheel
     expect(sources).toContain("options-strategy-core");
     expect(sources).toContain("options-strategy-advanced");
     expect(sources).toContain("atx-response-guidelines");
-    expect(sources).toContain("finance-reference-docs");
+    expect(sources).toContain("finance-core");
     for (const r of roots) {
       expect(r.dir).toBe(join(repoRoot, "atx-docs", "rag-collection", r.source));
     }

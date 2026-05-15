@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    buildFinanceCoreDeskAip160Filter,
     buildOptionsPlaybooksAip160Filter,
     buildResponseGuidelinesAip160Filter,
     inferRiskLevelsFromUserMessage,
@@ -23,6 +24,12 @@ describe("buildResponseGuidelinesAip160Filter", () => {
     expect(buildResponseGuidelinesAip160Filter("reports")).toBe(
       `(surface = "reports" OR doc_type = "compliance")`
     );
+  });
+});
+
+describe("buildFinanceCoreDeskAip160Filter", () => {
+  it("scopes finance-core category", () => {
+    expect(buildFinanceCoreDeskAip160Filter()).toBe('category = "finance-core"');
   });
 });
 

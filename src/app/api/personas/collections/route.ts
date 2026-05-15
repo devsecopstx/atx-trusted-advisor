@@ -38,7 +38,7 @@ const COLLECTIONS_PAYLOAD_LIMIT_BYTES = 32 * 1024;
 const TRUSTED_ADVISOR_ROOT_RE = /^atx-trusted-advisor-(dev|stage|prod)$/i;
 const TRUSTED_ADVISOR_SEGMENTS = [
   "example-prompts",
-  "finance-reference-docs",
+  "finance-core",
   "options-strategy",
   "xchat-history",
   "xpersonas"

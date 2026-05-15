@@ -266,7 +266,7 @@ describe("persona collections inventory route", () => {
     expect(createdNames).toEqual([
       "atx-trusted-advisor-dev",
       "atx-trusted-advisor-dev/example-prompts",
-      "atx-trusted-advisor-dev/finance-reference-docs",
+      "atx-trusted-advisor-dev/finance-core",
       "atx-trusted-advisor-dev/options-strategy",
       "atx-trusted-advisor-dev/xchat-history",
       "atx-trusted-advisor-dev/xpersonas",
@@ -276,7 +276,7 @@ describe("persona collections inventory route", () => {
     expect(payload.data.hierarchy).toEqual({
       children: [
         "atx-trusted-advisor-dev/example-prompts",
-        "atx-trusted-advisor-dev/finance-reference-docs",
+        "atx-trusted-advisor-dev/finance-core",
         "atx-trusted-advisor-dev/options-strategy",
         "atx-trusted-advisor-dev/xchat-history",
         "atx-trusted-advisor-dev/xpersonas"
