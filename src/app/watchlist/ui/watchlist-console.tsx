@@ -68,7 +68,9 @@ import {
 } from "@/app/watchlist/ui/watchlist-desk-columns";
 import {
     computeExecutiveMetrics,
+    formatWatchlistDayChangePercent,
     heuristicIvPercentile,
+    watchlistDayPctToneClass,
     watchlistMobileLegAccentClass,
     watchlistRsiToneClass,
     type WatchlistMetricRow
@@ -242,6 +244,7 @@ type WatchlistSortColumn =
   | "ivRank"
   | "optionsVolume"
   | "oi"
+  | "dayPct"
   | "distToTarget"
   | "quickScore";
 
@@ -275,6 +278,11 @@ function getIvSortValue(row: WatchlistRow): number | null {
 function getOiSortValue(row: WatchlistRow): number | null {
   const oi = row.chainGlance?.openInterest;
   return oi != null && Number.isFinite(oi) ? oi : null;
+}
+
+function getDayPctSortValue(row: WatchlistRow): number | null {
+  const p = row.quote?.changePercent;
+  return p != null && Number.isFinite(p) ? p : null;
 }
 
 function tieSymbol(a: WatchlistRow, b: WatchlistRow): number {
@@ -343,6 +351,9 @@ function applyWatchlistSort(
     }
     if (sortColumn === "oi") {
       return compareNumericColumn(mult, getOiSortValue(a), getOiSortValue(b), a, b);
+    }
+    if (sortColumn === "dayPct") {
+      return compareNumericColumn(mult, getDayPctSortValue(a), getDayPctSortValue(b), a, b);
     }
     if (sortColumn === "distToTarget") {
       return compareNumericColumn(mult, distToTargetPct(a), distToTargetPct(b), a, b);
@@ -559,6 +570,28 @@ function WatchlistDeskHeaderRow(props: {
             return (
               <th key={colId} scope="col">
                 Spot
+              </th>
+            );
+          case "dayPct":
+            return (
+              <th
+                key={colId}
+                aria-sort={
+                  sort.column === "dayPct"
+                    ? sort.dir === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+                scope="col"
+                title="Underlying regular session % change (Yahoo)"
+              >
+                <button className="xf-watchlist-sort-btn" type="button" onClick={() => onToggleSort("dayPct")}>
+                  Day %
+                  <span aria-hidden className="xf-watchlist-sort-indicator">
+                    {sort.column === "dayPct" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                  </span>
+                </button>
               </th>
             );
           case "ivRank":
@@ -860,6 +893,16 @@ const WatchlistRowTr = memo(function WatchlistRowTr(props: WatchlistRowTrProps) 
             ) : null}
           </td>
         );
+      case "dayPct":
+        return (
+          <td
+            key={colId}
+            className={`xf-watchlist-table-mono xf-watchlist-table-nowrap xf-watchlist-day-pct-cell ${watchlistDayPctToneClass(row)}`}
+            title="Underlying regular session % change"
+          >
+            {formatWatchlistDayChangePercent(row.quote?.changePercent)}
+          </td>
+        );
       case "ivRank":
         return (
           <td key={colId} className="xf-watchlist-table-mono xf-watchlist-stack-cell">
@@ -1038,6 +1081,14 @@ const WatchlistMobileCard = memo(function WatchlistMobileCard(props: WatchlistRo
         <div>
           <span className="xf-watchlist-mobile-card__k">Spot</span>
           <span className="xf-watchlist-mobile-card__v xf-watchlist-table-mono">{formatSpotCell(row)}</span>
+        </div>
+        <div>
+          <span className="xf-watchlist-mobile-card__k">Day %</span>
+          <span
+            className={`xf-watchlist-mobile-card__v xf-watchlist-table-mono ${watchlistDayPctToneClass(row)}`}
+          >
+            {formatWatchlistDayChangePercent(row.quote?.changePercent)}
+          </span>
         </div>
         <div>
           <span className="xf-watchlist-mobile-card__k">Target</span>

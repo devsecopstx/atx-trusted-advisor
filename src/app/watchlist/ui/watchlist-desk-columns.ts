@@ -6,6 +6,7 @@ export type WatchlistDeskColumnId =
   | "icon"
   | "symbolLeg"
   | "spot"
+  | "dayPct"
   | "ivRank"
   | "volOi"
   | "rsi"
@@ -21,6 +22,7 @@ export const WATCHLIST_DESK_COLUMN_ORDER: readonly WatchlistDeskColumnId[] = [
   "icon",
   "symbolLeg",
   "spot",
+  "dayPct",
   "ivRank",
   "volOi",
   "rsi",
@@ -34,6 +36,7 @@ export const WATCHLIST_DESK_GRID_TRACKS: Record<WatchlistDeskColumnId, string> =
   icon: "2.5rem",
   symbolLeg: "minmax(5.5rem, 1fr)",
   spot: "minmax(3.85rem, 0.62fr)",
+  dayPct: "minmax(2.85rem, 0.42fr)",
   ivRank: "minmax(3.65rem, 0.58fr)",
   volOi: "minmax(3.45rem, 0.54fr)",
   rsi: "minmax(2.95rem, 0.42fr)",
@@ -50,6 +53,7 @@ export const WATCHLIST_DESK_GRID_TRACKS_COMPACT: Record<WatchlistDeskColumnId, s
   icon: "2.1rem",
   symbolLeg: "minmax(4.75rem, 0.95fr)",
   spot: "minmax(3.15rem, 0.58fr)",
+  dayPct: "minmax(2.45rem, 0.36fr)",
   ivRank: "minmax(2.95rem, 0.5fr)",
   volOi: "minmax(2.8rem, 0.48fr)",
   rsi: "minmax(2.55rem, 0.38fr)",
@@ -65,6 +69,7 @@ export const WATCHLIST_DESK_COLUMN_HIDEABLE: Record<WatchlistDeskColumnId, boole
   icon: false,
   symbolLeg: false,
   spot: true,
+  dayPct: true,
   ivRank: true,
   volOi: true,
   rsi: true,
@@ -80,6 +85,7 @@ export const WATCHLIST_DESK_COLUMN_LABELS: Record<WatchlistDeskColumnId, string>
   icon: "Icon",
   symbolLeg: "Symbol + leg",
   spot: "Spot",
+  dayPct: "Day %",
   ivRank: "IV · rank",
   volOi: "Vol · OI",
   rsi: "RSI(14)",

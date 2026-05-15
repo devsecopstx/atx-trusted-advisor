@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PortfoliosMacroTape, type MacroTapeIndex } from "@/app/portfolios/portfolios-macro-tape";
 import { PortfoliosMacroTapeWellness } from "@/app/portfolios/portfolios-macro-tape-wellness";
+import { PortfoliosBooksDayMarkUI } from "@/app/portfolios/portfolios-workspace-books-day-mark";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
+import type { WorkspaceBooksDayMarkSummary } from "@/lib/workspace-dashboard-metrics";
 import type { MarketDayContext } from "@/modules/scanner/us-market-day-context";
 import { resolveUsMarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
 
@@ -17,6 +19,7 @@ type Props = {
   topHoldingsKey: string;
   visiblePathPrefixes?: string[];
   deskPortfolioId?: string | null;
+  booksDayMark: WorkspaceBooksDayMarkSummary;
 };
 
 function formatChgPct(p: number | undefined): string {
@@ -31,7 +34,8 @@ export function PortfoliosWorkspaceHeader({
   totalBookUsd,
   topHoldingsKey,
   visiblePathPrefixes,
-  deskPortfolioId = null
+  deskPortfolioId = null,
+  booksDayMark
 }: Props) {
   const [indices, setIndices] = useState<PulseIndex[]>([]);
   const [market, setMarket] = useState<MarketDayContext>(() => resolveUsMarketDayContext(new Date()));
@@ -100,15 +104,14 @@ export function PortfoliosWorkspaceHeader({
         </div>
 
         <div className="portfolios-workspace-header__center">
-          <XfHoverHint hint="Book total: cash plus position cost basis across all portfolios. Not live marks; no portfolio day P&amp;L.">
+          <XfHoverHint hint="Total book: cash plus position cost basis across all portfolios (not live marks). Portfolio day Δ: stock leaf day P&amp;L from Yahoo (Σ qty × change on quoted symbols, largest books first, capped); excludes options, cash, and unquoted tickers.">
             <div className="portfolios-workspace-header__total-block">
               <p className="portfolios-workspace-header__total-label">Total book value</p>
               <p className="portfolios-workspace-header__total-value font-mono tabular-nums">
                 {formatUsdWhole(totalBookUsd)}
               </p>
               <p className="portfolios-workspace-header__total-delta">
-                <span className="text-[var(--xf-text-300)]">Portfolio day Δ </span>
-                <span className="text-[var(--xf-text-300)]">—</span>
+                <PortfoliosBooksDayMarkUI summary={booksDayMark} variant="header" />
               </p>
             </div>
           </XfHoverHint>

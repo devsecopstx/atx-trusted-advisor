@@ -241,7 +241,7 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   display: grid;
   grid-template-columns: var(
     --wl-desk-cols,
-    2.5rem minmax(5.5rem, 1fr) minmax(3.85rem, 0.62fr) minmax(3.65rem, 0.58fr) minmax(3.45rem, 0.54fr)
+    2.5rem minmax(5.5rem, 1fr) minmax(3.85rem, 0.62fr) minmax(2.85rem, 0.42fr) minmax(3.65rem, 0.58fr) minmax(3.45rem, 0.54fr)
       minmax(2.95rem, 0.42fr) minmax(4.15rem, 0.62fr) minmax(2.65rem, 0.4fr) minmax(4.25rem, 0.68fr)
   );
   width: 100%;
@@ -379,6 +379,20 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
 
 .xf-watchlist-rsi--overbought {
   color: color-mix(in srgb, var(--xf-danger-400) 75%, var(--xf-text-100));
+}
+
+.xf-watchlist-day-pct--up {
+  color: var(--xf-gain-green);
+  font-weight: 650;
+}
+
+.xf-watchlist-day-pct--down {
+  color: color-mix(in srgb, var(--xf-danger-400) 88%, var(--xf-text-100));
+  font-weight: 650;
+}
+
+.xf-watchlist-day-pct--flat {
+  color: var(--xf-text-200);
 }
 
 .xf-watchlist-quick-score-pill {

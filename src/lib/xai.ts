@@ -1283,12 +1283,20 @@ export async function searchDocumentsInCollections(input: {
   query: string;
   collectionIds: string[];
   limit: number;
+  /**
+   * Optional xAI AIP-160 metadata filter string (`POST /v1/documents/search` `filter` field).
+   * See `atx-docs/xchat/xchat-tools-guide.md` § Finance KB pre-search.
+   */
+  filter?: string | null;
 }): Promise<XaiCollectionSearchSnippet[]> {
   const { apiKey, baseUrl } = getXaiConfig();
   const collectionIds = input.collectionIds.map((value) => value.trim()).filter(Boolean);
   if (collectionIds.length === 0) {
     return [];
   }
+
+  const filter =
+    typeof input.filter === "string" && input.filter.trim().length > 0 ? input.filter.trim() : null;
 
   const response = await fetch(`${baseUrl}/documents/search`, {
     method: "POST",
@@ -1304,7 +1312,8 @@ export async function searchDocumentsInCollections(input: {
       retrieval_mode: {
         type: "hybrid"
       },
-      top_k: input.limit
+      top_k: input.limit,
+      ...(filter ? { filter } : {})
     })
   });
 
@@ -1691,9 +1700,15 @@ function extractCollectionSnippets(
       continue;
     }
     const entry = candidate as Record<string, unknown>;
-    const documentId = asString(entry.id) ?? asString(entry.document_id);
+    const documentId =
+      asString(entry.id) ??
+      asString(entry.document_id) ??
+      asString(entry.file_id) ??
+      asString(entry.fileId);
     const documentName = asString(entry.name) ?? asString(entry.title);
     const textCandidates: Array<string | undefined> = [
+      asString(entry.chunk_content),
+      asString(entry.chunkContent),
       asString(entry.text),
       asString(entry.content),
       asString(entry.snippet),

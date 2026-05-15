@@ -15,6 +15,8 @@ import type { PortfoliosWorkspaceDeskHints } from "./portfolios-workspace-client
 type HotRow = {
   symbol: string;
   spot: number | null;
+  /** Underlying regular session % change (Yahoo). */
+  changePercent: number | null;
   impliedVolatilityPercent: number;
   openInterest: number;
   strike: number;
@@ -36,6 +38,27 @@ function formatOi(n: number): string {
     return `${(n / 1000).toFixed(1)}k`;
   }
   return String(Math.round(n));
+}
+
+function formatChgPct(p: number | null | undefined): string {
+  if (p == null || !Number.isFinite(p)) {
+    return "—";
+  }
+  const sign = p > 0 ? "+" : "";
+  return `${sign}${p.toFixed(2)}%`;
+}
+
+function chgPctToneClass(p: number | null | undefined): string {
+  if (p == null || !Number.isFinite(p)) {
+    return "text-[var(--xf-text-200)]";
+  }
+  if (p > 0) {
+    return "text-[var(--xf-gain-green)]";
+  }
+  if (p < 0) {
+    return "text-red-300";
+  }
+  return "text-[var(--xf-text-200)]";
 }
 
 type Props = {
@@ -81,17 +104,28 @@ export function PortfoliosWatchlistCompact({
         return;
       }
       const r = body.data?.rows ?? [];
-      setRows(
-        r.filter(
-          (x): x is HotRow =>
+      const normalized: HotRow[] = r
+        .filter(
+          (x) =>
             typeof x?.symbol === "string" &&
             (x.spot === null || x.spot === undefined || typeof x.spot === "number") &&
+            (x.changePercent === null || x.changePercent === undefined || typeof x.changePercent === "number") &&
             typeof x?.impliedVolatilityPercent === "number" &&
             typeof x?.openInterest === "number" &&
             typeof x?.strike === "number" &&
             (x.contractType === "call" || x.contractType === "put")
         )
-      );
+        .map((x) => ({
+          symbol: x.symbol,
+          spot: typeof x.spot === "number" && Number.isFinite(x.spot) ? x.spot : null,
+          changePercent:
+            typeof x.changePercent === "number" && Number.isFinite(x.changePercent) ? x.changePercent : null,
+          impliedVolatilityPercent: x.impliedVolatilityPercent,
+          openInterest: x.openInterest,
+          strike: x.strike,
+          contractType: x.contractType
+        }));
+      setRows(normalized);
       setScanned(typeof body.data?.scanned === "number" ? body.data.scanned : 0);
     } catch {
       setErr("Network error");
@@ -288,6 +322,9 @@ export function PortfoliosWatchlistCompact({
                     Spot
                   </th>
                   <th className="pb-1 pr-2 font-medium" scope="col">
+                    Day %
+                  </th>
+                  <th className="pb-1 pr-2 font-medium" scope="col">
                     IV
                   </th>
                   <th className="pb-1 pr-2 font-medium" scope="col">
@@ -332,6 +369,9 @@ export function PortfoliosWatchlistCompact({
                       )}
                     </td>
                     <td className="py-1 pr-2 align-middle text-[var(--xf-text-200)]">{formatSpotUsd(r.spot)}</td>
+                    <td className={`py-1 pr-2 align-middle text-[0.7rem] font-semibold ${chgPctToneClass(r.changePercent)}`}>
+                      {formatChgPct(r.changePercent)}
+                    </td>
                     <td className="py-1 pr-2 align-middle text-[var(--xf-text-200)]">
                       {r.impliedVolatilityPercent.toFixed(0)}%
                     </td>

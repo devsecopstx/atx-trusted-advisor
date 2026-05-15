@@ -11,9 +11,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.round
 
 data class AtxFunctionOptionsScanResult(
     val markdown: String,
@@ -74,7 +78,7 @@ class AtxFunctionExecutor(
 
     fun executeWatchlistSnapshot(ctx: AtxFunctionExecutionContext): AtxFunctionWatchlistResult {
         val payload = loadWatchlistPayload(ctx)
-        val markdown = buildWatchlistMarkdown(payload)
+        val markdown = buildWatchlistMarkdown(payload, ctx.portfolioIdHex?.trim()?.lowercase())
         val donePayload =
             directDonePayload(
                 markdown = markdown,
@@ -262,26 +266,155 @@ class AtxFunctionExecutor(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun buildWatchlistMarkdown(payload: Map<String, Any?>): String {
+    /**
+     * Matches Next.js `postProcessWatchlistMarkdown` / `renderEnhancedTableMarkdown` shape so BFF + Spring SSE
+     * users see the same GFM table as in-process `watchlist_snapshot_direct` (Spot, 100× target, desk, 1D Δ, xOptions).
+     */
+    private fun buildWatchlistMarkdown(
+        payload: Map<String, Any?>,
+        portfolioIdHex: String?,
+    ): String {
         val watchlist = payload["watchlist"] as? Map<*, *>
         if (watchlist == null || watchlist.containsKey("error")) {
-            return "## Watchlist\n\n_No watchlist rows for this workspace._"
+            return "### Watchlist\n\n_No watchlist rows for this workspace._"
         }
+        val title = (watchlist["name"] as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: "watchlist"
         val symbols = watchlist["symbols"] as? List<*> ?: emptyList<Any?>()
-        return buildString {
-            appendLine("## Watchlist")
-            appendLine()
-            if (symbols.isEmpty()) {
-                appendLine("_Empty watchlist._")
-            } else {
-                for (row in symbols) {
-                    val symbol = (row as? Map<*, *>)?.get("symbol")?.toString()?.trim().orEmpty()
-                    if (symbol.isNotEmpty()) {
-                        appendLine("- $symbol")
-                    }
-                }
+        if (symbols.isEmpty()) {
+            return "### Watchlist — $title\n\n_Empty watchlist._"
+        }
+
+        val pidSuffix =
+            portfolioIdHex
+                ?.trim()
+                ?.takeIf { ObjectId.isValid(it) }
+                ?.let { "&portfolioId=${it.lowercase(Locale.ROOT)}" }
+                .orEmpty()
+
+        val tableLines = ArrayList<String>()
+        tableLines.add("| Symbol | Type | Strategy | Qty | Spot | Target entry (100×) | Desk entry | 1D Δ | To target | xOptions |")
+        tableLines.add("| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |")
+
+        var rowCount = 0
+        for (raw in symbols) {
+            val row = raw as? Map<*, *> ?: continue
+            val symbol = row["symbol"]?.toString()?.trim()?.uppercase(Locale.ROOT).orEmpty()
+            if (symbol.isEmpty()) {
+                continue
             }
+            rowCount++
+
+            val lineType = escapeWatchlistTableCell(row["lineType"]?.toString()?.trim().orEmpty().ifBlank { "—" })
+            val strategy = escapeWatchlistTableCell(row["strategy"]?.toString()?.trim().orEmpty().ifBlank { "—" })
+            val qtyCell = formatWatchlistQtyCell((row["quantity"] as? Number)?.toDouble())
+            val deskEntry = (row["entryPrice"] as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0 }
+
+            val quote = runCatching { yahooClient.fetchUnderlyingQuote(symbol) }.getOrNull()
+            val live = (quote?.get("regularMarketPrice") as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0 }
+            val spot = formatUsd2(live)
+            val target100x = formatTargetEntryNotional100xUsd(live)
+            val desk = deskEntry?.let { formatUsd2(it) } ?: "—"
+            val change = (quote?.get("regularMarketChange") as? Number)?.toDouble()
+            val changePct = (quote?.get("regularMarketChangePercent") as? Number)?.toDouble()
+            val delta = formatSignedUsdWithPct(change, changePct)
+            val toTarget = formatDistanceToTargetPct(live, deskEntry)
+
+            val href = "/xoptions?symbol=$symbol&action=build$pidSuffix"
+            val cta = "[Open $symbol]($href \"Open xOptions for $symbol\")"
+
+            tableLines.add(
+                "| $symbol | $lineType | $strategy | $qtyCell | $spot | $target100x | $desk | $delta | $toTarget | $cta |",
+            )
+        }
+
+        if (rowCount == 0) {
+            return "### Watchlist — $title\n\n_Empty watchlist._"
+        }
+
+        val symWord = if (rowCount == 1) "symbol" else "symbols"
+        val intro =
+            "### Watchlist — $title\n\n$rowCount $symWord (Spot and **Target entry** use live marks where available; desk **Entry** is your saved price)."
+        return buildString {
+            appendLine(intro)
+            appendLine()
+            for (ln in tableLines) {
+                appendLine(ln)
+            }
+            appendLine()
+            appendLine("_Not investment advice. Quotes are indicative._")
         }.trimEnd()
+    }
+
+    private fun escapeWatchlistTableCell(value: String): String = value.replace("|", "·").replace("\n", " ").trim()
+
+    private fun formatWatchlistQtyCell(qty: Double?): String {
+        if (qty == null || !qty.isFinite()) {
+            return "—"
+        }
+        return if (qty == qty.toLong().toDouble()) {
+            qty.toLong().toString()
+        } else {
+            String.format(Locale.US, "%.4f", qty)
+        }
+    }
+
+    private fun formatUsd2(value: Double?): String {
+        if (value == null || !value.isFinite() || value <= 0) {
+            return "—"
+        }
+        return NumberFormat.getCurrencyInstance(Locale.US).format(value)
+    }
+
+    /** Whole-dollar notional = round(100 × spot), USD — matches Next `formatWatchlistTargetEntryNotional100xUsd`. */
+    private fun formatTargetEntryNotional100xUsd(spot: Double?): String {
+        if (spot == null || !spot.isFinite() || spot <= 0) {
+            return "—"
+        }
+        val whole = round(100.0 * spot).toLong()
+        val nf =
+            NumberFormat.getCurrencyInstance(Locale.US).apply {
+                maximumFractionDigits = 0
+                minimumFractionDigits = 0
+            }
+        return nf.format(whole)
+    }
+
+    private fun formatSignedUsdWithPct(
+        change: Double?,
+        changePct: Double?,
+    ): String {
+        val usdPart =
+            if (change != null && change.isFinite()) {
+                val cur = NumberFormat.getCurrencyInstance(Locale.US).format(abs(change))
+                (if (change >= 0) "+" else "-") + cur
+            } else {
+                null
+            }
+        val pctPart =
+            if (changePct != null && changePct.isFinite()) {
+                val sign = if (changePct >= 0) "+" else "-"
+                "$sign${String.format(Locale.US, "%.2f", abs(changePct))}%"
+            } else {
+                null
+            }
+        return when {
+            usdPart != null && pctPart != null -> "$usdPart ($pctPart)"
+            usdPart != null -> usdPart
+            pctPart != null -> pctPart
+            else -> "—"
+        }
+    }
+
+    private fun formatDistanceToTargetPct(
+        live: Double?,
+        deskEntry: Double?,
+    ): String {
+        if (live == null || deskEntry == null || live <= 0 || deskEntry <= 0) {
+            return "—"
+        }
+        val pct = ((deskEntry - live) / live) * 100.0
+        val sign = if (pct >= 0) "+" else "-"
+        return "$sign${String.format(Locale.US, "%.2f", abs(pct))}%"
     }
 
     private fun directDonePayload(

@@ -12,7 +12,7 @@ import { canonicalMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { getPortfolioTotalBookUsdForSessionUser } from "@/lib/portfolio-total-book-usd";
 import {
     listWorkspaceDashboardAccountSlices,
-    listWorkspaceTopStockHoldingsForHero
+    loadWorkspacePortfoliosStockPulse
 } from "@/lib/workspace-dashboard-metrics";
 import { WORKSPACE_PORTFOLIO_COOKIE_NAME } from "@/lib/workspace-portfolio-cookie";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
@@ -50,7 +50,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
   const [
     bookRows,
     accountSlices,
-    topHoldings,
+    stockPulse,
     workspaceBook,
     watchlistDoc,
     alertsRows,
@@ -78,10 +78,12 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
       userId: session.userId,
       tenantId: session.tenantId
     }),
-    listWorkspaceTopStockHoldingsForHero({
+    loadWorkspacePortfoliosStockPulse({
       userId: session.userId,
       tenantId: session.tenantId,
-      limit: 5
+      maxQuoteSymbols: 72,
+      winnersCount: 2,
+      losersCount: 2
     }),
     loadAppUserDefaultBook(session, { portfolioRows: portfolios }),
     ensureUserWatchlistForSessionUser({
@@ -91,6 +93,9 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
     chosenPortfolioId ? adminListPortfolioAlerts(chosenPortfolioId) : Promise.resolve([]),
     tryIbkrLinkedAccountsSnapshotForSession(session)
   ]);
+
+  const topBookMovers = stockPulse.movers;
+  const booksDayMark = stockPulse.booksDayMark;
 
   const initialRows: WorkspacePortfolioRow[] = bookRows.map(({ portfolio: p, valueUsd }) => {
     const id = p._id?.toHexString() ?? "";
@@ -177,7 +182,8 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
         focusPortfolioId={focusPortfolioId}
         initialRows={initialRows}
         isGlobalAdmin={admin}
-        topHoldings={topHoldings}
+        booksDayMark={booksDayMark}
+        topBookMovers={topBookMovers}
         totalBookUsd={totalBookUsd}
         workspaceBook={workspaceBook}
         workspaceDeskHints={workspaceDeskHints}

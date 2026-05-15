@@ -16,4 +16,11 @@ class XchatAskRoutingTest {
         assertTrue(XchatAskRouting.isShowWatchlistIntent("show my watchlist"))
         assertFalse(XchatAskRouting.isShowWatchlistIntent("watchlist add TSLA"))
     }
+
+    @Test
+    fun `watchlist intent matches report summary details suffixes`() {
+        assertTrue(XchatAskRouting.isShowWatchlistIntent("show my watchlist report"))
+        assertTrue(XchatAskRouting.isShowWatchlistIntent("show my watchlist summary"))
+        assertTrue(XchatAskRouting.isShowWatchlistIntent("show my watchlist details"))
+    }
 }

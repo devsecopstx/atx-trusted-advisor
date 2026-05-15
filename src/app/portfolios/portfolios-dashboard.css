@@ -2149,6 +2149,34 @@ html[data-xf-ui="soft"] .sidebar-destructive-action__desc {
   color: var(--xf-text-200);
 }
 
+/* /portfolios — Top book movers (3-column desk card) */
+.portfolios-top-book-movers__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.portfolios-top-book-movers__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(5.5rem, 0.85fr);
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.portfolios-top-book-movers__row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.portfolios-top-book-movers__row--head {
+  border-top: none;
+  padding: 0 0 0.15rem;
+  align-items: end;
+}
+
 /** Narrow phones: workspace main column keeps nearly full width (padding stack was ~3rem total horizontal). */
 @media (max-width: 639px) {
   .portfolio-page-body .app-user-shell-with-rail--padded {

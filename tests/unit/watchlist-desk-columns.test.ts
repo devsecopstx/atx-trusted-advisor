@@ -15,8 +15,9 @@ describe("watchlist-desk-columns", () => {
   });
 
   it("visibleDeskColumnIds respects false for hideable columns", () => {
-    const v = visibleDeskColumnIds({ spot: false, rsi: false });
+    const v = visibleDeskColumnIds({ spot: false, dayPct: false, rsi: false });
     expect(v.includes("spot")).toBe(false);
+    expect(v.includes("dayPct")).toBe(false);
     expect(v.includes("rsi")).toBe(false);
     expect(v.includes("icon")).toBe(true);
     expect(v.includes("status")).toBe(false);
@@ -29,6 +30,7 @@ describe("watchlist-desk-columns", () => {
       "icon",
       "symbolLeg",
       "spot",
+      "dayPct",
       "ivRank",
       "volOi",
       "rsi",

@@ -2,17 +2,21 @@
 
 import type { ReactNode } from "react";
 
+import { PortfoliosBooksDayMarkUI } from "@/app/portfolios/portfolios-workspace-books-day-mark";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
-import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
+import type {
+    WorkspaceBooksDayMarkSummary,
+    WorkspaceDashboardAccountSlice,
+    WorkspaceTopBookMoverRow
+} from "@/lib/workspace-dashboard-metrics";
 import type { WorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 
 import { PortfoliosAccountsFooter } from "./portfolios-accounts-footer";
 import { PortfoliosDashboardClient, type WorkspacePortfolioRow } from "./portfolios-dashboard-client";
-import type { PortfoliosHeroTopHolding } from "./portfolios-hero-left-column";
 import { PortfoliosMarketsNewsCard } from "./portfolios-markets-news-card";
 import { PortfoliosMiniHoldingsGlance } from "./portfolios-mini-holdings-glance";
 import { PortfoliosPortfolioCards } from "./portfolios-portfolio-cards";
@@ -34,7 +38,8 @@ type Props = {
   focusPortfolioId: string | null;
   initialRows: WorkspacePortfolioRow[];
   accountSlices: WorkspaceDashboardAccountSlice[];
-  topHoldings: PortfoliosHeroTopHolding[];
+  topBookMovers: WorkspaceTopBookMoverRow[];
+  booksDayMark: WorkspaceBooksDayMarkSummary;
   /** Cookie / workspace active book — same scope as full watchlist when using `?portfolioId=`. */
   chosenPortfolioId: string | null;
   /** Fallback book id for watchlist hot API when cookie book is unset (symbols are still tenant.user-global). */
@@ -57,7 +62,8 @@ export function PortfoliosWorkspaceClient({
   focusPortfolioId,
   initialRows,
   accountSlices,
-  topHoldings,
+  topBookMovers,
+  booksDayMark,
   chosenPortfolioId,
   deskWatchlistPortfolioId = null,
   defaultPortfolioId,
@@ -70,9 +76,9 @@ export function PortfoliosWorkspaceClient({
   visiblePathPrefixes,
   workspaceFooter
 }: Props) {
-  const holdingsKey = topHoldings
-    .slice(0, 2)
-    .map((h) => h.symbol)
+  const holdingsKey = topBookMovers
+    .slice(0, 4)
+    .map((m) => m.symbol)
     .join(",");
 
   return (
@@ -87,6 +93,7 @@ export function PortfoliosWorkspaceClient({
           />
         </div>
         <PortfoliosWorkspaceHeader
+          booksDayMark={booksDayMark}
           deskPortfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
           topHoldingsKey={holdingsKey}
           totalBookUsd={totalBookUsd}
@@ -123,6 +130,7 @@ export function PortfoliosWorkspaceClient({
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <h2 className="m-0 text-sm font-semibold text-[var(--xf-text-100)]">Your books</h2>
                 </div>
+                <PortfoliosBooksDayMarkUI summary={booksDayMark} variant="section" />
                 <PortfoliosPortfolioCards accountSlices={accountSlices} initialRows={initialRows} />
                 <details className="portfolios-workspace-advanced mt-4 rounded-lg border border-white/10 bg-[var(--xf-bg-800)]/40 p-3">
                   <summary className="cursor-pointer text-sm font-medium text-[var(--xf-text-200)]">
@@ -139,10 +147,7 @@ export function PortfoliosWorkspaceClient({
                   deskHints={workspaceDeskHints}
                   portfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
                 />
-                <PortfoliosMiniHoldingsGlance
-                  deskPortfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
-                  topHoldings={topHoldings}
-                />
+                <PortfoliosMiniHoldingsGlance topBookMovers={topBookMovers} />
                 <PortfoliosMarketsNewsCard />
               </section>
             </div>

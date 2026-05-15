@@ -388,6 +388,8 @@ export type HotWatchlistRow = {
   symbol: string;
   /** Underlying spot when Yahoo quote resolves. */
   spot: number | null;
+  /** Underlying regular session % change when Yahoo quote resolves (e.g. -1.25 = -1.25%). */
+  changePercent: number | null;
   impliedVolatilityPercent: number;
   openInterest: number;
   strike: number;
@@ -436,6 +438,7 @@ export async function getHotWatchlistSymbols(
       candidates.push({
         symbol: r.symbol,
         spot: r.underlyingSpot,
+        changePercent: r.underlyingChangePercent,
         impliedVolatilityPercent: r.best.impliedVolatilityPercent,
         openInterest: r.best.openInterest,
         strike: r.best.strike,

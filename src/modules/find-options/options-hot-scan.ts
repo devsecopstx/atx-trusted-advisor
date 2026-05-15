@@ -25,6 +25,8 @@ export type SymbolHotScanResult = {
   meetsHotCriteria: boolean;
   /** Underlying regular market price from Yahoo quote (same request pass as options scan). */
   underlyingSpot: number | null;
+  /** Underlying regular session % change when Yahoo quote includes it (e.g. -1.25 = -1.25%). */
+  underlyingChangePercent: number | null;
 };
 
 type YahooCallOrPut = {
@@ -53,13 +55,20 @@ export async function scanUnderlyingForHotOptions(input: {
   let best: HotOptionContractSnapshot | null = null;
   let meetsHotCriteria = false;
   let underlyingSpot: number | null = null;
+  let underlyingChangePercent: number | null = null;
 
   try {
-    const q = (await yahooQuoteWithValidationFallback(yf, sym, "hot-scan spot")) as { regularMarketPrice?: number };
+    const q = (await yahooQuoteWithValidationFallback(yf, sym, "hot-scan spot")) as {
+      regularMarketPrice?: number;
+      regularMarketChangePercent?: number;
+    };
     const px = q?.regularMarketPrice;
     underlyingSpot = typeof px === "number" && Number.isFinite(px) ? px : null;
+    const cp = q?.regularMarketChangePercent;
+    underlyingChangePercent = typeof cp === "number" && Number.isFinite(cp) ? cp : null;
   } catch {
     underlyingSpot = null;
+    underlyingChangePercent = null;
   }
 
   try {
@@ -68,7 +77,13 @@ export async function scanUnderlyingForHotOptions(input: {
     };
     const group = result.options?.[0];
     if (!group) {
-      return { symbol: sym, best: null, meetsHotCriteria: false, underlyingSpot };
+      return {
+        symbol: sym,
+        best: null,
+        meetsHotCriteria: false,
+        underlyingSpot,
+        underlyingChangePercent
+      };
     }
 
     const consider = (c: YahooCallOrPut, contractType: "call" | "put") => {
@@ -96,10 +111,16 @@ export async function scanUnderlyingForHotOptions(input: {
       consider(p, "put");
     }
   } catch {
-    return { symbol: sym, best: null, meetsHotCriteria: false, underlyingSpot };
+    return {
+      symbol: sym,
+      best: null,
+      meetsHotCriteria: false,
+      underlyingSpot,
+      underlyingChangePercent
+    };
   }
 
-  return { symbol: sym, best, meetsHotCriteria, underlyingSpot };
+  return { symbol: sym, best, meetsHotCriteria, underlyingSpot, underlyingChangePercent };
 }
 
 export type NearestExpiryOptionsGlance = {

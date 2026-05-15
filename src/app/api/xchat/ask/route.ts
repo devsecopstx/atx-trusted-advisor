@@ -63,6 +63,7 @@ import {
 } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
+import { searchFinanceKbCollectionForXchatPreRag } from "@/modules/xchat/finance-kb-rag-search";
 import {
     buildIncomeIdeasCompactPayload,
     buildIncomeIdeasDeskReportSuffix,
@@ -1291,6 +1292,9 @@ export async function POST(request: Request) {
   const shouldEagerWorkspacePreload = hasXfinanceTool && likelyDirectWorkspaceToolPath;
   const workspacePortfolioIdTrimmed = workspacePortfolioId?.trim() ?? "";
   const ragAndPreloadStartedAt = Date.now();
+  const userWorkspaceSummaryForRagP = hasXfinanceTool
+    ? loadUserWorkspaceSummaryForPrompt(workspaceSnapshotCtx)
+    : Promise.resolve(null);
 
   const [ragBundle, eagerWorkspacePreload, outlookCtx, limitsForOutlook, userWorkspaceSummaryJson] =
     await Promise.all([
@@ -1346,7 +1350,8 @@ export async function POST(request: Request) {
                 ? buildRagLexicalCacheKey({
                     collectionIds: linkedCollectionIds,
                     query: ragQuery,
-                    limit: ragLimit
+                    limit: ragLimit,
+                    keySuffix: incomeIdeasRagMode ? "income_ideas" : "finance_kb_metadata_v1"
                   })
                 : null;
             let collectionSnippets: XaiCollectionSearchSnippet[] = [];
@@ -1357,11 +1362,20 @@ export async function POST(request: Request) {
               }
             }
             if (collectionSnippets.length === 0) {
-              collectionSnippets = await searchDocumentsInCollections({
-                query: ragQuery,
-                collectionIds: linkedCollectionIds,
-                limit: ragLimit
-              });
+              const workspaceSummaryForRag = await userWorkspaceSummaryForRagP;
+              collectionSnippets = incomeIdeasRagMode
+                ? await searchDocumentsInCollections({
+                    query: ragQuery,
+                    collectionIds: linkedCollectionIds,
+                    limit: ragLimit
+                  })
+                : await searchFinanceKbCollectionForXchatPreRag({
+                    query: ragQuery,
+                    limit: ragLimit,
+                    userMessage: messageTrimmed,
+                    workspaceSummary: workspaceSummaryForRag,
+                    surface: "xchat"
+                  });
               if (ragKey && ragTtl > 0 && collectionSnippets.length > 0) {
                 void setRagLexicalCache(ragKey, collectionSnippets, ragTtl).catch(() => {
                   /* ignore */
@@ -1437,7 +1451,7 @@ export async function POST(request: Request) {
       });
     })(),
     effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan),
-    hasXfinanceTool ? loadUserWorkspaceSummaryForPrompt(workspaceSnapshotCtx) : Promise.resolve(null)
+    userWorkspaceSummaryForRagP
   ]);
   const accountOutlookAugment = outlookCtx
     ? formatAccountOutlookPromptInjection(

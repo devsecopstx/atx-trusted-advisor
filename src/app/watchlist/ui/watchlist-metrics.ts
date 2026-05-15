@@ -191,3 +191,31 @@ export function watchlistRsiToneClass(row: WatchlistRsiToneInput): string {
   }
   return "";
 }
+
+export type WatchlistDayPctToneInput = {
+  quote?: { changePercent?: number } | null;
+};
+
+/** Underlying session % change (Yahoo `regularMarketChangePercent`); e.g. +1.25 = +1.25%. */
+export function formatWatchlistDayChangePercent(changePercent: number | null | undefined): string {
+  if (changePercent == null || !Number.isFinite(changePercent)) {
+    return "—";
+  }
+  const sign = changePercent > 0 ? "+" : "";
+  return `${sign}${changePercent.toFixed(2)}%`;
+}
+
+/** Tone classes for desk / mobile (`watchlist.css`). */
+export function watchlistDayPctToneClass(row: WatchlistDayPctToneInput): string {
+  const p = row.quote?.changePercent;
+  if (p == null || !Number.isFinite(p)) {
+    return "";
+  }
+  if (p > 0) {
+    return "xf-watchlist-day-pct--up";
+  }
+  if (p < 0) {
+    return "xf-watchlist-day-pct--down";
+  }
+  return "xf-watchlist-day-pct--flat";
+}
