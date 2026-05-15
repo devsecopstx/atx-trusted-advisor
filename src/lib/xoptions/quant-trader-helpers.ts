@@ -60,6 +60,94 @@ export function buildQuantTraderXchatPrompt(params: QuantTraderRunParams): strin
   ].join(" ");
 }
 
+export type QuantTraderExportMeta = {
+  generatedAtUtc: string;
+  generatedAtLocal: string;
+  params: QuantTraderRunParams;
+  workspacePortfolioName?: string | null;
+  simulationGeneratedAt?: string | null;
+};
+
+export function buildQuantTraderExportMeta(input: {
+  params: QuantTraderRunParams;
+  generatedAt?: Date;
+  workspacePortfolioName?: string | null;
+  simulationGeneratedAt?: string | null;
+}): QuantTraderExportMeta {
+  const at = input.generatedAt ?? new Date();
+  return {
+    generatedAtUtc: at.toISOString(),
+    generatedAtLocal: at.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" }),
+    params: input.params,
+    workspacePortfolioName: input.workspacePortfolioName ?? null,
+    simulationGeneratedAt: input.simulationGeneratedAt ?? null
+  };
+}
+
+function escapeCsvField(value: string): string {
+  if (/[",\n#]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export function formatQuantTraderParamsSummary(params: QuantTraderRunParams): string {
+  const risk = params.perPortfolioRisk
+    ? "Per portfolio (desk profile)"
+    : mcTierLabel(params.risk);
+  const scope = params.portfolioScope === "all" ? "All owned portfolios" : "Workspace active portfolio";
+  const strategy =
+    params.strategyLabel?.trim() ||
+    (params.symbol?.trim() ? `${params.symbol.trim().toUpperCase()} options` : null);
+  const parts = [
+    `${params.horizonDays}-day horizon`,
+    `IV rank > ${params.minIvRankPct}%`,
+    `max drawdown ${params.maxDrawdownPct}%`,
+    `${params.pathCount.toLocaleString()} paths`,
+    risk,
+    scope
+  ];
+  if (strategy) {
+    parts.push(strategy);
+  }
+  return parts.join(" · ");
+}
+
+export function quantTraderResultsToCsvWithMeta(
+  result: MonteCarloTailRiskToolSuccess,
+  meta: QuantTraderExportMeta
+): string {
+  const p = meta.params;
+  const metaRows = [
+    "# xFinance Quant Trader — Monte Carlo export",
+    `# Report generated (local),${escapeCsvField(meta.generatedAtLocal)}`,
+    `# Report generated (UTC),${meta.generatedAtUtc}`,
+    `# Simulation generated (UTC),${meta.simulationGeneratedAt ?? result.generatedAt ?? ""}`,
+    `# Horizon (days),${p.horizonDays}`,
+    `# IV rank min (%),${p.minIvRankPct}`,
+    `# Max drawdown (%),${p.maxDrawdownPct}`,
+    `# Monte Carlo paths,${p.pathCount}`,
+    `# Risk outlook,${escapeCsvField(p.perPortfolioRisk ? "per portfolio desk profile" : mcTierLabel(p.risk))}`,
+    `# Portfolio scope,${escapeCsvField(p.portfolioScope === "all" ? "all owned portfolios" : "workspace active portfolio")}`,
+    ...(p.strategyLabel?.trim()
+      ? [`# Strategy,${escapeCsvField(p.strategyLabel.trim())}`]
+      : []),
+    ...(p.symbol?.trim() ? [`# Symbol,${p.symbol.trim().toUpperCase()}`] : []),
+    ...(meta.workspacePortfolioName
+      ? [`# Active workspace portfolio,${escapeCsvField(meta.workspacePortfolioName)}`]
+      : []),
+    `# Parameters summary,${escapeCsvField(formatQuantTraderParamsSummary(p))}`,
+    `# Disclaimer,${escapeCsvField("Not investment advice. Simulations are model-based estimates.")}`,
+    ""
+  ];
+  return [...metaRows, quantTraderResultsToCsv(result)].join("\n");
+}
+
+export function quantTraderExportFilenameStem(at: Date = new Date()): string {
+  const iso = at.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  return `quant-trader-${iso}`;
+}
+
 export function quantTraderResultsToCsv(result: MonteCarloTailRiskToolSuccess): string {
   const header = [
     "portfolioId",
