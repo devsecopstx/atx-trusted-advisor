@@ -2,7 +2,8 @@
 # Push REDIS_URL to GCP Secret Manager and Stripe publishable vars to GitHub Environments,
 # using .env.stage for staging and .env.prod for production (separate projects / keys per file).
 #
-# GCP:  bash scripts/ops/sync-redis-url-secret.sh (REDIS_URL per env file)
+# GCP:  bash scripts/ops/sync-redis-url-secret.sh — pushes REDIS_URL, REDIS_URL_CONTROL, REDIS_URL_CACHE
+#       from the env file when each is non-empty (same project id in file).
 # GCP:  bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh (.env.stage / .env.prod) for
 #       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY + STRIPE_PUBLIC_KEY in Secret Manager (required by deploy)
 # GH:   gh variable set … -e staging | -e production (publishable keys — optional extra for tooling)
@@ -27,8 +28,14 @@ sync_redis_if_set() {
   fi
   # shellcheck disable=SC1090
   set -a && source "${abs}" && set +a
-  if [[ -z "${REDIS_URL//[[:space:]]/}" ]]; then
-    echo "push-stage-prod-redis-stripe: skip REDIS — REDIS_URL empty in ${rel}"
+  local ru="${REDIS_URL:-}"
+  ru="${ru//[[:space:]]/}"
+  local rc="${REDIS_URL_CONTROL:-}"
+  rc="${rc//[[:space:]]/}"
+  local rk="${REDIS_URL_CACHE:-}"
+  rk="${rk//[[:space:]]/}"
+  if [[ -z "${ru}" && -z "${rc}" && -z "${rk}" ]]; then
+    echo "push-stage-prod-redis-stripe: skip REDIS — REDIS_URL, REDIS_URL_CONTROL, REDIS_URL_CACHE all empty in ${rel}"
     return 0
   fi
   bash "${ROOT_DIR}/scripts/ops/sync-redis-url-secret.sh" "${rel}"

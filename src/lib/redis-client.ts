@@ -45,6 +45,48 @@ function redissToPlainRedisUrl(redissUrl: string): string {
   return redissUrl.startsWith("rediss://") ? `redis://${redissUrl.slice("rediss://".length)}` : redissUrl;
 }
 
+const redisDbCoerceWarnUrls = new Set<string>();
+
+/**
+ * Managed Redis (Redis Cloud Essentials, many serverless caps) only expose **logical DB 0**.
+ * URLs like `redis://…/1` then fail with `ERR DB index is out of range`. atxFinance isolates
+ * control vs cache by **key prefix**, not by Redis DB index — safe to use `/0` for every plane.
+ *
+ * Set **`REDIS_ALLOW_MULTI_DB=1`** (or `true`/`yes`) to keep a non-zero path segment when your
+ * server truly supports `SELECT`.
+ */
+export function normalizeRedisUrlDatabaseToZero(resolved: string): string {
+  const allowMultiDbRaw = process.env.REDIS_ALLOW_MULTI_DB?.trim().toLowerCase();
+  const allowMultiDb =
+    allowMultiDbRaw === "1" || allowMultiDbRaw === "true" || allowMultiDbRaw === "yes";
+  if (allowMultiDb) {
+    return resolved;
+  }
+  try {
+    const u = new URL(resolved);
+    const m = u.pathname.match(/^\/(\d+)$/);
+    if (!m) {
+      return resolved;
+    }
+    const idx = Number.parseInt(m[1], 10);
+    if (!Number.isFinite(idx) || idx <= 0) {
+      return resolved;
+    }
+    u.pathname = "/0";
+    const next = u.toString();
+    if (!redisDbCoerceWarnUrls.has(resolved)) {
+      redisDbCoerceWarnUrls.add(resolved);
+      console.warn(
+        `[redis] URL used logical DB /${String(idx)}; coerced to /0 (many hosts only allow DB 0). ` +
+          `Plane isolation uses key prefixes, not DB numbers. Set REDIS_ALLOW_MULTI_DB=1 to keep /${String(idx)}.`
+      );
+    }
+    return next;
+  } catch {
+    return resolved;
+  }
+}
+
 async function destroyRedisAttempt(c: AtxRedisClient): Promise<void> {
   try {
     await c.disconnect();
@@ -83,8 +125,9 @@ export function getRedisConnectionUrlForPlane(plane: RedisPlane): string | undef
   const preferPlain =
     tlsOff === "false" || tlsOff === "0" || tlsOff === "off" || tlsOff === "no";
   const resolved = preferPlain && raw.startsWith("rediss://") ? redissToPlainRedisUrl(raw) : raw;
-  if (URL.canParse(resolved)) {
-    return resolved;
+  const normalized = normalizeRedisUrlDatabaseToZero(resolved);
+  if (URL.canParse(normalized)) {
+    return normalized;
   }
   return undefined;
 }
@@ -303,4 +346,5 @@ export async function resetRedisClientForTests(): Promise<void> {
     }
   }
   clientsByResolvedUrl.clear();
+  redisDbCoerceWarnUrls.clear();
 }

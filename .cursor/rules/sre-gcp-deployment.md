@@ -73,7 +73,9 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 
 | GCP secret name (exact) | Keys in `.env.stage` / `.env.prod` | Purpose |
 |-------------------------|-------------------------------------|---------|
-| `REDIS_URL` | `REDIS_URL` | Next.js Redis (quotes, health, optional caches) — see `atx-docs/sre-ops/redis-cache-next.md` |
+| `REDIS_URL` | `REDIS_URL` | Next.js Redis fallback when plane URLs unset — see `atx-docs/sre-ops/redis-cache-next.md` |
+| `REDIS_URL_CONTROL` | `REDIS_URL_CONTROL` | Optional control plane (rate limits, PKCE, tenant policy) — same doc |
+| `REDIS_URL_CACHE` | `REDIS_URL_CACHE` | Optional cache plane (quotes, snapshots, logos) — same doc |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_…`); mounted at runtime for server-side reads (`getStripePublishableKey`) |
 | `STRIPE_PUBLIC_KEY` | `STRIPE_PUBLIC_KEY` (or same value as publishable) | Alias for publishable key; keep in sync or duplicate `pk_…` value |
 | `GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_ID` | Google OAuth client id (Sign in with Google) — **required in staging** for verify + deploy preflight |
@@ -83,7 +85,7 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 
 **Sync from env file to Secret Manager**
 
-- **Redis:** `bash scripts/ops/sync-redis-url-secret.sh .env.stage` or `.env.prod` (requires `REDIS_URL` + project id in file).
+- **Redis:** `bash scripts/ops/sync-redis-url-secret.sh .env.stage` or `.env.prod` (requires project id in file; syncs each non-empty of **`REDIS_URL`**, **`REDIS_URL_CONTROL`**, **`REDIS_URL_CACHE`** to matching Secret Manager names).
 - **Scheduler delegate (Spring → Next):** `npm run ops:secrets:sync-scheduler-delegate:staging` / `:prod` (runs `scripts/ops/sync-scheduler-delegate-secrets-from-env.sh`; requires both `ATX_*` keys in the env file). Then **redeploy** `atxfinance-backend-*` (`deploy-atxfinance-backend-production.sh` binds them when both secrets exist) **or** merge bindings: `gcloud run services update atxfinance-backend-prod --region=us-central1 --project=<id> --update-secrets=ATX_SCHEDULER_INTERNAL_SECRET=ATX_SCHEDULER_INTERNAL_SECRET:latest,ATX_SCHEDULER_NEXT_BASE_URL=ATX_SCHEDULER_NEXT_BASE_URL:latest`. Mount the **same** `ATX_SCHEDULER_INTERNAL_SECRET` on the **Next** Cloud Run service.
 - **Stripe publishable (both secrets):** `bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.stage` or `.env.prod` (requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; `STRIPE_PUBLIC_KEY` optional and defaults to the same value).
 - **Google OAuth:** `bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.stage` or `.env.prod` (requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`).
@@ -92,7 +94,7 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 
 **Export / diff vs local `.env.prod`:** `atx-docs/sre-ops/gcp-secrets-export-diff.md` — `npm run ops:secrets:export:prod` (writes `.env.prod.gcp-export`, sensitive), `npm run ops:secrets:diff:prod` (masked `MATCH`/`MISMATCH`; use for xAI key rotation checks).
 
-**Deploy:** Cloud Run workflows bind `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_PUBLIC_KEY` from Secret Manager on every deploy (no GitHub Variables fallback for those three). When both Google OAuth secrets exist, workflows also bind `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+**Deploy:** Cloud Run workflows bind `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_PUBLIC_KEY` from Secret Manager on every deploy (no GitHub Variables fallback for those three). When **`REDIS_URL_CONTROL`** / **`REDIS_URL_CACHE`** secrets exist in the project, workflows append those bindings too. When both Google OAuth secrets exist, workflows also bind `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
 Other Stripe config (`STRIPE_PRICE_*`) remains as documented in `atx-docs/sre-ops/stripe-billing-setup.md` (price ids via GitHub Environment **variables** unless you add separate SM secrets later).
 

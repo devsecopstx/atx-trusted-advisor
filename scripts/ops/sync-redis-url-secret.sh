@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
-# Sync REDIS_URL from a local env file into GCP Secret Manager (create secret or add new version).
+# Sync Redis URL secret(s) from a local env file into GCP Secret Manager (create secret or add new version).
 #
 # Usage:
 #   bash scripts/ops/sync-redis-url-secret.sh              # uses .env.stage in repo root
 #   bash scripts/ops/sync-redis-url-secret.sh .env.prod
 #
-# Required in the env file:
-#   REDIS_URL           — full Redis URL (e.g. redis:// or rediss://)
+# Reads from the env file (any non-empty value is pushed to matching secret name):
+#   REDIS_URL           — legacy / single URL (optional if plane URLs cover your deploy)
+#   REDIS_URL_CONTROL   — control plane (rate limits, PKCE, tenant policy, …)
+#   REDIS_URL_CACHE     — cache plane (quotes, snapshots, logos, …)
+#
 # Project id (first non-empty wins):
 #   GOOGLE_PROJECT_ID | GOOGLE_CLOUD_PROJECT | GCP_PROJECT_ID
+#
+# At least one of the three vars must be non-empty. Deploy workflows still expect a
+# REDIS_URL secret for parity with verify-gcp-runtime-secrets — create/sync it unless you
+# intentionally rely on plane-only binding (advanced).
 #
 # Prereq: gcloud auth with secretmanager admin (or versions.add + secrets.create) on the target project.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="${1:-.env.stage}"
-SECRET_NAME="${SECRET_NAME:-REDIS_URL}"
 
 usage() {
   cat <<'EOF'
@@ -23,7 +29,10 @@ Usage: bash scripts/ops/sync-redis-url-secret.sh [env-file]
 
   env-file   Path to env file (default: .env.stage). Example: .env.prod
 
-Requires in that file: REDIS_URL, and GOOGLE_PROJECT_ID or GOOGLE_CLOUD_PROJECT or GCP_PROJECT_ID.
+Requires: GOOGLE_PROJECT_ID or GOOGLE_CLOUD_PROJECT or GCP_PROJECT_ID in that file.
+
+At least one of REDIS_URL, REDIS_URL_CONTROL, REDIS_URL_CACHE must be non-empty.
+Each non-empty value is written to its matching Secret Manager name.
 EOF
 }
 
@@ -54,15 +63,22 @@ source "${ENV_ABS}"
 set +a
 
 PROJECT="${GOOGLE_PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-${GCP_PROJECT_ID:-}}}"
-REDIS_URL_VAL="${REDIS_URL:-}"
 
-if [[ -z "${REDIS_URL_VAL//[[:space:]]/}" ]]; then
-  echo "sync-redis-url-secret: REDIS_URL is empty or unset in ${ENV_ABS}" >&2
-  exit 1
-fi
+trim_both_ends() {
+  printf '%s' "${1:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+REDIS_URL_VAL="$(trim_both_ends "${REDIS_URL:-}")"
+REDIS_URL_CONTROL_VAL="$(trim_both_ends "${REDIS_URL_CONTROL:-}")"
+REDIS_URL_CACHE_VAL="$(trim_both_ends "${REDIS_URL_CACHE:-}")"
 
 if [[ -z "${PROJECT//[[:space:]]/}" ]]; then
   echo "sync-redis-url-secret: set GOOGLE_PROJECT_ID, GOOGLE_CLOUD_PROJECT, or GCP_PROJECT_ID in ${ENV_ABS}" >&2
+  exit 1
+fi
+
+if [[ -z "${REDIS_URL_VAL}" && -z "${REDIS_URL_CONTROL_VAL}" && -z "${REDIS_URL_CACHE_VAL}" ]]; then
+  echo "sync-redis-url-secret: set at least one of REDIS_URL, REDIS_URL_CONTROL, REDIS_URL_CACHE in ${ENV_ABS}" >&2
   exit 1
 fi
 
@@ -71,17 +87,41 @@ if ! command -v gcloud >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "sync-redis-url-secret: project=${PROJECT} secret=${SECRET_NAME} env_file=${ENV_ABS}"
+upsert_secret() {
+  local secret_name="$1"
+  local secret_value="$2"
+  if [[ -z "${secret_value}" ]]; then
+    return 0
+  fi
+  echo "sync-redis-url-secret: project=${PROJECT} secret=${secret_name} env_file=${ENV_ABS}"
+  if gcloud secrets describe "${secret_name}" --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+    printf '%s' "${secret_value}" | gcloud secrets versions add "${secret_name}" --data-file=- --project="${PROJECT}" >/dev/null
+    echo "sync-redis-url-secret: added new version to existing secret ${secret_name}"
+  else
+    printf '%s' "${secret_value}" | gcloud secrets create "${secret_name}" \
+      --data-file=- \
+      --project="${PROJECT}" \
+      --replication-policy=automatic >/dev/null
+    echo "sync-redis-url-secret: created secret ${secret_name} (replication=automatic)"
+  fi
+}
 
-if gcloud secrets describe "${SECRET_NAME}" --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
-  printf '%s' "${REDIS_URL_VAL}" | gcloud secrets versions add "${SECRET_NAME}" --data-file=- --project="${PROJECT}" >/dev/null
-  echo "sync-redis-url-secret: added new version to existing secret ${SECRET_NAME}"
+if [[ -n "${REDIS_URL_VAL}" ]]; then
+  upsert_secret "REDIS_URL" "${REDIS_URL_VAL}"
 else
-  printf '%s' "${REDIS_URL_VAL}" | gcloud secrets create "${SECRET_NAME}" \
-    --data-file=- \
-    --project="${PROJECT}" \
-    --replication-policy=automatic >/dev/null
-  echo "sync-redis-url-secret: created secret ${SECRET_NAME} (replication=automatic)"
+  echo "sync-redis-url-secret: skip REDIS_URL (empty in ${ENV_ABS})"
+fi
+
+if [[ -n "${REDIS_URL_CONTROL_VAL}" ]]; then
+  upsert_secret "REDIS_URL_CONTROL" "${REDIS_URL_CONTROL_VAL}"
+else
+  echo "sync-redis-url-secret: skip REDIS_URL_CONTROL (empty)"
+fi
+
+if [[ -n "${REDIS_URL_CACHE_VAL}" ]]; then
+  upsert_secret "REDIS_URL_CACHE" "${REDIS_URL_CACHE_VAL}"
+else
+  echo "sync-redis-url-secret: skip REDIS_URL_CACHE (empty)"
 fi
 
 echo "sync-redis-url-secret: done"

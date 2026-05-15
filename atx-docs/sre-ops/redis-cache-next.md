@@ -23,7 +23,16 @@
 | `REDIS_TLS` | No | Set to **`false`**, **`0`**, **`off`**, or **`no`** to treat a `rediss://` URL as **plain** `redis://` (fixes TLS parse errors when the port is not actually TLS). |
 | `REDIS_CONNECT_TIMEOUT_MS` | No | Connect timeout for each plane client (100–10000; default 750). |
 | `REDIS_QUOTE_CACHE_TTL_SECONDS` | No | **Only** Yahoo batch quote cache TTL in seconds (clamped **5–3600**, default **30**). Does **not** affect connection or TLS. |
+| `REDIS_ALLOW_MULTI_DB` | No | When **`1`** / **`true`** / **`yes`**, keep non-zero **`/N`** DB path in Redis URLs. Default: coerce **`/N` → `/0`** (managed Redis often allows only DB 0). |
 | `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` | No | xChat **full workspace snapshot** JSON TTL (clamped **30–900**, default **120**). Keys: `buildWorkspaceSnapshotCacheKey` in `src/modules/xchat/workspace-snapshot-cache.ts`. Invalidated via `workspaceContentRev` bump on book writes. See [mongo-indexing-guide.md](./mongo-indexing-guide.md) §7.5. |
+
+## Troubleshooting: `ERR DB index is out of range`
+
+Many managed Redis plans (**Redis Cloud Essentials**, serverless caps) only expose **logical database `0`**. URLs ending in **`/1`**, **`/2`**, … then fail at connect with **`ERR DB index is out of range`**.
+
+atxFinance separates **control** vs **cache** by **key prefix** in Redis, not by DB index. The Next client **`normalizeRedisUrlDatabaseToZero`** (used from **`getRedisConnectionUrlForPlane`**) coerces any URL path **`/N` where N > 0** to **`/0`** unless you set **`REDIS_ALLOW_MULTI_DB=1`** (or `true`/`yes`) to keep multi-DB URLs for self-hosted Redis.
+
+You can also fix `.env` / Secret Manager values to use **`…/0`** (or omit the path) for every plane.
 
 ## Troubleshooting: `packet length too long` / `tls_get_more_records`
 
@@ -82,3 +91,14 @@ Grant the Cloud Run runtime service account **Secret Manager Secret Accessor** o
 
 - **No** new GitHub Secrets for Redis.
 - Optional: add **`REDIS_QUOTE_CACHE_TTL_SECONDS`** to deploy `--set-env-vars` later if you want per-environment tuning without Secret Manager; v1 uses instance env or default.
+
+## Ops: push Redis secrets to Secret Manager
+
+From a repo-root env file (`.env.stage` / `.env.prod`) that sets **`GOOGLE_PROJECT_ID`** (or **`GOOGLE_CLOUD_PROJECT`** / **`GCP_PROJECT_ID`**) and one or more of **`REDIS_URL`**, **`REDIS_URL_CONTROL`**, **`REDIS_URL_CACHE`**:
+
+```bash
+npm run ops:secrets:sync-redis:staging   # → sync-redis-url-secret.sh .env.stage
+npm run ops:secrets:sync-redis:prod      # → sync-redis-url-secret.sh .env.prod
+```
+
+Each non-empty variable gets its own secret (`REDIS_URL`, `REDIS_URL_CONTROL`, `REDIS_URL_CACHE`). Deploy scripts and GitHub Actions bind **`REDIS_URL_CONTROL`** / **`REDIS_URL_CACHE`** when those secrets exist in the project (see **`deploy-cloud-run-from-env.sh`**).

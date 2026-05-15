@@ -12,15 +12,20 @@ import {
     getRedisClientForPlane,
     getRedisConnectTimeoutMs,
     getRedisConnectionUrl,
+    getRedisConnectionUrlForPlane,
     getRedisQuoteCacheTtlSeconds,
     isLikelyRedisTlsPlainMismatch,
     logRedisStartupHealthCheck,
+    normalizeRedisUrlDatabaseToZero,
     resetRedisClientForTests
 } from "@/lib/redis-client";
 
 describe("redis-client", () => {
   beforeEach(async () => {
     delete process.env.REDIS_URL;
+    delete process.env.REDIS_URL_CONTROL;
+    delete process.env.REDIS_URL_CACHE;
+    delete process.env.REDIS_ALLOW_MULTI_DB;
     delete process.env.REDIS_TLS;
     delete process.env.REDIS_CONNECT_TIMEOUT_MS;
     delete process.env.REDIS_QUOTE_CACHE_TTL_SECONDS;
@@ -29,6 +34,9 @@ describe("redis-client", () => {
 
   afterEach(async () => {
     delete process.env.REDIS_URL;
+    delete process.env.REDIS_URL_CONTROL;
+    delete process.env.REDIS_URL_CACHE;
+    delete process.env.REDIS_ALLOW_MULTI_DB;
     delete process.env.REDIS_TLS;
     delete process.env.REDIS_CONNECT_TIMEOUT_MS;
     delete process.env.REDIS_QUOTE_CACHE_TTL_SECONDS;
@@ -94,6 +102,25 @@ describe("redis-client", () => {
     expect(getRedisConnectionUrl()).toBe("redis://127.0.0.1:6379");
     process.env.REDIS_URL = "rediss://default:secret@example.com:14617";
     expect(getRedisConnectionUrl()).toContain("rediss://");
+  });
+
+  it("normalizeRedisUrlDatabaseToZero coerces /1+ to /0 for managed Redis", () => {
+    expect(normalizeRedisUrlDatabaseToZero("redis://default:pw@redis.example.com:14617/1")).toBe(
+      "redis://default:pw@redis.example.com:14617/0"
+    );
+    expect(normalizeRedisUrlDatabaseToZero("redis://127.0.0.1:6379/0")).toBe("redis://127.0.0.1:6379/0");
+    expect(normalizeRedisUrlDatabaseToZero("redis://127.0.0.1:6379")).toBe("redis://127.0.0.1:6379");
+  });
+
+  it("getRedisConnectionUrlForPlane keeps non-zero DB when REDIS_ALLOW_MULTI_DB=1", () => {
+    process.env.REDIS_ALLOW_MULTI_DB = "1";
+    process.env.REDIS_URL_CACHE = "redis://default:pw@host:9999/2";
+    expect(getRedisConnectionUrlForPlane("cache")).toBe("redis://default:pw@host:9999/2");
+  });
+
+  it("getRedisConnectionUrlForPlane coerces cache plane URL DB index to 0 by default", () => {
+    process.env.REDIS_URL_CACHE = "redis://default:pw@host:9999/1";
+    expect(getRedisConnectionUrlForPlane("cache")).toBe("redis://default:pw@host:9999/0");
   });
 
   it("getRedisConnectionUrl forces plain redis:// when REDIS_TLS=false", () => {
