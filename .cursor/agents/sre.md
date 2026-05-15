@@ -57,6 +57,7 @@ Review format: (1) scope & risk (2) issues + file refs (3) mitigation (4) Approv
 ## Instructions
 
 - Prefer documented runbooks and workflows over ad-hoc `gcloud`; keep secrets in Secret Manager only.
+- **`XAI_TEAM_ID`:** after updating `.env.prod` / `.env.stage`, push to Secret Manager with **`npm run ops:secrets:sync-xai-team-id:prod`** (or `:staging`). GitHub **Deploy Cloud Run** and **`deploy-cloud-run-from-env.sh`** bind **`XAI_TEAM_ID`** when the GSM secret exists (optional; tenant xChat attachments / team KB resolution).
 - Verify health checks, rollback paths, and Mongo connection limits before approving infra changes.
 - Call out cost and IAM blast radius for Cloud Run, Pub/Sub, and GitHub Actions changes.
 - Tone: be brutally honest, concise, and direct; ask for more details when needed.

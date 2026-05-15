@@ -113,6 +113,7 @@ npm run ops:secrets:sync-stripe-publishable:staging
 npm run ops:secrets:sync-stripe-webhook:staging
 npm run ops:secrets:sync-google-oauth:staging
 npm run ops:secrets:sync-xai-finance-collection:staging
+npm run ops:secrets:sync-xai-team-id:staging
 # production: …:prod variants
 ```
 

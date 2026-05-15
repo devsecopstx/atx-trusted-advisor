@@ -47,6 +47,10 @@ if gcloud secrets describe ATX_SCHEDULER_INTERNAL_SECRET --project="${PROJECT}" 
   SECRETS="${SECRETS},ATX_SCHEDULER_INTERNAL_SECRET=ATX_SCHEDULER_INTERNAL_SECRET:latest,ATX_SCHEDULER_NEXT_BASE_URL=ATX_SCHEDULER_NEXT_BASE_URL:latest"
   echo "==> Binding scheduler delegate secrets (JVM → Next execute-task)"
 fi
+if gcloud secrets describe XAI_TEAM_ID --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},XAI_TEAM_ID=XAI_TEAM_ID:latest"
+  echo "==> Binding XAI_TEAM_ID (strategy finalizer / team KB)"
+fi
 
 echo "==> Cloud Run deploy ${SERVICE}"
 gcloud run deploy "${SERVICE}" \

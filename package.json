@@ -103,6 +103,8 @@
     "ops:secrets:sync-google-oauth:prod": "bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.prod",
     "ops:secrets:sync-xai-finance-collection:staging": "bash scripts/ops/sync-xai-finance-collection-secret-from-env.sh .env.stage",
     "ops:secrets:sync-xai-finance-collection:prod": "bash scripts/ops/sync-xai-finance-collection-secret-from-env.sh .env.prod",
+    "ops:secrets:sync-xai-team-id:staging": "bash scripts/ops/sync-xai-team-id-secret-from-env.sh .env.stage",
+    "ops:secrets:sync-xai-team-id:prod": "bash scripts/ops/sync-xai-team-id-secret-from-env.sh .env.prod",
     "ops:db:probe": "node scripts/ops/probe-mongodb-from-env.mjs",
     "ops:deploy:cloud-run:staging": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging",
     "ops:deploy:cloud-run:staging:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging --with-ci-gate",

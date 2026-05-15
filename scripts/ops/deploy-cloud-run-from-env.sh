@@ -259,6 +259,12 @@ if gcloud secrets describe GOOGLE_CLIENT_ID --project="${PROJECT}" --format='val
 else
   echo "deploy-cloud-run-from-env: Google OAuth secrets not both present — Sign in with Google unavailable until configured"
 fi
+if gcloud secrets describe XAI_TEAM_ID --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},XAI_TEAM_ID=XAI_TEAM_ID:latest"
+  echo "deploy-cloud-run-from-env: binding XAI_TEAM_ID"
+else
+  echo "deploy-cloud-run-from-env: XAI_TEAM_ID secret absent — optional; sync: npm run ops:secrets:sync-xai-team-id:staging|:prod"
+fi
 if [[ "${DESK_SMTP_FROM_ENV_FILE}" == "true" ]]; then
   echo "deploy-cloud-run-from-env: desk SMTP from env file (${ENV_ABS}) — skipping GSM SMTP_* secret bindings"
 elif gcloud secrets describe SMTP_HOST --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&

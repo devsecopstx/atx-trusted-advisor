@@ -137,11 +137,11 @@ describe("computeXchatRemoteChainInstructionsFingerprint", () => {
     expect(a).not.toBe(b);
   });
 
-  it("changes when persona override prompt changes", () => {
+  it("changes when scheduled desk report mode toggles", () => {
     const a = computeXchatRemoteChainInstructionsFingerprint(base);
     const b = computeXchatRemoteChainInstructionsFingerprint({
       ...base,
-      personaOverridePrompt: "Always reply in YAML."
+      scheduledDeskReportMode: true
     });
     expect(a).not.toBe(b);
   });
@@ -206,6 +206,24 @@ describe("buildXchatSystemPrompt", () => {
     expect(iHist).toBeGreaterThan(iRag);
     expect(iUws).toBeGreaterThan(iHist);
     expect(iSnap).toBeGreaterThan(iUws);
+  });
+
+  it("inserts scheduled desk report citation block between citation contract and beta UI when enabled", () => {
+    const out = buildXchatSystemPrompt({
+      personaSystem: "P",
+      fallbackPersonaSystem: "F",
+      ragContext: "rag",
+      recentHistoryBlock: null,
+      workspaceSnapshot: null,
+      sessionToolInstructions: "",
+      scheduledDeskReportMode: true
+    });
+    const iCite = out.indexOf("Citation chips");
+    const iSched = out.indexOf("Scheduled desk monitor");
+    const iBeta = out.indexOf("Client UI (beta)");
+    expect(iCite).toBeGreaterThan(-1);
+    expect(iSched).toBeGreaterThan(iCite);
+    expect(iBeta).toBeGreaterThan(iSched);
   });
 
   it("uses fallback persona when base empty", () => {

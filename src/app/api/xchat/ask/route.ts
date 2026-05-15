@@ -232,7 +232,8 @@ const askSchema = z
     scope: z.string().min(1).max(128).optional(),
     topK: z.number().int().min(1).max(10).optional(),
     quoteFreshness: z.enum(["cached_first", "live"]).optional(),
-    hnwiPromptTemplateV21Slug: z.string().min(1).max(64).optional()
+    hnwiPromptTemplateV21Slug: z.string().min(1).max(64).optional(),
+    financeKbRagSurface: z.enum(["xchat", "reports"]).optional()
   })
   .superRefine((data, ctx) => {
     const legacy = data.imageAttachment;
@@ -496,6 +497,7 @@ export async function POST(request: Request) {
     isHnwiPromptTemplateV21Slug(parsed.data.hnwiPromptTemplateV21Slug)
       ? parsed.data.hnwiPromptTemplateV21Slug
       : undefined;
+  const financeKbRagSurface = parsed.data.financeKbRagSurface ?? "xchat";
   const showWatchlistIntent = isShowWatchlistIntent(messageTrimmed);
   const watchlistPortfolioSlot = collectWatchlistPortfolioIdSlot({
     message: messageTrimmed,
@@ -1351,7 +1353,9 @@ export async function POST(request: Request) {
                     collectionIds: linkedCollectionIds,
                     query: ragQuery,
                     limit: ragLimit,
-                    keySuffix: incomeIdeasRagMode ? "income_ideas" : "finance_kb_metadata_v1"
+                    keySuffix: incomeIdeasRagMode
+                      ? "income_ideas"
+                      : `finance_kb_metadata_v1_${financeKbRagSurface}`
                   })
                 : null;
             let collectionSnippets: XaiCollectionSearchSnippet[] = [];
@@ -1374,7 +1378,7 @@ export async function POST(request: Request) {
                     limit: ragLimit,
                     userMessage: messageTrimmed,
                     workspaceSummary: workspaceSummaryForRag,
-                    surface: "xchat"
+                    surface: financeKbRagSurface
                   });
               if (ragKey && ragTtl > 0 && collectionSnippets.length > 0) {
                 void setRagLexicalCache(ragKey, collectionSnippets, ragTtl).catch(() => {
@@ -1891,7 +1895,8 @@ export async function POST(request: Request) {
       effectiveTenantWorkspaceContextBlock.trim().length > 0
         ? effectiveTenantWorkspaceContextBlock
         : tenantWorkspaceCtxBase,
-    hnwiPromptTemplateV21Slug: hnwiSlug ?? ""
+    hnwiPromptTemplateV21Slug: hnwiSlug ?? "",
+    scheduledDeskReportMode: financeKbRagSurface === "reports"
   });
 
   let previousResponseId: string | undefined;
@@ -1975,7 +1980,8 @@ export async function POST(request: Request) {
       sessionToolCopyMode
     ),
     routingPolicyBlock: XCHAT_SERVER_ROUTING_POLICY_BLOCK,
-    citationsEnabled: persona?.citationsEnabled !== false
+    citationsEnabled: persona?.citationsEnabled !== false,
+    scheduledDeskReportMode: financeKbRagSurface === "reports"
   });
   let systemPrompt = strategyJobOptOut
     ? `${STRATEGY_OPTOUT_SYSTEM_PROMPT_LINE}\n\n${builtSystemPrompt}`

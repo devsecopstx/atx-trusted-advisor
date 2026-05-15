@@ -12,6 +12,9 @@ const XCHAT_BETA_CLIENT_UI_INSTRUCTIONS = `Client UI (beta): Users send typed pr
 
 const XCHAT_CITATION_MARKDOWN_CONTRACT = `Citation chips (xChat UI): When a sentence is grounded on live market data or tools, add a chip using bracket syntax: [@citation:market_quote], [@citation:yahoo_finance], [@citation:file_search], [@citation:web_search], [@citation:x_search], [@citation:code_interpreter], or [@citation:atx_function] for workspace/portfolio tools (same slug as the xAI wire tool name atx_function). Legacy [@citation:atxfinance] maps to the same chip. Equivalent tool-style token: [@tool:slug] (same chip). Optional label: [@citation:market_quote|Yahoo Finance]. Slugs are lowercase with underscores. Do not emit bare XF_CITE:/XF_TOOL: lines, raw fenced blocks of only those sentinels, <grok:render>, <function_calls>, or other pseudo-execution XML—prefer [@citation:slug] inline in prose; standalone structured cite may use a fenced block with language xf-citation and JSON: {"slug":"atx_function","label":"Optional"}.`;
 
+/** Extra discipline for automated daily/weekly portfolio monitors (email + in-app snippet). */
+const XCHAT_SCHEDULED_DESK_REPORT_CITATION_BLOCK = `**Scheduled desk monitor / email report:** Totals, allocations, and positions already come from the **server workspace snapshot** (same data as **atx_function**). Do **not** glue citation markup to every dollar figure or table cell. Use **at most one** workspace citation for the entire report—either a single \`[@citation:atx_function]\` on its own **Sources** line after the body, or one short endnote sentence naming “workspace snapshot” without chips. For live Yahoo quotes outside the snapshot, use numbered footnotes [1], [2] per Finance KB citation format. Never place \`XF_CITE:\` / \`XF_TOOL:\` bare tokens, backticked chips, or \`[@citation:…]\` immediately after a number or inside table cells (bad: \`$165,684 [@citation:atx_function]\`).`;
+
 const XCHAT_NO_CITATIONS_INSTRUCTION = `Output style: Do not use xChat citation chips. Do not write bracket tokens like [@citation:…] or [@tool:…], xf-citation fenced blocks, or <grok:render> citation markup. Answer in plain prose without source chips.`;
 
 const ATX_FUNCTION_TOOL_COPY = `Workspace tools (this signed-in user only):
@@ -133,6 +136,8 @@ export type XchatRemoteChainFingerprintInput = {
   tenantWorkspaceContextBlock?: string;
   /** HNWI Desk Report v2.1 template slug when the client opts into structured desk output. */
   hnwiPromptTemplateV21Slug?: string;
+  /** When true (scheduled user-task / reports Finance KB surface), extra citation placement rules apply. */
+  scheduledDeskReportMode?: boolean;
 };
 
 export function computeXchatRemoteChainInstructionsFingerprint(
@@ -155,7 +160,8 @@ export function computeXchatRemoteChainInstructionsFingerprint(
     input.atxFunction ? "1" : "0",
     input.citationsEnabled ? "1" : "0",
     tenantCtx,
-    hnwiSlug
+    hnwiSlug,
+    input.scheduledDeskReportMode === true ? "1" : "0"
   ].join("\0");
   return createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 24);
 }
@@ -186,6 +192,8 @@ export type BuildXchatSystemPromptInput = {
    * Default true when omitted.
    */
   citationsEnabled?: boolean;
+  /** Scheduled portfolio monitor / weekly summary — stricter citation placement (with reports RAG surface). */
+  scheduledDeskReportMode?: boolean;
 };
 
 /**
@@ -209,7 +217,7 @@ export function formatTenantWorkspaceContextBlockForXchat(input: {
 /**
  * Locked order for **xAI prompt caching** (stable prefix first, volatile suffix last):
  * tenant display (optional) → persona system → persona override template (optional) → session tools → routing policy
- * → citation policy → beta UI → RAG snippets → recent history → user workspace summary → workspace snapshot.
+ * → citation policy → optional scheduled desk report citation addendum → beta UI → RAG snippets → recent history → user workspace summary → workspace snapshot.
  */
 export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): string {
   const citationsEnabled = input.citationsEnabled !== false;
@@ -247,6 +255,9 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
     stableParts.push(routing);
   }
   stableParts.push(citationsEnabled ? XCHAT_CITATION_MARKDOWN_CONTRACT : XCHAT_NO_CITATIONS_INSTRUCTION);
+  if (citationsEnabled && input.scheduledDeskReportMode === true) {
+    stableParts.push(XCHAT_SCHEDULED_DESK_REPORT_CITATION_BLOCK);
+  }
   stableParts.push(XCHAT_BETA_CLIENT_UI_INSTRUCTIONS);
 
   const volatileParts: string[] = [];

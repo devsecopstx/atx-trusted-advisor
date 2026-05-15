@@ -1,7 +1,10 @@
 import { ObjectId } from "mongodb";
 
 import { respondWithXai } from "@/lib/xai";
-import { searchFinanceKbCollectionForXchatPreRag } from "@/modules/xchat/finance-kb-rag-search";
+import {
+    searchFinanceKbCollectionForXchatPreRag,
+    type FinanceKbRagSurface
+} from "@/modules/xchat/finance-kb-rag-search";
 import { getYahooMarketQuote, type MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 import { resolveXchatPersonaDeclaredCollectionIds } from "@/modules/xchat/persona-linked-collections";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
@@ -267,6 +270,8 @@ export type MultiSourceOrchestratorInput = {
   scope?: string;
   topK?: number;
   maxParallelYahoo?: number;
+  /** Finance KB pre-search guideline filter (`atx-response-guidelines` AIP-160 `surface`). */
+  financeKbRagSurface?: FinanceKbRagSurface;
 };
 
 function personaAllowsAtxfinance(xapi: PersonaXapiConfig): boolean {
@@ -373,6 +378,7 @@ export async function gatherMultiSourceWorkspaceContext(
       })
     : Promise.resolve(null);
 
+  const financeKbSurface = input.financeKbRagSurface ?? "xchat";
   const xaiRagP =
     ragEnabled && xaiSearchAllowed && linkedCollectionIds.length > 0
       ? searchFinanceKbCollectionForXchatPreRag({
@@ -380,7 +386,7 @@ export async function gatherMultiSourceWorkspaceContext(
           limit: topK,
           userMessage: input.message,
           workspaceSummary: null,
-          surface: "xchat"
+          surface: financeKbSurface
         }).catch((e) => {
           pushError(errors, "xai_collection_rag", e);
           return [] as Array<{ text: string; documentName?: string; documentId?: string }>;

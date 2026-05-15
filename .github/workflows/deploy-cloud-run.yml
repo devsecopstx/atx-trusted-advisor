@@ -343,6 +343,12 @@ jobs:
           else
             echo "::notice::Google OAuth secrets not both present in ${PROJECT} — Sign in with Google unavailable until both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET exist (staging deploy requires them)"
           fi
+          if gcloud secrets describe XAI_TEAM_ID --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+            SECRETS="${SECRETS},XAI_TEAM_ID=XAI_TEAM_ID:latest"
+            echo "::notice::XAI_TEAM_ID secret found — binding to Cloud Run"
+          else
+            echo "::notice::XAI_TEAM_ID secret absent — optional; sync: npm run ops:secrets:sync-xai-team-id:staging|:prod"
+          fi
           if gcloud secrets describe SMTP_HOST --project="$PROJECT" --format='value(name)' >/dev/null 2>&1 && \
             gcloud secrets describe SMTP_PORT --project="$PROJECT" --format='value(name)' >/dev/null 2>&1 && \
             gcloud secrets describe SMTP_USER --project="$PROJECT" --format='value(name)' >/dev/null 2>&1 && \

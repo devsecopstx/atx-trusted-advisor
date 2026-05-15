@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 
 import type { SessionUser } from "@/lib/auth";
 import { signSessionCookieValueForAutomation } from "@/lib/auth";
+import { capUserTaskStoredOutput, cleanUserTaskLlmOutput } from "@/lib/clean-user-task-llm-output";
 import { getDeskSmtpConfig, sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import { computeNextRunAtFromSchedule } from "@/lib/scheduled-task-schedule";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
@@ -19,6 +20,16 @@ import { resolveSessionUserForUserTask } from "@/modules/user-tasks/resolve-sess
 import type { UserTask } from "@/modules/user-tasks/types";
 import { getPersonaById, getPersonaByNormalizedName } from "@/modules/xchat/repository";
 
+/**
+ * App-user `user_tasks` → internal `POST /api/xchat/ask` (`postXchatAsk`): finance-advisor defaults + fast + reports RAG surface.
+ *
+ * System `admin_scheduled_tasks` deliberately stay on the direct Spring/Next task-runner path
+ * (scanners, digests, etc.) — only `user_tasks` route through finance-advisor xChat.
+ *
+ * Optional future: if another caller needs the same ask JSON defaults, extract `resolveFinanceAdvisorAskParams()`
+ * for shared field construction only — do not merge execution logic with admin schedulers.
+ */
+
 export type RunUserTaskResult = {
   status: "success" | "failed" | "skipped";
   outputSnippet: string;
@@ -28,7 +39,7 @@ export type RunUserTaskResult = {
 
 type EffectiveTaskPersona = {
   personaId: string | null;
-  source: "task_override" | "advisor_default" | "advisor_fallback";
+  source: "task_override" | "finance_advisor_default" | "finance_advisor_fallback";
   fallbackNotice?: string;
 };
 
@@ -67,7 +78,9 @@ async function postXchatAsk(params: {
   const origin = resolveAutomationOrigin(params.request);
   const url = `${origin}/api/xchat/ask`;
   const body: Record<string, unknown> = {
-    message: params.message
+    message: params.message,
+    financeKbRagSurface: "reports",
+    reasoningMode: "fast"
   };
   if (params.portfolioIdHex && /^[a-f\d]{24}$/i.test(params.portfolioIdHex)) {
     body.portfolioId = params.portfolioIdHex;
@@ -94,17 +107,21 @@ async function postXchatAsk(params: {
       : typeof json.data?.response === "string"
         ? json.data.response
         : undefined;
-  const responseText =
+  const responseTextRaw =
     responseMarkdown !== undefined
       ? responseMarkdown
       : typeof json.error === "string"
         ? json.error
         : res.statusText;
-  const snippet = responseText.trim().slice(0, 480);
+  const responseText =
+    res.ok && responseMarkdown !== undefined
+      ? capUserTaskStoredOutput(cleanUserTaskLlmOutput(responseMarkdown))
+      : responseTextRaw.trim();
+  const snippet = responseText.length > 0 ? responseText : "(empty)";
   return {
     ok: res.ok,
     status: res.status,
-    snippet: snippet.length > 0 ? snippet : "(empty)",
+    snippet,
     logId: typeof json.data?.logId === "string" ? json.data.logId : undefined,
     code: typeof json.code === "string" ? json.code : undefined
   };
@@ -136,14 +153,30 @@ async function deliverEmailIfNeeded(task: UserTask, subject: string, body: strin
 }
 
 async function resolveEffectiveTaskPersona(task: UserTask): Promise<EffectiveTaskPersona> {
+  const financeAdvisorPersona = await getPersonaByNormalizedName("finance-advisor");
+  const financeAdvisorPersonaId = financeAdvisorPersona?._id?.toHexString() ?? null;
   const advisorPersona = await getPersonaByNormalizedName("advisor");
   const advisorPersonaId = advisorPersona?._id?.toHexString() ?? null;
 
   const requestedPersonaId = task.personaId?.trim() || null;
   if (!requestedPersonaId) {
+    if (financeAdvisorPersonaId) {
+      return {
+        personaId: financeAdvisorPersonaId,
+        source: "finance_advisor_default"
+      };
+    }
+    if (advisorPersonaId) {
+      return {
+        personaId: advisorPersonaId,
+        source: "finance_advisor_fallback",
+        fallbackNotice: "finance-advisor persona is not available in this workspace; running with advisor."
+      };
+    }
     return {
-      personaId: advisorPersonaId,
-      source: "advisor_default"
+      personaId: null,
+      source: "finance_advisor_fallback",
+      fallbackNotice: "No task default persona (finance-advisor or advisor) found in the database."
     };
   }
 
@@ -155,19 +188,28 @@ async function resolveEffectiveTaskPersona(task: UserTask): Promise<EffectiveTas
     };
   }
 
+  if (financeAdvisorPersonaId) {
+    return {
+      personaId: financeAdvisorPersonaId,
+      source: "finance_advisor_fallback",
+      fallbackNotice: "Your selected persona is no longer available. Running this job with finance-advisor."
+    };
+  }
+
   if (advisorPersonaId) {
     return {
       personaId: advisorPersonaId,
-      source: "advisor_fallback",
-      fallbackNotice: "Your selected persona is no longer available. Running this job with advisor."
+      source: "finance_advisor_fallback",
+      fallbackNotice:
+        "Your selected persona is no longer available; finance-advisor is missing — running with advisor."
     };
   }
 
   return {
     personaId: null,
-    source: "advisor_fallback",
+    source: "finance_advisor_fallback",
     fallbackNotice:
-      "Your selected persona is no longer available, and advisor is unavailable. Running with the platform default persona."
+      "Your selected persona is no longer available, and neither finance-advisor nor advisor was found."
   };
 }
 
@@ -201,7 +243,10 @@ async function auditTaskExecution(params: {
       personaSelectionSource: params.personaSelectionSource,
       effectivePersonaId: params.effectivePersonaId,
       fallbackNotice: params.fallbackNotice,
-      outputSnippet: params.outputSnippet
+      outputSnippet:
+        params.outputSnippet.length > 4000
+          ? `${params.outputSnippet.slice(0, 4000)}…`
+          : params.outputSnippet
     }
   });
 }
@@ -254,6 +299,7 @@ export async function executeUserTaskBody(params: {
   } else if (scope === "portfolio" && portfolioHex) {
     prompt = `${prompt}\n\n(Context: use workspace portfolio ${portfolioHex}.)`;
   }
+  prompt = `${prompt}\n\n---\n**Automation delivery:** This reply is stored as the task result (and may be emailed). Output **only** polished Markdown. **Do not** emit \`XF_CITE:*\` chips, XML tool residue, or fenced raw JSON tool dumps — translate tool results into plain-English numbers and bullets.`;
 
   const ask = await postXchatAsk({
     session,

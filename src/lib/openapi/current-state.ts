@@ -1465,7 +1465,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "admin-tasks":
     "Admin task catalog and task-run controls; internal `POST /api/internal/scheduler/execute-task` for JVM→Next scheduled execution (shared secret, not session).",
   "user-tasks":
-    "App_user automation: Mongo `user_tasks` / `user_task_runs`, CRUD + run-now under `/api/tasks/*`, run-history notifications at `GET /api/tasks/{taskId}/runs`, scheduled drain via `POST /api/internal/user-tasks/process-due` (same scheduler secret as admin delegate). Prompt execution delegates to `POST /api/xchat/ask` with advisor-default persona and optional override when tenant policy allows.",
+    "App_user automation: Mongo `user_tasks` / `user_task_runs`, CRUD + run-now under `/api/tasks/*`, run-history notifications at `GET /api/tasks/{taskId}/runs`, scheduled drain via `POST /api/internal/user-tasks/process-due` (same scheduler secret as admin delegate). Prompt execution delegates to `POST /api/xchat/ask` with **finance-advisor** as the default persona (advisor only if finance-advisor is absent), **`reasoningMode: fast`**, **`financeKbRagSurface: reports`**, and optional **`personaId`** override when tenant policy allows. **`admin_scheduled_tasks`** deliberately bypass this xChat path and use direct Next/Spring task-runner execution for operational efficiency.",
   "admin-tenants":
     "Global admin tenant surfaces: workspace limits, portfolio scoring defaults on core_tenants, and read-only tenant register (all tenants + tenant_admin directory).",
   "admin-users": "Admin management of user records, roles, plans, and settings.",

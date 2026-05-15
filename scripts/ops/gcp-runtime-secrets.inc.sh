@@ -3,6 +3,7 @@
 # Source-only: required runtime secret names in GCP Secret Manager.
 # Keep in sync with:
 #   - scripts/ops/verify-gcp-runtime-secrets.sh (--with-desk-smtp, --with-scheduler-delegate)
+#   - scripts/ops/sync-xai-team-id-secret-from-env.sh (optional XAI_TEAM_ID)
 #   - .github/workflows/deploy-cloud-run.yml (preflight loop)
 #   - .github/workflows/deploy-cloud-run-production.yml (preflight loop)
 # Optional secrets (export/diff with --include-optional): GCP_RUNTIME_SECRETS_OPTIONAL.
@@ -34,6 +35,8 @@ GCP_RUNTIME_SECRETS_GOOGLE_OAUTH=(
 GCP_RUNTIME_SECRETS_OPTIONAL=(
   "GOOGLE_CLIENT_ID"
   "GOOGLE_CLIENT_SECRET"
+  # xAI team UUID or literal collection_* — tenant attachments / team KB resolution (sync: sync-xai-team-id-secret-from-env.sh)
+  "XAI_TEAM_ID"
   # Optional Redis plane split (control vs cache). Falls back to REDIS_URL when unset.
   "REDIS_URL_CONTROL"
   "REDIS_URL_CACHE"
