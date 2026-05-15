@@ -4,7 +4,13 @@ import { join } from "node:path";
 
 import { parse as parseYaml } from "yaml";
 
-import { addFileToXaiCollection, uploadFileToXai } from "@/lib/xai";
+import {
+    addFileToXaiCollection,
+    getXaiCollectionFieldDefinitionKeys,
+    listXaiCollectionDocuments,
+    removeDocumentFromXaiCollection,
+    uploadFileToXai
+} from "@/lib/xai";
 import {
     getXaiFinanceCollectionId,
     XAI_FINANCE_COLLECTION_DISPLAY_NAME
@@ -46,15 +52,45 @@ const FINANCE_KB_RESPONSE_GUIDELINES_FRONTMATTER_METADATA_KEYS = new Set([
   "compliance_scope"
 ]);
 
+/** `finance-core` / `finance` tree: strategy-style tags plus guideline-style doc typing (xAI field_definitions often mix both). */
+const FINANCE_KB_FINANCE_CORE_FRONTMATTER_METADATA_KEYS = new Set([
+  ...FINANCE_KB_STRATEGY_FRONTMATTER_METADATA_KEYS,
+  "doc_type",
+  "audience",
+  "surface",
+  "compliance_scope"
+]);
+
 function financeKbFrontmatterKeySetForSegment(segment: FinanceKbUploadSegment | string): Set<string> {
   if (segment === "atx-response-guidelines") {
     return FINANCE_KB_RESPONSE_GUIDELINES_FRONTMATTER_METADATA_KEYS;
   }
+  if (segment === "finance-core" || segment === "finance") {
+    return FINANCE_KB_FINANCE_CORE_FRONTMATTER_METADATA_KEYS;
+  }
   return FINANCE_KB_STRATEGY_FRONTMATTER_METADATA_KEYS;
 }
 
+/** First YAML frontmatter block: anchored `---` (options tree) or first newline-delimited `---` block (e.g. `# title` line before YAML in finance-core). */
+export function matchFinanceKbYamlFrontmatterInner(raw: string): string | undefined {
+  const anchored = raw.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (anchored?.[1]) {
+    return anchored[1];
+  }
+  const afterTitle = raw.match(/\r?\n---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (afterTitle?.[1]) {
+    return afterTitle[1];
+  }
+  return undefined;
+}
+
 export type ExtractFinanceKbFrontmatterMetadataOptions = {
-  /** When set to `atx-response-guidelines`, allows guideline fields (`doc_type`, `audience`, …). */
+  /**
+   * Segment drives YAML key whitelist:
+   * - `atx-response-guidelines` — guideline keys (`doc_type`, `surface`, …)
+   * - `finance-core` / `finance` — strategy keys **plus** guideline keys (for mixed xAI `field_definitions`)
+   * - default — options-strategy keys only
+   */
   kbSegment?: FinanceKbUploadSegment | string;
 };
 
@@ -62,13 +98,13 @@ export function extractFinanceKbFrontmatterMetadata(
   raw: string,
   options?: ExtractFinanceKbFrontmatterMetadataOptions
 ): Record<string, unknown> {
-  const m = raw.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-  if (!m?.[1]) {
+  const inner = matchFinanceKbYamlFrontmatterInner(raw);
+  if (!inner) {
     return {};
   }
   let parsed: unknown;
   try {
-    parsed = parseYaml(m[1]);
+    parsed = parseYaml(inner);
   } catch {
     return {};
   }
@@ -90,12 +126,32 @@ export type FinanceKbSyncError = {
   message: string;
 };
 
+export type FinanceKbSyncChangeAction = "created" | "updated";
+
+export type FinanceKbSyncChange = {
+  source: string;
+  relativePath: string;
+  logicalName: string;
+  action: FinanceKbSyncChangeAction;
+  previousFileId?: string;
+  newFileId: string;
+  fieldKeysSent: string[];
+  alreadyLinked: boolean;
+};
+
 export type FinanceKbSyncResult = {
   collectionId: string;
   collectionDisplayName: string;
   filesUploaded: number;
   fileCandidates: number;
   errors: FinanceKbSyncError[];
+  /** Distinct logical filenames seen in the collection before this run (best-effort). */
+  existingRemoteDocuments: number;
+  /** Keys returned from the collection `field_definitions` (may be empty). */
+  collectionFieldDefinitionKeys: string[];
+  documentsCreated: number;
+  documentsUpdated: number;
+  changes: FinanceKbSyncChange[];
 };
 
 type WalkedFile = {
@@ -151,11 +207,88 @@ export function inferRiskProfile(relativePath: string): string | undefined {
   return undefined;
 }
 
-function normalizeLogicalUploadName(source: string, relativePosixPath: string): string {
+/** Stable upload / `file_metadata.name` used to match remote rows for replace + metadata sync. */
+export function financeKbLogicalUploadName(source: string, relativePosixPath: string): string {
   const raw = relativePosixPath.replace(/\\/g, "/").replace(/^\/+/, "");
   const safe = raw.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_+/g, "_");
   const prefix = source.replace(/[^a-zA-Z0-9._-]/g, "_");
   return `${prefix}__${safe}`;
+}
+
+/** Coerce Finance KB metadata values to xAI `fields` scalars (string | number). */
+export function coerceFinanceKbValueForXaiField(value: unknown): string | number | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (Array.isArray(value)) {
+    const parts = value.map((item) => {
+      if (item === null || item === undefined) {
+        return "";
+      }
+      if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+        return String(item);
+      }
+      return JSON.stringify(item);
+    });
+    return parts.filter(Boolean).join(",");
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+/** Loose key match: lowercase and strip underscores (maps `risk_profile` ↔ `riskProfile`, `doc_type` ↔ `docType`). */
+export function normalizeFinanceKbMetadataFieldKey(key: string): string {
+  return key.toLowerCase().replace(/_/g, "");
+}
+
+/** Map merged metadata to xAI document `fields` using collection `field_definitions` keys only. */
+export function financeKbMetadataToXaiFields(
+  metadata: Record<string, unknown>,
+  allowedKeys: Set<string>
+): Record<string, string | number> {
+  const looseToActual = new Map<string, string>();
+  for (const metaKey of Object.keys(metadata)) {
+    looseToActual.set(normalizeFinanceKbMetadataFieldKey(metaKey), metaKey);
+  }
+  const out: Record<string, string | number> = {};
+  for (const fieldKey of allowedKeys) {
+    const exact = Object.prototype.hasOwnProperty.call(metadata, fieldKey) ? fieldKey : undefined;
+    const actualMetaKey =
+      exact ?? looseToActual.get(normalizeFinanceKbMetadataFieldKey(fieldKey)) ?? undefined;
+    if (!actualMetaKey) {
+      continue;
+    }
+    const coerced = coerceFinanceKbValueForXaiField(metadata[actualMetaKey]);
+    if (coerced !== undefined) {
+      out[fieldKey] = coerced;
+    }
+  }
+  return out;
+}
+
+/** Last-wins index by logical file name (matches `financeKbLogicalUploadName`). */
+export function indexFinanceKbRemoteDocumentsByLogicalName(
+  docs: Array<{ fileId: string; name?: string }>
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const row of docs) {
+    const n = row.name?.trim();
+    if (n && row.fileId) {
+      map.set(n, row.fileId);
+    }
+  }
+  return map;
 }
 
 async function walkIngestFiles(rootDir: string, source: string): Promise<WalkedFile[]> {
@@ -212,13 +345,53 @@ export async function syncFinanceKnowledgeBaseToXai(input: {
   const maxBytes = input.maxFileBytes ?? 24 * 1024 * 1024;
   const collectionId = getXaiFinanceCollectionId();
   const errors: FinanceKbSyncError[] = [];
+  const changes: FinanceKbSyncChange[] = [];
   const roots = resolveFinanceKbRoots(input.repoRoot);
   const files: WalkedFile[] = [];
   for (const root of roots) {
     files.push(...(await walkIngestFiles(root.dir, root.source)));
   }
 
+  let documentsByLogicalName = new Map<string, string>();
+  try {
+    const listed = await listXaiCollectionDocuments(collectionId);
+    documentsByLogicalName = indexFinanceKbRemoteDocumentsByLogicalName(listed);
+  } catch (error) {
+    errors.push({
+      source: "__collection__",
+      message: `listXaiCollectionDocuments failed: ${error instanceof Error ? error.message : String(error)}`
+    });
+    return {
+      collectionId,
+      collectionDisplayName: XAI_FINANCE_COLLECTION_DISPLAY_NAME,
+      filesUploaded: 0,
+      fileCandidates: files.length,
+      errors,
+      existingRemoteDocuments: 0,
+      collectionFieldDefinitionKeys: [],
+      documentsCreated: 0,
+      documentsUpdated: 0,
+      changes: []
+    };
+  }
+
+  const existingRemoteDocuments = documentsByLogicalName.size;
+
+  let collectionFieldDefinitionKeys: string[] = [];
+  try {
+    collectionFieldDefinitionKeys = await getXaiCollectionFieldDefinitionKeys(collectionId);
+  } catch (error) {
+    errors.push({
+      source: "__collection__",
+      message: `getXaiCollectionFieldDefinitionKeys failed: ${error instanceof Error ? error.message : String(error)} (continuing without native fields)`
+    });
+  }
+  const allowedFieldKeys = new Set(collectionFieldDefinitionKeys);
+
   let filesUploaded = 0;
+  let documentsCreated = 0;
+  let documentsUpdated = 0;
+
   for (const file of files) {
     try {
       const st = await stat(file.abs);
@@ -236,7 +409,7 @@ export async function syncFinanceKnowledgeBaseToXai(input: {
         file.rel.toLowerCase().endsWith(".md") || file.rel.toLowerCase().endsWith(".markdown")
           ? extractFinanceKbFrontmatterMetadata(text, { kbSegment: file.source })
           : {};
-      const metadata = {
+      const metadata: Record<string, unknown> = {
         source: file.source,
         slug: file.rel.replace(/\.[^.]+$/, ""),
         ...(riskProfile ? { risk_profile: riskProfile } : {}),
@@ -244,14 +417,43 @@ export async function syncFinanceKnowledgeBaseToXai(input: {
         last_updated: new Date().toISOString(),
         ...fm
       };
-      const logicalFilename = normalizeLogicalUploadName(file.source, file.rel);
+      const logicalFilename = financeKbLogicalUploadName(file.source, file.rel);
       const payload = Buffer.concat([
         bytes,
         Buffer.from(`\n\n<!-- xfinance-kb-metadata: ${JSON.stringify(metadata)} -->\n`, "utf8")
       ]);
+
+      const previousFileId = documentsByLogicalName.get(logicalFilename);
       const uploaded = await uploadFileToXai(logicalFilename, Uint8Array.from(payload));
-      await addFileToXaiCollection({ collectionId, fileId: uploaded.fileId });
+      if (previousFileId) {
+        await removeDocumentFromXaiCollection({ collectionId, fileId: previousFileId });
+        documentsByLogicalName.delete(logicalFilename);
+      }
+
+      const fields = financeKbMetadataToXaiFields(metadata, allowedFieldKeys);
+      const link = await addFileToXaiCollection({
+        collectionId,
+        fileId: uploaded.fileId,
+        ...(Object.keys(fields).length > 0 ? { fields } : {})
+      });
+
+      documentsByLogicalName.set(logicalFilename, uploaded.fileId);
       filesUploaded += 1;
+      if (previousFileId) {
+        documentsUpdated += 1;
+      } else {
+        documentsCreated += 1;
+      }
+      changes.push({
+        source: file.source,
+        relativePath: file.rel,
+        logicalName: logicalFilename,
+        action: previousFileId ? "updated" : "created",
+        ...(previousFileId ? { previousFileId } : {}),
+        newFileId: uploaded.fileId,
+        fieldKeysSent: Object.keys(fields),
+        alreadyLinked: link.alreadyLinked
+      });
     } catch (error) {
       errors.push({
         source: file.rel,
@@ -265,6 +467,11 @@ export async function syncFinanceKnowledgeBaseToXai(input: {
     collectionDisplayName: XAI_FINANCE_COLLECTION_DISPLAY_NAME,
     filesUploaded,
     fileCandidates: files.length,
-    errors
+    errors,
+    existingRemoteDocuments,
+    collectionFieldDefinitionKeys,
+    documentsCreated,
+    documentsUpdated,
+    changes
   };
 }

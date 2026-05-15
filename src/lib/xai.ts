@@ -207,10 +207,21 @@ export async function deleteXaiCollection(collectionId: string): Promise<void> {
   }
 }
 
-export async function addFileToXaiCollection(input: {
+export type AddFileToXaiCollectionInput = {
   collectionId: string;
   fileId: string;
-}): Promise<{ linked: boolean; alreadyLinked: boolean }> {
+  /**
+   * Collection `field_definitions` keys with scalar values (xAI REST: `fields` on document link).
+   * Omitted or empty → POST without JSON body (legacy link-only).
+   */
+  fields?: Record<string, string | number>;
+  /** When the collection is team-scoped, pass the owning team id (optional query on management routes). */
+  teamId?: string;
+};
+
+export async function addFileToXaiCollection(
+  input: AddFileToXaiCollectionInput
+): Promise<{ linked: boolean; alreadyLinked: boolean }> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
 
   const collectionId = input.collectionId.trim();
@@ -219,15 +230,29 @@ export async function addFileToXaiCollection(input: {
     throw new Error("Collection id and file id are required");
   }
 
-  const response = await fetch(
-    `${managementBaseUrl}/collections/${collectionId}/documents/${fileId}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${managementApiKey}`
-      }
-    }
+  const tid = input.teamId?.trim();
+  const fieldEntries = input.fields ? Object.entries(input.fields).filter(([, v]) => v !== undefined) : [];
+  const fieldsBody =
+    fieldEntries.length > 0
+      ? (Object.fromEntries(fieldEntries) as Record<string, string | number>)
+      : undefined;
+
+  const url = new URL(
+    `${managementBaseUrl}/collections/${encodeURIComponent(collectionId)}/documents/${encodeURIComponent(fileId)}`
   );
+  if (tid) {
+    url.searchParams.set("team_id", tid);
+  }
+
+  const hasJsonBody = fieldsBody && Object.keys(fieldsBody).length > 0;
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${managementApiKey}`,
+      ...(hasJsonBody ? { "Content-Type": "application/json" } : {})
+    },
+    ...(hasJsonBody ? { body: JSON.stringify({ fields: fieldsBody }) } : {})
+  });
 
   if (response.ok) {
     return { linked: true, alreadyLinked: false };
@@ -236,8 +261,104 @@ export async function addFileToXaiCollection(input: {
     return { linked: true, alreadyLinked: true };
   }
 
-  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  const payload = await parseXaiResponseJson(response);
   throw new Error(`xAI add file to collection failed: ${JSON.stringify(payload.error ?? payload)}`);
+}
+
+/**
+ * Remove a file from a collection (document unlink). Does not delete the underlying Files API object.
+ * @see https://docs.x.ai/developers/rest-api-reference/collections/collection — DELETE …/documents/{file_id}
+ */
+export async function removeDocumentFromXaiCollection(input: {
+  collectionId: string;
+  fileId: string;
+  teamId?: string;
+}): Promise<{ removed: boolean }> {
+  const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  const collectionId = input.collectionId.trim();
+  const fileId = input.fileId.trim();
+  if (!collectionId || !fileId) {
+    throw new Error("Collection id and file id are required");
+  }
+
+  const url = new URL(
+    `${managementBaseUrl}/collections/${encodeURIComponent(collectionId)}/documents/${encodeURIComponent(fileId)}`
+  );
+  const tid = input.teamId?.trim();
+  if (tid) {
+    url.searchParams.set("team_id", tid);
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${managementApiKey}`
+    }
+  });
+
+  if (response.ok) {
+    return { removed: true };
+  }
+  if (response.status === 404) {
+    return { removed: false };
+  }
+
+  const payload = await parseXaiResponseJson(response);
+  throw new Error(`xAI remove document from collection failed: ${JSON.stringify(payload.error ?? payload)}`);
+}
+
+/**
+ * Extract `field_definitions[].key` from a GET …/collections/{id} JSON body.
+ * Handles snake_case / camelCase arrays and row key property names returned by the management API.
+ */
+export function parseXaiCollectionFieldDefinitionKeysFromPayload(payload: Record<string, unknown>): string[] {
+  const defs =
+    (Array.isArray(payload.field_definitions) ? payload.field_definitions : undefined) ??
+    (Array.isArray(payload.fieldDefinitions) ? payload.fieldDefinitions : undefined);
+  if (!Array.isArray(defs)) {
+    return [];
+  }
+  const keys: string[] = [];
+  for (const row of defs) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      continue;
+    }
+    const o = row as Record<string, unknown>;
+    const rawKey = o.key ?? o.Key ?? o.field_key ?? o.fieldKey;
+    const key =
+      typeof rawKey === "string"
+        ? rawKey.trim()
+        : typeof rawKey === "number" && Number.isFinite(rawKey)
+          ? String(rawKey).trim()
+          : undefined;
+    if (key) {
+      keys.push(key);
+    }
+  }
+  return keys;
+}
+
+/** Keys from `field_definitions` on GET …/collections/{id} (for document `fields` on link). */
+export async function getXaiCollectionFieldDefinitionKeys(collectionId: string): Promise<string[]> {
+  const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  const cid = collectionId.trim();
+  if (!cid) {
+    throw new Error("collection id is required");
+  }
+
+  const response = await fetch(`${managementBaseUrl}/collections/${encodeURIComponent(cid)}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${managementApiKey}`
+    }
+  });
+
+  const payload = await parseXaiResponseJson(response);
+  if (!response.ok) {
+    throw new Error(`xAI collection get failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+
+  return parseXaiCollectionFieldDefinitionKeysFromPayload(payload);
 }
 
 export async function uploadFileToXai(

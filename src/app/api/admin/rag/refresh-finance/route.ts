@@ -48,6 +48,11 @@ export async function POST() {
       collectionDisplayName: result.collectionDisplayName,
       filesUploaded: result.filesUploaded,
       fileCandidates: result.fileCandidates,
+      documentsCreated: result.documentsCreated,
+      documentsUpdated: result.documentsUpdated,
+      existingRemoteDocuments: result.existingRemoteDocuments,
+      collectionFieldDefinitionKeys: result.collectionFieldDefinitionKeys,
+      changeCount: result.changes.length,
       errorCount: result.errors.length
     }
   }).catch((error) => {
