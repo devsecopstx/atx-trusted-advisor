@@ -31,7 +31,7 @@
 | **`options-strategy-core/`** | *(uploaded as part of shared Finance collection)* | Lean options desk copy + **[`options-coreskills.md`](./options-strategy-core/options-coreskills.md)** — **`finance-advisor`** `always_include` **only** (not advanced). |
 | **`options-strategy-advanced/`** | *(same)* | Full multi-leg / overlay playbooks — **`advisor`** `always_include` **only** (not core). |
 | **`atx-response-guidelines/`** | *(same)* | xChat/report response structure, citations, tone, compliance — uploaded with **`refresh-finance`**; all shipped **`xpersonas/*.yaml`** include **`atx-rag-collection/atx-response-guidelines/**`** and **`atx-rag-collection/finance-core/**`** in **`always_include`** (**`advisor`** / **`finance-advisor`** also list their **`options-strategy-*`** slice). |
-| **`finance-core/`** | *(same)* | Cross-cutting primitives, risk education, short desk refs + small PDFs, HNWI glossary — flat **`*.md`** at segment root plus **`stem/stem.pdf`** folders; see **[`README.md`](./finance-core/README.md)**. |
+| **`finance-core/`** | *(same)* | Cross-cutting primitives, risk education, short desk refs + small PDFs, HNWI glossary — flat **`*.md`** at segment root plus optional **topic subfolders** (HNWI series) and **`stem/stem.pdf`** folders; see **[`README.md`](./finance-core/README.md)**. |
 
 Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, **`atx-personas-trusted-family`**, **`atx-xchat-example-prompts`**, **`atx-options-strategy`** are still **ingest path fallbacks** (see seed script).
 
@@ -39,7 +39,7 @@ Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, 
 
 ## RAG path layout
 
-**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `options-risks-toc_supplement/options-risks-toc_supplement.pdf`). **`options-strategy-core`**, **`options-strategy-advanced`**, **`atx-response-guidelines`**, and **`finance-core`** (markdown only) are **exceptions**: flat **`*.md`** files live directly under those segment roots for a smaller Finance KB upload surface (validated in **`tests/unit/atx-rag-collection-layout.test.ts`**). **`finance-core`** PDFs still use **`stem/stem.pdf`** subfolders.
+**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `options-risks-toc_supplement/options-risks-toc_supplement.pdf`). **`options-strategy-core`**, **`options-strategy-advanced`**, and **`atx-response-guidelines`** use flat **`*.md`** at the segment root for a smaller Finance KB upload surface (validated in **`tests/unit/atx-rag-collection-layout.test.ts`**). **`finance-core`** keeps **flat primer `*.md`** at the root **and** optional **nested topic `*.md`** (e.g. `finance-core/tax-strategies/…`) plus **`stem/stem.pdf`** PDF folders.
 
 **xpersonas:** Each subfolder holds **exactly one** persona `*.yaml`. Many personas use **`folder/folder.yaml`** (folder name equals file stem), e.g. `advisor/advisor.yaml`, `exam-coach/exam-coach.yaml`, `trusted-advisor/trusted-advisor.yaml`. Others use a **suffix stem** under a short bucket, e.g. `legal/legal-advisor.yaml`. This segment is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
 
@@ -110,11 +110,12 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 
 | Path | Notes |
 | --- | --- |
-| [`README.md`](./finance-core/README.md) | Segment index; not uploaded when wired (ingest skips `readme.md` / `README.md` casing) |
+| [`README.md`](./finance-core/README.md) | Segment index |
 | `primitives-and-mechanics.md` | Orders, settlement, margin, chains/quotes |
 | `risk-and-product-education.md` | IV/OI, assignment, risk primers |
 | `short-desk-references.md` | PDF pointers (e.g. `options-risks-toc_supplement.pdf`) |
 | `glossary-hnwi-desk-101.md` | Reusable desk vocabulary |
+| `portfolio-construction/*.md`, `risk-management/*.md`, `asset-allocation/*.md`, `tax-strategies/*.md`, `macro-outlooks/*.md`, `behavioral-finance/*.md`, `legacy-estate/*.md`, `rebalancing-mechanics/*.md`, `performance-reporting/*.md`, `custom-db-integrations/*.md` | HNWI desk series + meta grounding |
 | `options-risks-toc_supplement/options-risks-toc_supplement.pdf` | Small reference PDF (stem/stem layout) |
 
 ---
