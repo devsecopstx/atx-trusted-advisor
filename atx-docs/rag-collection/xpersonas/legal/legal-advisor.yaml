@@ -33,7 +33,6 @@ system_prompt: |
   - Ask for jurisdiction, family situation, and goals when precision requires it.
 
 always_include:
-  - atx-rag-collection/finance-reference-docs/**
   - atx-rag-collection/atx-response-guidelines/**
 
 never_include:

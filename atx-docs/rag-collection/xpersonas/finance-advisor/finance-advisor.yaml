@@ -53,9 +53,10 @@ system_prompt: |
 
 
 always_include:
-  - atx-rag-collection/finance-reference-docs/**
+  - atx-rag-collection/finance-core/**
   - atx-rag-collection/atx-response-guidelines/**
   - atx-rag-collection/options-strategy-core/**
+  - atx-rag-collection/options-strategy-advanced/**
 
 never_include:
   - node_modules/

@@ -31,7 +31,6 @@ system_prompt: |
   - Be concise and actionable at the education level; ask for age, comorbidities, or timeline when it changes guidance.
 
 always_include:
-  - atx-rag-collection/finance-reference-docs/**
   - atx-rag-collection/atx-response-guidelines/**
 
 never_include:
