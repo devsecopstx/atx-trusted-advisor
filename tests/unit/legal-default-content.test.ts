@@ -27,7 +27,12 @@ describe("legal default content", () => {
   it("keeps baseline policy sections for privacy and terms", () => {
     expect(source).toContain("Who we are");
     expect(source).toContain("AI and automated processing");
-    expect(source).toContain("Not Financial, Legal, or Tax Advice");
+    expect(source).toContain("Important Regulatory Disclaimers");
+    expect(source).toContain("Educational and Informational Purposes Only");
+    expect(source).toContain("No Advisory Relationship");
+    expect(source).toContain("Regulatory Status");
+    expect(source).toContain("License Restriction");
+    expect(source).toContain("ATX Finance Advisory");
     expect(source).toContain("Limitation of Liability");
   });
 });

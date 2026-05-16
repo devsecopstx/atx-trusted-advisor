@@ -2,9 +2,11 @@ import Link from "next/link";
 
 import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GlobalFooter } from "@/app/ui/global-footer";
-import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
-import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
+import { PublicMarketingHeader } from "@/app/ui/public-marketing-header";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
+
+const SEO_REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
+const SEO_LOGIN_HREF = `/login?next=${encodeURIComponent("/xchat")}`;
 
 export type SeoSolutionLandingProps = {
   h1: string;
@@ -23,30 +25,7 @@ export function SeoSolutionLanding({
 }: SeoSolutionLandingProps) {
   return (
     <div className="min-h-screen bg-[var(--xf-bg-900)] text-[var(--xf-text-100)]">
-      <nav
-        className="sticky top-0 z-50 border-b border-white/10 bg-[var(--xf-bg-900)]/85 backdrop-blur-lg"
-        aria-label="Primary"
-      >
-        <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-3 px-4 sm:px-8">
-          <Link
-            href="/"
-            aria-label={USER_PRODUCT_HOME_ARIA_LABEL}
-            className="xchat-header-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--xf-gain-green)]"
-          >
-            <XchatHeaderBrand />
-          </Link>
-          <Link
-            href="/account/billing?register=1&plan=basic"
-            className="rounded-full px-4 py-2 text-center text-sm font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95 sm:px-5 sm:text-base"
-            style={{
-              background: "var(--xf-gain-green)",
-              boxShadow: "0 0 24px -4px color-mix(in srgb, var(--xf-gain-green) 45%, transparent)"
-            }}
-          >
-            Start Basic Trial — No Card
-          </Link>
-        </div>
-      </nav>
+      <PublicMarketingHeader loginHref={SEO_LOGIN_HREF} registerTrialHref={SEO_REGISTER_TRIAL_HREF} />
 
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-8 sm:py-16">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--xf-gain-green)]">aTx Trusted Advisory</p>

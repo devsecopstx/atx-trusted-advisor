@@ -4,7 +4,7 @@ import { useEffect, useId } from "react";
 
 import Link from "next/link";
 
-import { EDUCATIONAL_ONLY_FULL, EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
+import { EDUCATIONAL_ONLY_FULL } from "@/lib/legal-disclaimers";
 
 const LEGAL_LINKS: { href: string; label: string }[] = [
   { href: "/legal/terms", label: "Terms" },
@@ -54,7 +54,6 @@ export function LegalDisclaimerModal({ open, onClose }: LegalDisclaimerModalProp
         <h2 className="xchat-disclaimer-modal__title" id={titleId}>
           Legal & disclaimer
         </h2>
-        <p className="xchat-disclaimer-modal__lead">{EDUCATIONAL_ONLY_SHORT}</p>
         <p className="xchat-disclaimer-modal__body">{EDUCATIONAL_ONLY_FULL}</p>
         <nav aria-label="Legal documents" className="xchat-disclaimer-modal__links">
           {LEGAL_LINKS.map((item, i) => (

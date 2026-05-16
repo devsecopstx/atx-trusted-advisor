@@ -9,6 +9,8 @@ const EFFECTIVE_NOTE = "Effective as of March 22, 2026. This summary is provided
 const PRODUCT_APP_NAME = "aTx Advisor";
 /** User-facing product name in in-app legal stubs (matches chrome / marketing). */
 const PRODUCT_PUBLIC_NAME = "aTx Trusted Advisory";
+/** Legal entity for regulatory disclaimers and Terms (counsel should confirm exact registered name). */
+const LEGAL_ENTITY_NAME = "ATX Finance Advisory";
 const VULNERABILITY_TIPS =
   "Include clear reproduction steps, impact level, affected route(s), and proof-of-concept details where possible. Do not include private keys or credentials in reports.";
 
@@ -37,7 +39,9 @@ export function LegalImprintContent() {
       </p>
       <h2>Intended Use &amp; Regulatory Notice</h2>
       <p>
-        {PRODUCT_PUBLIC_NAME} is designed exclusively for approved professionals and authorized users. Availability,
+        {PRODUCT_PUBLIC_NAME} is designed exclusively for approved professionals and authorized users. The platform and
+        its outputs are for educational and informational purposes only and do not constitute personalized investment,
+        financial, tax, or legal advice. See <strong>Terms of Service</strong> for full regulatory disclaimers. Availability,
         features, and product scope may vary by role, jurisdiction, and operator policy.
       </p>
       <h2>Content Responsibility</h2>
@@ -151,8 +155,10 @@ export function LegalTermsContent() {
       <p className="legal-stub-effective">Effective as of March 22, 2026</p>
       <h2>Agreement</h2>
       <p>
-        By accessing or using {PRODUCT_PUBLIC_NAME} (the {`\u201c`}Service{`\u201d`}), you agree to these Terms. If you do
-        not agree, you may not use the Service.
+        By accessing or using {PRODUCT_PUBLIC_NAME} (the {`\u201c`}Service{`\u201d`}), you agree to these Terms. In these
+        Terms, {`\u201c`}Software{`\u201d`} means the Service and all xChat conversations, strategy recommendations,
+        portfolio analysis tools, options models, and any other content or outputs made available through the Service.
+        If you do not agree, you may not use the Service.
       </p>
       <h2>The Service</h2>
       <p>
@@ -160,15 +166,53 @@ export function LegalTermsContent() {
         advisors consolidate, track, analyze, and report on portfolios. This includes dashboards, reporting,
         collaboration features, and AI-assisted chat.
       </p>
-      <h2>Not Financial, Legal, or Tax Advice</h2>
-      <p>The Service and any content it generates (including AI chat responses) are for informational and operational purposes only.</p>
+      <h2>Important Regulatory Disclaimers</h2>
+      <h3>Educational and Informational Purposes Only</h3>
       <p>
-        {PRODUCT_PUBLIC_NAME} is not a financial advisor, wealth manager, tax advisor, or law firm.
+        The Software is provided strictly for educational and informational purposes. It is not intended to provide, and
+        does not constitute, personalized investment, financial, tax, legal, or other professional advice. Nothing
+        contained in the Software is a recommendation to buy, sell, or hold any security or to pursue any particular
+        investment strategy.
       </p>
-      <p>We do not provide investment, financial, tax, legal, or any other professional advice. Nothing on the platform creates a fiduciary or advisory relationship.</p>
+      <h3>No Advisory Relationship</h3>
       <p>
-        You are solely responsible for all your investment, tax, legal, and financial decisions. You should consult your
-        own qualified professionals before making any decisions based on information from the Service.
+        Your use of the Software does not create an investment advisory, fiduciary, or other advisory relationship
+        between you (or your clients, if you are an Investment Adviser) and {LEGAL_ENTITY_NAME}, its affiliates, or any
+        of its personnel. {LEGAL_ENTITY_NAME} is not acting as your investment adviser, and you are solely responsible
+        for determining the suitability of any investment or strategy for your own (or your clients{`\u2019`}) specific
+        financial situation, objectives, risk tolerance, and needs. You should consult with a qualified investment
+        adviser, attorney, or tax professional before making any investment decision.
+      </p>
+      <h3>No Performance Guarantees</h3>
+      <p>
+        Past performance is not indicative of future results. All hypothetical illustrations, back-tested data, options
+        strategy models, and projected outcomes are for illustrative purposes only and do not guarantee actual results.
+        Market conditions, liquidity, transaction costs, taxes, and other factors can materially affect real-world
+        performance.
+      </p>
+      <h3>Data and AI Limitations</h3>
+      <p>
+        The Software uses artificial intelligence and third-party data sources. While we strive for accuracy,{" "}
+        {LEGAL_ENTITY_NAME} makes no representations or warranties regarding the completeness, accuracy, timeliness, or
+        reliability of any data, analysis, or output. AI-generated content may contain errors, omissions, or biases.
+      </p>
+      <h3>Regulatory Status</h3>
+      <p>
+        {LEGAL_ENTITY_NAME} and its personnel are not currently registered as investment advisers with the U.S.
+        Securities and Exchange Commission or any state securities regulator. The Software is not offered as a registered
+        advisory service.
+      </p>
+      <h3>User Responsibility</h3>
+      <p>
+        You agree that you (and any clients you serve) are solely responsible for all investment decisions, trading
+        activity, and compliance with applicable securities laws. You will not rely on the Software as the primary or
+        sole basis for any investment decision.
+      </p>
+      <h3>License Restriction</h3>
+      <p>
+        You may use the Software only for your internal educational or informational purposes. You may not re-sell,
+        re-distribute, or otherwise make the Software available to third parties except as expressly permitted in this
+        Agreement.
       </p>
       <h2>Eligibility</h2>
       <p>
@@ -190,8 +234,10 @@ export function LegalTermsContent() {
       </p>
       <h2>Intellectual Property &amp; License</h2>
       <p>
-        We (and our licensors) own all rights to the Service. We grant you a limited, non-exclusive, non-transferable
-        license to use the Service solely for your own internal portfolio management and reporting purposes.
+        We (and our licensors) own all rights to the Software. We grant you a limited, non-exclusive, non-transferable
+        license to use the Software solely for your internal educational or informational purposes, including portfolio
+        management and reporting workflows permitted under these Terms and your account role. The License Restriction
+        above applies to this grant.
       </p>
       <p>
         You retain ownership of the data you upload, but you give us permission to host, process, and display it as
@@ -203,8 +249,8 @@ export function LegalTermsContent() {
       </p>
       <h2>Limitation of Liability</h2>
       <p>
-        To the fullest extent permitted by law, {PRODUCT_PUBLIC_NAME} and its suppliers will not be liable for any
-        indirect, incidental, special, or consequential damages.
+        To the fullest extent permitted by law, {LEGAL_ENTITY_NAME}, {PRODUCT_PUBLIC_NAME}, and their suppliers will not
+        be liable for any indirect, incidental, special, or consequential damages.
       </p>
       <p>
         Our total liability to you will not exceed the greater of (a) the total amount you paid for the Service in the

@@ -6,16 +6,20 @@ import { LightningBolt } from "@/app/ui/atxfinance-logo";
 import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { LandingProductScreenshot } from "@/app/ui/landing-product-screenshot";
-import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { PublicLandingXchatDemo } from "@/app/ui/public-landing-xchat-demo";
+import {
+    MARKETING_HEADER_BTN_PRIMARY,
+    MARKETING_HEADER_BTN_SECONDARY,
+    MARKETING_TRIAL_CTA_LABEL,
+    PublicMarketingHeader
+} from "@/app/ui/public-marketing-header";
 import { PoweredByXai } from "@/app/ui/xai-brand-mark";
-import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pillars";
 import { withUtmParams } from "@/lib/marketing/utm";
 import { resolveXfinanceAdvisorMcpUrl } from "@/lib/marketing/xfinance-advisor-mcp";
 
 const REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
-const TRIAL_CTA_LABEL = "Start Basic Trial — No Card";
+const TRIAL_CTA_LABEL = MARKETING_TRIAL_CTA_LABEL;
 const DEFAULT_POST_LOGIN = "/xchat";
 const MARKETING_UTM = { utm_source: "x", utm_campaign: "weekly-pulse", utm_medium: "owned-social" } as const;
 
@@ -49,63 +53,7 @@ export function PublicMarketingLanding() {
 
   return (
     <div className="min-h-screen bg-transparent text-[var(--xf-text-100)]">
-      <nav
-        className="sticky top-0 z-50 border-b border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_82%,transparent)] backdrop-blur-lg"
-        aria-label="Primary"
-      >
-        <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-3 px-4 sm:px-8">
-            <Link
-              aria-label={USER_PRODUCT_HOME_ARIA_LABEL}
-              href="/"
-              className="xchat-header-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--xf-gain-green)]"
-            >
-              <XchatHeaderBrand />
-            </Link>
-
-          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-            <Link
-              href="#resources-pillars"
-              className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-300)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
-            >
-              Educational hub
-            </Link>
-            <Link
-              href="#developers-agents"
-              className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-300)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
-            >
-              Developers
-            </Link>
-            <Link
-              href="#growth-2026"
-              className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-300)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
-            >
-              Desk series
-            </Link>
-            <Link
-              href="/resources/top-10-hnwi-xchat-prompts"
-              className="rounded-full px-3 py-2 text-sm font-semibold text-[var(--xf-text-300)] transition hover:text-[var(--xf-gain-green)] sm:px-4"
-            >
-              Top 10 HNWI prompts
-            </Link>
-            <Link
-              href={loginHref}
-              className="rounded-full px-3 py-2 text-xs font-medium text-[var(--xf-text-400)] underline-offset-4 transition hover:text-[var(--xf-gain-green)] sm:px-4 sm:text-sm"
-            >
-              Already have an account?
-            </Link>
-            <Link
-              href={registerTrialHref}
-              className="rounded-full px-4 py-2 text-center text-sm font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95 sm:max-w-[min(100%,20rem)] sm:px-5 sm:text-base"
-              style={{
-                background: "var(--xf-gain-green)",
-                boxShadow: "0 0 24px -4px color-mix(in srgb, var(--xf-gain-green) 45%, transparent)"
-              }}
-            >
-              {TRIAL_CTA_LABEL}
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicMarketingHeader loginHref={loginHref} registerTrialHref={registerTrialHref} trialCtaLabel={TRIAL_CTA_LABEL} />
 
       <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 flex justify-end">
         <EducationalDisclaimerBanner className="mt-3" />
@@ -176,16 +124,17 @@ export function PublicMarketingLanding() {
             </ul>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-              <Link
-                href={registerTrialHref}
-                className="inline-flex max-w-full items-center justify-center gap-2 rounded-full px-6 py-4 text-center text-base font-semibold leading-snug text-[var(--xf-bg-900)] sm:px-8 sm:text-lg"
-                style={{
-                  background: "var(--xf-gain-green)",
-                  boxShadow: "0 0 28px -5px color-mix(in srgb, var(--xf-gain-green) 50%, transparent)"
-                }}
-              >
+              <Link href={loginHref} className={MARKETING_HEADER_BTN_SECONDARY}>
+                Sign In
+              </Link>
+              <Link href={registerTrialHref} className={MARKETING_HEADER_BTN_PRIMARY}>
                 {TRIAL_CTA_LABEL}
-                <span aria-hidden>→</span>
+                <span
+                  aria-hidden
+                  className="rounded-xl bg-[color-mix(in_srgb,var(--xf-bg-900)_12%,transparent)] px-2 py-0.5 text-xs font-semibold"
+                >
+                  →
+                </span>
               </Link>
 
               <Link
@@ -194,12 +143,6 @@ export function PublicMarketingLanding() {
               >
                 See plans
               </Link>
-
-              <p className="w-full text-sm text-[var(--xf-text-400)] sm:w-auto sm:pl-2">
-                <Link className="font-medium text-[var(--xf-text-300)] underline-offset-4 hover:text-[var(--xf-gain-green)] hover:underline" href={loginHref}>
-                  Already have an account? Sign in
-                </Link>
-              </p>
 
               <button
                 type="button"
@@ -403,34 +346,73 @@ export function PublicMarketingLanding() {
         aria-label="Developers and MCP"
       >
         <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
-          <div className="flex flex-col gap-8 rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)] bg-[var(--xf-surface-700)]/70 p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10">
+          <div className="flex flex-col gap-8 rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)] bg-[var(--xf-surface-700)]/70 p-8 sm:flex-row sm:items-start sm:justify-between sm:gap-10 sm:p-10">
             <div className="max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
                 For developers &amp; agents
               </p>
-              <h2 className="mt-3 text-2xl font-extrabold text-[var(--xf-text-100)] sm:text-3xl">xfinance-advisor-mcp</h2>
+              <h2 className="mt-3 text-2xl font-extrabold text-[var(--xf-text-100)] sm:text-3xl">
+                <span className="font-mono text-[var(--xf-gain-green)]">xfinance-advisor-mcp</span>
+              </h2>
               <p className="mt-4 text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-                Grok-powered rental AI API posture for your stack — tenant-safe calls scoped to approved portfolios and
-                roles. Wire agents and internal tools without melting data boundaries.
+                Open MCP server for wiring Grok and desk tools into your own agents — portfolio-scoped calls, strategy
+                jobs, and market helpers with tenant isolation. Clone the repo, point Cursor or your orchestrator at the
+                server manifest, and keep data boundaries explicit for RIA and family-office stacks.
               </p>
-              <p className="mt-3 text-sm text-[var(--xf-text-400)]">
-                Default link points at the public MCP repository; override with{" "}
-                <span className="font-mono text-[var(--xf-text-300)]">NEXT_PUBLIC_XFINANCE_ADVISOR_MCP_URL</span> when your
-                fork is canonical.
+              <p className="mt-4 text-base leading-relaxed text-[var(--xf-text-300)]">
+                <span className="font-semibold text-[var(--xf-text-100)]">quant-trader persona</span> — the in-product
+                quant desk: Monte Carlo tail-risk (VaR/CVaR), multi-book scope, IV-rank and drawdown gates, Greeks rollup,
+                and handoff to xChat on the same persona. Use{" "}
+                <Link
+                  href="/xoptions/quant-trader"
+                  className="font-semibold text-[var(--xf-gain-green)] underline-offset-4 hover:underline"
+                >
+                  /xoptions/quant-trader
+                </Link>{" "}
+                after sign-in, or select <span className="font-mono text-[var(--xf-text-200)]">quant-trader</span> in xChat
+                for NL workflows (Heavy depth, multi-agent reasoning). Educational simulations only — not personalized
+                advice.
               </p>
+              <ul className="mt-5 list-none space-y-2 text-sm text-[var(--xf-text-400)]">
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-[var(--xf-gain-green)]">
+                    →
+                  </span>
+                  <span>
+                    MCP repo: tools for external agents; override URL with{" "}
+                    <span className="font-mono text-[var(--xf-text-300)]">NEXT_PUBLIC_XFINANCE_ADVISOR_MCP_URL</span>
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-[var(--xf-gain-green)]">
+                    →
+                  </span>
+                  <span>
+                    Product surface: quant-trader xPersona + xOptions quant desk + strategy jobs (monte-carlo-run)
+                  </span>
+                </li>
+              </ul>
             </div>
-            <a
-              href={mcpRepoHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center justify-center rounded-full px-8 py-4 text-center text-base font-semibold text-[var(--xf-bg-900)] transition hover:opacity-95"
-              style={{
-                background: "var(--xf-gain-green)",
-                boxShadow: "0 0 28px -5px color-mix(in srgb, var(--xf-gain-green) 50%, transparent)"
-              }}
-            >
-              Open MCP repo
-            </a>
+            <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:min-w-[14rem]">
+              <a href={mcpRepoHref} target="_blank" rel="noopener noreferrer" className={MARKETING_HEADER_BTN_PRIMARY}>
+                Open MCP repo
+                <span
+                  aria-hidden
+                  className="rounded-xl bg-[color-mix(in_srgb,var(--xf-bg-900)_12%,transparent)] px-2 py-0.5 text-xs font-semibold"
+                >
+                  ↗
+                </span>
+              </a>
+              <Link href="/xoptions/quant-trader" className={MARKETING_HEADER_BTN_SECONDARY}>
+                Quant Trader desk
+              </Link>
+              <Link
+                href={withUtmParams("/xchat", { ...MARKETING_UTM, utm_content: "quant-trader-persona" })}
+                className="text-center text-sm font-semibold text-[var(--xf-gain-green)] underline-offset-4 hover:underline"
+              >
+                Open xChat (quant-trader)
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -629,11 +611,17 @@ export function PublicMarketingLanding() {
             audit-friendly defaults apply after sign-in.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:flex-wrap">
-            <Link
-              href={registerTrialHref}
-              className="inline-flex max-w-[min(100%,22rem)] items-center justify-center px-6 py-4 text-center text-base font-semibold leading-snug tracking-tight rounded-2xl bg-[var(--xf-gain-green)] text-[var(--xf-bg-900)] hover:scale-[1.02] active:scale-[0.98] transition-all sm:px-8"
-            >
+            <Link href={loginHref} className={`${MARKETING_HEADER_BTN_SECONDARY} max-w-[min(100%,22rem)]`}>
+              Sign In
+            </Link>
+            <Link href={registerTrialHref} className={`${MARKETING_HEADER_BTN_PRIMARY} max-w-[min(100%,22rem)]`}>
               {TRIAL_CTA_LABEL}
+              <span
+                aria-hidden
+                className="rounded-xl bg-[color-mix(in_srgb,var(--xf-bg-900)_12%,transparent)] px-2 py-0.5 text-xs font-semibold"
+              >
+                →
+              </span>
             </Link>
             <Link
               href={riaPilotHref}
@@ -646,12 +634,6 @@ export function PublicMarketingLanding() {
               className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               See plans
-            </Link>
-            <Link
-              href={loginHref}
-              className="text-sm font-medium text-[var(--xf-text-400)] underline-offset-4 transition hover:text-[var(--xf-gain-green)] hover:underline"
-            >
-              Already have an account?
             </Link>
           </div>
         </div>
