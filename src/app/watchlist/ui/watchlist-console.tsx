@@ -82,6 +82,7 @@ import {
 } from "@/app/watchlist/ui/watchlist-quote-detail-panel";
 import { watchlistPatchShouldRefetchQuotes } from "@/app/watchlist/ui/watchlist-quote-refresh";
 import { getSymbolSectorLabel } from "@/modules/watchlist/symbol-sector";
+import { suggestWatchlistTickerCorrection } from "@/modules/watchlist/watchlist-symbol-hints";
 
 function ReviewListIcon() {
   return (
@@ -1881,10 +1882,19 @@ ${bodyRows}
     if (raw == null) {
       return;
     }
-    const symbol = raw.trim().toUpperCase();
+    let symbol = raw.trim().toUpperCase();
     if (!symbol || !/^[A-Z0-9.\-]{1,32}$/.test(symbol)) {
       window.alert("Invalid symbol.");
       return;
+    }
+    const suggested = suggestWatchlistTickerCorrection(symbol);
+    if (suggested) {
+      const useSuggested = window.confirm(
+        `${symbol} is often a typo. Use ${suggested} instead?\n\nOK → add ${suggested}. Cancel → keep ${symbol}.`
+      );
+      if (useSuggested) {
+        symbol = suggested;
+      }
     }
     await patch({ addSymbols: [symbol] });
   }, [editMode, patch]);

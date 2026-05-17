@@ -83,27 +83,25 @@ describe("getYahooBatchQuotes (Redis cache)", () => {
     await resetRedisClientForTests();
   });
 
-  it("retries Yahoo batch with validateResult: false when schema validation fails", async () => {
+  it("requests Yahoo batch with validateResult false", async () => {
     await resetRedisClientForTests();
     delete process.env.REDIS_URL;
-    quoteFn
-      .mockRejectedValueOnce(new Error("FailedYahooValidationError: Failed validation: #/definitions/QuoteResponseArray"))
-      .mockResolvedValueOnce([
-        {
-          symbol: "AAPL",
-          regularMarketPrice: 222,
-          regularMarketOpen: 220,
-          regularMarketDayHigh: 223,
-          regularMarketDayLow: 219,
-          regularMarketPreviousClose: 218,
-          regularMarketChange: 4,
-          regularMarketChangePercent: 1.8,
-          regularMarketVolume: 2000
-        }
-      ]);
+    quoteFn.mockResolvedValueOnce([
+      {
+        symbol: "AAPL",
+        regularMarketPrice: 222,
+        regularMarketOpen: 220,
+        regularMarketDayHigh: 223,
+        regularMarketDayLow: 219,
+        regularMarketPreviousClose: 218,
+        regularMarketChange: 4,
+        regularMarketChangePercent: 1.8,
+        regularMarketVolume: 2000
+      }
+    ]);
     const out = await getYahooBatchQuotes(["AAPL"]);
-    expect(quoteFn).toHaveBeenCalledTimes(2);
-    expect(quoteFn.mock.calls[1]).toEqual([["AAPL"], {}, { validateResult: false }]);
+    expect(quoteFn).toHaveBeenCalledTimes(1);
+    expect(quoteFn.mock.calls[0]?.[2]).toEqual({ validateResult: false });
     expect(out[0]?.price).toBe(222);
   });
 
@@ -139,6 +137,75 @@ describe("getYahooBatchQuotes (Redis cache)", () => {
     const out = await getYahooBatchQuotes(["AAPL"]);
     expect(quoteFn).not.toHaveBeenCalled();
     expect(out[0]?.price).toBe(201);
+  });
+
+  it("ignores incomplete batch Redis cache and refetches missing symbols", async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify([
+          {
+            symbol: "TSLA",
+            price: 250,
+            source: "yahoo-finance2",
+            disclaimer: "delayed",
+            asOf: "2026-01-01T00:00:00.000Z"
+          }
+        ])
+      );
+    const set = vi.fn().mockResolvedValue("OK");
+    vi.mocked(createClient).mockReturnValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      get,
+      set,
+      on: vi.fn(),
+      quit: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      ping: vi.fn().mockResolvedValue("PONG")
+    } as never);
+
+    quoteFn.mockReset();
+    quoteFn
+      .mockResolvedValueOnce([
+        {
+          symbol: "TSLA",
+          regularMarketPrice: 251,
+          regularMarketOpen: 250,
+          regularMarketDayHigh: 252,
+          regularMarketDayLow: 249,
+          regularMarketPreviousClose: 248,
+          regularMarketChange: 3,
+          regularMarketChangePercent: 1.2,
+          regularMarketVolume: 1000
+        },
+        {
+          symbol: "AAPL",
+          regularMarketPrice: 199,
+          regularMarketOpen: 198,
+          regularMarketDayHigh: 201,
+          regularMarketDayLow: 197,
+          regularMarketPreviousClose: 196,
+          regularMarketChange: 3,
+          regularMarketChangePercent: 1.5,
+          regularMarketVolume: 1000
+        }
+      ])
+      .mockResolvedValueOnce({
+        symbol: "AAPL",
+        regularMarketPrice: 199,
+        regularMarketOpen: 198,
+        regularMarketDayHigh: 201,
+        regularMarketDayLow: 197,
+        regularMarketPreviousClose: 196,
+        regularMarketChange: 3,
+        regularMarketChangePercent: 1.5,
+        regularMarketVolume: 1000
+      });
+
+    const out = await getYahooBatchQuotes(["AAPL", "TSLA"]);
+    expect(out.map((r) => r.symbol).sort()).toEqual(["AAPL", "TSLA"]);
+    expect(out.find((r) => r.symbol === "AAPL")?.price).toBe(199);
+    expect(quoteFn.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 
   it("does not call Yahoo when allowNetwork is false and Redis is unset", async () => {

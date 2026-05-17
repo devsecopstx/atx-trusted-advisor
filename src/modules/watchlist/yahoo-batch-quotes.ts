@@ -22,6 +22,42 @@ function batchQuoteCacheKey(sortedUpperSymbols: string[]): string {
   return `xf:yahoo:batch:v1:${h}`;
 }
 
+export function batchQuoteCacheCoversSymbols(
+  cached: MarketQuoteSnapshot[],
+  requested: readonly string[]
+): boolean {
+  const have = new Set(cached.map((row) => row.symbol.trim().toUpperCase()));
+  return requested.every((sym) => have.has(sym.trim().toUpperCase()));
+}
+
+export function marketQuoteHasLivePrice(snapshot: MarketQuoteSnapshot | null | undefined): boolean {
+  return typeof snapshot?.price === "number" && Number.isFinite(snapshot.price) && snapshot.price > 0;
+}
+
+function rowsFromYahooQuotePayload(quotes: unknown): MarketQuoteSnapshot[] {
+  const rows: MarketQuoteSnapshot[] = [];
+  if (Array.isArray(quotes)) {
+    for (const q of quotes) {
+      if (isRecord(q) && "symbol" in q) {
+        rows.push(normalizeYahooBatchQuoteRow(q));
+      }
+    }
+  } else if (isRecord(quotes)) {
+    rows.push(normalizeYahooBatchQuoteRow(quotes));
+  }
+  return rows;
+}
+
+async function fetchYahooQuoteRowsForSymbols(symbols: string[], logLabel: string): Promise<MarketQuoteSnapshot[]> {
+  if (symbols.length === 0) {
+    return [];
+  }
+  const yf = getYahooFinance2();
+  const query = symbols.length === 1 ? symbols[0]! : symbols;
+  const quotes = await yahooQuoteWithValidationFallback(yf, query, logLabel);
+  return rowsFromYahooQuotePayload(quotes);
+}
+
 export type YahooBatchQuotesOptions = {
   /** When false, only Redis (if configured) is read — no live Yahoo call on cache miss. */
   allowNetwork?: boolean;
@@ -43,7 +79,12 @@ export async function getYahooBatchQuotes(
         const cached = await redis.get(cacheKey);
         if (cached) {
           const parsed = JSON.parse(cached) as unknown;
-          if (Array.isArray(parsed) && parsed.every((x) => isRecord(x) && typeof x.symbol === "string")) {
+          if (
+            Array.isArray(parsed) &&
+            parsed.every((x) => isRecord(x) && typeof x.symbol === "string") &&
+            batchQuoteCacheCoversSymbols(parsed as MarketQuoteSnapshot[], uniqueSymbols) &&
+            (parsed as MarketQuoteSnapshot[]).every((row) => marketQuoteHasLivePrice(row))
+          ) {
             return parsed as MarketQuoteSnapshot[];
           }
         }
@@ -57,7 +98,7 @@ export async function getYahooBatchQuotes(
     if (allowNetwork) {
       for (const sym of uniqueSymbols) {
         const cachedRow = await tryGetRedisMarketQuote(sym);
-        if (cachedRow) {
+        if (cachedRow && marketQuoteHasLivePrice(cachedRow)) {
           fromPerSymbolCache.push(cachedRow);
         } else {
           symbolsNeedingNetwork.push(sym);
@@ -69,40 +110,53 @@ export async function getYahooBatchQuotes(
       return fromPerSymbolCache;
     }
 
-    const fetched: MarketQuoteSnapshot[] = [];
-    if (symbolsNeedingNetwork.length > 0) {
-      const quotes: unknown = await yahooQuoteWithValidationFallback(
-        getYahooFinance2(),
-        symbolsNeedingNetwork,
-        "batch quote"
-      );
-
-      if (Array.isArray(quotes)) {
-        for (const q of quotes) {
-          if (isRecord(q) && "symbol" in q) {
-            fetched.push(normalizeYahooBatchQuoteRow(q));
-          }
-        }
-      } else if (isRecord(quotes)) {
-        fetched.push(normalizeYahooBatchQuoteRow(quotes));
-      }
-    }
-
     const bySymbol = new Map<string, MarketQuoteSnapshot>();
     for (const row of fromPerSymbolCache) {
       bySymbol.set(row.symbol.toUpperCase(), row);
     }
-    for (const row of fetched) {
-      bySymbol.set(row.symbol.toUpperCase(), row);
+
+    if (symbolsNeedingNetwork.length > 0) {
+      const batchRows = await fetchYahooQuoteRowsForSymbols(symbolsNeedingNetwork, "batch quote");
+      for (const row of batchRows) {
+        if (marketQuoteHasLivePrice(row)) {
+          bySymbol.set(row.symbol.toUpperCase(), row);
+        }
+      }
+
+      const stillMissing = symbolsNeedingNetwork.filter((sym) => !bySymbol.has(sym));
+      if (stillMissing.length > 0) {
+        for (const sym of stillMissing) {
+          try {
+            const singles = await fetchYahooQuoteRowsForSymbols([sym], `single quote ${sym}`);
+            const row = singles.find((r) => r.symbol.toUpperCase() === sym);
+            if (row && marketQuoteHasLivePrice(row)) {
+              bySymbol.set(sym, row);
+            }
+          } catch (singleErr) {
+            console.warn("[watchlist/scanner] Yahoo single-symbol quote failed", {
+              symbol: sym,
+              error: String(singleErr)
+            });
+          }
+        }
+      }
     }
+
     const results = uniqueSymbols
       .map((sym) => bySymbol.get(sym))
       .filter((row): row is MarketQuoteSnapshot => row != null);
 
     const quoteTtl = resolveMarketQuoteRedisTtlSeconds();
-    await Promise.all(results.map((row) => setRedisMarketQuote(row.symbol, row, quoteTtl)));
+    await Promise.all(
+      results.filter((row) => marketQuoteHasLivePrice(row)).map((row) => setRedisMarketQuote(row.symbol, row, quoteTtl))
+    );
 
-    if (redis && results.length > 0) {
+    if (
+      redis &&
+      results.length > 0 &&
+      batchQuoteCacheCoversSymbols(results, uniqueSymbols) &&
+      results.every((row) => marketQuoteHasLivePrice(row))
+    ) {
       try {
         const ttl = getRedisQuoteCacheTtlSeconds();
         await redis.set(cacheKey, JSON.stringify(results), { EX: ttl });
@@ -118,10 +172,10 @@ export async function getYahooBatchQuotes(
     }
     console.warn("[watchlist/scanner] Yahoo batch quote failed", { symbols, error: String(error) });
     return symbols.map((symbol) => ({
-      symbol,
+      symbol: symbol.trim().toUpperCase(),
       price: undefined,
       source: "yahoo-finance2",
-      disclaimer: "Quote fetch failed",
+      disclaimer: "Quote fetch failed"
     }));
   }
 }
@@ -150,6 +204,6 @@ export function normalizeYahooBatchQuoteRow(raw: Record<string, unknown>): Marke
     fiftyTwoWeekLow: toNum("fiftyTwoWeekLow"),
     asOf: new Date().toISOString(),
     source: "yahoo-finance2",
-    disclaimer: "Market data from Yahoo Finance — delayed.",
+    disclaimer: "Market data from Yahoo Finance — delayed."
   };
 }

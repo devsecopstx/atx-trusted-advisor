@@ -8,7 +8,13 @@ let singleton: InstanceType<typeof YahooFinance> | undefined;
 
 export function getYahooFinance2(): InstanceType<typeof YahooFinance> {
   if (!singleton) {
-    singleton = new YahooFinance({ suppressNotices: ["yahooSurvey", "ripHistorical"] });
+    singleton = new YahooFinance({
+      suppressNotices: ["yahooSurvey", "ripHistorical"],
+      validation: {
+        logErrors: false,
+        logOptionsErrors: false
+      }
+    });
   }
   return singleton;
 }

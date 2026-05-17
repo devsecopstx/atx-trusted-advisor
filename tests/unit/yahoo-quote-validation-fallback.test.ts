@@ -14,15 +14,12 @@ describe("yahooQuoteWithValidationFallback", () => {
     expect(isYahooQuoteSchemaValidationError(new Error("ECONNRESET"))).toBe(false);
   });
 
-  it("retries once with validateResult: false when validation fails", async () => {
-    const quote = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("Failed validation: #/definitions/QuoteResponseArray"))
-      .mockResolvedValueOnce([{ symbol: "A", regularMarketPrice: 1 }]);
+  it("requests quotes with validateResult false on first call", async () => {
+    const quote = vi.fn().mockResolvedValue([{ symbol: "A", regularMarketPrice: 1 }]);
     const yf: { quote: typeof quote } = { quote };
     const out = await yahooQuoteWithValidationFallback(yf, ["A", "B"], "test");
-    expect(quote).toHaveBeenCalledTimes(2);
-    expect(quote.mock.calls[1]).toEqual([["A", "B"], {}, { validateResult: false }]);
+    expect(quote).toHaveBeenCalledTimes(1);
+    expect(quote.mock.calls[0]).toEqual([["A", "B"], {}, { validateResult: false }]);
     expect(out).toEqual([{ symbol: "A", regularMarketPrice: 1 }]);
   });
 

@@ -49,6 +49,9 @@ export async function tryGetRedisMarketQuote(symbol: string): Promise<MarketQuot
     if (typeof parsed?.symbol !== "string" || parsed.symbol.toUpperCase() !== sym) {
       return null;
     }
+    if (typeof parsed.price !== "number" || !Number.isFinite(parsed.price) || parsed.price <= 0) {
+      return null;
+    }
     return parsed;
   } catch {
     return null;

@@ -43,12 +43,20 @@ function lookupCacheKey(symbol: string): string {
   return `${LOOKUP_CACHE_KEY_VER}:${symbol}`;
 }
 
+function lookupHasLivePrice(row: SymbolLookupResult | null | undefined): boolean {
+  return typeof row?.price === "number" && Number.isFinite(row.price) && row.price > 0;
+}
+
 function getCached(symbol: string): SymbolLookupResult | null {
   const cached = lookupCache.get(lookupCacheKey(symbol));
   if (!cached) {
     return null;
   }
   if (Date.now() >= cached.expiresAt) {
+    lookupCache.delete(lookupCacheKey(symbol));
+    return null;
+  }
+  if (!lookupHasLivePrice(cached.data)) {
     lookupCache.delete(lookupCacheKey(symbol));
     return null;
   }
@@ -134,7 +142,9 @@ export async function lookupSymbols(
       const base = snapshotToLookupBase(symbol, snap);
       const logoUrl = await resolveCachedEquityLogoUrl(symbol);
       const lookup: SymbolLookupResult = { ...base, ...(logoUrl ? { logoUrl } : {}) };
-      setCached(symbol, lookup);
+      if (lookupHasLivePrice(lookup)) {
+        setCached(symbol, lookup);
+      }
       result.set(symbol, lookup);
     }
   }

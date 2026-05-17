@@ -3789,11 +3789,11 @@ export async function mutateUserWatchlistSymbols(input: MutateUserWatchlistInput
     const removeSet = new Set(
       input.removeSymbols.map((s) => s.trim().toUpperCase()).filter(Boolean)
     );
-    symbols = symbols.filter((s) => !removeSet.has(s.symbol));
+    symbols = symbols.filter((s) => !removeSet.has(s.symbol.trim().toUpperCase()));
   }
 
   if (input.addSymbols?.length) {
-    const existing = new Set(symbols.map((s) => s.symbol));
+    const existing = new Set(symbols.map((s) => s.symbol.trim().toUpperCase()));
     for (const raw of input.addSymbols) {
       const symbol = raw.trim().toUpperCase();
       if (!symbol || !/^[A-Z0-9.\-]{1,32}$/.test(symbol)) {
