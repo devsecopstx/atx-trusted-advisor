@@ -4,7 +4,9 @@ import {
 } from "@/lib/backend-bff";
 import {
     isXchatSseProxyBackendEnabled,
-    resolveXchatStreamInternalSecretHeader
+    parseXchatStreamRequestMessage,
+    resolveXchatStreamInternalSecretHeader,
+    shouldSkipXchatStreamBffForWatchlistShowMessage
 } from "@/lib/xchat-live-sse-policy";
 
 /**
@@ -18,8 +20,20 @@ import {
  * - Options scan / watchlist / holdings paths may return JSON through this route (client handles non-SSE bodies).
  */
 export async function POST(request: Request) {
-  if (isXchatSseProxyBackendEnabled()) {
-    const proxied = await proxyPortfolioRequestToBackend(request.clone());
+  const bodyText = await request.text();
+  const streamMessage = parseXchatStreamRequestMessage(bodyText);
+  const skipBffForWatchlistShow = shouldSkipXchatStreamBffForWatchlistShowMessage(streamMessage);
+
+  if (isXchatSseProxyBackendEnabled() && !skipBffForWatchlistShow) {
+    const proxied = await proxyPortfolioRequestToBackend(
+      new Request(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: bodyText,
+        signal: request.signal,
+        cache: "no-store"
+      })
+    );
     if (proxied) {
       if (proxied.status === 404) {
         releaseUnusedProxyResponse(proxied);
@@ -30,7 +44,6 @@ export async function POST(request: Request) {
   }
 
   // In-process delegation (no network hop — fixes prod Cloud Run 502)
-  const bodyText = await request.text();
 
   // Dynamically import the ask handler so we call it directly in-process
   const { POST: askPostHandler } = await import("@/app/api/xchat/ask/route");

@@ -14,12 +14,26 @@ describe("yahooQuoteWithValidationFallback", () => {
     expect(isYahooQuoteSchemaValidationError(new Error("ECONNRESET"))).toBe(false);
   });
 
-  it("requests quotes with validateResult false on first call", async () => {
-    const quote = vi.fn().mockResolvedValue([{ symbol: "A", regularMarketPrice: 1 }]);
+  it("returns validated quote on first success", async () => {
+    const quote = vi.fn().mockResolvedValue({ symbol: "A", regularMarketPrice: 1 });
     const yf: { quote: typeof quote } = { quote };
     const out = await yahooQuoteWithValidationFallback(yf, ["A", "B"], "test");
     expect(quote).toHaveBeenCalledTimes(1);
-    expect(quote.mock.calls[0]).toEqual([["A", "B"], {}, { validateResult: false }]);
+    expect(quote.mock.calls[0]).toEqual([["A", "B"]]);
+    expect(out).toEqual({ symbol: "A", regularMarketPrice: 1 });
+  });
+
+  it("retries with validateResult false after validation failure", async () => {
+    const validationErr = new Error("FailedYahooValidationError: Failed validation");
+    const quote = vi
+      .fn()
+      .mockRejectedValueOnce(validationErr)
+      .mockResolvedValueOnce([{ symbol: "A", regularMarketPrice: 1 }]);
+    const yf: { quote: typeof quote } = { quote };
+    const out = await yahooQuoteWithValidationFallback(yf, ["A", "B"], "test");
+    expect(quote).toHaveBeenCalledTimes(2);
+    expect(quote.mock.calls[0]).toEqual([["A", "B"]]);
+    expect(quote.mock.calls[1]).toEqual([["A", "B"], undefined, { validateResult: false }]);
     expect(out).toEqual([{ symbol: "A", regularMarketPrice: 1 }]);
   });
 

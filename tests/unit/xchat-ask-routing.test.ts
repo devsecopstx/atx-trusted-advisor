@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     heavySynthesisIntent,
+    isShowWatchlistIntent,
     shouldEagerWorkspaceSnapshotPreloadForMessage,
     shouldOfferStrategyJobPreflight,
     shouldRunOptionsActionScan
@@ -38,6 +39,23 @@ describe("shouldOfferStrategyJobPreflight", () => {
 
   it("ignores unrelated chat", () => {
     expect(shouldOfferStrategyJobPreflight("What is a stock?")).toBe(false);
+  });
+});
+
+describe("isShowWatchlistIntent", () => {
+  it("matches direct watchlist asks including typos", () => {
+    expect(isShowWatchlistIntent("show my watchlist")).toBe(true);
+    expect(isShowWatchlistIntent("show my  watchlist")).toBe(true);
+    expect(isShowWatchlistIntent(";show my watchlist")).toBe(true);
+    expect(isShowWatchlistIntent("show me my watchlist")).toBe(true);
+    expect(isShowWatchlistIntent("show my watchlist report")).toBe(true);
+    expect(isShowWatchlistIntent("how my watchlist")).toBe(true);
+    expect(isShowWatchlistIntent("how is my watchlist")).toBe(true);
+    expect(isShowWatchlistIntent("what's on my watchlist")).toBe(true);
+  });
+
+  it("excludes mutating watchlist flows", () => {
+    expect(isShowWatchlistIntent("watchlist add TSLA")).toBe(false);
   });
 });
 

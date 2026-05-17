@@ -30,14 +30,24 @@ class NextSchedulerExecuteClient(
     }
 
     /** @return Triple(runIdHex, status, output) */
-    fun executeTask(taskIdHex: String, triggeredBy: String): Triple<String, String, String> {
+    fun executeTask(
+        taskIdHex: String,
+        triggeredBy: String,
+        bypassMarketWindow: Boolean = false,
+    ): Triple<String, String, String> {
         val base = props.schedulerDelegate.nextBaseUrl.trim().trimEnd('/')
         val secret = props.schedulerDelegate.internalSecret.trim()
         val url = "$base/api/internal/scheduler/execute-task"
         val headers = HttpHeaders()
         headers.contentType = MediaType.APPLICATION_JSON
         headers.set("X-Atx-Scheduler-Secret", secret)
-        val body = mapOf("taskId" to taskIdHex, "triggeredBy" to triggeredBy)
+        val body = mutableMapOf<String, Any>(
+            "taskId" to taskIdHex,
+            "triggeredBy" to triggeredBy,
+        )
+        if (bypassMarketWindow) {
+            body["bypassMarketWindow"] = true
+        }
         val entity = HttpEntity<Map<String, Any>>(body, headers)
         return try {
             val response = restTemplate.exchange(url, HttpMethod.POST, entity, Map::class.java)

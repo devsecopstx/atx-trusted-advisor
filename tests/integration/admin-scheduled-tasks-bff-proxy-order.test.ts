@@ -32,6 +32,10 @@ const repoMocks = vi.hoisted(() => ({
   deleteScheduledTask: vi.fn()
 }));
 
+const taskRunnerMocks = vi.hoisted(() => ({
+  executeScheduledTask: vi.fn()
+}));
+
 vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/modules/core-admin/repository")>();
   return {
@@ -41,6 +45,10 @@ vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
     deleteScheduledTask: repoMocks.deleteScheduledTask
   };
 });
+
+vi.mock("@/modules/core-admin/task-runner", () => ({
+  executeScheduledTask: taskRunnerMocks.executeScheduledTask
+}));
 
 import { DELETE as deleteAdminTask, PATCH as patchAdminTask } from "@/app/api/admin/tasks/[taskId]/route";
 import { POST as postAdminTaskRun } from "@/app/api/admin/tasks/[taskId]/run/route";
@@ -71,6 +79,11 @@ describe("admin scheduled tasks — BFF proxy ordering", () => {
       tenantId: "507f1f77bcf86cd799439022"
     });
     repoMocks.deleteScheduledTask.mockResolvedValue(true);
+    taskRunnerMocks.executeScheduledTask.mockResolvedValue({
+      runId: "run_next",
+      status: "success",
+      output: "watchlist_price_scanner: ok"
+    });
   });
 
   it("PATCH returns proxied response without calling requireAdminSession when proxy is non-null", async () => {
@@ -111,19 +124,22 @@ describe("admin scheduled tasks — BFF proxy ordering", () => {
     expect(proxyScheduledMocks.proxyAdminScheduledTasksRequestToBackend).toHaveBeenCalledWith(req);
   });
 
-  it("POST run returns proxied response without calling requireAdminSession when proxy is non-null", async () => {
-    const proxied = new Response(JSON.stringify({ data: { runId: "run_bff" } }), {
-      status: 202,
-      headers: { "Content-Type": "application/json" }
-    });
-    proxyScheduledMocks.proxyAdminScheduledTasksRequestToBackend.mockResolvedValueOnce(proxied);
-    adminSessionMocks.requireAdminSession.mockRejectedValue(
-      new Error("requireAdminSession must not run when BFF proxy returns a response")
-    );
+  it("POST run executes on Next with bypassMarketWindow when BFF proxy is skipped (null)", async () => {
+    proxyScheduledMocks.proxyAdminScheduledTasksRequestToBackend.mockResolvedValueOnce(null);
 
     const req = new Request("http://test/api/admin/tasks/task_1/run", { method: "POST" });
     const res = await postAdminTaskRun(req, { params: Promise.resolve({ taskId: "task_1" }) });
-    expect(res.status).toBe(202);
+    expect(res.status).toBe(200);
     expect(proxyScheduledMocks.proxyAdminScheduledTasksRequestToBackend).toHaveBeenCalledWith(req);
+    expect(adminSessionMocks.requireAdminSession).toHaveBeenCalled();
+    expect(taskRunnerMocks.executeScheduledTask).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: "task1" }),
+      "admin1",
+      expect.objectContaining({ username: "admin1" }),
+      { bypassMarketWindow: true }
+    );
+    const body = (await res.json()) as { data: { runId: string; status: string } };
+    expect(body.data.runId).toBe("run_next");
+    expect(body.data.status).toBe("success");
   });
 });

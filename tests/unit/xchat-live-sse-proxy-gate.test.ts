@@ -5,7 +5,11 @@ vi.mock("@/lib/backend-bff", () => ({
 }));
 
 import { shouldProxyPortfolioRequestsToBackend } from "@/lib/backend-bff";
-import { isXchatSseProxyBackendEnabled } from "@/lib/xchat-live-sse-policy";
+import {
+    isXchatSseProxyBackendEnabled,
+    parseXchatStreamRequestMessage,
+    shouldSkipXchatStreamBffForWatchlistShowMessage
+} from "@/lib/xchat-live-sse-policy";
 
 describe("isXchatSseProxyBackendEnabled", () => {
   const envSnapshot = { ...process.env };
@@ -42,5 +46,19 @@ describe("isXchatSseProxyBackendEnabled", () => {
     process.env.XCHAT_SSE_PROXY_BACKEND = "yes";
     vi.mocked(shouldProxyPortfolioRequestsToBackend).mockReturnValue(false);
     expect(isXchatSseProxyBackendEnabled()).toBe(false);
+  });
+});
+
+describe("watchlist show stream BFF skip", () => {
+  it("skips Spring proxy for show/how my watchlist messages", () => {
+    expect(shouldSkipXchatStreamBffForWatchlistShowMessage("show my watchlist")).toBe(true);
+    expect(shouldSkipXchatStreamBffForWatchlistShowMessage("how my watchlist")).toBe(true);
+    expect(shouldSkipXchatStreamBffForWatchlistShowMessage("quote TSLA")).toBe(false);
+  });
+
+  it("parses stream JSON body message", () => {
+    expect(
+      parseXchatStreamRequestMessage(JSON.stringify({ message: "show my watchlist", threadId: "t1" }))
+    ).toBe("show my watchlist");
   });
 });

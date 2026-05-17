@@ -111,12 +111,21 @@ function messageRequestsWatchlistForPortfolio(normalized: string): boolean {
   );
 }
 
+/** Collapse whitespace and strip leading punctuation so intent routing survives typos (`show my  watchlist`, `;show my watchlist`). */
+export function normalizeXchatUserMessageForRouting(message: string): string {
+  return message
+    .trim()
+    .replace(/^[^a-z0-9]+/i, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
 /**
  * Direct deterministic watchlist asks should route to atx_function watchlist_snapshot.
  * Excludes mutating requests (add/remove/delete) that need normal tool-loop intent handling.
  */
 export function isShowWatchlistIntent(message: string): boolean {
-  const normalized = message.trim().toLowerCase();
+  const normalized = normalizeXchatUserMessageForRouting(message);
   if (!normalized) {
     return false;
   }
@@ -136,7 +145,11 @@ export function isShowWatchlistIntent(message: string): boolean {
     normalized.includes("show my watchlist") ||
     normalized.includes("list my watchlist") ||
     normalized.includes("what is in my watchlist") ||
-    /\b(show|list|view|see|display)\s+(me\s+)?(my|our)\s+watchlist\b/.test(normalized)
+    normalized.includes("how is my watchlist") ||
+    normalized.includes("how my watchlist") ||
+    /\bwatchlist\s+(report|summary|table|details)\b/.test(normalized) ||
+    /\b(show|list|view|see|display|how)\s+(me\s+)?(my|our)\s+watchlist\b/.test(normalized) ||
+    /\bwhat(?:'s| is)\s+on\s+(my|our)\s+watchlist\b/.test(normalized)
   );
 }
 

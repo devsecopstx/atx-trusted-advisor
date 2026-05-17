@@ -262,15 +262,24 @@ class AdminScheduledTasksService(
 
     fun executeScheduledTask(task: Document, triggeredBy: String): ExecutionResult = enqueueScheduledTask(task, triggeredBy)
 
-    fun enqueueScheduledTask(task: Document, triggeredBy: String): ExecutionResult {
-        return enqueueScheduledTaskInternal(task, triggeredBy, null, advanceSchedule = true)
+    fun enqueueScheduledTask(
+        task: Document,
+        triggeredBy: String,
+        bypassMarketWindow: Boolean = false,
+    ): ExecutionResult {
+        return enqueueScheduledTaskInternal(task, triggeredBy, null, advanceSchedule = true, bypassMarketWindow)
     }
 
     private fun shouldDelegateToNext(category: String): Boolean =
         category != "user-history" && nextSchedulerExecuteClient.isConfigured()
 
-    private fun delegateToNext(taskIdHex: String, triggeredBy: String): ExecutionResult {
-        val (runId, status, output) = nextSchedulerExecuteClient.executeTask(taskIdHex, triggeredBy)
+    private fun delegateToNext(
+        taskIdHex: String,
+        triggeredBy: String,
+        bypassMarketWindow: Boolean = false,
+    ): ExecutionResult {
+        val (runId, status, output) =
+            nextSchedulerExecuteClient.executeTask(taskIdHex, triggeredBy, bypassMarketWindow)
         return ExecutionResult(runIdHex = runId, status = status, output = output)
     }
 
@@ -279,6 +288,7 @@ class AdminScheduledTasksService(
         triggeredBy: String,
         tenantOverride: ObjectId?,
         advanceSchedule: Boolean,
+        bypassMarketWindow: Boolean = false,
     ): ExecutionResult {
         val taskId = task.getObjectId("_id") ?: throw IllegalStateException("task missing _id")
         val baseTenantOid = task.getObjectId("tenantId")
@@ -287,7 +297,7 @@ class AdminScheduledTasksService(
         val category = task.getString("category") ?: "sync-broker"
 
         if (shouldDelegateToNext(category) && !(baseTenantOid == null && tenantOverride != null)) {
-            return delegateToNext(taskId.toHexString(), triggeredBy)
+            return delegateToNext(taskId.toHexString(), triggeredBy, bypassMarketWindow)
         }
 
         val runDoc = Document()

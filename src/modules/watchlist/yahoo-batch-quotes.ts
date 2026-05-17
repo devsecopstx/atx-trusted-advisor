@@ -116,7 +116,7 @@ export async function getYahooBatchQuotes(
     }
 
     if (symbolsNeedingNetwork.length > 0) {
-      const batchRows = await fetchYahooQuoteRowsForSymbols(symbolsNeedingNetwork, "batch quote");
+      const batchRows = await fetchYahooQuoteRowsChunked(symbolsNeedingNetwork, "batch quote");
       for (const row of batchRows) {
         if (marketQuoteHasLivePrice(row)) {
           bySymbol.set(row.symbol.toUpperCase(), row);
@@ -170,19 +170,68 @@ export async function getYahooBatchQuotes(
     if (!allowNetwork) {
       return [];
     }
-    console.warn("[watchlist/scanner] Yahoo batch quote failed", { symbols, error: String(error) });
-    return symbols.map((symbol) => ({
-      symbol: symbol.trim().toUpperCase(),
-      price: undefined,
-      source: "yahoo-finance2",
-      disclaimer: "Quote fetch failed"
-    }));
+    console.warn("[watchlist/scanner] Yahoo batch quote failed; retrying per symbol", {
+      symbols,
+      error: String(error)
+    });
+    const bySymbol = new Map<string, MarketQuoteSnapshot>();
+    for (const sym of [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))]) {
+      try {
+        const singles = await fetchYahooQuoteRowsForSymbols([sym], `batch-fallback ${sym}`);
+        const row = singles.find((r) => r.symbol.toUpperCase() === sym);
+        if (row && marketQuoteHasLivePrice(row)) {
+          bySymbol.set(sym, row);
+          void setRedisMarketQuote(sym, row, resolveMarketQuoteRedisTtlSeconds());
+        }
+      } catch (singleErr) {
+        console.warn("[watchlist/scanner] Yahoo per-symbol fallback failed", {
+          symbol: sym,
+          error: String(singleErr)
+        });
+      }
+    }
+    return symbols
+      .map((s) => bySymbol.get(s.trim().toUpperCase()))
+      .filter((row): row is MarketQuoteSnapshot => row != null);
   }
+}
+
+/** Yahoo `quote()` is more reliable in smaller chunks on serverless (timeouts / rate limits). */
+const YAHOO_BATCH_QUOTE_CHUNK_SIZE = 8;
+
+export async function fetchYahooQuoteRowsChunked(
+  symbols: string[],
+  logLabel: string
+): Promise<MarketQuoteSnapshot[]> {
+  const unique = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))];
+  if (unique.length === 0) {
+    return [];
+  }
+  if (unique.length <= YAHOO_BATCH_QUOTE_CHUNK_SIZE) {
+    return fetchYahooQuoteRowsForSymbols(unique, logLabel);
+  }
+  const rows: MarketQuoteSnapshot[] = [];
+  for (let i = 0; i < unique.length; i += YAHOO_BATCH_QUOTE_CHUNK_SIZE) {
+    const chunk = unique.slice(i, i + YAHOO_BATCH_QUOTE_CHUNK_SIZE);
+    const chunkRows = await fetchYahooQuoteRowsForSymbols(chunk, `${logLabel} chunk`);
+    rows.push(...chunkRows);
+  }
+  return rows;
+}
+
+function resolveYahooQuoteLastPrice(raw: Record<string, unknown>): number | undefined {
+  const candidates = [raw.regularMarketPrice, raw.postMarketPrice, raw.preMarketPrice];
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+  }
+  return undefined;
 }
 
 /** Normalizes a single Yahoo `quote()` row — exported for unit tests. */
 export function normalizeYahooBatchQuoteRow(raw: Record<string, unknown>): MarketQuoteSnapshot {
-  const price = typeof raw.regularMarketPrice === "number" ? raw.regularMarketPrice : undefined;
+  const price = resolveYahooQuoteLastPrice(raw);
   const toStr = (k: string): string | undefined =>
     typeof raw[k] === "string" && String(raw[k]).trim() ? String(raw[k]).trim() : undefined;
   const toNum = (k: string): number | undefined =>

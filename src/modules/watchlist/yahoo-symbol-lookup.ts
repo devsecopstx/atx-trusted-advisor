@@ -1,5 +1,9 @@
 import { resolveCachedEquityLogoUrl } from "@/modules/watchlist/symbol-logo-cache";
-import { getYahooBatchQuotes } from "@/modules/watchlist/yahoo-batch-quotes";
+import {
+    fetchYahooQuoteRowsChunked,
+    getYahooBatchQuotes,
+    marketQuoteHasLivePrice
+} from "@/modules/watchlist/yahoo-batch-quotes";
 import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 
 const LOOKUP_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -134,9 +138,11 @@ export async function lookupSymbols(
   if (needBatch.length > 0) {
     const snapshots = await getYahooBatchQuotes(needBatch, { allowNetwork });
     const bySymbol = new Map(snapshots.map((s) => [s.symbol.toUpperCase(), s]));
+    const stillNeeding: string[] = [];
     for (const symbol of needBatch) {
       const snap = bySymbol.get(symbol);
-      if (!snap) {
+      if (!snap || !marketQuoteHasLivePrice(snap)) {
+        stillNeeding.push(symbol);
         continue;
       }
       const base = snapshotToLookupBase(symbol, snap);
@@ -146,6 +152,30 @@ export async function lookupSymbols(
         setCached(symbol, lookup);
       }
       result.set(symbol, lookup);
+    }
+
+    if (allowNetwork && stillNeeding.length > 0) {
+      for (const symbol of stillNeeding) {
+        try {
+          const singles = await fetchYahooQuoteRowsChunked([symbol], `lookup single ${symbol}`);
+          const snap = singles.find((r) => r.symbol.toUpperCase() === symbol);
+          if (!snap || !marketQuoteHasLivePrice(snap)) {
+            continue;
+          }
+          const base = snapshotToLookupBase(symbol, snap);
+          const logoUrl = await resolveCachedEquityLogoUrl(symbol);
+          const lookup: SymbolLookupResult = { ...base, ...(logoUrl ? { logoUrl } : {}) };
+          if (lookupHasLivePrice(lookup)) {
+            setCached(symbol, lookup);
+          }
+          result.set(symbol, lookup);
+        } catch (err) {
+          console.warn("[yahoo-symbol-lookup] single-symbol quote failed", {
+            symbol,
+            error: String(err)
+          });
+        }
+      }
     }
   }
 

@@ -38,7 +38,7 @@ import {
     WATCHLIST_UPSERT_DEFAULT_OUTLOOK,
     WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE
 } from "@/modules/watchlist/default-upsert-fields";
-import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
+import { resolveLiveQuotesForWatchlistSymbols } from "@/modules/watchlist/watchlist-live-quotes";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { runMonteCarloTailRiskTool } from "@/modules/xchat/monte-carlo-tail-risk-tool";
 import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
@@ -84,7 +84,8 @@ export type {
 const MAX_OUTPUT_BYTES = 8 * 1024;
 /** Cap rows returned by positions_snapshot before JSON serialization (freshness; not cached). */
 const MAX_POSITIONS_RETURNED = 200;
-const CACHEABLE_OPERATIONS = new Set(["watchlist_snapshot", "account_health"]);
+/** Watchlist quotes are refreshed per request — do not cache snapshot JSON (stale Spot dashes). */
+const CACHEABLE_OPERATIONS = new Set(["account_health"]);
 
 /**
  * Skip byte-cap truncation — it can slice UTF-8 mid-sequence and yields invalid JSON.
@@ -158,8 +159,8 @@ const MAX_WATCHLIST_MUTATE_PER_CALL = 20;
 const PRELOAD_SHORT_CIRCUIT_OPS = new Set([
   "portfolio_summary",
   "account_health",
-  "positions_snapshot",
-  "watchlist_snapshot"
+  "positions_snapshot"
+  /** watchlist_snapshot omitted — preload JSON omits live Yahoo marks; always run loadWatchlistSummary. */
 ]);
 
 function watchlistSymbolToJson(s: WatchlistSymbol, quotePrice?: number) {
@@ -207,12 +208,15 @@ async function loadWatchlistSummary(ctx: ExecutorContext): Promise<WatchlistSumm
     return { error: "no_watchlist" };
   }
   const symbols = watchlist.symbols ?? [];
-  const fetchedQuotes = symbols.length > 0 ? await lookupSymbols(symbols.map((x) => x.symbol)) : null;
-  const quoteMap = fetchedQuotes instanceof Map ? fetchedQuotes : new Map();
+  const upperSyms = symbols.map((x) => x.symbol.trim().toUpperCase());
+  const liveBySymbol =
+    upperSyms.length > 0
+      ? await resolveLiveQuotesForWatchlistSymbols(upperSyms, { allowNetwork: true })
+      : new Map();
   return {
     name: watchlist.name,
     symbolCount: symbols.length,
-    symbols: symbols.map((s) => watchlistSymbolToJson(s, quoteMap.get(s.symbol)?.price))
+    symbols: symbols.map((s) => watchlistSymbolToJson(s, liveBySymbol.get(s.symbol.trim().toUpperCase())?.price))
   };
 }
 
@@ -1314,8 +1318,26 @@ function buildOperations(
 
     market_quote: async (args, ctx: ExecutorContext) => {
       void ctx;
-      const symbol = typeof args.symbol === "string" ? args.symbol : undefined;
-      return getYahooMarketQuote({ symbol });
+      const symbol =
+        typeof args.symbol === "string" && args.symbol.trim()
+          ? args.symbol.trim()
+          : typeof args.ticker === "string" && args.ticker.trim()
+            ? args.ticker.trim()
+            : Array.isArray(args.symbols) && typeof args.symbols[0] === "string" && args.symbols[0].trim()
+              ? args.symbols[0].trim()
+              : undefined;
+      try {
+        return await getYahooMarketQuote({ symbol });
+      } catch (error) {
+        const sym = (symbol ?? "TSLA").trim().toUpperCase();
+        return {
+          error: "quote_unavailable",
+          symbol: sym,
+          message:
+            "Yahoo Finance returned an error. Try again in a moment or check your atx workspace.",
+          detail: error instanceof Error ? error.message : String(error)
+        };
+      }
     }
   };
 }

@@ -52,6 +52,7 @@ import {
 } from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
+import { resolveLiveQuotesForWatchlistSymbols } from "@/modules/watchlist/watchlist-live-quotes";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import {
     formatAccountOutlookPromptInjection,
@@ -132,7 +133,10 @@ import {
     processDecodedXchatVisionImage,
     type ProcessedXchatVisionImage
 } from "@/modules/xchat/vision-processor";
-import { postProcessWatchlistMarkdown } from "@/modules/xchat/watchlist-response-postprocess";
+import {
+    mergeWatchlistStructuredRowsWithLiveQuotes,
+    postProcessWatchlistMarkdown
+} from "@/modules/xchat/watchlist-response-postprocess";
 import {
     buildWorkspacePreloadHintForSystemPrompt,
     formatWorkspaceServerSnapshotBlock,
@@ -1810,7 +1814,9 @@ export async function POST(request: Request) {
       platformRoles: session.roles,
       sessionCookie,
       workspacePortfolioId,
-      ...watchlistExecutorWorkspaceOpts
+      /** Always load Yahoo marks via loadWatchlistSummary — do not short-circuit on workspace preload. */
+      workspacePreload: null,
+      workspaceLazyLoad: undefined
     });
     const watchlistCallStartedAt = Date.now();
     const watchlistToolResult = await executor("atx_function", { operation: "watchlist_snapshot" });
@@ -1818,6 +1824,9 @@ export async function POST(request: Request) {
     let responseMarkdown = "I could not load your watchlist right now.";
     let watchlistError = watchlistToolResult.error;
 
+    let watchlistLegacyMarkdown: string | null = null;
+    let watchlistStructuredForPost: Parameters<typeof mergeWatchlistStructuredRowsWithLiveQuotes>[0] | null =
+      null;
     try {
       const parsed = JSON.parse(watchlistToolResult.result) as {
         error?: string;
@@ -1865,10 +1874,13 @@ export async function POST(request: Request) {
             return `- ${symbol} — Spot: ${spot} · Target entry: ${targetUsd}`;
           });
           const legacyMarkdown = `${header}\n${lines.join("\n")}`;
-          responseMarkdown = await postProcessWatchlistMarkdown({
-            rawMarkdown: legacyMarkdown,
-            watchlistName: parsed.name,
-            structuredRows: cleanRows.map((row) => ({
+          watchlistLegacyMarkdown = legacyMarkdown;
+          const watchlistSymbols = cleanRows.map((row) => row.symbol!.trim().toUpperCase());
+          const liveBySymbol = await resolveLiveQuotesForWatchlistSymbols(watchlistSymbols, {
+            allowNetwork: true
+          });
+          watchlistStructuredForPost = mergeWatchlistStructuredRowsWithLiveQuotes(
+            cleanRows.map((row) => ({
               symbol: row.symbol!.trim().toUpperCase(),
               spotPriceDisplay:
                 typeof row.spotPriceDisplay === "string" ? row.spotPriceDisplay : undefined,
@@ -1885,12 +1897,39 @@ export async function POST(request: Request) {
                   ? row.targetEntryNotional100xUsdDisplay
                   : undefined
             })),
-            portfolioId: workspacePortfolioId
+            liveBySymbol
+          );
+          responseMarkdown = await postProcessWatchlistMarkdown({
+            rawMarkdown: legacyMarkdown,
+            watchlistName: parsed.name,
+            structuredRows: watchlistStructuredForPost,
+            portfolioId: workspacePortfolioId,
+            allowLiveQuotes: true
           });
         }
       }
-    } catch {
+    } catch (err) {
       watchlistError = watchlistError ?? "watchlist_parse_failed";
+      console.warn("[xchat/ask] watchlist_snapshot_direct failed", {
+        error: err instanceof Error ? err.message : String(err)
+      });
+      if (watchlistStructuredForPost && watchlistStructuredForPost.length > 0) {
+        try {
+          responseMarkdown = await postProcessWatchlistMarkdown({
+            rawMarkdown: watchlistLegacyMarkdown ?? "",
+            watchlistName: undefined,
+            structuredRows: watchlistStructuredForPost,
+            portfolioId: workspacePortfolioId,
+            allowLiveQuotes: true
+          });
+        } catch {
+          if (watchlistLegacyMarkdown) {
+            responseMarkdown = watchlistLegacyMarkdown;
+          }
+        }
+      } else if (watchlistLegacyMarkdown) {
+        responseMarkdown = watchlistLegacyMarkdown;
+      }
     }
 
     const output = preprocessXchatMarkdown(responseMarkdown);

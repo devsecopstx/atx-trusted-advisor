@@ -24,17 +24,24 @@ object XchatAskRouting {
         return patterns.any { it.containsMatchIn(m) }
     }
 
+    fun normalizeXchatUserMessageForRouting(message: String): String =
+        message
+            .trim()
+            .replace(Regex("^[^a-zA-Z0-9]+"), "")
+            .lowercase()
+            .replace(Regex("\\s+"), " ")
+
     fun isShowWatchlistIntent(message: String): Boolean {
-        val normalized = message.trim().lowercase()
+        val normalized = normalizeXchatUserMessageForRouting(message)
         if (normalized.isEmpty()) {
             return false
         }
         if (
             normalized.contains("add ") ||
-            normalized.contains("remove ") ||
-            normalized.contains("delete ") ||
-            normalized.contains("watchlist add") ||
-            normalized.contains("watchlist remove")
+                normalized.contains("remove ") ||
+                normalized.contains("delete ") ||
+                normalized.contains("watchlist add") ||
+                normalized.contains("watchlist remove")
         ) {
             return false
         }
@@ -44,7 +51,12 @@ object XchatAskRouting {
                 normalized.contains("show watchlist") ||
                 normalized.contains("show my watchlist") ||
                 normalized.contains("list my watchlist") ||
-                normalized.contains("what is in my watchlist")
+                normalized.contains("what is in my watchlist") ||
+                normalized.contains("how is my watchlist") ||
+                normalized.contains("how my watchlist") ||
+                Regex("\\bwatchlist\\s+(report|summary|table|details)\\b").containsMatchIn(normalized) ||
+                Regex("\\b(show|list|view|see|display|how)\\s+(me\\s+)?(my|our)\\s+watchlist\\b").containsMatchIn(normalized) ||
+                Regex("\\bwhat(?:'s| is)\\s+on\\s+(my|our)\\s+watchlist\\b").containsMatchIn(normalized)
         )
     }
 }

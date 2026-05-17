@@ -167,6 +167,44 @@ describe("POST /api/internal/scheduler/execute-task", () => {
     expect(taskRunnerMocks.executeScheduledTask).not.toHaveBeenCalled();
   });
 
+  it("forwards bypassMarketWindow to executeScheduledTask when set in body", async () => {
+    const taskId = new ObjectId();
+    repoMocks.getScheduledTaskByIdForInternalDelegate.mockResolvedValueOnce({
+      _id: taskId,
+      tenantId: new ObjectId(),
+      name: "wl-scan",
+      category: "watchlist_price_scanner",
+      scheduleCron: "0 9 * * *",
+      enabled: true
+    });
+    const runId = new ObjectId();
+    taskRunnerMocks.executeScheduledTask.mockResolvedValueOnce({
+      runId,
+      status: "success",
+      output: "watchlist_price_scanner: ok"
+    });
+
+    const res = await postInternalSchedulerExecute(
+      new Request("http://127.0.0.1/api/internal/scheduler/execute-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Atx-Scheduler-Secret": VALID_SECRET },
+        body: JSON.stringify({
+          taskId: taskId.toHexString(),
+          triggeredBy: "scheduler:admin1",
+          bypassMarketWindow: true
+        })
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(taskRunnerMocks.executeScheduledTask).toHaveBeenCalledWith(
+      expect.objectContaining({ category: "watchlist_price_scanner" }),
+      "scheduler:admin1",
+      undefined,
+      { bypassMarketWindow: true }
+    );
+  });
+
   it("returns 404 when task document has no _id", async () => {
     repoMocks.getScheduledTaskByIdForInternalDelegate.mockResolvedValueOnce({
       name: "orphan",

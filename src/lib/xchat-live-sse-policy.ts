@@ -1,4 +1,5 @@
 import { shouldProxyPortfolioRequestsToBackend } from "@/lib/backend-bff";
+import { isShowWatchlistIntent } from "@/modules/xchat/xchat-ask-routing";
 
 /**
  * Live token SSE for `POST /api/xchat/ask` when `Accept` includes `text/event-stream`.
@@ -54,6 +55,23 @@ export function resolveXchatStreamInternalSecretHeader(): Record<string, string>
  * Set **`XCHAT_SSE_PROXY_BACKEND`** to **`0` / `false` / `no` / `off`** to keep in-process Next streaming even if the
  * product BFF gate is on (explicit opt-out).
  */
+/**
+ * `POST /api/xchat/ask/stream` stays on Next for deterministic watchlist table + Yahoo batch quotes.
+ * Spring SSE returns the table shape but often misses Spot when options-chain Yahoo calls fail.
+ */
+export function shouldSkipXchatStreamBffForWatchlistShowMessage(message: string): boolean {
+  return isShowWatchlistIntent(message);
+}
+
+export function parseXchatStreamRequestMessage(bodyText: string): string {
+  try {
+    const json = JSON.parse(bodyText) as { message?: unknown };
+    return typeof json.message === "string" ? json.message.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
 export function isXchatSseProxyBackendEnabled(): boolean {
   const raw = process.env.XCHAT_SSE_PROXY_BACKEND?.trim().toLowerCase();
   if (raw === "0" || raw === "false" || raw === "no" || raw === "off") {

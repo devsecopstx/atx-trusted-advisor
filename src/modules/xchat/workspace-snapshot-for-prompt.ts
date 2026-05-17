@@ -388,7 +388,7 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
           riskProfile: watchlist.riskProfile ?? null,
           outlook: watchlist.outlook ?? null,
         symbols: wlSymbols.map((s) =>
-          watchlistSymbolToPromptJson(s, quoteMap.get(s.symbol)?.price)
+          watchlistSymbolToPromptJson(s, quoteMap.get(s.symbol.trim().toUpperCase())?.price)
         )
       }
       : { error: "no_watchlist" as const },

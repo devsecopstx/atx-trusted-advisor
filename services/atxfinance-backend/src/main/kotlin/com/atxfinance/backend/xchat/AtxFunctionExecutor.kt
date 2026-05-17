@@ -291,17 +291,28 @@ class AtxFunctionExecutor(
                 ?.let { "&portfolioId=${it.lowercase(Locale.ROOT)}" }
                 .orEmpty()
 
-        val tableLines = ArrayList<String>()
-        tableLines.add("| Symbol | Type | Strategy | Qty | Spot | Target entry (100×) | Desk entry | 1D Δ | To target | xOptions |")
-        tableLines.add("| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |")
-
-        var rowCount = 0
+        val symbolRows = ArrayList<Pair<String, Map<*, *>>>()
         for (raw in symbols) {
             val row = raw as? Map<*, *> ?: continue
             val symbol = row["symbol"]?.toString()?.trim()?.uppercase(Locale.ROOT).orEmpty()
             if (symbol.isEmpty()) {
                 continue
             }
+            symbolRows.add(symbol to row)
+        }
+        if (symbolRows.isEmpty()) {
+            return "### Watchlist — $title\n\n_Empty watchlist._"
+        }
+
+        val batchQuotes =
+            runCatching { yahooClient.fetchEquityQuoteBatch(symbolRows.map { it.first }) }.getOrElse { emptyMap() }
+
+        val tableLines = ArrayList<String>()
+        tableLines.add("| Symbol | Type | Strategy | Qty | Spot | Target entry (100×) | Desk entry | 1D Δ | To target | xOptions |")
+        tableLines.add("| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |")
+
+        var rowCount = 0
+        for ((symbol, row) in symbolRows) {
             rowCount++
 
             val lineType = escapeWatchlistTableCell(row["lineType"]?.toString()?.trim().orEmpty().ifBlank { "—" })
@@ -309,7 +320,9 @@ class AtxFunctionExecutor(
             val qtyCell = formatWatchlistQtyCell((row["quantity"] as? Number)?.toDouble())
             val deskEntry = (row["entryPrice"] as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0 }
 
-            val quote = runCatching { yahooClient.fetchUnderlyingQuote(symbol) }.getOrNull()
+            val quote =
+                batchQuotes[symbol]
+                    ?: runCatching { yahooClient.fetchUnderlyingQuote(symbol) }.getOrNull()
             val live = (quote?.get("regularMarketPrice") as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0 }
             val spot = formatUsd2(live)
             val target100x = formatTargetEntryNotional100xUsd(live)

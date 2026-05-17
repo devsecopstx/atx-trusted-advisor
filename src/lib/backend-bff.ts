@@ -654,11 +654,31 @@ export function shouldProxyAdminScheduledTasksToBackend(): boolean {
   return shouldProxyAdminUsersToBackend();
 }
 
+/**
+ * **`POST /api/admin/tasks/{taskId}/run`** — stay on **Next + Mongo** when BFF is on.
+ * Yahoo watchlist / price / options scanners run in the Next task-runner with `bypassMarketWindow` for
+ * global_admin manual Run; Spring returns Kotlin stubs or delegates without that flag when proxied.
+ */
+export function shouldSkipAdminScheduledTasksBffProxyForTaskRunPost(request: Request): boolean {
+  try {
+    if (request.method.toUpperCase() !== "POST") {
+      return false;
+    }
+    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    return /^\/api\/admin\/tasks\/[^/]+\/run$/.test(path);
+  } catch {
+    return false;
+  }
+}
+
 /** Admin scheduled-task BFF → Spring; returns `null` when proxy disabled. */
 export async function proxyAdminScheduledTasksRequestToBackend(
   request: Request
 ): Promise<Response | null> {
   if (!shouldProxyAdminScheduledTasksToBackend()) {
+    return null;
+  }
+  if (shouldSkipAdminScheduledTasksBffProxyForTaskRunPost(request)) {
     return null;
   }
   return proxyRequestToBackend(request);

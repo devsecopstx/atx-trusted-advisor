@@ -93,6 +93,10 @@ const symbolLookupMocks = vi.hoisted(() => ({
   lookupSymbols: vi.fn()
 }));
 
+const watchlistLiveQuoteMocks = vi.hoisted(() => ({
+  resolveLiveQuotesForWatchlistSymbols: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
@@ -133,6 +137,9 @@ vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => ({
 }));
 vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
   lookupSymbols: symbolLookupMocks.lookupSymbols
+}));
+vi.mock("@/modules/watchlist/watchlist-live-quotes", () => ({
+  resolveLiveQuotesForWatchlistSymbols: watchlistLiveQuoteMocks.resolveLiveQuotesForWatchlistSymbols
 }));
 
 vi.mock("@/lib/xai-default-persona-model", () => ({
@@ -247,6 +254,7 @@ describe("xchat ask route collection retrieval", () => {
     workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValue("");
     symbolLookupMocks.lookupSymbols.mockResolvedValue(new Map());
+    watchlistLiveQuoteMocks.resolveLiveQuotesForWatchlistSymbols.mockResolvedValue(new Map());
   });
 
   it("preprocesses assistant markdown on the server before JSON and xchat_logs", async () => {
@@ -1954,28 +1962,33 @@ describe("xchat ask route collection retrieval", () => {
         }
       })
     );
-    symbolLookupMocks.lookupSymbols.mockResolvedValueOnce(
+    const watchlistPulse = new Map([
+      [
+        "TSLA",
+        {
+          symbol: "TSLA",
+          price: 245,
+          change: 5.25,
+          changePercent: 2.19,
+          source: "yahoo-finance2"
+        }
+      ],
+      [
+        "NVDA",
+        {
+          symbol: "NVDA",
+          price: 488,
+          change: -3.1,
+          changePercent: -0.63,
+          source: "yahoo-finance2"
+        }
+      ]
+    ]);
+    symbolLookupMocks.lookupSymbols.mockResolvedValueOnce(watchlistPulse);
+    watchlistLiveQuoteMocks.resolveLiveQuotesForWatchlistSymbols.mockResolvedValue(
       new Map([
-        [
-          "TSLA",
-          {
-            symbol: "TSLA",
-            price: 245,
-            change: 5.25,
-            changePercent: 2.19,
-            source: "yahoo-finance2"
-          }
-        ],
-        [
-          "NVDA",
-          {
-            symbol: "NVDA",
-            price: 488,
-            change: -3.1,
-            changePercent: -0.63,
-            source: "yahoo-finance2"
-          }
-        ]
+        ["TSLA", { symbol: "TSLA", price: 245, source: "yahoo-finance2" }],
+        ["NVDA", { symbol: "NVDA", price: 488, source: "yahoo-finance2" }]
       ])
     );
     createSpy.mockReturnValueOnce(
@@ -2020,7 +2033,7 @@ describe("xchat ask route collection retrieval", () => {
       expect(text).toContain("NVDA");
       expect(text).toContain("| Symbol | Type | Strategy | Qty | Spot | Target entry (100×) | Desk entry | 1D Δ | To target | xOptions |");
       expect(text).toContain("| TSLA | — | — | — | $245.00 | $24,500 | — | +$5.25 (+2.19%) | — |");
-      expect(text).toContain("| NVDA | — | — | — | $488.00 | $48,800 | $120.50 | -$3.10 (-0.63%) | -75.31% |");
+      expect(text).toContain("| NVDA | — | — | — | $488.00 | $48,800 | $120.50 | -$3.10 (-0.63%) |");
       expect(text).toContain(
         '[Open TSLA](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044 "Open xOptions for TSLA")'
       );
@@ -2099,6 +2112,9 @@ describe("xchat ask route collection retrieval", () => {
         ]
       ])
     );
+    watchlistLiveQuoteMocks.resolveLiveQuotesForWatchlistSymbols.mockResolvedValue(
+      new Map([["TSLA", { symbol: "TSLA", price: 245, source: "yahoo-finance2" }]])
+    );
     createSpy.mockReturnValueOnce(
       (async () => ({
         result: JSON.stringify({
@@ -2154,6 +2170,7 @@ describe("xchat ask route collection retrieval", () => {
       })
     );
     symbolLookupMocks.lookupSymbols.mockResolvedValueOnce(new Map());
+    watchlistLiveQuoteMocks.resolveLiveQuotesForWatchlistSymbols.mockResolvedValue(new Map());
     createSpy.mockReturnValueOnce(
       (async () => ({
         result: JSON.stringify({

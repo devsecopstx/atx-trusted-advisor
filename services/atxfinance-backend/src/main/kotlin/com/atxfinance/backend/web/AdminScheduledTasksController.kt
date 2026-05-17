@@ -107,7 +107,12 @@ class AdminScheduledTasksController(
         val task = adminScheduledTasksService.getTaskForTenant(taskId, session)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Task not found"))
         val username = session.username?.takeIf { it.isNotBlank() } ?: session.userId
-        val exec = adminScheduledTasksService.enqueueScheduledTask(task, "scheduler:$username")
+        val exec =
+            adminScheduledTasksService.enqueueScheduledTask(
+                task,
+                "scheduler:$username",
+                bypassMarketWindow = true,
+            )
         return ResponseEntity.ok(
             mapOf(
                 "data" to mapOf(

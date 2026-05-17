@@ -130,6 +130,98 @@ class StrategyOptionsYahooClient(
         }
     }
 
+    /**
+     * Batch spot quotes via Yahoo v7 `finance/quote` (one HTTP round-trip).
+     * Used by xChat watchlist table when per-symbol options-chain quotes fail.
+     */
+    fun fetchEquityQuoteBatch(symbols: Collection<String>): Map<String, Map<String, Any?>> {
+        val uniq =
+            symbols
+                .map { it.trim().uppercase() }
+                .filter { it.isNotEmpty() }
+                .distinct()
+        if (uniq.isEmpty()) {
+            return emptyMap()
+        }
+        val joined = uniq.joinToString(",")
+        val url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=$joined"
+        val body =
+            fetchQuoteHttp(url) ?: return emptyMap()
+        return try {
+            val root = objectMapper.readTree(body)
+            val results = root.path("quoteResponse").path("result")
+            if (!results.isArray) {
+                return emptyMap()
+            }
+            val out = LinkedHashMap<String, Map<String, Any?>>()
+            for (node in results) {
+                val sym = node.path("symbol").asText("").trim().uppercase()
+                if (sym.isEmpty()) {
+                    continue
+                }
+                val price =
+                    sequenceOf(
+                            node.path("regularMarketPrice"),
+                            node.path("postMarketPrice"),
+                            node.path("preMarketPrice"),
+                        )
+                        .mapNotNull { n ->
+                            val d = n.asDouble(Double.NaN)
+                            d.takeIf { it.isFinite() && it > 0 }
+                        }
+                        .firstOrNull()
+                if (price == null) {
+                    continue
+                }
+                val change = node.path("regularMarketChange").asDouble(Double.NaN).takeIf { it.isFinite() }
+                val changePct =
+                    node.path("regularMarketChangePercent").asDouble(Double.NaN).takeIf { it.isFinite() }
+                out[sym] =
+                    mapOf(
+                        "symbol" to sym,
+                        "regularMarketPrice" to price,
+                        "regularMarketChange" to (change ?: 0.0),
+                        "regularMarketChangePercent" to (changePct ?: 0.0),
+                    )
+            }
+            out
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun fetchQuoteHttp(url: String): String? {
+        val now = System.nanoTime()
+        if (now < yahooBreakerOpenUntilNanos) {
+            return null
+        }
+        val req =
+            HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofSeconds(20))
+                .header("User-Agent", userAgent)
+                .GET()
+                .build()
+        val t0 = System.nanoTime()
+        val resp =
+            try {
+                client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+            } catch (_: Exception) {
+                recordYahooBreakerFailure()
+                return null
+            }
+        val elapsedMs = (System.nanoTime() - t0) / 1_000_000L
+        if (elapsedMs > 12_000L) {
+            recordYahooBreakerFailure()
+        } else {
+            yahooBreakerFailures.set(0)
+        }
+        if (resp.statusCode() !in 200..299) {
+            recordYahooBreakerFailure()
+            return null
+        }
+        return resp.body()
+    }
+
     /** Spot quote for an equity underlying (uses options chain endpoint quote array). */
     fun fetchUnderlyingQuote(underlying: String): Map<String, Any?>? {
         val u = underlying.trim().uppercase()

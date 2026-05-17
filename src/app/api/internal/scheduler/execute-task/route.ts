@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  isSchedulerInternalSecretValid,
-  readSchedulerInternalSecretFromEnv
+    isSchedulerInternalSecretValid,
+    readSchedulerInternalSecretFromEnv
 } from "@/lib/internal-scheduler-execute-auth";
 import { getScheduledTaskByIdForInternalDelegate } from "@/modules/core-admin/repository";
 import { executeScheduledTask } from "@/modules/core-admin/task-runner";
@@ -12,7 +12,12 @@ export const maxDuration = 900;
 
 const bodySchema = z.object({
   taskId: z.string().trim().min(1),
-  triggeredBy: z.string().trim().min(1).max(200).optional()
+  triggeredBy: z.string().trim().min(1).max(200).optional(),
+  /**
+   * When true, desk US regular-session window gate is skipped (global_admin manual Run from `/admin/tasks`).
+   * Cron / system scheduler must omit or pass false.
+   */
+  bypassMarketWindow: z.boolean().optional()
 });
 
 /**
@@ -55,7 +60,9 @@ export async function POST(request: Request) {
     parsed.data.triggeredBy?.trim() ||
     "next-scheduler-delegate";
 
-  const result = await executeScheduledTask(task, triggeredBy, undefined, {});
+  const result = await executeScheduledTask(task, triggeredBy, undefined, {
+    ...(parsed.data.bypassMarketWindow === true ? { bypassMarketWindow: true } : {})
+  });
 
   return NextResponse.json({
     data: {

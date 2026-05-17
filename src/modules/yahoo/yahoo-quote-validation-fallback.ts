@@ -24,15 +24,15 @@ export function isYahooQuoteSchemaValidationError(err: unknown): boolean {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function yahooQuoteWithValidationFallback(yf: any, query: string | string[], logLabel: string): Promise<unknown> {
   try {
-    return await yf.quote(query, {}, { validateResult: false });
+    return await yf.quote(query);
   } catch (e) {
     if (!isYahooQuoteSchemaValidationError(e)) {
       throw e;
     }
     const preview = Array.isArray(query) ? query.slice(0, 12) : query;
-    console.warn(`[yahoo-finance2] ${logLabel} quote failed after validateResult:false`, {
+    console.warn(`[yahoo-finance2] ${logLabel} quote validation failed; retrying with validateResult:false`, {
       preview
     });
-    throw e;
+    return await yf.quote(query, undefined, { validateResult: false });
   }
 }

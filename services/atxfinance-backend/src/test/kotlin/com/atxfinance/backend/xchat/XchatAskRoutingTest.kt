@@ -23,4 +23,18 @@ class XchatAskRoutingTest {
         assertTrue(XchatAskRouting.isShowWatchlistIntent("show my watchlist summary"))
         assertTrue(XchatAskRouting.isShowWatchlistIntent("show my watchlist details"))
     }
+
+    @Test
+    fun `watchlist intent normalizes extra whitespace and leading punctuation`() {
+        assertTrue(XchatAskRouting.isShowWatchlistIntent("show my  watchlist"))
+        assertTrue(XchatAskRouting.isShowWatchlistIntent(";show my watchlist"))
+        assertTrue(XchatAskRouting.isShowWatchlistIntent("  show me my watchlist  "))
+    }
+
+    @Test
+    fun `watchlist intent matches how my watchlist phrasing`() {
+        assertTrue(XchatAskRouting.isShowWatchlistIntent("how my watchlist"))
+        assertTrue(XchatAskRouting.isShowWatchlistIntent("how is my watchlist"))
+        assertTrue(XchatAskRouting.isShowWatchlistIntent("what's on my watchlist"))
+    }
 }

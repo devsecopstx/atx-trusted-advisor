@@ -24,7 +24,10 @@ vi.mock("@/modules/xchat/market-quote-redis-cache", () => ({
 import { createClient } from "redis";
 
 import { resetRedisClientForTests } from "@/lib/redis-client";
-import { getYahooBatchQuotes } from "@/modules/watchlist/yahoo-batch-quotes";
+import {
+    getYahooBatchQuotes,
+    normalizeYahooBatchQuoteRow
+} from "@/modules/watchlist/yahoo-batch-quotes";
 
 describe("getYahooBatchQuotes (Redis cache)", () => {
   beforeEach(async () => {
@@ -83,7 +86,7 @@ describe("getYahooBatchQuotes (Redis cache)", () => {
     await resetRedisClientForTests();
   });
 
-  it("requests Yahoo batch with validateResult false", async () => {
+  it("requests Yahoo batch quote (validated path when schema passes)", async () => {
     await resetRedisClientForTests();
     delete process.env.REDIS_URL;
     quoteFn.mockResolvedValueOnce([
@@ -101,7 +104,8 @@ describe("getYahooBatchQuotes (Redis cache)", () => {
     ]);
     const out = await getYahooBatchQuotes(["AAPL"]);
     expect(quoteFn).toHaveBeenCalledTimes(1);
-    expect(quoteFn.mock.calls[0]?.[2]).toEqual({ validateResult: false });
+    expect(quoteFn.mock.calls[0]?.[0]).toBe("AAPL");
+    expect(quoteFn.mock.calls[0]?.[2]).toBeUndefined();
     expect(out[0]?.price).toBe(222);
   });
 
@@ -215,5 +219,29 @@ describe("getYahooBatchQuotes (Redis cache)", () => {
     const out = await getYahooBatchQuotes(["AAPL"], { allowNetwork: false });
     expect(quoteFn).not.toHaveBeenCalled();
     expect(out).toEqual([]);
+  });
+
+  it("normalizeYahooBatchQuoteRow uses postMarketPrice when regularMarketPrice is absent", () => {
+    const row = normalizeYahooBatchQuoteRow({
+      symbol: "TSLA",
+      postMarketPrice: 418.57,
+      marketState: "CLOSED"
+    });
+    expect(row.price).toBe(418.57);
+  });
+
+  it("retries per symbol when the outer batch path throws", async () => {
+    await resetRedisClientForTests();
+    delete process.env.REDIS_URL;
+    quoteFn.mockReset();
+    quoteFn.mockRejectedValueOnce(new Error("batch exploded"));
+    quoteFn.mockResolvedValueOnce({
+      symbol: "TSLA",
+      regularMarketPrice: 422.24
+    });
+    const out = await getYahooBatchQuotes(["TSLA"]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.price).toBe(422.24);
+    expect(quoteFn.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 });

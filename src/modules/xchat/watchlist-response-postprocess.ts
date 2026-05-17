@@ -1,4 +1,8 @@
+import { resolveLiveQuotesForWatchlistSymbols } from "@/modules/watchlist/watchlist-live-quotes";
 import { lookupSymbols, type SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
+import {
+    formatWatchlistTargetEntryNotional100xUsd
+} from "@/modules/xchat/watchlist-prompt-format";
 
 type WatchlistStructuredRow = {
   symbol: string;
@@ -35,6 +39,8 @@ type PostProcessWatchlistMarkdownInput = {
   watchlistName?: string;
   structuredRows?: WatchlistStructuredRow[];
   portfolioId?: string;
+  /** When true (default), always hit Yahoo on cache miss for Spot / Target entry columns. */
+  allowLiveQuotes?: boolean;
 };
 
 function parseUsdNumber(input: string | undefined): number | undefined {
@@ -165,20 +171,68 @@ function structuredRowsToRenderRows(rows: WatchlistStructuredRow[]): EnhancedWat
     .filter((row) => row.symbol.length > 0);
 }
 
+function snapshotToMarketPulse(
+  symbol: string,
+  snap: { price?: number; change?: number; changePercent?: number; volume?: number; dayLow?: number; dayHigh?: number; fiftyTwoWeekLow?: number; fiftyTwoWeekHigh?: number; currency?: string; shortName?: string; longName?: string }
+): SymbolLookupResult {
+  return {
+    symbol,
+    price: snap.price,
+    change: snap.change,
+    changePercent: snap.changePercent,
+    volume: snap.volume,
+    low: snap.dayLow,
+    high: snap.dayHigh,
+    fiftyTwoWeekLow: snap.fiftyTwoWeekLow,
+    fiftyTwoWeekHigh: snap.fiftyTwoWeekHigh,
+    currency: snap.currency,
+    companyName: snap.shortName ?? snap.longName,
+    source: "yahoo-finance2"
+  };
+}
+
 async function enrichRowsWithMarketPulse(
-  rows: EnhancedWatchlistRenderRow[]
+  rows: EnhancedWatchlistRenderRow[],
+  allowLiveQuotes: boolean
 ): Promise<EnhancedWatchlistRenderRow[]> {
   if (rows.length === 0) {
     return rows;
   }
-  const symbolMap = await lookupSymbols(rows.map((row) => row.symbol));
+  const symbols = rows.map((row) => row.symbol);
+  const liveBySymbol = allowLiveQuotes
+    ? await resolveLiveQuotesForWatchlistSymbols(symbols, { allowNetwork: true })
+    : new Map();
+
+  const symbolMap = await lookupSymbols(symbols, { allowNetwork: allowLiveQuotes });
+
   return rows.map((row) => {
+    const snap = liveBySymbol.get(row.symbol);
     const pulse = symbolMap.get(row.symbol);
+    let livePrice =
+      typeof snap?.price === "number" && Number.isFinite(snap.price)
+        ? snap.price
+        : typeof pulse?.price === "number" && Number.isFinite(pulse.price)
+          ? pulse.price
+          : row.livePrice;
+    let marketPulse = pulse;
+    if (typeof livePrice === "number" && Number.isFinite(livePrice)) {
+      if (pulse) {
+        marketPulse = { ...pulse, price: livePrice };
+      } else if (snap) {
+        marketPulse = snapshotToMarketPulse(row.symbol, { ...snap, price: livePrice });
+      }
+    } else if (!marketPulse && snap) {
+      marketPulse = snapshotToMarketPulse(row.symbol, snap);
+    }
+    const targetNotional100xUsd =
+      typeof livePrice === "number" && Number.isFinite(livePrice)
+        ? formatWatchlistTargetEntryNotional100xUsd(livePrice)
+        : row.targetNotional100xUsd;
     return {
       ...row,
-      livePrice:
-        typeof pulse?.price === "number" && Number.isFinite(pulse.price) ? pulse.price : row.livePrice,
-      marketPulse: pulse
+      livePrice,
+      marketPulse,
+      targetNotional100xUsd
     };
   });
 }
@@ -217,7 +271,10 @@ function renderEnhancedTableMarkdown(input: {
     const lineType = row.lineType && row.lineType.length > 0 ? row.lineType : "—";
     const strategy = row.strategy && row.strategy.length > 0 ? row.strategy : "—";
     const qty = formatQty(row.quantity);
-    const target100 = row.targetNotional100xUsd ?? "—";
+    const target100 =
+      row.targetNotional100xUsd && row.targetNotional100xUsd !== "—"
+        ? row.targetNotional100xUsd
+        : formatWatchlistTargetEntryNotional100xUsd(row.livePrice);
     const desk =
       row.deskEntryDisplay && row.deskEntryDisplay.length > 0
         ? row.deskEntryDisplay
@@ -235,14 +292,42 @@ function renderEnhancedTableMarkdown(input: {
   ].join("\n");
 }
 
+/** Merge Yahoo snapshots into structured tool rows before markdown post-process. */
+export function mergeWatchlistStructuredRowsWithLiveQuotes(
+  rows: WatchlistStructuredRow[],
+  liveBySymbol: Map<string, { price?: number; change?: number; changePercent?: number }>
+): WatchlistStructuredRow[] {
+  return rows.map((row) => {
+    const sym = row.symbol.trim().toUpperCase();
+    const snap = liveBySymbol.get(sym);
+    if (typeof snap?.price !== "number" || !Number.isFinite(snap.price)) {
+      return row;
+    }
+    return {
+      ...row,
+      spotPriceDisplay: formatUsd(snap.price),
+      targetEntryNotional100xUsdDisplay: formatWatchlistTargetEntryNotional100xUsd(snap.price)
+    };
+  });
+}
+
+function watchlistMarkdownTableHasPopulatedSpotColumn(markdown: string): boolean {
+  if (!markdown.includes("| Symbol |") || !markdown.includes("| Spot |")) {
+    return false;
+  }
+  return /\|\s*\$[\d,]+\.\d{2}\s*\|/.test(markdown);
+}
+
 export async function postProcessWatchlistMarkdown(
   input: PostProcessWatchlistMarkdownInput
 ): Promise<string> {
+  const allowLiveQuotes = input.allowLiveQuotes !== false;
   const hasStructured = Array.isArray(input.structuredRows) && input.structuredRows.length > 0;
   if (
     !hasStructured &&
     input.rawMarkdown.includes("| Symbol |") &&
-    input.rawMarkdown.includes("| Spot |")
+    input.rawMarkdown.includes("| Spot |") &&
+    watchlistMarkdownTableHasPopulatedSpotColumn(input.rawMarkdown)
   ) {
     return input.rawMarkdown;
   }
@@ -263,7 +348,7 @@ export async function postProcessWatchlistMarkdown(
     return input.rawMarkdown;
   }
 
-  const enriched = await enrichRowsWithMarketPulse(baseRows);
+  const enriched = await enrichRowsWithMarketPulse(baseRows, allowLiveQuotes);
   return renderEnhancedTableMarkdown({
     watchlistName: input.watchlistName,
     rows: enriched,
