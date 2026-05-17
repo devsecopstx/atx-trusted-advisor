@@ -6,9 +6,10 @@ vi.mock("@/lib/backend-bff", () => ({
 
 import { shouldProxyPortfolioRequestsToBackend } from "@/lib/backend-bff";
 import {
-    isXchatSseProxyBackendEnabled,
-    parseXchatStreamRequestMessage,
-    shouldSkipXchatStreamBffForWatchlistShowMessage
+  isXchatSseProxyBackendEnabled,
+  parseXchatStreamRequestMessage,
+  shouldSkipXchatStreamBffForDeterministicDeskMessage,
+  shouldSkipXchatStreamBffForWatchlistShowMessage
 } from "@/lib/xchat-live-sse-policy";
 
 describe("isXchatSseProxyBackendEnabled", () => {
@@ -54,6 +55,13 @@ describe("watchlist show stream BFF skip", () => {
     expect(shouldSkipXchatStreamBffForWatchlistShowMessage("show my watchlist")).toBe(true);
     expect(shouldSkipXchatStreamBffForWatchlistShowMessage("how my watchlist")).toBe(true);
     expect(shouldSkipXchatStreamBffForWatchlistShowMessage("quote TSLA")).toBe(false);
+  });
+
+  it("skips Spring proxy for direct options_scan desk asks", () => {
+    expect(
+      shouldSkipXchatStreamBffForDeterministicDeskMessage("xoptions CSP ideas for ASTS with 7-14 DTE")
+    ).toBe(true);
+    expect(shouldSkipXchatStreamBffForDeterministicDeskMessage("quote TSLA")).toBe(false);
   });
 
   it("parses stream JSON body message", () => {

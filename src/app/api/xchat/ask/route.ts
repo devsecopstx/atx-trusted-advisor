@@ -152,6 +152,11 @@ import {
     XCHAT_ASK_MAX_TOOL_HISTORY_TURNS
 } from "@/modules/xchat/xchat-ask-history-input";
 import {
+    buildOptionsScanArgsFromMessage,
+    formatOptionsScanDeskMarkdown,
+    shouldRunDirectOptionsScan
+} from "@/modules/xchat/options-scan-ask-routing";
+import {
     collectWatchlistPortfolioIdSlot,
     heavySynthesisIntent,
     isShowWatchlistIntent,
@@ -1112,6 +1117,143 @@ export async function POST(request: Request) {
             collectionSearchNonReadyFileCount: 0,
             logId: chatLogId?.toHexString(),
             interactionMeta: stayMeta
+          },
+          { persona, threadId }
+        )
+      },
+      {
+        headers: buildLimiterHeaders({
+          remainingMinute: limiterRemainingMinute,
+          remainingHour: limiterRemainingHour,
+          remainingDay: limiterRemainingDay,
+          hourlyLimit: limiterHourlyLimit,
+          dailyLimit: limiterDailyLimit
+        })
+      }
+    );
+  }
+
+  if (!hasVisionImages && hasXfinanceTool && shouldRunDirectOptionsScan(messageTrimmed)) {
+    const scanArgs = buildOptionsScanArgsFromMessage(messageTrimmed);
+    const executor = createXfinanceToolExecutor({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      subscriptionPlan,
+      platformRoles: session.roles,
+      sessionCookie,
+      workspacePortfolioId,
+      workspacePreload: null,
+      workspaceLazyLoad: undefined
+    });
+    const scanStartedAt = Date.now();
+    const scanResult = await executor("atx_function", {
+      operation: "options_scan",
+      symbol: scanArgs?.symbol,
+      underlying: scanArgs?.symbol,
+      optionType: scanArgs?.optionType,
+      minDte: scanArgs?.minDte,
+      maxDte: scanArgs?.maxDte,
+      query: scanArgs?.query
+    });
+    const scanDurationMs = Math.max(0, Date.now() - scanStartedAt);
+    let responseMarkdown = "I could not run the options scan right now.";
+    try {
+      const parsed = JSON.parse(scanResult.result) as {
+        symbol?: string;
+        spot?: number | null;
+        criteria?: { minDte?: number; maxDte?: number; optionType?: "put" | "call" };
+        rows?: Array<{
+          strike: number;
+          dte: number;
+          mid: number;
+          ivPct: number;
+          openInterest: number;
+          deltaAbs: number | null;
+        }>;
+        note?: string;
+        error?: string;
+      };
+      if (parsed.error) {
+        responseMarkdown = `Options scan failed (${parsed.error}).`;
+      } else {
+        const criteria = parsed.criteria ?? {};
+        responseMarkdown = formatOptionsScanDeskMarkdown({
+          symbol: parsed.symbol ?? scanArgs?.symbol ?? "—",
+          spot: typeof parsed.spot === "number" ? parsed.spot : null,
+          optionType:
+            criteria.optionType === "call" || scanArgs?.optionType === "call" ? "call" : "put",
+          criteria: {
+            minDte: criteria.minDte ?? scanArgs?.minDte ?? 0,
+            maxDte: criteria.maxDte ?? scanArgs?.maxDte ?? 14
+          },
+          rows: Array.isArray(parsed.rows) ? parsed.rows : [],
+          note: parsed.note
+        });
+      }
+    } catch (err) {
+      console.warn("[xchat/ask] options_scan_direct failed", {
+        error: err instanceof Error ? err.message : String(err),
+        toolError: scanResult.error
+      });
+      responseMarkdown = scanResult.error
+        ? `Options scan failed (${scanResult.error}).`
+        : "I could not parse the options scan result.";
+    }
+    const output = preprocessXchatMarkdown(responseMarkdown);
+    const scanMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+      ragChunks: 0,
+      toolInvocations: 1,
+      personaCollections: personaDeclaredCollectionCount
+    });
+    const chatLogId = shouldPersistHistory
+      ? await saveXChatLog({
+          threadId,
+          requestId,
+          correlationId,
+          userId,
+          tenantId: tenantId ?? undefined,
+          userEmail: session.email,
+          requestedBy: session.username,
+          personaId: persona?._id,
+          personaName: persona.name,
+          scope,
+          message: messageForPersistence,
+          response: output,
+          contextChunkIds: [],
+          model: "options_scan_direct",
+          strategyJobOptOut,
+          retentionExpiresAt,
+          interactionGenerationMs: scanMeta.generationMs,
+          xapiToolCalls: [
+            {
+              name: "atx_function",
+              args: {
+                operation: "options_scan",
+                symbol: scanArgs?.symbol,
+                minDte: scanArgs?.minDte,
+                maxDte: scanArgs?.maxDte
+              },
+              resultHash: buildSha256Hex(scanResult.result),
+              durationMs: scanDurationMs,
+              cacheHit: false
+            }
+          ]
+        })
+      : null;
+    return NextResponse.json(
+      {
+        data: withXchatAskContentAndMetadata(
+          {
+            response: output,
+            personaName: persona.name,
+            modelSelectionSource,
+            model: "options_scan_direct",
+            contextCount: 0,
+            contextSource: "none",
+            collectionSearchStatus: "skipped_no_collections",
+            collectionSearchNonReadyFileCount: 0,
+            logId: chatLogId?.toHexString(),
+            interactionMeta: scanMeta
           },
           { persona, threadId }
         )

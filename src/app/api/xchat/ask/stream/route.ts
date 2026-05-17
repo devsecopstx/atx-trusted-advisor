@@ -6,7 +6,7 @@ import {
     isXchatSseProxyBackendEnabled,
     parseXchatStreamRequestMessage,
     resolveXchatStreamInternalSecretHeader,
-    shouldSkipXchatStreamBffForWatchlistShowMessage
+    shouldSkipXchatStreamBffForDeterministicDeskMessage
 } from "@/lib/xchat-live-sse-policy";
 
 /**
@@ -22,9 +22,9 @@ import {
 export async function POST(request: Request) {
   const bodyText = await request.text();
   const streamMessage = parseXchatStreamRequestMessage(bodyText);
-  const skipBffForWatchlistShow = shouldSkipXchatStreamBffForWatchlistShowMessage(streamMessage);
+  const skipBffForDeterministicDesk = shouldSkipXchatStreamBffForDeterministicDeskMessage(streamMessage);
 
-  if (isXchatSseProxyBackendEnabled() && !skipBffForWatchlistShow) {
+  if (isXchatSseProxyBackendEnabled() && !skipBffForDeterministicDesk) {
     const proxied = await proxyPortfolioRequestToBackend(
       new Request(request.url, {
         method: request.method,

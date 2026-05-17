@@ -3,6 +3,8 @@
  * Policy: atx-docs/xchat/context-routing-multi-agent-policy.md
  */
 
+import { shouldRunDirectOptionsScan } from "@/modules/xchat/options-scan-ask-routing";
+
 /** When true, persona multi-agent model may run with parallelism + optional reasoningEffort. */
 export function heavySynthesisIntent(message: string): boolean {
   const m = message.trim();
@@ -35,6 +37,9 @@ export function heavySynthesisIntent(message: string): boolean {
  * Keeps scope narrow to avoid hijacking generic “options” mentions.
  */
 export function shouldOfferStrategyJobPreflight(message: string): boolean {
+  if (shouldRunDirectOptionsScan(message)) {
+    return false;
+  }
   const m = message.trim().toLowerCase();
   if (m.length < 14 || m.length > 720) {
     return false;

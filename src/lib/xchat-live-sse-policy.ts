@@ -1,4 +1,5 @@
 import { shouldProxyPortfolioRequestsToBackend } from "@/lib/backend-bff";
+import { shouldRunDirectOptionsScan } from "@/modules/xchat/options-scan-ask-routing";
 import { isShowWatchlistIntent } from "@/modules/xchat/xchat-ask-routing";
 
 /**
@@ -61,6 +62,11 @@ export function resolveXchatStreamInternalSecretHeader(): Record<string, string>
  */
 export function shouldSkipXchatStreamBffForWatchlistShowMessage(message: string): boolean {
   return isShowWatchlistIntent(message);
+}
+
+/** Keep deterministic desk paths on Next (Yahoo `options_scan`, watchlist live quotes). */
+export function shouldSkipXchatStreamBffForDeterministicDeskMessage(message: string): boolean {
+  return isShowWatchlistIntent(message) || shouldRunDirectOptionsScan(message);
 }
 
 export function parseXchatStreamRequestMessage(bodyText: string): string {
