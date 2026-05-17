@@ -2270,6 +2270,54 @@ describe("xchat ask route collection retrieval", () => {
     createSpy.mockRestore();
   });
 
+  it("routes xoptions CSP symbol+DTE asks to direct options_scan (no TDZ on hasXfinanceTool)", async () => {
+    const createSpy = vi.spyOn(toolExecutorModule, "createXfinanceToolExecutor");
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atx_function" }]
+        }
+      })
+    );
+    createSpy.mockReturnValueOnce(
+      (async () => ({
+        result: JSON.stringify({
+          symbol: "ASTS",
+          spot: 28.5,
+          criteria: { minDte: 7, maxDte: 14, optionType: "put" },
+          rows: [
+            {
+              strike: 25,
+              dte: 10,
+              mid: 1.2,
+              ivPct: 85,
+              openInterest: 1200,
+              deltaAbs: 0.32
+            }
+          ]
+        })
+      })) as never
+    );
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "xoptions CSP ideas for ASTS with 7-14 DTE"
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data?: { model?: string; response?: string } };
+    expect(payload.data?.model).toBe("options_scan_direct");
+    expect(payload.data?.response ?? "").toContain("ASTS");
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+    createSpy.mockRestore();
+  });
+
   it("processes watchlist mutate intents without returning confirmation gate copy", async () => {
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
