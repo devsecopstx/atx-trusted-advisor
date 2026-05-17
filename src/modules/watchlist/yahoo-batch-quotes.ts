@@ -5,6 +5,11 @@ import {
     getRedisQuoteCacheTtlSeconds
 } from "@/lib/redis-client";
 import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
+import {
+    resolveMarketQuoteRedisTtlSeconds,
+    setRedisMarketQuote,
+    tryGetRedisMarketQuote
+} from "@/modules/xchat/market-quote-redis-cache";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
@@ -47,27 +52,55 @@ export async function getYahooBatchQuotes(
       }
     }
 
-    if (!allowNetwork) {
-      return [];
-    }
-
-    const quotes: unknown = await yahooQuoteWithValidationFallback(
-      getYahooFinance2(),
-      uniqueSymbols,
-      "batch quote"
-    );
-
-    const results: MarketQuoteSnapshot[] = [];
-
-    if (Array.isArray(quotes)) {
-      for (const q of quotes) {
-        if (isRecord(q) && "symbol" in q) {
-          results.push(normalizeYahooBatchQuoteRow(q));
+    const fromPerSymbolCache: MarketQuoteSnapshot[] = [];
+    const symbolsNeedingNetwork: string[] = [];
+    if (allowNetwork) {
+      for (const sym of uniqueSymbols) {
+        const cachedRow = await tryGetRedisMarketQuote(sym);
+        if (cachedRow) {
+          fromPerSymbolCache.push(cachedRow);
+        } else {
+          symbolsNeedingNetwork.push(sym);
         }
       }
-    } else if (isRecord(quotes)) {
-      results.push(normalizeYahooBatchQuoteRow(quotes));
     }
+
+    if (!allowNetwork) {
+      return fromPerSymbolCache;
+    }
+
+    const fetched: MarketQuoteSnapshot[] = [];
+    if (symbolsNeedingNetwork.length > 0) {
+      const quotes: unknown = await yahooQuoteWithValidationFallback(
+        getYahooFinance2(),
+        symbolsNeedingNetwork,
+        "batch quote"
+      );
+
+      if (Array.isArray(quotes)) {
+        for (const q of quotes) {
+          if (isRecord(q) && "symbol" in q) {
+            fetched.push(normalizeYahooBatchQuoteRow(q));
+          }
+        }
+      } else if (isRecord(quotes)) {
+        fetched.push(normalizeYahooBatchQuoteRow(quotes));
+      }
+    }
+
+    const bySymbol = new Map<string, MarketQuoteSnapshot>();
+    for (const row of fromPerSymbolCache) {
+      bySymbol.set(row.symbol.toUpperCase(), row);
+    }
+    for (const row of fetched) {
+      bySymbol.set(row.symbol.toUpperCase(), row);
+    }
+    const results = uniqueSymbols
+      .map((sym) => bySymbol.get(sym))
+      .filter((row): row is MarketQuoteSnapshot => row != null);
+
+    const quoteTtl = resolveMarketQuoteRedisTtlSeconds();
+    await Promise.all(results.map((row) => setRedisMarketQuote(row.symbol, row, quoteTtl)));
 
     if (redis && results.length > 0) {
       try {

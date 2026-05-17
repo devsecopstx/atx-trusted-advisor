@@ -13,6 +13,9 @@ describe("watchlist console layout contract", () => {
     expect(consoleSrc).toContain("WatchlistQuoteDetailPanel");
     expect(consoleSrc).toContain("View quote and rationale");
     expect(consoleSrc).toContain("portfolioTotalUsd={portfolioTotalUsd}");
+    expect(consoleSrc).toContain("xf-watchlist-ops-note");
+    expect(consoleSrc).toContain("onRefreshDeskQuotes");
+    expect(consoleSrc).toContain("Refresh");
   });
 
   it("does not ship the legacy local watchlist sidebar", () => {

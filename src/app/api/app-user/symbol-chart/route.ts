@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { parseSymbolChartRange, resolveYahooChartWindow } from "@/modules/yahoo/symbol-chart-range";
+import { yahooChartWithValidationFallback } from "@/modules/yahoo/yahoo-chart-validation-fallback";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 export const dynamic = "force-dynamic";
@@ -43,11 +44,16 @@ export async function GET(request: Request) {
   try {
     const yf = getYahooFinance2();
     const { period1, period2, interval } = resolveYahooChartWindow(range);
-    const chart = (await yf.chart(symbol, {
-      period1,
-      period2,
-      interval
-    })) as {
+    const chart = (await yahooChartWithValidationFallback(
+      yf,
+      symbol,
+      {
+        period1,
+        period2,
+        interval
+      },
+      "symbol-chart"
+    )) as {
       quotes?: Array<{
         date: Date | string;
         open: number | null;

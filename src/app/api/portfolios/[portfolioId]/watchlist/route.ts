@@ -23,6 +23,10 @@ import {
     lookupSymbols,
     type SymbolLookupResult
 } from "@/modules/watchlist/yahoo-symbol-lookup";
+import {
+    extractDailyClosesFromYahooChart,
+    yahooChartWithValidationFallback
+} from "@/modules/yahoo/yahoo-chart-validation-fallback";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 type RouteContext = {
@@ -127,16 +131,17 @@ async function buildTechnicalsBySymbol(symbols: string[]): Promise<Map<string, W
     const rows = await Promise.all(
       batch.map(async (symbol) => {
         try {
-          const chart = (await yf.chart(symbol, {
-            period1,
-            period2,
-            interval: "1d"
-          })) as { quotes?: Array<{ close?: number | null }> };
-          const closes = (chart.quotes ?? [])
-            .map((quote) => quote.close)
-            .filter(
-              (close): close is number => typeof close === "number" && Number.isFinite(close) && close > 0
-            );
+          const chart = await yahooChartWithValidationFallback(
+            yf,
+            symbol,
+            {
+              period1,
+              period2,
+              interval: "1d"
+            },
+            "watchlist technicals"
+          );
+          const closes = extractDailyClosesFromYahooChart(chart);
           return {
             symbol,
             technicals: {

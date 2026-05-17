@@ -27,6 +27,10 @@ import {
     normalizeWorkspaceContentRev,
     type WorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
+import {
+    extractDailyClosesFromYahooChart,
+    yahooChartWithValidationFallback
+} from "@/modules/yahoo/yahoo-chart-validation-fallback";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
@@ -545,14 +549,17 @@ export async function getSymbolSnapshot(_session: SessionUser, symbol: string): 
   try {
     const period2 = new Date();
     const period1 = new Date(period2.getTime() - 120 * 24 * 60 * 60 * 1000);
-    const chart = (await yf.chart(sym, {
-      period1,
-      period2,
-      interval: "1d"
-    })) as { quotes?: Array<{ close?: number | null }> };
-    const closes = (chart.quotes ?? [])
-      .map((q) => q.close)
-      .filter((c): c is number => typeof c === "number" && Number.isFinite(c) && c > 0);
+    const chart = await yahooChartWithValidationFallback(
+      yf,
+      sym,
+      {
+        period1,
+        period2,
+        interval: "1d"
+      },
+      "find-options context rsi"
+    );
+    const closes = extractDailyClosesFromYahooChart(chart);
     rsi14 = computeRsiFromCloses(closes, 14);
   } catch {
     rsi14 = null;

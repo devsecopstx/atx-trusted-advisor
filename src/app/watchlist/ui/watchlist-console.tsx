@@ -31,6 +31,7 @@ import {
     EditIcon,
     ExternalLinkIcon,
     FolderPortfolioIcon,
+    RefreshIcon,
     SaveIcon,
     UnlinkIcon,
     UploadIcon,
@@ -79,6 +80,7 @@ import {
     WatchlistQuoteDetailPanel,
     type WatchlistQuotePanelTab
 } from "@/app/watchlist/ui/watchlist-quote-detail-panel";
+import { watchlistPatchShouldRefetchQuotes } from "@/app/watchlist/ui/watchlist-quote-refresh";
 import { getSymbolSectorLabel } from "@/modules/watchlist/symbol-sector";
 
 function ReviewListIcon() {
@@ -146,6 +148,10 @@ type WatchlistApiData = {
   }>;
   symbolsWithQuotes?: WatchlistRow[];
 };
+
+function stampWatchlistLoadedAt(now = new Date()): { iso: string; label: string } {
+  return { iso: now.toISOString(), label: now.toLocaleString() };
+}
 
 function buildRows(data: WatchlistApiData): WatchlistRow[] {
   const base = data.symbolsWithQuotes?.length
@@ -1353,6 +1359,8 @@ export function WatchlistConsole({
   const importFileRef = useRef<HTMLInputElement>(null);
   const [portfolioTotalInput, setPortfolioTotalInput] = useState("");
   const [listLoadedAtLabel, setListLoadedAtLabel] = useState("");
+  const [listLoadedAtIso, setListLoadedAtIso] = useState<string | null>(null);
+  const [quotesRefreshing, setQuotesRefreshing] = useState(false);
   const [symbolSearch, setSymbolSearch] = useState("");
   const [symbolSearchOpen, setSymbolSearchOpen] = useState(false);
   const [deskColumnVisibility, setDeskColumnVisibility] = useState<VisibilityState>({});
@@ -1425,8 +1433,10 @@ export function WatchlistConsole({
     );
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const res = await fetch(`${watchlistBaseUrl}?${watchlistFetchQuery}`, { credentials: "include" });
@@ -1462,15 +1472,32 @@ export function WatchlistConsole({
         } else if (listRows.length > 0 && !selectedWatchlistId.trim()) {
           setSelectedWatchlistId(listRows[0]!.id);
         }
-        setListLoadedAtLabel(new Date().toLocaleString());
+        const loadedAt = stampWatchlistLoadedAt();
+        setListLoadedAtIso(loadedAt.iso);
+        setListLoadedAtLabel(loadedAt.label);
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
       setRows([]);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) {
+        setLoading(false);
+      }
     }
   }, [selectedWatchlistId, startTransition, watchlistBaseUrl, watchlistFetchQuery]);
+
+  const onRefreshDeskQuotes = useCallback(async () => {
+    if (editMode || loading || quotesRefreshing) {
+      return;
+    }
+    setQuotesRefreshing(true);
+    setError(null);
+    try {
+      await load({ silent: true });
+    } finally {
+      setQuotesRefreshing(false);
+    }
+  }, [editMode, load, loading, quotesRefreshing]);
 
   useEffect(() => {
     void load();
@@ -1517,34 +1544,49 @@ export function WatchlistConsole({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const executePatch = useCallback(async (body: Record<string, unknown>) => {
-    const res = await fetch(`${watchlistBaseUrl}?${watchlistFetchQuery}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body)
-    });
-    const { json } = await readFetchJsonBody<{ data?: WatchlistApiData; error?: string }>(res);
-    if (!res.ok) {
-      throw new Error(
-        json.error ??
-          (res.status === 429 ? "Too many requests. Please wait a moment and retry." : "Update failed")
-      );
-    }
-    if (json.data) {
-      startTransition(() => {
-        setListName(json.data!.name ?? "Default");
-        setRows(buildRows(json.data!));
+  const executePatch = useCallback(
+    async (body: Record<string, unknown>) => {
+      const res = await fetch(`${watchlistBaseUrl}?${watchlistFetchQuery}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body)
       });
-    }
-  }, [watchlistBaseUrl, watchlistFetchQuery, startTransition]);
+      const { json } = await readFetchJsonBody<{
+        data?: WatchlistApiData;
+        error?: string;
+        metadata?: { symbolLookupEnabled?: boolean };
+      }>(res);
+      if (!res.ok) {
+        throw new Error(
+          json.error ??
+            (res.status === 429 ? "Too many requests. Please wait a moment and retry." : "Update failed")
+        );
+      }
+      const refetchQuotes = watchlistPatchShouldRefetchQuotes(json.metadata, body);
+      if (json.data && !refetchQuotes) {
+        startTransition(() => {
+          setListName(json.data!.name ?? "Default");
+          setRows(buildRows(json.data!));
+          const loadedAt = stampWatchlistLoadedAt();
+          setListLoadedAtIso(loadedAt.iso);
+          setListLoadedAtLabel(loadedAt.label);
+        });
+      }
+      return { refetchQuotes };
+    },
+    [watchlistBaseUrl, watchlistFetchQuery, startTransition]
+  );
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
       setMutating(true);
       setError(null);
       try {
-        await executePatch(body);
+        const { refetchQuotes } = await executePatch(body);
+        if (refetchQuotes) {
+          await load({ silent: true });
+        }
         onWatchlistMutated?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Update failed");
@@ -1553,7 +1595,7 @@ export function WatchlistConsole({
         setRemovingSymbol(null);
       }
     },
-    [executePatch, onWatchlistMutated]
+    [executePatch, load, onWatchlistMutated]
   );
 
   const patchRowMeta = useCallback(
@@ -1571,7 +1613,10 @@ export function WatchlistConsole({
       setMutating(true);
       setError(null);
       try {
-        await executePatch({ addEntries: [{ symbol, ...partial }] });
+        const { refetchQuotes } = await executePatch({ addEntries: [{ symbol, ...partial }] });
+        if (refetchQuotes) {
+          await load({ silent: true });
+        }
         onWatchlistMutated?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Update failed");
@@ -1579,7 +1624,7 @@ export function WatchlistConsole({
         setMutating(false);
       }
     },
-    [executePatch, onWatchlistMutated, rows]
+    [executePatch, load, onWatchlistMutated, rows]
   );
 
   const patchRowEntryPrice = useCallback(
@@ -1590,7 +1635,10 @@ export function WatchlistConsole({
       setMutating(true);
       setError(null);
       try {
-        await executePatch({ addEntries: [{ symbol, entryPrice }] });
+        const { refetchQuotes } = await executePatch({ addEntries: [{ symbol, entryPrice }] });
+        if (refetchQuotes) {
+          await load({ silent: true });
+        }
         onWatchlistMutated?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Update failed");
@@ -1598,7 +1646,7 @@ export function WatchlistConsole({
         setMutating(false);
       }
     },
-    [executePatch, onWatchlistMutated]
+    [executePatch, load, onWatchlistMutated]
   );
 
   const onAiSuggestRow = useCallback(
@@ -1624,7 +1672,10 @@ export function WatchlistConsole({
         if (!text.trim()) {
           throw new Error("Empty AI response");
         }
-        await executePatch({ addEntries: [{ symbol: row.symbol, rationale: text }] });
+        const { refetchQuotes } = await executePatch({ addEntries: [{ symbol: row.symbol, rationale: text }] });
+        if (refetchQuotes) {
+          await load({ silent: true });
+        }
         onWatchlistMutated?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "AI suggest failed");
@@ -1632,7 +1683,7 @@ export function WatchlistConsole({
         setAiSuggestSymbol(null);
       }
     },
-    [executePatch, onWatchlistMutated, portfolioId]
+    [executePatch, load, onWatchlistMutated, portfolioId]
   );
 
   const onExportAdvisorPdf = useCallback(() => {
@@ -1774,6 +1825,7 @@ ${bodyRows}
       if (nameChanged && !nameSent) {
         await executePatch({ name: trimmed });
       }
+      await load({ silent: true });
       onWatchlistMutated?.();
       setEditMode(false);
       editBaselineRef.current = null;
@@ -1783,7 +1835,7 @@ ${bodyRows}
       setMutating(false);
       setRemovingSymbol(null);
     }
-  }, [draftName, draftRows, executePatch, onWatchlistMutated]);
+  }, [draftName, draftRows, executePatch, load, onWatchlistMutated]);
 
   const updateDraftRow = useCallback(
     (
@@ -1928,6 +1980,7 @@ ${bodyRows}
           );
         }
         window.alert(parts.join(" "));
+        await load({ silent: true });
         onWatchlistMutated?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Import failed");
@@ -1935,7 +1988,7 @@ ${bodyRows}
         setMutating(false);
       }
     },
-    [editMode, rows, watchlistBaseUrl, watchlistFetchQuery, startTransition, onWatchlistMutated]
+    [editMode, load, rows, watchlistBaseUrl, watchlistFetchQuery, startTransition, onWatchlistMutated]
   );
 
   const displayRows = editMode ? draftRows : rows;
@@ -2332,15 +2385,35 @@ ${bodyRows}
                 <DedupeIcon className="crud-icon" />
                 Remove duplicates
               </button>
-              <button
-                className="xf-watchlist-toolbar-btn xf-watchlist-toolbar-btn--primary"
-                disabled={mutating || loading || editMode}
-                type="button"
-                onClick={() => void onAdd()}
-              >
-                <AddIcon className="crud-icon" />
-                Add
-              </button>
+              <div className="xf-watchlist-desk-refresh-cluster" aria-label="Desk quote refresh">
+                <p className="xf-watchlist-ops-note" role="status">
+                  <span className="xf-watchlist-ops-note__k">Last update</span>
+                  <time className="xf-watchlist-ops-note__v" dateTime={listLoadedAtIso ?? undefined}>
+                    {quotesRefreshing ? "Refreshing…" : listLoadedAtLabel || "—"}
+                  </time>
+                </p>
+                <button
+                  aria-busy={quotesRefreshing}
+                  aria-label="Refresh desk quotes and chain glance"
+                  className="xf-watchlist-toolbar-btn"
+                  disabled={mutating || loading || editMode || quotesRefreshing}
+                  title="Reload spot, day %, IV/OI, and technicals from Yahoo"
+                  type="button"
+                  onClick={() => void onRefreshDeskQuotes()}
+                >
+                  <RefreshIcon className="crud-icon" />
+                  Refresh
+                </button>
+                <button
+                  className="xf-watchlist-toolbar-btn xf-watchlist-toolbar-btn--primary"
+                  disabled={mutating || loading || editMode}
+                  type="button"
+                  onClick={() => void onAdd()}
+                >
+                  <AddIcon className="crud-icon" />
+                  Add
+                </button>
+              </div>
             </div>
 
             {error ? (
@@ -2470,9 +2543,6 @@ ${bodyRows}
                     )}
                   </table>
                 </div>
-                <p className="xf-watchlist-table-footer hidden px-3 pb-3 sm:block">
-                  Desk quotes refreshed · {listLoadedAtLabel || "—"}
-                </p>
               </>
             ) : null}
           </div>

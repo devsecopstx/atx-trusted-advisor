@@ -2,12 +2,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const quoteFn = vi.fn();
 
+const redisQuoteMocks = vi.hoisted(() => ({
+  setRedisMarketQuote: vi.fn().mockResolvedValue(undefined),
+  tryGetRedisMarketQuote: vi.fn().mockResolvedValue(null)
+}));
+
 vi.mock("redis", () => ({
   createClient: vi.fn()
 }));
 
 vi.mock("@/modules/yahoo/yahoo-finance-service", () => ({
   getYahooFinance2: () => ({ quote: quoteFn })
+}));
+
+vi.mock("@/modules/xchat/market-quote-redis-cache", () => ({
+  resolveMarketQuoteRedisTtlSeconds: () => 60,
+  setRedisMarketQuote: redisQuoteMocks.setRedisMarketQuote,
+  tryGetRedisMarketQuote: redisQuoteMocks.tryGetRedisMarketQuote
 }));
 
 import { createClient } from "redis";
@@ -18,6 +29,9 @@ import { getYahooBatchQuotes } from "@/modules/watchlist/yahoo-batch-quotes";
 describe("getYahooBatchQuotes (Redis cache)", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    redisQuoteMocks.setRedisMarketQuote.mockClear();
+    redisQuoteMocks.tryGetRedisMarketQuote.mockReset();
+    redisQuoteMocks.tryGetRedisMarketQuote.mockResolvedValue(null);
     await resetRedisClientForTests();
     process.env.REDIS_URL = "redis://127.0.0.1:6379";
     process.env.REDIS_QUOTE_CACHE_TTL_SECONDS = "60";
@@ -107,6 +121,24 @@ describe("getYahooBatchQuotes (Redis cache)", () => {
     expect(redisMock.set).toHaveBeenCalled();
     const setArgs = redisMock.set.mock.calls[0];
     expect(setArgs?.[2]).toEqual({ EX: 60 });
+    expect(redisQuoteMocks.setRedisMarketQuote).toHaveBeenCalledWith(
+      "AAPL",
+      expect.objectContaining({ symbol: "AAPL", price: 199 }),
+      60
+    );
+  });
+
+  it("serves batch from per-symbol Redis cache without Yahoo", async () => {
+    redisQuoteMocks.tryGetRedisMarketQuote.mockResolvedValue({
+      symbol: "AAPL",
+      price: 201,
+      source: "yahoo-finance2",
+      disclaimer: "cached",
+      asOf: "2026-01-01T00:00:00.000Z"
+    });
+    const out = await getYahooBatchQuotes(["AAPL"]);
+    expect(quoteFn).not.toHaveBeenCalled();
+    expect(out[0]?.price).toBe(201);
   });
 
   it("does not call Yahoo when allowNetwork is false and Redis is unset", async () => {

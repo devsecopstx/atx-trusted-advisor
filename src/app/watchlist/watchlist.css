@@ -1157,6 +1157,42 @@ a.xf-watchlist-sym-cell__ext:hover {
   gap: 0.5rem;
 }
 
+.xf-watchlist-desk-refresh-cluster {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+}
+
+.xf-watchlist-ops-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-400) 22%, transparent);
+  border-radius: var(--xf-radius-sm);
+  background: color-mix(in srgb, var(--xf-surface-800) 88%, transparent);
+  min-width: 9.5rem;
+}
+
+.xf-watchlist-ops-note__k {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xf-watchlist-ops-note__v {
+  font-family: var(--xf-font-mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--xf-text-200);
+  white-space: nowrap;
+}
+
 .xf-watchlist-toolbar-link {
   text-decoration: none;
   display: inline-flex;
