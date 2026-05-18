@@ -359,6 +359,12 @@ jobs:
           else
             echo "::notice::Desk SMTP secrets not all present in ${PROJECT} — portfolio email channels skipped (sync: scripts/ops/sync-desk-smtp-secrets-from-env.sh)"
           fi
+          if gcloud secrets describe ATX_SCHEDULER_INTERNAL_SECRET --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+            SECRETS="${SECRETS},ATX_SCHEDULER_INTERNAL_SECRET=ATX_SCHEDULER_INTERNAL_SECRET:latest"
+            echo "::notice::ATX_SCHEDULER_INTERNAL_SECRET found — binding to Next (scheduler execute-task delegate)"
+          else
+            echo "::notice::ATX_SCHEDULER_INTERNAL_SECRET absent — optional; sync: npm run ops:secrets:sync-scheduler-delegate:staging|:prod"
+          fi
           ENV_VARS="NODE_ENV=production,HOSTNAME=0.0.0.0,ATX_DEPLOY_TARGET=${{ steps.ctx.outputs.deploy_target }},X_OAUTH_CALLBACK_URL=${{ steps.ctx.outputs.base_url }}/api/auth/x/callback,GOOGLE_OAUTH_CALLBACK_URL=${{ steps.ctx.outputs.base_url }}/api/auth/google/callback,NEXT_PUBLIC_APP_URL=${{ steps.ctx.outputs.base_url }},PUBLIC_APP_BASE_URL=${{ steps.ctx.outputs.base_url }},ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
           ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
           for pair in "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}" "RENTAL_AI_PRODUCT_ID:${RENTAL_AI_PRODUCT_ID:-}" "RENTAL_BASE_PRICE_ID:${RENTAL_BASE_PRICE_ID:-}" "ENABLE_RENTAL_AI_BILLING:${ENABLE_RENTAL_AI_BILLING:-}" "SMTP_SECURE:${SMTP_SECURE:-}"; do

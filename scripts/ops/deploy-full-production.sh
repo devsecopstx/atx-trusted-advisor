@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Full production deploy: Spring backend (Dockerfile.backend) → sync ATXFINANCE_BACKEND_ORIGIN in .env.prod → Next Cloud Run.
 # Prereqs: same as deploy-atxfinance-backend-production.sh + deploy-cloud-run-from-env.sh (gcloud, docker, .env.prod).
+# Scheduler delegate: set ATX_SCHEDULER_NEXT_BASE_URL + ATX_SCHEDULER_INTERNAL_SECRET in .env.prod, then
+#   npm run ops:secrets:sync-scheduler-delegate:prod
+# before deploy (or secrets must already exist in GCP Secret Manager).
 #
 # Usage:
 #   bash scripts/ops/deploy-full-production.sh

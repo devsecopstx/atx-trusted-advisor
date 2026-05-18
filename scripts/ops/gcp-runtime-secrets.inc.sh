@@ -40,7 +40,8 @@ GCP_RUNTIME_SECRETS_OPTIONAL=(
   # Optional Redis plane split (control vs cache). Falls back to REDIS_URL when unset.
   "REDIS_URL_CONTROL"
   "REDIS_URL_CACHE"
-  # JVM → Next `POST /api/internal/scheduler/execute-task` (Spring Cloud Run). Sync: sync-scheduler-delegate-secrets-from-env.sh
+  # JVM → Next `POST /api/internal/scheduler/execute-task`. Sync: sync-scheduler-delegate-secrets-from-env.sh
+  # Next Cloud Run mounts ATX_SCHEDULER_INTERNAL_SECRET when the GSM secret exists (deploy-cloud-run-from-env.sh).
   "ATX_SCHEDULER_INTERNAL_SECRET"
   "ATX_SCHEDULER_NEXT_BASE_URL"
 )

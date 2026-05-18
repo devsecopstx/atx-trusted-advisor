@@ -38,6 +38,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=cloud-run-scheduler-secret-binding.inc.sh
+source "${ROOT_DIR}/scripts/ops/cloud-run-scheduler-secret-binding.inc.sh"
 cd "${ROOT_DIR}"
 
 TARGET="staging"
@@ -214,6 +216,9 @@ if [[ "${SKIP_SECRET_PREFLIGHT}" != "true" ]]; then
   if [[ "${TARGET}" == "staging" ]]; then
     VERIFY_ARGS+=(--with-google-oauth)
   fi
+  if [[ "${TARGET}" == "production" ]]; then
+    VERIFY_ARGS+=(--with-scheduler-delegate --require-backend-origin)
+  fi
   bash "${ROOT_DIR}/scripts/ops/verify-gcp-runtime-secrets.sh" "${VERIFY_ARGS[@]}"
 else
   echo "deploy-cloud-run-from-env: WARNING — skipping Secret Manager preflight" >&2
@@ -265,6 +270,7 @@ if gcloud secrets describe XAI_TEAM_ID --project="${PROJECT}" --format='value(na
 else
   echo "deploy-cloud-run-from-env: XAI_TEAM_ID secret absent — optional; sync: npm run ops:secrets:sync-xai-team-id:staging|:prod"
 fi
+cloud_run_append_scheduler_internal_secret_binding "deploy-cloud-run-from-env"
 if [[ "${DESK_SMTP_FROM_ENV_FILE}" == "true" ]]; then
   echo "deploy-cloud-run-from-env: desk SMTP from env file (${ENV_ABS}) — skipping GSM SMTP_* secret bindings"
 elif gcloud secrets describe SMTP_HOST --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
