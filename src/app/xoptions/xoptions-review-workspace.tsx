@@ -158,6 +158,22 @@ export function XoptionsReviewWorkspace(props: XoptionsReviewWorkspaceProps) {
     return Math.min(100, (cap / book) * 100);
   }, [payload, props.portfolioApproxValue]);
 
+  const modifyStrategyHref = useMemo(() => {
+    const params = new URLSearchParams({ step: "3", symbol: props.symbol });
+    if (props.strategyChoiceId) {
+      params.set("strategy", props.strategyChoiceId);
+    }
+    return `/xoptions?${params.toString()}`;
+  }, [props.strategyChoiceId, props.symbol]);
+
+  const cancelHref = useMemo(() => {
+    const params = new URLSearchParams({ step: "4", symbol: props.symbol });
+    if (props.contractId) {
+      params.set("contractId", props.contractId);
+    }
+    return `/xoptions?${params.toString()}`;
+  }, [props.contractId, props.symbol]);
+
   return (
     <div className={`xoptions-review-workspace${stackColumns ? " xoptions-review-workspace--stacked" : ""}`}>
       {variant === "standalone" ? (
@@ -188,35 +204,64 @@ export function XoptionsReviewWorkspace(props: XoptionsReviewWorkspaceProps) {
             </p>
           ) : null}
           {payload ? (
-            <XoptionsPositionReview
-              orderReview={payload.orderReview}
-              underlying={props.symbol}
-              strategyChoiceId={props.strategyChoiceId}
-              strategyLabel={props.strategyLabel ?? strategyShortLabel(props.strategyChoiceId)}
-              openingAction={props.openingAction}
-              riskScorePercent={riskScorePercent}
-              portfolioApproxValue={props.portfolioApproxValue}
-              taxEducationEnabled={false}
-              holdingSharesForSymbol={props.holdingSharesForSymbol}
-              yahooOptionSymbol={props.yahooOptionSymbol ?? props.contractId}
-              strike={props.strike ?? 0}
-              expirationYyyyMmDd={props.expiration ?? ""}
-              quantity={Math.max(1, Number.parseInt(props.quantity, 10) || 1)}
-              limitPricePerShare={Number.parseFloat(props.limitPrice) || 0}
-              side={props.side ?? "call"}
-              riskAlerts={payload.extension.riskAlerts}
-              whatIfAssigned={payload.extension.whatIfAssigned}
-              reviewSummary={payload.extension.reviewSummary}
-              auditTrail={payload.extension.auditTrail}
-            />
+            <>
+              <XoptionsPositionReview
+                orderReview={payload.orderReview}
+                underlying={props.symbol}
+                strategyChoiceId={props.strategyChoiceId}
+                strategyLabel={props.strategyLabel ?? strategyShortLabel(props.strategyChoiceId)}
+                openingAction={props.openingAction}
+                riskScorePercent={riskScorePercent}
+                portfolioApproxValue={props.portfolioApproxValue}
+                taxEducationEnabled={false}
+                holdingSharesForSymbol={props.holdingSharesForSymbol}
+                yahooOptionSymbol={props.yahooOptionSymbol ?? props.contractId}
+                strike={props.strike ?? 0}
+                expirationYyyyMmDd={props.expiration ?? ""}
+                quantity={Math.max(1, Number.parseInt(props.quantity, 10) || 1)}
+                limitPricePerShare={Number.parseFloat(props.limitPrice) || 0}
+                side={props.side ?? "call"}
+                riskAlerts={payload.extension.riskAlerts}
+                whatIfAssigned={payload.extension.whatIfAssigned}
+                reviewSummary={payload.extension.reviewSummary}
+                auditTrail={payload.extension.auditTrail}
+                portfolioContext={payload.extension.portfolioContext}
+                outlook={props.outlook}
+                riskProfile={props.riskProfile}
+              />
+              <div className="xoptions-review-workspace__action-bar xoptions-print-hide" aria-label="Order actions">
+                <button
+                  type="button"
+                  className="cta cta-primary"
+                  disabled
+                  title="IBKR paper execution is planned for a later release"
+                >
+                  Place order
+                </button>
+                <Link className="cta cta-secondary text-center" href={modifyStrategyHref}>
+                  Modify strategy
+                </Link>
+                <button
+                  type="button"
+                  className="cta cta-secondary"
+                  disabled={props.saveScenarioBusy || !reviewPlainText}
+                  onClick={props.onSaveScenario}
+                >
+                  {props.saveScenarioBusy ? "Saving…" : "Save as template"}
+                </button>
+                <Link className="cta cta-secondary text-center" href={cancelHref}>
+                  Cancel
+                </Link>
+              </div>
+            </>
           ) : null}
         </div>
 
         <aside className="xoptions-review-workspace__aside" aria-label="Review actions">
           <div className="xoptions-review-workspace__aside-card">
-            <h2 className="m-0 text-sm font-semibold text-[var(--xf-text-100)]">Next actions</h2>
+            <h2 className="m-0 text-sm font-semibold text-[var(--xf-text-100)]">Desk tools</h2>
             <p className="mt-1 mb-0 text-[0.72rem] leading-snug text-[var(--xf-text-400)]">
-              Educational preview only. Execution on IBKR paper is planned for a later release.
+              Export, watchlist, and xChat handoff for co-advisor review.
             </p>
             <div className="mt-3 flex flex-col gap-2">
               <button
@@ -246,20 +291,9 @@ export function XoptionsReviewWorkspace(props: XoptionsReviewWorkspaceProps) {
               >
                 Ask xChat
               </button>
-              <button
-                type="button"
-                className="cta cta-secondary xoptions-chain-cta"
-                disabled={props.saveScenarioBusy || !reviewPlainText}
-                onClick={props.onSaveScenario}
-              >
-                {props.saveScenarioBusy ? "Saving…" : "Save scenario"}
-              </button>
               <button type="button" className="cta cta-secondary xoptions-chain-cta" onClick={handlePrint}>
                 Print / PDF
               </button>
-              <Link className="cta cta-secondary xoptions-chain-cta text-center" href="/xoptions?step=4">
-                Edit contract
-              </Link>
             </div>
             {props.watchlistStatus ? (
               <p className="mt-2 mb-0 text-xs text-[var(--xf-text-400)]" role="status">

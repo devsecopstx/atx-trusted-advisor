@@ -4,7 +4,8 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { parseYahooOptionContractId, toYahooOptionContractId } from "@/lib/xoptions/xoptions-contract-id";
 import type { XoptionsOpeningAction } from "@/lib/xoptions/xoptions-order-preview";
-import { getTopStockHoldingsByValue } from "@/modules/find-options/find-options-service";
+import { getFindOptionsContext, getTopStockHoldingsByValue } from "@/modules/find-options/find-options-service";
+import type { XoptionsPortfolioContext } from "@/lib/xoptions/xoptions-review-types";
 import { getStrategyOptionsChain } from "@/modules/strategy-options/options-chain";
 import { assembleXoptionsReviewPayload } from "@/modules/xoptions/xoptions-review-assembler";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
@@ -86,12 +87,37 @@ export async function GET(request: Request) {
   const row = chainJson.optionChain?.find((entry) => entry.strike === strike);
   const leg = row ? (side === "call" ? row.call : row.put) : null;
   const holdings = await getTopStockHoldingsByValue(session, 50);
-  const holdingSharesForSymbol =
-    holdings.holdings.find((h) => h.symbol === symbol)?.shares ?? null;
+  const symbolHolding = holdings.holdings.find((h) => h.symbol === symbol);
+  const holdingSharesForSymbol = symbolHolding?.shares ?? null;
   const portfolioApproxValueUsd = holdings.holdings.reduce(
     (sum, row) => sum + (Number.isFinite(row.marketValue) ? row.marketValue : 0),
     0
   );
+
+  const openingAction = (q.openingAction ?? "buy_to_open") as XoptionsOpeningAction;
+
+  const findOptionsCtx = await getFindOptionsContext(session);
+  const securedNotionalPreview =
+    openingAction === "sell_to_open" && strike > 0
+      ? strike * Math.max(1, Number.parseInt(q.quantity?.trim() || "1", 10) || 1) * 100
+      : null;
+  const cashBalanceUsd = findOptionsCtx.account.cashBalance;
+  const portfolioContext: XoptionsPortfolioContext = {
+    portfolioName: findOptionsCtx.portfolio?.name ?? null,
+    cashBalanceUsd,
+    cashCollateralPctOfCash:
+      securedNotionalPreview != null && cashBalanceUsd != null && cashBalanceUsd > 0
+        ? (securedNotionalPreview / cashBalanceUsd) * 100
+        : null,
+    symbolMarketValueUsd:
+      symbolHolding != null && Number.isFinite(symbolHolding.marketValue) ? symbolHolding.marketValue : null,
+    symbolPctOfPortfolio:
+      symbolHolding != null &&
+      portfolioApproxValueUsd > 0 &&
+      Number.isFinite(symbolHolding.marketValue)
+        ? (symbolHolding.marketValue / portfolioApproxValueUsd) * 100
+        : null
+  };
 
   let earningsDateIso: string | null = null;
   try {
@@ -105,7 +131,6 @@ export async function GET(request: Request) {
     earningsDateIso = null;
   }
 
-  const openingAction = (q.openingAction ?? "buy_to_open") as XoptionsOpeningAction;
   const contractId =
     q.contractId?.trim() ||
     toYahooOptionContractId({
@@ -135,7 +160,8 @@ export async function GET(request: Request) {
       weights: [],
       outlook: q.outlook?.trim() || null,
       riskProfile: q.riskProfile?.trim() || null
-    }
+    },
+    portfolioContext
   });
 
   return NextResponse.json({ data: payload });

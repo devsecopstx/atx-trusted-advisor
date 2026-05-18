@@ -4,6 +4,7 @@ import {
     type XoptionsOrderReview
 } from "@/lib/xoptions/xoptions-order-preview";
 import type {
+    XoptionsPortfolioContext,
     XoptionsPortfolioImpact,
     XoptionsReviewAuditTrail,
     XoptionsReviewPayload,
@@ -31,6 +32,7 @@ export type AssembleXoptionsReviewInput = {
   holdingSharesForSymbol: number | null;
   earningsDateIso: string | null;
   auditTrail: Omit<XoptionsReviewAuditTrail, "generatedAtUtc">;
+  portfolioContext?: XoptionsPortfolioContext;
 };
 
 function buildReviewSummary(orderReview: XoptionsOrderReview): XoptionsReviewSummary {
@@ -144,6 +146,13 @@ export function assembleXoptionsReviewPayload(input: AssembleXoptionsReviewInput
       portfolioApproxValueUsd: input.portfolioApproxValueUsd,
       holdingSharesForSymbol: input.holdingSharesForSymbol
     }),
+    portfolioContext: input.portfolioContext ?? {
+      portfolioName: null,
+      cashBalanceUsd: null,
+      cashCollateralPctOfCash: null,
+      symbolMarketValueUsd: null,
+      symbolPctOfPortfolio: null
+    },
     whatIfAssigned: buildWhatIfAssigned({
       symbol: input.symbol,
       side: input.side,

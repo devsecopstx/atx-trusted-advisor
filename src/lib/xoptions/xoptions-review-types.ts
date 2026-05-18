@@ -27,6 +27,15 @@ export type XoptionsPortfolioImpact = {
   securedNotionalUsd: number | null;
 };
 
+/** Active book context for HNWI review copy (find-options / workspace account). */
+export type XoptionsPortfolioContext = {
+  portfolioName: string | null;
+  cashBalanceUsd: number | null;
+  cashCollateralPctOfCash: number | null;
+  symbolMarketValueUsd: number | null;
+  symbolPctOfPortfolio: number | null;
+};
+
 export type XoptionsWhatIfAssigned = {
   newCostBasisPerShare: number | null;
   premiumCollectedPerShare: number | null;
@@ -44,6 +53,7 @@ export type XoptionsStrategyOptionsReviewExtension = {
   reviewSummary: XoptionsReviewSummary;
   riskAlerts: XoptionsRiskAlert[];
   portfolioImpact: XoptionsPortfolioImpact;
+  portfolioContext: XoptionsPortfolioContext;
   whatIfAssigned: XoptionsWhatIfAssigned | null;
   auditTrail: XoptionsReviewAuditTrail;
 };

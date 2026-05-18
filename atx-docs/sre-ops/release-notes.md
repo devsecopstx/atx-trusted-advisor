@@ -4,6 +4,8 @@ Short, **newest-first** bullets tied to **`package.json`** semver. Append **one 
 
 Not user marketing copy — enough for deploy triage, support, and “what shipped in this image.”
 
+- **3.20.8** — **xOptions HNWI review report (step 5):** **`XoptionsPositionReview`** rebuilt with order summary card, executive advisor note, key-metrics grid, portfolio-aware risk snapshot (**`GET /api/app-user/xoptions/review`** + find-options cash/exposure), trade thesis, and action bar (**Place order** preview-only, **Modify strategy**, **Save as template**, **Cancel**). **Tests:** **`xoptions-hnwi-review-copy`**. **Docs:** **`current-state-features.md`**. **Deploy:** Next.
+
 ## Deploy targets (for ops tracking)
 
 Production has **two** Cloud Run images plus **Secret Manager** (and sometimes **GitHub environment variables**). Each release bullet should tag what must roll for the change to take effect.

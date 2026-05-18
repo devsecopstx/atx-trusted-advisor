@@ -37,7 +37,7 @@ export function buildXoptionsRiskAlerts(input: RiskAlertServiceInput): XoptionsR
         "dte_short",
         "warning",
         "Very short dated",
-        `This contract expires in about ${dte} day${dte === 1 ? "" : "s"}, so theta and assignment risk can move quickly.`,
+        `Short-dated theta decay is elevated — about ${dte} day${dte === 1 ? "" : "s"} to expiration, so premium and assignment risk can move quickly.`,
         "Days to expiration (DTE) is the calendar days left before the option expires.",
         "dte"
       )
@@ -63,7 +63,7 @@ export function buildXoptionsRiskAlerts(input: RiskAlertServiceInput): XoptionsR
           "iv_rank_high",
           "caution",
           "Elevated implied volatility",
-          `Implied volatility looks high versus a simple desk range, so premium may be rich but swings can be larger.`,
+          `Elevated implied volatility — premium may be rich, but mark-to-market swings and gap risk can be larger than in low-IV regimes.`,
           "IV rank is a simplified percentile-style read of implied volatility versus a fixed desk range.",
           "iv_rank"
         )
@@ -90,7 +90,7 @@ export function buildXoptionsRiskAlerts(input: RiskAlertServiceInput): XoptionsR
           "assignment_elevated",
           "warning",
           "Higher assignment risk",
-          `The model puts roughly ${assignmentPct}% odds on finishing in the money, which can raise assignment risk for short premium.`,
+          `Higher assignment risk — ${assignmentPct}% odds of finishing in the money; monitor for early exercise and consider rolling if assigned.`,
           "Assignment probability here is approximated as 100% minus the estimated probability of expiring out of the money.",
           "assignment_probability"
         )
@@ -101,7 +101,7 @@ export function buildXoptionsRiskAlerts(input: RiskAlertServiceInput): XoptionsR
           "assignment_moderate",
           "caution",
           "Assignment risk to watch",
-          `The model puts roughly ${assignmentPct}% odds on finishing in the money, so assignment is possible before expiration.`,
+          `Moderate assignment risk — roughly ${assignmentPct}% odds of finishing in the money; plan liquidity before expiration week.`,
           "Assignment probability here is approximated as 100% minus the estimated probability of expiring out of the money.",
           "assignment_probability"
         )
