@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -37,6 +38,8 @@ import {
     SUBSCRIPTION_PLAN_SELECT_OPTIONS,
     type SubscriptionPlan
 } from "@/lib/subscription-plan";
+import { fetchAdminManageUsersDirectory } from "@/lib/react-query/admin-manage-users-api";
+import { adminManageUsersQueryKeys } from "@/lib/react-query/query-keys";
 import { formatUserFacingIdentityLabel } from "@/lib/x-identity-email";
 
 type BrokerSettings = {
@@ -283,13 +286,18 @@ async function writeTextToClipboard(text: string): Promise<void> {
   }
 }
 
+type ManageUsersDirectoryData = {
+  users: ApprovedUser[];
+  openAccessRequests: AdminAccessRequest[];
+  personaByUserId: Record<string, string>;
+  linkedCollectionsByUserId: Record<string, LinkedCollection[]>;
+};
+
 export function UserSettingsConsole() {
   const [status, setStatus] = useState("Ready");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedAccessRequestId, setSelectedAccessRequestId] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [approvedUsers, setApprovedUsers] = useState<ApprovedUser[]>([]);
-  const [openAccessRequests, setOpenAccessRequests] = useState<AdminAccessRequest[]>([]);
   const [arEmailEdits, setArEmailEdits] = useState<Record<string, string>>({});
   const [arPlanEdits, setArPlanEdits] = useState<Record<string, SubscriptionPlan>>({});
   const [arRoleEdits, setArRoleEdits] = useState<Record<string, ApprovedUser["role"]>>({});
@@ -323,30 +331,18 @@ export function UserSettingsConsole() {
   >({});
   const [copiedClipboardKey, setCopiedClipboardKey] = useState<string | null>(null);
 
-  const refreshDirectory = useCallback(async () => {
-    try {
-      const [usersRes, accessRes] = await Promise.all([
-        fetch("/api/admin/users?limit=200"),
-        fetch("/api/admin/access-requests?status=open", { cache: "no-store" })
-      ]);
-      const payload = await parseJson<{ data: ApiUser[] }>(usersRes);
-      const arPayload = await parseJson<{ data: AdminAccessRequest[] }>(accessRes);
-      const normalizedUsers = payload.data
-        .filter((user): user is ApiUser & { _id: string } => Boolean(user._id))
-        .map((user) => toApprovedUser(user));
-
-      setApprovedUsers(normalizedUsers);
-      setOpenAccessRequests(arPayload.data);
+  const syncDirectoryEditFields = useCallback(
+    (normalizedUsers: ApprovedUser[], accessRows: AdminAccessRequest[]) => {
       setArEmailEdits((previous) => {
         const next = { ...previous };
-        for (const item of arPayload.data) {
+        for (const item of accessRows) {
           next[item.userId] = previous[item.userId] ?? item.user?.email ?? "";
         }
         return next;
       });
       setArPlanEdits((previous) => {
         const next = { ...previous };
-        for (const item of arPayload.data) {
+        for (const item of accessRows) {
           if (!item._id) continue;
           next[item._id] = normalizeSubscriptionPlan(
             previous[item._id] ?? (item.requestedPlan as SubscriptionPlan) ?? "basic"
@@ -356,7 +352,7 @@ export function UserSettingsConsole() {
       });
       setArRoleEdits((previous) => {
         const next = { ...previous };
-        for (const item of arPayload.data) {
+        for (const item of accessRows) {
           if (!item._id) continue;
           next[item._id] = previous[item._id] ?? item.requestedRole ?? "operator";
         }
@@ -364,7 +360,7 @@ export function UserSettingsConsole() {
       });
       setArTenantEdits((previous) => {
         const next = { ...previous };
-        for (const item of arPayload.data) {
+        for (const item of accessRows) {
           if (!item._id) continue;
           next[item._id] = previous[item._id] ?? item.tenantId ?? "";
         }
@@ -372,7 +368,7 @@ export function UserSettingsConsole() {
       });
       setArReviewNoteEdits((previous) => {
         const next = { ...previous };
-        for (const item of arPayload.data) {
+        for (const item of accessRows) {
           if (!item._id) continue;
           next[item._id] = previous[item._id] ?? "";
         }
@@ -426,37 +422,77 @@ export function UserSettingsConsole() {
         }
         return next;
       });
-      const settingsEntries = await Promise.all(
-        normalizedUsers.map(async (user) => {
-          try {
-            const settingsPayload = await parseJson<UserSettingsResponse>(
-              await fetch(`/api/admin/users/${encodeURIComponent(user.userId)}/settings`)
-            );
-            return {
-              userId: user.userId,
-              assignedPersonaId: settingsPayload.data.assignedPersonaId ?? "",
-              linkedCollections: settingsPayload.metadata?.linkedCollections ?? ([] as LinkedCollection[])
-            };
-          } catch {
-            return {
-              userId: user.userId,
-              assignedPersonaId: "",
-              linkedCollections: [] as LinkedCollection[]
-            };
-          }
-        })
-      );
-      setPersonaByUserId(Object.fromEntries(settingsEntries.map((entry) => [entry.userId, entry.assignedPersonaId])));
-      const linkedCollectionsRecord: Record<string, LinkedCollection[]> = {};
-      for (const entry of settingsEntries) {
-        linkedCollectionsRecord[entry.userId] = entry.linkedCollections;
+    },
+    []
+  );
+
+  const loadDirectory = useCallback(async (): Promise<ManageUsersDirectoryData> => {
+    const payload = await fetchAdminManageUsersDirectory();
+    const normalizedUsers = payload.users
+      .filter((user): user is ApiUser & { _id: string } => Boolean(user._id))
+      .map((user) => toApprovedUser(user));
+    const settingsEntries = await Promise.all(
+      normalizedUsers.map(async (user) => {
+        try {
+          const settingsPayload = await parseJson<UserSettingsResponse>(
+            await fetch(`/api/admin/users/${encodeURIComponent(user.userId)}/settings`)
+          );
+          return {
+            userId: user.userId,
+            assignedPersonaId: settingsPayload.data.assignedPersonaId ?? "",
+            linkedCollections: settingsPayload.metadata?.linkedCollections ?? ([] as LinkedCollection[])
+          };
+        } catch {
+          return {
+            userId: user.userId,
+            assignedPersonaId: "",
+            linkedCollections: [] as LinkedCollection[]
+          };
+        }
+      })
+    );
+    const linkedCollectionsByUserId: Record<string, LinkedCollection[]> = {};
+    for (const entry of settingsEntries) {
+      linkedCollectionsByUserId[entry.userId] = entry.linkedCollections;
+    }
+    return {
+      users: normalizedUsers,
+      openAccessRequests: payload.openAccessRequests,
+      personaByUserId: Object.fromEntries(
+        settingsEntries.map((entry) => [entry.userId, entry.assignedPersonaId])
+      ),
+      linkedCollectionsByUserId
+    };
+  }, []);
+
+  const directoryQuery = useQuery({
+    queryKey: adminManageUsersQueryKeys.directory,
+    queryFn: loadDirectory
+  });
+
+  const approvedUsers = directoryQuery.data?.users ?? [];
+  const openAccessRequests = directoryQuery.data?.openAccessRequests ?? [];
+
+  useEffect(() => {
+    if (!directoryQuery.data) {
+      return;
+    }
+    syncDirectoryEditFields(directoryQuery.data.users, directoryQuery.data.openAccessRequests);
+    setPersonaByUserId(directoryQuery.data.personaByUserId);
+    setLinkedCollectionsByUserId(directoryQuery.data.linkedCollectionsByUserId);
+  }, [directoryQuery.data, syncDirectoryEditFields]);
+
+  const refreshDirectory = useCallback(async () => {
+    try {
+      const result = await directoryQuery.refetch();
+      if (result.error) {
+        throw result.error;
       }
-      setLinkedCollectionsByUserId(linkedCollectionsRecord);
       setStatus("Directory synced");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to load directory");
     }
-  }, []);
+  }, [directoryQuery]);
 
   const refreshTenants = useCallback(async () => {
     try {
@@ -1016,14 +1052,13 @@ export function UserSettingsConsole() {
 
   useEffect(() => {
     const refreshTimer = window.setTimeout(() => {
-      void refreshDirectory();
       void refreshTenants();
       void refreshPersonaOptions();
     }, 0);
     return () => {
       window.clearTimeout(refreshTimer);
     };
-  }, [refreshDirectory, refreshPersonaOptions, refreshTenants]);
+  }, [refreshPersonaOptions, refreshTenants]);
 
   const selectedLinkedCollections = selectedUserId
     ? linkedCollectionsByUserId[selectedUserId] ?? []

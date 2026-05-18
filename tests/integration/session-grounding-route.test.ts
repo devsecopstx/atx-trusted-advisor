@@ -11,8 +11,14 @@ const identityMocks = vi.hoisted(() => ({
   resolveTenantMembershipForSessionGrounding: vi.fn()
 }));
 
+const groundingCacheMocks = vi.hoisted(() => ({
+  readSessionGroundingOkCached: vi.fn(async () => false),
+  writeSessionGroundingOkCached: vi.fn(async () => undefined)
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
+vi.mock("@/modules/identity/session-grounding-decision-cache", () => groundingCacheMocks);
 
 import { GET } from "@/app/api/internal/authz/session-grounding/route";
 
@@ -22,6 +28,8 @@ describe("internal session grounding route", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    groundingCacheMocks.readSessionGroundingOkCached.mockResolvedValue(false);
+    groundingCacheMocks.writeSessionGroundingOkCached.mockResolvedValue(undefined);
     authMocks.requireSessionUser.mockResolvedValue({
       userId: uid.toHexString(),
       tenantId: tid.toHexString(),
@@ -54,6 +62,15 @@ describe("internal session grounding route", () => {
     const res = await GET();
     expect(res.status).toBe(200);
     expect(((await res.json()) as { ok: boolean }).ok).toBe(true);
+    expect(groundingCacheMocks.writeSessionGroundingOkCached).toHaveBeenCalled();
+  });
+
+  it("returns 200 from redis cache without Mongo reads", async () => {
+    groundingCacheMocks.readSessionGroundingOkCached.mockResolvedValueOnce(true);
+    const res = await GET();
+    expect(res.status).toBe(200);
+    expect(identityMocks.getCoreUserById).not.toHaveBeenCalled();
+    expect(identityMocks.resolveTenantMembershipForSessionGrounding).not.toHaveBeenCalled();
   });
 
   it("returns 401 when membership row is missing", async () => {

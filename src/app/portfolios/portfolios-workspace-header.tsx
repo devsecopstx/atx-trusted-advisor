@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { PortfoliosMacroTape, type MacroTapeIndex } from "@/app/portfolios/portfolios-macro-tape";
+import { useWorkspacePulse } from "@/lib/react-query/use-workspace-pulse";
 import { PortfoliosMacroTapeWellness } from "@/app/portfolios/portfolios-macro-tape-wellness";
 import { PortfoliosBooksDayMarkUI } from "@/app/portfolios/portfolios-workspace-books-day-mark";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
@@ -11,8 +12,6 @@ import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
 import type { WorkspaceBooksDayMarkSummary } from "@/lib/workspace-dashboard-metrics";
 import type { MarketDayContext } from "@/modules/scanner/us-market-day-context";
 import { resolveUsMarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
-
-type PulseIndex = { symbol: string; price?: number; changePercent?: number };
 
 type Props = {
   totalBookUsd: number;
@@ -37,44 +36,10 @@ export function PortfoliosWorkspaceHeader({
   deskPortfolioId = null,
   booksDayMark
 }: Props) {
-  const [indices, setIndices] = useState<PulseIndex[]>([]);
-  const [market, setMarket] = useState<MarketDayContext>(() => resolveUsMarketDayContext(new Date()));
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      try {
-        const qs = topHoldingsKey ? `?holdings=${encodeURIComponent(topHoldingsKey)}` : "";
-        const res = await fetch(`/api/market/workspace-pulse${qs}`, { credentials: "include" });
-        const body = (await res.json()) as {
-          data?: { indices?: PulseIndex[]; market?: MarketDayContext };
-        };
-        if (!cancelled) {
-          if (body.data?.indices) {
-            setIndices(body.data.indices);
-          }
-          setMarket(body.data?.market ?? resolveUsMarketDayContext(new Date()));
-        }
-      } catch {
-        if (!cancelled) {
-          setIndices([]);
-          setMarket(resolveUsMarketDayContext(new Date()));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-    void load();
-    const t = setInterval(() => void load(), 180_000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [topHoldingsKey]);
+  const pulseQuery = useWorkspacePulse(topHoldingsKey);
+  const indices = pulseQuery.data?.indices ?? [];
+  const market = pulseQuery.data?.market ?? resolveUsMarketDayContext(new Date());
+  const loading = pulseQuery.isLoading || pulseQuery.isFetching;
 
   const spy = useMemo(() => indices.find((i) => i.symbol === "SPY") ?? indices[0], [indices]);
   const sessionStatus = useMemo(() => usMarketSessionStatusLabel(market), [market]);

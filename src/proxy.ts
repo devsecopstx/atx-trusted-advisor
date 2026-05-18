@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { isSafeOAuthReturnPath } from "@/lib/oauth-return-path";
+import { parseProxyEdgeCacheTtlMs } from "@/lib/proxy-edge-cache-ttl";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { TENANT_UX_FAIL_CLOSED_DRILL_COOKIE } from "@/modules/platform/tenant-ux-flags";
 import { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
@@ -36,17 +37,27 @@ const protectedPathPrefixes = [
 ];
 
 const publicGuestReadablePaths = ["/account/billing"] as const;
-const TENANT_UX_PROXY_POLICY_TTL_MS = 60_000;
+const TENANT_UX_PROXY_POLICY_TTL_MS = parseProxyEdgeCacheTtlMs(
+  process.env.TENANT_UX_PROXY_CACHE_TTL_MS,
+  60_000
+);
 const tenantUxProxyCache = new Map<string, { allowed: boolean; redirectPath: string; expiresAt: number }>();
 /** Coalesce concurrent edge policy fetches for the same session + path (thundering herd on parallel HTML/RSC). */
 const tenantUxPolicyInflight = new Map<string, Promise<TenantUxPolicyDecision>>();
-const BILLING_PROXY_POLICY_TTL_MS = 30_000;
+const BILLING_PROXY_POLICY_TTL_MS = parseProxyEdgeCacheTtlMs(
+  process.env.BILLING_PROXY_CACHE_TTL_MS,
+  60_000
+);
 type BillingProxyDecision = { requiresBilling: boolean; state: string; redirectPath: string };
 const billingProxyCache = new Map<string, BillingProxyDecision & { expiresAt: number }>();
 /** Coalesce concurrent billing-access fetches for the same session cookie. */
 const billingProxyInflight = new Map<string, Promise<BillingProxyDecision>>();
 
-const SESSION_GROUNDING_CACHE_TTL_MS = 15_000;
+/** Per-edge-instance cache of grounding fetch result (see also origin Redis in session-grounding route). */
+const SESSION_GROUNDING_CACHE_TTL_MS = parseProxyEdgeCacheTtlMs(
+  process.env.SESSION_GROUNDING_CACHE_TTL_MS,
+  60_000
+);
 /** Same-origin internal checks from the edge proxy — bounded wait avoids hung middleware (timeouts fail-open below). */
 const PROXY_INTERNAL_ORIGIN_FETCH_TIMEOUT_MS = 10_000;
 const sessionGroundingCache = new Map<string, { ok: boolean; expiresAt: number }>();

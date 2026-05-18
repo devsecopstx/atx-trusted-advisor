@@ -1,24 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { UploadIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
-import type { NearestExpiryOptionsGlance } from "@/modules/find-options/options-hot-scan";
+import { useWorkspacePulse } from "@/lib/react-query/use-workspace-pulse";
 import { type MarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
 
 export type PortfoliosHeroTopHolding = {
   symbol: string;
   bookUsd: number;
-};
-
-type PulseData = {
-  market: MarketDayContext;
-  indices: { symbol: string; price?: number; changePercent?: number }[];
-  news: { title: string; link: string; publisher?: string }[];
-  optionsGlance: { symbol: string; highlight: NearestExpiryOptionsGlance | null }[];
 };
 
 function formatOi(n: number): string {
@@ -48,42 +41,14 @@ export function PortfoliosHeroLeftColumn({
   topHoldings: PortfoliosHeroTopHolding[];
   defaultPortfolioId: string | null;
 }) {
-  const [pulse, setPulse] = useState<PulseData | null>(null);
-  const [pulseLoading, setPulseLoading] = useState(true);
-
   const holdingsKey = useMemo(
     () => topHoldings.slice(0, 2).map((h) => h.symbol).join(","),
     [topHoldings]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setPulseLoading(true);
-      try {
-        const qs = holdingsKey ? `?holdings=${encodeURIComponent(holdingsKey)}` : "";
-        const res = await fetch(`/api/market/workspace-pulse${qs}`, { credentials: "include" });
-        const body = (await res.json()) as { data?: PulseData };
-        if (!cancelled && body.data) {
-          setPulse(body.data);
-        }
-      } catch {
-        if (!cancelled) {
-          setPulse(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setPulseLoading(false);
-        }
-      }
-    }
-    void load();
-    const t = setInterval(() => void load(), 180_000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [holdingsKey]);
+  const pulseQuery = useWorkspacePulse(holdingsKey);
+  const pulse = pulseQuery.data;
+  const pulseLoading = pulseQuery.isLoading || pulseQuery.isFetching;
 
   const m = pulse?.market ?? marketContext;
   const status = usMarketSessionStatusLabel(m);

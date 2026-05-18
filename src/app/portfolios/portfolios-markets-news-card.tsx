@@ -1,39 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useWorkspacePulse } from "@/lib/react-query/use-workspace-pulse";
 
 export function PortfoliosMarketsNewsCard() {
-  const [lines, setLines] = useState<{ title: string; link: string }[]>([]);
-  const [busy, setBusy] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setBusy(true);
-      try {
-        const res = await fetch("/api/market/workspace-pulse", { credentials: "include" });
-        const body = (await res.json()) as {
-          data?: { news?: { title: string; link: string }[] };
-        };
-        const news = body.data?.news ?? [];
-        if (!cancelled) {
-          setLines(news.slice(0, 4).map((n) => ({ title: n.title, link: n.link })));
-        }
-      } catch {
-        if (!cancelled) {
-          setLines([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setBusy(false);
-        }
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const pulseQuery = useWorkspacePulse("");
+  const lines = (pulseQuery.data?.news ?? []).slice(0, 4).map((n) => ({ title: n.title, link: n.link }));
+  const busy = pulseQuery.isLoading || pulseQuery.isFetching;
 
   return (
     <section

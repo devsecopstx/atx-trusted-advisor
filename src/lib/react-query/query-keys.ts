@@ -20,3 +20,12 @@ export const watchlistHotQueryKeys = {
   compact: (portfolioId: string | null, limit: number) =>
     [...watchlistHotQueryKeys.all, portfolioId ?? "", String(limit)] as const
 };
+
+export const workspacePulseQueryKeys = {
+  all: ["workspace-pulse"] as const,
+  pulse: (holdingsKey: string) => [...workspacePulseQueryKeys.all, holdingsKey] as const
+};
+
+export const adminManageUsersQueryKeys = {
+  directory: ["admin-manage-users-directory"] as const
+};

@@ -2,8 +2,12 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
-import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
 import { getCoreUserByIdCached } from "@/lib/server-request-cache";
+import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
+import {
+  readSessionGroundingOkCached,
+  writeSessionGroundingOkCached
+} from "@/modules/identity/session-grounding-decision-cache";
 import { resolveTenantMembershipForSessionGrounding } from "@/modules/identity/repository";
 
 /**
@@ -22,6 +26,10 @@ export async function GET() {
       { ok: false as const, code: "invalid_session" },
       { status: 401 }
     );
+  }
+
+  if (await readSessionGroundingOkCached(session.userId, session.tenantId)) {
+    return NextResponse.json({ ok: true as const });
   }
 
   const userId = new ObjectId(session.userId);
@@ -46,5 +54,6 @@ export async function GET() {
     );
   }
 
+  await writeSessionGroundingOkCached(session.userId, session.tenantId);
   return NextResponse.json({ ok: true as const });
 }
