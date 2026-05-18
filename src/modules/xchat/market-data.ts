@@ -1,3 +1,4 @@
+import { formatXchatCiteSentinel } from "@/lib/xchat-citations";
 import {
     getYahooBatchQuotes,
     marketQuoteHasLivePrice
@@ -98,6 +99,9 @@ export function formatDirectMarketQuoteMarkdown(snapshot: MarketQuoteSnapshot): 
     );
   }
   lines.push("", snapshot.disclaimer?.trim() || MARKET_DATA_DISCLAIMER);
-  lines.push("", "[@citation:market_quote|Yahoo Finance]");
+  const cite = formatXchatCiteSentinel("market_quote", "Yahoo Finance", sym);
+  if (cite) {
+    lines.push("", cite);
+  }
   return lines.join("\n");
 }

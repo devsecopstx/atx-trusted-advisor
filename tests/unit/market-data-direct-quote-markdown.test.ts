@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
+import { extractXchatFooterCitations } from "@/lib/xchat-citations";
 import {
-  formatDirectMarketQuoteMarkdown,
-  type MarketQuoteSnapshot
+    formatDirectMarketQuoteMarkdown,
+    type MarketQuoteSnapshot
 } from "@/modules/xchat/market-data";
 
 describe("formatDirectMarketQuoteMarkdown", () => {
@@ -21,6 +23,14 @@ describe("formatDirectMarketQuoteMarkdown", () => {
     expect(md).toContain("## TSLA — Tesla, Inc.");
     expect(md).toContain("**Last:** $411.44");
     expect(md).toContain("-10.80 (-2.56%)");
-    expect(md).toContain("[@citation:market_quote|Yahoo Finance]");
+    expect(md).toContain("[[xchat-cite:market_quote|Yahoo Finance|TSLA]]");
+    expect(md).not.toContain("XF_CITE:");
+    expect(md).not.toMatch(/\{"slug":"market_quote"/);
+
+    const { body, chips } = extractXchatFooterCitations(md);
+    expect(chips).toEqual([{ slug: "market_quote", label: "Yahoo Finance", symbol: "TSLA" }]);
+    const preprocessed = preprocessXchatMarkdown(body);
+    expect(preprocessed).not.toContain("[[xchat-cite:");
+    expect(preprocessed).not.toMatch(/\{"slug":"market_quote"/);
   });
 });

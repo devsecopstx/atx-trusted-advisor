@@ -13,6 +13,7 @@ import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preproces
 import { useXfUiSoft } from "@/lib/use-xf-ui-soft";
 import {
     citationChipRenderable,
+    extractXchatFooterCitations,
     parseInlineXfChipCode,
     parseXfCitationFenceJson
 } from "@/lib/xchat-citations";
@@ -111,7 +112,7 @@ function createMarkdownComponents(xfSoft: boolean): Components {
           return (
             <div className="xchat-citation-fence xchat-citation-fence--inline-stack">
               {chips.map((c, idx) => (
-                <XchatCitationChip key={`${c.slug}-${idx}`} label={c.label} slug={c.slug} />
+                <XchatCitationChip key={`${c.slug}-${idx}`} label={c.label} slug={c.slug} symbol={c.symbol} />
               ))}
             </div>
           );
@@ -150,13 +151,26 @@ function createMarkdownComponents(xfSoft: boolean): Components {
 export function XchatMarkdownBody({ content, className }: XchatMarkdownBodyProps) {
   const xfSoft = useXfUiSoft();
   const components = useMemo(() => createMarkdownComponents(xfSoft), [xfSoft]);
-  const cleaned = useMemo(() => preprocessXchatMarkdown(content), [content]);
+  const { body, footerChips } = useMemo(() => {
+    const extracted = extractXchatFooterCitations(content);
+    return {
+      body: preprocessXchatMarkdown(extracted.body),
+      footerChips: extracted.chips
+    };
+  }, [content]);
 
   return (
     <div className={className ?? "xchat-markdown"}>
       <ReactMarkdown components={components} rehypePlugins={[rehypeSanitize]} remarkPlugins={[remarkGfm]}>
-        {cleaned}
+        {body}
       </ReactMarkdown>
+      {footerChips.length > 0 ? (
+        <div className="xchat-citation-fence xchat-citation-fence--inline-stack">
+          {footerChips.map((c, idx) => (
+            <XchatCitationChip key={`${c.slug}-${idx}`} label={c.label} slug={c.slug} symbol={c.symbol} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

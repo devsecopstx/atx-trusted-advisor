@@ -707,7 +707,7 @@ class AtxFunctionExecutor(
         lines.add("")
         lines.add("_Market data from Yahoo Finance — delayed._")
         lines.add("")
-        lines.add("[@citation:market_quote|Yahoo Finance]")
+        lines.add("[[xchat-cite:market_quote|Yahoo Finance|$sym]]")
         return lines.joinToString("\n")
     }
 

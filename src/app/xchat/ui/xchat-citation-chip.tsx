@@ -7,13 +7,15 @@ import { citationChipRenderable, resolveCitationPresentation } from "@/lib/xchat
 type XchatCitationChipProps = {
   slug: string;
   label?: string;
+  /** When set on market_quote / yahoo_finance chips, links to finance.yahoo.com/quote/{symbol}. */
+  symbol?: string;
 };
 
-export function XchatCitationChip({ slug, label }: XchatCitationChipProps) {
+export function XchatCitationChip({ slug, label, symbol }: XchatCitationChipProps) {
   if (!citationChipRenderable(slug, label)) {
     return null;
   }
-  const { title, href, external } = resolveCitationPresentation(slug, label);
+  const { title, href, external } = resolveCitationPresentation(slug, label, symbol);
 
   const className = "xchat-citation-chip";
 

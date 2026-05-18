@@ -9,6 +9,7 @@ import {
     encodeCitationInlineMarkdown,
     encodeToolBadgeInlineMarkdown,
     expandBracketCitationsToInlineCode,
+    extractXchatFooterCitations,
     extractXmlAttr,
     grokRenderBlocksToCitationMarkdown,
     grokRenderSelfClosingToCitationMarkdown,
@@ -258,13 +259,37 @@ describe("xchat-citations", () => {
   });
 
   it("resolves presentation with optional label override", () => {
-    const p = resolveCitationPresentation("market_quote", "Custom");
+    const p = resolveCitationPresentation("market_quote", "Custom", "TSLA");
     expect(p.title).toBe("Custom");
-    expect(p.href).toBe("/xoptions");
+    expect(p.href).toBe("https://finance.yahoo.com/quote/TSLA");
+    expect(p.external).toBe(true);
+    expect(resolveCitationPresentation("yahoo_finance").href).toBe("https://finance.yahoo.com/");
     expect(resolveCitationPresentation("atxfinance").title).toBe("Workspace tools");
     expect(resolveCitationPresentation("atxfinance").href).toBe("/portfolio");
     expect(resolveCitationPresentation("atx_function").title).toBe("Workspace tools");
     expect(resolveCitationPresentation("atx_function").href).toBe("/portfolio");
+  });
+
+  it("extractXchatFooterCitations pulls sentinel, fence, and bare JSON", () => {
+    const sentinel = extractXchatFooterCitations(
+      "Quote line\n[[xchat-cite:market_quote|Yahoo Finance|TSLA]]"
+    );
+    expect(sentinel.body).toBe("Quote line");
+    expect(sentinel.chips).toEqual([
+      { slug: "market_quote", label: "Yahoo Finance", symbol: "TSLA" }
+    ]);
+
+    const fence = extractXchatFooterCitations(
+      "Body\n```xf-citation\n{\"slug\":\"yahoo_finance\",\"label\":\"Yahoo\"}\n```"
+    );
+    expect(fence.body.trim()).toBe("Body");
+    expect(fence.chips).toEqual([{ slug: "yahoo_finance", label: "Yahoo" }]);
+
+    const bareJson = extractXchatFooterCitations(
+      '**Last:** $1\n{"slug":"market_quote","label":"Yahoo Finance"}'
+    );
+    expect(bareJson.body).not.toMatch(/\{"slug"/);
+    expect(bareJson.chips).toEqual([{ slug: "market_quote", label: "Yahoo Finance" }]);
   });
 
   it("parses xf-citation fence JSON", () => {

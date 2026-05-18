@@ -1,3 +1,5 @@
+import { buildYahooFinanceQuoteUrl, isYahooTickerSymbol } from "@/lib/yahoo-finance-url";
+
 /**
  * xChat citation + Grok/xAI leak handling (extend like a small template registry).
  *
@@ -24,8 +26,8 @@ export type CitationPresentation = {
 
 /** Known slugs → default label + optional navigation target */
 export const CITATION_KIND_META: Record<string, CitationPresentation> = {
-  market_quote: { title: "Market quote", href: "/xoptions" },
-  yahoo_finance: { title: "Yahoo Finance", href: "/xoptions" },
+  market_quote: { title: "Market quote", external: true },
+  yahoo_finance: { title: "Yahoo Finance", external: true },
   file_search: { title: "Knowledge search" },
   web_search: { title: "Web search" },
   x_search: { title: "X search" },
@@ -57,10 +59,21 @@ function humanizeSlug(slug: string): string {
     .join(" ");
 }
 
-export function resolveCitationPresentation(slug: string, label?: string): CitationPresentation {
+export function resolveCitationPresentation(
+  slug: string,
+  label?: string,
+  symbol?: string
+): CitationPresentation {
   const c = canonicalizeCitationSlug(slug);
   const meta = CITATION_KIND_META[c];
   const title = (label?.trim() || meta?.title || humanizeSlug(c)).trim();
+  if (c === "market_quote" || c === "yahoo_finance") {
+    return {
+      title,
+      href: buildYahooFinanceQuoteUrl(symbol),
+      external: true
+    };
+  }
   return {
     title,
     href: meta?.href,
@@ -869,6 +882,155 @@ export type XfCitationFencePayload = {
   slug?: string;
   label?: string;
 };
+
+/** Desk / deterministic replies: parsed in {@link XchatMarkdownBody}, never shown as prose. */
+const XCHAT_CITE_SENTINEL_RE = /\[\[xchat-cite:([a-z0-9_]+)(?:\|([^\]]+))?\]\]/gi;
+
+const XF_CITATION_FENCE_BLOCK_RE = /```xf-citation\s*\n([\s\S]*?)\n```/gi;
+
+const BARE_XF_CITATION_JSON_LINE_RE =
+  /^\s*\{\s*"slug"\s*:\s*"([a-z0-9_]+)"(?:\s*,\s*"label"\s*:\s*"([^"]*)")?\s*\}\s*$/i;
+
+export type XchatFooterCitation = {
+  slug: string;
+  label?: string;
+  symbol?: string;
+};
+
+function parseXchatCiteSentinelTail(tail: string | undefined): { label?: string; symbol?: string } {
+  if (!tail?.trim()) {
+    return {};
+  }
+  const parts = tail.split("|").map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const maybeSymbol = parts[parts.length - 1] ?? "";
+    if (isYahooTickerSymbol(maybeSymbol)) {
+      return {
+        label: parts.slice(0, -1).join("|").trim() || undefined,
+        symbol: maybeSymbol.toUpperCase()
+      };
+    }
+  }
+  return { label: tail.trim() || undefined };
+}
+
+export function formatXchatCiteSentinel(slug: string, label?: string, symbol?: string): string {
+  const s = canonicalizeCitationSlug(slug);
+  if (!SLUG_RE.test(s) || !citationChipRenderable(s, label)) {
+    return "";
+  }
+  const safeLabel = label?.replace(/[\]|]/g, "").trim();
+  const sym =
+    symbol?.trim().toUpperCase() && isYahooTickerSymbol(symbol) ? symbol.trim().toUpperCase() : "";
+  if (safeLabel && sym) {
+    return `[[xchat-cite:${s}|${safeLabel}|${sym}]]`;
+  }
+  if (safeLabel) {
+    return `[[xchat-cite:${s}|${safeLabel}]]`;
+  }
+  if (sym) {
+    return `[[xchat-cite:${s}|${sym}]]`;
+  }
+  return `[[xchat-cite:${s}]]`;
+}
+
+function pushFooterChip(
+  chips: XchatFooterCitation[],
+  slug: string,
+  label?: string,
+  symbol?: string
+): void {
+  const s = canonicalizeCitationSlug(slug);
+  const l = label?.trim();
+  const sym = symbol?.trim().toUpperCase();
+  if (!citationChipRenderable(s, l)) {
+    return;
+  }
+  const key = `${s}:${l ?? ""}:${sym ?? ""}`;
+  if (chips.some((c) => `${c.slug}:${c.label ?? ""}:${c.symbol ?? ""}` === key)) {
+    return;
+  }
+  chips.push({
+    slug: s,
+    label: l || undefined,
+    symbol: sym && isYahooTickerSymbol(sym) ? sym : undefined
+  });
+}
+
+/**
+ * Pull citation markers out of assistant markdown before ReactMarkdown (fences/JSON often
+ * degrade to visible prose after sanitize or SSE chunking).
+ */
+export function extractXchatFooterCitations(markdown: string): {
+  body: string;
+  chips: XchatFooterCitation[];
+} {
+  const chips: XchatFooterCitation[] = [];
+  let body = markdown;
+
+  body = body.replace(XCHAT_CITE_SENTINEL_RE, (_full, rawSlug: string, rawTail?: string) => {
+    const { label, symbol } = parseXchatCiteSentinelTail(rawTail);
+    pushFooterChip(chips, rawSlug, label, symbol);
+    return "";
+  });
+
+  body = body.replace(XF_CITATION_FENCE_BLOCK_RE, (_full, json: string) => {
+    const parsed = parseXfCitationFenceJson(json);
+    if (parsed) {
+      pushFooterChip(chips, parsed.slug, parsed.label);
+    }
+    return "";
+  });
+
+  const lines = body.split(/\r?\n/);
+  const kept: string[] = [];
+  for (const line of lines) {
+    const jsonMatch = line.match(BARE_XF_CITATION_JSON_LINE_RE);
+    if (jsonMatch) {
+      pushFooterChip(chips, jsonMatch[1], jsonMatch[2]);
+      continue;
+    }
+    const backtickJson = line.trim().match(/^`(\{[\s\S]*\})`$/);
+    if (backtickJson) {
+      const parsed = parseXfCitationFenceJson(backtickJson[1]);
+      if (parsed) {
+        pushFooterChip(chips, parsed.slug, parsed.label);
+        continue;
+      }
+    }
+    const bare = parseBareXfSentinelFromLine(line);
+    if (bare && bareXfSentinelProbeFromLine(line) !== null) {
+      pushFooterChip(chips, bare.slug, bare.label);
+      continue;
+    }
+    const wrapped = line.trim().match(/^`((?:XF_CITE|XF_TOOL):[^`]+)`$/i);
+    if (wrapped) {
+      const parsed = parseInlineXfChipCode(wrapped[1]);
+      if (parsed) {
+        pushFooterChip(chips, parsed.slug, parsed.label);
+        continue;
+      }
+    }
+    kept.push(line);
+  }
+
+  body = kept.join("\n").replace(/(?:\n[ \t]*){3,}/g, "\n\n").trimEnd();
+  return { body, chips };
+}
+
+/** Fenced citation block — prefer {@link formatXchatCiteSentinel} for deterministic desk output. */
+export function formatXfCitationFenceMarkdown(slug: string, label?: string): string {
+  const s = canonicalizeCitationSlug(slug);
+  if (!SLUG_RE.test(s) || !citationChipRenderable(s, label)) {
+    return "";
+  }
+  const payload: XfCitationFencePayload = { slug: s };
+  const safeLabel = label?.replace(/`/g, "").trim();
+  if (safeLabel) {
+    payload.label = safeLabel;
+  }
+  return ["```xf-citation", JSON.stringify(payload), "```"].join("\n");
+}
 
 export function parseXfCitationFenceJson(text: string): { slug: string; label?: string } | null {
   const t = text.trim();
