@@ -2,9 +2,14 @@
  * React `cache()` dedupes identical async reads within one server request (RSC, Route Handlers, server actions).
  * Import from server-only code only — not from client components.
  */
+import { ObjectId } from "mongodb";
 import { cache } from "react";
 
-import { getTenantByHexId, getTenantBySlugOrHexId } from "@/modules/identity/repository";
+import {
+  getCoreUserById,
+  getTenantByHexId,
+  getTenantBySlugOrHexId
+} from "@/modules/identity/repository";
 import {
     getPersonaById,
     listPersonas,
@@ -16,6 +21,14 @@ import type { PersonaConfig, PersonaStatus } from "@/modules/xchat/types";
 export const getTenantByHexIdCached = cache(async (tenantIdHex: string) =>
   getTenantByHexId(tenantIdHex.trim())
 );
+
+export const getCoreUserByIdCached = cache(async (userIdHex: string) => {
+  const trimmed = userIdHex.trim();
+  if (!ObjectId.isValid(trimmed)) {
+    return null;
+  }
+  return getCoreUserById(new ObjectId(trimmed));
+});
 
 /** Admin URLs may pass Mongo tenant hex or **`core_tenants.slug`**. */
 export const getTenantBySlugOrHexIdCached = cache(async (key: string) =>

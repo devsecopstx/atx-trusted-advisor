@@ -14,7 +14,7 @@ import { caughtErrorMessage } from "@/lib/caught-error";
 import { getEnv } from "@/lib/env";
 import { getInvestmentOutlookRefreshEnabled } from "@/lib/feature-flags";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
-import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { getCoreUserByIdCached, getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { effectiveWorkspaceLimitsForTenantAndPlan } from "@/lib/tenant-workspace-limits";
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
@@ -28,7 +28,6 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { parseAccountOutlook, type Account } from "@/modules/core-admin/types";
-import { getCoreUserById } from "@/modules/identity/repository";
 
 function serializeAccount(account: Account) {
   const rawRef = (account.extAccountId ?? "").trim();
@@ -184,7 +183,7 @@ export default async function PortfolioAccountPage({
   const tenantRow =
     ObjectId.isValid(session.tenantId) ? await getTenantByHexIdCached(session.tenantId) : null;
   const coreUser =
-    ObjectId.isValid(session.userId) ? await getCoreUserById(new ObjectId(session.userId)) : null;
+    ObjectId.isValid(session.userId) ? await getCoreUserByIdCached(session.userId) : null;
   const workspaceLimits = await effectiveWorkspaceLimitsForTenantAndPlan(
     tenantRow,
     coreUser?.subscriptionPlan

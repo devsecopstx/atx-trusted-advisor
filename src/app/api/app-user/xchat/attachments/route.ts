@@ -9,7 +9,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { addFileToXaiCollection, uploadFileToXai } from "@/lib/xai";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
-import { getCoreUserById, getTenantByHexId } from "@/modules/identity/repository";
+import { getCoreUserByIdCached, getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { ensureTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
 import {
     createRagFile,
@@ -46,7 +46,7 @@ async function requirePremiumAttachmentsSession(): Promise<SessionUser | NextRes
   }
   let plan = normalizeSubscriptionPlan(undefined);
   if (ObjectId.isValid(session.userId)) {
-    const user = await getCoreUserById(new ObjectId(session.userId));
+    const user = await getCoreUserByIdCached(session.userId);
     plan = normalizeSubscriptionPlan(user?.subscriptionPlan);
   }
   if (!canAccessPremiumTenantAttachments(plan, session.roles)) {
@@ -76,7 +76,7 @@ export async function GET() {
     );
   }
 
-  const tenant = await getTenantByHexId(session.tenantId);
+  const tenant = await getTenantByHexIdCached(session.tenantId);
   if (!tenant?._id) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `File too large. Max bytes: ${MAX_ATTACHMENT_BYTES}` }, { status: 413 });
   }
 
-  const tenant = await getTenantByHexId(session.tenantId);
+  const tenant = await getTenantByHexIdCached(session.tenantId);
   if (!tenant?._id) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }

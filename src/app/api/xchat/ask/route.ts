@@ -13,6 +13,7 @@ import { getEnv, isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv 
 import { getInvestmentOutlookRefreshEnabled } from "@/lib/feature-flags";
 import { SENSITIVE_APP_USER_CACHE_HEADERS } from "@/lib/sensitive-api-cache-control";
 import {
+    getCoreUserByIdCached,
     getPersonaByIdCached,
     getTenantByHexIdCached,
     loadDefaultXchatPersonaForSessionDeduped
@@ -46,7 +47,6 @@ import {
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-    getCoreUserById,
     getCoreUserOptionsScanPreferences,
     updateCoreUserOptionsScanPreferences
 } from "@/modules/identity/repository";
@@ -421,7 +421,7 @@ export async function POST(request: Request) {
 
   const coreUser =
     !isAdminSession && ObjectId.isValid(session.userId)
-      ? await getCoreUserById(new ObjectId(session.userId))
+      ? await getCoreUserByIdCached(session.userId)
       : null;
   const billingState = resolveAppUserBillingAccessState({
     roles: session.roles,

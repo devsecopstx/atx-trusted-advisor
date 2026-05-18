@@ -20,6 +20,10 @@ import {
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import { TenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 import { normalizeTenantIdHexFromStoredMembershipField } from "@/modules/identity/tenant-membership-grounding";
+import {
+  parseTenantShellBrandingFromTenant,
+  parseTenantXfUiThemeFromTenant
+} from "@/modules/identity/tenant-shell-appearance";
 import type { TenantShellBranding } from "@/modules/identity/tenant-shell-branding";
 import {
     mergeTenantWorkspaceLimits,
@@ -2132,9 +2136,11 @@ export async function resolveCoreUserHexIdForRentalTenantByUsername(input: {
 export async function getTenantXfUiThemePreferenceForHex(
   tenantIdHex: string
 ): Promise<XfUiThemePreference | undefined> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return undefined;
+  }
   const tenant = await getTenantByHexId(tenantIdHex);
-  const raw = tenant?.tenantPreferences?.xf_ui_theme;
-  return parseXfUiThemePreferenceFromUnknown(raw);
+  return parseTenantXfUiThemeFromTenant(tenant);
 }
 
 /**
@@ -2146,32 +2152,7 @@ export async function getTenantShellBrandingForHex(tenantIdHex: string): Promise
     return null;
   }
   const tenant = await getTenantByHexId(tenantIdHex);
-  if (!tenant) {
-    return null;
-  }
-  const p = tenant.tenantPreferences;
-  let accentColor = DEFAULT_TENANT_ACCENT_HEX;
-  try {
-    const raw =
-      p && typeof p === "object" && p !== null
-        ? (p as Record<string, unknown>).xf_accent_color
-        : undefined;
-    if (raw !== undefined && raw !== null && String(raw).trim()) {
-      accentColor = normalizeXfAccentColor(raw);
-    }
-  } catch {
-    accentColor = DEFAULT_TENANT_ACCENT_HEX;
-  }
-  const logoUrl =
-    p && typeof p === "object" && p !== null
-      ? String((p as Record<string, unknown>).xf_tenant_logo_url ?? "").trim() || undefined
-      : undefined;
-  const tagline =
-    p && typeof p === "object" && p !== null
-      ? String((p as Record<string, unknown>).xf_tenant_tagline ?? "").trim().slice(0, 60) || undefined
-      : undefined;
-  const displayName = String(tenant.name ?? "").trim() || tenant.slug;
-  return { displayName, accentColor, logoUrl, tagline };
+  return parseTenantShellBrandingFromTenant(tenant);
 }
 
 export async function updateTenantXfUiThemePreference(

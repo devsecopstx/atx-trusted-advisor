@@ -20,7 +20,7 @@ import {
 } from "@/lib/xchat/xchat-outlook-desk";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getTenantShellBrandingForHex } from "@/modules/identity/repository";
+import { getTenantShellBrandingForHexCached } from "@/lib/identity-shell-cache";
 import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 import { resolveAccountOutlookContextForXchat } from "@/modules/xchat/account-outlook-context";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
@@ -92,7 +92,7 @@ export async function XchatApprovedShell({
   const routePolicyPromise = getTenantRoutePolicyForSession(session);
   const tenantShellPromise =
     session.tenantId && ObjectId.isValid(session.tenantId)
-      ? getTenantShellBrandingForHex(session.tenantId)
+      ? getTenantShellBrandingForHexCached(session.tenantId)
       : Promise.resolve(null);
 
   const [defaultPersona, workspaceBookState, wl, entitlements, routePolicy, tenantShell] =

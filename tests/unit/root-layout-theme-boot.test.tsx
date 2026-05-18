@@ -9,8 +9,10 @@ vi.mock("@/lib/auth", () => ({
   getSessionUser: vi.fn().mockResolvedValue(null)
 }));
 
-vi.mock("@/modules/identity/repository", () => ({
-  getTenantXfUiThemePreferenceForHex: vi.fn().mockResolvedValue(undefined)
+vi.mock("@/lib/identity-shell-cache", () => ({
+  getTenantXfUiThemePreferenceForHexCached: vi.fn().mockResolvedValue(undefined),
+  getTenantShellBrandingForHexCached: vi.fn().mockResolvedValue(null),
+  getCoreUserXfUiThemePreferenceForHexCached: vi.fn().mockResolvedValue(undefined)
 }));
 
 import RootLayout, { metadata } from "@/app/layout";

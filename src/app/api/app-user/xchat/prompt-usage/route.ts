@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getCoreUserById } from "@/modules/identity/repository";
+import { getCoreUserByIdCached } from "@/lib/server-request-cache";
 import { peekXchatAskUsageCounts } from "@/modules/xchat/ask-usage-limits";
 import { mergeXchatPromptLimitsForWorkspace } from "@/modules/xchat/plan-limits";
 
@@ -40,7 +40,7 @@ export async function GET() {
       tenantId: session.tenantId,
       userId: session.userId
     });
-    const userDoc = await getCoreUserById(new ObjectId(session.userId));
+    const userDoc = await getCoreUserByIdCached(session.userId);
     const subscriptionPlan = userDoc?.subscriptionPlan;
     merged = mergeXchatPromptLimitsForWorkspace(subscriptionPlan, workspaceLimits);
   } catch {

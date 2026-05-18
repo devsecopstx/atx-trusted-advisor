@@ -3,16 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const authMocks = vi.hoisted(() => ({
   getSessionUser: vi.fn()
 }));
-const tenantCacheMocks = vi.hoisted(() => ({
-  getTenantByHexIdCached: vi.fn()
-}));
-const identityRepoMocks = vi.hoisted(() => ({
-  getTenantShellBrandingForHex: vi.fn()
+const shellCacheMocks = vi.hoisted(() => ({
+  getTenantShellBrandingForHexCached: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
-vi.mock("@/lib/server-request-cache", () => tenantCacheMocks);
-vi.mock("@/modules/identity/repository", () => identityRepoMocks);
+vi.mock("@/lib/identity-shell-cache", () => shellCacheMocks);
 
 import manifest from "@/app/manifest";
 
@@ -20,8 +16,7 @@ describe("app manifest route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMocks.getSessionUser.mockResolvedValue(null);
-    tenantCacheMocks.getTenantByHexIdCached.mockResolvedValue(null);
-    identityRepoMocks.getTenantShellBrandingForHex.mockResolvedValue(null);
+    shellCacheMocks.getTenantShellBrandingForHexCached.mockResolvedValue(null);
   });
 
   it("returns default static manifest without tenant session", async () => {
@@ -36,16 +31,11 @@ describe("app manifest route", () => {
     authMocks.getSessionUser.mockResolvedValue({
       tenantId: "507f1f77bcf86cd799439022"
     });
-    tenantCacheMocks.getTenantByHexIdCached.mockResolvedValue({
-      name: "Acme Advisory",
-      tenantPreferences: {
-        xf_tenant_logo_url: "https://cdn.example.com/acme-logo.png",
-        xf_tenant_tagline: "Options income desk"
-      }
-    });
-    identityRepoMocks.getTenantShellBrandingForHex.mockResolvedValue({
+    shellCacheMocks.getTenantShellBrandingForHexCached.mockResolvedValue({
       displayName: "Acme Advisory",
-      accentColor: "#22c55e"
+      accentColor: "#22c55e",
+      logoUrl: "https://cdn.example.com/acme-logo.png",
+      tagline: "Options income desk"
     });
     const data = await manifest();
     expect(data.name).toBe("Acme Advisory");

@@ -1,8 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getSessionUser } from "@/lib/auth";
-import { getTenantByHexIdCached } from "@/lib/server-request-cache";
-import { getTenantShellBrandingForHex } from "@/modules/identity/repository";
+import { getTenantShellBrandingForHexCached } from "@/lib/identity-shell-cache";
 
 const DEFAULT_NAME = "aTx Advisor";
 const DEFAULT_SHORT_NAME = "aTx";
@@ -50,14 +49,11 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     };
   }
 
-  const [tenant, branding] = await Promise.all([
-    getTenantByHexIdCached(session.tenantId),
-    getTenantShellBrandingForHex(session.tenantId)
-  ]);
-  const tenantName = String(tenant?.name ?? branding?.displayName ?? "").trim() || DEFAULT_NAME;
-  const tenantLogo = String(tenant?.tenantPreferences?.xf_tenant_logo_url ?? "").trim();
+  const branding = await getTenantShellBrandingForHexCached(session.tenantId);
+  const tenantName = String(branding?.displayName ?? "").trim() || DEFAULT_NAME;
+  const tenantLogo = String(branding?.logoUrl ?? "").trim();
   const accent = branding?.accentColor?.trim() || DEFAULT_THEME_COLOR;
-  const tenantTagline = String(tenant?.tenantPreferences?.xf_tenant_tagline ?? "").trim();
+  const tenantTagline = String(branding?.tagline ?? "").trim();
   const tenantLogoIcon: ManifestIcon = {
     src: tenantLogo,
     type: "image/png",

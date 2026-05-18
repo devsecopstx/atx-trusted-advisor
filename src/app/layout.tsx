@@ -7,10 +7,10 @@ import { getGa4MeasurementId } from "@/lib/env";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
 import {
-    getCoreUserXfUiThemePreferenceForHex,
-    getTenantShellBrandingForHex,
-    getTenantXfUiThemePreferenceForHex
-} from "@/modules/identity/repository";
+    getCoreUserXfUiThemePreferenceForHexCached,
+    getTenantShellBrandingForHexCached,
+    getTenantXfUiThemePreferenceForHexCached
+} from "@/lib/identity-shell-cache";
 import { ObjectId } from "mongodb";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
@@ -59,13 +59,15 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const ga4MeasurementId = getGa4MeasurementId();
   let tenantDefaultTheme: XfUiThemePreference | undefined;
   let userUiTheme: XfUiThemePreference | undefined;
-  let tenantShellBranding: Awaited<ReturnType<typeof getTenantShellBrandingForHex>> = null;
+  let tenantShellBranding: Awaited<ReturnType<typeof getTenantShellBrandingForHexCached>> = null;
   if (session?.tenantId && ObjectId.isValid(session.tenantId)) {
-    tenantDefaultTheme = await getTenantXfUiThemePreferenceForHex(session.tenantId);
-    tenantShellBranding = await getTenantShellBrandingForHex(session.tenantId);
+    [tenantDefaultTheme, tenantShellBranding] = await Promise.all([
+      getTenantXfUiThemePreferenceForHexCached(session.tenantId),
+      getTenantShellBrandingForHexCached(session.tenantId)
+    ]);
   }
   if (session?.userId && ObjectId.isValid(session.userId)) {
-    userUiTheme = await getCoreUserXfUiThemePreferenceForHex(session.userId);
+    userUiTheme = await getCoreUserXfUiThemePreferenceForHexCached(session.userId);
   }
 
   const tenantAccentTrimmed = tenantShellBranding?.accentColor?.trim();

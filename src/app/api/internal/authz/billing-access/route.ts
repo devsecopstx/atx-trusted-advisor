@@ -8,7 +8,7 @@ import {
 } from "@/lib/app-user-billing-state";
 import { requireSessionUser } from "@/lib/auth";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
-import { getCoreUserById } from "@/modules/identity/repository";
+import { getCoreUserByIdCached } from "@/lib/server-request-cache";
 
 export async function GET() {
   const session = await requireSessionUser();
@@ -20,7 +20,7 @@ export async function GET() {
   const adminSession = isGlobalAdmin(session.roles);
   const coreUser =
     ObjectId.isValid(session.userId) && hasAppLoginRole && !adminSession
-      ? await getCoreUserById(new ObjectId(session.userId))
+      ? await getCoreUserByIdCached(session.userId)
       : null;
 
   const billingState = resolveAppUserBillingAccessState({

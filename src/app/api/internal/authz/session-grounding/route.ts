@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
-import { getCoreUserById, resolveTenantMembershipForSessionGrounding } from "@/modules/identity/repository";
+import { getCoreUserByIdCached } from "@/lib/server-request-cache";
+import { resolveTenantMembershipForSessionGrounding } from "@/modules/identity/repository";
 
 /**
  * Validates that the signed session still matches Mongo: active user, approved access gate,
@@ -24,7 +25,7 @@ export async function GET() {
   }
 
   const userId = new ObjectId(session.userId);
-  const user = await getCoreUserById(userId);
+  const user = await getCoreUserByIdCached(session.userId);
 
   if (!user?._id || user.status === "suspended") {
     return NextResponse.json({ ok: false as const, code: "user_ineligible" }, { status: 401 });
