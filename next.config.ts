@@ -1,16 +1,11 @@
 import type { NextConfig } from "next";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import {
-  DENO_SHIM_NODE_STUB_RELATIVE,
-  SERVER_EXTERNAL_PACKAGES,
-  STANDALONE_OUTPUT_FILE_TRACING_INCLUDES,
-  buildDevOnlyAllowedOrigins
+    DENO_SHIM_NODE_STUB_RELATIVE,
+    SERVER_EXTERNAL_PACKAGES,
+    STANDALONE_OUTPUT_FILE_TRACING_INCLUDES,
+    buildDevOnlyAllowedOrigins
 } from "./src/lib/next-build-policy";
-
-const repoRoot = path.dirname(fileURLToPath(import.meta.url));
-const denoShimNodeStub = path.join(repoRoot, DENO_SHIM_NODE_STUB_RELATIVE);
 
 const devOnlyAllowedOrigins = buildDevOnlyAllowedOrigins(process.env.NODE_ENV);
 
@@ -20,20 +15,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [...SERVER_EXTERNAL_PACKAGES],
   turbopack: {
     resolveAlias: {
-      "@deno/shim-deno": denoShimNodeStub
+      "@deno/shim-deno": DENO_SHIM_NODE_STUB_RELATIVE
     }
-  },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.resolve ??= {};
-      config.resolve.alias = {
-        ...(typeof config.resolve.alias === "object" && config.resolve.alias !== null
-          ? config.resolve.alias
-          : {}),
-        "@deno/shim-deno": denoShimNodeStub
-      };
-    }
-    return config;
   },
   ...(devOnlyAllowedOrigins ? { allowedDevOrigins: [...devOnlyAllowedOrigins] } : {}),
   /**

@@ -3,8 +3,8 @@
  * Policy: atx-docs/xchat/context-routing-multi-agent-policy.md
  */
 
-import { extractTickerCandidates } from "@/modules/xchat/multi-source-context-orchestrator";
 import { shouldRunDirectOptionsScan } from "@/modules/xchat/options-scan-ask-routing";
+import { extractTickerCandidates } from "@/modules/xchat/ticker-candidates";
 
 /** When true, persona multi-agent model may run with parallelism + optional reasoningEffort. */
 export function heavySynthesisIntent(message: string): boolean {
