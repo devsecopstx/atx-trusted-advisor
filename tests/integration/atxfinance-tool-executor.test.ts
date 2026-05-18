@@ -20,12 +20,17 @@ const marketDataMocks = vi.hoisted(() => ({
   getYahooMarketQuote: vi.fn()
 }));
 
+const watchlistLiveQuoteMocks = vi.hoisted(() => ({
+  resolveLiveQuotesForWatchlistSymbols: vi.fn()
+}));
+
 const optionsActionScanMocks = vi.hoisted(() => ({
   buildOptionsActionReport: vi.fn()
 }));
 
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/modules/xchat/market-data", () => marketDataMocks);
+vi.mock("@/modules/watchlist/watchlist-live-quotes", () => watchlistLiveQuoteMocks);
 vi.mock("@/modules/xchat/options-action-scan", () => optionsActionScanMocks);
 vi.mock("@/modules/xchat/tool-cache", () => ({
   getCachedToolResult: () => null,
@@ -122,10 +127,28 @@ describe("atxfinance tool executor", () => {
     yahooLookupMocks.lookupSymbols.mockImplementation(async (symbols: string[]) => {
       const m = new Map<string, { symbol: string; price: number; source: string }>();
       for (const s of symbols) {
-        m.set(s, { symbol: s, price: 250.12, source: "yahoo-finance2" });
+        m.set(s, { symbol: s, price: WL_QUOTE_FIXTURE, source: "yahoo-finance2" });
       }
       return m;
     });
+    watchlistLiveQuoteMocks.resolveLiveQuotesForWatchlistSymbols.mockImplementation(
+      async (symbols: string[]) => {
+        const m = new Map<
+          string,
+          { symbol: string; price: number; source: "yahoo-finance2"; disclaimer: string }
+        >();
+        for (const s of symbols) {
+          const sym = s.trim().toUpperCase();
+          m.set(sym, {
+            symbol: sym,
+            price: WL_QUOTE_FIXTURE,
+            source: "yahoo-finance2",
+            disclaimer: "test"
+          });
+        }
+        return m;
+      }
+    );
     workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockReset();
     workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     repositoryMocks.getDefaultPortfolio.mockResolvedValue({

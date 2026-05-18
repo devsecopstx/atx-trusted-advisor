@@ -143,14 +143,14 @@ export function shouldRunDirectOptionsScan(message: string): boolean {
   if (!csp && !cc) {
     return false;
   }
-  const hasDeskCue =
-    /\bideas?\b/.test(normalized) ||
+  /** Exclude bare "ideas" so strategy-job preflight keeps "covered call ideas for …". */
+  const hasExplicitDeskScanCue =
     /\bscan\b/.test(normalized) ||
     /\bxoptions\b/.test(normalized) ||
-    /\bdte\b/.test(normalized) ||
     /\b\d+\s*[-–]\s*\d+\s*(?:dte|days?)\b/.test(normalized) ||
-    /\bstrike/.test(normalized);
-  return hasDeskCue;
+    /\bdte\s*(?:<=|<|=|>=|>)\s*\d{1,3}\b/.test(normalized) ||
+    (/\bdte\b/.test(normalized) && /\b\d{1,3}\b/.test(normalized));
+  return hasExplicitDeskScanCue;
 }
 
 function shouldRunOptionsActionScanTemplate(normalized: string): boolean {

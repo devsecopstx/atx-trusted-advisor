@@ -29,4 +29,10 @@ describe("options-scan-ask-routing", () => {
   it("does not match portfolio-wide action scan template", () => {
     expect(shouldRunDirectOptionsScan("scan my options from holdings + watchlist")).toBe(false);
   });
+
+  it("defers covered-call ideas without desk scan cues to strategy-job preflight", () => {
+    const msg = "covered call ideas for RDW";
+    expect(shouldRunDirectOptionsScan(msg)).toBe(false);
+    expect(shouldOfferStrategyJobPreflight(msg)).toBe(true);
+  });
 });
