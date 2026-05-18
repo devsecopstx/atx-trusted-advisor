@@ -13,6 +13,7 @@ Use that file for RAG source layout, ingest rules, and seed behavior.
 - **Output:** `atx-docs/rag-collection/<slug>/` — `ingest.manifest.json`, chunked `*.md` with YAML frontmatter (same keys as **`options-strategy-core/options-coreskills.md`**), optional `source.pdf` copy.
 - **Python:** `services/pdf-ingest/ingest_pdf.py` via **pymupdf4llm** (`pip install -r services/pdf-ingest/requirements.txt`).
 - **Admin:** **`/admin/rag-ingest`** — upload, preview first chunk, metadata edit, download markdown, one-click **Mongo** (`options_strategy`) + **xAI** Finance KB seed.
-- **Sync:** Ingested chunks are included in **`npm run seed:finance-xai-collection`** / **`POST /api/admin/rag/refresh-finance`** (segment from manifest, default **`options-strategy-advanced`**).
+- **xAI:** Each slug gets its own collection **`xfinance-pdf-ingest-<slug>`** with `field_definitions` (`tags`, `risk_level`, `market_condition`, …). Admin **Sync xAI** uploads all chunk markdown files into that collection (not the shared Finance KB). Link personas to this collection id when needed.
+- **Mongo:** **Seed Mongo** upserts **`options_strategy`** with merged chunk bodies.
 
 **Cross-refs (ops, not ingest):** xChat daily/hour prompt caps and **`XchatUsageMeter`** → **`atx-docs/sre-ops/tenant-workspace-limits.md`**, **`atx-docs/guides/api-endpoints.md`** § xChat, **`atx-docs/xchat-harden.md`**. Persona disk paths here are unrelated to **`xchat_usage_limits`** bucket keys.

@@ -45,6 +45,11 @@
   --xf-meter-fill: var(--xf-gain-green);
   --xf-meter-warn: var(--xf-warning-400);
   --xf-meter-danger: var(--xf-danger-400);
+  /** xChat transcript + composer density (Grok-aligned) */
+  --xf-chat-font-size: 14.5px;
+  --xf-chat-line-height: 1.45;
+  --xf-chat-padding-y: 12px;
+  --xf-chat-padding-x: 16px;
   /** ApexCharts / canvas APIs need resolved rgb(); read via `resolveDesignTokenColor` in app code */
   --xf-chart-apex-grid: color-mix(in srgb, var(--xf-text-400) 22%, transparent);
   --xf-chart-apex-volume: color-mix(in srgb, var(--xf-xoptions-accent) 58%, transparent);

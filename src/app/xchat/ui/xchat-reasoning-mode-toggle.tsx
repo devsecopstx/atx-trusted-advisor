@@ -3,7 +3,6 @@
 import {
     XCHAT_DEPTH_MODE_GROUP_HINT,
     xchatDepthComposerCaption,
-    xchatDepthCostTier,
     xchatDepthPresetLabel,
     type XchatReasoningMode
 } from "@/modules/xchat/xchat-reasoning-mode";
@@ -48,10 +47,7 @@ export function XchatReasoningModeToggle({
             type="button"
             onClick={() => onChange(m.id)}
           >
-            <span className="xchat-reasoning-mode__seg-label">{xchatDepthPresetLabel(m.id)}</span>
-            <span className="xchat-reasoning-mode__seg-cost" aria-hidden>
-              {xchatDepthCostTier(m.id)}
-            </span>
+            {xchatDepthPresetLabel(m.id)}
           </button>
         ))}
       </div>

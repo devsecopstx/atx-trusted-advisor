@@ -125,11 +125,21 @@ export function hasXaiManagementApiKey(): boolean {
   return managementApiKey.length > 0;
 }
 
+export type XaiFieldDefinitionInput = {
+  key: string;
+  required?: boolean;
+  inject_into_chunk?: boolean;
+  unique?: boolean;
+  description?: string;
+};
+
 export type CreateXaiCollectionOptions = {
   /** When set, collection is owned by this team (Management API `team_id`). */
   teamId?: string;
   /** Optional human description for the xAI console / agents. */
   collectionDescription?: string;
+  /** Native metadata fields for documents in this collection (xAI `field_definitions`). */
+  fieldDefinitions?: XaiFieldDefinitionInput[];
 };
 
 export async function createXaiCollection(
@@ -156,6 +166,16 @@ export async function createXaiCollection(
   const desc = options?.collectionDescription?.trim();
   if (desc) {
     body.collection_description = desc;
+  }
+  const fieldDefs = options?.fieldDefinitions?.filter((row) => row.key.trim());
+  if (fieldDefs && fieldDefs.length > 0) {
+    body.field_definitions = fieldDefs.map((row) => ({
+      key: row.key.trim(),
+      ...(row.required === true ? { required: true } : {}),
+      ...(row.inject_into_chunk === true ? { inject_into_chunk: true } : {}),
+      ...(row.unique === true ? { unique: true } : {}),
+      ...(row.description?.trim() ? { description: row.description.trim() } : {})
+    }));
   }
 
   const response = await fetch(`${managementBaseUrl}/collections`, {
@@ -185,6 +205,47 @@ export async function createXaiCollection(
     normalizedName;
 
   return { id, name };
+}
+
+/** Add or update field definitions on an existing collection (xAI PUT …/collections/{id}). */
+export async function addXaiCollectionFieldDefinitions(
+  collectionId: string,
+  definitions: XaiFieldDefinitionInput[]
+): Promise<void> {
+  const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  const cid = collectionId.trim();
+  if (!cid) {
+    throw new Error("Collection id is required");
+  }
+  const rows = definitions.filter((row) => row.key.trim());
+  if (rows.length === 0) {
+    return;
+  }
+
+  const response = await fetch(`${managementBaseUrl}/collections/${encodeURIComponent(cid)}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${managementApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      field_definition_updates: rows.map((row) => ({
+        operation: "FIELD_DEFINITION_ADD",
+        field_definition: {
+          key: row.key.trim(),
+          ...(row.required === true ? { required: true } : {}),
+          ...(row.inject_into_chunk === true ? { inject_into_chunk: true } : {}),
+          ...(row.unique === true ? { unique: true } : {}),
+          ...(row.description?.trim() ? { description: row.description.trim() } : {})
+        }
+      }))
+    })
+  });
+
+  const payload = (await parseXaiResponseJson(response)) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(`xAI collection field_definitions update failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
 }
 
 export async function deleteXaiCollection(collectionId: string): Promise<void> {

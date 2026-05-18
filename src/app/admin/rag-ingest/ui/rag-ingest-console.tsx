@@ -1,8 +1,37 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
+
+type MongoSeedResult = {
+  ok: true;
+  slug: string;
+  upserted: boolean;
+  mongoCollection: string;
+  title: string;
+  chunkCount: number;
+  seededAt: string;
+};
+
+type XaiSeedResult = {
+  ok: boolean;
+  collectionId: string;
+  collectionName: string;
+  collectionCreated: boolean;
+  fieldDefinitionKeys: string[];
+  filesUploaded: number;
+  documentsCreated: number;
+  documentsUpdated: number;
+  errors: Array<{ source: string; message: string }>;
+  seededAt: string;
+};
+
+type SeedFeedback = {
+  mongo?: MongoSeedResult;
+  xai?: XaiSeedResult;
+};
 
 type SummaryRow = {
   slug: string;
@@ -16,11 +45,15 @@ type SummaryRow = {
   firstChunkPreview: string;
   mongoSeededAt: string | null;
   xaiSyncedAt: string | null;
+  xaiCollectionId: string | null;
+  xaiCollectionName: string | null;
 };
 
 type DetailRow = SummaryRow & {
   manifest: {
     chunkFiles: string[];
+    xaiCollectionId?: string | null;
+    xaiCollectionName?: string | null;
   };
   chunkFiles: Array<{ name: string; bytes: number }>;
 };
@@ -44,6 +77,7 @@ export function RagIngestConsole() {
   const [editRisk, setEditRisk] = useState("balanced");
   const [editOutlook, setEditOutlook] = useState("");
   const [editTags, setEditTags] = useState("");
+  const [seedFeedback, setSeedFeedback] = useState<SeedFeedback | null>(null);
 
   const loadList = useCallback(async () => {
     const payload = await parseJson<{ data: SummaryRow[] }>(
@@ -156,6 +190,7 @@ export function RagIngestConsole() {
     }
     setBusy(true);
     setError(null);
+    setSeedFeedback(null);
     try {
       const res = await fetch(`/api/admin/rag-ingest/${encodeURIComponent(selectedSlug)}/seed`, {
         method: "POST",
@@ -166,10 +201,34 @@ export function RagIngestConsole() {
           xai: target === "xai" || target === "both"
         })
       });
-      await parseJson(res);
+      const payload = await parseJson<{ data: SeedFeedback }>(res);
+      setSeedFeedback(payload.data);
       await loadList();
       await loadDetail(selectedSlug);
-      setStatus(target === "both" ? "Mongo + xAI seed complete" : `${target} seed complete`);
+      const mongoOk = payload.data.mongo?.ok;
+      const xaiOk = payload.data.xai?.ok;
+      if (target === "both") {
+        setStatus(
+          mongoOk && xaiOk
+            ? "Mongo and xAI ingest complete"
+            : mongoOk
+              ? "Mongo complete — xAI had errors (see below)"
+              : xaiOk
+                ? "xAI complete — Mongo failed"
+                : "Seed finished with errors"
+        );
+      } else if (target === "mongo") {
+        setStatus(mongoOk ? "Mongo: options_strategy updated" : "Mongo seed failed");
+      } else {
+        setStatus(
+          xaiOk
+            ? `xAI: ${payload.data.xai?.filesUploaded ?? 0} file(s) in collection`
+            : "xAI sync had errors (see below)"
+        );
+      }
+      if (payload.data.xai && !payload.data.xai.ok && payload.data.xai.errors.length > 0) {
+        setError(payload.data.xai.errors.map((e) => `${e.source}: ${e.message}`).join("; "));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Seed failed");
     } finally {
@@ -188,7 +247,10 @@ export function RagIngestConsole() {
         <p className="status-text text-sm" style={{ color: "var(--xf-text-300)" }}>
           Writes markdown + <code className="text-xs">ingest.manifest.json</code> under{" "}
           <code className="text-xs">atx-docs/rag-collection/&lt;slug&gt;/</code>. Requires Python{" "}
-          <code className="text-xs">pymupdf4llm</code> (see services/pdf-ingest/requirements.txt).
+          <code className="text-xs">pymupdf4llm</code> on the host running Next (
+          <code className="text-xs">pip install -r services/pdf-ingest/requirements.txt</code>). Production: prefer{" "}
+          <code className="text-xs">npm run ingest:pdf</code> in CI or a worker with Python; Cloud Run Next may not ship
+          Python yet.
         </p>
         <form className="stack-gap" onSubmit={(e) => void handleIngest(e)}>
           <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
@@ -284,7 +346,16 @@ export function RagIngestConsole() {
                     </td>
                     <td className="text-xs">{r.chunkCount}</td>
                     <td className="text-xs" style={{ color: "var(--xf-text-300)" }}>
-                      {r.mongoSeededAt ? "Mongo ✓" : "Mongo —"} · {r.xaiSyncedAt ? "xAI ✓" : "xAI —"}
+                      <span className={r.mongoSeededAt ? "text-[var(--xf-gain-green)]" : ""}>
+                        {r.mongoSeededAt ? "Mongo ✓" : "Mongo —"}
+                      </span>
+                      {" · "}
+                      <span className={r.xaiSyncedAt ? "text-[var(--xf-gain-green)]" : ""}>
+                        {r.xaiSyncedAt ? "xAI ✓" : "xAI —"}
+                      </span>
+                      {r.xaiCollectionName ? (
+                        <span className="block font-mono text-[10px] opacity-80">{r.xaiCollectionName}</span>
+                      ) : null}
                     </td>
                     <td>
                       <button type="button" className="tiny-button" onClick={() => setSelectedSlug(r.slug)}>
@@ -348,6 +419,68 @@ export function RagIngestConsole() {
               Seed Mongo + xAI
             </button>
           </div>
+
+          {seedFeedback?.mongo ? (
+            <div
+              className="rounded border border-[var(--xf-border-600)] bg-[var(--xf-surface-800)] p-3 text-sm"
+              role="status"
+            >
+              <p className="font-medium text-[var(--xf-gain-green)]">Mongo — seeded</p>
+              <p className="text-xs text-[var(--xf-text-300)]">
+                Collection <code className="font-mono">{seedFeedback.mongo.mongoCollection}</code> · slug{" "}
+                <code className="font-mono">{seedFeedback.mongo.slug}</code> · {seedFeedback.mongo.chunkCount} chunk(s)
+                merged · {new Date(seedFeedback.mongo.seededAt).toLocaleString()}
+                {seedFeedback.mongo.upserted ? " (new row)" : " (updated)"}
+              </p>
+            </div>
+          ) : null}
+
+          {seedFeedback?.xai ? (
+            <div
+              className="rounded border border-[var(--xf-border-600)] bg-[var(--xf-surface-800)] p-3 text-sm"
+              role="status"
+            >
+              <p
+                className={
+                  seedFeedback.xai.ok ? "font-medium text-[var(--xf-gain-green)]" : "font-medium text-amber-400"
+                }
+              >
+                xAI — {seedFeedback.xai.ok ? "synced" : "completed with errors"}
+              </p>
+              <p className="text-xs text-[var(--xf-text-300)]">
+                Collection{" "}
+                <Link
+                  className="font-mono text-xf-nav-green hover:underline"
+                  href={`/admin/rag-files?q=${encodeURIComponent(seedFeedback.xai.collectionId)}`}
+                >
+                  {seedFeedback.xai.collectionName}
+                </Link>
+                {seedFeedback.xai.collectionCreated ? " (created)" : " (existing)"} · id{" "}
+                <code className="font-mono">{seedFeedback.xai.collectionId}</code>
+              </p>
+              <p className="text-xs text-[var(--xf-text-300)]">
+                {seedFeedback.xai.filesUploaded} file(s) uploaded · {seedFeedback.xai.documentsCreated} created ·{" "}
+                {seedFeedback.xai.documentsUpdated} updated · field keys:{" "}
+                {seedFeedback.xai.fieldDefinitionKeys.join(", ") || "—"}
+              </p>
+              <p className="text-xs text-[var(--xf-text-300)]">
+                Edit <strong>Tags</strong> above, save metadata, then <strong>Sync xAI</strong> again to refresh the{" "}
+                <code className="font-mono">tags</code> document field.
+              </p>
+            </div>
+          ) : null}
+
+          {(detail.xaiCollectionId || detail.manifest.xaiCollectionId) && !seedFeedback?.xai ? (
+            <p className="text-xs text-[var(--xf-text-300)]">
+              xAI collection:{" "}
+              <Link
+                className="font-mono text-xf-nav-green hover:underline"
+                href={`/admin/rag-files?q=${encodeURIComponent(detail.xaiCollectionId ?? detail.manifest.xaiCollectionId ?? "")}`}
+              >
+                {detail.xaiCollectionName ?? detail.manifest.xaiCollectionName ?? "open inventory"}
+              </Link>
+            </p>
+          ) : null}
 
           <h4 className="text-sm font-medium">Downloads</h4>
           <ul className="list-disc pl-5 text-sm">

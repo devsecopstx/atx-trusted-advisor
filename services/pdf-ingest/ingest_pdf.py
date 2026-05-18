@@ -11,11 +11,33 @@ Writes JSON to stdout:
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
+import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, TypeVar
+
+T = TypeVar("T")
+
+
+def _run_with_captured_fd1(fn: Callable[[], T]) -> T:
+    """Capture C-level stdout (pymupdf progress) so only our JSON hits fd 1."""
+    read_fd, write_fd = os.pipe()
+    saved_stdout = os.dup(1)
+    try:
+        os.dup2(write_fd, 1)
+        os.close(write_fd)
+        return fn()
+    finally:
+        os.dup2(saved_stdout, 1)
+        os.close(saved_stdout)
+        captured = os.read(read_fd, 8_000_000).decode("utf-8", errors="replace")
+        os.close(read_fd)
+        if captured.strip():
+            print(captured.strip()[:4000], file=sys.stderr)
 
 
 def _split_markdown_chunks(full_md: str, max_chars: int) -> List[str]:
@@ -81,11 +103,22 @@ def ingest_pdf(pdf_path: str, max_chunk_chars: int = 12_000) -> Dict[str, Any]:
 
     import fitz  # type: ignore
 
-    doc = fitz.open(str(path))
-    page_count = doc.page_count
-    doc.close()
+    # pymupdf4llm prints progress to fd 1 — capture so stdout stays JSON-only for Node.
+    capture_err = io.StringIO()
 
-    full_md = pymupdf4llm.to_markdown(str(path))
+    def _convert() -> tuple[int, str]:
+        doc = fitz.open(str(path))
+        page_count = doc.page_count
+        doc.close()
+        full_md = pymupdf4llm.to_markdown(str(path))
+        return page_count, full_md
+
+    with contextlib.redirect_stderr(capture_err):
+        page_count, full_md = _run_with_captured_fd1(_convert)
+
+    stray_err = capture_err.getvalue().strip()
+    if stray_err:
+        print(stray_err[:4000], file=sys.stderr)
     title_match = re.search(r"^#\s+(.+)$", full_md, re.MULTILINE)
     title = title_match.group(1).strip() if title_match else path.stem
 

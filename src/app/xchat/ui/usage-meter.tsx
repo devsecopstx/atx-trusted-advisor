@@ -78,9 +78,15 @@ type FetchState =
 export type XchatUsageMeterProps = {
   variant: "composer" | "rail";
   refreshSignal?: number;
+  /** Single-line layout inside {@link XchatUsageStatusRow}. */
+  layout?: "stack" | "inline";
 };
 
-export function XchatUsageMeter({ variant, refreshSignal = 0 }: XchatUsageMeterProps) {
+export function XchatUsageMeter({
+  variant,
+  refreshSignal = 0,
+  layout = "stack"
+}: XchatUsageMeterProps) {
   const [state, setState] = useState<FetchState>({ status: "loading" });
 
   const load = useCallback(async () => {
@@ -114,7 +120,12 @@ export function XchatUsageMeter({ variant, refreshSignal = 0 }: XchatUsageMeterP
     };
   }, [load, refreshSignal]);
 
-  const rootCls = variant === "rail" ? "xchat-usage-meter xchat-usage-meter--rail" : "xchat-usage-meter";
+  const rootCls = [
+    variant === "rail" ? "xchat-usage-meter xchat-usage-meter--rail" : "xchat-usage-meter",
+    layout === "inline" ? "xchat-usage-meter--inline" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   if (state.status === "loading") {
     return (
@@ -150,41 +161,57 @@ export function XchatUsageMeter({ variant, refreshSignal = 0 }: XchatUsageMeterP
       ? `${d.utcDayResetInHours.toFixed(1)} hours`
       : `${Math.max(1, Math.round(d.utcDayResetInHours * 60))} min`;
 
+  const hourlySuffix =
+    layout === "inline" && d.hourlyCap > 0 && d.workspaceCapsEnforced
+      ? ` · hr ${Math.max(0, d.usedThisHour)}/${d.hourlyCap}`
+      : "";
+
+  const noticeCls = layout === "inline" ? " xchat-usage-meter__notice" : "";
+
   return (
     <div className={rootCls} role="region" aria-label="xChat prompt usage">
       {d.limitsFallback === "plan_defaults" ? (
-        <p className="status-text xchat-usage-meter__fallback">
+        <p className={`status-text xchat-usage-meter__fallback${noticeCls}`}>
           Showing plan defaults — workspace limits unavailable momentarily.
         </p>
       ) : null}
       {!d.workspaceCapsEnforced ? (
-        <p className="status-text xchat-usage-meter__admin-note">
+        <p className={`status-text xchat-usage-meter__admin-note${noticeCls}`}>
           Admin session — workspace daily caps are not enforced on your sends.
         </p>
       ) : null}
       {showSoftBanner ? (
-        <div className="xchat-usage-meter__banner" role="status">
+        <div className={`xchat-usage-meter__banner${noticeCls}`} role="status">
           Approaching today&apos;s xChat prompt cap ({pct}% of UTC daily allowance).{" "}
           <Link className="xchat-usage-meter__banner-link" href="/account/billing">
             Compare plans
           </Link>
         </div>
       ) : null}
-      <p className="status-text xchat-usage-meter__line">
-        <span className="xchat-usage-meter__value">
-          {used} / {cap}
-        </span>{" "}
-        prompts today · UTC reset in ~{hoursLabel}
-      </p>
-      <div aria-valuemax={100} aria-valuemin={0} aria-valuenow={pct} className="xchat-usage-meter__track" role="progressbar">
-        <div className="xchat-usage-meter__fill" style={{ width: `${pct}%`, backgroundColor: fillVar }} />
+      <div className="xchat-usage-meter__main">
+        <p className="status-text xchat-usage-meter__line">
+          <span className="xchat-usage-meter__value">
+            {used}/{cap}
+          </span>{" "}
+          prompts today · reset ~{hoursLabel}
+          {hourlySuffix}
+        </p>
+        <div
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={pct}
+          className="xchat-usage-meter__track"
+          role="progressbar"
+        >
+          <div className="xchat-usage-meter__fill" style={{ width: `${pct}%`, backgroundColor: fillVar }} />
+        </div>
       </div>
-      {d.hourlyCap > 0 && d.workspaceCapsEnforced ? (
+      {layout === "inline" || !(d.hourlyCap > 0 && d.workspaceCapsEnforced) ? null : (
         <p className="status-text xchat-usage-meter__line xchat-usage-meter__line--muted">
           This UTC hour: {Math.max(0, d.usedThisHour)} / {d.hourlyCap} · hour resets in ~
           {Math.max(1, Math.round(d.utcHourResetInMinutes))} min
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

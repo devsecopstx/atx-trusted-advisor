@@ -27,7 +27,6 @@ import {
     WorkspaceProductSidebar
 } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
-import { XchatUsageMeter } from "@/app/xchat/ui/usage-meter";
 import { XchatAdvisorWorkingOverlay } from "@/app/xchat/ui/xchat-advisor-working-overlay";
 import {
     buildXchatAskLimitBannerMarkdown,
@@ -48,7 +47,7 @@ import type {
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
 import { XchatOutlookDeskFreshnessLabel } from "@/app/xchat/ui/xchat-outlook-desk-freshness-label";
-import { XchatSidebarTokenStats } from "@/app/xchat/ui/xchat-sidebar-token-stats";
+import { XchatUsageStatusRow } from "@/app/xchat/ui/xchat-usage-status-row";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { isRetailPaidSubscriptionPlan } from "@/lib/subscription-plan";
@@ -2080,8 +2079,7 @@ export function XchatConversation({
                       personaName={activePersonaName}
                       reasoningMode={reasoningMode}
                     />
-                    <XchatUsageMeter refreshSignal={promptUsageRefreshKey} variant="rail" />
-                    <XchatSidebarTokenStats />
+                    <XchatUsageStatusRow refreshSignal={promptUsageRefreshKey} variant="rail" />
                   </RailDisclosure>
                 </div>
 
@@ -2332,7 +2330,7 @@ export function XchatConversation({
           onStop={cancelAskInFlight}
         />
 
-        <XchatUsageMeter refreshSignal={promptUsageRefreshKey} variant="composer" />
+        <XchatUsageStatusRow refreshSignal={promptUsageRefreshKey} variant="composer" />
         {privacyPrefs?.enableLongTermXaiMemory === true ? (
           <p className="status-text xchat-long-term-memory-banner" role="status">
             Personalized strategy memory enabled — history will be included in all tool calls.

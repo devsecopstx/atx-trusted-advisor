@@ -4,7 +4,9 @@ import {
     buildPdfIngestFrontmatter,
     chunkMarkdownFilename,
     normalizeRiskLevel,
+    parsePythonIngestStdout,
     PDF_INGEST_SLUG_RE,
+    pdfIngestXaiCollectionName,
     slugifyOutlook
 } from "@/modules/rag/pdf-ingest";
 
@@ -45,5 +47,19 @@ describe("pdf-ingest helpers", () => {
   it("names chunk files for multi-part ingest", () => {
     expect(chunkMarkdownFilename("my-slug", 1, 1)).toBe("my-slug.md");
     expect(chunkMarkdownFilename("my-slug", 2, 3)).toBe("my-slug-part-002.md");
+  });
+
+  it("derives per-slug xAI collection name", () => {
+    expect(pdfIngestXaiCollectionName("advanced-iron-condor-2026")).toBe(
+      "xfinance-pdf-ingest-advanced-iron-condor-2026"
+    );
+  });
+
+  it("parses python stdout when pymupdf prints progress before JSON", () => {
+    const payload = { pageCount: 2, title: "Desk", chunks: [{ index: 1, markdown: "# Hi" }] };
+    const noisy = `=== Document parser messages ===\nUsing Tesseract.\n\n${JSON.stringify(payload)}`;
+    const parsed = parsePythonIngestStdout(noisy);
+    expect(parsed.pageCount).toBe(2);
+    expect(parsed.chunks).toHaveLength(1);
   });
 });

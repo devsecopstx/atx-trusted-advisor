@@ -79,7 +79,7 @@ export {
 } from "@/lib/workspace-product-rail-storage";
 
 /** Expanded desktop rail (`lg+`). Was 280px → 140px → +25% (175px) so desk labels (e.g. Portfolio desk) stay on one line. */
-const WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX = 175;
+const WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX = 168;
 const WORKSPACE_PRODUCT_RAIL_COLLAPSED_WIDTH_PX = 64;
 
 function subscribeRailExpandedPrefs(cb: () => void): () => void {

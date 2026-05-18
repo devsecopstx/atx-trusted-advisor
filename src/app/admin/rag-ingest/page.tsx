@@ -23,8 +23,8 @@ export default async function AdminRagIngestPage() {
         <p className="hero-copy">
           Upload desk PDFs, review pymupdf4llm markdown under{" "}
           <code className="font-mono text-xs">atx-docs/rag-collection/&lt;slug&gt;/</code>, edit metadata, then seed{" "}
-          <strong>Mongo</strong> (<code className="font-mono text-xs">options_strategy</code>) and the shared Finance xAI
-          collection. CLI:{" "}
+          <strong>Mongo</strong> (<code className="font-mono text-xs">options_strategy</code>) and a dedicated xAI collection per
+          slug (<code className="font-mono text-xs">xfinance-pdf-ingest-&lt;slug&gt;</code>) with tag field definitions. CLI:{" "}
           <code className="font-mono text-xs">npm run ingest:pdf -- --file=… --slug=… --title=…</code>
         </p>
         <p className="hero-copy" style={{ marginTop: "0.5rem" }}>

@@ -21,7 +21,11 @@ function formatTokens(n: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n);
 }
 
-export function XchatSidebarTokenStats() {
+export type XchatSidebarTokenStatsProps = {
+  layout?: "stack" | "inline";
+};
+
+export function XchatSidebarTokenStats({ layout = "stack" }: XchatSidebarTokenStatsProps) {
   const [state, setState] = useState<FetchState>({ status: "loading" });
   const lastFetchAtRef = useRef(0);
   const mountedRef = useRef(true);
@@ -75,9 +79,12 @@ export function XchatSidebarTokenStats() {
     return () => window.clearInterval(id);
   }, [fetchStats]);
 
+  const rootCls =
+    layout === "inline" ? "xchat-rail-token-stats xchat-rail-token-stats--inline" : "xchat-rail-token-stats";
+
   if (state.status === "loading") {
     return (
-      <div aria-busy className="xchat-rail-token-stats" role="status">
+      <div aria-busy className={rootCls} role="status">
         <p className="status-text xchat-rail-token-stats__line">Token usage…</p>
       </div>
     );
@@ -85,7 +92,7 @@ export function XchatSidebarTokenStats() {
 
   if (state.status === "error") {
     return (
-      <div className="xchat-rail-token-stats" role="status">
+      <div className={rootCls} role="status">
         <p className="status-text status-error xchat-rail-token-stats__line">{state.message}</p>
       </div>
     );
@@ -93,21 +100,33 @@ export function XchatSidebarTokenStats() {
 
   const { data } = state;
   const hasUsage = data.turnsWithUsage > 0;
+  const rateLabel =
+    data.tokensPerMinuteAvg60m <= 0
+      ? "0"
+      : data.tokensPerMinuteAvg60m >= 100
+        ? formatTokens(Math.round(data.tokensPerMinuteAvg60m))
+        : data.tokensPerMinuteAvg60m.toFixed(1);
+
+  if (layout === "inline") {
+    return (
+      <div className={rootCls} role="region" aria-label="xChat token usage">
+        <p className="status-text xchat-rail-token-stats__line">
+          <span className="xchat-rail-token-stats__value">{formatTokens(data.totalTokens)}</span> tokens · ~
+          {rateLabel}/min
+          {!hasUsage ? " · pending usage" : null}
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="xchat-rail-token-stats" role="region" aria-label="xChat token usage">
+    <div className={rootCls} role="region" aria-label="xChat token usage">
       <p className="status-text xchat-rail-token-stats__line">
         <span className="xchat-rail-token-stats__value">{formatTokens(data.totalTokens)}</span> tokens
         {hasUsage ? "" : " · no provider totals yet"}
       </p>
       <p className="status-text xchat-rail-token-stats__line xchat-rail-token-stats__line--muted">
-        ~
-        {data.tokensPerMinuteAvg60m <= 0
-          ? "0"
-          : data.tokensPerMinuteAvg60m >= 100
-            ? formatTokens(Math.round(data.tokensPerMinuteAvg60m))
-            : data.tokensPerMinuteAvg60m.toFixed(1)}
-        /min · last {data.windowMinutes}m avg
+        ~{rateLabel}/min · last {data.windowMinutes}m avg
       </p>
       {!hasUsage ? (
         <p className="status-text xchat-rail-token-stats__hint">

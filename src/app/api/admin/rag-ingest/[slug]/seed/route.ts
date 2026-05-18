@@ -6,7 +6,9 @@ import {
     PDF_INGEST_SLUG_RE,
     seedPdfIngestSlugToMongo,
     syncPdfIngestSlugToXai,
-    writePdfIngestAudit
+    writePdfIngestAudit,
+    type PdfIngestMongoSeedResult,
+    type PdfIngestXaiSeedResult
 } from "@/modules/rag/pdf-ingest";
 
 const bodySchema = z.object({
@@ -48,30 +50,40 @@ export async function POST(request: Request, context: RouteContext) {
   const actor = { userId: session.userId, email: session.email, username: session.username };
 
   const result: {
-    mongo?: { slug: string; upserted: boolean };
-    xai?: { collectionId: string; changeCount: number; errorCount: number };
+    mongo?: PdfIngestMongoSeedResult;
+    xai?: PdfIngestXaiSeedResult;
   } = {};
 
-  try {
-    if (doMongo) {
+  if (doMongo) {
+    try {
       result.mongo = await seedPdfIngestSlugToMongo(slug);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : "Mongo seed failed",
+          mongo: { ok: false as const, error: error instanceof Error ? error.message : "Mongo seed failed" }
+        },
+        { status: 500 }
+      );
     }
-    if (doXai) {
-      const xai = await syncPdfIngestSlugToXai(slug);
-      result.xai = {
-        collectionId: xai.collectionId,
-        changeCount: xai.changes.length,
-        errorCount: xai.errors.length
-      };
-      if (xai.errors.length > 0) {
-        result.xai.errorCount = xai.errors.length;
-      }
+  }
+
+  if (doXai) {
+    try {
+      result.xai = await syncPdfIngestSlugToXai(slug);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : "xAI seed failed",
+          ...(result.mongo ? { mongo: result.mongo } : {}),
+          xai: {
+            ok: false,
+            error: error instanceof Error ? error.message : "xAI seed failed"
+          }
+        },
+        { status: result.mongo ? 207 : 500 }
+      );
     }
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Seed failed" },
-      { status: 500 }
-    );
   }
 
   await writePdfIngestAudit({
@@ -81,5 +93,9 @@ export async function POST(request: Request, context: RouteContext) {
     details: result
   });
 
-  return NextResponse.json({ data: result });
+  const hasXaiErrors = result.xai != null && !result.xai.ok;
+  return NextResponse.json(
+    { data: result },
+    { status: hasXaiErrors ? 207 : 200 }
+  );
 }

@@ -51,6 +51,15 @@ body {
   background-image: url("/branding/atx-skyline-night.png");
 }
 
+.xchat-layout-root,
+.xchat-container,
+main[data-page="xchat"] {
+  font-family: var(--xf-font-sans);
+  font-size: var(--xf-chat-font-size, 14.5px);
+  line-height: var(--xf-chat-line-height, 1.45);
+  letter-spacing: -0.01em;
+}
+
 .main-content,
 .xchat-main,
 .workspace-main,

@@ -25,7 +25,7 @@ type XchatLayoutProps = {
 
 export default function XchatLayout({ children }: XchatLayoutProps) {
   return (
-    <div className="xchat-layout-root">
+    <div className="xchat-layout-root" data-page="xchat">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
     </div>
   );

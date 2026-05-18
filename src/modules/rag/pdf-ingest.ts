@@ -15,19 +15,20 @@ import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
 import {
     addFileToXaiCollection,
+    addXaiCollectionFieldDefinitions,
+    createXaiCollection,
     getXaiCollectionFieldDefinitionKeys,
     listXaiCollectionDocuments,
+    listXaiCollections,
     removeDocumentFromXaiCollection,
-    uploadFileToXai
+    uploadFileToXai,
+    type XaiFieldDefinitionInput
 } from "@/lib/xai";
-import { getXaiFinanceCollectionId } from "@/lib/xai-finance-collection";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
     extractFinanceKbFrontmatterMetadata,
-    financeKbLogicalUploadName,
     financeKbMetadataToXaiFields,
-    indexFinanceKbRemoteDocumentsByLogicalName,
-    type FinanceKbSyncChange
+    indexFinanceKbRemoteDocumentsByLogicalName
 } from "@/modules/xchat/finance-kb-sync";
 
 export const PDF_INGEST_SLUG_RE = /^[a-z][a-z0-9-]{0,62}$/;
@@ -65,7 +66,9 @@ export const pdfIngestManifestSchema = z.object({
   segment: z.enum(["options-strategy-advanced", "options-strategy-core", "finance-core"]),
   pageCount: z.number().int().nonnegative().optional(),
   mongoSeededAt: z.string().datetime().nullable().optional(),
-  xaiSyncedAt: z.string().datetime().nullable().optional()
+  xaiSyncedAt: z.string().datetime().nullable().optional(),
+  xaiCollectionId: z.string().nullable().optional(),
+  xaiCollectionName: z.string().nullable().optional()
 });
 
 export type PdfIngestManifest = z.infer<typeof pdfIngestManifestSchema>;
@@ -92,6 +95,31 @@ export type PdfIngestFolderSummary = {
   firstChunkPreview: string;
   mongoSeededAt: string | null;
   xaiSyncedAt: string | null;
+  xaiCollectionId: string | null;
+  xaiCollectionName: string | null;
+};
+
+export type PdfIngestMongoSeedResult = {
+  ok: true;
+  slug: string;
+  upserted: boolean;
+  mongoCollection: "options_strategy";
+  title: string;
+  chunkCount: number;
+  seededAt: string;
+};
+
+export type PdfIngestXaiSeedResult = {
+  ok: boolean;
+  collectionId: string;
+  collectionName: string;
+  collectionCreated: boolean;
+  fieldDefinitionKeys: string[];
+  filesUploaded: number;
+  documentsCreated: number;
+  documentsUpdated: number;
+  errors: Array<{ source: string; message: string }>;
+  seededAt: string;
 };
 
 export type PdfIngestFolderDetail = PdfIngestFolderSummary & {
@@ -109,6 +137,24 @@ type PythonIngestResult = {
   title: string;
   chunks: PythonChunk[];
 };
+
+/** pymupdf4llm may print progress before JSON; extract the payload object. */
+export function parsePythonIngestStdout(stdout: string): PythonIngestResult {
+  const trimmed = stdout.trim();
+  try {
+    return JSON.parse(trimmed) as PythonIngestResult;
+  } catch {
+    const marker = trimmed.indexOf('{"pageCount"');
+    if (marker >= 0) {
+      return JSON.parse(trimmed.slice(marker)) as PythonIngestResult;
+    }
+    const brace = trimmed.lastIndexOf("{");
+    if (brace >= 0) {
+      return JSON.parse(trimmed.slice(brace)) as PythonIngestResult;
+    }
+    throw new Error("no JSON object in python stdout");
+  }
+}
 
 export function ragCollectionRoot(repoRoot: string): string {
   return join(repoRoot, "atx-docs", "rag-collection");
@@ -172,6 +218,25 @@ export function buildPdfIngestFrontmatter(input: {
   return lines.join("\n");
 }
 
+/** xAI collection name for a PDF ingest slug (one collection per ingest folder). */
+export function pdfIngestXaiCollectionName(slug: string): string {
+  return `xfinance-pdf-ingest-${slug}`;
+}
+
+/** Metadata fields created on the per-slug xAI collection (`tags` is optional — edit manifest and re-sync). */
+export const PDF_INGEST_XAI_FIELD_DEFINITIONS: XaiFieldDefinitionInput[] = [
+  { key: "slug", required: true, inject_into_chunk: true, description: "Ingest folder slug" },
+  { key: "title", inject_into_chunk: true, description: "Desk document title" },
+  { key: "risk_level", description: "conservative | balanced | aggressive" },
+  { key: "market_condition", description: "Outlook / regime (from ingest metadata)" },
+  { key: "strategy_type", description: "Strategy type or pdf_ingest" },
+  { key: "tags", description: "Comma-separated tags — update via admin metadata + re-sync" },
+  { key: "complexity", description: "core | advanced" },
+  { key: "underlying_type", description: "stock | index" },
+  { key: "chunk_file", description: "Markdown chunk filename in repo" },
+  { key: "last_updated", description: "ISO timestamp of last xAI sync" }
+];
+
 export function chunkMarkdownFilename(slug: string, index: number, total: number): string {
   if (total <= 1) {
     return `${slug}.md`;
@@ -181,7 +246,10 @@ export function chunkMarkdownFilename(slug: string, index: number, total: number
 
 async function runPythonPdfIngest(pdfPath: string, maxChunkChars = 12_000): Promise<PythonIngestResult> {
   const scriptPath = join(process.cwd(), "services", "pdf-ingest", "ingest_pdf.py");
-  const py = process.env.PDF_INGEST_PYTHON?.trim() || "python3";
+  const py =
+    process.env.PDF_INGEST_PYTHON?.trim() ||
+    process.env.PYTHON_BIN?.trim() ||
+    "python3";
 
   return new Promise((resolve, reject) => {
     const child = spawn(py, [scriptPath], { stdio: ["pipe", "pipe", "pipe"] });
@@ -209,7 +277,7 @@ async function runPythonPdfIngest(pdfPath: string, maxChunkChars = 12_000): Prom
         return;
       }
       try {
-        resolve(JSON.parse(stdout) as PythonIngestResult);
+        resolve(parsePythonIngestStdout(stdout));
       } catch (err) {
         reject(new Error(`invalid python stdout: ${err instanceof Error ? err.message : String(err)}`));
       }
@@ -343,7 +411,9 @@ export async function listPdfIngestFolders(repoRoot: string): Promise<PdfIngestF
       chunkCount: manifest.chunkFiles.length,
       firstChunkPreview: await firstChunkPreview(outDir, manifest),
       mongoSeededAt: manifest.mongoSeededAt ?? null,
-      xaiSyncedAt: manifest.xaiSyncedAt ?? null
+      xaiSyncedAt: manifest.xaiSyncedAt ?? null,
+      xaiCollectionId: manifest.xaiCollectionId ?? null,
+      xaiCollectionName: manifest.xaiCollectionName ?? null
     });
   }
   rows.sort((a, b) => a.slug.localeCompare(b.slug));
@@ -381,10 +451,96 @@ export async function getPdfIngestFolderDetail(
       chunkCount: manifest.chunkFiles.length,
       firstChunkPreview: await firstChunkPreview(outDir, manifest),
       mongoSeededAt: manifest.mongoSeededAt ?? null,
-      xaiSyncedAt: manifest.xaiSyncedAt ?? null
+      xaiSyncedAt: manifest.xaiSyncedAt ?? null,
+      xaiCollectionId: manifest.xaiCollectionId ?? null,
+      xaiCollectionName: manifest.xaiCollectionName ?? null
     }),
     manifest,
     chunkFiles
+  };
+}
+
+async function findOrCreatePdfIngestXaiCollection(input: {
+  slug: string;
+  title: string;
+  existingCollectionId?: string | null;
+}): Promise<{ id: string; name: string; created: boolean }> {
+  const collectionName = pdfIngestXaiCollectionName(input.slug);
+  const storedId = input.existingCollectionId?.trim();
+  if (storedId) {
+    try {
+      const keys = await getXaiCollectionFieldDefinitionKeys(storedId);
+      await ensurePdfIngestXaiFieldDefinitions(storedId, keys);
+      return { id: storedId, name: collectionName, created: false };
+    } catch {
+      /* fall through — recreate lookup by name */
+    }
+  }
+
+  const listed = await listXaiCollections();
+  const match = listed.find(
+    (row) =>
+      row.name?.toLowerCase() === collectionName.toLowerCase() || row.id === storedId
+  );
+  if (match?.id) {
+    const keys = await getXaiCollectionFieldDefinitionKeys(match.id);
+    await ensurePdfIngestXaiFieldDefinitions(match.id, keys);
+    return { id: match.id, name: match.name ?? collectionName, created: false };
+  }
+
+  const created = await createXaiCollection(collectionName, {
+    collectionDescription: `PDF ingest: ${input.title} (slug ${input.slug})`,
+    fieldDefinitions: PDF_INGEST_XAI_FIELD_DEFINITIONS
+  });
+  return { id: created.id, name: created.name, created: true };
+}
+
+async function ensurePdfIngestXaiFieldDefinitions(
+  collectionId: string,
+  existingKeys: string[]
+): Promise<string[]> {
+  const have = new Set(existingKeys.map((k) => k.toLowerCase()));
+  const missing = PDF_INGEST_XAI_FIELD_DEFINITIONS.filter(
+    (row) => !have.has(row.key.toLowerCase())
+  );
+  if (missing.length > 0) {
+    await addXaiCollectionFieldDefinitions(collectionId, missing);
+  }
+  return getXaiCollectionFieldDefinitionKeys(collectionId);
+}
+
+function buildPdfIngestDocumentFields(input: {
+  manifest: PdfIngestManifest;
+  chunkFile: string;
+  frontmatter: Record<string, unknown>;
+}): Record<string, unknown> {
+  const tags =
+    input.manifest.tags.length > 0
+      ? input.manifest.tags.join(",")
+      : typeof input.frontmatter.tags === "string"
+        ? input.frontmatter.tags
+        : Array.isArray(input.frontmatter.tags)
+          ? input.frontmatter.tags.map(String).join(",")
+          : "";
+  return {
+    ...input.frontmatter,
+    slug: input.manifest.slug,
+    title: input.manifest.title,
+    risk_level: input.manifest.riskLevel,
+    market_condition: slugifyOutlook(input.manifest.outlook),
+    strategy_type:
+      typeof input.frontmatter.strategy_type === "string"
+        ? input.frontmatter.strategy_type
+        : "pdf_ingest",
+    tags,
+    complexity:
+      typeof input.frontmatter.complexity === "string" ? input.frontmatter.complexity : "advanced",
+    underlying_type:
+      typeof input.frontmatter.underlying_type === "string"
+        ? input.frontmatter.underlying_type
+        : "stock",
+    chunk_file: input.chunkFile,
+    last_updated: new Date().toISOString()
   };
 }
 
@@ -410,7 +566,7 @@ export async function updatePdfIngestManifestMetadata(
   return parsed;
 }
 
-export async function seedPdfIngestSlugToMongo(slug: string): Promise<{ slug: string; upserted: boolean }> {
+export async function seedPdfIngestSlugToMongo(slug: string): Promise<PdfIngestMongoSeedResult> {
   const repoRoot = process.cwd();
   const detail = await getPdfIngestFolderDetail(repoRoot, slug);
   if (!detail) {
@@ -446,24 +602,39 @@ export async function seedPdfIngestSlugToMongo(slug: string): Promise<{ slug: st
     mongoSeededAt: now.toISOString()
   });
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-  return { slug, upserted: res.upsertedCount > 0 || res.modifiedCount > 0 };
+  return {
+    ok: true,
+    slug,
+    upserted: res.upsertedCount > 0 || res.modifiedCount > 0,
+    mongoCollection: "options_strategy",
+    title: detail.manifest.title,
+    chunkCount: detail.manifest.chunkFiles.length,
+    seededAt: now.toISOString()
+  };
 }
 
-export async function syncPdfIngestSlugToXai(slug: string): Promise<{
-  collectionId: string;
-  changes: FinanceKbSyncChange[];
-  errors: Array<{ source: string; message: string }>;
-}> {
+export async function syncPdfIngestSlugToXai(slug: string): Promise<PdfIngestXaiSeedResult> {
   const repoRoot = process.cwd();
   const detail = await getPdfIngestFolderDetail(repoRoot, slug);
   if (!detail) {
     throw new Error(`ingest folder not found: ${slug}`);
   }
   const outDir = pdfIngestFolderPath(repoRoot, slug);
-  const collectionId = getXaiFinanceCollectionId();
   const errors: Array<{ source: string; message: string }> = [];
-  const changes: FinanceKbSyncChange[] = [];
   const segment = detail.manifest.segment;
+  const seededAt = new Date().toISOString();
+
+  const collection = await findOrCreatePdfIngestXaiCollection({
+    slug,
+    title: detail.manifest.title,
+    existingCollectionId: detail.manifest.xaiCollectionId
+  });
+  const collectionId = collection.id;
+  const fieldDefinitionKeys = await ensurePdfIngestXaiFieldDefinitions(
+    collectionId,
+    await getXaiCollectionFieldDefinitionKeys(collectionId)
+  );
+  const allowedFieldKeys = new Set(fieldDefinitionKeys);
 
   let documentsByLogicalName = new Map<string, string>();
   try {
@@ -475,29 +646,21 @@ export async function syncPdfIngestSlugToXai(slug: string): Promise<{
     );
   }
 
-  let collectionFieldDefinitionKeys: string[] = [];
-  try {
-    collectionFieldDefinitionKeys = await getXaiCollectionFieldDefinitionKeys(collectionId);
-  } catch {
-    /* continue without native fields */
-  }
-  const allowedFieldKeys = new Set(collectionFieldDefinitionKeys);
+  let filesUploaded = 0;
+  let documentsCreated = 0;
+  let documentsUpdated = 0;
 
   for (const fileName of detail.manifest.chunkFiles) {
-    const rel = `${slug}/${fileName}`;
     try {
       const bytes = await readFile(join(outDir, fileName));
       const text = bytes.toString("utf8");
       const fm = extractFinanceKbFrontmatterMetadata(text, { kbSegment: segment });
-      const metadata: Record<string, unknown> = {
-        source: segment,
-        slug: detail.manifest.slug,
-        category: "pdf_ingest",
-        ingest_slug: detail.manifest.slug,
-        last_updated: new Date().toISOString(),
-        ...fm
-      };
-      const logicalFilename = financeKbLogicalUploadName(segment, rel);
+      const metadata = buildPdfIngestDocumentFields({
+        manifest: detail.manifest,
+        chunkFile: fileName,
+        frontmatter: fm
+      });
+      const logicalFilename = fileName;
       const payload = Buffer.concat([
         bytes,
         Buffer.from(`\n\n<!-- xfinance-kb-metadata: ${JSON.stringify(metadata)} -->\n`, "utf8")
@@ -509,25 +672,21 @@ export async function syncPdfIngestSlugToXai(slug: string): Promise<{
         documentsByLogicalName.delete(logicalFilename);
       }
       const fields = financeKbMetadataToXaiFields(metadata, allowedFieldKeys);
-      const link = await addFileToXaiCollection({
+      await addFileToXaiCollection({
         collectionId,
         fileId: uploaded.fileId,
         ...(Object.keys(fields).length > 0 ? { fields } : {})
       });
       documentsByLogicalName.set(logicalFilename, uploaded.fileId);
-      changes.push({
-        source: segment,
-        relativePath: rel,
-        logicalName: logicalFilename,
-        action: previousFileId ? "updated" : "created",
-        ...(previousFileId ? { previousFileId } : {}),
-        newFileId: uploaded.fileId,
-        fieldKeysSent: Object.keys(fields),
-        alreadyLinked: link.alreadyLinked
-      });
+      filesUploaded += 1;
+      if (previousFileId) {
+        documentsUpdated += 1;
+      } else {
+        documentsCreated += 1;
+      }
     } catch (error) {
       errors.push({
-        source: rel,
+        source: fileName,
         message: error instanceof Error ? error.message : String(error)
       });
     }
@@ -536,33 +695,24 @@ export async function syncPdfIngestSlugToXai(slug: string): Promise<{
   const manifestPath = join(outDir, PDF_INGEST_MANIFEST_FILENAME);
   const manifest = pdfIngestManifestSchema.parse({
     ...detail.manifest,
-    xaiSyncedAt: new Date().toISOString()
+    xaiSyncedAt: seededAt,
+    xaiCollectionId: collectionId,
+    xaiCollectionName: collection.name
   });
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
-  return { collectionId, changes, errors };
-}
-
-export async function resolvePdfIngestKbFiles(repoRoot: string): Promise<
-  Array<{ abs: string; rel: string; source: PdfIngestKbSegment }>
-> {
-  const summaries = await listPdfIngestFolders(repoRoot);
-  const out: Array<{ abs: string; rel: string; source: PdfIngestKbSegment }> = [];
-  for (const row of summaries) {
-    const outDir = pdfIngestFolderPath(repoRoot, row.slug);
-    const detail = await getPdfIngestFolderDetail(repoRoot, row.slug);
-    if (!detail) {
-      continue;
-    }
-    for (const file of detail.manifest.chunkFiles) {
-      out.push({
-        abs: join(outDir, file),
-        rel: `${row.slug}/${file}`,
-        source: detail.manifest.segment
-      });
-    }
-  }
-  return out;
+  return {
+    ok: errors.length === 0,
+    collectionId,
+    collectionName: collection.name,
+    collectionCreated: collection.created,
+    fieldDefinitionKeys,
+    filesUploaded,
+    documentsCreated,
+    documentsUpdated,
+    errors,
+    seededAt
+  };
 }
 
 export async function writePdfIngestAudit(input: {
