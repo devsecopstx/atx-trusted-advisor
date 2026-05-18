@@ -2,8 +2,62 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=scripts/ops/gcp-runtime-secrets.inc.sh
 source "${SCRIPT_DIR}/gcp-runtime-secrets.inc.sh"
+
+load_env_file_for_verify() {
+  local f="$1"
+  if [[ ! -f "$f" ]]; then
+    return 1
+  fi
+  set -a
+  # shellcheck disable=SC1090
+  source "$f"
+  set +a
+  echo "[verify-secrets] sourced $(basename "$f") for env preflight"
+  return 0
+}
+
+resolve_backend_origin_for_verify() {
+  if [[ -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
+    return 0
+  fi
+  if [[ "$PROJECT" == *staging* ]]; then
+    load_env_file_for_verify "${REPO_ROOT}/.env.stage" || true
+  else
+    load_env_file_for_verify "${REPO_ROOT}/.env.prod" || true
+  fi
+  if [[ -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
+    return 0
+  fi
+  local svc="${ATXFINANCE_BACKEND_CLOUD_RUN_SERVICE:-}"
+  local region="${CLOUD_RUN_REGION:-us-central1}"
+  if [[ -z "${svc//[[:space:]]/}" ]]; then
+    if [[ "$PROJECT" == *staging* ]]; then
+      svc="atxfinance-backend-staging"
+    else
+      svc="atxfinance-backend-prod"
+    fi
+  fi
+  if ! command -v gcloud >/dev/null 2>&1; then
+    return 1
+  fi
+  local url
+  url="$(
+    gcloud run services describe "${svc}" \
+      --project="${PROJECT}" \
+      --region="${region}" \
+      --format='value(status.url)' 2>/dev/null || true
+  )"
+  url="${url%/}"
+  if [[ -n "${url//[[:space:]]/}" ]]; then
+    ATXFINANCE_BACKEND_ORIGIN="${url}"
+    echo "[verify-secrets] ATXFINANCE_BACKEND_ORIGIN from Cloud Run ${svc}: ${ATXFINANCE_BACKEND_ORIGIN}"
+    return 0
+  fi
+  return 1
+}
 
 PROJECT=""
 EXPECT_NON_EMPTY="true"
@@ -97,6 +151,11 @@ fi
 echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK with_google_oauth=$WITH_GOOGLE_OAUTH with_desk_smtp=$WITH_DESK_SMTP with_scheduler_delegate=$WITH_SCHEDULER_DELEGATE require_backend_origin=$REQUIRE_BACKEND_ORIGIN"
 
 if [[ "$REQUIRE_BACKEND_ORIGIN" == "true" ]]; then
+  if ! resolve_backend_origin_for_verify; then
+    echo "[verify-secrets] missing required env var: ATXFINANCE_BACKEND_ORIGIN" >&2
+    echo "[verify-secrets] set ATXFINANCE_BACKEND_ORIGIN in .env.prod (or .env.stage), export it, or ensure Spring Cloud Run is reachable via gcloud" >&2
+    exit 1
+  fi
   BACKEND_ORIGIN="${ATXFINANCE_BACKEND_ORIGIN:-}"
   if [[ -z "${BACKEND_ORIGIN//[[:space:]]/}" ]]; then
     echo "[verify-secrets] missing required env var: ATXFINANCE_BACKEND_ORIGIN" >&2
