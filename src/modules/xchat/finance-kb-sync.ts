@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import { parse as parseYaml } from "yaml";
 
+import { resolvePdfIngestKbFiles } from "@/modules/rag/pdf-ingest";
+
 import {
     addFileToXaiCollection,
     getXaiCollectionFieldDefinitionKeys,
@@ -384,6 +386,10 @@ export async function syncFinanceKnowledgeBaseToXai(input: {
     files.push(...(await walkIngestFiles(root.dir, root.source)));
   }
   files.push(...resolveQuantDeskKbFiles(input.repoRoot));
+  const pdfIngest = await resolvePdfIngestKbFiles(input.repoRoot);
+  for (const row of pdfIngest) {
+    files.push({ abs: row.abs, rel: row.rel, source: row.source });
+  }
 
   let documentsByLogicalName = new Map<string, string>();
   try {

@@ -121,9 +121,16 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
           "Canonical strategies with free-form filters JSON; seeded from atx-rag-collection/options-strategy and fully editable."
       },
       {
+        href: "/admin/rag-ingest",
+        title: "PDF → RAG ingest",
+        description:
+          "Upload desk PDFs (pymupdf4llm), review markdown under atx-docs/rag-collection/<slug>/, edit metadata, download chunks, seed Mongo + Finance xAI."
+      },
+      {
         href: "/admin/rag-files",
         title: "RAG collections",
-        description: "Read-only xAI collection inventory for this management API key."
+        description:
+          "Read-only xAI Finance collection inventory. PDF-ingested folders are tagged ingest — manage uploads on PDF → RAG ingest."
       },
       {
         href: "/personas",

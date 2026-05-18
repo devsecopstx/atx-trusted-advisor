@@ -57,6 +57,7 @@
     "verify:xai-hello": "node --env-file=.env scripts/verify-xai-hello.mjs",
     "verify:xai-seed-rag": "node --env-file=.env scripts/verify-xai-seed-rag.mjs",
     "seed:finance-xai-collection": "node --env-file=.env --import tsx scripts/seed-finance-xai-collection.ts",
+    "ingest:pdf": "node --env-file=.env --import tsx scripts/ingest-pdf.ts",
     "ops:migrate:xchat-personas-finance-collection": "node --env-file=.env --import tsx scripts/ops/migrate-xchat-personas-finance-collection.ts",
     "mongo:up": "bash scripts/dev/mongo-up.sh",
     "mongo:docker-recreate": "bash scripts/dev/mongo-docker-recreate.sh",

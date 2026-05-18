@@ -866,6 +866,34 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-portfolios"
   },
   {
+    path: "/api/admin/rag-ingest",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-rag-ingest"
+  },
+  {
+    path: "/api/admin/rag-ingest/ingest",
+    operations: [{ method: "POST", auth: "admin" }],
+    tag: "admin-rag-ingest"
+  },
+  {
+    path: "/api/admin/rag-ingest/{slug}",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin" }
+    ],
+    tag: "admin-rag-ingest"
+  },
+  {
+    path: "/api/admin/rag-ingest/{slug}/seed",
+    operations: [{ method: "POST", auth: "admin" }],
+    tag: "admin-rag-ingest"
+  },
+  {
+    path: "/api/admin/rag-ingest/{slug}/download/{filename}",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-rag-ingest"
+  },
+  {
     path: "/api/admin/rag/refresh-finance",
     operations: [
       { method: "GET", auth: "admin" },
