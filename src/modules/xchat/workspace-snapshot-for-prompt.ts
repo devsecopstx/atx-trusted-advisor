@@ -137,6 +137,24 @@ export type LoadWorkspaceSnapshotPreloadOptions = {
 /** Keep prompt size bounded; full book via atxfinance positions_snapshot. */
 export const MAX_POSITION_ROWS_IN_SNAPSHOT = 120;
 
+/** Unique symbols in first-seen order (for preload hints / options-desk universe). */
+export function dedupeSymbolsPreservingOrder(symbols: readonly string[], max?: number): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of symbols) {
+    const sym = raw.trim().toUpperCase();
+    if (!sym || seen.has(sym)) {
+      continue;
+    }
+    seen.add(sym);
+    out.push(sym);
+    if (max != null && out.length >= max) {
+      break;
+    }
+  }
+  return out;
+}
+
 function positionCountsByAccountId(
   positions: Array<{ accountId: { toHexString: () => string } }>
 ): Map<string, number> {
@@ -580,9 +598,21 @@ export function buildWorkspacePreloadHintForSystemPrompt(preload: WorkspaceSnaps
     "error" in wl
       ? "watchlist: none"
       : `watchlist "${wl.name}" (${wl.symbols.length} symbols)`;
-  const prevSyms = j.positionsPreview.slice(0, 12).map((p) => p.symbol.trim().toUpperCase());
+  const prevSyms = dedupeSymbolsPreservingOrder(
+    j.positionsPreview.map((p) => p.symbol),
+    12
+  );
   const wlSyms =
-    "error" in wl ? [] : wl.symbols.slice(0, 16).map((s) => String(s.symbol).trim().toUpperCase());
+    "error" in wl
+      ? []
+      : dedupeSymbolsPreservingOrder(
+          wl.symbols.map((s) => String(s.symbol)),
+          16
+        );
+  const holdingsWatchlistUniverse = dedupeSymbolsPreservingOrder([
+    ...j.positionsPreview.map((p) => p.symbol),
+    ...("error" in wl ? [] : wl.symbols.map((s) => String(s.symbol)))
+  ]);
 
   const posHint =
     j.portfolio.totalPositionCount === 0
@@ -607,6 +637,9 @@ export function buildWorkspacePreloadHintForSystemPrompt(preload: WorkspaceSnaps
     `Accounts: ${j.accounts.length}. ${wlSummary}.`,
     posHint,
     wlSyms.length > 0 ? `Watchlist symbols (sample): ${wlSyms.join(", ")}.` : "",
+    holdingsWatchlistUniverse.length > 0
+      ? `Symbol universe (holdings ∪ watchlist, deduped): ${holdingsWatchlistUniverse.join(", ")}.`
+      : "",
     ioHint,
     emptyBookGuard
   ]

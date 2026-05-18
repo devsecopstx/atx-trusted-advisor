@@ -63,6 +63,7 @@ vi.mock("@/modules/xchat/portfolio-workspace-snapshot-repository", () => ({
 import {
     buildWorkspacePreloadHintForSystemPrompt,
     buildWorkspaceServerSnapshotBlock,
+    dedupeSymbolsPreservingOrder,
     loadWorkspaceSnapshotPreload,
     type WorkspaceSnapshotPromptJson
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
@@ -226,7 +227,56 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
   });
 });
 
+describe("dedupeSymbolsPreservingOrder", () => {
+  it("keeps first-seen order and caps length", () => {
+    expect(dedupeSymbolsPreservingOrder(["rdw", "RDW", "TSLA", "tsla", "CIFR"], 3)).toEqual([
+      "RDW",
+      "TSLA",
+      "CIFR"
+    ]);
+  });
+});
+
 describe("buildWorkspacePreloadHintForSystemPrompt", () => {
+  it("dedupes preview and watchlist symbols and emits holdings ∪ watchlist universe", () => {
+    const hint = buildWorkspacePreloadHintForSystemPrompt({
+      promptJson: {
+        loadedAt: new Date().toISOString(),
+        workspaceContentRev: 3,
+        portfolio: {
+          id: "507f1f77bcf86cd799439033",
+          name: "myPortfolio",
+          isDefault: true,
+          totalPositionCount: 15
+        },
+        accounts: [],
+        positionsPreview: [
+          { symbol: "RDW", qty: 1, avgCost: 1, accountId: "a1" },
+          { symbol: "RDW", qty: 2, avgCost: 1, accountId: "a2" },
+          { symbol: "TSLA", qty: 1, avgCost: 1, accountId: "a1" },
+          { symbol: "RDW", qty: 1, avgCost: 1, accountId: "a3" }
+        ],
+        positionsPreviewTruncated: false,
+        positionsOmittedCount: 0,
+        watchlist: {
+          name: "DefaultWatchlist",
+          riskProfile: null,
+          outlook: null,
+          symbols: [
+            { symbol: "LUNR", addedAt: "2026-01-01T00:00:00.000Z", addedAtDisplay: "", spotPriceDisplay: "", targetEntryNotional100xUsdDisplay: "", targetEntryDisplay: "", targetEntryNotional100xDisplay: "" },
+            { symbol: "RDW", addedAt: "2026-01-01T00:00:00.000Z", addedAtDisplay: "", spotPriceDisplay: "", targetEntryNotional100xUsdDisplay: "", targetEntryDisplay: "", targetEntryNotional100xDisplay: "" },
+            { symbol: "TSLA", addedAt: "2026-01-01T00:00:00.000Z", addedAtDisplay: "", spotPriceDisplay: "", targetEntryNotional100xUsdDisplay: "", targetEntryDisplay: "", targetEntryNotional100xDisplay: "" }
+          ]
+        }
+      },
+      positionsFull: []
+    });
+    expect(hint).toContain("Preview symbols: RDW, TSLA.");
+    expect(hint).not.toMatch(/Preview symbols:.*RDW, RDW/);
+    expect(hint).toContain("Watchlist symbols (sample): LUNR, RDW, TSLA.");
+    expect(hint).toContain("Symbol universe (holdings ∪ watchlist, deduped): RDW, TSLA, LUNR.");
+  });
+
   it("summarizes portfolio + watchlist without full JSON", () => {
     const hint = buildWorkspacePreloadHintForSystemPrompt({
       promptJson: {
