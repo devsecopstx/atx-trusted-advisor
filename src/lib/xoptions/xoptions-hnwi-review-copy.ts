@@ -1,15 +1,15 @@
 import {
-  daysToExpirationUtc,
-  formatExpirationShortLabel,
-  type XoptionsOpeningAction,
-  type XoptionsOrderReview
+    daysToExpirationUtc,
+    formatExpirationShortLabel,
+    type XoptionsOpeningAction,
+    type XoptionsOrderReview
 } from "@/lib/xoptions/xoptions-order-preview";
-import type { AccountOutlook } from "@/modules/core-admin/types";
 import {
-  DESK_OUTLOOK_LABELS,
-  DESK_RISK_DISPLAY_LABELS,
-  type DeskRiskProfileOption
+    DESK_OUTLOOK_LABELS,
+    DESK_RISK_DISPLAY_LABELS,
+    type DeskRiskProfileOption
 } from "@/modules/core-admin/desk-fields";
+import type { AccountOutlook } from "@/modules/core-admin/types";
 
 export type XoptionsHnwiReviewCopyInput = {
   symbol: string;

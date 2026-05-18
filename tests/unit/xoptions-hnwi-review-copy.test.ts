@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildHnwiExecutiveAdvisorNote,
-  buildHnwiOrderSummaryHeadline,
-  buildHnwiOrderSummaryMetaLine,
-  buildHnwiOutlookRiskTag
+    buildHnwiExecutiveAdvisorNote,
+    buildHnwiOrderSummaryHeadline,
+    buildHnwiOrderSummaryMetaLine,
+    buildHnwiOutlookRiskTag
 } from "@/lib/xoptions/xoptions-hnwi-review-copy";
 import { buildXoptionsOrderReview } from "@/lib/xoptions/xoptions-order-preview";
 

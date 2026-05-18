@@ -6,24 +6,24 @@ import { XoptionsOrderPreviewCard } from "@/app/xoptions/xoptions-order-preview-
 import type { StrategyChoiceId } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import { strategyShortLabel } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import {
-  buildHnwiBreakevenMetricValue,
-  buildHnwiExecutiveAdvisorNote,
-  buildHnwiOrderSummaryHeadline,
-  buildHnwiOrderSummaryMetaLine,
-  buildHnwiTradeThesis,
-  type XoptionsHnwiReviewCopyInput
+    buildHnwiBreakevenMetricValue,
+    buildHnwiExecutiveAdvisorNote,
+    buildHnwiOrderSummaryHeadline,
+    buildHnwiOrderSummaryMetaLine,
+    buildHnwiTradeThesis,
+    type XoptionsHnwiReviewCopyInput
 } from "@/lib/xoptions/xoptions-hnwi-review-copy";
 import {
-  XOPTIONS_REVIEW_ORDER_FOOTNOTE,
-  type XoptionsOpeningAction,
-  type XoptionsOrderReview
+    XOPTIONS_REVIEW_ORDER_FOOTNOTE,
+    type XoptionsOpeningAction,
+    type XoptionsOrderReview
 } from "@/lib/xoptions/xoptions-order-preview";
 import type {
-  XoptionsPortfolioContext,
-  XoptionsReviewAuditTrail,
-  XoptionsReviewSummary,
-  XoptionsRiskAlert,
-  XoptionsWhatIfAssigned
+    XoptionsPortfolioContext,
+    XoptionsReviewAuditTrail,
+    XoptionsReviewSummary,
+    XoptionsRiskAlert,
+    XoptionsWhatIfAssigned
 } from "@/lib/xoptions/xoptions-review-types";
 
 type MetricCardProps = {
