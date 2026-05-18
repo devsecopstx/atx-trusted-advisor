@@ -61,8 +61,8 @@ describe("WorkspaceProductSidebar rail contract", () => {
     expect(src).toContain('@/app/ui/workspace-profile-footer-menu');
   });
 
-  it("uses expanded workspace rail width 175px (+25% vs 140px; legacy was 280px)", () => {
-    expect(src).toMatch(/WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX\s*=\s*175/);
+  it("uses expanded workspace rail width 168px (+20% vs 140px; legacy was 280px)", () => {
+    expect(src).toMatch(/WORKSPACE_PRODUCT_RAIL_EXPANDED_WIDTH_PX\s*=\s*168/);
     expect(src).toContain("WORKSPACE_PRODUCT_RAIL_COLLAPSED_WIDTH_PX");
   });
 });

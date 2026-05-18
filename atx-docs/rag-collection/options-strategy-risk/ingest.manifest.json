@@ -53,7 +53,7 @@
   ],
   "segment": "options-strategy-advanced",
   "pageCount": 96,
-  "mongoSeededAt": "2026-05-18T16:37:30.732Z",
+  "mongoSeededAt": "2026-05-18T16:50:42.053Z",
   "xaiSyncedAt": "2026-05-18T16:45:20.226Z",
   "xaiCollectionId": "collection_2cbf6da7-c021-4e28-9346-a34bb9c129f0",
   "xaiCollectionName": "xfinance-pdf-ingest-options-strategy-risk"

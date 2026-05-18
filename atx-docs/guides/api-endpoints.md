@@ -246,6 +246,19 @@ Browsers call these on the **Next** origin; Next forwards to Kotlin when the bac
 - `GET /api/admin/options-strategy-preferences/:preferenceId`
 - `PATCH /api/admin/options-strategy-preferences/:preferenceId`
 
+## Admin — PDF → RAG ingest (Next only)
+
+**UI:** `/admin/rag-ingest`. **CLI:** `npm run ingest:pdf`. Each ingest slug gets **`atx-docs/rag-collection/<slug>/`** + dedicated xAI collection **`xfinance-pdf-ingest-<slug>`** (not the shared Finance KB).
+
+- `GET /api/admin/rag-ingest` — list folders with `ingest.manifest.json`
+- `POST /api/admin/rag-ingest/ingest` — multipart PDF upload → markdown chunks (requires **pymupdf4llm** on the Next host)
+- `GET /api/admin/rag-ingest/:slug` — folder detail + manifest
+- `PATCH /api/admin/rag-ingest/:slug` — metadata (`title`, `riskLevel`, `outlook`, `tags`, `segment`)
+- `POST /api/admin/rag-ingest/:slug/seed` — body `{ mongo?: boolean, xai?: boolean }` (default both); returns separate **`mongo`** and **`xai`** result objects
+- `GET /api/admin/rag-ingest/:slug/download/:filename` — download chunk `.md` or `source.pdf`
+
+Related: `POST /api/admin/rag/refresh-finance` — shared Finance collection sync (markdown segments only).
+
 ## Portfolio alerts (app_user + admin)
 
 - `GET /api/portfolios/:portfolioId/alerts` — session; list alerts for an owned portfolio (may BFF to Spring)

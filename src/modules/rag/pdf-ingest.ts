@@ -509,7 +509,7 @@ async function ensurePdfIngestXaiFieldDefinitions(
   return getXaiCollectionFieldDefinitionKeys(collectionId);
 }
 
-function buildPdfIngestDocumentFields(input: {
+export function buildPdfIngestDocumentFields(input: {
   manifest: PdfIngestManifest;
   chunkFile: string;
   frontmatter: Record<string, unknown>;

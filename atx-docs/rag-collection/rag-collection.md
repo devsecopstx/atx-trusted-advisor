@@ -161,6 +161,23 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 
 ---
 
+## PDF ingest folders (`<slug>/` + `ingest.manifest.json`)
+
+Desk PDFs converted to chunked markdown (not a top-level segment like `options-strategy-core/`):
+
+| Step | Command / surface |
+|------|-------------------|
+| CLI | `npm run ingest:pdf -- --file=… --slug=… --title=… --risk=… --outlook=… --tags=a,b` |
+| Admin | **`/admin/rag-ingest`** — upload, metadata edit, **Seed Mongo** (`options_strategy`), **Sync xAI** (dedicated collection) |
+| xAI collection | **`xfinance-pdf-ingest-<slug>`** with `field_definitions` (`tags`, `risk_level`, `market_condition`, …) — link collection id on personas when needed |
+| Python | `services/pdf-ingest/ingest_pdf.py` (**pymupdf4llm**); host running Next needs `pip install -r services/pdf-ingest/requirements.txt` |
+
+Folders are detected by **`ingest.manifest.json`** (reserved segment dir names are excluded). See **`atx-docs/rag-collection/README.md`** § PDF ingest.
+
+**Tests:** **`tests/unit/pdf-ingest.test.ts`**, **`tests/integration/admin-rag-ingest-route.test.ts`**.
+
+---
+
 ## Tests and automation
 
 - **`seed:admin`** loads disk specs into **Mongo** from **`atx-docs/rag-collection/`** (legacy **`atx-rag-collection/`** still supported for options-strategy sync paths). Team xAI upload is **not** part of seed; see **`scripts/lib/seed-xai-rag-ingest.mjs`** for optional library use. Layout tests: **`tests/unit/atx-rag-collection-layout.test.ts`**.

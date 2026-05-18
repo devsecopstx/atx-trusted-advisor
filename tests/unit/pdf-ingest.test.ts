@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    buildPdfIngestDocumentFields,
     buildPdfIngestFrontmatter,
     chunkMarkdownFilename,
     normalizeRiskLevel,
     parsePythonIngestStdout,
     PDF_INGEST_SLUG_RE,
+    PDF_INGEST_XAI_FIELD_DEFINITIONS,
+    pdfIngestManifestSchema,
     pdfIngestXaiCollectionName,
     slugifyOutlook
 } from "@/modules/rag/pdf-ingest";
@@ -53,6 +56,53 @@ describe("pdf-ingest helpers", () => {
     expect(pdfIngestXaiCollectionName("advanced-iron-condor-2026")).toBe(
       "xfinance-pdf-ingest-advanced-iron-condor-2026"
     );
+  });
+
+  it("validates ingest manifest schema with xai collection fields", () => {
+    const parsed = pdfIngestManifestSchema.parse({
+      version: 1,
+      slug: "wheel-2026",
+      title: "Wheel",
+      riskLevel: "balanced",
+      outlook: "Bullish Vol",
+      tags: ["wheel"],
+      sourcePdf: "source.pdf",
+      ingestedAt: "2026-05-18T12:00:00.000Z",
+      chunkFiles: ["wheel-2026.md"],
+      segment: "options-strategy-advanced",
+      xaiCollectionId: "collection_abc",
+      xaiCollectionName: "xfinance-pdf-ingest-wheel-2026"
+    });
+    expect(parsed.xaiCollectionName).toContain("xfinance-pdf-ingest-");
+  });
+
+  it("defines xAI field_definitions including tags for later edits", () => {
+    const keys = PDF_INGEST_XAI_FIELD_DEFINITIONS.map((row) => row.key);
+    expect(keys).toContain("tags");
+    expect(keys).toContain("risk_level");
+    expect(keys).toContain("market_condition");
+  });
+
+  it("buildPdfIngestDocumentFields maps manifest tags to comma-separated tags field", () => {
+    const fields = buildPdfIngestDocumentFields({
+      manifest: {
+        version: 1,
+        slug: "iron-condor",
+        title: "Iron condor desk",
+        riskLevel: "balanced",
+        outlook: "Range bound",
+        tags: ["iron-condor", "adjustment"],
+        sourcePdf: "source.pdf",
+        ingestedAt: "2026-05-18T12:00:00.000Z",
+        chunkFiles: ["iron-condor.md"],
+        segment: "options-strategy-advanced"
+      },
+      chunkFile: "iron-condor.md",
+      frontmatter: { strategy_type: "iron_condor" }
+    });
+    expect(fields.slug).toBe("iron-condor");
+    expect(fields.tags).toBe("iron-condor,adjustment");
+    expect(fields.chunk_file).toBe("iron-condor.md");
   });
 
   it("parses python stdout when pymupdf prints progress before JSON", () => {
