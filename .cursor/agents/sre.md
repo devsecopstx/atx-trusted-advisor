@@ -172,7 +172,7 @@ test -f .cursor/agents/sre.md && npm install
 
 Production **Deploy Cloud Run Production** preflight does **not** require Google secrets (bindings are added when both exist). Use **`ops:secrets:verify:prod:with-google-oauth`** before prod releases if Google login must not ship without credentials.
 
-**Important:** `verify-gcp-runtime-secrets.sh` **does not read** `.env.stage` or `.env.prod`. It only runs **`gcloud secrets describe`** (and non-empty latest checks) on the **GCP project** passed via `--project`. Having `GOOGLE_CLIENT_ID` in a local file does **not** satisfy verify until those secrets exist (with non-empty latest versions) **in Secret Manager** for that project.
+**Important:** `verify-gcp-runtime-secrets.sh` uses **`gcloud secrets describe`** (and non-empty latest checks) on the **GCP project** — it does **not** treat local `.env` values as proof that a secret exists in Secret Manager. Having `GOOGLE_CLIENT_ID` only in `.env.stage` does **not** satisfy verify until those secrets exist (with non-empty latest versions) **in Secret Manager** for that project. With **`--require-backend-origin`**, the script **does** auto-source **`ATXFINANCE_BACKEND_ORIGIN`** from **`.env.prod`** / **`.env.stage`** (or `gcloud describe` on the Spring Cloud Run service) so `npm run ops:secrets:verify:prod` does not require a manual export.
 
 **Sync from local env:** `npm run ops:secrets:sync-google-oauth:staging` / `:prod` → `scripts/ops/sync-google-oauth-secrets-from-env.sh` (requires `gcloud` auth to the correct project; reads `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` from the file). Then re-run **`ops:secrets:verify:staging`** or **`ops:secrets:verify:prod:with-google-oauth`** as appropriate.
 

@@ -32,7 +32,9 @@ Single source of truth for runtime app secrets is **GCP Secret Manager** in the 
 
 ### Verify scripts vs local `.env` files
 
-Commands like **`npm run ops:secrets:verify:staging`** / **`ops:secrets:verify:prod`** call **`gcloud secrets describe`** (and optionally read latest versions for non-empty checks). They **do not** load `.env.stage` or `.env.prod`.
+Commands like **`npm run ops:secrets:verify:staging`** / **`ops:secrets:verify:prod`** call **`gcloud secrets describe`** (and optionally read latest versions for non-empty checks). They **do not** use local `.env` files for **Secret Manager** checks — having `GOOGLE_CLIENT_ID` only in `.env.stage` does **not** satisfy verify until that secret exists in GCP.
+
+With **`--require-backend-origin`** (default on staging/prod verify npm scripts), the script **does** auto-load **`ATXFINANCE_BACKEND_ORIGIN`** from **`.env.stage`** / **`.env.prod`** at repo root when unset in the shell, then falls back to **`gcloud run services describe`** on the Spring service (`atxfinance-backend-staging` / `atxfinance-backend-prod`).
 
 If verify reports **`missing: GOOGLE_CLIENT_ID`** (or similar) but the variable is set locally, the value still has to exist **in Secret Manager** for that project. Push with the **`ops:secrets:sync-*`** npm scripts below (from a machine with `gcloud` auth to the target project), then re-run verify. See **`.cursor/agents/sre.md`** § *Google OAuth* and *Hotfix: missing GOOGLE_CLIENT_ID*.
 
@@ -155,15 +157,16 @@ Recommended checks before merge/deploy:
 4. `npm run ops:secrets:verify:prod`
 5. After portfolio/BFF releases: optional **multi-account staging soak** (portfolio, watchlist, admin tasks, audit) — **[`staging-hnwi-soak-checklist.md`](../sre-ops/staging-hnwi-soak-checklist.md)**.
 
-`ops:secrets:verify:*` now also validates that `ATXFINANCE_BACKEND_ORIGIN` is present in your shell environment when using the staging/prod helper scripts.
+`ops:secrets:verify:staging` / `ops:secrets:verify:prod` use **`--require-backend-origin`**: resolve `ATXFINANCE_BACKEND_ORIGIN` from the shell, repo **`.env.stage`** / **`.env.prod`**, or the live Spring Cloud Run URL via `gcloud`, then validate HTTPS format. **`ops:secrets:verify:prod`** also passes **`--with-scheduler-delegate`** (both `ATX_SCHEDULER_*` GSM secrets + internal secret length ≥24).
 
 ### npm scripts quick reference (ops)
 
 | Script | Purpose |
 |--------|--------|
 | `ops:secrets:verify:staging` | GCP Secret Manager preflight for **staging** project (includes **`GOOGLE_CLIENT_ID`**, **`GOOGLE_CLIENT_SECRET`**) |
-| `ops:secrets:verify:prod` | GCP preflight for **production** — core secrets only; log shows `with_google_oauth=false` |
+| `ops:secrets:verify:prod` | GCP preflight for **production** — core secrets + **`--with-scheduler-delegate`** + backend origin resolve; log shows `with_google_oauth=false` |
 | `ops:secrets:verify:prod:with-google-oauth` | Same as prod + requires Google secrets in SM (use when Sign-in with Google is enabled in prod) |
+| `ops:secrets:sync-scheduler-delegate:staging` / `:prod` | `ATX_SCHEDULER_INTERNAL_SECRET` + `ATX_SCHEDULER_NEXT_BASE_URL` → SM (from `.env.stage` / `.env.prod`) |
 | `ops:secrets:sync-google-oauth:staging` / `:prod` | Create/update Google OAuth secrets from `.env.stage` / `.env.prod` |
 | `ops:secrets:sync-stripe-publishable:*` | Stripe publishable keys → SM |
 | `ops:secrets:sync-stripe-webhook:*` | `STRIPE_WEBHOOK_SECRET` → SM |
