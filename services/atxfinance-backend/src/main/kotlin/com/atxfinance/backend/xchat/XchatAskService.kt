@@ -129,6 +129,43 @@ class XchatAskService(
                             ),
                     )
                 }
+                XchatAskRouting.isDirectTickerQuoteIntent(message) -> {
+                    val sym = XchatAskRouting.extractDirectQuoteSymbol(message) ?: "TSLA"
+                    streamDirectToolPath(
+                        emitter = emitter,
+                        objectMapper = objectMapper,
+                        operation = "market_quote",
+                        turnIndex = 0,
+                        markdownProvider = {
+                            atxFunctionExecutor.executeMarketQuoteDirect(sym).let { it.markdown to it.donePayload }
+                        },
+                        persist =
+                            buildPersistTurn(
+                                shouldPersistHistory = shouldPersistHistory,
+                                session = session,
+                                threadId = threadId,
+                                requestId = requestId,
+                                correlationId = correlationId,
+                                persona = persona,
+                                message = message,
+                                model = model,
+                                startedAt = startedAt,
+                            ),
+                    )
+                    writeTurnAudit(
+                        session = session,
+                        requestId = requestId,
+                        action = "xchat_market_quote_spring",
+                        details =
+                            mapOf(
+                                "threadId" to threadId,
+                                "personaId" to personaId,
+                                "symbol" to sym,
+                                "usageMinute" to usage.observedMinuteCount,
+                                "usageDay" to usage.observedDayCount,
+                            ),
+                    )
+                }
                 else -> {
                     streamToolLoopPath(
                         emitter = emitter,

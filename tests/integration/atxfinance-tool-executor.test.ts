@@ -354,6 +354,26 @@ describe("atxfinance tool executor", () => {
     });
   });
 
+  it("watchlist_snapshot JSON stays parseable when symbols carry long desk rationale (no 8KB truncate)", async () => {
+    const longRationale = "x".repeat(600);
+    const symbols = Array.from({ length: 24 }, (_, i) => ({
+      symbol: `SYM${i}`,
+      addedAt: new Date(),
+      rationale: longRationale
+    }));
+    repositoryMocks.getPortfolioWatchlist.mockResolvedValueOnce({
+      name: "Large Watchlist",
+      symbols
+    });
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", { operation: "watchlist_snapshot" });
+    expect(() => JSON.parse(result.result)).not.toThrow();
+    const data = JSON.parse(result.result) as { symbolCount?: number };
+    expect(data.symbolCount).toBe(24);
+    expect(result.result.length).toBeGreaterThan(8 * 1024);
+    expect(result.result).not.toContain("[truncated]");
+  });
+
   it("watchlist_snapshot returns symbols with spot, notional USD, and desk entry price", async () => {
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", { operation: "watchlist_snapshot" });

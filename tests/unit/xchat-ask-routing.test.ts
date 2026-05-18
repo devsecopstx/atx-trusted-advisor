@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    extractDirectQuoteSymbol,
     heavySynthesisIntent,
+    isDirectTickerQuoteIntent,
     isShowWatchlistIntent,
     shouldEagerWorkspaceSnapshotPreloadForMessage,
     shouldOfferStrategyJobPreflight,
@@ -39,6 +41,20 @@ describe("shouldOfferStrategyJobPreflight", () => {
 
   it("ignores unrelated chat", () => {
     expect(shouldOfferStrategyJobPreflight("What is a stock?")).toBe(false);
+  });
+});
+
+describe("isDirectTickerQuoteIntent", () => {
+  it("matches ticker + quote phrasing", () => {
+    expect(isDirectTickerQuoteIntent("TSLA quote")).toBe(true);
+    expect(extractDirectQuoteSymbol("TSLA quote")).toBe("TSLA");
+    expect(isDirectTickerQuoteIntent("quote for NVDA")).toBe(true);
+    expect(extractDirectQuoteSymbol("quote for NVDA")).toBe("NVDA");
+  });
+
+  it("ignores watchlist and options desk asks", () => {
+    expect(isDirectTickerQuoteIntent("show my watchlist")).toBe(false);
+    expect(isDirectTickerQuoteIntent("TSLA covered call ideas")).toBe(false);
   });
 });
 

@@ -82,6 +82,10 @@ import {
     tryGetIncomeIdeasResponseCache
 } from "@/modules/xchat/income-ideas-response-cache";
 import {
+    formatDirectMarketQuoteMarkdown,
+    getYahooMarketQuote
+} from "@/modules/xchat/market-data";
+import {
     buildMonteCarloToolArgsFromNl,
     parseMonteCarloAskNlParams,
     renderMonteCarloTailRiskMarkdown
@@ -158,7 +162,9 @@ import {
 } from "@/modules/xchat/xchat-ask-history-input";
 import {
     collectWatchlistPortfolioIdSlot,
+    extractDirectQuoteSymbol,
     heavySynthesisIntent,
+    isDirectTickerQuoteIntent,
     isShowWatchlistIntent,
     shouldEagerWorkspaceSnapshotPreloadForMessage,
     shouldOfferStrategyJobPreflight,
@@ -516,6 +522,10 @@ export async function POST(request: Request) {
       : undefined;
   const financeKbRagSurface = parsed.data.financeKbRagSurface ?? "xchat";
   const showWatchlistIntent = isShowWatchlistIntent(messageTrimmed);
+  const directTickerQuoteIntent = isDirectTickerQuoteIntent(messageTrimmed);
+  const directQuoteSymbol = directTickerQuoteIntent
+    ? extractDirectQuoteSymbol(messageTrimmed)
+    : undefined;
   const watchlistPortfolioSlot = collectWatchlistPortfolioIdSlot({
     message: messageTrimmed,
     requestPortfolioId: workspacePortfolioId
@@ -1773,6 +1783,91 @@ export async function POST(request: Request) {
             collectionSearchNonReadyFileCount: 0,
             logId: chatLogId?.toHexString(),
             interactionMeta: scanMeta
+          },
+          { persona, threadId }
+        )
+      },
+      {
+        headers: buildLimiterHeaders({
+          remainingMinute: limiterRemainingMinute,
+          remainingHour: limiterRemainingHour,
+          remainingDay: limiterRemainingDay,
+          hourlyLimit: limiterHourlyLimit,
+          dailyLimit: limiterDailyLimit
+        })
+      }
+    );
+  }
+
+  if (!hasVisionImages && directTickerQuoteIntent && directQuoteSymbol) {
+    const quoteStartedAt = Date.now();
+    let responseMarkdown = `I could not retrieve a live quote for ${directQuoteSymbol} right now due to a temporary data issue.`;
+    let quoteError: string | undefined;
+    try {
+      const snap = await getYahooMarketQuote({ symbol: directQuoteSymbol });
+      responseMarkdown = formatDirectMarketQuoteMarkdown(snap);
+    } catch (err) {
+      quoteError = err instanceof Error ? err.message : String(err);
+      console.warn("[xchat/ask] market_quote_direct failed", {
+        symbol: directQuoteSymbol,
+        error: quoteError
+      });
+    }
+    const output = preprocessXchatMarkdown(responseMarkdown);
+    const quoteMeta = buildXchatAskInteractionMeta(askProcessingStartedAt, {
+      ragChunks: contextCount,
+      toolInvocations: 0,
+      personaCollections: linkedCollectionIds.length
+    });
+    const chatLogId = shouldPersistHistory
+      ? await saveXChatLog({
+          threadId,
+          requestId,
+          correlationId,
+          userId,
+          tenantId: tenantId ?? undefined,
+          userEmail: session.email,
+          requestedBy: session.username,
+          personaId: persona?._id,
+          personaName: persona.name,
+          scope,
+          message: messageForPersistence,
+          response: output,
+          contextChunkIds: [],
+          model: "market_quote_direct",
+          strategyJobOptOut,
+          retentionExpiresAt,
+          interactionGenerationMs: quoteMeta.generationMs,
+          ...(quoteError
+            ? {
+                xapiToolCalls: [
+                  {
+                    name: "market_quote",
+                    args: { symbol: directQuoteSymbol },
+                    resultHash: buildSha256Hex(quoteError),
+                    durationMs: Math.max(0, Date.now() - quoteStartedAt),
+                    error: quoteError
+                  }
+                ]
+              }
+            : {})
+        })
+      : null;
+    return NextResponse.json(
+      {
+        data: withXchatAskContentAndMetadata(
+          {
+            response: output,
+            model: "market_quote_direct",
+            personaName: persona.name,
+            modelSelectionSource,
+            contextCount: 0,
+            contextSource: "none",
+            collectionSearchStatus: "skipped_no_collections",
+            collectionSearchNonReadyFileCount: 0,
+            logId: chatLogId?.toHexString(),
+            toolCalls: [],
+            interactionMeta: quoteMeta
           },
           { persona, threadId }
         )

@@ -87,6 +87,25 @@ class AtxFunctionExecutor(
         return AtxFunctionWatchlistResult(markdown = markdown, donePayload = donePayload)
     }
 
+    fun executeMarketQuoteDirect(symbol: String): AtxFunctionWatchlistResult {
+        val sym = symbol.trim().uppercase().ifBlank { "TSLA" }
+        val markdown =
+            runCatching {
+                val q =
+                    yahooClient.fetchEquityQuote(sym)
+                        ?: return@runCatching "### $sym Quote\n\n_Quote unavailable from Yahoo Finance right now._"
+                formatMarketQuoteMarkdown(sym, q)
+            }.getOrElse {
+                "### $sym Quote\n\n_Quote unavailable from Yahoo Finance right now._"
+            }
+        val donePayload =
+            directDonePayload(
+                markdown = markdown,
+                model = "market_quote_direct",
+            )
+        return AtxFunctionWatchlistResult(markdown = markdown, donePayload = donePayload)
+    }
+
     fun executeToolCall(
         toolName: String,
         args: Map<String, Any?>,
@@ -107,7 +126,10 @@ class AtxFunctionExecutor(
         }
         return runCatching {
             when (operation) {
-                "watchlist_snapshot" -> AtxFunctionToolResult(result = toJson(loadWatchlistPayload(ctx)))
+                "watchlist_snapshot" ->
+                    AtxFunctionToolResult(result = toJson(loadWatchlistSnapshotForTool(ctx), "watchlist_snapshot"))
+                "watchlist_add_symbols" -> executeWatchlistAddSymbols(args, ctx)
+                "watchlist_remove_symbols" -> executeWatchlistRemoveSymbols(args, ctx)
                 "portfolio_summary" -> AtxFunctionToolResult(result = toJson(loadPortfolioSummary(ctx)))
                 "positions_snapshot" -> AtxFunctionToolResult(result = toJson(loadPositionsSnapshot(ctx)))
                 "options_action_scan" ->
@@ -135,6 +157,7 @@ class AtxFunctionExecutor(
                     AtxFunctionToolResult(
                         result = toJson(portfolioPriceAlertNlService.executePriceAlertManage(args, ctx)),
                     )
+                "market_quote" -> executeYahooFinanceQuote(args)
                 else -> AtxFunctionToolResult(result = "", error = "unknown_operation")
             }
         }.getOrElse { ex ->
@@ -150,12 +173,27 @@ class AtxFunctionExecutor(
             } else {
                 "TSLA"
             }
-        val q = yahooClient.fetchUnderlyingQuote(sym)
-            ?: return AtxFunctionToolResult(
+        val q =
+            yahooClient.fetchEquityQuote(sym)
+                ?: return AtxFunctionToolResult(
+                    result = toJson(mapOf("error" to "quote_unavailable", "symbol" to sym)),
+                    error = "quote_unavailable",
+                )
+        val price =
+            listOf(
+                    q["regularMarketPrice"] as? Number,
+                    q["postMarketPrice"] as? Number,
+                    q["preMarketPrice"] as? Number,
+                )
+                .mapNotNull { it?.toDouble() }
+                .firstOrNull { it > 0.0 }
+                ?: 0.0
+        if (price <= 0.0) {
+            return AtxFunctionToolResult(
                 result = toJson(mapOf("error" to "quote_unavailable", "symbol" to sym)),
                 error = "quote_unavailable",
             )
-        val price = (q["regularMarketPrice"] as? Number)?.toDouble() ?: 0.0
+        }
         val payload =
             linkedMapOf<String, Any?>(
                 "symbol" to (q["symbol"] ?: sym),
@@ -183,6 +221,185 @@ class AtxFunctionExecutor(
             return explicit
         }
         return defaultPortfolioProvisionService.getDefaultPortfolioDoc(ctx.session)?.getObjectId("_id")?.toHexString()
+    }
+
+    private fun executeWatchlistAddSymbols(
+        args: Map<String, Any?>,
+        ctx: AtxFunctionExecutionContext,
+    ): AtxFunctionToolResult {
+        val toAdd = parseTickerListFromArgs(args)
+        if (toAdd.isEmpty()) {
+            return AtxFunctionToolResult(
+                result =
+                    toJson(
+                        mapOf(
+                            "error" to "no_symbols",
+                            "hint" to "Provide symbols (array) or symbol (string), e.g. NVDA.",
+                        ),
+                    ),
+            )
+        }
+        val portfolioId = resolvePortfolioId(ctx) ?: return AtxFunctionToolResult(result = toJson(mapOf("error" to "no_default_portfolio")))
+        val existingPayload = portfolioNestedResourceService.getWatchlistPayload(ctx.session, portfolioId, quotes = false)
+        val existingSyms =
+            ((existingPayload?.get("data") as? Map<*, *>)?.get("symbols") as? List<*>)
+                ?.mapNotNull { (it as? Map<*, *>)?.get("symbol")?.toString()?.trim()?.uppercase() }
+                ?.toSet()
+                ?: emptySet()
+        val addEntries =
+            toAdd.map { sym ->
+                if (existingSyms.contains(sym)) {
+                    mapOf("symbol" to sym)
+                } else {
+                    mapOf(
+                        "symbol" to sym,
+                        "lineType" to WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
+                        "strategy" to WATCHLIST_ENTRY_DEFAULT_STRATEGY,
+                    )
+                }
+            }
+        val patched =
+            portfolioNestedResourceService.patchWatchlist(
+                session = ctx.session,
+                portfolioId = portfolioId,
+                quotes = false,
+                addSymbols = null,
+                addEntries = addEntries,
+                removeSymbols = null,
+                dedupe = null,
+                name = null,
+            )
+                ?: return AtxFunctionToolResult(result = toJson(mapOf("error" to "no_watchlist")))
+        return AtxFunctionToolResult(
+            result =
+                toJson(
+                    mapOf(
+                        "ok" to true,
+                        "requested" to toAdd,
+                        "addedNew" to toAdd.filter { !existingSyms.contains(it) },
+                        "alreadyPresent" to toAdd.filter { existingSyms.contains(it) },
+                        "watchlistName" to ((patched["data"] as? Map<*, *>)?.get("name") ?: "watchlist"),
+                        "symbolCount" to (((patched["data"] as? Map<*, *>)?.get("symbols") as? List<*>)?.size ?: 0),
+                    ),
+                ),
+        )
+    }
+
+    private fun executeWatchlistRemoveSymbols(
+        args: Map<String, Any?>,
+        ctx: AtxFunctionExecutionContext,
+    ): AtxFunctionToolResult {
+        val toRemove = parseTickerListFromArgs(args)
+        if (toRemove.isEmpty()) {
+            return AtxFunctionToolResult(
+                result =
+                    toJson(
+                        mapOf(
+                            "error" to "no_symbols",
+                            "hint" to "Provide symbols (array) or symbol (string) to remove.",
+                        ),
+                    ),
+            )
+        }
+        val portfolioId = resolvePortfolioId(ctx) ?: return AtxFunctionToolResult(result = toJson(mapOf("error" to "no_default_portfolio")))
+        val patched =
+            portfolioNestedResourceService.patchWatchlist(
+                session = ctx.session,
+                portfolioId = portfolioId,
+                quotes = false,
+                addSymbols = null,
+                addEntries = null,
+                removeSymbols = toRemove,
+                dedupe = null,
+                name = null,
+            )
+                ?: return AtxFunctionToolResult(result = toJson(mapOf("error" to "no_watchlist")))
+        return AtxFunctionToolResult(
+            result =
+                toJson(
+                    mapOf(
+                        "ok" to true,
+                        "removed" to toRemove,
+                        "watchlistName" to ((patched["data"] as? Map<*, *>)?.get("name") ?: "watchlist"),
+                        "symbolCount" to (((patched["data"] as? Map<*, *>)?.get("symbols") as? List<*>)?.size ?: 0),
+                    ),
+                ),
+        )
+    }
+
+    private fun parseTickerListFromArgs(args: Map<String, Any?>, max: Int = 20): List<String> {
+        val out = LinkedHashSet<String>()
+        val symRegex = Regex("^[A-Z0-9.\\-]{1,32}$")
+        (args["symbols"] as? List<*>)?.forEach { item ->
+            if (item !is String) {
+                return@forEach
+            }
+            val t = item.trim().uppercase(Locale.ROOT)
+            if (t.isNotEmpty() && symRegex.matches(t)) {
+                out.add(t)
+            }
+        }
+        (args["symbol"] as? String)?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.isNotEmpty() && symRegex.matches(it) }?.let {
+            out.add(it)
+        }
+        (args["ticker"] as? String)?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.isNotEmpty() && symRegex.matches(it) }?.let {
+            out.add(it)
+        }
+        return out.take(max)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun loadWatchlistSnapshotForTool(ctx: AtxFunctionExecutionContext): Map<String, Any?> {
+        val payload = loadWatchlistPayload(ctx)
+        val watchlist = payload["watchlist"] as? Map<String, Any?>
+        if (watchlist == null) {
+            return if (payload.containsKey("error")) payload else mapOf("error" to "no_watchlist")
+        }
+        if (watchlist.containsKey("error")) {
+            return mapOf("error" to watchlist["error"])
+        }
+        val symbolsRaw = watchlist["symbols"] as? List<*> ?: emptyList<Any?>()
+        val upperSyms = ArrayList<String>()
+        for (raw in symbolsRaw) {
+            val row = raw as? Map<*, *> ?: continue
+            val sym = row["symbol"]?.toString()?.trim()?.uppercase(Locale.ROOT).orEmpty()
+            if (sym.isNotEmpty()) {
+                upperSyms.add(sym)
+            }
+        }
+        val liveBySymbol =
+            runCatching { yahooClient.fetchEquityQuoteBatch(upperSyms) }.getOrElse { emptyMap() }
+        val symbols = ArrayList<Map<String, Any?>>()
+        for (raw in symbolsRaw) {
+            val row = raw as? Map<*, *> ?: continue
+            val sym = row["symbol"]?.toString()?.trim()?.uppercase(Locale.ROOT).orEmpty()
+            if (sym.isEmpty()) {
+                continue
+            }
+            val quote = liveBySymbol[sym]
+            val live = (quote?.get("regularMarketPrice") as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0 }
+            val entry = (row["entryPrice"] as? Number)?.toDouble()
+            symbols.add(
+                linkedMapOf(
+                    "symbol" to sym,
+                    "addedAt" to row["addedAt"],
+                    "spotPriceDisplay" to formatUsd2(live),
+                    "targetEntryNotional100xUsdDisplay" to formatTargetEntryNotional100xUsd(live),
+                    "targetEntryNotional100xDisplay" to formatTargetEntryNotional100xDigits(live),
+                    "lineType" to row["lineType"],
+                    "strategy" to row["strategy"],
+                    "quantity" to row["quantity"],
+                    "entryPrice" to entry,
+                    "targetEntryPrice" to entry,
+                    "targetEntryDisplay" to entry?.let { formatUsd2(it) },
+                ).filterValues { it != null },
+            )
+        }
+        return mapOf(
+            "name" to (watchlist["name"] ?: "watchlist"),
+            "symbolCount" to symbols.size,
+            "symbols" to symbols,
+        )
     }
 
     private fun loadWatchlistPayload(ctx: AtxFunctionExecutionContext): Map<String, Any?> {
@@ -462,8 +679,54 @@ class AtxFunctionExecutor(
         return base
     }
 
-    private fun toJson(value: Any?): String {
+    private fun formatMarketQuoteMarkdown(
+        sym: String,
+        q: Map<String, Any?>,
+    ): String {
+        val price =
+            listOf(
+                    q["regularMarketPrice"] as? Number,
+                    q["postMarketPrice"] as? Number,
+                    q["preMarketPrice"] as? Number,
+                )
+                .mapNotNull { it?.toDouble() }
+                .firstOrNull { it > 0.0 }
+        val prev = (q["regularMarketPreviousClose"] as? Number)?.toDouble()
+        val change = (q["regularMarketChange"] as? Number)?.toDouble()
+        val changePct = (q["regularMarketChangePercent"] as? Number)?.toDouble()
+        val lines = ArrayList<String>()
+        lines.add("## $sym Quote")
+        lines.add("")
+        lines.add("**Last:** ${formatUsd2(price)}")
+        if (change != null && change.isFinite() && changePct != null && changePct.isFinite()) {
+            val chSign = if (change >= 0) "+" else ""
+            val pctSign = if (changePct >= 0) "+" else ""
+            lines.add("**Change:** $chSign${String.format(Locale.US, "%.2f", change)} ($pctSign${String.format(Locale.US, "%.2f", changePct)}%)")
+        }
+        lines.add("**Previous close:** ${formatUsd2(prev)}")
+        lines.add("")
+        lines.add("_Market data from Yahoo Finance — delayed._")
+        lines.add("")
+        lines.add("[@citation:market_quote|Yahoo Finance]")
+        return lines.joinToString("\n")
+    }
+
+    /** Whole-dollar digits for tool JSON (no currency symbol). */
+    private fun formatTargetEntryNotional100xDigits(spot: Double?): String {
+        if (spot == null || !spot.isFinite() || spot <= 0) {
+            return "—"
+        }
+        return NumberFormat.getIntegerInstance(Locale.US).format(round(100.0 * spot).toLong())
+    }
+
+    private fun toJson(
+        value: Any?,
+        operation: String? = null,
+    ): String {
         val raw = objectMapper.writeValueAsString(value ?: emptyMap<String, Any?>())
+        if (operation in NO_TRUNCATE_JSON_OPERATIONS) {
+            return raw
+        }
         if (raw.toByteArray(Charsets.UTF_8).size <= MAX_OUTPUT_BYTES) {
             return raw
         }
@@ -482,6 +745,9 @@ class AtxFunctionExecutor(
     companion object {
         private const val MAX_OUTPUT_BYTES = 8 * 1024
         private const val MAX_POSITIONS_RETURNED = 200
+        private const val WATCHLIST_ENTRY_DEFAULT_LINE_TYPE = "Stock"
+        private const val WATCHLIST_ENTRY_DEFAULT_STRATEGY = "balanced"
+        private val NO_TRUNCATE_JSON_OPERATIONS = setOf("watchlist_snapshot", "options_action_scan")
         private const val OPTIONS_ACTION_SCAN_DISCLAIMER =
             "Not financial advice. This is for informational purposes only. Past performance does not guarantee future results."
     }

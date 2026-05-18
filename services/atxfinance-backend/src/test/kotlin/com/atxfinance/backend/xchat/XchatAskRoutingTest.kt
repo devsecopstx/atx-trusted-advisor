@@ -1,5 +1,6 @@
 package com.atxfinance.backend.xchat
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -36,5 +37,13 @@ class XchatAskRoutingTest {
         assertTrue(XchatAskRouting.isShowWatchlistIntent("how my watchlist"))
         assertTrue(XchatAskRouting.isShowWatchlistIntent("how is my watchlist"))
         assertTrue(XchatAskRouting.isShowWatchlistIntent("what's on my watchlist"))
+    }
+
+    @Test
+    fun `direct ticker quote intent resolves symbol`() {
+        assertTrue(XchatAskRouting.isDirectTickerQuoteIntent("TSLA quote"))
+        assertEquals("TSLA", XchatAskRouting.extractDirectQuoteSymbol("TSLA quote"))
+        assertEquals("NVDA", XchatAskRouting.extractDirectQuoteSymbol("quote for NVDA"))
+        assertFalse(XchatAskRouting.isDirectTickerQuoteIntent("show my watchlist"))
     }
 }

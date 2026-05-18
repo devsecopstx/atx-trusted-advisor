@@ -3,6 +3,7 @@
  * Policy: atx-docs/xchat/context-routing-multi-agent-policy.md
  */
 
+import { extractTickerCandidates } from "@/modules/xchat/multi-source-context-orchestrator";
 import { shouldRunDirectOptionsScan } from "@/modules/xchat/options-scan-ask-routing";
 
 /** When true, persona multi-agent model may run with parallelism + optional reasoningEffort. */
@@ -156,6 +157,68 @@ export function isShowWatchlistIntent(message: string): boolean {
     /\b(show|list|view|see|display|how)\s+(me\s+)?(my|our)\s+watchlist\b/.test(normalized) ||
     /\bwhat(?:'s| is)\s+on\s+(my|our)\s+watchlist\b/.test(normalized)
   );
+}
+
+const DIRECT_QUOTE_TICKER = /^[a-z0-9.^-]{1,10}$/;
+
+/**
+ * Narrow NL for a single-symbol live quote (e.g. "TSLA quote") — routes to deterministic Yahoo on Next.
+ */
+export function isDirectTickerQuoteIntent(message: string): boolean {
+  const normalized = normalizeXchatUserMessageForRouting(message);
+  if (!normalized || normalized.length > 120) {
+    return false;
+  }
+  if (
+    /\b(watchlist|portfolio|holdings?|options?\s+chain|strike|expir|iron\s+condor|covered\s+call)\b/.test(
+      normalized
+    )
+  ) {
+    return false;
+  }
+  if (
+    /^[a-z0-9.^-]{1,10}\s+quote\b/.test(normalized) ||
+    /\bquote\s+(for|on)\s+[a-z0-9.^-]{1,10}\b/.test(normalized) ||
+    /\b(?:price|quote)\s+for\s+[a-z0-9.^-]{1,10}\b/.test(normalized) ||
+    /\b(?:get|show|what(?:'s| is))\s+(?:the\s+)?(?:live\s+)?quote\s+(?:for|on)\s+[a-z0-9.^-]{1,10}\b/.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+  if (normalized.length <= 96 && /\bquote\b/.test(normalized)) {
+    const tickers = extractTickerCandidates(message, 2).filter((t) => t !== "QUOTE" && t !== "PRICE");
+    return tickers.length === 1;
+  }
+  return false;
+}
+
+/** Resolves ticker for {@link isDirectTickerQuoteIntent} messages. */
+export function extractDirectQuoteSymbol(message: string): string | undefined {
+  if (!isDirectTickerQuoteIntent(message)) {
+    return undefined;
+  }
+  const normalized = normalizeXchatUserMessageForRouting(message);
+  const lead = normalized.match(/^([a-z0-9.^-]{1,10})\s+quote\b/);
+  if (lead?.[1] && DIRECT_QUOTE_TICKER.test(lead[1])) {
+    return lead[1].toUpperCase();
+  }
+  const forSym = normalized.match(/\bquote\s+(?:for|on)\s+([a-z0-9.^-]{1,10})\b/);
+  if (forSym?.[1] && DIRECT_QUOTE_TICKER.test(forSym[1])) {
+    return forSym[1].toUpperCase();
+  }
+  const priceFor = normalized.match(/\b(?:price|quote)\s+for\s+([a-z0-9.^-]{1,10})\b/);
+  if (priceFor?.[1] && DIRECT_QUOTE_TICKER.test(priceFor[1])) {
+    return priceFor[1].toUpperCase();
+  }
+  const getQuote = normalized.match(
+    /\b(?:get|show|what(?:'s| is))\s+(?:the\s+)?(?:live\s+)?quote\s+(?:for|on)\s+([a-z0-9.^-]{1,10})\b/
+  );
+  if (getQuote?.[1] && DIRECT_QUOTE_TICKER.test(getQuote[1])) {
+    return getQuote[1].toUpperCase();
+  }
+  const tickers = extractTickerCandidates(message, 2).filter((t) => t !== "QUOTE" && t !== "PRICE");
+  return tickers.length === 1 ? tickers[0] : undefined;
 }
 
 export type WatchlistPortfolioSlotCollectionResult = {

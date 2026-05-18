@@ -1,6 +1,9 @@
 import { shouldProxyPortfolioRequestsToBackend } from "@/lib/backend-bff";
 import { shouldRunDirectOptionsScan } from "@/modules/xchat/options-scan-ask-routing";
-import { isShowWatchlistIntent } from "@/modules/xchat/xchat-ask-routing";
+import {
+    isDirectTickerQuoteIntent,
+    isShowWatchlistIntent
+} from "@/modules/xchat/xchat-ask-routing";
 
 /**
  * Live token SSE for `POST /api/xchat/ask` when `Accept` includes `text/event-stream`.
@@ -64,9 +67,13 @@ export function shouldSkipXchatStreamBffForWatchlistShowMessage(message: string)
   return isShowWatchlistIntent(message);
 }
 
-/** Keep deterministic desk paths on Next (Yahoo `options_scan`, watchlist live quotes). */
+/** Keep deterministic desk paths on Next (`options_scan`, watchlist, ticker quotes via yahoo-finance2). */
 export function shouldSkipXchatStreamBffForDeterministicDeskMessage(message: string): boolean {
-  return isShowWatchlistIntent(message) || shouldRunDirectOptionsScan(message);
+  return (
+    isShowWatchlistIntent(message) ||
+    shouldRunDirectOptionsScan(message) ||
+    isDirectTickerQuoteIntent(message)
+  );
 }
 
 export function parseXchatStreamRequestMessage(bodyText: string): string {

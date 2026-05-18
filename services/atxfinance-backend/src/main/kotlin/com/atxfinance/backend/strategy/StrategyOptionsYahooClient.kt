@@ -131,8 +131,130 @@ class StrategyOptionsYahooClient(
     }
 
     /**
-     * Batch spot quotes via Yahoo v7 `finance/quote` (one HTTP round-trip).
-     * Used by xChat watchlist table when per-symbol options-chain quotes fail.
+     * Single-symbol quote for xChat `market_quote` / `yahoo_finance` (Redis cache first, then v7 quote API).
+     */
+    fun fetchEquityQuote(symbol: String): Map<String, Any?>? {
+        val sym = symbol.trim().uppercase()
+        if (sym.isEmpty()) {
+            return null
+        }
+        val cacheKey = "xchat:market_quote:$sym"
+        val redis = redisProvider.ifAvailable
+        val props = propsProvider.ifAvailable
+        if (redis != null) {
+            try {
+                val cached = redis.opsForValue().get(cacheKey)
+                if (!cached.isNullOrBlank()) {
+                    val node = objectMapper.readTree(cached)
+                    val price =
+                        sequenceOf(
+                                node.path("price"),
+                                node.path("regularMarketPrice"),
+                            )
+                            .mapNotNull { n ->
+                                val d = n.asDouble(Double.NaN)
+                                d.takeIf { it.isFinite() && it > 0 }
+                            }
+                            .firstOrNull()
+                    if (price != null) {
+                        return mapOf(
+                            "symbol" to sym,
+                            "regularMarketPrice" to price,
+                            "regularMarketPreviousClose" to node.path("previousClose").asDouble(Double.NaN).takeIf { it.isFinite() },
+                            "regularMarketChange" to node.path("change").asDouble(Double.NaN).takeIf { it.isFinite() },
+                            "regularMarketChangePercent" to node.path("changePercent").asDouble(Double.NaN).takeIf { it.isFinite() },
+                            "currency" to node.path("currency").asText(""),
+                            "source" to "yahoo-finance2",
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                /* miss */
+            }
+        }
+
+        val resolved =
+            fetchEquityQuoteFromChart(sym)
+                ?: fetchEquityQuoteBatch(listOf(sym))[sym]
+                ?: fetchUnderlyingQuote(sym)
+                ?: return null
+
+        if (redis != null && props != null) {
+            val ttl =
+                if (UsEquitiesRegularSession.isRegularSessionLikelyOpen(Instant.now())) {
+                    props.redis.optionChainCacheTtlOpenSeconds
+                } else {
+                    props.redis.optionChainCacheTtlClosedSeconds
+                }.coerceIn(15L, 7200L)
+            val price = (resolved["regularMarketPrice"] as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0 }
+            if (price != null) {
+                val cacheDoc =
+                    mapOf(
+                        "symbol" to sym,
+                        "price" to price,
+                        "previousClose" to (resolved["regularMarketPreviousClose"] as? Number)?.toDouble(),
+                        "change" to (resolved["regularMarketChange"] as? Number)?.toDouble(),
+                        "changePercent" to (resolved["regularMarketChangePercent"] as? Number)?.toDouble(),
+                        "currency" to resolved["currency"],
+                        "source" to "yahoo-finance2",
+                    )
+                try {
+                    redis.opsForValue().set(cacheKey, objectMapper.writeValueAsString(cacheDoc), Duration.ofSeconds(ttl))
+                } catch (_: Exception) {
+                    /* non-fatal */
+                }
+            }
+        }
+        return resolved
+    }
+
+    /**
+     * Spot quote via Yahoo v8 `finance/chart` (v7 `finance/quote` often returns Unauthorized without crumb).
+     */
+    fun fetchEquityQuoteFromChart(symbol: String): Map<String, Any?>? {
+        val sym = symbol.trim().uppercase()
+        if (sym.isEmpty()) {
+            return null
+        }
+        val url = "https://query1.finance.yahoo.com/v8/finance/chart/$sym?interval=1d&range=1d"
+        val body = fetchQuoteHttp(url) ?: return null
+        return try {
+            val meta = objectMapper.readTree(body).path("chart").path("result").get(0)?.path("meta") ?: return null
+            val price =
+                meta.path("regularMarketPrice").asDouble(Double.NaN).takeIf { it.isFinite() && it > 0 }
+                    ?: return null
+            val prev =
+                meta.path("chartPreviousClose").asDouble(Double.NaN).takeIf { it.isFinite() && it > 0 }
+                    ?: meta.path("previousClose").asDouble(Double.NaN).takeIf { it.isFinite() && it > 0 }
+            val change =
+                if (prev != null) {
+                    price - prev
+                } else {
+                    null
+                }
+            val changePct =
+                if (prev != null && prev > 0 && change != null) {
+                    (change / prev) * 100.0
+                } else {
+                    null
+                }
+            mapOf(
+                "symbol" to meta.path("symbol").asText(sym),
+                "shortName" to meta.path("shortName").asText(""),
+                "regularMarketPrice" to price,
+                "regularMarketPreviousClose" to prev,
+                "regularMarketChange" to change,
+                "regularMarketChangePercent" to changePct,
+                "currency" to meta.path("currency").asText("USD"),
+                "source" to "yahoo-finance2",
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Batch spot quotes (chart API per symbol — aligns with Next `yahoo-finance2` reliability).
      */
     fun fetchEquityQuoteBatch(symbols: Collection<String>): Map<String, Map<String, Any?>> {
         val uniq =
@@ -143,51 +265,11 @@ class StrategyOptionsYahooClient(
         if (uniq.isEmpty()) {
             return emptyMap()
         }
-        val joined = uniq.joinToString(",")
-        val url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=$joined"
-        val body =
-            fetchQuoteHttp(url) ?: return emptyMap()
-        return try {
-            val root = objectMapper.readTree(body)
-            val results = root.path("quoteResponse").path("result")
-            if (!results.isArray) {
-                return emptyMap()
-            }
-            val out = LinkedHashMap<String, Map<String, Any?>>()
-            for (node in results) {
-                val sym = node.path("symbol").asText("").trim().uppercase()
-                if (sym.isEmpty()) {
-                    continue
-                }
-                val price =
-                    sequenceOf(
-                            node.path("regularMarketPrice"),
-                            node.path("postMarketPrice"),
-                            node.path("preMarketPrice"),
-                        )
-                        .mapNotNull { n ->
-                            val d = n.asDouble(Double.NaN)
-                            d.takeIf { it.isFinite() && it > 0 }
-                        }
-                        .firstOrNull()
-                if (price == null) {
-                    continue
-                }
-                val change = node.path("regularMarketChange").asDouble(Double.NaN).takeIf { it.isFinite() }
-                val changePct =
-                    node.path("regularMarketChangePercent").asDouble(Double.NaN).takeIf { it.isFinite() }
-                out[sym] =
-                    mapOf(
-                        "symbol" to sym,
-                        "regularMarketPrice" to price,
-                        "regularMarketChange" to (change ?: 0.0),
-                        "regularMarketChangePercent" to (changePct ?: 0.0),
-                    )
-            }
-            out
-        } catch (_: Exception) {
-            emptyMap()
+        val out = LinkedHashMap<String, Map<String, Any?>>()
+        for (sym in uniq) {
+            fetchEquityQuoteFromChart(sym)?.let { out[sym] = it }
         }
+        return out
     }
 
     private fun fetchQuoteHttp(url: String): String? {
@@ -233,6 +315,8 @@ class StrategyOptionsYahooClient(
         return mapOf(
             "symbol" to q.path("symbol").asText(u),
             "regularMarketPrice" to q.path("regularMarketPrice").asDouble(0.0),
+            "postMarketPrice" to q.path("postMarketPrice").asDouble(0.0),
+            "preMarketPrice" to q.path("preMarketPrice").asDouble(0.0),
             "regularMarketPreviousClose" to q.path("regularMarketPreviousClose").asDouble(0.0),
             "regularMarketChange" to q.path("regularMarketChange").asDouble(0.0),
             "regularMarketChangePercent" to q.path("regularMarketChangePercent").asDouble(0.0),

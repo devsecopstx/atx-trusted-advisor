@@ -97,6 +97,13 @@ const watchlistLiveQuoteMocks = vi.hoisted(() => ({
   resolveLiveQuotesForWatchlistSymbols: vi.fn()
 }));
 
+const marketDataMocks = vi.hoisted(() => ({
+  getYahooMarketQuote: vi.fn(),
+  formatDirectMarketQuoteMarkdown: vi.fn((snap: { symbol: string; price?: number }) =>
+    `## ${snap.symbol}\n\n**Last:** $${snap.price}`
+  )
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
@@ -141,6 +148,14 @@ vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
 vi.mock("@/modules/watchlist/watchlist-live-quotes", () => ({
   resolveLiveQuotesForWatchlistSymbols: watchlistLiveQuoteMocks.resolveLiveQuotesForWatchlistSymbols
 }));
+vi.mock("@/modules/xchat/market-data", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/market-data")>();
+  return {
+    ...actual,
+    getYahooMarketQuote: marketDataMocks.getYahooMarketQuote,
+    formatDirectMarketQuoteMarkdown: marketDataMocks.formatDirectMarketQuoteMarkdown
+  };
+});
 
 vi.mock("@/lib/xai-default-persona-model", () => ({
   getDefaultPersonaChatModelId: () => "grok-4-1-fast-reasoning"
@@ -2152,6 +2167,48 @@ describe("xchat ask route collection retrieval", () => {
       expect(payload.data?.response ?? "").toContain(
         '[Open TSLA](/xoptions?symbol=TSLA&action=build&portfolioId=507f1f77bcf86cd799439044 "Open xOptions for TSLA")'
       );
+    } finally {
+      createSpy.mockRestore();
+    }
+  });
+
+  it("returns deterministic TSLA quote without xAI tool loop", async () => {
+    const createSpy = vi.spyOn(toolExecutorModule, "createXfinanceToolExecutor");
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atx_function" }, { type: "yahoo_finance" }]
+        }
+      })
+    );
+    marketDataMocks.getYahooMarketQuote.mockResolvedValueOnce({
+      symbol: "TSLA",
+      price: 411.44,
+      previousClose: 422.24,
+      change: -10.8,
+      changePercent: -2.56,
+      source: "yahoo-finance2",
+      disclaimer: "delayed"
+    });
+    try {
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: "TSLA quote" })
+        })
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as { data?: { response?: string; model?: string } };
+      expect(payload.data?.model).toBe("market_quote_direct");
+      expect(payload.data?.response ?? "").toContain("TSLA");
+      expect(payload.data?.response ?? "").toContain("411.44");
+      expect(marketDataMocks.getYahooMarketQuote).toHaveBeenCalledWith({ symbol: "TSLA" });
+      expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
     } finally {
       createSpy.mockRestore();
     }

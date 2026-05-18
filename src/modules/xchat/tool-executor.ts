@@ -89,9 +89,13 @@ const CACHEABLE_OPERATIONS = new Set(["account_health"]);
 
 /**
  * Skip byte-cap truncation — it can slice UTF-8 mid-sequence and yields invalid JSON.
- * `options_action_scan` is parsed by `/api/xchat/ask` (direct “scan my options” path); rows are already capped in `buildOptionsActionReport`.
+ * `options_action_scan` / `watchlist_snapshot` are parsed by `/api/xchat/ask` direct paths; options rows are capped in `buildOptionsActionReport`.
  */
-const NO_TRUNCATE_JSON_OPERATIONS = new Set(["options_action_scan", "monte_carlo_tail_risk"]);
+const NO_TRUNCATE_JSON_OPERATIONS = new Set([
+  "options_action_scan",
+  "monte_carlo_tail_risk",
+  "watchlist_snapshot"
+]);
 
 /**
  * Creates a horizontal bar chart showing percentage allocation per position

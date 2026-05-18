@@ -44,3 +44,17 @@ export const STANDALONE_OUTPUT_FILE_TRACING_INCLUDES: Readonly<
 > = Object.freeze({
   "/api/reports/options-scan": Object.freeze(["./services/report-service/**"])
 });
+
+/**
+ * Packages that must stay external on the Node server bundle (not traced by Turbopack).
+ * `yahoo-finance2@3` pulls `@deno/shim-deno` → `child_process`, which breaks App Route /
+ * RSC builds when bundled.
+ */
+export const SERVER_EXTERNAL_PACKAGES = Object.freeze([
+  "mongodb",
+  "redis",
+  "yahoo-finance2"
+] as const);
+
+/** Repo-relative path aliased over `@deno/shim-deno` in `next.config.ts` (Turbopack). */
+export const DENO_SHIM_NODE_STUB_RELATIVE = "./src/lib/deno-shim-node-stub.ts" as const;

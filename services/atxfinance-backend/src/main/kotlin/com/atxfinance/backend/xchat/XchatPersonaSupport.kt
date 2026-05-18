@@ -85,7 +85,7 @@ object XchatPersonaSupport {
                                 mapOf(
                                     "type" to "string",
                                     "description" to
-                                        "portfolio_summary | user_workspace_summary | watchlist_snapshot | positions_snapshot | options_action_scan | price_alert_manage",
+                                        "portfolio_summary | user_workspace_summary | watchlist_snapshot | watchlist_add_symbols | watchlist_remove_symbols | positions_snapshot | market_quote | options_action_scan | price_alert_manage",
                                 ),
                             "priceAlertOp" to
                                 mapOf(

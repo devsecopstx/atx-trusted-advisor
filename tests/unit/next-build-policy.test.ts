@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DENO_SHIM_NODE_STUB_RELATIVE,
+  SERVER_EXTERNAL_PACKAGES,
   STANDALONE_OUTPUT_FILE_TRACING_INCLUDES,
   buildDevOnlyAllowedOrigins
 } from "@/lib/next-build-policy";
@@ -18,6 +20,17 @@ describe("buildDevOnlyAllowedOrigins", () => {
 
   it("treats casing strictly — 'Production' is not the canonical NODE_ENV value", () => {
     expect(buildDevOnlyAllowedOrigins("Production")).toEqual(["127.0.0.1", "localhost"]);
+  });
+});
+
+describe("SERVER_EXTERNAL_PACKAGES", () => {
+  it("keeps yahoo-finance2 external; deno shim is aliased to the Node stub", () => {
+    expect(SERVER_EXTERNAL_PACKAGES).toContain("yahoo-finance2");
+    expect(SERVER_EXTERNAL_PACKAGES).not.toContain("@deno/shim-deno");
+    expect(SERVER_EXTERNAL_PACKAGES).toContain("mongodb");
+    expect(SERVER_EXTERNAL_PACKAGES).toContain("redis");
+    expect(DENO_SHIM_NODE_STUB_RELATIVE).toMatch(/deno-shim-node-stub\.ts$/);
+    expect(Object.isFrozen(SERVER_EXTERNAL_PACKAGES)).toBe(true);
   });
 });
 

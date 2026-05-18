@@ -139,10 +139,12 @@ class XaiToolLoopService(
                     ),
                 )
                 val output =
-                    if (executorResult.error != null) {
+                    if (executorResult.result.isNotBlank()) {
+                        executorResult.result
+                    } else if (executorResult.error != null) {
                         objectMapper.writeValueAsString(mapOf("error" to executorResult.error))
                     } else {
-                        executorResult.result
+                        "{}"
                     }
                 toolResults.add(
                     mapOf(
