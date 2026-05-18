@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
     getYahooMarketQuote,
-    MarketQuoteUnavailableError
+    MarketQuoteUnavailableError,
+    type MarketQuoteSnapshot
 } from "@/modules/xchat/market-data";
 
 const batchMocks = vi.hoisted(() => ({
@@ -13,7 +14,7 @@ const batchMocks = vi.hoisted(() => ({
 }));
 
 const redisMocks = vi.hoisted(() => ({
-  tryGetRedisMarketQuote: vi.fn(async () => null)
+  tryGetRedisMarketQuote: vi.fn(async (): Promise<MarketQuoteSnapshot | null> => null)
 }));
 
 vi.mock("@/modules/watchlist/yahoo-batch-quotes", () => ({
@@ -47,7 +48,8 @@ describe("getYahooMarketQuote", () => {
     redisMocks.tryGetRedisMarketQuote.mockResolvedValueOnce({
       symbol: "AAPL",
       price: 190.5,
-      source: "yahoo-finance2"
+      source: "yahoo-finance2",
+      disclaimer: "test"
     });
     const snap = await getYahooMarketQuote({ symbol: "AAPL" });
     expect(snap.price).toBe(190.5);

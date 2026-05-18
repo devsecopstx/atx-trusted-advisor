@@ -15,7 +15,8 @@ describe("postProcessWatchlistMarkdown", () => {
             price: 200,
             change: 2,
             changePercent: 1,
-            source: "yahoo-finance2"
+            source: "yahoo-finance2",
+            disclaimer: "test"
           }
         ]
       ])
@@ -29,7 +30,8 @@ describe("postProcessWatchlistMarkdown", () => {
             price: 200,
             change: 2,
             changePercent: 1,
-            source: "yahoo-finance2" as const
+            source: "yahoo-finance2" as const,
+            disclaimer: "test"
           }
         ]
       ])
@@ -76,7 +78,8 @@ describe("postProcessWatchlistMarkdown", () => {
             price: 422.24,
             change: 1.2,
             changePercent: 0.3,
-            source: "yahoo-finance2"
+            source: "yahoo-finance2",
+            disclaimer: "test"
           }
         ]
       ])

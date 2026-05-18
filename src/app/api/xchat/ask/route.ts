@@ -1754,8 +1754,7 @@ export async function POST(request: Request) {
                 maxDte: scanArgs?.maxDte
               },
               resultHash: buildSha256Hex(scanResult.result),
-              durationMs: scanDurationMs,
-              cacheHit: false
+              durationMs: scanDurationMs
             }
           ]
         })
