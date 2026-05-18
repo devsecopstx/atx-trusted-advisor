@@ -1,3 +1,4 @@
+import { AppQueryProvider } from "@/app/ui/app-query-provider";
 import { PwaBootstrapClient } from "@/app/ui/pwa-bootstrap-client";
 import { TenantBrandingProvider } from "@/app/ui/tenant-branding-context";
 import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
@@ -95,12 +96,14 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       </head>
       <body>
         <FullBleedBackground />
-        <TenantBrandingProvider value={tenantShellBranding}>
-          {ga4MeasurementId ? <Ga4Analytics measurementId={ga4MeasurementId} /> : null}
-          <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} userTheme={userUiTheme} />
-          <PwaBootstrapClient />
-          {children}
-        </TenantBrandingProvider>
+        <AppQueryProvider>
+          <TenantBrandingProvider value={tenantShellBranding}>
+            {ga4MeasurementId ? <Ga4Analytics measurementId={ga4MeasurementId} /> : null}
+            <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} userTheme={userUiTheme} />
+            <PwaBootstrapClient />
+            {children}
+          </TenantBrandingProvider>
+        </AppQueryProvider>
       </body>
     </html>
   );

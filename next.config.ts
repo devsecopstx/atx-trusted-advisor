@@ -111,4 +111,12 @@ const nextConfig: NextConfig = {
   }
 };
 
-export default nextConfig;
+async function buildNextConfig(): Promise<NextConfig> {
+  if (process.env.ANALYZE === "true") {
+    const { default: bundleAnalyzer } = await import("@next/bundle-analyzer");
+    return bundleAnalyzer({ enabled: true })(nextConfig);
+  }
+  return nextConfig;
+}
+
+export default buildNextConfig();

@@ -9,7 +9,7 @@ import { getMongoConnectionLabel } from "@/lib/env";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import { canCreateStrategyJobFromApp, isGlobalAdmin } from "@/modules/identity/authorization";
 import { GlobalFooter } from "../ui/global-footer";
-import "../xchat/xchat.css";
+import "../xchat/xchat-shell.css";
 import { AdminLayoutShell } from "./ui/admin-layout-shell";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 import { AdminShellThemeLock } from "./ui/admin-shell-theme-lock";

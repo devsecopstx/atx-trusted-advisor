@@ -497,16 +497,26 @@ export async function ensurePortfolioIndexes(): Promise<void> {
 
 async function createAccessRequestIndexes(): Promise<void> {
   const db = await getDb();
-  await db.collection<AccessRequest>(collections.accessRequests).createIndex(
-    { userId: 1, requestedRole: 1 },
-    {
-      unique: true,
-      name: ACCESS_REQUEST_ACTIONABLE_USER_ROLE_UNIQ,
-      partialFilterExpression: {
-        status: { $in: [...ACTIONABLE_ACCESS_REQUEST_STATUSES] }
+  await Promise.all([
+    db.collection<AccessRequest>(collections.accessRequests).createIndex(
+      { userId: 1, requestedRole: 1 },
+      {
+        unique: true,
+        name: ACCESS_REQUEST_ACTIONABLE_USER_ROLE_UNIQ,
+        partialFilterExpression: {
+          status: { $in: [...ACTIONABLE_ACCESS_REQUEST_STATUSES] }
+        }
       }
-    }
-  );
+    ),
+    db.collection<AccessRequest>(collections.accessRequests).createIndex(
+      { status: 1, requestedAt: -1 },
+      { name: "idx_access_requests_status_requestedAt_desc" }
+    ),
+    db.collection<AccessRequest>(collections.accessRequests).createIndex(
+      { requestedAt: -1 },
+      { name: "idx_access_requests_requestedAt_desc" }
+    )
+  ]);
 }
 
 export async function ensureAccessRequestIndexes(): Promise<void> {

@@ -5,8 +5,8 @@ import type { ReactNode } from "react";
 import "@/app/portfolios/portfolios-dashboard.css";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
-/** xChat composer, thread, and workspace rail surfaces. */
-import "./xchat.css";
+/** Layout, plans guest, workspace rail — thread/composer CSS loads with conversation mount. */
+import "./xchat-shell.css";
 
 /** Avoid stale RSC/HTML at CDN/LB after deploys; footer embeds APP_VERSION. */
 export const dynamic = "force-dynamic";

@@ -5,7 +5,7 @@ import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
 /** Workspace rail (`WorkspaceProductSidebar`) — same glyph/sidebar rules as xChat layout */
 import "@/app/portfolios/portfolios-dashboard.css";
-import "../xchat/xchat.css";
+import "../xchat/xchat-shell.css";
 import "./xoptions.css";
 
 export const metadata: Metadata = {

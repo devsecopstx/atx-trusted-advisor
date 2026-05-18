@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
 
-import "../xchat/xchat.css";
+import "../xchat/xchat-shell.css";
 
 export const metadata: Metadata = {
   title: "Account"

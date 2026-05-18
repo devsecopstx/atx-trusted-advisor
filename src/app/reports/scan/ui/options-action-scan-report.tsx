@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  QueryClient,
-  QueryClientProvider,
-  useMutation,
-  useQuery,
-  useQueryClient
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import Link from "next/link";
@@ -1250,22 +1244,7 @@ function ReportTable(props: {
 }
 
 export function OptionsActionScanReport(props: OptionsActionScanReportProps) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: Infinity,
-            gcTime: 10 * 60 * 1000
-          }
-        }
-      })
-  );
-  return (
-    <QueryClientProvider client={queryClient}>
-      <OptionsActionScanReportInner {...props} />
-    </QueryClientProvider>
-  );
+  return <OptionsActionScanReportInner {...props} />;
 }
 
 function SortTh(props: {

@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import { VirtualizedCrudTable } from "@/app/admin/ui/virtualized-crud-table";
 import { parseJson } from "@/app/admin/ui/http";
 
 type LoginAuditRow = {
@@ -218,8 +219,15 @@ export function LoginAuditConsole() {
 
       <p className="text-sm text-[var(--xf-text-muted)]">{status}</p>
 
-      <div className="overflow-x-auto rounded-lg border border-[var(--xf-border-subtle)]">
-        <table className="w-full min-w-[960px] border-collapse text-left text-xs">
+      <VirtualizedCrudTable
+        columnCount={6}
+        estimateRowHeightPx={36}
+        maxHeight="min(70vh, 32rem)"
+        rows={rows}
+        tableClassName="w-full min-w-[960px] border-collapse text-left text-xs font-mono text-[var(--xf-text-secondary)]"
+        virtualizeMinRows={25}
+        wrapClassName="overflow-x-auto rounded-lg border border-[var(--xf-border-subtle)]"
+        header={
           <thead className="bg-[var(--xf-surface-900)] font-mono uppercase tracking-wide text-[var(--xf-text-muted)]">
             <tr>
               <th className="border-b border-[var(--xf-border-subtle)] px-2 py-2">Time (UTC)</th>
@@ -230,30 +238,30 @@ export function LoginAuditConsole() {
               <th className="border-b border-[var(--xf-border-subtle)] px-2 py-2">User / X</th>
             </tr>
           </thead>
-          <tbody className="font-mono text-[var(--xf-text-secondary)]">
-            {rows.map((row) => (
-              <tr key={row._id ?? row.createdAt + row.clientIp} className="border-b border-[var(--xf-border-subtle)]">
-                <td className="whitespace-nowrap px-2 py-1">{row.createdAt}</td>
-                <td
-                  className={
-                    row.outcome === "success" ? "text-[var(--xf-gain-green)]" : "text-red-400"
-                  }
-                >
-                  {row.outcome}
-                </td>
-                <td className="px-2 py-1">{row.provider}</td>
-                <td className="max-w-[200px] truncate px-2 py-1" title={row.errorCode}>
-                  {row.errorCode ?? "—"}
-                </td>
-                <td className="whitespace-nowrap px-2 py-1">{row.clientIp ?? "—"}</td>
-                <td className="max-w-[280px] truncate px-2 py-1" title={[row.email, row.username, row.userId].filter(Boolean).join(" · ")}>
-                  {[row.email, row.username, row.userId].filter(Boolean).join(" · ") || "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        }
+        renderRow={(row) => (
+          <tr
+            key={row._id ?? row.createdAt + row.clientIp}
+            className="border-b border-[var(--xf-border-subtle)]"
+          >
+            <td className="whitespace-nowrap px-2 py-1">{row.createdAt}</td>
+            <td className={row.outcome === "success" ? "text-[var(--xf-gain-green)]" : "text-red-400"}>
+              {row.outcome}
+            </td>
+            <td className="px-2 py-1">{row.provider}</td>
+            <td className="max-w-[200px] truncate px-2 py-1" title={row.errorCode}>
+              {row.errorCode ?? "—"}
+            </td>
+            <td className="whitespace-nowrap px-2 py-1">{row.clientIp ?? "—"}</td>
+            <td
+              className="max-w-[280px] truncate px-2 py-1"
+              title={[row.email, row.username, row.userId].filter(Boolean).join(" · ")}
+            >
+              {[row.email, row.username, row.userId].filter(Boolean).join(" · ") || "—"}
+            </td>
+          </tr>
+        )}
+      />
     </section>
   );
 }

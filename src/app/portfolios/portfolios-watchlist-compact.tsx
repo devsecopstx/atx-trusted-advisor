@@ -1,7 +1,7 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
 
 import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
@@ -9,19 +9,10 @@ import {
     buildXoptionsStrategyBuilderHref,
     isValidXoptionsUnderlyingSymbol
 } from "@/lib/xoptions/xoptions-desk-deep-link";
+import { watchlistHotQueryKeys } from "@/lib/react-query/query-keys";
+import { fetchWatchlistHotCompact, type WatchlistHotRow } from "@/lib/react-query/watchlist-hot-api";
 
 import type { PortfoliosWorkspaceDeskHints } from "./portfolios-workspace-client";
-
-type HotRow = {
-  symbol: string;
-  spot: number | null;
-  /** Underlying regular session % change (Yahoo). */
-  changePercent: number | null;
-  impliedVolatilityPercent: number;
-  openInterest: number;
-  strike: number;
-  contractType: "call" | "put";
-};
 
 function formatSpotUsd(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) {
@@ -77,68 +68,21 @@ export function PortfoliosWatchlistCompact({
   refreshKey = 0,
   onOpenFullWatchlist
 }: Props) {
-  const [rows, setRows] = useState<HotRow[]>([]);
-  const [scanned, setScanned] = useState(0);
-  const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const hotQuery = useQuery({
+    queryKey: [...watchlistHotQueryKeys.compact(portfolioId, 5), String(refreshKey)],
+    queryFn: () => fetchWatchlistHotCompact(portfolioId, 5),
+    staleTime: 45_000
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setErr(null);
-    try {
-      const qs = new URLSearchParams({ limit: "5" });
-      if (portfolioId) {
-        qs.set("portfolioId", portfolioId);
-      }
-      const res = await fetch(`/api/app-user/find-options/watchlist-hot?${qs.toString()}`, {
-        credentials: "include"
-      });
-      const body = (await res.json().catch(() => ({}))) as {
-        data?: { rows?: HotRow[]; scanned?: number };
-        error?: string;
-      };
-      if (!res.ok) {
-        setErr(body.error ?? "Could not load watchlist scan");
-        setRows([]);
-        setScanned(0);
-        return;
-      }
-      const r = body.data?.rows ?? [];
-      const normalized: HotRow[] = r
-        .filter(
-          (x) =>
-            typeof x?.symbol === "string" &&
-            (x.spot === null || x.spot === undefined || typeof x.spot === "number") &&
-            (x.changePercent === null || x.changePercent === undefined || typeof x.changePercent === "number") &&
-            typeof x?.impliedVolatilityPercent === "number" &&
-            typeof x?.openInterest === "number" &&
-            typeof x?.strike === "number" &&
-            (x.contractType === "call" || x.contractType === "put")
-        )
-        .map((x) => ({
-          symbol: x.symbol,
-          spot: typeof x.spot === "number" && Number.isFinite(x.spot) ? x.spot : null,
-          changePercent:
-            typeof x.changePercent === "number" && Number.isFinite(x.changePercent) ? x.changePercent : null,
-          impliedVolatilityPercent: x.impliedVolatilityPercent,
-          openInterest: x.openInterest,
-          strike: x.strike,
-          contractType: x.contractType
-        }));
-      setRows(normalized);
-      setScanned(typeof body.data?.scanned === "number" ? body.data.scanned : 0);
-    } catch {
-      setErr("Network error");
-      setRows([]);
-      setScanned(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [portfolioId]);
-
-  useEffect(() => {
-    void load();
-  }, [load, refreshKey]);
+  const rows: WatchlistHotRow[] = hotQuery.data?.rows ?? [];
+  const scanned = hotQuery.data?.scanned ?? 0;
+  const loading = hotQuery.isPending && !hotQuery.data;
+  const err =
+    hotQuery.error instanceof Error
+      ? hotQuery.error.message
+      : hotQuery.isError
+        ? "Network error"
+        : null;
 
   const watchlistHref =
     portfolioId !== null

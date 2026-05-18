@@ -4,6 +4,7 @@ import Image from "next/image";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { VirtualizedCrudTable } from "@/app/admin/ui/virtualized-crud-table";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { ACCESS_REQUEST_PLAN_OPTIONS } from "@/lib/access-request-plans";
@@ -445,8 +446,10 @@ export function AccessRequestsConsole() {
 
       <article className="surface-card xf-widget section-card">
         <h3>Requests ({statusFilter}) — {accessRequests.length}</h3>
-        <div className="crud-table-wrap">
-          <table className="crud-table">
+        <VirtualizedCrudTable
+          columnCount={9}
+          rows={accessRequests}
+          header={
             <thead>
               <tr>
                 <th>User</th>
@@ -460,15 +463,15 @@ export function AccessRequestsConsole() {
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {accessRequests.map((item) => {
-                const days = daysUntilExpiry(item.requestedAt);
-                const slaUrgent = days <= 2 && isActionable(item.status);
-                const primaryLabel = formatUserFacingIdentityLabel(item.user, item.userId);
-                const avatarLetter =
-                  primaryLabel.replace(/^@/, "").trim().slice(0, 1).toUpperCase() || "?";
-                return (
-                  <tr key={item._id ?? `${item.userId}-${item.requestedAt}`}>
+          }
+          renderRow={(item) => {
+            const days = daysUntilExpiry(item.requestedAt);
+            const slaUrgent = days <= 2 && isActionable(item.status);
+            const primaryLabel = formatUserFacingIdentityLabel(item.user, item.userId);
+            const avatarLetter =
+              primaryLabel.replace(/^@/, "").trim().slice(0, 1).toUpperCase() || "?";
+            return (
+              <tr key={item._id ?? `${item.userId}-${item.requestedAt}`}>
                     <td>
                       <div className="user-summary">
                         {item.user?.avatarUrl ? (
@@ -663,12 +666,10 @@ export function AccessRequestsConsole() {
                         ) : null}
                       </div>
                     </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              </tr>
+            );
+          }}
+        />
       </article>
     </section>
   );

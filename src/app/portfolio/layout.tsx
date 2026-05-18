@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import "@/app/portfolios/portfolios-dashboard.css";
 
 import "@/app/watchlist/watchlist.css";
-import "../xchat/xchat.css";
+import "../xchat/xchat-shell.css";
 import "./portfolio.css";
 
 export const metadata: Metadata = {

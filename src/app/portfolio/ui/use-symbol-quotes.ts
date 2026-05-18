@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
+import { symbolQuotesQueryKeys } from "@/lib/react-query/query-keys";
+import { fetchSymbolQuotes } from "@/lib/react-query/symbol-quotes-api";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 export function useSymbolQuotes(symbols: string[]): {
@@ -26,62 +28,17 @@ export function useSymbolQuotes(
   const refreshMs = options?.refreshMs ?? 0;
   const portfolioIdHex = options?.portfolioIdHex?.trim() ?? "";
 
-  const [fetched, setFetched] = useState<Record<string, SymbolLookupResult | null>>({});
-  const [loading, setLoading] = useState(false);
+  const query = useQuery({
+    queryKey: symbolQuotesQueryKeys.list(sortedKey, portfolioIdHex),
+    queryFn: () => fetchSymbolQuotes(sortedKey ? sortedKey.split(",") : [], portfolioIdHex),
+    enabled: sortedKey.length > 0,
+    staleTime: refreshMs > 0 ? Math.max(refreshMs - 1000, 5_000) : 30_000,
+    refetchInterval: refreshMs > 0 ? refreshMs : false,
+    refetchIntervalInBackground: false
+  });
 
-  const quotes = sortedKey.length > 0 ? fetched : {};
-
-  useEffect(() => {
-    if (!sortedKey) {
-      return;
-    }
-    const list = sortedKey.split(",");
-    let cancelled = false;
-    const fetchQuotes = async () => {
-      if (cancelled) {
-        return;
-      }
-      setLoading(true);
-      try {
-        const qs = list.map((s) => encodeURIComponent(s)).join(",");
-        const portfolioQs = portfolioIdHex
-          ? `&portfolioId=${encodeURIComponent(portfolioIdHex)}`
-          : "";
-        const response = await fetch(`/api/market/symbol-quotes?symbols=${qs}${portfolioQs}`, {
-          credentials: "include"
-        });
-        const payload = (await response.json()) as {
-          data?: Record<string, SymbolLookupResult | null>;
-          brokerImportSuspended?: boolean;
-        };
-        if (!cancelled) {
-          setFetched(payload.data ?? {});
-        }
-      } catch {
-        if (!cancelled) {
-          setFetched({});
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-    void fetchQuotes();
-
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-    if (refreshMs > 0) {
-      intervalId = setInterval(() => {
-        void fetchQuotes();
-      }, refreshMs);
-    }
-    return () => {
-      cancelled = true;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [portfolioIdHex, refreshMs, sortedKey]);
-
-  return { quotes, loading };
+  return {
+    quotes: sortedKey.length > 0 ? (query.data ?? {}) : {},
+    loading: query.isPending && sortedKey.length > 0
+  };
 }

@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-
-import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
+import { useMemo } from "react";
 
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
+import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
 
 type StockSymbolLiveFieldProps = {
   symbolInput: string;
@@ -19,25 +18,8 @@ export function StockSymbolLiveField({
 }: StockSymbolLiveFieldProps) {
   const sym = useMemo(() => symbolInput.trim().toUpperCase(), [symbolInput]);
   const symValid = sym.length >= 1 && sym.length <= 12;
-  const [quote, setQuote] = useState<SymbolLookupResult | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!symValid) {
-      return;
-    }
-    const t = window.setTimeout(() => {
-      setLoading(true);
-      fetch(`/api/market/symbol-quotes?symbols=${encodeURIComponent(sym)}`, { credentials: "include" })
-        .then((r) => r.json() as Promise<{ data?: Record<string, SymbolLookupResult | null> }>)
-        .then((payload) => setQuote(payload.data?.[sym] ?? null))
-        .catch(() => setQuote(null))
-        .finally(() => setLoading(false));
-    }, 450);
-    return () => window.clearTimeout(t);
-  }, [sym, symValid]);
-
-  const activeQuote = symValid ? quote : null;
+  const { quotes, loading } = useSymbolQuotes(symValid ? [sym] : [], { refreshMs: 60_000 });
+  const activeQuote = symValid ? (quotes[sym] ?? null) : null;
 
   const priceStr =
     activeQuote?.price !== undefined && Number.isFinite(activeQuote.price)

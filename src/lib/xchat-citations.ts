@@ -344,7 +344,13 @@ function stripCitationFootnoteMarkers(token: string): string {
   return token.replace(/(?:\s*\[\d+\])+/g, "").trim();
 }
 
-function parseSlugLabelAfterPrefix(trimmed: string, prefix: string): { slug: string; label?: string } | null {
+export type XchatInlineChip = {
+  slug: string;
+  label?: string;
+  symbol?: string;
+};
+
+function parseSlugLabelAfterPrefix(trimmed: string, prefix: string): XchatInlineChip | null {
   if (!trimmed.startsWith(prefix)) {
     return null;
   }
@@ -358,11 +364,12 @@ function parseSlugLabelAfterPrefix(trimmed: string, prefix: string): { slug: str
     return { slug: canonicalizeCitationSlug(raw) };
   }
   const raw = stripCitationFootnoteMarkers(rest.slice(0, pipe)).toLowerCase();
-  const label = rest.slice(pipe + 1).trim();
+  const tail = rest.slice(pipe + 1).trim();
   if (!SLUG_RE.test(raw)) {
     return null;
   }
-  return { slug: canonicalizeCitationSlug(raw), label: label || undefined };
+  const { label, symbol } = parseXchatCiteSentinelTail(tail);
+  return { slug: canonicalizeCitationSlug(raw), label, symbol };
 }
 
 /**
@@ -380,16 +387,16 @@ export function normalizeXfInlineChipProbeText(text: string): string {
   return s;
 }
 
-export function parseInlineCitationCode(text: string): { slug: string; label?: string } | null {
+export function parseInlineCitationCode(text: string): XchatInlineChip | null {
   return parseSlugLabelAfterPrefix(normalizeXfInlineChipProbeText(text), XF_INLINE_CITE_PREFIX);
 }
 
-export function parseInlineToolBadgeCode(text: string): { slug: string; label?: string } | null {
+export function parseInlineToolBadgeCode(text: string): XchatInlineChip | null {
   return parseSlugLabelAfterPrefix(normalizeXfInlineChipProbeText(text), XF_TOOL_BADGE_PREFIX);
 }
 
 /** Single hook for {@link XchatMarkdownBody} `components.code` (inline). */
-export function parseInlineXfChipCode(text: string): { slug: string; label?: string } | null {
+export function parseInlineXfChipCode(text: string): XchatInlineChip | null {
   return parseInlineCitationCode(text) ?? parseInlineToolBadgeCode(text);
 }
 

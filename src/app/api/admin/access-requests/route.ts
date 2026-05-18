@@ -45,11 +45,21 @@ const createAccessRequestSchema = z.object({
   }
 });
 
+const ACCESS_REQUEST_LIST_LIMIT_DEFAULT = 200;
+const ACCESS_REQUEST_LIST_LIMIT_MAX = 500;
+
 const accessRequestQuerySchema = z.object({
   status: z
     .union([z.enum(accessRequestStatusValues), z.literal("all"), z.literal("open")])
     .optional()
-    .default("open")
+    .default("open"),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(ACCESS_REQUEST_LIST_LIMIT_MAX)
+    .optional()
+    .default(ACCESS_REQUEST_LIST_LIMIT_DEFAULT)
 });
 
 export async function GET(request: Request) {
@@ -65,7 +75,8 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const parsed = accessRequestQuerySchema.safeParse({
-    status: url.searchParams.get("status") ?? undefined
+    status: url.searchParams.get("status") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -74,15 +85,17 @@ export async function GET(request: Request) {
     );
   }
   const raw = parsed.data.status;
+  const listLimit = parsed.data.limit;
   const requests =
     raw === "all"
-      ? await listAccessRequests({ tenantId: undefined })
+      ? await listAccessRequests({ tenantId: undefined, limit: listLimit })
       : raw === "open"
         ? await listAccessRequests({
             statuses: ["new", "triaged", "pending"],
-            tenantId: undefined
+            tenantId: undefined,
+            limit: listLimit
           })
-        : await listAccessRequests({ status: raw, tenantId: undefined });
+        : await listAccessRequests({ status: raw, tenantId: undefined, limit: listLimit });
   const serialized = requests.map(serializeAccessRequest);
   const latestAuditByRequestId = await listLatestAuditEventsForEntities({
     entityType: "access_request",

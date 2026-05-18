@@ -3,6 +3,8 @@
 import type { XchatConversationProps } from "@/app/xchat/ui/xchat-conversation";
 import nextDynamic from "next/dynamic";
 
+import "./xchat-thread.css";
+
 import { XchatConversationLoadingChrome } from "./ui/xchat-conversation-loading-chrome";
 
 const XchatConversationLazy = nextDynamic(

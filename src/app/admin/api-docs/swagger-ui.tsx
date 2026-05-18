@@ -1,11 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import "swagger-ui-react/swagger-ui.css";
 
-const SwaggerUI = dynamic(() => import("swagger-ui-react"), {
-  ssr: false
-});
+const SwaggerUI = dynamic(
+  () =>
+    import("swagger-ui-react").then(async (mod) => {
+      await import("swagger-ui-react/swagger-ui.css");
+      return mod;
+    }),
+  { ssr: false, loading: () => <p className="status-text">Loading API docs…</p> }
+);
 
 type SwaggerApiDocsProps = {
   specUrl: string;

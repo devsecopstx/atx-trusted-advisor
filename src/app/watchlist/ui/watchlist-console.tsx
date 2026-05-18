@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     functionalUpdate,
     getCoreRowModel,
@@ -39,6 +40,8 @@ import {
 } from "@/app/admin/ui/crud-icons";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
+import { watchlistQueryKeys } from "@/lib/react-query/query-keys";
+import { fetchWatchlistDesk, type WatchlistApiData } from "@/lib/react-query/watchlist-api";
 import {
     XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
     XCHAT_PENDING_PROMPT_STORAGE_KEY,
@@ -125,38 +128,13 @@ type WatchlistRow = {
   technicals?: WatchlistTechnicals | null;
 };
 
-type WatchlistApiData = {
-  activeWatchlistId?: string | null;
-  watchlists?: Array<{
-    id: string;
-    name: string;
-    symbolCount?: number;
-    isDefault?: boolean;
-    updatedAt?: string | null;
-  }>;
-  name?: string;
-  symbols?: Array<{
-    symbol: string;
-    addedAt: string;
-    lineType?: string;
-    strategy?: string;
-    quantity?: number;
-    entryPrice?: number;
-    rationale?: string;
-    rowStatus?: WatchlistRowStatus;
-    lastPrice?: number;
-    lastUpdatedAt?: string;
-  }>;
-  symbolsWithQuotes?: WatchlistRow[];
-};
-
 function stampWatchlistLoadedAt(now = new Date()): { iso: string; label: string } {
   return { iso: now.toISOString(), label: now.toLocaleString() };
 }
 
 function buildRows(data: WatchlistApiData): WatchlistRow[] {
   const base = data.symbolsWithQuotes?.length
-    ? data.symbolsWithQuotes
+    ? (data.symbolsWithQuotes as WatchlistRow[])
     : (data.symbols ?? []).map((s) => ({
         symbol: s.symbol,
         addedAt: s.addedAt,
@@ -1353,15 +1331,14 @@ export function WatchlistConsole({
   const [draftName, setDraftName] = useState("");
   const [draftRows, setDraftRows] = useState<WatchlistRow[]>([]);
   const editBaselineRef = useRef<{ name: string; rows: WatchlistRow[] } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [mutating, setMutating] = useState(false);
   const [removingSymbol, setRemovingSymbol] = useState<string | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [portfolioTotalInput, setPortfolioTotalInput] = useState("");
   const [listLoadedAtLabel, setListLoadedAtLabel] = useState("");
   const [listLoadedAtIso, setListLoadedAtIso] = useState<string | null>(null);
-  const [quotesRefreshing, setQuotesRefreshing] = useState(false);
   const [symbolSearch, setSymbolSearch] = useState("");
   const [symbolSearchOpen, setSymbolSearchOpen] = useState(false);
   const [deskColumnVisibility, setDeskColumnVisibility] = useState<VisibilityState>({});
@@ -1434,29 +1411,19 @@ export function WatchlistConsole({
     );
   }, []);
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) {
-      setLoading(true);
-    }
-    setError(null);
-    try {
-      const res = await fetch(`${watchlistBaseUrl}?${watchlistFetchQuery}`, { credentials: "include" });
-      const { json } = await readFetchJsonBody<{ data?: WatchlistApiData; error?: string }>(res);
-      if (!res.ok) {
-        throw new Error(
-          json.error ??
-            (res.status === 429
-              ? "Too many requests. Please wait a moment and retry."
-              : "Failed to load watchlist")
-        );
-      }
-      if (!json.data) {
-        throw new Error("Invalid response");
-      }
+  const watchlistQueryKey = watchlistQueryKeys.detail(portfolioId, watchlistFetchQuery);
+
+  const watchlistQuery = useQuery({
+    queryKey: watchlistQueryKey,
+    queryFn: () => fetchWatchlistDesk(watchlistBaseUrl, watchlistFetchQuery)
+  });
+
+  const applyWatchlistApiData = useCallback(
+    (data: WatchlistApiData) => {
       startTransition(() => {
-        setListName(json.data!.name ?? "Default");
-        setRows(buildRows(json.data!));
-        const listRows = (json.data?.watchlists ?? [])
+        setListName(data.name ?? "Default");
+        setRows(buildRows(data));
+        const listRows = (data.watchlists ?? [])
           .filter((row) => typeof row.id === "string" && row.id.trim().length > 0)
           .map((row) => ({
             id: row.id,
@@ -1468,8 +1435,8 @@ export function WatchlistConsole({
             isDefault: row.isDefault === true
           }));
         setAvailableWatchlists(listRows);
-        if (typeof json.data?.activeWatchlistId === "string" && json.data.activeWatchlistId.trim()) {
-          setSelectedWatchlistId(json.data.activeWatchlistId.trim());
+        if (typeof data.activeWatchlistId === "string" && data.activeWatchlistId.trim()) {
+          setSelectedWatchlistId(data.activeWatchlistId.trim());
         } else if (listRows.length > 0 && !selectedWatchlistId.trim()) {
           setSelectedWatchlistId(listRows[0]!.id);
         }
@@ -1477,32 +1444,42 @@ export function WatchlistConsole({
         setListLoadedAtIso(loadedAt.iso);
         setListLoadedAtLabel(loadedAt.label);
       });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
-      setRows([]);
-    } finally {
-      if (!opts?.silent) {
-        setLoading(false);
-      }
+    },
+    [selectedWatchlistId, startTransition]
+  );
+
+  useEffect(() => {
+    if (!watchlistQuery.data || editMode) {
+      return;
     }
-  }, [selectedWatchlistId, startTransition, watchlistBaseUrl, watchlistFetchQuery]);
+    applyWatchlistApiData(watchlistQuery.data);
+  }, [applyWatchlistApiData, editMode, watchlistQuery.data]);
+
+  useEffect(() => {
+    if (!watchlistQuery.error) {
+      return;
+    }
+    setError(watchlistQuery.error instanceof Error ? watchlistQuery.error.message : "Load failed");
+    if (!editMode) {
+      setRows([]);
+    }
+  }, [editMode, watchlistQuery.error]);
+
+  const loading = watchlistQuery.isPending && rows.length === 0;
+  const quotesRefreshing = watchlistQuery.isFetching && !watchlistQuery.isPending;
+
+  const refetchWatchlist = useCallback(async () => {
+    setError(null);
+    await watchlistQuery.refetch();
+  }, [watchlistQuery]);
 
   const onRefreshDeskQuotes = useCallback(async () => {
     if (editMode || loading || quotesRefreshing) {
       return;
     }
-    setQuotesRefreshing(true);
     setError(null);
-    try {
-      await load({ silent: true });
-    } finally {
-      setQuotesRefreshing(false);
-    }
-  }, [editMode, load, loading, quotesRefreshing]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+    await refetchWatchlist();
+  }, [editMode, loading, quotesRefreshing, refetchWatchlist]);
 
   useEffect(() => {
     try {
@@ -1566,17 +1543,12 @@ export function WatchlistConsole({
       }
       const refetchQuotes = watchlistPatchShouldRefetchQuotes(json.metadata, body);
       if (json.data && !refetchQuotes) {
-        startTransition(() => {
-          setListName(json.data!.name ?? "Default");
-          setRows(buildRows(json.data!));
-          const loadedAt = stampWatchlistLoadedAt();
-          setListLoadedAtIso(loadedAt.iso);
-          setListLoadedAtLabel(loadedAt.label);
-        });
+        queryClient.setQueryData(watchlistQueryKey, json.data);
+        applyWatchlistApiData(json.data);
       }
       return { refetchQuotes };
     },
-    [watchlistBaseUrl, watchlistFetchQuery, startTransition]
+    [applyWatchlistApiData, queryClient, watchlistBaseUrl, watchlistFetchQuery, watchlistQueryKey]
   );
 
   const patch = useCallback(
@@ -1586,7 +1558,7 @@ export function WatchlistConsole({
       try {
         const { refetchQuotes } = await executePatch(body);
         if (refetchQuotes) {
-          await load({ silent: true });
+          await refetchWatchlist();
         }
         onWatchlistMutated?.();
       } catch (e) {
@@ -1596,7 +1568,7 @@ export function WatchlistConsole({
         setRemovingSymbol(null);
       }
     },
-    [executePatch, load, onWatchlistMutated]
+    [executePatch, onWatchlistMutated, refetchWatchlist]
   );
 
   const patchRowMeta = useCallback(
@@ -1616,7 +1588,7 @@ export function WatchlistConsole({
       try {
         const { refetchQuotes } = await executePatch({ addEntries: [{ symbol, ...partial }] });
         if (refetchQuotes) {
-          await load({ silent: true });
+          await refetchWatchlist();
         }
         onWatchlistMutated?.();
       } catch (e) {
@@ -1625,7 +1597,7 @@ export function WatchlistConsole({
         setMutating(false);
       }
     },
-    [executePatch, load, onWatchlistMutated, rows]
+    [executePatch, onWatchlistMutated, refetchWatchlist, rows]
   );
 
   const patchRowEntryPrice = useCallback(
@@ -1638,7 +1610,7 @@ export function WatchlistConsole({
       try {
         const { refetchQuotes } = await executePatch({ addEntries: [{ symbol, entryPrice }] });
         if (refetchQuotes) {
-          await load({ silent: true });
+          await refetchWatchlist();
         }
         onWatchlistMutated?.();
       } catch (e) {
@@ -1647,7 +1619,7 @@ export function WatchlistConsole({
         setMutating(false);
       }
     },
-    [executePatch, load, onWatchlistMutated]
+    [executePatch, onWatchlistMutated, refetchWatchlist]
   );
 
   const onAiSuggestRow = useCallback(
@@ -1675,7 +1647,7 @@ export function WatchlistConsole({
         }
         const { refetchQuotes } = await executePatch({ addEntries: [{ symbol: row.symbol, rationale: text }] });
         if (refetchQuotes) {
-          await load({ silent: true });
+          await refetchWatchlist();
         }
         onWatchlistMutated?.();
       } catch (e) {
@@ -1684,7 +1656,7 @@ export function WatchlistConsole({
         setAiSuggestSymbol(null);
       }
     },
-    [executePatch, load, onWatchlistMutated, portfolioId]
+    [executePatch, onWatchlistMutated, portfolioId, refetchWatchlist]
   );
 
   const onExportAdvisorPdf = useCallback(() => {
@@ -1757,13 +1729,13 @@ ${bodyRows}
       if (createdId) {
         setSelectedWatchlistId(createdId);
       }
-      await load();
+      await queryClient.invalidateQueries({ queryKey: watchlistQueryKeys.portfolio(portfolioId) });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Create watchlist failed");
     } finally {
       setCreatingWatchlist(false);
     }
-  }, [load, watchlistBaseUrl]);
+  }, [portfolioId, queryClient, watchlistBaseUrl]);
 
   const enterEdit = useCallback(() => {
     editBaselineRef.current = {
@@ -1826,7 +1798,7 @@ ${bodyRows}
       if (nameChanged && !nameSent) {
         await executePatch({ name: trimmed });
       }
-      await load({ silent: true });
+      await refetchWatchlist();
       onWatchlistMutated?.();
       setEditMode(false);
       editBaselineRef.current = null;
@@ -1836,7 +1808,7 @@ ${bodyRows}
       setMutating(false);
       setRemovingSymbol(null);
     }
-  }, [draftName, draftRows, executePatch, load, onWatchlistMutated]);
+  }, [draftName, draftRows, executePatch, onWatchlistMutated, refetchWatchlist]);
 
   const updateDraftRow = useCallback(
     (
@@ -1990,7 +1962,7 @@ ${bodyRows}
           );
         }
         window.alert(parts.join(" "));
-        await load({ silent: true });
+        await refetchWatchlist();
         onWatchlistMutated?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Import failed");
@@ -1998,7 +1970,7 @@ ${bodyRows}
         setMutating(false);
       }
     },
-    [editMode, load, rows, watchlistBaseUrl, watchlistFetchQuery, startTransition, onWatchlistMutated]
+    [editMode, onWatchlistMutated, refetchWatchlist, rows, watchlistBaseUrl, watchlistFetchQuery, startTransition]
   );
 
   const displayRows = editMode ? draftRows : rows;

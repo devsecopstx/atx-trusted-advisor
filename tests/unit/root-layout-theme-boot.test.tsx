@@ -1,3 +1,4 @@
+import type React from "react";
 import { renderToReadableStream } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,6 +8,10 @@ vi.mock("next/font/google", () => ({
 
 vi.mock("@/lib/auth", () => ({
   getSessionUser: vi.fn().mockResolvedValue(null)
+}));
+
+vi.mock("@/app/ui/app-query-provider", () => ({
+  AppQueryProvider: ({ children }: { children: React.ReactNode }) => children
 }));
 
 vi.mock("@/lib/identity-shell-cache", () => ({
