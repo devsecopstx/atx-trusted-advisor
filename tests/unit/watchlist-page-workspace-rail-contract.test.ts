@@ -12,7 +12,7 @@ describe("watchlist page workspace rail contract", () => {
     expect(pageSrc).toContain('current="watchlist"');
     expect(pageSrc).toContain("getWorkspaceProductSidebarPropsForSession(session, \"Watchlist\")");
     expect(layoutSrc).toContain('@/app/portfolios/portfolios-dashboard.css');
-    expect(layoutSrc).toContain("../xchat/xchat.css");
+    expect(layoutSrc).toContain("../xchat/xchat-shell.css");
   });
 
   it("does not regress to legacy collapsed rail or public rail-only session helper", () => {

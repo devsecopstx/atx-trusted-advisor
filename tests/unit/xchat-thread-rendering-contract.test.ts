@@ -3,11 +3,13 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { readXchatThreadCss } from "../helpers/read-xchat-stylesheet";
+
 describe("xChat thread rendering regression contract", () => {
   const conversation = readFileSync(join(process.cwd(), "src/app/xchat/ui/xchat-conversation.tsx"), "utf8");
   const bubble = readFileSync(join(process.cwd(), "src/app/xchat/ui/xchat-thread-message-bubble.tsx"), "utf8");
   const threadPanel = readFileSync(join(process.cwd(), "src/app/xchat/ui/xchat-thread-panel.tsx"), "utf8");
-  const css = readFileSync(join(process.cwd(), "src/app/xchat/xchat.css"), "utf8");
+  const css = readXchatThreadCss();
 
   it("keeps latest turn paired by collapsing earlier history to compact cap", () => {
     expect(conversation).toContain("const XCHAT_UI_VISIBLE_MESSAGE_CAP = 6;");

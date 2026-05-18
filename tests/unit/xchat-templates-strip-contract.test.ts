@@ -3,12 +3,13 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { readXchatThreadCss } from "../helpers/read-xchat-stylesheet";
+
 /** Locks compact workspace library header + pill scroller contract above the composer. */
 describe("xChat templates strip + workspace library layout contract", () => {
   const stripPath = path.join(process.cwd(), "src/app/xchat/ui/xchat-templates-strip.tsx");
-  const cssPath = path.join(process.cwd(), "src/app/xchat/xchat.css");
   const strip = readFileSync(stripPath, "utf8");
-  const css = readFileSync(cssPath, "utf8");
+  const css = readXchatThreadCss();
 
   it("keeps workspace library header cluster before actions in top-row", () => {
     expect(strip).toContain('className="xchat-templates-strip__top-row"');

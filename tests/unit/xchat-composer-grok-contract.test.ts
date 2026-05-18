@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { readXchatThreadCss } from "../helpers/read-xchat-stylesheet";
+
 /**
  * Locks Grok-style approved composer structure: sources link, attach/mic affordances,
  * stroke icons, and hint copy without retired Beta pill.
@@ -11,12 +13,10 @@ describe("xChat composer Grok shell contract", () => {
   const composerPath = path.join(process.cwd(), "src/app/xchat/ui/xchat-composer-panel.tsx");
   const conversationPath = path.join(process.cwd(), "src/app/xchat/ui/xchat-conversation.tsx");
   const iconsPath = path.join(process.cwd(), "src/app/xchat/ui/xchat-composer-icons.tsx");
-  const cssPath = path.join(process.cwd(), "src/app/xchat/xchat.css");
-
   const composer = readFileSync(composerPath, "utf8");
   const conversation = readFileSync(conversationPath, "utf8");
   const icons = readFileSync(iconsPath, "utf8");
-  const css = readFileSync(cssPath, "utf8");
+  const css = readXchatThreadCss();
 
   it("wires sources rail href from conversation into composer", () => {
     expect(composer).toContain("sourcesRailHref: string");

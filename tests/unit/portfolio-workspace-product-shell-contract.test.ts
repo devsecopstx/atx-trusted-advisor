@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { readXchatShellCss } from "../helpers/read-xchat-stylesheet";
+
 describe("PortfolioWorkspaceProductShell contract", () => {
   const shellSrc = readFileSync(
     join(process.cwd(), "src/app/portfolio/ui/portfolio-workspace-product-shell.tsx"),
@@ -9,7 +11,7 @@ describe("PortfolioWorkspaceProductShell contract", () => {
   );
   const portfolioPageSrc = readFileSync(join(process.cwd(), "src/app/portfolio/page.tsx"), "utf8");
   const portfolioLayoutSrc = readFileSync(join(process.cwd(), "src/app/portfolio/layout.tsx"), "utf8");
-  const xchatCssSrc = readFileSync(join(process.cwd(), "src/app/xchat/xchat.css"), "utf8");
+  const xchatCssSrc = readXchatShellCss();
   const cssSrc = readFileSync(join(process.cwd(), "src/app/portfolios/portfolios-dashboard.css"), "utf8");
 
   it("locks viewport shell + sticky chrome classes shared with /portfolios", () => {
