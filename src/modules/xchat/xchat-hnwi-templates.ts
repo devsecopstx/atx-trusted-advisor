@@ -14,7 +14,7 @@ export type XchatPromptTemplate = {
 };
 
 /**
- * Curated HNWI / RIA-style prompts for xChat templates strip (Grok-style gallery).
+ * Curated HNWI / Investment Advisor-style prompts for xChat templates strip (Grok-style gallery).
  * User-authored templates persist in Mongo (`xchat_user_prompt_templates`) via **`/api/app-user/xchat/prompt-templates`**.
  */
 

@@ -16,7 +16,8 @@ const publicRoutes = [
     changeFrequency: "weekly" as const,
     priority: 0.8,
   },
-  // Resources (public, guest-accessible)
+  // Resources hub + children (public, guest-accessible)
+  { path: "/resources", changeFrequency: "weekly" as const, priority: 0.75 },
   { path: "/resources/guides", changeFrequency: "weekly" as const, priority: 0.65 },
   { path: "/resources/onboarding-checklist", changeFrequency: "monthly" as const, priority: 0.62 },
   { path: "/resources/about", changeFrequency: "monthly" as const, priority: 0.6 },
@@ -73,7 +74,7 @@ const publicRoutes = [
   { path: "/wheel-strategy-ai", changeFrequency: "monthly" as const, priority: 0.58 },
   { path: "/covered-call-portfolio-manager", changeFrequency: "monthly" as const, priority: 0.58 },
   { path: "/ibkr-options-automation", changeFrequency: "monthly" as const, priority: 0.58 },
-  { path: "/ria-white-label-platform", changeFrequency: "monthly" as const, priority: 0.58 },
+  { path: "/ia-white-label-platform", changeFrequency: "monthly" as const, priority: 0.58 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

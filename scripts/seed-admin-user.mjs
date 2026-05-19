@@ -496,6 +496,18 @@ async function ensureIndexes(db) {
       { nameNormalized: 1 },
       { unique: true, name: "uniq_xpersona_name_normalized" }
     ),
+    db.collection("xchat_personas").createIndex(
+      { status: 1, updatedAt: -1 },
+      { name: "idx_personas_status_updated" }
+    ),
+    db.collection("xchat_personas").createIndex(
+      { tenantId: 1, status: 1, updatedAt: -1 },
+      { name: "idx_personas_tenant_status_updated" }
+    ),
+    db.collection("xchat_personas").createIndex(
+      { status: 1, isDefaultForAppUsers: 1 },
+      { name: "idx_personas_status_default_app_users" }
+    ),
     db.collection(TENANT_PORTFOLIO_COLLECTION).createIndex(
       { tenantId: 1, userId: 1, isDefault: 1 },
       {
@@ -576,6 +588,63 @@ async function ensureIndexes(db) {
       { singletonKey: 1 },
       { unique: true, name: "uniq_xchat_platform_singleton" }
     ),
+
+    // === xChat Logs Performance Indexes ===
+    db.collection("xchat_logs").createIndex(
+      { userId: 1, createdAt: -1, _id: -1 },
+      { name: "idx_xchat_logs_user_created_desc" }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { userId: 1, threadId: 1, createdAt: -1, _id: -1 },
+      {
+        name: "idx_xchat_logs_user_thread_created_desc",
+        partialFilterExpression: {
+          threadId: { $exists: true, $type: "string", $gt: "" }
+        }
+      }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { tenantId: 1, userId: 1, createdAt: -1, _id: -1 },
+      { name: "idx_xchat_logs_tenant_user_created_desc" }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { retentionExpiresAt: 1 },
+      { expireAfterSeconds: 0, name: "ttl_xchat_logs_retention_expires_at" }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { syncedToXaiAt: 1, createdAt: 1, _id: 1 },
+      { name: "idx_xchat_logs_synced_created" }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { tenantId: 1, syncedToXaiAt: 1, createdAt: 1 },
+      { name: "idx_xchat_logs_tenant_pending_xai" }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { userId: 1, createdAt: -1, _id: -1 },
+      {
+        name: "idx_xchat_logs_user_created_xai_response_partial",
+        partialFilterExpression: {
+          xaiResponseId: { $exists: true, $type: "string", $gt: "" }
+        }
+      }
+    ),
+    // New performance indexes for token stats, persona filtering, and spend alerts
+    db.collection("xchat_logs").createIndex(
+      { tenantId: 1, userId: 1, createdAt: -1 },
+      { name: "idx_xchat_logs_tenant_user_created" }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { userId: 1, personaId: 1, createdAt: -1, _id: -1 },
+      { name: "idx_xchat_logs_user_persona_created" }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { tenantId: 1, createdAt: -1 },
+      { name: "idx_xchat_logs_tenant_created" }
+    ),
+    db.collection("xchat_logs").createIndex(
+      { tenantId: 1, personaId: 1, createdAt: -1 },
+      { name: "idx_xchat_logs_tenant_persona_created" }
+    ),
     db.collection("core_tenants").createIndex(
       { rentalExpiresAt: 1 },
       { sparse: true, name: "idx_core_tenants_rental_expires_at" }
@@ -595,6 +664,16 @@ async function ensureIndexes(db) {
     db.collection("prompt_templates").createIndex(
       { slug: 1, tenantId: 1, active: 1 },
       { name: "idx_prompt_templates_slug_tenant_active" }
+    ),
+
+    // Pre-aggregated xChat usage stats (for fast sidebar + rate limiting)
+    db.collection("xchat_user_usage_stats").createIndex(
+      { userId: 1, tenantId: 1 },
+      { unique: true, name: "uniq_xchat_user_usage_stats_user_tenant" }
+    ),
+    db.collection("xchat_user_usage_stats").createIndex(
+      { tenantId: 1, updatedAt: -1 },
+      { name: "idx_xchat_user_usage_stats_tenant_updated" }
     )
   ]);
 }

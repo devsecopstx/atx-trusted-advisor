@@ -8,7 +8,7 @@ Approved **app_user** xChat composer polish: curated **Templates** gallery + **p
 
 | Piece | Detail |
 |-------|--------|
-| **Source** | `src/modules/xchat/xchat-hnwi-templates.ts` — `XCHAT_HNWI_PROMPT_TEMPLATES` (HNWI / RIA-oriented prompts; each card uses Desk Report **v2.1** via `hnwiV21Slug` + `GET …/prompt-template-v21/{slug}` before send). |
+| **Source** | `src/modules/xchat/xchat-hnwi-templates.ts` — `XCHAT_HNWI_PROMPT_TEMPLATES` (HNWI / Investment Advisor-oriented prompts; each card uses Desk Report **v2.1** via `hnwiV21Slug` + `GET …/prompt-template-v21/{slug}` before send). |
 | **UI** | `src/app/xchat/ui/xchat-templates-strip.tsx` — **`xchat-templates-strip__top-row`**: pulse + **Workspace library** heading + **N prompts ready** badge + **See all** / overflow (**⋯**); optional search; compact **pill** scroller (**`role="group"`**, arrow-key scroll when focused) or **See all** grid + **Custom prompt**. Pulse reuses **`xchat-workspace-bar__pulse`** styles from `xchat-templates-workspace-bar.tsx`. |
 | **Behavior** | Clicking a card fills the composer (`setInput`); user reviews before **Send**. Not auto-submit. **Wheel / CC scan** template asks for a **markdown desk report** (same desk field contract as `income-ideas-prompt.ts`); not JSON-only. **Legacy saved prompts** that still contain “desk JSON contract only” for this scan are **rewritten on click** via **`resolveWheelCcScanComposerPrompt`** in `xchat-hnwi-templates.ts`. |
 | **Deep link** | `?rail=xchat&item=examples` opens templates with search + **See all** expanded (`templatesGalleryInitiallyExpanded`). |

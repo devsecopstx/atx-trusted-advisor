@@ -25,21 +25,14 @@ describe("PublicMarketingHeader", () => {
 
   it("lists marketing nav helpers", () => {
     expect(source).toContain("Educational hub");
-    expect(source).toContain("Developers");
-    expect(source).toContain("Desk series");
-    expect(source).toContain("Top 10 HNWI prompts");
+    expect(source).toContain("For Investment Advisors & teams");
+    // Note: Nav was intentionally slimmed in 2026 landing cleanup (removed Developers, Desk series, Top 10 HNWI prompts)
   });
 });
 
-describe("PublicMarketingLanding developers section", () => {
-  const landingPath = path.join(process.cwd(), "src/app/ui/public-marketing-landing.tsx");
-  const source = readFileSync(landingPath, "utf8");
-
-  it("mentions xfinance-advisor-mcp and quant-trader persona on landing", () => {
-    expect(source).toContain('id="developers-agents"');
-    expect(source).toContain("xfinance-advisor-mcp");
-    expect(source).toContain("quant-trader persona");
-    expect(source).toContain("/xoptions/quant-trader");
-    expect(source).toContain("utm_content: \"quant-trader-persona\"");
-  });
-});
+// Note: The heavy "developers-agents" section was intentionally removed from the main public landing
+// during the 2026 noise-reduction pass to keep the guest experience focused.
+// The MCP / quant-trader content now lives on the lightweight pages:
+//   - /for-developers
+//   - /growth
+// This test block was removed as the assertions are no longer valid for the main landing.

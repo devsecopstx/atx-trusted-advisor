@@ -6,7 +6,7 @@ import { PublicMarketingHeader } from "@/app/ui/public-marketing-header";
 
 export const metadata: Metadata = {
   title: "2026–2027 Growth & Partnerships | xFinance",
-  description: "Desk demos, community, RIA partnerships, and platform pulse for options income professionals.",
+  description: "Desk demos, community, Investment Advisor partnerships, and platform pulse for options income professionals.",
 };
 
 export default function GrowthPage() {
@@ -40,7 +40,7 @@ export default function GrowthPage() {
           <div className="rounded-2xl border border-white/10 p-8">
             <h3 className="font-semibold text-lg">Partnerships</h3>
             <p className="mt-3 text-[var(--xf-text-300)]">
-              Targeting RIA platforms, family-office suites, and adjacent fintechs for co-branded tenants. The MCP repo lowers integration friction.
+              Targeting Investment Advisor platforms, family-office suites, and adjacent fintechs for co-branded tenants. The MCP repo lowers integration friction.
             </p>
           </div>
 
@@ -51,7 +51,7 @@ export default function GrowthPage() {
             </p>
             <p className="mt-4 text-sm text-[var(--xf-text-400)]">
               Interested in early access or partnership discussions?{" "}
-              <Link href={registerHref} className="text-[var(--xf-gain-green)] underline">Start a trial</Link> or reach out via the RIA pilot form.
+              <Link href={registerHref} className="text-[var(--xf-gain-green)] underline">Start a trial</Link> or reach out via the IA pilot form.
             </p>
           </div>
         </div>

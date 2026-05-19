@@ -42,7 +42,7 @@ describe("sitemap public resources", () => {
       "/wheel-strategy-ai",
       "/covered-call-portfolio-manager",
       "/ibkr-options-automation",
-      "/ria-white-label-platform"
+      "/ia-white-label-platform"
     ]
       .map((p) => `${BASE}${p}`)
       .sort();

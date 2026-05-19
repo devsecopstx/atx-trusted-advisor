@@ -9,6 +9,7 @@ import { isGoogleOAuthConfigured } from "@/lib/env";
 import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pillars";
 import { canUserLogin } from "@/modules/identity/authorization";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import "../../xchat/xchat.css";
 import "../getting-started/resources-getting-started.css";
@@ -17,17 +18,17 @@ import { AboutPillarCards } from "./about-pillar-cards";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "About aTx Trusted Advisory | Resources",
+  title: "About the Educational Hub | Resources",
   description:
-    "Overview of aTx Trusted Advisory for high-net-worth families and their advisors in Austin — features, benefits, and who it's for.",
+    "How the xFinance Educational Hub is organized — pillars, risk frameworks, and how every article connects to real xChat and xOptions workflows in your workspace.",
   alternates: {
     canonical: "/resources/about"
   },
   openGraph: {
-    title: "About aTx Trusted Advisory | Resources",
+    title: "About the Educational Hub | xFinance Resources",
     description:
-      "Overview of aTx Trusted Advisory for high-net-worth families and their advisors in Austin — features, benefits, and who it's for.",
-    type: "article"
+      "How our options income resources are structured and how they map directly to the xFinance workspace (xChat, xOptions, portfolios, and guardrails).",
+    type: "website"
   }
 };
 
@@ -53,10 +54,16 @@ export default async function ResourcesAboutPage() {
       })
     : null;
   const article = (
-    <article className="resources-doc-shell" aria-label="About aTx Trusted Advisory">
+    <article className="resources-doc-shell" aria-label="About the Educational Hub">
+      <div className="mb-6 text-sm">
+        <Link href="/resources" className="text-[var(--xf-gain-green)] hover:underline">
+          ← Back to Educational Hub
+        </Link>
+      </div>
+
       <header className="resources-doc-hero">
         <p className="resources-doc-hero__eyebrow">Resources · About</p>
-        <h1 className="resources-doc-hero__title">About aTx Trusted Advisory</h1>
+        <h1 className="resources-doc-hero__title">About the Educational Hub</h1>
         <p className="resources-doc-hero__copy resources-doc-hero__copy--full">
           {`Sophisticated portfolio management software for Austin's high-net-worth families and their advisors.`}
         </p>

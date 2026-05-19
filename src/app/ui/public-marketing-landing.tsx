@@ -36,9 +36,9 @@ export function PublicMarketingLanding() {
     ...MARKETING_UTM,
     utm_content: "playbook-pdf"
   });
-  const riaPilotHref = withUtmParams(REGISTER_TRIAL_HREF, {
+  const iaPilotHref = withUtmParams(REGISTER_TRIAL_HREF, {
     ...MARKETING_UTM,
-    utm_content: "ria-pilot"
+    utm_content: "ia-pilot"
   });
   const plansHref = withUtmParams("/account/billing", MARKETING_UTM);
   const loginHref = withUtmParams(
@@ -300,7 +300,7 @@ export function PublicMarketingLanding() {
                 <blockquote className="text-lg font-medium leading-relaxed text-[var(--xf-text-200)]">
                   “Cut review time roughly 60% on multi-book rebalances — same checklist, fewer spreadsheet passes.”
                 </blockquote>
-                <figcaption className="mt-4 text-sm text-[var(--xf-text-400)]">RIA desk lead · multi-strategy book</figcaption>
+                <figcaption className="mt-4 text-sm text-[var(--xf-text-400)]">Investment Advisor desk lead · multi-strategy book</figcaption>
               </figure>
               <figure className="mt-6 rounded-2xl border border-white/10 bg-[var(--xf-surface-700)]/90 p-6 sm:p-8">
                 <blockquote className="text-lg font-medium leading-relaxed text-[var(--xf-text-200)]">
@@ -335,19 +335,19 @@ export function PublicMarketingLanding() {
 
 
       <section
-        id="ria-family-office"
+        id="ia-family-office"
         className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_92%,var(--xf-surface-700))] py-12 sm:py-16"
-        aria-label="For RIAs and teams"
+        aria-label="For Investment Advisors and teams"
       >
         <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">For RIAs &amp; teams</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">For Investment Advisors &amp; teams</p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--xf-text-100)]">White-label workspaces</h2>
           <p className="mx-auto mt-4 max-w-2xl text-base text-[var(--xf-text-300)]">
             Branded tenant portals with role-based access and clean data separation. Built for professionals who need repeatability without custom dev.
           </p>
           <div className="mt-6">
-            <Link href="/#ria-family-office" className="text-[var(--xf-gain-green)] font-semibold underline-offset-4 hover:underline">
-              Learn about RIA pilots →
+            <Link href="/#ia-family-office" className="text-[var(--xf-gain-green)] font-semibold underline-offset-4 hover:underline">
+              Learn about IA pilots →
             </Link>
           </div>
         </div>
@@ -396,8 +396,8 @@ export function PublicMarketingLanding() {
           </div>
 
           <div className="mt-6 text-sm">
-            <Link href={riaPilotHref} className="text-[var(--xf-lightning-yellow)] hover:underline">
-              Request RIA / team pilot
+            <Link href={iaPilotHref} className="text-[var(--xf-lightning-yellow)] hover:underline">
+              Request IA / team pilot
             </Link>
             <span className="mx-2 text-[var(--xf-text-400)]">·</span>
             <Link href={plansHref} className="text-[var(--xf-gain-green)] hover:underline">

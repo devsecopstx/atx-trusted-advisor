@@ -73,6 +73,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/ria-white-label-platform",
+        destination: "/ia-white-label-platform",
+        permanent: true,
+      },
+      {
         source: "/app_user/xoptions",
         destination: "/xoptions",
         permanent: true

@@ -63,7 +63,7 @@ export default function ForDevelopersPage() {
 
         <div className="mt-16 text-center text-sm text-[var(--xf-text-400)]">
           Need production access? <Link href={registerHref} className="text-[var(--xf-gain-green)]">Start a Basic trial</Link> or{" "}
-          <Link href="/#ria-family-office" className="text-[var(--xf-gain-green)]">request a team pilot</Link>.
+          <Link href="/#ia-family-office" className="text-[var(--xf-gain-green)]">request a team pilot</Link>.
         </div>
       </div>
 

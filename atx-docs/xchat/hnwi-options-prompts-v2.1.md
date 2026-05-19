@@ -1,6 +1,6 @@
 # HNWI options prompts — Desk Report v2.1
 
-Canonical copy for **HNWI / RIA-style** xChat workspace library cards (`GET /api/app-user/xchat/prompt-template-v21/{slug}`) and Mongo seed rows (`prompt_templates`, `tenantId: null`). Runtime defaults live in `src/modules/xchat/prompt-templates-v21-defaults.ts` (keep in sync with this doc).
+Canonical copy for **HNWI / Investment Advisor-style** xChat workspace library cards (`GET /api/app-user/xchat/prompt-template-v21/{slug}`) and Mongo seed rows (`prompt_templates`, `tenantId: null`). Runtime defaults live in `src/modules/xchat/prompt-templates-v21-defaults.ts` (keep in sync with this doc).
 
 **Output contract:** every v2.1 turn also receives the server system add-on **`Desk Report v2.1`** (see `src/modules/xchat/xchat-hnwi-v21-desk-report.ts`) requiring Markdown sections **Executive snapshot**, **Ideas** (with a pipe table), and **Risk & disclaimer**.
 

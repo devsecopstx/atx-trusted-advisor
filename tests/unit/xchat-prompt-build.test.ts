@@ -154,10 +154,10 @@ describe("formatTenantWorkspaceContextBlockForXchat", () => {
 
   it("merges brand + tenant name when both differ", () => {
     const s = formatTenantWorkspaceContextBlockForXchat({
-      tenantName: "Acme RIA",
+      tenantName: "Acme IA",
       xchatBrandName: "Acme Advisor Chat"
     });
-    expect(s).toContain("Acme Advisor Chat (Acme RIA)");
+    expect(s).toContain("Acme Advisor Chat (Acme IA)");
     expect(s).toContain("display only");
   });
 });

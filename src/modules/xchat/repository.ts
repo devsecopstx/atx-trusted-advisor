@@ -486,6 +486,15 @@ export async function saveXChatLog(
     createdAt,
     retentionExpiresAt
   });
+
+  // Update pre-aggregated usage stats for fast token sidebar + rate limiting
+  upsertXchatUsageStatsOnLog({
+    userId: payload.userId,
+    tenantId: payload.tenantId,
+    xaiUsage: payload.xaiUsage,
+    createdAt,
+  }).catch((err) => console.error("[xchat] Failed to upsert usage stats", err));
+
   return result.insertedId;
 }
 

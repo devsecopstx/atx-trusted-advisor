@@ -159,7 +159,7 @@ Key conventions:
 - Hero always starts with the stylized tagline chip ("No Atoms Moved — Just Gains Earned.") + `aTx⚡Finance` lockup where space allows.
 - "How it works" is a 3-step outcome block immediately after the hero (Connect → Chat grounded in your book → Execute with guardrails).
 - Primary CTA on landing is always the green "Start Basic Trial — No Card".
-- Secondary actions (Sign In with X, See plans, RIA pilot) live below or in the final access block only.
+- Secondary actions (Sign In with X, See plans, IA pilot) live below or in the final access block only.
 - Product proof (screenshots, pillars) comes *after* the 3-step, never before.
 - Lightweight pages reuse the same slim header + 3-step pattern + outcome copy. They do **not** become internal wikis.
 

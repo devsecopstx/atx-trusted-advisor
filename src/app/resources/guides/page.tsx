@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
@@ -19,16 +20,16 @@ import { ResourceGuidesHubPanels } from "./resource-guides-hub-panels";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Guides | Resources",
+  title: "Guides | Educational Hub",
   description:
-    "Browse xFinance workspace topics, xChat prompts, wheel and xOptions foundations, and options playbooks — educational resources in one place.",
+    "Browse structured guides on xFinance workspaces, xChat prompts, wheel & xOptions foundations, and options income playbooks. All content connects directly to the free Educational Hub at /resources.",
   alternates: {
     canonical: "/resources/guides"
   },
   openGraph: {
-    title: "Guides | Resources",
+    title: "Guides | Educational Hub — xChat, xOptions & Wheel Workflows",
     description:
-      "Browse xFinance workspace topics, xChat prompts, wheel and xOptions foundations, and options playbooks — educational resources in one place.",
+      "Practical guides for xFinance users: xChat prompts, wheel strategies, xOptions foundations, and risk workflows. Start from the main Educational Hub.",
     type: "website"
   }
 };
@@ -49,6 +50,12 @@ export default async function ResourcesGuidesHubPage() {
 
   const article = (
     <article className="resources-doc-shell" aria-label="Resources guides">
+      <div className="mb-6 text-sm">
+        <Link href="/resources" className="text-[var(--xf-gain-green)] hover:underline">
+          ← Back to Educational Hub
+        </Link>
+      </div>
+
       <header className="resources-doc-hero">
         <p className="resources-doc-hero__eyebrow">Resources · Guides</p>
         <h1 className="resources-doc-hero__title">Guides</h1>

@@ -17,7 +17,7 @@ export const MARKETING_HEADER_BTN_PRIMARY =
 
 const MARKETING_NAV_LINKS: { href: string; label: string }[] = [
   { href: "/resources", label: "Educational hub" },
-  { href: "/#ria-family-office", label: "For RIAs & teams" }
+  { href: "/#ia-family-office", label: "For Investment Advisors & teams" }
 ];
 
 type MarketingHeaderCtasProps = {

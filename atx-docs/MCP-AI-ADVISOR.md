@@ -6,7 +6,7 @@
 
 **Type:** White-labeled, tenant-isolated Grok-powered options-aware advisor **HTTP API** (MCP-style distribution: document this file + OpenAPI for tool schema; wire tools to the routes below).
 
-**Target users:** RIAs, family offices, HNWI desks, independent advisors (via their own product or agent mesh).
+**Target users:** Investment Advisors (IAs), family offices, HNWI desks, independent advisors (via their own product or agent mesh).
 
 **Canonical system prompt (seed + bias blocks + chat precedence):** [`atx-docs/guides/rental-ai-system-prompt.md`](./guides/rental-ai-system-prompt.md)
 

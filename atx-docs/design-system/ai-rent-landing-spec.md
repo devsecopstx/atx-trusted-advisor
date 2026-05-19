@@ -1,7 +1,7 @@
 # `/ai-rent` — partner marketing page (spec)
 
 **Status:** Spec only — no route shipped until implemented.  
-**Audience:** RIAs, family offices, fintech partners evaluating **white-label rental API** access (not retail “sign up free”).
+**Audience:** Investment Advisors (IAs), family offices, fintech partners evaluating **white-label rental API** access (not retail “sign up free”).
 
 **Brand source:** [`.cursor/rules/xfinance-branding.mdc`](../../.cursor/rules/xfinance-branding.mdc) and [`atxfinance-brand-kit.css`](./atxfinance-brand-kit.css).
 
@@ -35,7 +35,7 @@ Differentiation (use one short paragraph): execution-style portfolio context + *
 - **Sections (suggested order):**
   1. **Hero** — outcome + CTA  
   2. **What you get** — 3–4 bullets: tenant isolation, `Bearer atxr_*` keys + scopes, chat JSON/SSE, strategy/analyze poll pattern, UTC-day token budget, audit (`rental_ai`)  
-  3. **Who it’s for** — RIA / family office / licensed desk (compliance-forward, not legal advice)  
+  3. **Who it’s for** — Investment Advisor (IA) / family office / licensed desk (compliance-forward, not legal advice)  
   4. **Technical trust** — link to OpenAPI **`rental-ai`** tag, [`llm.txt`](../../llm.txt), [`MCP-AI-ADVISOR.md`](../MCP-AI-ADVISOR.md)  
   5. **Compliance** — “Not financial advice”; outputs depend on tenant configuration; no broker execution via API  
   6. **Footer** — slim; match marketing footer links used elsewhere
