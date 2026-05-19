@@ -30,6 +30,8 @@
 #   Desk SMTP — when SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM are all set in the env file,
 #     this script passes them (and SMTP_PORT, optional SMTP_SECURE) as literal Cloud Run env vars and
 #     skips GSM secret bindings for those keys. Override GSM-only SMTP by clearing those vars in the file.
+#     On deploy failure after removing prior secret bindings, best-effort restores the GSM bindings (if present)
+#     so a failed --source build does not leave the live service without desk SMTP config.
 #   ALLOW_ANY_X_USER_LOGIN, XAI_CHAT_MODEL,
 #   AUTH_CALLBACK_USE_SPRING, STRIPE_PRICE_BASIC_MONTHLY, STRIPE_PRICE_PREMIUM_MONTHLY,
 #   STRIPE_PRICE_PREMIUM_PLUS_MONTHLY, STRIPE_PRICE_PREMIUM_PLUS_YEARLY (legacy fallback)
@@ -247,6 +249,7 @@ DESK_SMTP_FROM_ENV_FILE="false"
 if [[ -n "${SMTP_HOST:-}" && -n "${SMTP_USER:-}" && -n "${SMTP_PASS:-}" && -n "${DESK_EMAIL_FROM:-}" ]]; then
   DESK_SMTP_FROM_ENV_FILE="true"
 fi
+DID_REMOVE_DESK_SMTP_SECRETS="false"
 
 SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,XAI_FINANCE_COLLECTION_ID=XAI_FINANCE_COLLECTION_ID:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest,REDIS_URL=REDIS_URL:latest,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:latest,STRIPE_PUBLIC_KEY=STRIPE_PUBLIC_KEY:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest"
 if gcloud secrets describe REDIS_URL_CONTROL --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
@@ -344,19 +347,48 @@ if [[ "${TARGET}" == "production" ]]; then
 fi
 
 # Cloud Run forbids changing an env name from secret-backed to plain text (or the reverse) in one step — drop GSM bindings first.
+# The pre-remove may roll a revision (old image, SMTP keys unbound). If the subsequent build/deploy fails we
+# restore the GSM bindings (best effort) so the live service does not stay in a broken (no-desk-SMTP) state.
 if [[ "${DESK_SMTP_FROM_ENV_FILE}" == "true" ]]; then
   echo "deploy-cloud-run-from-env: removing prior SMTP_* DESK_EMAIL_FROM secret bindings (if any) so literals from env file can apply"
-  gcloud run services update "${SVC}" \
-    --region "${REGION}" \
-    --platform managed \
-    --remove-secrets="SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,DESK_EMAIL_FROM" \
-    --quiet 2>/dev/null || true
+  if gcloud run services update "${SVC}" \
+      --region "${REGION}" \
+      --platform managed \
+      --remove-secrets="SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,DESK_EMAIL_FROM" \
+      --quiet 2>/dev/null; then
+    DID_REMOVE_DESK_SMTP_SECRETS="true"
+  else
+    echo "deploy-cloud-run-from-env: WARNING — remove-secrets for desk SMTP returned non-zero (first deploy or no prior bindings; continuing)"
+  fi
 fi
 
+DEPLOY_EXIT=0
 gcloud run deploy "${SVC}" --source . --clear-base-image --region "${REGION}" --platform managed --allow-unauthenticated \
   --port=8080 --cpu-boost --memory=1Gi \
   --startup-probe="${STARTUP_PROBE}" \
-  --set-env-vars "${ENV_VARS}" --set-secrets "${SECRETS}" "${SCALING_FLAGS[@]}" --quiet
+  --set-env-vars "${ENV_VARS}" --set-secrets "${SECRETS}" "${SCALING_FLAGS[@]}" --quiet || DEPLOY_EXIT=$?
+
+if [[ "${DEPLOY_EXIT}" -ne 0 ]]; then
+  echo "deploy-cloud-run-from-env: ERROR — gcloud run deploy failed with exit ${DEPLOY_EXIT}; check Cloud Build logs for build details" >&2
+  if [[ "${DID_REMOVE_DESK_SMTP_SECRETS}" == "true" ]]; then
+    echo "deploy-cloud-run-from-env: restoring SMTP_* DESK_EMAIL_FROM secret bindings (if any) so service keeps prior desk SMTP config after failed build/rollout" >&2
+    if gcloud secrets describe SMTP_HOST --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+       gcloud secrets describe SMTP_PORT --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+       gcloud secrets describe SMTP_USER --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+       gcloud secrets describe SMTP_PASS --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+       gcloud secrets describe DESK_EMAIL_FROM --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+      gcloud run services update "${SVC}" \
+        --region "${REGION}" \
+        --platform managed \
+        --set-secrets="SMTP_HOST=SMTP_HOST:latest,SMTP_PORT=SMTP_PORT:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASS=SMTP_PASS:latest,DESK_EMAIL_FROM=DESK_EMAIL_FROM:latest" \
+        --quiet 2>/dev/null || true
+      echo "deploy-cloud-run-from-env: restored desk SMTP secret bindings (best-effort recovery)" >&2
+    else
+      echo "deploy-cloud-run-from-env: no complete desk SMTP GSM secret set present to restore; service may lack SMTP config until next successful deploy" >&2
+    fi
+  fi
+  exit "${DEPLOY_EXIT}"
+fi
 
 if [[ "${NO_HEALTH}" != "true" ]]; then
   bash "${ROOT_DIR}/scripts/ops/health-check-with-fallback.sh" \

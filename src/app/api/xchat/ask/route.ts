@@ -1091,7 +1091,7 @@ export async function POST(request: Request) {
       toolInvocations: 0,
       personaCollections: personaDeclaredCollectionCount
     });
-    const chatLogId = shouldPersistHistory
+    const chatLogId = (userId && shouldPersistHistory)
       ? await saveXChatLog({
           threadId,
           requestId,
@@ -1162,7 +1162,7 @@ export async function POST(request: Request) {
       toolInvocations: 0,
       personaCollections: personaDeclaredCollectionCount
     });
-    const chatLogId = shouldPersistHistory
+    const chatLogId = (userId && shouldPersistHistory)
       ? await saveXChatLog({
           threadId,
           requestId: preflightRequestId,
@@ -1223,7 +1223,7 @@ export async function POST(request: Request) {
       toolInvocations: 0,
       personaCollections: personaDeclaredCollectionCount
     });
-    const chatLogId = shouldPersistHistory
+    const chatLogId = (userId && shouldPersistHistory)
       ? await saveXChatLog({
           threadId,
           requestId,
@@ -1601,7 +1601,7 @@ export async function POST(request: Request) {
       });
       const mcSerialized = JSON.stringify(mcResult);
 
-      const chatLogId = shouldPersistHistory
+      const chatLogId = (userId && shouldPersistHistory)
         ? await saveXChatLog({
             threadId,
             requestId,
@@ -1735,7 +1735,7 @@ export async function POST(request: Request) {
       toolInvocations: 1,
       personaCollections: personaDeclaredCollectionCount
     });
-    const chatLogId = shouldPersistHistory
+    const chatLogId = (userId && shouldPersistHistory)
       ? await saveXChatLog({
           threadId,
           requestId,
@@ -1819,7 +1819,7 @@ export async function POST(request: Request) {
       toolInvocations: 0,
       personaCollections: linkedCollectionIds.length
     });
-    const chatLogId = shouldPersistHistory
+    const chatLogId = (userId && shouldPersistHistory)
       ? await saveXChatLog({
           threadId,
           requestId,
@@ -1973,7 +1973,7 @@ export async function POST(request: Request) {
       personaCollections: linkedCollectionIds.length
     });
 
-    const chatLogId = shouldPersistHistory
+    const chatLogId = (userId && shouldPersistHistory)
       ? await saveXChatLog({
           threadId,
           requestId,
@@ -2175,7 +2175,7 @@ export async function POST(request: Request) {
       toolInvocations: 1,
       personaCollections: linkedCollectionIds.length
     });
-    const chatLogId = shouldPersistHistory
+    const chatLogId = (userId && shouldPersistHistory)
       ? await saveXChatLog({
           threadId,
           requestId,

@@ -15,6 +15,7 @@ import type {
     PersonaVersionSnapshot,
     RagChunk,
     RagSourceFile,
+    SaveXChatLogInput,
     XChatHistoryItem,
     XChatHistoryStats,
     XChatSessionLog,
@@ -472,8 +473,16 @@ export async function updateXchatLogUserFeedback(input: {
   return result.matchedCount === 1;
 }
 
+/**
+ * Persist one xChat turn (prompt + response + metadata) to `xchat_logs`.
+ *
+ * Callers must only invoke this for turns belonging to an authenticated app user who has
+ * opted into history (`keepLastTenMessages`). The stricter `SaveXChatLogInput` type
+ * guarantees a `userId`, which enables the side-effect upsert into the pre-aggregated
+ * `xchat_user_usage_stats` collection (powers fast token sidebar + rate limiting).
+ */
 export async function saveXChatLog(
-  payload: Omit<XChatSessionLog, "_id" | "createdAt">
+  payload: SaveXChatLogInput
 ): Promise<ObjectId> {
   await ensureXchatLogIndexes();
   const db = await getDb();
@@ -483,11 +492,13 @@ export async function saveXChatLog(
     new Date(createdAt.getTime() + XCHAT_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
   const result = await db.collection<XChatSessionLog>(collections.chatLogs).insertOne({
     ...payload,
+    tenantId: payload.tenantId ?? undefined,
     createdAt,
     retentionExpiresAt
   });
 
-  // Update pre-aggregated usage stats for fast token sidebar + rate limiting
+  // Fire-and-forget update to the pre-aggregated usage stats collection.
+  // Safe because SaveXChatLogInput guarantees a real userId.
   upsertXchatUsageStatsOnLog({
     userId: payload.userId,
     tenantId: payload.tenantId,

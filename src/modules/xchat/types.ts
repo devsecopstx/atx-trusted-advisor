@@ -306,6 +306,25 @@ export type XChatSessionLog = {
   createdAt: Date;
 };
 
+/**
+ * Input shape for `saveXChatLog` (the normal persistence path used by xChat ask flows).
+ *
+ * - Requires `userId: ObjectId` because persisted turns are always tied to an authenticated
+ *   app user who opted into history (`keepLastTenMessages`).
+ * - This makes the internal pre-aggregated usage stats upsert (`xchat_user_usage_stats`)
+ *   fully type-safe with no runtime guard needed.
+ * - The base `XChatSessionLog` keeps `userId?` optional for query shapes, historical rows,
+ *   backfills, admin cleanup, and any future special-case inserts.
+ */
+export type SaveXChatLogInput = Omit<
+  XChatSessionLog,
+  "_id" | "createdAt" | "userId" | "tenantId" | "retentionExpiresAt"
+> & {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+  retentionExpiresAt?: Date;
+};
+
 export type XChatHistoryItem = {
   id: string;
   threadId?: string;
