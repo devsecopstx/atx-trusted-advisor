@@ -5,7 +5,7 @@ config:
 ---
 flowchart TB
   subgraph ingress["Ingress / tenancy"]
-    A["User message<br/>xChat or xStrategyBuilder shell"] --> B{"Auth + session<br/>viewer / operator / advisor + tenant"}
+    A["User message<br/>xChat or xOptions shell"] --> B{"Auth + session<br/>viewer / operator / advisor + tenant"}
   end
 
   subgraph orchestrator["Orchestrator (stateful, DB-backed)"]
@@ -29,11 +29,11 @@ flowchart TB
     MA --> I
   end
 
-  subgraph handoff["xStrategyBuilder handoff"]
+  subgraph handoff["xOptions handoff"]
     I --> J{"Structured parse OK?<br/>rational_recommendation / legs"}
     J -->|yes| K["Emit strategy artifact<br/>+ link jobId / correlationId"]
     J -->|no| L["Clarify or retry<br/>bounded attempts"]
-    K --> M["xStrategyBuilder UI<br/>review / order flow"]
+    K --> M["xOptions UI<br/>review / order flow"]
   end
 
   subgraph scale["Scale & safety"]

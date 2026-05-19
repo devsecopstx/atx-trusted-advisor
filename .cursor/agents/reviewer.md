@@ -14,7 +14,7 @@ Read: `.cursor/agents/README.md`, `.cursor/agents/frontend.md`, `.cursor/agents/
 `.cursor/agents/sre.md`, `.cursor/skills/atxdesign-review/SKILL.md`, `.cursor/skills/feature-delivery/SKILL.md`,
 `.cursor/skills/generate-docs/SKILL.md`, `.cursor/skills/test-commit-push/SKILL.md`, `.cursor/skills/test-commit-push/CHECKLIST.md`, `.cursor/skills/skill-authoring.md`,
 `.cursor/plans/shared-context.md`, **`atx-docs/design-system/current-state-features.md`** (monorepo stack, shipped surfaces, test/doc gaps),
-**[`atx-docs/design-system/shell-theme-guidelines.md`](../../atx-docs/design-system/shell-theme-guidelines.md)** (soft vs deep contrast, no faint-on-light body text).
+**[`atx-docs/design-system/shell-theme-guidelines.md`](../../atx-docs/design-system/shell-theme-guidelines.md)** (soft vs deep contrast) + [`ui-primitives-and-patterns.md`](../../atx-docs/design-system/ui-primitives-and-patterns.md) (workspace rail, xChat/xOptions patterns, common surfaces).
 
 Block on: scope creep, missing tests, type/lint failures, API or Mongo contract regressions, undocumented risky changes.
 
@@ -24,7 +24,7 @@ Authors must confirm in the PR description (or review thread) before merge:
 
 1. **Perf impact assessed?** Bundle size / render profiling / Lighthouse delta **attached** (screenshot, report link, or `analyze`/`build` output) when the change is **UI-heavy**, adds **large dependencies**, or touches **hot paths** (xChat, xOptions, portfolio tables, marketing heroes). If **N/A**, state why (e.g. docs-only, Kotlin-only with no client bundle change). **xChat, xOptions, `/portfolios`, `/portfolio`, or route-level `loading` for those surfaces changed?** Attach **Lighthouse delta** + **React Profiler** screenshot (or trace/report link).
 2. **`atx-docs/design-system/current-state-features.md`** — if the PR materially changes the shipped stack, product surfaces, or a listed **Known gap**, update that doc or **`PLAN.md`** in the same PR (or link a follow-up issue with owner).
-3. **User-facing UI + both shells** — if the PR changes product pages, rails, or shared chrome, confirm **`shell-theme-guidelines.md`**: readable **soft** (light charcoal) and **deep** (black-forward); no **light-gray body text on light panels**; borders/dividers visible in both modes (tokens / `color-mix`, not stray hex).
+3. **User-facing UI + both shells** — if the PR changes product pages, rails, or shared chrome, confirm **`shell-theme-guidelines.md`** + **`ui-primitives-and-patterns.md`**: readable **soft** (light charcoal) and **deep** (black-forward); workspace rail / product nav consistency; xChat and xOptions patterns followed; no **light-gray body text on light panels**; borders/dividers visible in both modes (tokens / `color-mix`, not stray hex).
 
 Cross-check **`.cursor/skills/test-commit-push/CHECKLIST.md`** for secrets, BFF, and version/release notes.
 

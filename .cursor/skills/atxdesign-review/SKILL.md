@@ -55,7 +55,7 @@ If any reviewer is skipped, final review is incomplete.
 
 ## Core MVP Acceptance Checks
 
-- **Shell themes:** User-facing surfaces meet **`atx-docs/design-system/shell-theme-guidelines.md`** — verify **`data-xf-ui="soft"`** (light charcoal) and **deep**; primary/secondary text contrast on panels; no faint `--xf-text-300`/`400` as main copy on soft backgrounds.
+- **Shell themes + UI patterns:** User-facing surfaces meet **`atx-docs/design-system/shell-theme-guidelines.md`** + **`ui-primitives-and-patterns.md`** — verify **`data-xf-ui="soft"`** (light charcoal) and **deep**; workspace rail / xChat / xOptions patterns followed; primary/secondary text contrast on panels; no faint `--xf-text-300`/`400` as main copy on soft backgrounds.
 - Route contract compatibility is preserved (`/api/*` responses, status codes, payload shape).
 - Auth and tenant boundaries remain enforced (no privilege broadening).
 - **xChat**: validation and error paths remain stable; plan limits and persona resolution behave as documented; ask execution stays on the locked single Responses tool-loop path (no unplanned chat fallback drift).
@@ -65,7 +65,7 @@ If any reviewer is skipped, final review is incomplete.
 
 ## Branding Acceptance Checks
 
-- **xFinance** is **dark mode only** — legibility, contrast, and focus states; no light-theme requirement (see **`.cursor/rules/xfinance-branding.mdc`**). Wordmark lockup **aTx⚡Finance** (bolt between aTx and Finance) must match implementation in `src/app/ui/atxfinance-logo.tsx` when logo changes.
+- **Branding & theming:** Follow **`.cursor/rules/xfinance-branding.mdc`** (deep aesthetic for marketing/hero; product supports user soft + deep shells). Wordmark lockup **aTx⚡Finance**. Use `--xf-*` tokens from `atxfinance-brand-kit.css`. See **`ui-primitives-and-patterns.md`** for recurring patterns (rail, xChat composer, xOptions builder).
 - Brand palette and typography remain coherent with **`atx-docs/design-system/atxfinance-brand-kit.css`** (`--xf-*` tokens; no stray hex in app CSS).
 - UI changes do not break core task flows or accessibility basics.
 - New visuals do not hide errors, states, or operator controls.

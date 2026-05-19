@@ -16,7 +16,7 @@ import {
 import { PoweredByXai } from "@/app/ui/xai-brand-mark";
 import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pillars";
 import { withUtmParams } from "@/lib/marketing/utm";
-import { resolveXfinanceAdvisorMcpUrl } from "@/lib/marketing/xfinance-advisor-mcp";
+
 
 const REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
 const TRIAL_CTA_LABEL = MARKETING_TRIAL_CTA_LABEL;
@@ -40,7 +40,6 @@ export function PublicMarketingLanding() {
     ...MARKETING_UTM,
     utm_content: "ria-pilot"
   });
-  const mcpRepoHref = resolveXfinanceAdvisorMcpUrl();
   const plansHref = withUtmParams("/account/billing", MARKETING_UTM);
   const loginHref = withUtmParams(
     `/login?next=${encodeURIComponent(DEFAULT_POST_LOGIN)}`,
@@ -98,30 +97,18 @@ export function PublicMarketingLanding() {
             </div>
 
             <p className="mt-4 max-w-2xl text-lg font-semibold leading-snug text-[var(--xf-text-200)] sm:text-xl md:text-2xl">
-              Wheel, covered calls, CSPs &amp; LEAP overlays — with portfolio context, risk guardrails, and audit trails.
-              No paper. No hype.
+              One workspace. Your actual portfolios + Grok that sees your book + xOptions execution.
+              Defined-risk income with less screen time.
             </p>
 
-            <ul className="mt-8 max-w-2xl list-none space-y-5 text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-              <li>
-                <span className="font-semibold text-[var(--xf-text-100)]">Book-aware, not generic chat</span>
-                <span className="text-[var(--xf-text-400)]"> — </span>
-                Approved workspaces scope portfolios, watchlists, and desk workflows so prompts stay grounded in your
-                positions — not a toy leaderboard.
-              </li>
-              <li>
-                <span className="font-semibold text-[var(--xf-text-100)]">Guardrails you can explain</span>
-                <span className="text-[var(--xf-text-400)]"> — </span>
-                Tenant isolation, role-aware access (viewer / operator / advisor), and lineage-friendly defaults for
-                operators who answer to risk and compliance.
-              </li>
-              <li>
-                <span className="font-semibold text-[var(--xf-text-100)]">Execution-style tooling</span>
-                <span className="text-[var(--xf-text-400)]"> — </span>
-                Strategy jobs, scanners, and vision-assisted review when your tenant enables them — structured workflows,
-                not endless chart spam.
-              </li>
-            </ul>
+            <div className="mt-6 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
+              <p className="mb-2">
+                <span className="font-semibold text-[var(--xf-text-100)]">Book-aware Grok</span> — prompts grounded in your real holdings, watchlist, and desk workflows.
+              </p>
+              <p>
+                <span className="font-semibold text-[var(--xf-text-100)]">Guardrails + execution</span> — risk tiers, strategy jobs, and scanners that keep income trades inside your rules.
+              </p>
+            </div>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
               <Link href={loginHref} className={MARKETING_HEADER_BTN_SECONDARY}>
@@ -179,6 +166,30 @@ export function PublicMarketingLanding() {
         </div>
       </header>
 
+      {/* How it works – short 3-step block for guests */}
+      <section className="border-t border-white/10 bg-[var(--xf-surface-700)]/30 py-10 sm:py-12">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
+          <p className="text-center text-xs font-semibold uppercase tracking-[2px] text-[var(--xf-gain-green)] mb-4">How it works</p>
+          <div className="grid gap-8 sm:grid-cols-3 text-center">
+            <div>
+              <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--xf-gain-green)] text-[var(--xf-bg-900)] text-sm font-bold">1</div>
+              <h4 className="font-semibold text-[var(--xf-text-100)]">Connect your book</h4>
+              <p className="mt-1 text-sm text-[var(--xf-text-300)]">Link portfolios or start with trial data. Your actual positions and watchlist come in automatically.</p>
+            </div>
+            <div>
+              <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--xf-gain-green)] text-[var(--xf-bg-900)] text-sm font-bold">2</div>
+              <h4 className="font-semibold text-[var(--xf-text-100)]">Chat with Grok that sees your book</h4>
+              <p className="mt-1 text-sm text-[var(--xf-text-300)]">Ask anything. xChat understands your holdings, risk settings, and desk workflows — no generic advice.</p>
+            </div>
+            <div>
+              <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--xf-gain-green)] text-[var(--xf-bg-900)] text-sm font-bold">3</div>
+              <h4 className="font-semibold text-[var(--xf-text-100)]">Execute with guardrails</h4>
+              <p className="mt-1 text-sm text-[var(--xf-text-300)]">Use xOptions builder + scanners. Every idea stays inside your defined risk rules before it becomes a trade.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section
         id="trust-bar"
         className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_88%,var(--xf-surface-700))] py-8 sm:py-10"
@@ -201,17 +212,20 @@ export function PublicMarketingLanding() {
         <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
           <div className="mb-12 text-center sm:mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
-              PRODUCT PILLARS
+              ONE WORKSPACE
             </p>
             <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">
-              Portfolios, Grok advisory, options jobs, and risk — one branded tenant workspace
+              Your portfolios. Grok that knows them. Execution tools that respect your rules.
             </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-[var(--xf-text-300)]">
+              Stop jumping between broker, spreadsheet, and generic chat. Everything lives in one place — scoped to what you actually own.
+            </p>
           </div>
           <div className="grid items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-4 xl:gap-6">
             <article className="group flex h-full flex-col rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[var(--xf-surface-700)] p-6 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] sm:p-8">
-              <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">Portfolios</h3>
+              <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">Your actual portfolios</h3>
               <p className="mt-2 text-[var(--xf-text-300)]">
-                Real sync path on approved workspaces — books, accounts, holdings, and desk workflows tied to your tenant.
+                Live sync of books, accounts, and holdings. See exactly what you own before you write another covered call or wheel.
               </p>
               <div className="mt-4 overflow-hidden rounded-2xl shadow-[0_0_30px_-10px_var(--xf-gain-green)]">
                 <LandingProductScreenshot
@@ -222,10 +236,9 @@ export function PublicMarketingLanding() {
               </div>
             </article>
             <article className="group flex h-full flex-col rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[var(--xf-surface-700)] p-6 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] sm:p-8">
-              <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">xChat</h3>
+              <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">Grok that knows your book</h3>
               <p className="mt-2 text-[var(--xf-text-300)]">
-                Grok-backed Responses with persona-linked tools, RAG, and vision paste when your tenant enables it — scoped
-                to your book.
+                xChat answers grounded in your real positions, watchlist, and risk settings — not generic market noise.
               </p>
               <div className="mt-4 overflow-hidden rounded-2xl shadow-[0_0_30px_-10px_var(--xf-gain-green)]">
                 <LandingProductScreenshot
@@ -236,9 +249,9 @@ export function PublicMarketingLanding() {
               </div>
             </article>
             <article className="group flex h-full flex-col rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[var(--xf-surface-700)] p-6 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] sm:p-8">
-              <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">xOptions</h3>
+              <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">xOptions execution</h3>
               <p className="mt-2 text-[var(--xf-text-300)]">
-                Stepped builder, chains, and orchestrated strategy jobs when your workspace enables them.
+                Step-by-step strategy builder + live chains. Turn ideas into structured trades without babysitting screens all day.
               </p>
               <div className="mt-4 overflow-hidden rounded-2xl shadow-[0_0_30px_-10px_var(--xf-gain-green)]">
                 <LandingProductScreenshot
@@ -249,43 +262,22 @@ export function PublicMarketingLanding() {
               </div>
             </article>
             <article className="group flex h-full flex-col rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[var(--xf-surface-700)] p-6 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] sm:p-8">
-              <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">Risk &amp; scanners</h3>
+              <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">Risk you can actually manage</h3>
               <p className="mt-2 flex-1 text-[var(--xf-text-300)]">
-                Desk alerts, watchlist workflows, and frameworks that keep income trades inside explicit risk tiers after
-                sign-in.
+                Alerts, scanners, and frameworks that keep your income trades inside explicit risk tiers. Sleep better.
               </p>
               <Link
                 href="/resources/options-risk-management-frameworks"
                 className="mt-4 inline-flex text-sm font-semibold text-[var(--xf-gain-green)] underline-offset-4 hover:underline"
               >
-                Risk frameworks overview <span aria-hidden>→</span>
+                See risk frameworks <span aria-hidden>→</span>
               </Link>
             </article>
           </div>
         </div>
       </section>
 
-      <section
-        id="content-series"
-        className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_94%,var(--xf-surface-700))] py-14 sm:py-18"
-        aria-label="Content series and distribution"
-      >
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
-              Content velocity
-            </p>
-            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-[var(--xf-text-100)] sm:text-3xl md:text-4xl">
-              Eight pillars → weekly narrative engine
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-              Repurpose monorepo options-coreskills arcs into a weekly newsletter plus LinkedIn/X drops — working title{" "}
-              <span className="font-semibold text-[var(--xf-text-200)]">“Grok Wheel Edge This Week.”</span> Each cycle maps
-              to a pillar article so education, social, and product story stay aligned.
-            </p>
-          </div>
-        </div>
-      </section>
+
 
       <section
         id="social-proof"
@@ -340,300 +332,76 @@ export function PublicMarketingLanding() {
         </div>
       </section>
 
-      <section
-        id="developers-agents"
-        className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_92%,var(--xf-surface-700))] py-14 sm:py-20"
-        aria-label="Developers and MCP"
-      >
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
-          <div className="flex flex-col gap-8 rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)] bg-[var(--xf-surface-700)]/70 p-8 sm:flex-row sm:items-start sm:justify-between sm:gap-10 sm:p-10">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
-                For developers &amp; agents
-              </p>
-              <h2 className="mt-3 text-2xl font-extrabold text-[var(--xf-text-100)] sm:text-3xl">
-                <span className="font-mono text-[var(--xf-gain-green)]">xfinance-advisor-mcp</span>
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-                Open MCP server for wiring Grok and desk tools into your own agents — portfolio-scoped calls, strategy
-                jobs, and market helpers with tenant isolation. Clone the repo, point Cursor or your orchestrator at the
-                server manifest, and keep data boundaries explicit for RIA and family-office stacks.
-              </p>
-              <p className="mt-4 text-base leading-relaxed text-[var(--xf-text-300)]">
-                <span className="font-semibold text-[var(--xf-text-100)]">quant-trader persona</span> — the in-product
-                quant desk: Monte Carlo tail-risk (VaR/CVaR), multi-book scope, IV-rank and drawdown gates, Greeks rollup,
-                and handoff to xChat on the same persona. Use{" "}
-                <Link
-                  href="/xoptions/quant-trader"
-                  className="font-semibold text-[var(--xf-gain-green)] underline-offset-4 hover:underline"
-                >
-                  /xoptions/quant-trader
-                </Link>{" "}
-                after sign-in, or select <span className="font-mono text-[var(--xf-text-200)]">quant-trader</span> in xChat
-                for NL workflows (Heavy depth, multi-agent reasoning). Educational simulations only — not personalized
-                advice.
-              </p>
-              <ul className="mt-5 list-none space-y-2 text-sm text-[var(--xf-text-400)]">
-                <li className="flex gap-2">
-                  <span aria-hidden className="text-[var(--xf-gain-green)]">
-                    →
-                  </span>
-                  <span>
-                    MCP repo: tools for external agents; override URL with{" "}
-                    <span className="font-mono text-[var(--xf-text-300)]">NEXT_PUBLIC_XFINANCE_ADVISOR_MCP_URL</span>
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span aria-hidden className="text-[var(--xf-gain-green)]">
-                    →
-                  </span>
-                  <span>
-                    Product surface: quant-trader xPersona + xOptions quant desk + strategy jobs (monte-carlo-run)
-                  </span>
-                </li>
-              </ul>
-            </div>
-            <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:min-w-[14rem]">
-              <a href={mcpRepoHref} target="_blank" rel="noopener noreferrer" className={MARKETING_HEADER_BTN_PRIMARY}>
-                Open MCP repo
-                <span
-                  aria-hidden
-                  className="rounded-xl bg-[color-mix(in_srgb,var(--xf-bg-900)_12%,transparent)] px-2 py-0.5 text-xs font-semibold"
-                >
-                  ↗
-                </span>
-              </a>
-              <Link href="/xoptions/quant-trader" className={MARKETING_HEADER_BTN_SECONDARY}>
-                Quant Trader desk
-              </Link>
-              <Link
-                href={withUtmParams("/xchat", { ...MARKETING_UTM, utm_content: "quant-trader-persona" })}
-                className="text-center text-sm font-semibold text-[var(--xf-gain-green)] underline-offset-4 hover:underline"
-              >
-                Open xChat (quant-trader)
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      <section
-        id="seo-solutions"
-        className="border-t border-white/10 bg-[var(--xf-surface-700)]/25 py-14 sm:py-18"
-        aria-label="SEO solution pages"
-      >
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
-          <div className="mb-8 text-center sm:mb-10">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">SEO landing pages</p>
-            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-[var(--xf-text-100)] sm:text-3xl md:text-4xl">
-              Intent-specific entry points
-            </h2>
-          </div>
-          <ul className="grid list-none gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {(
-              [
-                { href: "/wheel-strategy-ai", label: "Wheel Strategy AI", blurb: "Income loops + Grok context." },
-                {
-                  href: "/covered-call-portfolio-manager",
-                  label: "Covered Call Portfolio Manager",
-                  blurb: "Inventory-aware overlays."
-                },
-                { href: "/ibkr-options-automation", label: "IBKR Options Automation", blurb: "Snapshots → jobs pathway." },
-                { href: "/ria-white-label-platform", label: "RIA White Label Platform", blurb: "Branded tenant portals." }
-              ] as const
-            ).map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="flex h-full flex-col rounded-2xl border border-white/10 bg-[var(--xf-surface-700)]/85 p-5 transition hover:border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] sm:p-6"
-                >
-                  <span className="text-lg font-semibold text-[var(--xf-text-100)]">{item.label}</span>
-                  <span className="mt-2 flex-1 text-sm text-[var(--xf-text-400)]">{item.blurb}</span>
-                  <span className="mt-4 text-sm font-semibold text-[var(--xf-gain-green)]">
-                    View page <span aria-hidden>→</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
 
       <section
         id="ria-family-office"
-        className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_92%,var(--xf-surface-700))] py-16 sm:py-20"
-        aria-label="RIA and family office programs"
+        className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_92%,var(--xf-surface-700))] py-12 sm:py-16"
+        aria-label="For RIAs and teams"
       >
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
-              RIAs &amp; family offices
-            </p>
-            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--xf-text-100)] sm:text-4xl md:text-5xl">
-              White-label tenant portals
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-              Pilot branded workspaces with segregated data, structured roles (
-              <span className="text-[var(--xf-text-200)]">viewer</span>,{" "}
-              <span className="text-[var(--xf-text-200)]">operator</span>,{" "}
-              <span className="text-[var(--xf-text-200)]">advisor</span>
-              ), and YAML-driven tenant provisioning for repeatability across desks — professional rollout without duct tape.
-            </p>
-            <p className="mt-6 text-sm text-[var(--xf-text-400)]">
-              Compliance review and contracts apply; featured capabilities ship only when enabled for your tenant.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="resources-pillars"
-        className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_92%,var(--xf-surface-700))] py-16 sm:py-24"
-      >
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
-          <div className="mb-10 text-center sm:mb-12">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
-              Educational hub
-            </p>
-            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--xf-text-100)] sm:text-4xl md:text-5xl">
-              Eight pillars — options income, risk &amp; execution
-            </h2>
-            <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-              Deep dives on wheels, CSPs, covered calls, LEAP overlays, multi-book workflows, risk tiers, and the path from
-              xChat to broker-linked snapshots — public reading;{" "}
-              <span className="text-[var(--xf-text-200)]">not individualized advice.</span>
-            </p>
-          </div>
-
-          <div className="mb-10 flex flex-col items-stretch justify-center gap-4 rounded-2xl border border-[color-mix(in_srgb,var(--xf-gain-green)_22%,transparent)] bg-[var(--xf-surface-700)]/90 p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
-            <div className="text-left">
-              <h3 className="text-lg font-semibold text-[var(--xf-text-100)] sm:text-xl">2026 options income playbook</h3>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--xf-text-400)] sm:text-base">
-                Read the hub article now, or start a Basic trial (no card) to unlock PDF collateral on approved workspaces —
-                gated lead flow tags your signup for fulfillment.
-              </p>
-              <Link
-                href="/resources/2026-options-income-playbook"
-                className="mt-4 inline-flex text-sm font-semibold text-[var(--xf-gain-green)] underline-offset-4 hover:underline sm:text-base"
-              >
-                Read playbook online <span aria-hidden>→</span>
-              </Link>
-            </div>
-            <Link
-              href={playbookPdfTrialHref}
-              className="inline-flex shrink-0 items-center justify-center rounded-full px-6 py-3.5 text-center text-sm font-semibold text-[var(--xf-bg-900)] sm:px-8 sm:text-base"
-              style={{
-                background: "var(--xf-gain-green)",
-                boxShadow: "0 0 24px -4px color-mix(in srgb, var(--xf-gain-green) 45%, transparent)"
-              }}
-            >
-              Download playbook PDF
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">For RIAs &amp; teams</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--xf-text-100)]">White-label workspaces</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-base text-[var(--xf-text-300)]">
+            Branded tenant portals with role-based access and clean data separation. Built for professionals who need repeatability without custom dev.
+          </p>
+          <div className="mt-6">
+            <Link href="/#ria-family-office" className="text-[var(--xf-gain-green)] font-semibold underline-offset-4 hover:underline">
+              Learn about RIA pilots →
             </Link>
           </div>
-
-          <ul className="grid list-none gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {ADVISORY_RESOURCE_PILLARS.map((item, i) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="flex h-full flex-col rounded-2xl border border-white/10 bg-[var(--xf-surface-700)]/80 p-5 text-left transition hover:border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] hover:bg-[var(--xf-surface-700)] sm:p-6"
-                >
-                  <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--xf-text-400)]">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="mt-2 text-lg font-semibold leading-snug text-[var(--xf-text-100)]">{item.label}</span>
-                  <span className="mt-2 flex-1 text-sm leading-relaxed text-[var(--xf-text-400)]">{item.blurb}</span>
-                  <span className="mt-4 text-sm font-semibold text-[var(--xf-gain-green)]">
-                    Read article <span aria-hidden>→</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
         </div>
       </section>
 
-      <section
-        id="growth-2026"
-        className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_90%,var(--xf-surface-700))] py-16 sm:py-22"
-        aria-label="Growth programs 2026"
-      >
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
-              2026–2027 growth lane
-            </p>
-            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--xf-text-100)] sm:text-4xl md:text-5xl">
-              Desk demos, community, partnerships, pulse
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-              Pair the on-page xChat preview with recorded strategy-job examples inside approved trials. Monthly{" "}
-              <span className="font-semibold text-[var(--xf-text-200)]">Options Desk with Grok</span> working sessions (you +
-              published personas) — recordings gated behind Basic trial signup so serious operators opt in.
-            </p>
+      <section className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_92%,var(--xf-surface-700))] py-12 sm:py-16">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">Educational hub</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--xf-text-100)]">Practical options income content</h2>
+          <p className="mx-auto mt-3 max-w-xl text-base text-[var(--xf-text-300)]">
+            Wheels, CSPs, covered calls, risk frameworks, and real desk workflows — written for people who actually trade.
+          </p>
+          <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link href="/resources/2026-options-income-playbook" className="text-[var(--xf-gain-green)] font-semibold underline-offset-4 hover:underline">
+              Read the 2026 playbook →
+            </Link>
+            <Link href="/resources" className="text-[var(--xf-gain-green)] font-semibold underline-offset-4 hover:underline">
+              Browse all resources →
+            </Link>
           </div>
-          <ul className="mx-auto mt-12 grid max-w-4xl list-none gap-6 text-left sm:grid-cols-2">
-            <li className="rounded-2xl border border-white/10 bg-[var(--xf-surface-700)]/80 p-6">
-              <h3 className="text-lg font-semibold text-[var(--xf-text-100)]">Partnerships</h3>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--xf-text-400)]">
-                Target RIA platforms, family-office suites, and adjacent fintechs for co-branded tenants — MCP repo lowers
-                integration friction for engineering teams.
-              </p>
-            </li>
-            <li className="rounded-2xl border border-white/10 bg-[var(--xf-surface-700)]/80 p-6">
-              <h3 className="text-lg font-semibold text-[var(--xf-text-100)]">Platform Pulse (tease)</h3>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--xf-text-400)]">
-                Roadmap: anonymized aggregates on income posture and risk tiers — public or in-app pulse when compliance
-                signs off. Not live metrics until shipped.
-              </p>
-            </li>
-            <li className="rounded-2xl border border-white/10 bg-[var(--xf-surface-700)]/80 p-6 sm:col-span-2">
-              <h3 className="text-lg font-semibold text-[var(--xf-text-100)]">Paid acquisition alignment</h3>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--xf-text-400)]">
-                LinkedIn campaigns aimed at HNWI-aged professionals (35–65) plus sponsored thought leadership — pair with{" "}
-                <span className="font-semibold text-[var(--xf-text-300)]">Request RIA Pilot</span> CTAs for institutional
-                funnel air-cover.
-              </p>
-            </li>
-          </ul>
         </div>
       </section>
 
-      <section className="border-t border-white/10 py-16 sm:py-24" id="xoptions-teaser">
+
+
+      <section className="border-t border-white/10 py-14 sm:py-20" id="access-cta">
         <div className="mx-auto max-w-screen-2xl px-4 text-center sm:px-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
-            ACCESS
+          <p className="text-xs font-semibold uppercase tracking-[2px] text-[var(--xf-gain-green)]">
+            GET STARTED
           </p>
-          <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">Approved access for professionals</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-            Start a Basic trial (no card on this step) or request another plan. Admins assign roles (viewer, operator,
-            advisor). RIAs and family offices: ask about tenant branding and pilot scopes for client portals. Limits and
-            audit-friendly defaults apply after sign-in.
+          <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">
+            Start earning with guardrails today
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-lg text-[var(--xf-text-300)]">
+            Basic trial. No card required. Connect your portfolios or explore with sample data. Roles and limits apply after sign-in.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:flex-wrap">
-            <Link href={loginHref} className={`${MARKETING_HEADER_BTN_SECONDARY} max-w-[min(100%,22rem)]`}>
-              Sign In
-            </Link>
-            <Link href={registerTrialHref} className={`${MARKETING_HEADER_BTN_PRIMARY} max-w-[min(100%,22rem)]`}>
+
+          <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+            <Link href={registerTrialHref} className={MARKETING_HEADER_BTN_PRIMARY}>
               {TRIAL_CTA_LABEL}
-              <span
-                aria-hidden
-                className="rounded-xl bg-[color-mix(in_srgb,var(--xf-bg-900)_12%,transparent)] px-2 py-0.5 text-xs font-semibold"
-              >
-                →
-              </span>
+              <span aria-hidden className="ml-2">→</span>
             </Link>
-            <Link
-              href={riaPilotHref}
-              className="inline-flex max-w-[min(100%,22rem)] items-center justify-center px-6 py-4 text-center text-base font-semibold leading-snug tracking-tight rounded-2xl border border-[var(--xf-lightning-yellow)] text-[var(--xf-lightning-yellow)] hover:bg-[color-mix(in_srgb,var(--xf-lightning-yellow)_12%,transparent)] transition-all sm:px-8"
-            >
-              Request RIA Pilot
+            <Link href={loginHref} className={MARKETING_HEADER_BTN_SECONDARY}>
+              Sign in with X
             </Link>
-            <Link
-              href={plansHref}
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              See plans
+          </div>
+
+          <div className="mt-6 text-sm">
+            <Link href={riaPilotHref} className="text-[var(--xf-lightning-yellow)] hover:underline">
+              Request RIA / team pilot
+            </Link>
+            <span className="mx-2 text-[var(--xf-text-400)]">·</span>
+            <Link href={plansHref} className="text-[var(--xf-gain-green)] hover:underline">
+              See all plans
             </Link>
           </div>
         </div>

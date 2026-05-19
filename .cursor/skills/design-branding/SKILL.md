@@ -37,6 +37,7 @@ Review against:
 - `atx-docs/branding/atxfinance-typography.md`
 - `atx-docs/branding/atxfinance-brand-prompts.md`
 - `atx-docs/design-system/atxfinance-brand-kit.md`
+- `atx-docs/design-system/ui-primitives-and-patterns.md` (product UI surfaces, workspace rail, xChat/xOptions patterns)
 
 ## Checklist
 
@@ -103,5 +104,7 @@ If available, align reviews with:
 
 - `atx-docs/design-system/atxfinance-brand-kit.css`
 - `atx-docs/design-system/atxfinance-brand-kit.md`
+- `atx-docs/design-system/ui-primitives-and-patterns.md` (recurring product patterns)
+- `.cursor/rules/xfinance-branding.mdc`
 
 If unavailable, use this skill's checklist and rubric as the source of truth.

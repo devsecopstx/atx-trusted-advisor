@@ -2,7 +2,7 @@
 
 Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is implemented today** (contracts, routes, shipped slices): [design-system/current-state-features.md](./design-system/current-state-features.md). **Release history:** [release-notes.md](./sre-ops/release-notes.md). Tenant provisioning narrative: [skill-tenant-roadmap](../.cursor/skills/skill-tenant-roadmap/SKILL.md), [tenant-specs/README.md](../tenant-specs/README.md).
 
-**Docs index:** [README.md](./README.md) · **Tenant UX:** [tenant-ux-plan.md](./design-system/tenant-ux-plan.md) · [tenant-ux-enforcement.md](./sre-ops/tenant-ux-enforcement.md) · **xChat / multi-agent:** [xchat/atx-multi-agent.md](./xchat/atx-multi-agent.md) · **BFF / Spring:** [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md) · [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md) · [mongo-next-write-boundary.md](./sre-ops/mongo-next-write-boundary.md) · [spring-read-plane-and-mongo-exit.md](./sre-ops/spring-read-plane-and-mongo-exit.md) · [bff-read-facade-latency-measurement.md](./sre-ops/bff-read-facade-latency-measurement.md) · [architecture/adr-002-read-facade-and-next-mongo-reads.md](./architecture/adr-002-read-facade-and-next-mongo-reads.md) · [staging-hnwi-soak-checklist.md](./sre-ops/staging-hnwi-soak-checklist.md) · **Strategy engine:** [xStrategyBuilder/strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) · **Scanners (Phase 3):** [scheduled-task/scanners-phase3-plan.md](./design-system/scheduled-task/scanners-phase3-plan.md) · **IBKR:** [ibkr-automation.md](./design-system/ibkr-automation.md) · **NL workflows:** [xchat/nl-workflows/nl-prompts.md](./xchat/nl-workflows/nl-prompts.md) · **Deploy / secrets:** [guides/deploy-and-ops.md](./guides/deploy-and-ops.md)
+**Docs index:** [README.md](./README.md) · **Tenant UX:** [tenant-ux-plan.md](./design-system/tenant-ux-plan.md) · [tenant-ux-enforcement.md](./sre-ops/tenant-ux-enforcement.md) · **xChat / multi-agent:** [xchat/atx-multi-agent.md](./xchat/atx-multi-agent.md) · **BFF / Spring:** [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md) · [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md) · [mongo-next-write-boundary.md](./sre-ops/mongo-next-write-boundary.md) · [spring-read-plane-and-mongo-exit.md](./sre-ops/spring-read-plane-and-mongo-exit.md) · [bff-read-facade-latency-measurement.md](./sre-ops/bff-read-facade-latency-measurement.md) · [architecture/adr-002-read-facade-and-next-mongo-reads.md](./architecture/adr-002-read-facade-and-next-mongo-reads.md) · [staging-hnwi-soak-checklist.md](./sre-ops/staging-hnwi-soak-checklist.md) · **Strategy engine:** [xoptions/strategy-engine.md](./design-system/xoptions/strategy-engine.md) · **Scanners (Phase 3):** [scheduled-task/scanners-phase3-plan.md](./design-system/scheduled-task/scanners-phase3-plan.md) · **IBKR:** [ibkr-automation.md](./design-system/ibkr-automation.md) · **NL workflows:** [xchat/nl-workflows/nl-prompts.md](./xchat/nl-workflows/nl-prompts.md) · **Deploy / secrets:** [guides/deploy-and-ops.md](./guides/deploy-and-ops.md)
 
 ---
 
@@ -30,7 +30,7 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 | **706** | Tenant workspace automations | Medium | NL schedules, queue fairness, workspace limits — same user-tasks doc |
 | **707** | **xChat harden** | High | Vision paste policy, metering refinements, artifacts/schema parity: [#xchat-harden](#xchat-harden) |
 | **709** | **HNWI prompt_templates (admin)** | Low | Tenant-visible editor + audit for Mongo **`prompt_templates`** overrides (bodies ship via seed/API today): [#xchat-harden](#xchat-harden) |
-| **708** | **Monte Carlo tail-risk** (`MonteCarloTailRiskEngine`) | High | **Open** — fat-tail sims, VaR/CVaR/drawdown stress, **`UserOptionsContext`** tier gates, Redis cache + quote circuit-break; companion to **`OptionsStrategyEngine`**: [#monte-carlo-tail-risk](#monte-carlo-tail-risk) · [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) |
+| **708** | **Monte Carlo tail-risk** (`MonteCarloTailRiskEngine`) | High | **Open** — fat-tail sims, VaR/CVaR/drawdown stress, **`UserOptionsContext`** tier gates, Redis cache + quote circuit-break; companion to **`OptionsStrategyEngine`**: [#monte-carlo-tail-risk](#monte-carlo-tail-risk) · [strategy-engine.md](./design-system/xoptions/strategy-engine.md) |
 | **15** | **Quant Trader surface (xOptions)** | High | **Shipped (May 2026)** — `/xoptions?tab=quant`, `/xoptions/quant-trader`, step-4 sidebar toggle **Enable Quant Trader**, APIs **`GET /api/app-user/xoptions/quant-trader/context`** + **`POST …/run`**, strategy jobs **`jobType: monte-carlo-run`**, xChat handoff to **`quant-trader`** persona: [xoptions-strategy-builder.md](./xchat/xoptions-strategy-builder.md) § Quant Trader |
 | **900** | Automated trades w/ verify | Low | After **200** + custodian execution maturity; until then alerts / manual |
 
@@ -90,7 +90,7 @@ Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-too
 
 **Track:** **708** (open). **Priority:** High — pairs with deterministic **`OptionsStrategyEngine`** and **[Investment outlook](#engine-xai-conversational-layer)** so scanners answer “what’s my book-level tail exposure?” not only “which structure fits?”
 
-**Today:** JVM engine is **deterministic / rule-based** (speed + explainability) — [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md).
+**Today:** JVM engine is **deterministic / rule-based** (speed + explainability) — [strategy-engine.md](./design-system/xoptions/strategy-engine.md).
 
 **Add:** **`MonteCarloTailRiskEngine`** (new `@Component` under `services/atxfinance-backend/.../strategy/`) as a **companion** to **`OptionsStrategyEngine`**, driven off the same **`OptionChainSnapshot`** plus **portfolio holdings** (multi-leg aware).
 
@@ -218,7 +218,7 @@ Phased delivery with zero downtime for Stripe subscribers; additive X Money rout
 
 | Workstream | Detail |
 | ---------- | ------ |
-| **Engine + scanners** | Crypto rule templates; desk-safe defaults — [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md). |
+| **Engine + scanners** | Crypto rule templates; desk-safe defaults — [strategy-engine.md](./design-system/xoptions/strategy-engine.md). |
 | **Alerts** | Portfolio alert UX: crypto category + xAI narrative block. |
 | **xOptions** | Payoff charts for listed crypto options where entitled; flag exotic venues. |
 | **Cross-asset alerts** | Concentration across asset classes from Phase 1 marks. |

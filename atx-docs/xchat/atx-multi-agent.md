@@ -1,4 +1,4 @@
-# Multi-agent orchestration & xChat ↔ xStrategyBuilder
+# Multi-agent orchestration & xChat ↔ xOptions
 
 **Docs index:** [`../README.md`](../README.md). Diagram: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).
 
@@ -8,7 +8,7 @@
 
 ## Locked decisions (non-negotiable — Phase 1 only)
 
-1. **Orchestrator** = **Spring + Redis** (server-only). **xStrategyBuilder** remains UI-only (renders artifacts / review — no orchestration state).
+1. **Orchestrator** = **Spring + Redis** (server-only). **xOptions** (strategy builder) remains UI-only (renders artifacts / review — no orchestration state).
 2. **xAI collections** = **TEAM-only** via **`XAI_TEAM_ID`** (no per-user bootstrap, no legacy default merges). Chat-history collections stay under that team when productized.
 3. **Artifact** = **v1**: Markdown + fenced JSON block; **server-side validation**. **v2** strict JSON Schema is **deferred**.
 4. **Default mode** = **async**. SLO: **p50 ≤ 2.5s**, **p95 ≤ 7s** from **`slots_complete` → artifact**; if p95 > 7s → polling + push. **Sync** = premium / flag **later** (not Phase 1 default).
@@ -46,7 +46,7 @@ Thin HTTP handlers; async default; idempotent retries; hourly caps limit cost.
 |--------|------|
 | **Orchestrator (Spring + Redis)** | Step machine, validation, persistence, idempotency, rate limits, multi-agent coordination. |
 | **xChat `/ask`** | Responses API + tool loop; plan limits; **live token SSE** on Next (per-turn streaming + SSE **`done`** = JSON `data`). |
-| **xStrategyBuilder** | Renders artifacts / review — **no** orchestration state. |
+| **xOptions** | Renders artifacts / review — **no** orchestration state. |
 
 **HTTP (Chunk 1):** Spring **`/api/strategy-jobs`** (BFF from Next when `ATXFINANCE_BACKEND_ORIGIN` set) — slot collection to `slots_complete`; see **[`../sre-ops/atxfinance-backend-http-api.md`](../sre-ops/atxfinance-backend-http-api.md)**.
 
@@ -68,4 +68,4 @@ Async jobs meet SLOs; **idempotency** via `Idempotency-Key` or deterministic has
 - **2026-04-03** — Non-negotiable Phase 1 list expanded (v2 schema deferred; `slots_complete`→artifact SLO anchor; routing + `clampMultiAgentParallelismForPlan`; Redis cap key aligned to `tenantId`+`userId`+`emailAccountId`; GET/turns enforce `emailAccountId` match).
 - **2026-03-23** — Consolidated docs + locked boundaries (server orchestrator, v1 artifact format, async SLOs, isolation, caps, BFF-only).
 - **2026-03-24** — Phase 1 xAI: TEAM_XAI + `XAI_TEAM_ID` only; legacy default/bootstrap collection work out of Phase 1 scope.
-- **2026-03-25** — Roadmap status (shipped vs outstanding) for this track lives in [`../PLAN.md`](../PLAN.md) § **xChat Hardcore** (*Phase 1 — xChat → xStrategyBuilder multi-agent*); design loop: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).
+- **2026-03-25** — Roadmap status (shipped vs outstanding) for this track lives in [`../PLAN.md`](../PLAN.md) § **xChat Hardcore** (*Phase 1 — xChat → xOptions multi-agent*); design loop: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).

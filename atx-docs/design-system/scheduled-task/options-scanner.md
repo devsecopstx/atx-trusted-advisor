@@ -12,7 +12,7 @@
 
 **Kotlin tick:** `options_scanner` on the JVM still runs **`OptionsStrategyEngine.scheduledTaskDryRunOutput`** only; full chain + Grok pass remains on **Next**.
 
-Related design: [`strategy-engine.md`](../xStrategyBuilder/strategy-engine.md) (fit-score contract; PLAN 245 / Kotlin engine umbrella).
+Related design: [`strategy-engine.md`](../xoptions/strategy-engine.md) (fit-score contract; PLAN 245 / Kotlin engine umbrella).
 
 ---
 

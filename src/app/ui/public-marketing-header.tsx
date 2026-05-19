@@ -16,10 +16,8 @@ export const MARKETING_HEADER_BTN_PRIMARY =
   "inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--xf-gain-green)] px-6 text-sm font-semibold text-[var(--xf-bg-900)] shadow-[0_0_24px_-4px_color-mix(in_srgb,var(--xf-gain-green)_45%,transparent)] transition-all duration-200 hover:scale-[1.02] hover:opacity-95 active:scale-[0.98] sm:text-base";
 
 const MARKETING_NAV_LINKS: { href: string; label: string }[] = [
-  { href: "/#resources-pillars", label: "Educational hub" },
-  { href: "/#developers-agents", label: "Developers" },
-  { href: "/#growth-2026", label: "Desk series" },
-  { href: "/resources/top-10-hnwi-xchat-prompts", label: "Top 10 HNWI prompts" }
+  { href: "/resources", label: "Educational hub" },
+  { href: "/#ria-family-office", label: "For RIAs & teams" }
 ];
 
 type MarketingHeaderCtasProps = {

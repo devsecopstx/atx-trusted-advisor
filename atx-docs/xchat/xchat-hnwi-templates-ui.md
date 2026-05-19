@@ -1,5 +1,7 @@
 # xChat — HNWI templates & persona picker (Grok-style shell)
 
+**UI Patterns:** See the canonical guidance in [`../design-system/ui-primitives-and-patterns.md`](../design-system/ui-primitives-and-patterns.md#7-xchat-specific-patterns) (composer rail, templates gallery, persona menu, soft theme overrides, workspace rail integration).
+
 Approved **app_user** xChat composer polish: curated **Templates** gallery + **persona** popover (Auto + published personas).
 
 ## Templates

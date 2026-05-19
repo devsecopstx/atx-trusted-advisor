@@ -1,5 +1,7 @@
 # xOptions — Find options (`/xoptions`)
 
+**UI Patterns:** See the canonical guidance in [`../design-system/ui-primitives-and-patterns.md`](../design-system/ui-primitives-and-patterns.md#8-xoptions-specific-patterns) (4-step flow, chain table, review ticket, shell theme handling, workspace rail, wheel studio).
+
 ## Shell theme & layout CSS
 
 - **Soft / light shell** (`html[data-xf-ui="soft"]`): Page background uses **`--xf-xoptions-surface`** (mapped to **`--xf-bg-900`** in `globals.css`); workspace UI chrome is tuned in **`src/app/xoptions/xoptions.css`** (panels, chain CTA, ATM row contrast). The symbol OHLC/volume charts (`xoptions-symbol-chart-panel.tsx`) switch Apex **light vs dark** grid/labels when the user toggles Appearance.

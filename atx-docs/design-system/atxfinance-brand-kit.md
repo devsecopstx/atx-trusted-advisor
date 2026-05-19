@@ -1,18 +1,37 @@
-# atxFinance Mobile Brand and Marketing Kit
+# xFinance Design System & Brand Kit
 
-## Brand Positioning
+**Source of truth** for visual identity, tokens, and product + marketing guidelines. For active Cursor/agent rules, see `.cursor/rules/xfinance-branding.mdc`.
 
-- **Core promise:** AI-powered institutional options alpha with premium UX and clear decision support.
-- **Tone:** trustworthy, performance-focused, and procurement-ready.
-- **Tagline lockup:** `atxFinance` + `Powered by xAI`.
-- **Ecosystem naming:** `Grok` for AI strategy surfaces, `xStrategyBuilder` for strategy generation and risk analytics.
+## Current Brand Positioning (2026)
 
-## Visual Direction
+- **Core promise:** Institutional-grade defined-risk options income tools + Grok-powered advisory at retail price with minimal daily screen time.
+- **Primary tagline:** **"No Atoms Moved. Just Gains Earned."**
+- **Secondary:** **"Options Profits Powered by Grok"**
+- **Tone:** Professional, calm, benefit-first. Never hype.
+- **Ecosystem naming:** `xFinance` (core workspace), `xChat` (Grok advisor), `xOptions` (strategy builder + scanner), `xCoach` (exam readiness). `xMoney` is future.
 
-- **Aesthetic:** clean Grok-like minimal fintech, dark-first, geometric, low-noise.
-- **UI style:** monochrome surfaces, subtle depth, thin borders, no saturated icon colors.
-- **Motifs:** simple token glyphs, node-link structures, restrained chart overlays.
-- **Mockup framing:** strategy-console-led composition with supporting licensing/compliance cards.
+## Theming
+
+The product supports two first-class shells:
+- **Deep (dark)** — default high-contrast experience
+- **Soft (light charcoal)** — user-selectable via theme picker for daytime use
+
+See `shell-theme-guidelines.md` for contrast rules, `data-xf-ui` implementation, and reviewer requirements. Marketing / hero materials continue to favor the deep aesthetic.
+
+## Active Rules & Maintenance
+
+**Primary enforcement:** `.cursor/rules/xfinance-branding.mdc` (alwaysApply). All new marketing, hero, and product copy must follow it.
+
+**Legacy tokens:** `--xf-blue-400`, `--xf-cyan-400`, `--xf-purple-400`, and `--xf-purple-500` are marked legacy. New work should prefer semantic tokens (`--xf-gain-green`, `--xf-accent-cta`, `--xf-nav-green`, `--xf-xoptions-accent`, etc.) or direct `--xf-text-*` / `--xf-surface-*` values. A full migration pass has not been completed.
+
+## Visual Direction (Product)
+
+- **Aesthetic:** Clean, Grok-aligned minimal fintech. Monochrome surfaces with subtle depth.
+- **UI style:** Thin borders, restrained use of `--xf-gain-green` for gains/CTAs, geometric motifs.
+- **Theming:** Supports deep (dark) and soft (light charcoal) shells. Never use pure white or harsh light as primary canvas.
+- **Key surfaces (2026):** xChat (with workspace rail), xOptions strategy builder, Portfolios workspace, Admin console.
+
+See `shell-theme-guidelines.md` and `.cursor/rules/xfinance-branding.mdc` for current rules.
 
 ## Color System
 
@@ -63,7 +82,7 @@
 - Use a **4:5 vertical** social-ready frame.
 - Keep the **atxFinance logo top-left/top-center** with subtitle `Powered by xAI`.
 - Place the **strategy console mockup center-right** as the primary focal object.
-- Place **Grok** and **xStrategyBuilder** glass cards on the left.
+- Place **Grok** and **xOptions** glass cards on the left.
 - Keep negative space around logo and key UI metrics; avoid overpacking.
 
 ## Admin Console Direction (console.x.ai inspired)
@@ -78,32 +97,30 @@ Use this direction for operator/admin surfaces where fast scanning matters more 
 - **Interaction:** keep affordances clear (`Export`, `Invite users`, row menus) and consistent.
 - **Do not:** add decorative glow or high-saturation accents on data-dense admin screens.
 
-## Branding Update Plan (Based on Provided Example)
+## Historical: Early Branding Refresh Plan (2026)
 
-1. **Phase 1 - Core UI baseline**
-   - Replace emoji or colorful iconography with monochrome SVG icons in primary admin cards.
-   - Convert CTA and card accents to neutral grayscale while keeping contrast AA-compliant.
-2. **Phase 2 - Shared token migration**
-   - Keep existing CSS token names for backward compatibility, but map accent tokens to neutral values.
-   - Remove neon-heavy gradients and replace with subtle white/gray depth cues.
-3. **Phase 3 - Asset alignment**
-   - Rebuild hero and social mocks to mirror the example's minimal composition: single focal mark, sparse background, compact copy blocks.
-   - Standardize icon stroke style (single-weight outline icons) across app screenshots and marketing cards.
-4. **Phase 4 - QA gate before merge**
-   - Apply the `atxfinance-brand` checklist and block release for any legibility or brand naming errors.
-   - Verify mobile crop safety (4:5), text readability, and consistency across `atxFinance`, `Grok`, and `xStrategyBuilder`.
+This section documents an earlier phase of the brand evolution. Current direction is captured in:
+- `.cursor/rules/xfinance-branding.mdc`
+- `atx-docs/xchat/xfinance-branding-review.md`
+- `shell-theme-guidelines.md`
 
-## Ready-to-Use Files
+Many of the Phase 1–3 items (monochrome icons, token discipline, hero minimalism) have been adopted. The plan is retained here for historical context only.
 
-- Stylesheet tokens/components: `atx-docs/design-system/atxfinance-brand-kit.css` (imported from `src/app/layout.tsx`)
-- Editable hero scene template: `atx-docs/design-system/atxfinance-hero-template.html`
+## Ready-to-Use Files & References
+
+- **Tokens:** `atx-docs/design-system/atxfinance-brand-kit.css` (imported in `src/app/layout.tsx`)
+- **Hero template:** `atx-docs/design-system/atxfinance-hero-template.html`
+- **Active branding rules:** `.cursor/rules/xfinance-branding.mdc`
+- **Shell theming:** `shell-theme-guidelines.md`
+- **UI primitives & patterns (required for product surfaces):** `ui-primitives-and-patterns.md`
+- **Latest branding review:** `xchat/xfinance-branding-review.md`
 
 ## Prompt Template for Image Generation
 
 Use this with image models when creating social creatives:
 
 ```text
-Create a premium mobile fintech marketing hero image for atxFinance powered by xAI, Grok, and xStrategyBuilder.
+Create a premium mobile fintech marketing hero image for xFinance powered by xAI, Grok, and xOptions.
 
 Style: modern, sleek, futuristic fintech aesthetic; professional yet approachable; clean lines; dark mode UI; subtle monochrome depth.
 Palette: deep charcoal/black base with silver-gray and soft white accents.
@@ -112,7 +129,7 @@ Composition: vertical 4:5 social-ready hero.
 - Right/center: realistic strategy console mockup showing dark-mode options UI (strategy builder, Greeks panel, backtesting timeline, AI assistant panel).
 - Left: floating glassmorphism cards with:
   - "Grok" AI assistant card/icon
-  - xStrategyBuilder licensing card with risk/compliance symbols
+  - xOptions licensing card with risk/compliance symbols
   - fintech / AI motifs (subtle glyphs, node-link graphics, abstract neural lines) in monochrome
 Visual quality: crisp, high-detail, premium product render, balanced layout, minimal clutter.
 Mood: high-tech finance brand, trustworthy and innovative.

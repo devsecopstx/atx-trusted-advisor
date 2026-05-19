@@ -78,14 +78,14 @@ When changing `/api/strategy-options*`, `src/modules/strategy-options/**`, or xO
 - `DEVELOPMENT.md` options chain section
 - `atx-docs/xchat/xoptions-strategy-builder.md` (product behavior)
 
-**Payoff chart implementation** (not a Cursor skill): `src/lib/options-payoff.ts`, `src/app/xstrategybuilder/ui/options-payoff-chart.tsx` — spec: `atx-docs/design-system/xStrategyBuilder/options-payoff-chart-spec.md`.
+**Payoff chart implementation** (not a Cursor skill): `src/lib/options-payoff.ts`, `src/app/xoptions/...` — spec: `atx-docs/design-system/xoptions/options-payoff-chart-spec.md`.
 
 ## OptionsStrategyEngine (PLAN 245)
 
 Spec-only or engine changes:
 
-- `atx-docs/design-system/xStrategyBuilder/strategy-engine.md`
-- Assets: `StrategyEngine.svg`, `strategy-engine-fit-score-formula.png`
+- `atx-docs/design-system/xoptions/strategy-engine.md`
+- Assets: `StrategyEngine.svg`, `strategy-engine-fit-score-formula.png` (now in `xoptions/` archive for history)
 - Cross-check `.cursor/agents/reviewer.md` § *OptionsStrategyEngine*
 - `atx-docs/PLAN.md` — outstanding vs shipped
 

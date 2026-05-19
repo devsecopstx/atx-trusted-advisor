@@ -27,8 +27,8 @@ Ship **touch-first** product UI that scales to desktop without a separate native
 ## Defaults (this repo)
 
 - **Stack:** Next.js App Router, Tailwind, design tokens from `atx-docs/design-system/atxfinance-brand-kit.css`
-- **Theme:** `src/lib/xf-ui-theme.ts` — soft vs deep; test with `tests/unit/xf-ui-theme.test.ts`
-- **Charts:** Apex on xOptions/xStrategyBuilder — see `atx-docs/design-system/charts-apex.md`
+- **Theme & patterns:** `src/lib/xf-ui-theme.ts` (soft vs deep) + `atx-docs/design-system/ui-primitives-and-patterns.md` (workspace rail, xChat/xOptions surfaces)
+- **Charts:** Apex on xOptions — see `atx-docs/design-system/charts-apex.md`
 - **No hardcoded hex** in app CSS
 
 ## Mobile-first workflow

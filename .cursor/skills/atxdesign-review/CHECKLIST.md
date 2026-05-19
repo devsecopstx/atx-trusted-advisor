@@ -19,10 +19,12 @@ Run this baseline checklist on every design review:
 Run this gate whenever PR scope includes UI components, design tokens, icons, or visual behavior:
 
 - [ ] Theme + layout:
-  - dark/light mode parity is preserved
+  - Follow **`atx-docs/design-system/shell-theme-guidelines.md`** + **`ui-primitives-and-patterns.md`** (soft + deep shells, workspace rail, xChat/xOptions patterns)
+  - dark/light (soft) mode parity + contrast rules verified
   - centered/simple layouts with generous negative space
   - bubble-style message surfaces (if present) remain clear and consistent
 - [ ] Color + typography:
+  - Use `--xf-*` tokens from `atx-docs/design-system/atxfinance-brand-kit.css` (no stray hex)
   - high-contrast black/white base with restrained accent pops
   - minimal hue variety; avoid decorative palette drift
   - bold heading hierarchy + readable body typography with clean sans-serif usage
