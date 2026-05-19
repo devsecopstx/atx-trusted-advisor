@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "slug": "options-disclosure",
+  "title": "Options Disclosures",
+  "riskLevel": "balanced",
+  "outlook": "Neutral",
+  "tags": [
+    "risk",
+    "options",
+    "disclosure"
+  ],
+  "sourcePdf": "source.pdf",
+  "ingestedAt": "2026-05-19T10:16:46.111Z",
+  "chunkFiles": [
+    "options-disclosure.md"
+  ],
+  "segment": "options-strategy-advanced",
+  "pageCount": 2,
+  "mongoSeededAt": "2026-05-19T10:16:57.286Z",
+  "xaiSyncedAt": "2026-05-19T10:17:00.194Z",
+  "xaiCollectionId": "collection_69426eee-1e13-424e-be20-f6e7491e9ec9",
+  "xaiCollectionName": "xfinance-pdf-ingest-options-disclosure"
+}

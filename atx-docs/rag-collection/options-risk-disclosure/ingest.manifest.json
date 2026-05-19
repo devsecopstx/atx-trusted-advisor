@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "slug": "options-risk-disclosure",
+  "title": "OCC Risk Disclosue",
+  "riskLevel": "balanced",
+  "outlook": "Neutral",
+  "tags": [
+    "risk",
+    "options",
+    "occ"
+  ],
+  "sourcePdf": "source.pdf",
+  "ingestedAt": "2026-05-19T10:15:21.844Z",
+  "chunkFiles": [
+    "options-risk-disclosure-part-001.md",
+    "options-risk-disclosure-part-002.md"
+  ],
+  "segment": "options-strategy-advanced",
+  "pageCount": 5,
+  "mongoSeededAt": "2026-05-19T10:15:48.467Z",
+  "xaiSyncedAt": "2026-05-19T10:15:51.657Z",
+  "xaiCollectionId": "collection_ef0cf466-12e0-4f96-af06-1e571a5bae84",
+  "xaiCollectionName": "xfinance-pdf-ingest-options-risk-disclosure"
+}
