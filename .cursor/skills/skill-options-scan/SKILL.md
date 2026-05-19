@@ -1,3 +1,8 @@
+---
+name: skill-options-scan
+description: Mandatory guard for all options_scan report generation, OptionsHoldingsAdvisor logic, action rules (ROLL/BTC/HOLD), and scheduled report work. Use when touching report generation or the rules engine.
+---
+
 # Options Scan Report Generation Skill
 
 **When to use:** Any task involving `options_scan`, `OptionsHoldingsAdvisor`, report generation, action rules (ROLL/BTC/HOLD/etc.), or scheduled report logic.

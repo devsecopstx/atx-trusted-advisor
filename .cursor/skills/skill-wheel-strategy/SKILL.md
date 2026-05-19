@@ -1,6 +1,8 @@
 ---
-name: skill-wheel
+name: skill-wheel-strategy
 description: Wheel strategy workflow (CSP to covered-call cycle) with premium reinvestment and assignment discipline. Use when the user asks for recurring options income loops, CSP-to-CC transitions, or wheel risk controls.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill Wheel Strategy
@@ -20,3 +22,8 @@ description: Wheel strategy workflow (CSP to covered-call cycle) with premium re
 2. Proposed next trade in cycle.
 3. Transition triggers (assign/expire/roll).
 4. Risk and capital usage summary.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

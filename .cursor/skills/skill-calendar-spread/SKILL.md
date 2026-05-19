@@ -1,6 +1,8 @@
 ---
 name: skill-calendar-spread
 description: Calendar spread framework for near-term theta capture against longer-dated same-strike exposure. Use when the user asks for neutral-to-moderately-directional time spreads or earnings/volatility time-structure trades.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill Calendar Spread
@@ -20,3 +22,8 @@ description: Calendar spread framework for near-term theta capture against longe
 2. Net debit and target zone.
 3. Volatility/time-decay assumptions.
 4. Adjustment and exit criteria.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

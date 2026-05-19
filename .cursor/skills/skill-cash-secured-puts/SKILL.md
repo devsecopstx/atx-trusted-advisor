@@ -1,6 +1,8 @@
 ---
 name: skill-cash-secured-puts
 description: Cash-secured puts framework for TSLA/RKLB/RDW with discounted entry targeting and premium capture. Use when the user asks for CSP strikes, collateral sizing, assignment planning, or put-selling cadence.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill Cash-Secured Puts
@@ -20,3 +22,8 @@ description: Cash-secured puts framework for TSLA/RKLB/RDW with discounted entry
 2. Collateral and premium estimate.
 3. Breakeven and assignment outcome.
 4. Roll criteria and risk summary.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

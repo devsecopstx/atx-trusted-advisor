@@ -1,6 +1,6 @@
 ---
 name: backend-start-local
-description: Start a local backend environment for atxfinance=backend using a .env file and a local Pub/Sub emulator. Non-destructive; validates health, idempotency, and DLQ behavior via emulator.
+description: Start a local backend environment for atxfinance-backend using a .env file and a local Pub/Sub emulator. Non-destructive; validates health, idempotency, and DLQ behavior via emulator.
 ---
 
 # Start Local — atxfinance Backend (Emulator)

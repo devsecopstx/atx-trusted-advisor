@@ -1,3 +1,8 @@
+---
+name: skill-yahoo-finance-tool
+description: Teach reliable live market data fetching via yfinance (price, chains, history, fundamentals). Use when the agent or code needs to call Yahoo Finance for TSLA or other tickers inside Cursor.
+---
+
 # Yahoo Finance Data Tool Skill
 
 This skill teaches Cursor's Agent/Composer to reliably fetch current price, historical data, options chains, dividends, splits, fundamentals, and more for any ticker (default: TSLA) using the `yfinance` library.

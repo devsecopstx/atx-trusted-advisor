@@ -1,6 +1,8 @@
 ---
 name: skill-iron-condor
 description: Iron condor framework for range-bound premium capture with defined risk. Use when the user asks for neutral volatility plays, condor wing selection, or probability-based income setups.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill Iron Condor
@@ -20,3 +22,8 @@ description: Iron condor framework for range-bound premium capture with defined 
 2. Credit, max risk, breakeven bounds.
 3. Probability/range thesis.
 4. Adjustment and exit rules.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

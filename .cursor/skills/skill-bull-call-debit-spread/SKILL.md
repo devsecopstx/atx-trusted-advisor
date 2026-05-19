@@ -1,6 +1,8 @@
 ---
 name: skill-bull-call-debit-spread
 description: Bull call debit spread framework for leveraged bullish exposure with capped risk and reward. Use when the user asks for call spread setups, cost-reduced bullish trades, or defined-risk upside structures.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill Bull Call Debit Spread
@@ -20,3 +22,8 @@ description: Bull call debit spread framework for leveraged bullish exposure wit
 2. Debit, max gain/loss, breakeven.
 3. Price-path scenarios.
 4. Exit/adjustment plan.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

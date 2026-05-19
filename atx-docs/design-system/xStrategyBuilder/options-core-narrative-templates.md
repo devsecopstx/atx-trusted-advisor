@@ -1,3 +1,11 @@
+# TSLA options narrative templates (reference)
+
+Prompt-style templates for covered calls, CSPs, wheel, LEAP, and portfolio allocation scenarios. **Not** a Cursor skill — invoke in conversation or embed in persona copy as needed.
+
+Moved from `.cursor/skills/skill-xstrategy/options-core.md` (2026-05-19).
+
+---
+
 # TSLA Covered Call - Moderate Bi-Weekly Setup
 Current TSLA price: [insert current price]
 Portfolio TSLA shares: [insert count]
@@ -124,6 +132,7 @@ Generate immediate next steps:
 - Wheel restart timeline
 - Net capital gain/loss from cycle
 - Long-term compounding effect toward $10M
+
 # TSLA Options Portfolio - Balanced $10M Plan by 2030
 Current TSLA shares: [insert]
 Current value: [insert]

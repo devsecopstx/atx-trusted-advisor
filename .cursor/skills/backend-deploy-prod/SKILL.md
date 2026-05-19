@@ -1,6 +1,6 @@
 ---
 name: backend-deploy-prod
-description: Deploy the atxfinance=backend Cloud Run worker to production with canary traffic, health checks, rollback, and strict CPU/concurrency safety.
+description: Deploy the atxfinance-backend Cloud Run worker to production with canary traffic, health checks, rollback, and strict CPU/concurrency safety.
 ---
 
 # Deploy Production — atxfinance Backend

@@ -1,6 +1,6 @@
 ---
 name: backend-runbook
-description: Operator runbook for the atxfinance=backend multi-node worker service — health checks, triage, rollback, DLQ, and SLOs.
+description: Operator runbook for the atxfinance-backend multi-node worker service — health checks, triage, rollback, DLQ, and SLOs.
 ---
 
 # Runbook — atxfinance Backend

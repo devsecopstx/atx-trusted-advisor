@@ -1,6 +1,8 @@
 ---
 name: skill-poor-mans-covered-call
 description: Poor Man’s Covered Call (long-dated call plus short OTM calls) for leveraged income. Use when the user asks for PMCC structure, LEAP leg selection, short-call overlays, or diagonal-style income trades.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill Poor Man's Covered Call
@@ -20,3 +22,8 @@ description: Poor Man’s Covered Call (long-dated call plus short OTM calls) fo
 2. Short-leg overlay candidate.
 3. Net debit, breakeven, and risk.
 4. Roll/repair plan.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

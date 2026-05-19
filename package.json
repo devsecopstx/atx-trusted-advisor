@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.22.2",
+  "version": "3.22.3",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -33,6 +33,7 @@
     "lint": "eslint . --cache --cache-location .eslintcache",
     "ci:gate": "npm run lint & npm run typecheck & npm run docs:links & wait && npm run test",
     "docs:links": "node scripts/check-markdown-links.mjs",
+    "skills:lint": "vitest run tests/unit/cursor-skills-index.test.ts",
     "smoke:verify": "vitest run tests/smoke",
     "smoke:xai-key-create": "vitest run tests/smoke/xai-management-api-key-create-smoke.test.ts",
     "smoke:xai-chat": "bash scripts/ops/xai-chat-completions-smoke.sh",

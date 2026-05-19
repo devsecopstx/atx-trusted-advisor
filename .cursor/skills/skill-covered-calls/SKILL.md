@@ -1,6 +1,8 @@
 ---
 name: skill-covered-calls
 description: Covered calls playbook for TSLA share inventory with weekly/bi-weekly OTM premium collection. Use when the user asks for covered-call setup, strike/expiry selection, rolling decisions, or assignment-aware income planning.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill Covered Calls
@@ -20,3 +22,8 @@ description: Covered calls playbook for TSLA share inventory with weekly/bi-week
 2. Premium target and breakeven impact.
 3. Assignment/roll decision tree.
 4. Risk summary.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

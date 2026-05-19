@@ -1,6 +1,8 @@
 ---
 name: skill-leap-call-cc-overlay
 description: LEAP call plus covered-call overlay for leveraged bullish exposure with recurring premium. Use when the user asks for LEAP plus short-call income overlays on TSLA and similar high-beta names.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill LEAP Call + CC Overlay
@@ -20,3 +22,8 @@ description: LEAP call plus covered-call overlay for leveraged bullish exposure 
 2. Overlay call structure.
 3. Return paths (flat/up/down).
 4. Risk and adjustment rules.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

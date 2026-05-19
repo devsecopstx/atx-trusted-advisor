@@ -1,6 +1,6 @@
 ---
 name: backend-ci
-description: CI validation plan for the atxfinance=backend service — autoscaling, CPU=1 + concurrency=1 enforcement, idempotency, retries/DLQ, and health checks.
+description: CI validation plan for the atxfinance-backend service — autoscaling, CPU=1 + concurrency=1 enforcement, idempotency, retries/DLQ, and health checks.
 ---
 
 # CI Validation — atxfinance Backend

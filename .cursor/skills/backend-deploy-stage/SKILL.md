@@ -1,6 +1,6 @@
 ---
 name: backend-deploy-stage
-description: Deploy the atxfinance=backend Cloud Run worker to staging with single-CPU, concurrency=1, Pub/Sub integration, health checks, and rollback guidance.
+description: Deploy the atxfinance-backend Cloud Run worker to staging with single-CPU, concurrency=1, Pub/Sub integration, health checks, and rollback guidance.
 ---
 
 # Deploy Staging — atxfinance Backend

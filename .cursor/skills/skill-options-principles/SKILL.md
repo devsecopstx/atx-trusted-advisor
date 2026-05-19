@@ -1,3 +1,8 @@
+---
+name: skill-options-principles
+description: Foundational educational explanations of options concepts, Greeks, single-leg vs multi-leg trades, and risk rules (OIC/OCC aligned). Pairs with the 10 executable strategy playbooks.
+---
+
 # Options Principles: Introduction to Single and Multi-Leg Trades
 
 This skill provides structured, educational explanations of basic options concepts, single-leg trades (calls/puts), and multi-leg strategies (spreads, straddles, etc.), based on OIC/OCC materials.

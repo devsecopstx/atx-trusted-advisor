@@ -1,6 +1,6 @@
 ---
 name: backend-start-stage
-description: Start a safe staging session for atxfinance=backend. Non-destructive; validates staging health and lets you publish controlled test messages with guardrails.
+description: Start a safe staging session for atxfinance-backend. Non-destructive; validates staging health and lets you publish controlled test messages with guardrails.
 ---
 
 # Start Staging — atxfinance Backend (Non‑destructive)

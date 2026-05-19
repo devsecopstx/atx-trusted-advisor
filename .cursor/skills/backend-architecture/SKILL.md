@@ -1,6 +1,6 @@
 ---
 name: backend-architecture
-description: Architecture and operating model for the atxfinance=backend multi-node, fault-tolerant agent cluster. Cloud Run + Pub/Sub defaults, idempotency, scaling, observability, and safety rules.
+description: Architecture and operating model for the atxfinance-backend multi-node, fault-tolerant agent cluster. Cloud Run + Pub/Sub defaults, idempotency, scaling, observability, and safety rules.
 ---
 
 # atxfinance Backend Architecture

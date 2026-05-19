@@ -76,6 +76,13 @@ test -f .cursor/agents/sre.md && npm install
 
 - **Release notes:** `atx-docs/sre-ops/release-notes.md` — append a **one-line** bullet (newest first) whenever you bump **`package.json`** version; keeps deploy/support aligned with `/api/health` `version` and Cloud Run revisions. Include a **`**Deploy:** …`** tag (**Next**, **Spring**, **Full** / `ops:deploy:full:production`, **Secrets**) per that doc’s *Deploy targets* section so ops can see whether backend, frontend, or both needed a roll.
 
+## Canonical skills (do not duplicate in this file)
+
+- **Deploy / secrets:** `deploy-production`, `deploy-staging`, `sre-gcp-foundation`, `sre-ops-xrotate-keys`, `pre-merge-secret-update`
+- **Docs / release:** `generate-docs`, `test-commit-push` (+ `CHECKLIST.md`), `sre-docs-ops`
+- **Backend ops:** `backend-runbook`, `backend-deploy-prod`, `backend-deploy-stage`
+- **Index:** `.cursor/skills/README.md` · **`npm run skills:lint`**
+
 ## Suggested context
 
 - `.github/workflows/**/*.yml`

@@ -168,7 +168,7 @@ from injected secrets.
 
 ### Local skill maintenance policy
 
-- Treat `.cursor/skills/` as the source of truth for this repo.
+- Treat `.cursor/skills/` as the source of truth for this repo. Index: `.cursor/skills/README.md`; authoring: `.cursor/skills/skill-authoring.md`. Validate with **`npm run skills:lint`** when adding or renaming skills.
 - When runbooks, deploy flow, or validation gates change, update these first:
   - `.cursor/skills/generate-docs/SKILL.md`
   - `.cursor/skills/test-commit-push/SKILL.md`

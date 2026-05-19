@@ -1,6 +1,8 @@
 ---
 name: skill-diagonal-spread
 description: Diagonal spread playbook using longer-dated calls and shorter-dated short calls at different strikes. Use when the user asks for diagonal setups, time-spread overlays, or theta-assisted bullish structures.
+skill_family: options-strategy
+last_updated: 2026-05-19
 ---
 
 # skill Diagonal Spread
@@ -20,3 +22,8 @@ description: Diagonal spread playbook using longer-dated calls and shorter-dated
 2. Net debit and targeted payoff zone.
 3. Expiration management steps.
 4. Risk summary.
+
+## Skill maintenance
+
+- **Family:** `options-strategy` — see [`skill-authoring.md`](../skill-authoring.md).
+- **Last updated:** 2026-05-19 (bump frontmatter when guardrails or output format change).

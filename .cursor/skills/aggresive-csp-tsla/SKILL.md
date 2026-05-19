@@ -1,3 +1,8 @@
+---
+name: aggresive-csp-tsla
+description: Aggressive CSP context for TSLA (–10% OTM, 30–50% allocation). Use for mid-term accumulation + wheel entry explanations. Historical folder spelling retained.
+---
+
 # Aggressive Cash-Secured Puts on TSLA – Mid-Term Accumulation Skill
 
 This skill teaches Cursor how to explain and structure aggressive cash-secured put selling on {symbol} (default: TSLA) targeting -10% OTM strikes with 30–50% cash allocation to buy discounted shares on assignment.
