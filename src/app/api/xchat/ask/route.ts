@@ -26,6 +26,7 @@ import {
     type XaiToolLoopResult
 } from "@/lib/xai";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
+import { isKnownPersonaChatModelId } from "@/modules/xchat/xai-persona-chat-models";
 import { summarizeToolLikeStreamEvent } from "@/lib/xai-responses-stream";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import {
@@ -915,10 +916,25 @@ export async function POST(request: Request) {
 
   const personaModelRaw =
     typeof persona?.model === "string" ? persona.model.trim().slice(0, 128) : "";
-  const effectiveModel =
-    personaModelRaw.length > 0 ? personaModelRaw : getDefaultPersonaChatModelId();
-  let modelSelectionSource: ModelSelectionSource =
-    personaModelRaw.length > 0 ? "persona" : "default";
+  let effectiveModel: string;
+  let modelSelectionSource: ModelSelectionSource;
+  if (personaModelRaw.length > 0) {
+    if (isKnownPersonaChatModelId(personaModelRaw)) {
+      effectiveModel = personaModelRaw;
+      modelSelectionSource = "persona";
+    } else {
+      // Hotfix: unknown model (e.g. unprovisioned SchedulerConfig like grok-beyond-*-single-agent-*) causes 400 from provider.
+      // Fall back for any ask (including user tasks / scheduled runs) so exam/tax/edge questions do not surface scheduler config errors.
+      console.warn(
+        `[xchat/ask] persona model "${personaModelRaw}" is not a known xAI model id — falling back to default (prevents SchedulerConfig 400 on unprovisioned variants)`
+      );
+      effectiveModel = getDefaultPersonaChatModelId();
+      modelSelectionSource = "default";
+    }
+  } else {
+    effectiveModel = getDefaultPersonaChatModelId();
+    modelSelectionSource = "default";
+  }
 
   const reasoningMode = parsed.data.reasoningMode;
   const bodyReasoningEffort = parsed.data.reasoningEffort;
