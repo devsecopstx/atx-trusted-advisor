@@ -1,9 +1,9 @@
 ---
+name: backend
+description: |
   Backend work for aTx Finance — Next.js API routes & modules, MongoDB, Kotlin Spring
   (`services/atxfinance-backend`), Yahoo/strategy integrations, strong TypeScript.
-name: backend
 model: inherit
-description: Backend work for aTx Finance
 is_background: true
 ---
 

@@ -1,8 +1,8 @@
 ---
-  Next.js / React UI for aTx Finance — Tailwind, App Router, branding rules, minimal client JS.
 name: frontend
+description: |
+  Next.js / React UI for aTx Finance — Tailwind, App Router, branding rules, minimal client JS.
 model: inherit
-description: Next.js / React UI for aTx Finance
 is_background: true
 ---
 

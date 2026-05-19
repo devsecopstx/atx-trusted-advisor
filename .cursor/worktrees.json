@@ -54,8 +54,18 @@
     {
       "name": "sre-ops",
       "branch": "main",
-      "description": "sre-ops`",
+      "description": "SRE / ops work (GCP, deploys, secrets, runbooks) — after setup prefer `npm run ops:*` commands",
       "setup": "test -f .cursor/agents/sre.md && npm install"
+    },
+    {
+      "name": "xchat",
+      "branch": "main",
+      "description": "xChat, personas, RAG, tool routing, prompt assembly — after setup: use `skill-xchat-validation-checklist` and the xchat agent for changes",
+      "setup": "echo 'ROLE=xchat' > .cursor/xchat.md && npm install",
+      "npm": {
+        "validateXchat": "npm run test -- --testPathPattern=xchat",
+        "ciGate": "npm run ci:gate"
+      }
     }
   ]
 }
