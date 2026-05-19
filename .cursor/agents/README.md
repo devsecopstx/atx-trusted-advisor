@@ -12,6 +12,7 @@ Subagent files under **`.cursor/agents/*.md`** follow [Cursor Subagents](https:/
 | [`frontend.md`](frontend.md) | **UI/UX** — App Router, Tailwind, branding rules, lean client JS | Visual work, a11y, responsive — avoid domain logic unless required |
 | [`reviewer.md`](reviewer.md) | **PR / quality gate** — lint, typecheck, test, `ci:gate`, `build:stack` | Pre-merge review, risk on changed files + contract checks |
 | [`sre.md`](sre.md) | SRE / ops persona | Infra, deploy, secrets hygiene, runbooks |
+| [`xchat.md`](xchat.md) | xChat + xAI (personas, RAG collections, prompt assembly, tool routing, multi-turn) | `/xchat`, `POST /api/xchat/ask`, persona CRUD, RAG file management, `skill-xchat-validation-checklist` |
 | [`branding.md`](branding.md) | Full-stack feature + branding (Next, tokens, OAuth CTAs, APIs when needed for UI) | Cross-cutting product + UI work |
 | [`marketing.md`](marketing.md) | GTM / X copy, threads, HNWI–RIA messaging | Marketing and waitlist copy only |
 
@@ -20,7 +21,7 @@ Subagent files under **`.cursor/agents/*.md`** follow [Cursor Subagents](https:/
 [`worktrees.json`](../worktrees.json) configures:
 
 1. **Setup scripts** — `setup-worktree`, `setup-worktree-unix`, `setup-worktree-windows` run when Cursor creates a parallel-agent worktree (`npm install`, copy `.env` from the primary tree via `$ROOT_WORKTREE_PATH` / `%ROOT_WORKTREE_PATH%`). See [Cursor docs — Parallel Agents](https://cursor.com/docs/configuration/worktrees).
-2. **Named worktrees** — the `worktrees` array lists `frontend`, `backend`, and `reviewer` (plus `sre-ops-admin`) with `description`, optional `npm` command hints, and a `setup` that stamps `ROLE=…` into **`.cursor/.frontend`**, **`.cursor/.backend`**, **`.cursor/.reviewer`** (local convenience only; not the subagent bodies).
+2. **Named worktrees** — the `worktrees` array lists feature-branch roles (`frontend`, `backend`, `reviewer`) plus main-branch specialists (`sre-ops`, `xchat`). Feature roles carry `npm` command hints and stamp `ROLE=…` markers (local convenience only; not subagent bodies). Specialist entries use `test -f .cursor/agents/<name>.md && npm install` (xchat uses a ROLE marker instead); exact commands live in the JSON. See [Cursor Parallel Agents docs](https://cursor.com/docs/configuration/worktrees) for how these are consumed.
 
 ## Conventions
 

@@ -38,16 +38,6 @@ You are a **senior marketing specialist** for aTx Finance / xFinance, focused on
 4. Low-friction CTA.
 5. Tagline closer.
 
-## Parallel worktree
-
-- Hint: `/worktrees/marketing` — see `.cursor/worktrees.json`.
-
-## Worktree setup
-
-```bash
-test -f .cursor/agents/marketing.md && npm install
-```
-
 ## Suggested context
 
 - `.cursor/rules/xfinance-branding.mdc` (source of truth for positioning & voice)

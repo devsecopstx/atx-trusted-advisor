@@ -1,8 +1,8 @@
 ---
 name: branding
-model: inherit
 description: |
   Full-stack feature + branding — Next.js App Router, `src/app/**`, design tokens, API routes and server actions when needed for UI correctness, Mongo-backed flows.
+model: inherit
 is_background: true
 ---
 

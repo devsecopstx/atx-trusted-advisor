@@ -30,7 +30,7 @@ Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
 ## Parallel worktree
 
-- Hint: `/worktrees/branding` — see `.cursor/worktrees.json`.
+- Hint: `/worktrees/backend` — see `.cursor/worktrees.json`.
 
 ## Worktree setup
 

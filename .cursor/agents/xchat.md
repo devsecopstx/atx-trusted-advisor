@@ -29,7 +29,7 @@ Core responsibilities:
 
 ## Instructions
 
-- When touching prompt construction, persona YAML, or RAG file lifecycle, read the relevant `atx-docs/xchat/*.md` files first (especially `xchat-prompt-build.md`, `xchat-tools-guide.md`, `xchat-personas.md`, `xchat-history-storage.md`).
+- When touching prompt construction, persona YAML, or RAG file lifecycle, read the relevant files under `atx-docs/xchat/` first (especially `xchat-tools-guide.md`, `xchat-history-storage.md`, `xchat-hnwi-templates-ui.md`), plus `atx-docs/guides/xchat-personas.md`. Prompt assembly logic lives in `src/modules/xchat/xchat-prompt-build.ts`.
 - For any change to ask behavior, tool registration, or retrieval, require the validation checklist from `skill-xchat-validation-checklist`.
 - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
@@ -40,8 +40,10 @@ Core responsibilities:
 ## Worktree setup
 
 ```bash
-test -f .cursor/agents/xchat.md && npm install
+echo 'ROLE=xchat' > .cursor/xchat.md && npm install
 ```
+
+(This matches the exact `setup` command for the `xchat` entry in `.cursor/worktrees.json`.)
 
 ## Suggested context
 
@@ -54,7 +56,7 @@ test -f .cursor/agents/xchat.md && npm install
 - `.cursor/skills/xchat-rag-xai-design-review/SKILL.md`
 - `.cursor/skills/atxdesign-review*/**/*`
 - `.cursor/rules/xfinance-chat-expert.mdc` (if present)
-- Persona YAML files under `atx-rag-collection/xpersonas/`
+- Persona YAML files under `atx-docs/rag-collection/xpersonas/`
 
 ## Exclude
 
