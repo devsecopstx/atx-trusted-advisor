@@ -33,13 +33,13 @@ import {
     type UsersDirectorySortKey,
     type UsersDirectoryTableEntry
 } from "@/lib/admin/users-directory";
+import { fetchAdminManageUsersDirectory } from "@/lib/react-query/admin-manage-users-api";
+import { adminManageUsersQueryKeys } from "@/lib/react-query/query-keys";
 import {
     normalizeSubscriptionPlan,
     SUBSCRIPTION_PLAN_SELECT_OPTIONS,
     type SubscriptionPlan
 } from "@/lib/subscription-plan";
-import { fetchAdminManageUsersDirectory } from "@/lib/react-query/admin-manage-users-api";
-import { adminManageUsersQueryKeys } from "@/lib/react-query/query-keys";
 import { formatUserFacingIdentityLabel } from "@/lib/x-identity-email";
 
 type BrokerSettings = {
@@ -311,7 +311,7 @@ export function UserSettingsConsole() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<ApprovedUser["role"]>("operator");
   const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("basic");
-  const [onboardingTestPendingAccess, setOnboardingTestPendingAccess] = useState(false);
+  const onboardingRequiresApproval = true;
   const [isCreateUserPanelOpen, setIsCreateUserPanelOpen] = useState(false);
   const [isUserSettingsPanelOpen, setIsUserSettingsPanelOpen] = useState(false);
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
@@ -742,36 +742,7 @@ export function UserSettingsConsole() {
       setStatus("Email is required.");
       return;
     }
-    if (onboardingTestPendingAccess) {
-      setStatus("Creating pending access request...");
-      try {
-        await parseJson(
-          await fetch("/api/admin/access-requests", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email,
-              requestedRole: newUserRole,
-              requestedPlan: newUserPlan,
-              reason: "Admin onboarding flow test (Manage Users)"
-            })
-          })
-        );
-        setNewUserEmail("");
-        setNewUserRole("operator");
-        setNewUserPlan("basic");
-        setOnboardingTestPendingAccess(false);
-        setIsCreateUserPanelOpen(false);
-        await refreshDirectory();
-        setStatus(
-          "Pending access request created — approve the user from this directory (table or access panel), then they can sign in."
-        );
-      } catch (error) {
-        setStatus(error instanceof Error ? error.message : "Failed to create access request");
-      }
-      return;
-    }
-    setStatus("Creating user...");
+    setStatus("Creating pending access request...");
     try {
       await parseJson(
         await fetch("/api/admin/users", {
@@ -781,7 +752,7 @@ export function UserSettingsConsole() {
             email,
             role: newUserRole,
             subscriptionPlan: newUserPlan,
-            status: "active"
+            reason: "Admin onboarding — email required; approve before sign-in (Manage Users)"
           })
         })
       );
@@ -790,9 +761,11 @@ export function UserSettingsConsole() {
       setNewUserPlan("basic");
       setIsCreateUserPanelOpen(false);
       await refreshDirectory();
-      setStatus("User created");
+      setStatus(
+        "Pending access request created — approve from this directory (table or access panel), then the user can sign in."
+      );
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to create user");
+      setStatus(error instanceof Error ? error.message : "Failed to create access request");
     }
   }
 
@@ -1218,11 +1191,7 @@ export function UserSettingsConsole() {
             <select
               onChange={(event) => setNewUserRole(event.target.value as ApprovedUser["role"])}
               value={newUserRole}
-              aria-label={
-                onboardingTestPendingAccess
-                  ? "Requested role (applied when access request is approved)"
-                  : "Default role for new user"
-              }
+              aria-label="Requested role (applied when access request is approved)"
             >
               {ROLE_SELECT_OPTIONS.map((role) => (
                 <option key={role} value={role}>
@@ -1235,11 +1204,7 @@ export function UserSettingsConsole() {
                 setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])
               }
               value={newUserPlan}
-              aria-label={
-                onboardingTestPendingAccess
-                  ? "Requested plan (applied when access request is approved)"
-                  : "Subscription plan for new user"
-              }
+              aria-label="Requested plan (applied when access request is approved)"
             >
               {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -1250,21 +1215,22 @@ export function UserSettingsConsole() {
             <div className="admin-users-directory__onboarding-toggle">
               <label className="admin-users-directory__onboarding-toggle-label">
                 <input
-                  checked={onboardingTestPendingAccess}
-                  onChange={(event) => setOnboardingTestPendingAccess(event.target.checked)}
+                  checked={onboardingRequiresApproval}
+                  readOnly
+                  disabled
                   type="checkbox"
                 />
-                <span>Onboarding test</span>
+                <span>Approval required</span>
               </label>
               <p className="admin-users-directory__onboarding-copy">
-                Create a pending access request only (no login until you approve here). Leave off to
-                provision the user immediately.
+                Email is required. Users stay pending until you approve the access request (app, OAuth,
+                guest signup, and rental tenant admins use the same gate).
               </p>
             </div>
             <div className="tool-row">
               <button className="cta cta-primary" type="submit">
                 <AddIcon className="crud-icon" />{" "}
-                {onboardingTestPendingAccess ? "Create pending access request" : "Add user"}
+                Create pending access request
               </button>
               <button
                 className="cta cta-secondary"
@@ -1276,21 +1242,16 @@ export function UserSettingsConsole() {
             </div>
           </form>
           <details className="mt-3 text-sm opacity-90">
-            <summary className="cursor-pointer select-none font-medium">Onboarding test loop</summary>
+            <summary className="cursor-pointer select-none font-medium">Approval loop</summary>
             <ol className="mt-2 ml-4 list-decimal space-y-1">
+              <li>Submit email + requested role/plan — user row appears with no login role until approval.</li>
               <li>
-                Check <strong>Onboarding test</strong>, enter email + requested role/plan, submit — user row
-                appears with no login role until approval.
+                Approve from the <strong>access request</strong> row or side panel — user gains roles and can
+                sign in.
               </li>
               <li>
-                Approve from the <strong>access request</strong> row or the side panel — user gains roles and
-                can sign in.
+                <strong>Delete</strong> on the row wipes the user and related rows when you need to re-test.
               </li>
-              <li>
-                Use <strong>Delete</strong> on the row to wipe the user and related rows (including access
-                requests).
-              </li>
-              <li>Repeat with the same email — delete clears state so you can re-run the flow.</li>
             </ol>
           </details>
         </article>

@@ -21,8 +21,8 @@ import type { TenantBrandingPreferences } from "@/modules/identity/tenant-brandi
 import { TenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 import { normalizeTenantIdHexFromStoredMembershipField } from "@/modules/identity/tenant-membership-grounding";
 import {
-  parseTenantShellBrandingFromTenant,
-  parseTenantXfUiThemeFromTenant
+    parseTenantShellBrandingFromTenant,
+    parseTenantXfUiThemeFromTenant
 } from "@/modules/identity/tenant-shell-appearance";
 import type { TenantShellBranding } from "@/modules/identity/tenant-shell-branding";
 import {
@@ -939,10 +939,10 @@ export async function createCoreUser(input: {
   const now = new Date();
   const document: CoreUser = {
     email: normalizeEmail(input.email),
-    roles: [input.role],
+    roles: [],
     subscriptionPlan: input.subscriptionPlan ?? "basic",
     status: input.status ?? "active",
-    accountStatus: "approved",
+    accountStatus: "pending_approval",
     createdAt: now,
     updatedAt: now
   };

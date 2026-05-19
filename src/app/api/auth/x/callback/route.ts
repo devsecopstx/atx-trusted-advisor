@@ -14,7 +14,6 @@ import { resolveSessionLandingPath } from "@/lib/default-landing-path";
 import {
     getAtxfinanceBackendOrigin, getEnv,
     getXOauthClientId,
-    isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { tryMarketingPostingOAuthCallback } from "@/lib/marketing-posting-oauth-callback";
@@ -323,24 +322,18 @@ export async function GET(request: Request) {
     });
   }
 
-  const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
   const hasLoginRole = user?._id ? canUserLogin(user.roles) : false;
-  const shouldAllowFallbackLogin =
-    Boolean(user?._id) && !hasLoginRole && allowAnyXUserLogin;
 
   if (!user?._id || !hasLoginRole) {
     if (user?._id) {
       await ensurePendingOperatorAccessRequestAfterOAuth(user);
     }
-
-    if (!shouldAllowFallbackLogin) {
-      return redirectWithLoginAudit("access_request_pending", {
-        userId: user._id?.toHexString(),
-        xUserId: xIdentity.xUserId,
-        username: xIdentity.username,
-        email: user.email
-      });
-    }
+    return redirectWithLoginAudit("access_request_pending", {
+      userId: user._id?.toHexString(),
+      xUserId: xIdentity.xUserId,
+      username: xIdentity.username,
+      email: user.email
+    });
   }
   if (!user._id) {
     return redirectWithLoginAudit("access_request_pending", {

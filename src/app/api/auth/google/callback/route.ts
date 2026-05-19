@@ -14,7 +14,6 @@ import {
     getAtxfinanceBackendOrigin,
     getEnv,
     getGoogleClientId,
-    isAllowAnyXUserLoginEnabled,
     isGoogleOAuthConfigured
 } from "@/lib/env";
 import { googleLinkedId } from "@/lib/google-oauth-identity";
@@ -311,11 +310,9 @@ export async function GET(request: Request) {
     return redirectWithLoginAudit("access_request_pending", { email: emailNormalized });
   }
 
-  const allowAnyLogin = isAllowAnyXUserLoginEnabled();
   const hasLoginRole = canUserLogin(user.roles);
-  const shouldAllowFallbackLogin = Boolean(user._id) && !hasLoginRole && allowAnyLogin;
 
-  if (!hasLoginRole && !shouldAllowFallbackLogin) {
+  if (!hasLoginRole) {
     await ensurePendingOperatorAccessRequestAfterGoogleOAuth(user);
     return redirectWithLoginAudit("access_request_pending", {
       userId: user._id.toHexString(),

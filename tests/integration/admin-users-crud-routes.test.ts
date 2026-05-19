@@ -9,14 +9,18 @@ const identityMocks = vi.hoisted(() => ({
   listCoreUsers: vi.fn(),
   listCoreUsersByEmail: vi.fn(),
   listAdminTenantMembershipsByUserIds: vi.fn().mockResolvedValue(new Map()),
-  createCoreUser: vi.fn(),
-  assertTenantHasRoomForAnotherUser: vi.fn().mockResolvedValue(undefined),
-  upsertTenantMembership: vi.fn(),
+  ensureCoreUserByEmail: vi.fn(),
+  updateCoreUserAccountStatus: vi.fn().mockResolvedValue(undefined),
   getCoreUserById: vi.fn(),
   updateCoreUserById: vi.fn(),
   updateCoreUserBillingOverride: vi.fn(),
   deleteCoreUserById: vi.fn(),
   revokeCredentialLinksForUsers: vi.fn().mockResolvedValue(1)
+}));
+
+const accessRequestMocks = vi.hoisted(() => ({
+  getPendingAccessRequestByUserAndRole: vi.fn().mockResolvedValue(null),
+  createAccessRequest: vi.fn()
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -43,7 +47,9 @@ vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/modules/core-admin/repository")>();
   return {
     ...actual,
-    purgeAllDataAssociatedWithCoreUser: coreAdminRepoMocks.purgeAllDataAssociatedWithCoreUser
+    purgeAllDataAssociatedWithCoreUser: coreAdminRepoMocks.purgeAllDataAssociatedWithCoreUser,
+    getPendingAccessRequestByUserAndRole: accessRequestMocks.getPendingAccessRequestByUserAndRole,
+    createAccessRequest: accessRequestMocks.createAccessRequest
   };
 });
 
@@ -76,14 +82,21 @@ describe("admin users CRUD routes", () => {
         updatedAt: new Date("2026-03-16T00:00:00.000Z")
       }
     ]);
-    identityMocks.createCoreUser.mockResolvedValue({
+    identityMocks.ensureCoreUserByEmail.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439044" },
       email: "new@atxfinance.ai",
-      roles: ["viewer"],
+      roles: [],
+      accountStatus: "pending_approval",
       subscriptionPlan: "basic",
       status: "active",
       createdAt: new Date("2026-03-16T00:00:00.000Z"),
       updatedAt: new Date("2026-03-16T00:00:00.000Z")
+    });
+    accessRequestMocks.createAccessRequest.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      status: "pending",
+      requestedRole: "viewer",
+      requestedPlan: "basic"
     });
     identityMocks.getCoreUserById.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
@@ -133,9 +146,6 @@ describe("admin users CRUD routes", () => {
       updatedAt: new Date("2026-03-16T00:00:00.000Z")
     }));
     identityMocks.deleteCoreUserById.mockResolvedValue(true);
-    identityMocks.upsertTenantMembership.mockResolvedValue({
-      _id: { toHexString: () => "507f1f77bcf86cd799439099" }
-    });
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
     auditMocks.listLatestAuditEventsForEntities.mockResolvedValue({});
@@ -190,7 +200,7 @@ describe("admin users CRUD routes", () => {
     expect(payload.data[0]?.billing?.override?.reason).toBe("Pilot");
   });
 
-  it("creates user", async () => {
+  it("creates pending access request for new user email", async () => {
     const response = await postUser(
       new Request("http://test/api/admin/users", {
         method: "POST",
@@ -198,33 +208,38 @@ describe("admin users CRUD routes", () => {
         body: JSON.stringify({
           email: "new@atxfinance.ai",
           role: "viewer",
-          subscriptionPlan: "basic",
-          status: "active"
+          subscriptionPlan: "basic"
         })
       })
     );
     expect(response.status).toBe(201);
-    expect(identityMocks.createCoreUser).toHaveBeenCalledTimes(1);
-    expect(identityMocks.assertTenantHasRoomForAnotherUser).toHaveBeenCalled();
-    expect(identityMocks.upsertTenantMembership).toHaveBeenCalled();
+    expect(identityMocks.ensureCoreUserByEmail).toHaveBeenCalledTimes(1);
+    expect(identityMocks.updateCoreUserAccountStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ accountStatus: "pending_approval" })
+    );
+    expect(accessRequestMocks.createAccessRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contactEmail: "new@atxfinance.ai",
+        requestedRole: "viewer",
+        status: "pending"
+      })
+    );
   });
 
-  it("defaults new admin-created user role to operator", async () => {
+  it("defaults new admin-created access request role to operator", async () => {
     await postUser(
       new Request("http://test/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: "new@atxfinance.ai",
-          subscriptionPlan: "basic",
-          status: "active"
+          subscriptionPlan: "basic"
         })
       })
     );
-    expect(identityMocks.createCoreUser).toHaveBeenCalledWith(
+    expect(accessRequestMocks.createAccessRequest).toHaveBeenCalledWith(
       expect.objectContaining({
-        email: "new@atxfinance.ai",
-        role: "operator"
+        requestedRole: "operator"
       })
     );
   });

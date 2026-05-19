@@ -39,10 +39,25 @@ export function buildDevOnlyAllowedOrigins(
  * The route avoids exposing a literal-string path so Turbopack NFT does not
  * over-trace; this map is the explicit allowlist instead.
  */
+/** Baked RAG tree for admin review + xAI/Mongo sync on Cloud Run (read-only in prod). */
+export const RAG_COLLECTION_STANDALONE_TRACE_GLOBS = Object.freeze(["./atx-docs/rag-collection/**"] as const);
+
+const ADMIN_RAG_INGEST_TRACE_ROUTES = [
+  "/api/admin/rag-ingest",
+  "/api/admin/rag-ingest/ingest",
+  "/api/admin/rag-ingest/[slug]",
+  "/api/admin/rag-ingest/[slug]/seed",
+  "/api/admin/rag-ingest/[slug]/download/[filename]",
+  "/api/admin/rag/refresh-finance"
+] as const;
+
 export const STANDALONE_OUTPUT_FILE_TRACING_INCLUDES: Readonly<
   Record<string, readonly string[]>
 > = Object.freeze({
-  "/api/reports/options-scan": Object.freeze(["./services/report-service/**"])
+  "/api/reports/options-scan": Object.freeze(["./services/report-service/**"]),
+  ...Object.fromEntries(
+    ADMIN_RAG_INGEST_TRACE_ROUTES.map((route) => [route, RAG_COLLECTION_STANDALONE_TRACE_GLOBS])
+  )
 });
 
 /**

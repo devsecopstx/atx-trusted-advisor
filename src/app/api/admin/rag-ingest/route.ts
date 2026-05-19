@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { listPdfIngestFolders } from "@/modules/rag/pdf-ingest";
+import { getPdfIngestCapabilities, listPdfIngestFolders } from "@/modules/rag/pdf-ingest";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -10,5 +10,5 @@ export async function GET() {
   }
 
   const rows = await listPdfIngestFolders(process.cwd());
-  return NextResponse.json({ data: rows });
+  return NextResponse.json({ data: rows, capabilities: getPdfIngestCapabilities() });
 }

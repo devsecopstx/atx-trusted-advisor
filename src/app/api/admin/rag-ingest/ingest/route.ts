@@ -11,6 +11,7 @@ import {
     ingestPdfToRagCollection,
     normalizeRiskLevel,
     PDF_INGEST_SLUG_RE,
+    pdfIngestAllowsPythonUpload,
     writePdfIngestAudit,
     type PdfIngestKbSegment
 } from "@/modules/rag/pdf-ingest";
@@ -28,6 +29,17 @@ export async function POST(request: Request) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
+  }
+
+  if (!pdfIngestAllowsPythonUpload()) {
+    return NextResponse.json(
+      {
+        error:
+          "PDF upload ingest is disabled in production. Ingest locally (npm run ingest:pdf), commit atx-docs/rag-collection, deploy, then use Review → Save metadata → Sync xAI → Seed Mongo.",
+        code: "pdf_ingest_disabled"
+      },
+      { status: 503 }
+    );
   }
 
   const form = await request.formData();

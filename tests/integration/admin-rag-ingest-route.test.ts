@@ -27,6 +27,7 @@ vi.mock("@/modules/rag/pdf-ingest", async (importOriginal) => {
 });
 
 import { POST as seedSlug } from "@/app/api/admin/rag-ingest/[slug]/seed/route";
+import { POST as ingestUpload } from "@/app/api/admin/rag-ingest/ingest/route";
 import { GET as listIngest } from "@/app/api/admin/rag-ingest/route";
 
 const slug = "options-strategy-risk";
@@ -87,8 +88,14 @@ describe("/api/admin/rag-ingest", () => {
   it("GET list returns ingest folder summaries", async () => {
     const res = await listIngest();
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { data: { slug: string; xaiCollectionName: string | null }[] };
+    const json = (await res.json()) as {
+      data: { slug: string; xaiCollectionName: string | null }[];
+      capabilities: { pdfUpload: boolean; repoWrites: boolean };
+    };
     expect(json.data).toHaveLength(1);
+    expect(json.capabilities).toEqual(
+      expect.objectContaining({ pdfUpload: expect.any(Boolean), repoWrites: expect.any(Boolean) })
+    );
     expect(json.data[0]?.slug).toBe(slug);
     expect(json.data[0]?.xaiCollectionName).toContain("xfinance-pdf-ingest-");
   });
@@ -115,6 +122,19 @@ describe("/api/admin/rag-ingest", () => {
     expect(json.data.xai?.filesUploaded).toBe(38);
     expect(json.data.xai?.fieldDefinitionKeys).toContain("tags");
     expect(ingestMocks.writePdfIngestAudit).toHaveBeenCalled();
+  });
+
+  it("POST ingest returns 503 when python upload is disabled", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const form = new FormData();
+    form.set("file", new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], "x.pdf", { type: "application/pdf" }));
+    form.set("slug", "test-slug");
+    form.set("title", "Test");
+    const res = await ingestUpload(new Request("http://test", { method: "POST", body: form }));
+    expect(res.status).toBe(503);
+    const json = (await res.json()) as { code?: string };
+    expect(json.code).toBe("pdf_ingest_disabled");
+    vi.unstubAllEnvs();
   });
 
   it("POST seed rejects non-admin", async () => {

@@ -1,4 +1,3 @@
-import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -12,14 +11,16 @@ import {
     listLatestAuditEventsForEntities
 } from "@/modules/audit/repository";
 import {
-    assertTenantHasRoomForAnotherUser,
-    createCoreUser,
-    deleteCoreUserById,
+    AccessRequestDuplicatePendingError,
+    createAccessRequest,
+    getPendingAccessRequestByUserAndRole
+} from "@/modules/core-admin/repository";
+import {
+    ensureCoreUserByEmail,
     listAdminTenantMembershipsByUserIds,
     listCoreUsers,
-    upsertTenantMembership
+    updateCoreUserAccountStatus
 } from "@/modules/identity/repository";
-import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 import type { CoreUser } from "@/modules/identity/types";
 
 const listUsersQuerySchema = z.object({
@@ -30,7 +31,7 @@ const createUserSchema = z.object({
   email: z.string().trim().email(),
   role: z.enum(["global_admin", "advisor", "operator", "viewer"]).default("operator"),
   subscriptionPlan: zSubscriptionPlan.default("basic"),
-  status: z.enum(["active", "suspended"]).default("active")
+  reason: z.string().trim().min(5).max(512).optional()
 });
 
 export async function GET(request: Request) {
@@ -96,9 +97,10 @@ export async function POST(request: Request) {
     );
   }
 
-  let created: CoreUser;
+  const email = parsed.data.email.trim().toLowerCase();
+  let user: CoreUser;
   try {
-    created = await createCoreUser(parsed.data);
+    user = await ensureCoreUserByEmail({ email, defaultRoles: [] });
   } catch (error) {
     const isDuplicate = error instanceof Error && /E11000/.test(error.message);
     if (isDuplicate) {
@@ -106,33 +108,55 @@ export async function POST(request: Request) {
     }
     throw error;
   }
-
-  if (created._id && ObjectId.isValid(session.tenantId) && parsed.data.role !== "global_admin") {
-    const tenantOid = new ObjectId(session.tenantId);
-    try {
-      await assertTenantHasRoomForAnotherUser(tenantOid);
-      await upsertTenantMembership({
-        userId: created._id,
-        tenantId: tenantOid,
-        role: "member",
-        isDefaultTenant: true
-      });
-    } catch (error) {
-      if (isTenantMembershipCapExceededError(error)) {
-        await deleteCoreUserById(created._id);
-        return NextResponse.json(
-          { error: error.message, code: error.code },
-          { status: 409 }
-        );
-      }
-      throw error;
-    }
+  if (!user._id) {
+    return NextResponse.json({ error: "Unable to resolve user" }, { status: 500 });
   }
 
-  if (created._id) {
+  await updateCoreUserAccountStatus({
+    userId: user._id,
+    accountStatus: "pending_approval"
+  });
+
+  const userId = user._id.toHexString();
+  const existingPending = await getPendingAccessRequestByUserAndRole({
+    userId,
+    requestedRole: parsed.data.role,
+    tenantId: session.tenantId
+  });
+  if (existingPending) {
+    return NextResponse.json(
+      {
+        error: "An open access request already exists for this user and role.",
+        data: { userId, email, accessRequestId: existingPending._id?.toHexString() }
+      },
+      { status: 409 }
+    );
+  }
+
+  let accessRequest;
+  try {
+    accessRequest = await createAccessRequest({
+      tenantId: session.tenantId,
+      userId,
+      contactEmail: email,
+      requestedRole: parsed.data.role,
+      requestedPlan: parsed.data.subscriptionPlan,
+      reason:
+        parsed.data.reason?.trim() ||
+        "Admin created user — pending approval before sign-in (Manage Users)",
+      status: "pending"
+    });
+  } catch (error) {
+    if (error instanceof AccessRequestDuplicatePendingError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    throw error;
+  }
+
+  if (accessRequest._id) {
     await createAuditEvent({
-      entityType: "core_user",
-      entityId: created._id.toHexString(),
+      entityType: "access_request",
+      entityId: accessRequest._id.toHexString(),
       action: "created",
       actor: {
         userId: session.userId,
@@ -140,15 +164,27 @@ export async function POST(request: Request) {
         username: session.username
       },
       details: {
-        role: parsed.data.role,
-        subscriptionPlan: parsed.data.subscriptionPlan,
-        status: parsed.data.status
+        requestedRole: accessRequest.requestedRole,
+        requestedPlan: accessRequest.requestedPlan,
+        source: "admin_users_post"
       }
     });
   }
 
   return NextResponse.json(
-    { data: { ...serializeUser(created), tenantMemberships: [] as const } },
+    {
+      data: {
+        user: serializeUser({ ...user, accountStatus: "pending_approval", roles: [] }),
+        accessRequest: {
+          _id: accessRequest._id?.toHexString(),
+          status: accessRequest.status,
+          requestedRole: accessRequest.requestedRole,
+          requestedPlan: normalizeSubscriptionPlan(accessRequest.requestedPlan)
+        },
+        message:
+          "Pending access request created. Approve from Access requests or Manage Users before the user can sign in."
+      }
+    },
     { status: 201 }
   );
 }
@@ -161,6 +197,7 @@ function serializeUser(user: CoreUser) {
     _id: user._id?.toHexString(),
     email: user.email,
     roles: user.roles,
+    accountStatus: user.accountStatus,
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     status: user.status,
     billing: user.billing

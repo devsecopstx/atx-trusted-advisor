@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { consumePendingXLinkCookie, createSession } from "@/lib/auth";
 import { extractClientLoginMeta } from "@/lib/client-request-meta";
-import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
+import { getEnv } from "@/lib/env";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
@@ -165,7 +165,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing user id" }, { status: 500 });
   }
 
-  const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
   const hasLoginRole = canUserLogin(linkedUser.roles);
 
   if (!hasLoginRole) {
@@ -184,24 +183,22 @@ export async function POST(request: Request) {
       });
     }
 
-    if (!allowAnyXUserLogin) {
-      await appendLoginAuditRecord({
-        outcome: "failure",
-        provider: "link_email",
-        errorCode: "access_request_pending",
-        clientIp: loginMeta.clientIp,
-        country: loginMeta.country,
-        userAgent: loginMeta.userAgent,
-        userId: linkedUserId.toHexString(),
-        xUserId: pending.xUserId,
-        username: pending.username,
-        email: requestedEmail
-      });
-      return NextResponse.json({
-        ok: true,
-        redirectTo: "/xchat?error=access_request_pending"
-      });
-    }
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "access_request_pending",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      userId: linkedUserId.toHexString(),
+      xUserId: pending.xUserId,
+      username: pending.username,
+      email: requestedEmail
+    });
+    return NextResponse.json({
+      ok: true,
+      redirectTo: "/xchat?error=access_request_pending"
+    });
   }
 
   if (!linkedUser.emailVerifiedAt) {

@@ -58,8 +58,14 @@ type DetailRow = SummaryRow & {
   chunkFiles: Array<{ name: string; bytes: number }>;
 };
 
+type IngestCapabilities = {
+  pdfUpload: boolean;
+  repoWrites: boolean;
+};
+
 export function RagIngestConsole() {
   const [rows, setRows] = useState<SummaryRow[]>([]);
+  const [capabilities, setCapabilities] = useState<IngestCapabilities | null>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailRow | null>(null);
   const [status, setStatus] = useState("Loading…");
@@ -80,10 +86,11 @@ export function RagIngestConsole() {
   const [seedFeedback, setSeedFeedback] = useState<SeedFeedback | null>(null);
 
   const loadList = useCallback(async () => {
-    const payload = await parseJson<{ data: SummaryRow[] }>(
+    const payload = await parseJson<{ data: SummaryRow[]; capabilities: IngestCapabilities }>(
       await fetch("/api/admin/rag-ingest", { credentials: "include" })
     );
     setRows(payload.data);
+    setCapabilities(payload.capabilities);
     setStatus(`${payload.data.length} ingested folder(s)`);
     setError(null);
     return payload.data;
@@ -244,14 +251,22 @@ export function RagIngestConsole() {
     <section className="panel stack-gap">
       <article className="surface-card xf-widget section-card">
         <h3>Ingest PDF</h3>
-        <p className="status-text text-sm" style={{ color: "var(--xf-text-300)" }}>
-          Writes markdown + <code className="text-xs">ingest.manifest.json</code> under{" "}
-          <code className="text-xs">atx-docs/rag-collection/&lt;slug&gt;/</code>. Requires Python{" "}
-          <code className="text-xs">pymupdf4llm</code> on the host running Next (
-          <code className="text-xs">pip install -r services/pdf-ingest/requirements.txt</code>). Production: prefer{" "}
-          <code className="text-xs">npm run ingest:pdf</code> in CI or a worker with Python; Cloud Run Next may not ship
-          Python yet.
-        </p>
+        {capabilities && !capabilities.pdfUpload ? (
+          <p className="status-text text-sm" style={{ color: "var(--xf-text-300)" }}>
+            <strong>Production mode:</strong> PDF upload is off (no <code className="text-xs">python3</code> on Cloud
+            Run). Ingest locally with <code className="text-xs">npm run ingest:pdf</code>, commit{" "}
+            <code className="text-xs">atx-docs/rag-collection/</code>, deploy, then use{" "}
+            <strong>Review → Save metadata → Sync xAI → Seed Mongo</strong> below (sync state is stored in Mongo, not
+            the repo).
+          </p>
+        ) : (
+          <p className="status-text text-sm" style={{ color: "var(--xf-text-300)" }}>
+            Writes markdown + <code className="text-xs">ingest.manifest.json</code> under{" "}
+            <code className="text-xs">atx-docs/rag-collection/&lt;slug&gt;/</code>. Requires Python{" "}
+            <code className="text-xs">pymupdf4llm</code> (
+            <code className="text-xs">pip install -r services/pdf-ingest/requirements.txt</code>).
+          </p>
+        )}
         <form className="stack-gap" onSubmit={(e) => void handleIngest(e)}>
           <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
             <label className="stack-gap text-sm">
@@ -307,7 +322,11 @@ export function RagIngestConsole() {
               />
             </label>
           </div>
-          <button type="submit" className="cta cta-primary" disabled={busy}>
+          <button
+            type="submit"
+            className="cta cta-primary"
+            disabled={busy || (capabilities != null && !capabilities.pdfUpload)}
+          >
             {busy ? "Ingesting…" : "Ingest & review"}
           </button>
         </form>

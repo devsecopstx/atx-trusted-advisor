@@ -11,7 +11,7 @@ import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
 import { isCoreUserAccountAccessApproved } from "@/modules/identity/account-status";
-import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { canUserLogin, isGlobalAdmin, isRoleLoginAllowed } from "@/modules/identity/authorization";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     dedupeDefaultTenantMembershipsForUser,
@@ -121,6 +121,22 @@ export async function finalizeOAuthSessionAndRedirect(options: {
     return NextResponse.redirect(new URL(`/xchat?error=${encodeURIComponent(err)}`, origin));
   }
 
+  if (!canUserLogin(user.roles)) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider,
+      errorCode: "access_request_pending",
+      clientIp: loginMeta?.clientIp,
+      country: loginMeta?.country,
+      userAgent: loginMeta?.userAgent,
+      userId: userObjectId.toHexString(),
+      xUserId: identity.xUserId,
+      username: identity.username,
+      email: user.email
+    });
+    return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+  }
+
   try {
     await dedupeDefaultTenantMembershipsForUser(userObjectId);
     const existingDefault = await getDefaultTenantMembershipForUser(userObjectId);
@@ -142,17 +158,26 @@ export async function finalizeOAuthSessionAndRedirect(options: {
       );
     }
     const authContext = await resolveAuthContext({ user });
-    const hasLoginRole = canUserLogin(user.roles);
-    const sessionRoles = hasLoginRole
-      ? authContext.roles
-      : authContext.roles.length > 0
-        ? authContext.roles
-        : ["viewer"];
+    const sessionRoles = authContext.roles;
     const effectiveSessionRoles = adminAllowlistDenied
-      ? sessionRoles.filter((role) => role !== "global_admin" && role !== "admin")
+      ? sessionRoles.filter((role) => role !== "global_admin")
       : sessionRoles;
-    const finalSessionRoles =
-      effectiveSessionRoles.length > 0 ? effectiveSessionRoles : ["viewer"];
+    const finalSessionRoles = effectiveSessionRoles.filter((role) => isRoleLoginAllowed(role));
+    if (finalSessionRoles.length === 0) {
+      await appendLoginAuditRecord({
+        outcome: "failure",
+        provider,
+        errorCode: "access_request_pending",
+        clientIp: loginMeta?.clientIp,
+        country: loginMeta?.country,
+        userAgent: loginMeta?.userAgent,
+        userId: userObjectId.toHexString(),
+        xUserId: identity.xUserId,
+        username: identity.username,
+        email: user.email
+      });
+      return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+    }
 
     if (adminAllowlistDenied) {
       console.warn("[auth/oauth] admin allowlist denied, falling back to app_user session", {

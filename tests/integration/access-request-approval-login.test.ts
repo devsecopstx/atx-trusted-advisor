@@ -418,7 +418,7 @@ describe("access request approval login flow", () => {
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
   });
 
-  it("allows fallback login to xchat when ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
+  it("does not grant session without platform role even when ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
     envMocks.getEnv.mockReturnValue({
       X_OAUTH_CLIENT_SECRET: "test-secret",
       X_OAUTH_TOKEN_URL: "https://x.test/token",
@@ -453,13 +453,12 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(response.headers.get("location")).toContain("no_tenant_membership");
+    expect(response.headers.get("location")).toContain("access_request_pending");
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
-    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).not.toHaveBeenCalled();
     expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("falls back to viewer session when admin allowlist blocks a global admin and ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
+  it("blocks session when admin allowlist strips global_admin and no app_user role remains", async () => {
     state.userRoles = ["global_admin"];
     envMocks.getEnv.mockReturnValue({
       X_OAUTH_CLIENT_SECRET: "test-secret",
@@ -495,12 +494,8 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(response.headers.get("location")).toContain("/xchat");
-    expect(authMocks.createSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        roles: ["viewer"]
-      })
-    );
+    expect(response.headers.get("location")).toContain("access_request_pending");
+    expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
   it("treats legacy admin role as global admin during login redirect", async () => {

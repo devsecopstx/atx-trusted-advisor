@@ -26,10 +26,18 @@ import {
 } from "@/lib/xai";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
+    applyRegistryToManifest,
+    getPdfIngestRegistry,
+    upsertPdfIngestRegistry
+} from "@/modules/rag/pdf-ingest-registry";
+import { pdfIngestAllowsPythonUpload, pdfIngestAllowsRepoWrites } from "@/modules/rag/pdf-ingest-runtime";
+import {
     extractFinanceKbFrontmatterMetadata,
     financeKbMetadataToXaiFields,
     indexFinanceKbRemoteDocumentsByLogicalName
 } from "@/modules/xchat/finance-kb-sync";
+
+export { getPdfIngestCapabilities, pdfIngestAllowsPythonUpload, pdfIngestAllowsRepoWrites } from "@/modules/rag/pdf-ingest-runtime";
 
 export const PDF_INGEST_SLUG_RE = /^[a-z][a-z0-9-]{0,62}$/;
 
@@ -244,7 +252,27 @@ export function chunkMarkdownFilename(slug: string, index: number, total: number
   return `${slug}-part-${String(index).padStart(3, "0")}.md`;
 }
 
+async function resolveEffectiveManifest(manifest: PdfIngestManifest): Promise<PdfIngestManifest> {
+  const row = await getPdfIngestRegistry(manifest.slug);
+  return applyRegistryToManifest(manifest, row);
+}
+
+async function persistManifestOnDisk(
+  manifestPath: string,
+  manifest: PdfIngestManifest
+): Promise<void> {
+  if (!pdfIngestAllowsRepoWrites()) {
+    return;
+  }
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+}
+
 async function runPythonPdfIngest(pdfPath: string, maxChunkChars = 12_000): Promise<PythonIngestResult> {
+  if (!pdfIngestAllowsPythonUpload()) {
+    throw new Error(
+      "PDF upload ingest is disabled in this environment (no python3 / repo writes). Ingest locally with npm run ingest:pdf, commit atx-docs/rag-collection, deploy, then Review + Sync xAI + Seed Mongo in admin."
+    );
+  }
   const scriptPath = join(process.cwd(), "services", "pdf-ingest", "ingest_pdf.py");
   const py =
     process.env.PDF_INGEST_PYTHON?.trim() ||
@@ -400,20 +428,21 @@ export async function listPdfIngestFolders(repoRoot: string): Promise<PdfIngestF
     if (!manifest) {
       continue;
     }
+    const effective = await resolveEffectiveManifest(manifest);
     rows.push({
-      slug: manifest.slug,
-      title: manifest.title,
-      riskLevel: manifest.riskLevel,
-      outlook: manifest.outlook,
-      tags: manifest.tags,
-      segment: manifest.segment,
-      ingestedAt: manifest.ingestedAt,
-      chunkCount: manifest.chunkFiles.length,
-      firstChunkPreview: await firstChunkPreview(outDir, manifest),
-      mongoSeededAt: manifest.mongoSeededAt ?? null,
-      xaiSyncedAt: manifest.xaiSyncedAt ?? null,
-      xaiCollectionId: manifest.xaiCollectionId ?? null,
-      xaiCollectionName: manifest.xaiCollectionName ?? null
+      slug: effective.slug,
+      title: effective.title,
+      riskLevel: effective.riskLevel,
+      outlook: effective.outlook,
+      tags: effective.tags,
+      segment: effective.segment,
+      ingestedAt: effective.ingestedAt,
+      chunkCount: effective.chunkFiles.length,
+      firstChunkPreview: await firstChunkPreview(outDir, effective),
+      mongoSeededAt: effective.mongoSeededAt ?? null,
+      xaiSyncedAt: effective.xaiSyncedAt ?? null,
+      xaiCollectionId: effective.xaiCollectionId ?? null,
+      xaiCollectionName: effective.xaiCollectionName ?? null
     });
   }
   rows.sort((a, b) => a.slug.localeCompare(b.slug));
@@ -425,10 +454,11 @@ export async function getPdfIngestFolderDetail(
   slug: string
 ): Promise<PdfIngestFolderDetail | null> {
   const outDir = pdfIngestFolderPath(repoRoot, slug);
-  const manifest = await readManifestFile(join(outDir, PDF_INGEST_MANIFEST_FILENAME));
-  if (!manifest) {
+  const diskManifest = await readManifestFile(join(outDir, PDF_INGEST_MANIFEST_FILENAME));
+  if (!diskManifest) {
     return null;
   }
+  const manifest = await resolveEffectiveManifest(diskManifest);
   const chunkFiles: Array<{ name: string; bytes: number }> = [];
   for (const name of manifest.chunkFiles) {
     try {
@@ -562,8 +592,15 @@ export async function updatePdfIngestManifestMetadata(
     version: 1
   };
   const parsed = pdfIngestManifestSchema.parse(next);
-  await writeFile(manifestPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
-  return parsed;
+  await persistManifestOnDisk(manifestPath, parsed);
+  await upsertPdfIngestRegistry(slug, {
+    title: parsed.title,
+    riskLevel: parsed.riskLevel,
+    outlook: parsed.outlook,
+    tags: parsed.tags,
+    segment: parsed.segment
+  });
+  return resolveEffectiveManifest(parsed);
 }
 
 export async function seedPdfIngestSlugToMongo(slug: string): Promise<PdfIngestMongoSeedResult> {
@@ -601,7 +638,8 @@ export async function seedPdfIngestSlugToMongo(slug: string): Promise<PdfIngestM
     ...detail.manifest,
     mongoSeededAt: now.toISOString()
   });
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  await persistManifestOnDisk(manifestPath, manifest);
+  await upsertPdfIngestRegistry(slug, { mongoSeededAt: manifest.mongoSeededAt });
   return {
     ok: true,
     slug,
@@ -699,7 +737,12 @@ export async function syncPdfIngestSlugToXai(slug: string): Promise<PdfIngestXai
     xaiCollectionId: collectionId,
     xaiCollectionName: collection.name
   });
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  await persistManifestOnDisk(manifestPath, manifest);
+  await upsertPdfIngestRegistry(slug, {
+    xaiSyncedAt: manifest.xaiSyncedAt,
+    xaiCollectionId: manifest.xaiCollectionId,
+    xaiCollectionName: manifest.xaiCollectionName
+  });
 
   return {
     ok: errors.length === 0,

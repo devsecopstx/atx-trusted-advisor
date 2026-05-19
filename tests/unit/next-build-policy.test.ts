@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DENO_SHIM_NODE_STUB_RELATIVE,
-  SERVER_EXTERNAL_PACKAGES,
-  STANDALONE_OUTPUT_FILE_TRACING_INCLUDES,
-  buildDevOnlyAllowedOrigins
+    DENO_SHIM_NODE_STUB_RELATIVE,
+    RAG_COLLECTION_STANDALONE_TRACE_GLOBS,
+    SERVER_EXTERNAL_PACKAGES,
+    STANDALONE_OUTPUT_FILE_TRACING_INCLUDES,
+    buildDevOnlyAllowedOrigins
 } from "@/lib/next-build-policy";
 
 describe("buildDevOnlyAllowedOrigins", () => {
@@ -35,12 +36,15 @@ describe("SERVER_EXTERNAL_PACKAGES", () => {
 });
 
 describe("STANDALONE_OUTPUT_FILE_TRACING_INCLUDES", () => {
-  it("only ships the Python report generator subtree for the options-scan route", () => {
-    expect(Object.keys(STANDALONE_OUTPUT_FILE_TRACING_INCLUDES)).toEqual([
-      "/api/reports/options-scan"
-    ]);
+  it("ships the Python report generator for options-scan and rag-collection for admin RAG routes", () => {
     expect(STANDALONE_OUTPUT_FILE_TRACING_INCLUDES["/api/reports/options-scan"]).toEqual([
       "./services/report-service/**"
+    ]);
+    expect(STANDALONE_OUTPUT_FILE_TRACING_INCLUDES["/api/admin/rag-ingest"]).toEqual([
+      ...RAG_COLLECTION_STANDALONE_TRACE_GLOBS
+    ]);
+    expect(STANDALONE_OUTPUT_FILE_TRACING_INCLUDES["/api/admin/rag/refresh-finance"]).toEqual([
+      ...RAG_COLLECTION_STANDALONE_TRACE_GLOBS
     ]);
   });
 
@@ -49,5 +53,8 @@ describe("STANDALONE_OUTPUT_FILE_TRACING_INCLUDES", () => {
     expect(
       Object.isFrozen(STANDALONE_OUTPUT_FILE_TRACING_INCLUDES["/api/reports/options-scan"])
     ).toBe(true);
+    expect(Object.isFrozen(STANDALONE_OUTPUT_FILE_TRACING_INCLUDES["/api/admin/rag-ingest"])).toBe(
+      true
+    );
   });
 });

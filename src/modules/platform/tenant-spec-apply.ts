@@ -2,7 +2,12 @@ import type { Db } from "mongodb";
 import { ObjectId } from "mongodb";
 
 import type { ParsedInitialTenantAdmin, ParsedTenantSpecV1 } from "@/lib/tenant-spec-v1-parse";
+import {
+    createAccessRequest,
+    getPendingAccessRequestByUserAndRole
+} from "@/modules/core-admin/repository";
 import { ensureTenantBootstrapForUser } from "@/modules/core-admin/tenant-user-bootstrap";
+import type { AccessRequest } from "@/modules/core-admin/types";
 import { upsertTenantMembership } from "@/modules/identity/repository";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
@@ -42,20 +47,15 @@ async function provisionInitialTenantAdmin(
   db: Db,
   tenantId: ObjectId,
   admin: ParsedInitialTenantAdmin,
+  tenantSlug: string,
   now: Date
 ): Promise<void> {
   const users = db.collection("core_users");
   const email = admin.email;
 
   const existing = await users.findOne({ email });
-  const platformRole = admin.platformRole;
-  let roles: string[];
-  if (!existing) {
-    roles = [platformRole];
-  } else {
-    const prev = Array.isArray(existing.roles) ? existing.roles.map(String) : [];
-    roles = [...new Set([...prev, platformRole])];
-  }
+  const platformRole = admin.platformRole as AccessRequest["requestedRole"];
+  const isNewUser = !existing;
 
   await users.updateOne(
     { email },
@@ -63,12 +63,12 @@ async function provisionInitialTenantAdmin(
       $setOnInsert: {
         email,
         createdAt: now,
-        subscriptionPlan: "basic"
+        subscriptionPlan: "basic",
+        roles: [],
+        accountStatus: "pending_approval"
       },
       $set: {
-        roles,
         status: "active",
-        accountStatus: "approved",
         updatedAt: now
       }
     },
@@ -78,6 +78,35 @@ async function provisionInitialTenantAdmin(
   const user = await users.findOne({ email });
   if (!user?._id) {
     throw new Error("Failed to upsert core user for initialTenantAdmin");
+  }
+
+  const userIdHex = user._id.toHexString();
+  const tenantIdHex = tenantId.toHexString();
+  const prevRoles = Array.isArray(user.roles) ? user.roles.map(String) : [];
+  const needsAccessRequest = isNewUser || !prevRoles.includes(platformRole);
+  if (needsAccessRequest) {
+    const pending = await getPendingAccessRequestByUserAndRole({
+      userId: userIdHex,
+      requestedRole: platformRole,
+      tenantId: tenantIdHex
+    });
+    if (!pending) {
+      await createAccessRequest({
+        tenantId: tenantIdHex,
+        userId: userIdHex,
+        contactEmail: email,
+        requestedRole: platformRole,
+        requestedPlan: "basic",
+        reason: `Initial tenant admin for rental/workspace slug ${tenantSlug} — requires global admin approval`,
+        status: "pending"
+      });
+    }
+    if (isNewUser || user.accountStatus !== "approved") {
+      await users.updateOne(
+        { _id: user._id },
+        { $set: { accountStatus: "pending_approval", updatedAt: now } }
+      );
+    }
   }
 
   if (admin.xUserId) {
@@ -198,9 +227,13 @@ export async function upsertTenantFromParsedSpecV1(
   }
 
   if (parsed.initialTenantAdmin) {
-    await provisionInitialTenantAdmin(db, tenantId, parsed.initialTenantAdmin, now);
+    await provisionInitialTenantAdmin(db, tenantId, parsed.initialTenantAdmin, parsed.slug, now);
     const userRow = await db.collection("core_users").findOne({ email: parsed.initialTenantAdmin.email });
-    if (userRow?._id) {
+    const roles = Array.isArray(userRow?.roles) ? userRow.roles.map(String) : [];
+    const loginReady =
+      userRow?.accountStatus === "approved" &&
+      roles.some((r) => r === "advisor" || r === "operator" || r === "viewer" || r === "global_admin");
+    if (userRow?._id && loginReady) {
       try {
         await ensureTenantBootstrapForUser({
           userId: userRow._id.toHexString(),

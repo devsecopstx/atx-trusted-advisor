@@ -17,7 +17,7 @@ import {
 } from "@/modules/core-admin/repository";
 import type { AccessRequestListItem, AccessRequestUserSummary } from "@/modules/core-admin/types";
 import { accessRequestStatusValues } from "@/modules/core-admin/types";
-import { ensureCoreUserByEmail } from "@/modules/identity/repository";
+import { ensureCoreUserByEmail, updateCoreUserAccountStatus } from "@/modules/identity/repository";
 
 const createAccessRequestSchema = z.object({
   userId: z.string().trim().min(1).optional(),
@@ -154,6 +154,10 @@ export async function POST(request: Request) {
     }
     resolvedUserId = ensuredUser._id.toHexString();
     resolvedEmail = ensuredUser.email;
+    await updateCoreUserAccountStatus({
+      userId: ensuredUser._id,
+      accountStatus: "pending_approval"
+    });
   }
 
   if (!resolvedUserId) {
