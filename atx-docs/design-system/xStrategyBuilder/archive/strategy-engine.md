@@ -1,4 +1,9 @@
-# ATX Finance — OptionsStrategyEngine (high-level view)
+> **⚠️ ARCHIVED** — This document has been moved.  
+> Current version: [strategy-engine.md](../../xoptions/strategy-engine.md)
+
+---
+
+# ATX Finance — OptionsStrategyEngine (high-level view) (archived copy)
 
 ![OptionsStrategyEngine — recommendation pipeline flow](./StrategyEngine.svg)
 
@@ -14,7 +19,7 @@ This flow is executed once per scheduled job (user-level or platform-wide). The 
 
 The OptionsStrategyEngine is the intelligent brain of the scheduled `options_scanner` job. It is a lightweight, rule-based scoring component (Kotlin @Component) that turns raw options-chain data + rich user context into personalized, ranked, structured strategy recommendations. No heavy ML in v1 — just fast, explainable, finance-grade logic that you can extend or swap with an LLM later.
 
-**Companion (roadmap):** A separate **`MonteCarloTailRiskEngine`** will run **path simulations** (fat-tail dynamics, same chain + holdings snapshot) to produce **VaR / CVaR / drawdown** metrics and stress scenarios, gated by **`UserOptionsContext`** risk tier, with Redis-cached summaries feeding **`StrategyRecommendation`** rationale and xChat — see [Monte Carlo tail-risk module](../../PLAN.md#monte-carlo-tail-risk) in **`PLAN.md`**.
+**Companion (roadmap):** A separate **`MonteCarloTailRiskEngine`** will run **path simulations** (fat-tail dynamics, same chain + holdings snapshot) to produce **VaR / CVaR / drawdown** metrics and stress scenarios, gated by **`UserOptionsContext`** risk tier, with Redis-cached summaries feeding **`StrategyRecommendation`** rationale and xChat — see [Monte Carlo tail-risk module](../../../PLAN.md#monte-carlo-tail-risk) in **`PLAN.md`** (current location).
 
 **Implementation (JVM):** `services/atxfinance-backend/.../strategy/OptionsStrategyEngine.kt` — `generateRecommendations`, weighted `calculateFitScore` (defaults match the table below), `scheduledTaskDryRunOutput` for Kotlin scheduled-task ticks. Full Yahoo chain + Mongo portfolio pass for app tenants remains in the Next.js task-runner (`src/modules/strategy-options/options-strategy-scanner-job.ts`) unless product moves execution to Spring-only.
 
@@ -24,7 +29,7 @@ Single narrative for **score/rank** work across surfaces:
 
 - **Goals:** Classic structures with real-time chain data + portfolio constraints; bias toward **capital preservation**, **tax efficiency**, and **income over speculation** (copy-level; risk gates stay in engine + scanner rules).
 - **Components:** Kotlin **`OptionsStrategyEngine`** (weighted fit, ranked `StrategyRecommendation`s, JVM scheduler hook) · Next.js **`executeOptionsStrategyScannerJob`** (Yahoo chain batches, **`options_strategy` `filters`**, desk rule/Grok **`rankedSignals`**, recommendations + alerts) · interactive **xOptions** / xStrategyBuilder for guided execution paths.
-- **Docs:** Scheduled job — [`options-scanner.md`](../scheduled-task/options-scanner.md); this file remains the **fit-score** contract. **PLAN 270n** (prefs + ranked scanner output) and **245n** (Kotlin core) are shipped under this umbrella; deeper chain-expiry expansion and product UI remain backlog unless listed in [`PLAN.md`](../../PLAN.md).
+- **Docs:** Scheduled job — [`options-scanner.md`](../../scheduled-task/options-scanner.md); this file remains the **fit-score** contract (archived). **PLAN 270n** (prefs + ranked scanner output) and **245n** (Kotlin core) are shipped under this umbrella; deeper chain-expiry expansion and product UI remain backlog unless listed in the current [`PLAN.md`](../../../PLAN.md).
 
 **Terminology (product copy):** At the **account**, user-facing inputs are **risk** and **outlook** only — not “strategy factors.” **Portfolio scoring factors** (the weighted dimensions below, e.g. IV rank, liquidity) apply at the **portfolio book** for ranking recommendations; keep that naming distinct from account-level fields.
 

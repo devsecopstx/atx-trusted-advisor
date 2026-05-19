@@ -27,9 +27,10 @@ function loadEnvFile(filePath: string) {
         process.env[key] = value;
       }
     });
-  } catch (err: any) {
-    if (err.code !== 'ENOENT') {
-      console.warn(`Warning: Could not load ${filePath}: ${err.message}`);
+  } catch (err: unknown) {
+    const e = err as { code?: string; message?: string };
+    if (e.code !== 'ENOENT') {
+      console.warn(`Warning: Could not load ${filePath}: ${e.message}`);
     }
   }
 }

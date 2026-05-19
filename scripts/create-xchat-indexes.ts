@@ -36,9 +36,10 @@ function loadEnvFile(filePath: string) {
         process.env[key] = value;
       }
     });
-  } catch (err: any) {
-    if (err.code !== 'ENOENT') {
-      console.warn(`Warning: Could not load ${filePath}: ${err.message}`);
+  } catch (err: unknown) {
+    const e = err as { code?: string; message?: string };
+    if (e.code !== 'ENOENT') {
+      console.warn(`Warning: Could not load ${filePath}: ${e.message}`);
     }
   }
 }
@@ -70,7 +71,8 @@ export async function createXchatIndexes() {
     const chatLogs = db.collection('xchat_logs');
     const personas = db.collection('xchat_personas');
 
-    const createIndexSafe = async (collection: any, spec: any, options: any = {}) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const createIndexSafe = async (collection: any, spec: any, options: Record<string, unknown> = {}) => {
       const name = options.name || 'unnamed-index';
       if (isDryRun) {
         console.log(`  [DRY] Would create index: ${name}`);

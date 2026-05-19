@@ -33,7 +33,8 @@ const API_ROUTE_MONGO_WRITE_ALLOWLIST = new Set([
 /** Known `foo.save(...)` calls that are not Mongoose (e.g. jsPDF). Add path here if ESLint flags a new false positive. */
 const NON_MONGOOSE_SAVE_FILE_ALLOWLIST = new Set([
   "src/components/xoptions/wheel-report-view.tsx",
-  "src/app/reports/scan/ui/options-action-scan-report.tsx"
+  "src/app/reports/scan/ui/options-action-scan-report.tsx",
+  "src/app/xoptions/ui/quant-trader-panel.tsx"
 ]);
 
 function isMongoDataPlanePath(rel) {

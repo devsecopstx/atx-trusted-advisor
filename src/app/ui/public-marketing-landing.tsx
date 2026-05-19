@@ -14,7 +14,6 @@ import {
     PublicMarketingHeader
 } from "@/app/ui/public-marketing-header";
 import { PoweredByXai } from "@/app/ui/xai-brand-mark";
-import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pillars";
 import { withUtmParams } from "@/lib/marketing/utm";
 
 
