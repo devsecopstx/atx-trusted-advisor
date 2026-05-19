@@ -11,12 +11,14 @@ export const Deno = {
     toObject(): Record<string, string> {
       return { ...process.env } as Record<string, string>;
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     set(_key: string, _value: string): void {
       /* no-op — Next/server should not mutate env via Deno shim */
     },
     has(key: string): boolean {
       return Object.prototype.hasOwnProperty.call(process.env, key);
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     delete(_key: string): void {
       /* no-op */
     }

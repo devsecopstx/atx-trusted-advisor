@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { PublicMarketingHeader } from "@/app/ui/public-marketing-header";
-import { withUtmParams } from "@/lib/marketing/utm";
 
 export const metadata: Metadata = {
   title: "For Developers & Agents | xFinance MCP & Tools",

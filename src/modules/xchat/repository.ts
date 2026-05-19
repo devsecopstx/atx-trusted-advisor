@@ -493,10 +493,46 @@ export async function saveXChatLog(
     tenantId: payload.tenantId,
     xaiUsage: payload.xaiUsage,
     createdAt,
-  }).catch((err) => console.error("[xchat] Failed to upsert usage stats", err));
+  }).catch((err: unknown) => console.error("[xchat] Failed to upsert usage stats", err));
 
   return result.insertedId;
 }
+
+async function upsertXchatUsageStatsOnLog(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+  xaiUsage?: { totalTokens?: number };
+  createdAt: Date;
+}) {
+  const db = await getDb();
+  const statsCol = db.collection("xchat_user_usage_stats");
+
+  const tokens = input.xaiUsage?.totalTokens ?? 0;
+  const today = input.createdAt.toISOString().slice(0, 10);
+
+  await statsCol.updateOne(
+    { userId: input.userId, tenantId: input.tenantId ?? null },
+    {
+      $inc: {
+        totalTokens: tokens,
+        promptCount: 1,
+        tokensToday: tokens,
+        promptsToday: 1,
+      },
+      $set: {
+        lastPromptAt: input.createdAt,
+        today,
+        updatedAt: new Date(),
+      },
+      $setOnInsert: {
+        userId: input.userId,
+        tenantId: input.tenantId ?? null,
+      },
+    },
+    { upsert: true }
+  );
+}
+
 
 export async function getLatestXchatResponseIdByUser(input: {
   userId: ObjectId;

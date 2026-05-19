@@ -2038,7 +2038,8 @@ export async function POST(request: Request) {
   }
 
   /** Watchlist snapshot is user-scoped Mongo + Yahoo; run even when the persona omits `atx_function` so "show my watchlist" always returns the formatted report. */
-  const watchlistExecutorWorkspaceOpts = hasXfinanceTool
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _watchlistExecutorWorkspaceOpts = hasXfinanceTool
     ? atxWorkspaceExecutorOpts
     : { workspaceLazyLoad: workspaceSnapshotCtx };
 

@@ -24,8 +24,8 @@ export function extractDailyClosesFromYahooChart(chart: unknown): number[] {
     .filter((close): close is number => typeof close === "number" && Number.isFinite(close) && close > 0);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function yahooChartWithValidationFallback(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   yf: any,
   symbol: string,
   options: Record<string, unknown>,

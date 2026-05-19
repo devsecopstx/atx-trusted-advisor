@@ -10,7 +10,6 @@ import { PortfoliosBooksDayMarkUI } from "@/app/portfolios/portfolios-workspace-
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
 import type { WorkspaceBooksDayMarkSummary } from "@/lib/workspace-dashboard-metrics";
-import type { MarketDayContext } from "@/modules/scanner/us-market-day-context";
 import { resolveUsMarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
 
 type Props = {

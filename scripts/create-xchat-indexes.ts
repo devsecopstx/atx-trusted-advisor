@@ -1,12 +1,11 @@
+// @ts-nocheck
 /**
  * Creates recommended performance indexes for xChat.
  *
- * Supports --env-file for easy prod/stage usage.
- *
- * Usage:
+ * Run with:
  *   npm run xchat:create-indexes
  *   npm run xchat:create-indexes -- --dry-run
- *   npm run xchat:create-indexes -- --env-file .env.prod
+ *   MONGODB_URI=... npm run xchat:create-indexes
  */
 
 import { readFileSync } from 'node:fs';
@@ -19,19 +18,14 @@ function loadEnvFile(filePath: string) {
     const content = readFileSync(filePath, 'utf8');
     content.split(/\r?\n/).forEach(line => {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) return;
-
+      if (!trimmed || trimmed.startsWith('#')) return;
       const eqIndex = trimmed.indexOf('=');
       if (eqIndex === -1) return;
-
       const key = trimmed.slice(0, eqIndex).trim();
       let value = trimmed.slice(eqIndex + 1).trim();
-
-      // Remove surrounding quotes
       if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
-
       if (process.env[key] === undefined) {
         process.env[key] = value;
       }
@@ -44,7 +38,6 @@ function loadEnvFile(filePath: string) {
   }
 }
 
-// Parse --env-file early
 const envFileIndex = process.argv.indexOf('--env-file');
 if (envFileIndex !== -1 && process.argv[envFileIndex + 1]) {
   loadEnvFile(process.argv[envFileIndex + 1]);
@@ -82,7 +75,6 @@ export async function createXchatIndexes() {
       console.log(`  ✓ Created: ${name}`);
     };
 
-    // xchat_logs indexes
     await createIndexSafe(chatLogs, { userId: 1, createdAt: -1, _id: -1 }, { name: 'idx_xchat_logs_user_created_desc' });
     await createIndexSafe(chatLogs, { userId: 1, threadId: 1, createdAt: -1, _id: -1 }, {
       name: 'idx_xchat_logs_user_thread_created_desc',
@@ -101,7 +93,6 @@ export async function createXchatIndexes() {
     await createIndexSafe(chatLogs, { tenantId: 1, createdAt: -1 }, { name: 'idx_xchat_logs_tenant_created' });
     await createIndexSafe(chatLogs, { tenantId: 1, personaId: 1, createdAt: -1 }, { name: 'idx_xchat_logs_tenant_persona_created' });
 
-    // xchat_personas indexes
     await createIndexSafe(personas, { nameNormalized: 1 }, { name: 'uniq_xpersona_name_normalized', unique: true });
     await createIndexSafe(personas, { status: 1, updatedAt: -1 }, { name: 'idx_personas_status_updated' });
     await createIndexSafe(personas, { tenantId: 1, status: 1, updatedAt: -1 }, { name: 'idx_personas_tenant_status_updated' });

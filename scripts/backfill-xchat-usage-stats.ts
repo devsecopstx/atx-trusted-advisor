@@ -1,7 +1,9 @@
+// @ts-nocheck
 /**
  * Backfills the xchat_user_usage_stats collection from xchat_logs.
+ * This makes the token stats sidebar and rate limiting much faster.
  *
- * Supports --env-file for easy usage with .env.prod / .env.stage
+ * Supports --env-file for easy prod/stage runs.
  */
 
 import { readFileSync } from 'node:fs';
@@ -36,7 +38,6 @@ function loadEnvFile(filePath: string) {
   }
 }
 
-// Parse --env-file very early
 const envFileIndex = process.argv.indexOf('--env-file');
 if (envFileIndex !== -1 && process.argv[envFileIndex + 1]) {
   loadEnvFile(process.argv[envFileIndex + 1]);

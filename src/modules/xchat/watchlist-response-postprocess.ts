@@ -208,7 +208,7 @@ async function enrichRowsWithMarketPulse(
   return rows.map((row) => {
     const snap = liveBySymbol.get(row.symbol);
     const pulse = symbolMap.get(row.symbol);
-    let livePrice =
+    const livePrice =
       typeof snap?.price === "number" && Number.isFinite(snap.price)
         ? snap.price
         : typeof pulse?.price === "number" && Number.isFinite(pulse.price)

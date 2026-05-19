@@ -31,10 +31,6 @@ const LANDING_PRODUCT_SHOTS = {
 
 export function PublicMarketingLanding() {
   const registerTrialHref = withUtmParams(REGISTER_TRIAL_HREF, MARKETING_UTM);
-  const playbookPdfTrialHref = withUtmParams(REGISTER_TRIAL_HREF, {
-    ...MARKETING_UTM,
-    utm_content: "playbook-pdf"
-  });
   const iaPilotHref = withUtmParams(REGISTER_TRIAL_HREF, {
     ...MARKETING_UTM,
     utm_content: "ia-pilot"

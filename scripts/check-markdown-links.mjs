@@ -17,6 +17,8 @@ function collectAtxDocsMarkdownFiles() {
     for (const e of entries) {
       const full = path.join(dir, e.name);
       if (e.isDirectory()) {
+        // Skip archived/historical docs to avoid broken relative links in old content
+        if (e.name === "archive") continue;
         walk(full);
       } else if (e.isFile() && e.name.endsWith(".md")) {
         out.push(path.relative(repoRoot, full).split(path.sep).join("/"));

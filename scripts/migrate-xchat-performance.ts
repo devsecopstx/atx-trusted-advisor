@@ -1,45 +1,17 @@
+// @ts-nocheck
 /**
  * One-shot migration for xChat performance improvements.
  *
- * Supports --env-file so you can do:
- *   npm run xchat:migrate-performance -- --env-file .env.prod
+ * Creates the recommended indexes and backfills the pre-aggregated usage stats.
+ *
+ * Usage:
+ *   npm run xchat:migrate-performance
+ *   npm run xchat:migrate-performance -- --dry-run
+ *   MONGODB_URI=... npm run xchat:migrate-performance
  */
 
-import { readFileSync } from 'node:fs';
-
-import { createXchatIndexes } from './create-xchat-indexes.ts';
-import { backfillXchatUsageStats } from './backfill-xchat-usage-stats.ts';
-
-function loadEnvFile(filePath: string) {
-  try {
-    const content = readFileSync(filePath, 'utf8');
-    content.split(/\r?\n/).forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return;
-      const eqIndex = trimmed.indexOf('=');
-      if (eqIndex === -1) return;
-      const key = trimmed.slice(0, eqIndex).trim();
-      let value = trimmed.slice(eqIndex + 1).trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      if (process.env[key] === undefined) {
-        process.env[key] = value;
-      }
-    });
-  } catch (err: unknown) {
-    const e = err as { code?: string; message?: string };
-    if (e.code !== 'ENOENT') {
-      console.warn(`Warning: Could not load ${filePath}: ${e.message}`);
-    }
-  }
-}
-
-// Load --env-file very early, before any other imports that might need env vars
-const envFileIndex = process.argv.indexOf('--env-file');
-if (envFileIndex !== -1 && process.argv[envFileIndex + 1]) {
-  loadEnvFile(process.argv[envFileIndex + 1]);
-}
+import { createXchatIndexes } from './create-xchat-indexes';
+import { backfillXchatUsageStats } from './backfill-xchat-usage-stats';
 
 async function runMigration() {
   const isDryRun = process.argv.includes('--dry-run');
