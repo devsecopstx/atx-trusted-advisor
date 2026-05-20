@@ -46,7 +46,7 @@ type Props = {
   deskWatchlistPortfolioId?: string | null;
   defaultPortfolioId: string | null;
   workspaceBook: AppUserDefaultBook | null;
-  totalBookUsd: number;
+  totalMarketValueUsd: number;
   isGlobalAdmin: boolean;
   accountDetails: AppUserRailAccountPanelDetails | null;
   accountFeedbackPageLabel?: string;
@@ -68,7 +68,7 @@ export function PortfoliosWorkspaceClient({
   deskWatchlistPortfolioId = null,
   defaultPortfolioId,
   workspaceBook,
-  totalBookUsd,
+  totalMarketValueUsd,
   isGlobalAdmin,
   accountDetails,
   accountFeedbackPageLabel,
@@ -96,7 +96,7 @@ export function PortfoliosWorkspaceClient({
           booksDayMark={booksDayMark}
           deskPortfolioId={deskWatchlistPortfolioId ?? chosenPortfolioId}
           topHoldingsKey={holdingsKey}
-          totalBookUsd={totalBookUsd}
+          totalMarketValueUsd={totalMarketValueUsd}
           visiblePathPrefixes={visiblePathPrefixes}
         />
       </div>

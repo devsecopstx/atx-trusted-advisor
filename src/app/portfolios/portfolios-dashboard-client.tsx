@@ -13,7 +13,8 @@ export type WorkspacePortfolioRow = {
   name: string;
   isDefault: boolean;
   portfolioKind: "real_estate" | "investments" | null;
-  valueUsd: number;
+  bookValueUsd: number;
+  marketValueUsd: number;
   kindLabel: string;
 };
 
@@ -368,7 +369,7 @@ export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Pro
                       )}
                     </td>
                     <td className="text-[var(--xf-text-200)] text-sm">{row.kindLabel}</td>
-                    <td className="text-right font-mono text-sm tabular-nums">{formatUsd2(row.valueUsd)}</td>
+                    <td className="text-right font-mono text-sm tabular-nums">{formatUsd2(row.marketValueUsd)}</td>
                     <td className="text-right">
                       <button
                         className="portfolio-table-link border-0 bg-transparent p-0 text-sm font-medium underline-offset-2 hover:underline disabled:cursor-not-allowed"

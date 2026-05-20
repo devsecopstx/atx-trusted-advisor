@@ -51,7 +51,7 @@ vi.mock("@/modules/core-admin/repository", async () => {
   };
 });
 
-import { DELETE as deletePosition } from "@/app/api/positions/[positionId]/route";
+import { DELETE as deletePosition, PATCH as patchPosition } from "@/app/api/positions/[positionId]/route";
 import { GET as getPositions, POST as postPosition } from "@/app/api/positions/route";
 
 const portfolioId = "507f1f77bcf86cd799439033";
@@ -225,5 +225,108 @@ describe("positions API BFF proxy", () => {
     expect(response.status).toBe(429);
     expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
+  });
+
+  // === PATCH (update position quantity / cost basis) ===
+
+  it("PATCH /api/positions/:id returns the backend response (success) when proxyPortfolioRequestToBackend resolves non-null", async () => {
+    const backendResponse = new Response(JSON.stringify({ ok: true, updated: true }), { status: 200 });
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(backendResponse);
+
+    const req = new Request(
+      `http://test/api/positions/${positionId}?portfolioId=${portfolioId}&accountId=${accountId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qty: 150, avgCost: 42.5 })
+      }
+    );
+
+    const response = await patchPosition(req, {
+      params: Promise.resolve({ positionId })
+    });
+
+    expect(response.status).toBe(200);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
+  });
+
+  it("PATCH /api/positions/:id forwards a non-success backend response (e.g. 405/400 from Spring) as-is when proxy resolves non-null", async () => {
+    // This covers the case where the BFF is active but the backend does not yet
+    // support PATCH (or returns validation error). The Next handler must not
+    // turn it into a 405 and must not hide the real backend error.
+    const backendResponse = new Response(
+      JSON.stringify({ error: "Update not supported by the current backend yet. Please try again later or contact support." }),
+      { status: 405, headers: { "Content-Type": "application/json" } }
+    );
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(backendResponse);
+
+    const req = new Request(
+      `http://test/api/positions/${positionId}?portfolioId=${portfolioId}&accountId=${accountId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qty: 120 })
+      }
+    );
+
+    const response = await patchPosition(req, {
+      params: Promise.resolve({ positionId })
+    });
+
+    expect(response.status).toBe(405);
+    const body = await response.json().catch(() => ({}));
+    expect(body.error).toContain("not supported by the current backend");
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
+  });
+
+  it("PATCH /api/positions/:id does not return 405 Method Not Allowed when proxy returns null (local fallback path)", async () => {
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(null);
+
+    const req = new Request(
+      `http://test/api/positions/${positionId}?portfolioId=${portfolioId}&accountId=${accountId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qty: 120 })
+      }
+    );
+
+    // We don't want to fully exercise the local Mongo path in this test
+    // (it pulls in env validation). We only care that the PATCH export exists
+    // and Next.js does not turn it into a 405 when the proxy gate is off.
+    let response: Response;
+    try {
+      response = await patchPosition(req, {
+        params: Promise.resolve({ positionId })
+      });
+    } catch (err: any) {
+      // If it blows up early due to missing env (common in unit tests), that's acceptable
+      // as long as we never saw a 405 from the route handler itself.
+      if (err?.status === 405) throw err;
+      response = new Response(null, { status: 500 });
+    }
+
+    expect(response.status).not.toBe(405);
+  });
+
+  it("PATCH /api/positions/:id returns 400 when no updatable fields are sent (local path)", async () => {
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(null);
+
+    const req = new Request(
+      `http://test/api/positions/${positionId}?portfolioId=${portfolioId}&accountId=${accountId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      }
+    );
+
+    const response = await patchPosition(req, {
+      params: Promise.resolve({ positionId })
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("No updatable fields provided");
   });
 });

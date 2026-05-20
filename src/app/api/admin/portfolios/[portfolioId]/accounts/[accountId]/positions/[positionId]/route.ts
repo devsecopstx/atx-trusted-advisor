@@ -39,3 +39,17 @@ export async function DELETE(request: Request, context: RouteContext) {
 
   return NextResponse.json({ ok: true });
 }
+
+export async function PATCH(request: Request, context: RouteContext) {
+  const proxied = await proxyAdminUsersRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
+  // Admin position edits currently go through POST (upsert by symbol) in the holdings console.
+  // PATCH is supported via BFF proxy to the backend when available.
+  return NextResponse.json(
+    { error: "PATCH for admin portfolio positions requires ATXFINANCE_BACKEND_ORIGIN (BFF)" },
+    { status: 501 }
+  );
+}

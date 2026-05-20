@@ -9,7 +9,7 @@
  * App-user portfolio CRUD; **`PATCH /api/portfolios/{portfolioId}/watchlist`** proxies when the BFF gate is on; **`GET`/`POST`**
  * for that path stay on Next (quotes / multi-watchlist). **`POST /api/portfolios/{portfolioId}/alerts`** (desk alert create) proxies when the gate is on; **`GET`/`DELETE …/alerts`** stay on Next (list/bulk clear + desk channel fan-out on local create). App-user **`/api/portfolios/{portfolioId}/price-alerts*`** (NL price rules) stay on Next (not proxied — Spring has no route). **`/api/admin/access-requests*`** write paths proxy when the gate is on.
  * **`GET`/`POST /api/personas`** and **`GET`/`PUT`/`DELETE /api/personas/{personaId}`** proxy when the admin BFF gate is on (`shouldProxyPersonasRequestsToBackend`); persona governance subroutes (publish, versions, …) stay Next-only.
- * Admin **portfolio** subtree (accounts, **`PATCH …/watchlist`**, positions list + **DELETE** by `positionId`, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`; **`GET …/admin/portfolios/{id}/watchlist`** stays on Next (quotes + desk enrichments).
+ * Admin **portfolio** subtree (accounts, **`PATCH …/watchlist`**, positions list + **PATCH/DELETE** by `positionId`, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`; **`GET …/admin/portfolios/{id}/watchlist`** stays on Next (quotes + desk enrichments).
  * **`/api/admin/delivery-channels*`** (tenant + portfolio-nested) proxies when the admin BFF gate is on. **`/api/admin/tasks*`** (except
  * **`POST …/tasks/{taskId}/run`**, which stays on Next for Yahoo-backed scanners + `bypassMarketWindow`), **`GET /api/admin/task-runs`**, and
  * **`POST /api/admin/scheduler/tick`** proxy when **`shouldProxyAdminScheduledTasksToBackend`**
@@ -55,6 +55,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "GET", path: "/api/read/product-shell-v1" },
   { method: "GET", path: "/api/positions" },
   { method: "POST", path: "/api/positions" },
+  { method: "PATCH", path: "/api/positions/{positionId}" },
   { method: "DELETE", path: "/api/positions/{positionId}" },
   { method: "GET", path: "/api/recommendations" },
   { method: "POST", path: "/api/recommendations" },
@@ -122,6 +123,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}/watchlist" },
   { method: "GET", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions" },
   { method: "POST", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions" },
+  { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}" },
   { method: "DELETE", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}" },
   { method: "GET", path: "/api/admin/portfolios/{portfolioId}/recommendations" },
   { method: "POST", path: "/api/admin/portfolios/{portfolioId}/recommendations" },

@@ -13,7 +13,7 @@ import type { WorkspaceBooksDayMarkSummary } from "@/lib/workspace-dashboard-met
 import { resolveUsMarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
 
 type Props = {
-  totalBookUsd: number;
+  totalMarketValueUsd: number;
   topHoldingsKey: string;
   visiblePathPrefixes?: string[];
   deskPortfolioId?: string | null;
@@ -29,7 +29,7 @@ function formatChgPct(p: number | undefined): string {
 }
 
 export function PortfoliosWorkspaceHeader({
-  totalBookUsd,
+  totalMarketValueUsd,
   topHoldingsKey,
   visiblePathPrefixes,
   deskPortfolioId = null,
@@ -68,11 +68,11 @@ export function PortfoliosWorkspaceHeader({
         </div>
 
         <div className="portfolios-workspace-header__center">
-          <XfHoverHint hint="Total book: cash plus position cost basis across all portfolios (not live marks). Portfolio day Δ: stock leaf day P&amp;L from Yahoo (Σ qty × change on quoted symbols, largest books first, capped); excludes options, cash, and unquoted tickers.">
+          <XfHoverHint hint="Total market value: cash + equity positions marked to current last price (Yahoo). Day Δ reflects live stock price changes. Options excluded from market value for now. Cost basis shown per book below.">
             <div className="portfolios-workspace-header__total-block">
-              <p className="portfolios-workspace-header__total-label">Total book value</p>
+              <p className="portfolios-workspace-header__total-label">Total market value</p>
               <p className="portfolios-workspace-header__total-value font-mono tabular-nums">
-                {formatUsdWhole(totalBookUsd)}
+                {formatUsdWhole(totalMarketValueUsd)}
               </p>
               <p className="portfolios-workspace-header__total-delta">
                 <PortfoliosBooksDayMarkUI summary={booksDayMark} variant="header" />

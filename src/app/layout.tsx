@@ -48,10 +48,10 @@ export const metadata: Metadata = {
       "One workspace for real-money options income. Portfolio-aware xChat, xOptions defined-risk strategies, and AI that understands your book. Built for Investment Advisors and HNWI.",
     images: [
       {
-        url: "/landing/xchat.png",
-        width: 1800,
-        height: 1125,
-        alt: "aTx Advisor xChat interface showing portfolio context, trade rationale, and defined-risk options workflow"
+        url: "/branding/og-marketing-hero.jpg",
+        width: 1408,
+        height: 768,
+        alt: "aTx Trusted Advisory — Real-Money Options Income. AI That Understands Your Book."
       }
     ],
     siteName: "aTx Trusted Advisory",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     title: "aTx Trusted Advisory — AI Options Workspace",
     description:
       "Portfolio context + xChat + xOptions in one flow. Defined-risk trades: covered calls, protective puts, straddles. No tab chaos.",
-    images: ["/landing/xchat.png"]
+    images: ["/branding/og-marketing-hero.jpg"]
   }
 };
 

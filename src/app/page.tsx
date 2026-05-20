@@ -21,10 +21,10 @@ export const metadata: Metadata = {
       "Real-money options income. AI that understands your actual portfolios. One workspace for xChat rationale, xOptions strategy building, and clean defined-risk execution. No tab chaos.",
     images: [
       {
-        url: "/landing/xchat.png",
-        width: 1800,
-        height: 1125,
-        alt: "aTx Advisor — One workspace. Portfolio-aware xChat and defined-risk options tools"
+        url: "/branding/og-marketing-hero.jpg",
+        width: 1408,
+        height: 768,
+        alt: "aTx Trusted Advisory — Real-Money Options Income. AI That Understands Your Book."
       }
     ],
     type: "website"
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: `aTx Trusted Advisory — ${XFINANCE_BRAND_SUBLINE}`,
     description:
       "Wheels, covered calls, straddles with portfolio context in one flow. xAI-powered. Educational use only.",
-    images: ["/landing/xchat.png"]
+    images: ["/branding/og-marketing-hero.jpg"]
   }
 };
 

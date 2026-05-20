@@ -27,7 +27,7 @@
 
 ## Tests & broker-ref stability
 
-- **API (mocked repo):** `tests/integration/portfolio-api-routes.test.ts` — account **PATCH** (`extAccountId`, **`brokerImportLocked`** + **409** on type change, desk fields, outlook alias mapping); **`POST /api/portfolios/{id}/alerts`** (create + invalid `accountId`).
+- **API (mocked repo):** `tests/integration/portfolio-api-routes.test.ts` — account **PATCH** (`extAccountId`, **`brokerImportLocked`** + **409** on type change, desk fields, outlook alias mapping); **`POST /api/portfolios/{id}/alerts`** (create + invalid `accountId`). **Position PATCH (≥3.24.2):** `tests/integration/positions-backend-bff-proxy.test.ts` — app-user + admin **`PATCH /api/positions/{positionId}`** BFF proxy, 405 forwarding, Mongo fallback; Edit Account stock save uses **`account-holdings-crud-card.tsx`** → **`updateStockPosition`**.
 - **Repository (fake Mongo):** `tests/integration/portfolio-provisioning-repository.test.ts` — repeat **`provisionDefaultPortfolioForUser`** does not reset names / **`extAccountId`** / **`type`**; **`updatePortfolioAccountForUser`** + second provision keeps user-set ref (edit account + OAuth-style re-provision).
 - **Display helpers:** `tests/unit/account-xref-display.test.ts` — provisioning placeholders vs real refs, **`maskAccountXrefForDisplay`** / **`accountRefLastFourOnlyDisplay`**.
 - **Default-book idempotency (shipped ≥3.7.3):** `provisionDefaultPortfolioForUser` / Spring **`DefaultPortfolioProvisionService`** — see **`auth-and-access.md`**, **`app-user-import-activity.md`**, **`release-notes.md`** (3.7.3).

@@ -43,9 +43,14 @@ export function PortfoliosPortfolioCardItem({ row, accountSlices, opening, onOpe
             </p>
           </div>
           <span className="shrink-0 font-mono text-sm tabular-nums text-[var(--xf-text-100)]">
-            {formatUsd2(row.valueUsd)}
+            {formatUsd2(row.marketValueUsd)}
           </span>
         </div>
+        {row.bookValueUsd > 0 && (
+          <p className="mt-0.5 text-[10px] text-[var(--xf-text-400)] tabular-nums">
+            Cost basis: {formatUsd2(row.bookValueUsd)}
+          </p>
+        )}
       </div>
       <div className="mt-auto">
         {barSlices.length === 0 ? (
@@ -69,7 +74,7 @@ export function PortfoliosPortfolioCardItem({ row, accountSlices, opening, onOpe
         )}
         {total > 0 && barSlices.length > 1 ? (
           <p className="mt-1.5 text-[0.65rem] text-[var(--xf-text-300)]">
-            {barSlices.length} accounts · book split shown above
+            {barSlices.length} accounts · allocation
           </p>
         ) : null}
         {deskNarrative ? (

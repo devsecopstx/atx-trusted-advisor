@@ -7,7 +7,7 @@
 
 | Area | Spring | Notes |
 |------|--------|--------|
-| Portfolios, positions, watchlist | Yes | App-user paths; **admin** portfolio root, **`PATCH …/watchlist`** (BFF when gate on), **`GET …/watchlist`** Next-only, accounts, nested recommendations/alerts/delivery-channels, **GET**/**POST** positions collection, and **DELETE** `…/positions/{positionId}` — **Spring + BFF** where proxied (`bff-proxy-routes.ts` + `backend-bff.ts` skips). |
+| Portfolios, positions, watchlist | Yes | App-user paths; **admin** portfolio root, **`PATCH …/watchlist`** (BFF when gate on), **`GET …/watchlist`** Next-only, accounts, nested recommendations/alerts/delivery-channels, **GET**/**POST** positions collection, **`PATCH`**/**DELETE** `…/positions/{positionId}` — **Spring + BFF** where proxied (`bff-proxy-routes.ts` + `backend-bff.ts` skips). |
 | Recommendations (app + per-portfolio) | Yes | Pub/Sub: Next `publishRecommendationEvent` when BFF off; Kotlin `RecommendationEventPublisher` when BFF on (`RECOMMENDATIONS_PUBSUB_TOPIC`). |
 | Strategy-options | Yes | Yahoo + synthetic fallback on JVM. |
 | Personas | Yes | Audit writes in Kotlin (`PersonaService`). |

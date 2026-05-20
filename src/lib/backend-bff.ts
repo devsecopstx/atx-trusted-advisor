@@ -61,7 +61,7 @@ export const nextBffApi = {
     },
     byId: {
       pathTemplate: "/api/positions/{positionId}",
-      methods: ["DELETE"]
+      methods: ["PATCH", "DELETE"]
     }
   },
   recommendations: {
@@ -259,7 +259,7 @@ export const nextBffApi = {
     },
     portfolioAccountPositionById: {
       pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}",
-      methods: ["DELETE"]
+      methods: ["PATCH", "DELETE"]
     },
     portfolioRecommendationsIndex: {
       pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations",
@@ -608,12 +608,48 @@ function isAppUserPortfolioPriceAlertsPath(pathname: string): boolean {
   return /^\/api\/portfolios\/[^/]+\/price-alerts(?:\/[^/]+)?$/.test(pathname);
 }
 
+function isUserPositionsPath(pathname: string): boolean {
+  return pathname === "/api/positions" || pathname.startsWith("/api/positions/");
+}
+
+/**
+ * Dedicated gate for user-facing positions CRUD (`/api/positions*`).
+ *
+ * The user explicitly wants position writes (especially PATCH to change quantity
+ * on an existing account holding from the holdings editor) to execute in the
+ * Kotlin backend service whenever `ATXFINANCE_BACKEND_ORIGIN` is configured.
+ *
+ * Unlike the general portfolio gate, we do **not** apply the dev-mode localhost
+ * block here. If the origin is set (local :8080 or remote), the request goes
+ * to the backend. This matches the two-service (Next + Kotlin) setup with a
+ * shared DB (local or remote does not change the routing intent).
+ */
+export function shouldProxyUserPositionsToBackend(): boolean {
+  const origin = getAtxfinanceBackendOrigin();
+  if (!origin) {
+    return false;
+  }
+  // Self-origin guard still applies (don't proxy Next to itself)
+  // The actual self-check happens inside proxyRequestToBackend.
+  return true;
+}
+
 /** Spring BFF for {@link shouldProxyPortfolioRequestsToBackend} routes; `null` → Next Mongo handlers. */
 export async function proxyPortfolioRequestToBackend(request: Request): Promise<Response | null> {
+  const pathname = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+
+  // User positions (GET/POST/PATCH/DELETE) — primary path for changing quantity
+  // on an account position from the app-user holdings UI.
+  if (isUserPositionsPath(pathname)) {
+    if (!shouldProxyUserPositionsToBackend()) {
+      return null;
+    }
+    return proxyRequestToBackend(request);
+  }
+
   if (!shouldProxyPortfolioRequestsToBackend()) {
     return null;
   }
-  const pathname = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
   if (isAppUserPortfolioPriceAlertsPath(pathname)) {
     return null;
   }

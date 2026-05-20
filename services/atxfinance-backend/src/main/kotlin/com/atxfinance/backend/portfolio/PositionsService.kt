@@ -3,6 +3,7 @@ package com.atxfinance.backend.portfolio
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.session.ResolvedSession
 import com.mongodb.client.result.DeleteResult
+import com.mongodb.client.result.UpdateResult
 import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
@@ -181,5 +182,58 @@ class PositionsService(
             )
         val result: DeleteResult = mongoTemplate.remove(Query.query(filter), props.positionsCollection)
         return result.deletedCount == 1L
+    }
+
+    /**
+     * Partial update (PATCH semantics) for an existing position row by its _id.
+     * Used by the app-user holdings editor "change quantity / edit existing symbol" flow
+     * to avoid symbol-based upsert when the user intends to mutate a specific holding.
+     *
+     * Only qty (>0), avgCost (>=0), and symbol are updatable. At least one must be provided.
+     * Returns true if the position document was matched (and updated).
+     */
+    fun patch(
+        session: ResolvedSession,
+        portfolioId: String,
+        accountId: String,
+        positionId: String,
+        qty: Double?,
+        avgCost: Double?,
+        symbol: String?,
+    ): Boolean {
+        if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId) || !ObjectId.isValid(positionId)) {
+            return false
+        }
+        val filter =
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                Criteria().andOperator(
+                    Criteria.where("_id").`is`(ObjectId(positionId)),
+                    PortfolioMongoFilter.userIdCriteria(session.userId),
+                    Criteria.where("portfolioId").`is`(ObjectId(portfolioId)),
+                    Criteria.where("accountId").`is`(ObjectId(accountId)),
+                ),
+                session.tenantId,
+            )
+        val update = Update()
+        var hasField = false
+        if (qty != null && qty > 0) {
+            update.set("qty", qty)
+            hasField = true
+        }
+        if (avgCost != null && avgCost >= 0) {
+            update.set("avgCost", avgCost)
+            hasField = true
+        }
+        if (!symbol.isNullOrBlank()) {
+            update.set("symbol", symbol.trim().uppercase())
+            hasField = true
+        }
+        if (!hasField) {
+            return false
+        }
+        update.set("updatedAt", Date())
+
+        val result: UpdateResult = mongoTemplate.updateFirst(Query.query(filter), update, props.positionsCollection)
+        return result.matchedCount >= 1L
     }
 }

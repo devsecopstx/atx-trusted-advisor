@@ -161,6 +161,7 @@ Mongo collections: **`user_tasks`**, **`user_task_runs`**. **`prompt`** tasks ex
 - `PATCH /api/portfolios/:portfolioId/watchlist` — same query params as GET when re-fetching payload after patch
 - `GET /api/positions?portfolioId=&accountId=`
 - `POST /api/positions`
+- `PATCH /api/positions/:positionId?portfolioId=&accountId=` — body optional `qty`, `avgCost`, `symbol` (stock lots); BFF → Spring when **`shouldProxyUserPositionsToBackend()`**; Next Mongo fallback when proxy off
 - `DELETE /api/positions/:positionId?portfolioId=&accountId=`
 
 Admin portfolio routes include:

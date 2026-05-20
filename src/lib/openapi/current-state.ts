@@ -821,7 +821,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}",
-    operations: [{ method: "DELETE", auth: "admin" }],
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
     tag: "admin-portfolios"
   },
   {
@@ -1365,7 +1368,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/positions/{positionId}",
-    operations: [{ method: "DELETE", auth: "session" }],
+    operations: [
+      { method: "PATCH", auth: "session", hasRequestBody: true },
+      { method: "DELETE", auth: "session" }
+    ],
     tag: "positions"
   },
   {

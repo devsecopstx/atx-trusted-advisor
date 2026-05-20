@@ -35,12 +35,13 @@ Same contracts as the matching Next.js App Router handlers when the core app **B
 
 ## Positions (session cookie, Mongo CRUD)
 
-Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId` and `accountId` are required for **GET** and **DELETE**.
+Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId` and `accountId` are required for **GET**, **PATCH**, and **DELETE**.
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/api/positions` | Query `portfolioId`, `accountId`. **200** `{ "data": [...] }` rows from `portfolio_positions` for that account. **400** missing query / **401** / **404** account not in portfolio (`Account not found`). |
 | POST | `/api/positions` | Legacy body `{ portfolioId, accountId, symbol, qty, avgCost }` or OpenAPI-style `{ portfolioId, accountId, ticker, type?, shares?, contracts?, ... }` (same normalization as Next). **201** `{ "data": ... }`. **400** invalid payload (legacy + openapi parse errors in `details`) or validation; **404** account not in portfolio; position validation errors mirror Next (`code` + `error`). |
+| PATCH | `/api/positions/{positionId}` | Query `portfolioId`, `accountId`. Body optional `qty`, `avgCost`, `symbol` (stock). **200** `{ "ok": true }`. **400** no updatable fields / invalid values; **404** account or position not found. Invalidates workspace snapshot cache on success. |
 | DELETE | `/api/positions/{positionId}` | Query `portfolioId`, `accountId`. **200** `{ "ok": true }`. **404** account not in portfolio or position not found. |
 
 ## App user recommendations (`app_user_recommendations`)
@@ -149,6 +150,7 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). This endpoint is the JVM-
 | DELETE | `/api/admin/portfolios/{portfolioId}/accounts/{accountId}` | **Global admin only.** **200** `{ "ok": true }`. **400** last account or not found. |
 | GET \| PATCH | `/api/admin/portfolios/{portfolioId}/watchlist` | **Global admin only.** Parity with Next admin watchlist: **GET** **200** `{ "data": { …watchlist } }` (ensures row + default symbol); **404** portfolio missing. **PATCH** body: `addSymbols`, `addEntries`, `removeSymbols`, `dedupe`, `riskProfile`, `outlook` (same semantics as Next); **400** invalid payload; **404** portfolio/watchlist. **Product BFF:** Next serves **GET** from Mongo; forwards **PATCH** to this JVM route when `shouldProxyAdminUsersToBackend()` is true. |
 | GET \| POST | `/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions` | **Global admin only.** **GET** **200** `{ "data": { portfolioId, portfolioName, portfolioUserId, account, positions[] } }` (shaped like Next). **POST** stock / option / cash payloads (detailed + legacy) — **201** `{ "data": position }`; **400** validation; **404** portfolio/account. |
+| PATCH | `/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}` | **Global admin only.** Body optional `qty`, `avgCost`, `symbol` — **200** `{ "ok": true }`; **400** no updatable fields; **404** portfolio/account/position mismatch. |
 | DELETE | `/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}` | **Global admin only.** Deletes one **`portfolio_positions`** row scoped to the portfolio owner + account — **200** `{ "ok": true }`; **404** portfolio/account/position mismatch; **400** invalid id. |
 | GET \| POST | `/api/admin/portfolios/{portfolioId}/recommendations` | **Global admin only.** **`portfolio_recommendations`** scoped to portfolio owner + tenant. **POST** body `symbol`, `action` (buy\|sell\|hold\|watch), optional `note`, `accountId`, `quantity`, `targetPrice`. |
 | PATCH \| DELETE | `/api/admin/portfolios/{portfolioId}/recommendations/{recommendationId}` | **Global admin only.** **PATCH** partial update (symbol, action, note, quantity, targetPrice, status). **DELETE** **200** `{ "ok": true }`. |

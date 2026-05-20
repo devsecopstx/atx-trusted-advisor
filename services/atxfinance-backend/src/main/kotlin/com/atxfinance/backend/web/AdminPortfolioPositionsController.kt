@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -103,6 +104,30 @@ class AdminPortfolioPositionsController(
             )
         }
         return ResponseEntity.ok(mapOf("ok" to true))
+    }
+
+    @PatchMapping("/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}")
+    fun patchPosition(
+        request: HttpServletRequest,
+        @PathVariable portfolioId: String,
+        @PathVariable accountId: String,
+        @PathVariable positionId: String,
+        @RequestBody(required = false) body: Map<String, Any?>?,
+    ): ResponseEntity<Map<String, Any?>> {
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
+        }
+        g as AdminGate.Ok
+        // Admin holdings console currently uses POST (upsert) for both add and row-edit.
+        // PATCH is wired for BFF parity and future direct use; for now acknowledge.
+        // A full patch impl can be added to AdminPortfolioPositionsService mirroring PositionsService.patch + audit.
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(
+            mapOf(
+                "error" to "PATCH admin position updates not yet implemented; use POST to the accounts positions collection for upsert/edit",
+                "hint" to "The app-user /api/positions/{id} PATCH is fully supported for holdings change flows."
+            )
+        )
     }
 
     private fun validationResponse(e: PositionValidationException): ResponseEntity<Map<String, Any?>> {

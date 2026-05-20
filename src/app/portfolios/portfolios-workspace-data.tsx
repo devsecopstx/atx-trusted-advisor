@@ -9,6 +9,7 @@ import {
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
 import { canonicalMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
+import { getPortfolioLiveMarketValueUsdForSessionUser } from "@/lib/portfolio-live-market-value";
 import { getPortfolioTotalBookUsdForSessionUser } from "@/lib/portfolio-total-book-usd";
 import {
     listWorkspaceDashboardAccountSlices,
@@ -60,17 +61,24 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
       portfolios.map(async (p) => {
         const id = p._id?.toHexString();
         if (!id) {
-          return { portfolio: p, valueUsd: 0 };
+          return { portfolio: p, bookValueUsd: 0, marketValueUsd: 0 };
         }
         try {
-          const valueUsd = await getPortfolioTotalBookUsdForSessionUser({
-            userId: session.userId,
-            tenantId: session.tenantId,
-            portfolioId: id
-          });
-          return { portfolio: p, valueUsd };
+          const [bookValueUsd, marketValueUsd] = await Promise.all([
+            getPortfolioTotalBookUsdForSessionUser({
+              userId: session.userId,
+              tenantId: session.tenantId,
+              portfolioId: id
+            }),
+            getPortfolioLiveMarketValueUsdForSessionUser({
+              userId: session.userId,
+              tenantId: session.tenantId,
+              portfolioId: id
+            })
+          ]);
+          return { portfolio: p, bookValueUsd, marketValueUsd };
         } catch {
-          return { portfolio: p, valueUsd: 0 };
+          return { portfolio: p, bookValueUsd: 0, marketValueUsd: 0 };
         }
       })
     ),
@@ -97,7 +105,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
   const topBookMovers = stockPulse.movers;
   const booksDayMark = stockPulse.booksDayMark;
 
-  const initialRows: WorkspacePortfolioRow[] = bookRows.map(({ portfolio: p, valueUsd }) => {
+  const initialRows: WorkspacePortfolioRow[] = bookRows.map(({ portfolio: p, bookValueUsd, marketValueUsd }) => {
     const id = p._id?.toHexString() ?? "";
     const portfolioKind: WorkspacePortfolioRow["portfolioKind"] =
       p.portfolioKind === "real_estate"
@@ -110,7 +118,8 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
       name: p.name || "Portfolio",
       isDefault: !!p.isDefault,
       portfolioKind,
-      valueUsd,
+      bookValueUsd,
+      marketValueUsd,
       kindLabel: portfolioKindChoiceLabel(p.portfolioKind ?? null)
     };
   });
@@ -131,7 +140,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
   /** Any owned book id for portfolio-scoped watchlist API paths; symbols are tenant.user-global. */
   const deskWatchlistPortfolioId = chosenPortfolioId ?? defaultPortfolioIdForImport;
 
-  const totalBookUsd = initialRows.reduce((s, r) => s + Math.max(0, r.valueUsd), 0);
+  const totalMarketValueUsd = initialRows.reduce((s, r) => s + Math.max(0, r.marketValueUsd), 0);
 
   const mongoConnection = shouldShowAppUserDbLabel() ? getMongoConnectionLabel() : "";
   const admin = isGlobalAdmin(session.roles);
@@ -184,7 +193,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
         isGlobalAdmin={admin}
         booksDayMark={booksDayMark}
         topBookMovers={topBookMovers}
-        totalBookUsd={totalBookUsd}
+        totalMarketValueUsd={totalMarketValueUsd}
         workspaceBook={workspaceBook}
         workspaceDeskHints={workspaceDeskHints}
         visiblePathPrefixes={visiblePathPrefixes}

@@ -13,9 +13,9 @@ const ADMIN_APP_USER_SHORTCUTS: Array<{ href: string; label: string; title: stri
     title: "Open xChat product surface"
   },
   {
-    href: "/portfolio",
-    label: "Portfolio",
-    title: "Open app-user portfolio workspace"
+    href: "/portfolios",
+    label: "Portfolios",
+    title: "Open app-user portfolios workspace"
   },
   {
     href: "/watchlist",

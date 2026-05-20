@@ -38,6 +38,9 @@ export function AccountHoldingsCrudCard({
   const [stSym, setStSym] = useState("");
   const [stShares, setStShares] = useState("");
   const [stPx, setStPx] = useState("");
+
+  // Track if we're editing an existing stock position (for "select symbol → load current position into panel")
+  const [editingStockPositionId, setEditingStockPositionId] = useState<string | null>(null);
   const [opSym, setOpSym] = useState("");
   const [opYref, setOpYref] = useState("");
   const [opCp, setOpCp] = useState<"call" | "put">("call");
@@ -51,6 +54,34 @@ export function AccountHoldingsCrudCard({
   useEffect(() => {
     setPositions(initialPositions);
   }, [initialPositions]);
+
+  // When the user types/selects a symbol, if it matches an existing stock position in this account,
+  // load the current quantity and avg cost into the edit panel (edit mode).
+  useEffect(() => {
+    const sym = stSym.trim().toUpperCase();
+    if (!sym) {
+      setEditingStockPositionId(null);
+      return;
+    }
+
+    const existing = positions.find(
+      (p): p is SerializablePosition & { type: "stock" } =>
+        p.type === "stock" && (p.symbol || "").trim().toUpperCase() === sym
+    );
+
+    if (existing) {
+      setEditingStockPositionId(existing._id);
+      // Only pre-fill if the user hasn't already started typing different values
+      if (!stShares.trim()) {
+        setStShares(String(existing.shares ?? ""));
+      }
+      if (!stPx.trim() && typeof existing.purchasePrice === "number") {
+        setStPx(String(existing.purchasePrice));
+      }
+    } else {
+      setEditingStockPositionId(null);
+    }
+  }, [stSym, positions]); // note: we intentionally don't include stShares/stPx to avoid loops
 
   async function addHolding(e: FormEvent) {
     e.preventDefault();
@@ -68,28 +99,41 @@ export function AccountHoldingsCrudCard({
         setError("Stock: non-negative purchase price required.");
         return;
       }
-      const res = await fetch("/api/positions", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          portfolioId: portfolioIdHex,
-          accountId: accountIdHex,
-          symbol,
-          qty,
-          avgCost,
-          type: "stock"
-        })
-      });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setError(body.error ?? "Could not save stock position");
-        return;
+
+      let success = false;
+
+      if (editingStockPositionId) {
+        // User selected an existing symbol → update the current position (quantity correction, etc.)
+        success = await updateStockPosition(editingStockPositionId, symbol, qty, avgCost);
+      } else {
+        const res = await fetch("/api/positions", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portfolioId: portfolioIdHex,
+            accountId: accountIdHex,
+            symbol,
+            qty,
+            avgCost,
+            type: "stock"
+          })
+        });
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          setError(body.error ?? "Could not save stock position");
+          return;
+        }
+        success = true;
       }
-      setStSym("");
-      setStShares("");
-      setStPx("");
-      startTransition(() => router.refresh());
+
+      if (success) {
+        setStSym("");
+        setStShares("");
+        setStPx("");
+        setEditingStockPositionId(null);
+        startTransition(() => router.refresh());
+      }
       return;
     }
 
@@ -193,6 +237,28 @@ export function AccountHoldingsCrudCard({
     startTransition(() => router.refresh());
   }
 
+  async function updateStockPosition(positionId: string, symbol: string, qty: number, avgCost: number) {
+    setError(null);
+    const qs = new URLSearchParams({ portfolioId: portfolioIdHex, accountId: accountIdHex });
+    const res = await fetch(`/api/positions/${encodeURIComponent(positionId)}?${qs.toString()}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        qty,
+        avgCost,
+        symbol // in case user changed the symbol (rare)
+      })
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      const message = body.error ?? "Could not update position";
+      setError(message);
+      return false;
+    }
+    return true;
+  }
+
   return (
     <section
       className={`portfolio-edit-holdings-card xf-noise-overlay${embeddedInTab ? " portfolio-edit-holdings-card--in-tab" : ""}`}
@@ -235,7 +301,9 @@ export function AccountHoldingsCrudCard({
       )}
 
       <div className="portfolio-edit-holdings-card__divider" aria-hidden />
-      <h3 className="portfolio-edit-holdings-card__subtitle">Add position</h3>
+      <h3 className="portfolio-edit-holdings-card__subtitle">
+        {editingStockPositionId ? "Change position" : "Add or Change position"}
+      </h3>
       <form onSubmit={addHolding} className="stack-gap portfolio-edit-holdings-form">
         <label className="portfolio-edit-holdings-field">
           <span className="portfolio-edit-holdings-field__label">Instrument type</span>
@@ -263,8 +331,28 @@ export function AccountHoldingsCrudCard({
             }}
           >
             <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-              <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Symbol</span>
+              <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>
+                Symbol {editingStockPositionId ? <span className="text-[var(--xf-gain-green)]">(editing existing)</span> : null}
+              </span>
               <input className="crud-input" value={stSym} onChange={(e) => setStSym(e.target.value)} placeholder="TSLA" />
+              {/* Quick select from current holdings so user can easily load existing position into the edit panel */}
+              {positions.some((p) => p.type === "stock") && !editingStockPositionId && (
+                <div className="flex flex-wrap gap-1 text-[10px]">
+                  {positions
+                    .filter((p): p is SerializablePosition & { type: "stock" } => p.type === "stock")
+                    .slice(0, 6)
+                    .map((p) => (
+                      <button
+                        key={p._id}
+                        type="button"
+                        className="rounded border border-white/10 px-1.5 py-0.5 hover:bg-white/5"
+                        onClick={() => setStSym(p.symbol || "")}
+                      >
+                        {p.symbol}
+                      </button>
+                    ))}
+                </div>
+              )}
             </label>
             <div className="stack-gap" style={{ gridColumn: "1 / -1", maxWidth: "28rem" }}>
               <StockSymbolLiveField
@@ -297,7 +385,7 @@ export function AccountHoldingsCrudCard({
             </label>
             <button type="submit" className="cta cta-primary" disabled={pending}>
               <SaveIcon className="crud-icon" />
-              Save
+              {editingStockPositionId ? "Change quantity" : "Add position"}
             </button>
           </div>
         ) : null}
