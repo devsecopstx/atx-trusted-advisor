@@ -25,15 +25,87 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 import { authenticateRentalAiApiKey } from "@/modules/platform/rental-ai-auth";
+
+// ---------------------------------------------------------------------------
+// Streaming helper for rental_ai_chat when stream: true
+// Consumes the internal SSE and returns the final accumulated content + headers
+// ---------------------------------------------------------------------------
+
+async function callRentalChatStreaming(
+  body: any,
+  authHeader: string
+): Promise<{ content: string; used?: string; remaining?: string }> {
+  const origin = process.env.INTERNAL_SELF_ORIGIN || "http://localhost:3000";
+
+  const res = await fetch(`${origin}/api/ai/rent/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "text/event-stream",
+      ...(authHeader ? { Authorization: authHeader } : {}),
+    },
+    body: JSON.stringify({ ...body, stream: true }),
+  });
+
+  if (!res.ok || !res.body) {
+    const text = await res.text();
+    return { content: `Streaming chat failed: ${res.status} ${text}` };
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalContent = "";
+  let used = res.headers.get("x-rental-tokens-used") || undefined;
+  let remaining = res.headers.get("x-rental-tokens-remaining") || undefined;
+
+  // Accumulate deltas from OpenAI-style chat.completion.chunk events
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) continue;
+
+      const data = trimmed.slice(6);
+      if (data === "[DONE]") {
+        // Try to pick up final metering headers if they were sent late
+        // (some responses send them on the final chunk or trailers)
+        break;
+      }
+
+      try {
+        const json = JSON.parse(data);
+        const delta = json?.choices?.[0]?.delta?.content;
+        if (delta) finalContent += delta;
+      } catch {
+        // ignore partial JSON
+      }
+    }
+  }
+
+  // Fallback: if we didn't get content via deltas, the backend may have sent
+  // the full response in one go even on stream=true for some paths.
+  if (!finalContent && res.headers.get("content-type")?.includes("application/json")) {
+    // rare fallback
+  }
+
+  return { content: finalContent, used, remaining };
+}
 
 // ---------------------------------------------------------------------------
 // Tool Definitions (kept in sync with the public handoff + OpenAPI)
 // ---------------------------------------------------------------------------
 
-const tools: Tool[] = [
+export const tools: Tool[] = [
   {
     name: "rental_ai_chat",
     description:
@@ -197,14 +269,26 @@ async function handleMcpJsonRpc(body: any, authHeader: string) {
       let result;
       switch (toolName) {
         case "rental_ai_chat": {
-          const res = await callRentalEndpoint("/api/ai/rent/chat", "POST", args, authHeader);
-          if (res.status >= 400) {
-            result = { content: [{ type: "text", text: `Error: ${JSON.stringify(res.data)}` }], isError: true };
+          const wantsStream = !!(args as any).stream;
+
+          if (wantsStream) {
+            // Improved streaming path: consume internal SSE and return final content
+            const streamResult = await callRentalChatStreaming(args, authHeader);
+            const meta = streamResult.used
+              ? `\n\n---\nTokens used: ${streamResult.used} | remaining: ${streamResult.remaining ?? "?"} (UTC day)`
+              : "";
+            result = { content: [{ type: "text", text: (streamResult.content || "") + meta }] };
           } else {
-            const used = res.headers["x-rental-tokens-used"];
-            const remaining = res.headers["x-rental-tokens-remaining"];
-            const meta = used ? `\n\n---\nTokens used: ${used} | remaining: ${remaining} (UTC day)` : "";
-            result = { content: [{ type: "text", text: (res.data?.data?.response || "") + meta }] };
+            // Fast path - non-streaming JSON
+            const res = await callRentalEndpoint("/api/ai/rent/chat", "POST", args, authHeader);
+            if (res.status >= 400) {
+              result = { content: [{ type: "text", text: `Error: ${JSON.stringify(res.data)}` }], isError: true };
+            } else {
+              const used = res.headers["x-rental-tokens-used"];
+              const remaining = res.headers["x-rental-tokens-remaining"];
+              const meta = used ? `\n\n---\nTokens used: ${used} | remaining: ${remaining} (UTC day)` : "";
+              result = { content: [{ type: "text", text: (res.data?.data?.response || "") + meta }] };
+            }
           }
           break;
         }
@@ -320,9 +404,13 @@ export async function GET(request: Request) {
         service: "Rental AI Native MCP Server",
         version: "1.0.0",
         endpoint: "/mcp",
-        description: "Native MCP endpoint for the aTx Finance Rental AI (white-label). Use your atxr_* key.",
+        discovery: "https://fintech-advisor.ai/mcp/discovery",
+        description:
+          "Native MCP endpoint for the aTx Finance Rental AI (white-label). " +
+          "Point Grok or other agents here with your atxr_* rental key for self-onboarding.",
         tools: tools.map((t) => t.name),
-        docs: "https://fintech-advisor.ai (see MCP section)",
+        streaming_chat: "Pass { stream: true } to rental_ai_chat for SSE-backed responses",
+        docs: "https://fintech-advisor.ai",
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
