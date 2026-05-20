@@ -1,6 +1,6 @@
 # Documentation index (atxFinance)
 
-Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** `**atx-docs/`** at repo root (there is no top-level `docs/` folder — update links from older `docs/atx-*` paths accordingly). For Cursor agent skills, see `[.cursor/skills/README.md](../.cursor/skills/README.md)`.
+Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** `**atx-docs/`** at repo root (there is no top-level `docs/` folder — update links from older `docs/atx-*` paths accordingly). For Cursor agent skills, see `[.cursor/skills/README.md](../.cursor/skills/README.md)`. For Grok skills (HNWI xChat / finance-advisor focus), see `[../.grok/skills/README.md](../.grok/skills/README.md)`.
 
 ---
 
@@ -106,7 +106,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** `
 
 **Finance xAI KB (shared `XAI_FINANCE_COLLECTION_ID`):** Markdown is split **[`options-strategy-core/`](./rag-collection/options-strategy-core/)** (lean desk + **[`options-coreskills.md`](./rag-collection/options-strategy-core/options-coreskills.md)**), **[`options-strategy-advanced/`](./rag-collection/options-strategy-advanced/)** (full multi-leg playbooks), **[`atx-response-guidelines/`](./rag-collection/atx-response-guidelines/)** (response structure, citations, tone), and **[`finance-core/`](./rag-collection/finance-core/)** (cross-cutting desk literacy, optional HNWI topic subfolders, + small PDFs). **`npm run seed:finance-xai-collection`** / **`POST /api/admin/rag/refresh-finance`** uploads **those segments** when present into the **same** Finance collection (nested **`options-strategy/**`** is **not** uploaded — avoids duplicate vectors vs flat playbooks). **Persona `always_include` (operator contract):** every shipped **`xpersonas/*.yaml`** lists **`finance-core/**`** and **`atx-response-guidelines/**`**; **`finance-advisor`** adds **`options-strategy-core/**`** only (default HNWI product persona); **`advisor`** adds **`options-strategy-advanced/**`** only (global-admin default / deep playbooks).
 
-**Reviewer / agent quick index:** **[`options-coreskills.md`](./rag-collection/options-strategy-core/options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/skill-*/SKILL.md`**.
+**Reviewer / agent quick index:** **[`options-coreskills.md`](./rag-collection/options-strategy-core/options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/skill-*/SKILL.md`** (Cursor) and **`.grok/skills/hnwi-xchat-finance-advisor/SKILL.md`** (Grok).
 
 
 | Doc                                                                                                     | Purpose                                                                                          |
@@ -120,7 +120,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** `
 | **[RAG collection README](./rag-collection/README.md)**                                                 | Full segment TOC + RAG folder convention                                                         |
 
 
-**Folder convention:** Nested Mongo seed paths keep the logical tag `atx-rag-collection/options-strategy/<slug>/<slug>.md`. **Core** and **advanced** use **flat** `*.md` stems under their segment roots (allowed by layout tests). Frontmatter `xfinance-strategy-*`. Full Cursor playbooks: `.cursor/skills/skill-*/SKILL.md`.
+**Folder convention:** Nested Mongo seed paths keep the logical tag `atx-rag-collection/options-strategy/<slug>/<slug>.md`. **Core** and **advanced** use **flat** `*.md` stems under their segment roots (allowed by layout tests). Frontmatter `xfinance-strategy-*`. Full Cursor playbooks: `.cursor/skills/skill-*/SKILL.md`. Grok xChat finance skills: `.grok/skills/hnwi-xchat-finance-advisor/SKILL.md` (and siblings).
 
 **Legacy paths:** Older docs referred to **`atx-options-strategy/`** and **`atx-options-coreskills.md`**; canonical names are **`options-strategy/`** (Mongo), **`options-strategy-core/options-coreskills.md`** (index), and **`options-strategy-advanced/`**.
 

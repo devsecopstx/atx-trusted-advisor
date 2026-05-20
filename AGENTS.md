@@ -6,6 +6,8 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
 **Cursor personas & skills:** see **DEVELOPMENT.md** → *Cursor agents & skills (repo-local)* and **`.cursor/agents/README.md`**.
 
+**Grok skills (project-local):** `.grok/skills/` — see [`.grok/skills/README.md`](.grok/skills/README.md). Focused on the HNWI xChat / finance-advisor surface and the `atx-docs/rag-collection/` sources that power it for your Investment Advisor users.
+
 ## Standard Local Flow
 
 1. `cp .env.example .env` (repo root / Next.js); optional seed/ops flags: `scripts/.env.example`; local Spring: `services/atxfinance-backend/.env.example` — set `ADMIN_SEED_EMAIL`; if you use **Sign in with X** and X does not return an email, also set **`ADMIN_SEED_X_USER_ID`** (your X numeric user id) so seed + OAuth can attach `xAccount` to the admin row. For Docker Mongo with auth, set **`MONGODB_URI`** to `mongodb://admin:<password>@127.0.0.1:27017/<db>?authSource=admin` (password defaults to **`localdev`** in `docker-compose.yml` when `MONGO_ROOT_PASSWORD` is empty).
@@ -180,6 +182,19 @@ from injected secrets.
   - `.cursor/skills/test-commit-push/CHECKLIST.md`
 - App version lives only in `package.json`; runtime reads via `src/lib/app-version.ts`.
   - Skill `.md` files must never contain hardcoded version strings — a version bump must not touch skills.
+
+### Project Grok Skills (xChat / HNWI finance-advisor focus)
+
+- Project-local Grok skills live in **`.grok/skills/`** (created 2026-05). See [`.grok/skills/README.md`](.grok/skills/README.md) for the index and policy.
+- Primary goal: package the finance knowledge from `atx-docs/rag-collection/` (the exact source that seeds the shared Finance xAI collection and the `finance-advisor` persona) so Grok can give precise, contract-compliant help when you evolve the xChat surface for your Investment Advisor / HNWI users.
+- Current skills:
+  - `hnwi-xchat-finance-advisor` — the main one (persona contract, RAG scopes, tool discipline ≤3 calls, response structure + disclaimers, risk buckets, 10-point content framework).
+  - `finance-rag-kb-curation` — RAG source maintenance, AIP-160 pre-search filters, `refresh-finance` / seeding, frontmatter standards.
+  - `xchat-persona-and-rag-ops` — YAML authoring, `always_include`, governance (publish/archive/rollback), collection attachment, post-seed verification.
+  - `xchat-hnwi-desk-reports` — Desk Report v2.1 templates, prompt packaging, the server add-on Markdown contract (Executive + Ideas table + Risk), composer quick actions.
+- These complement (do not duplicate) the Cursor skills. When you ask Grok to work on xChat ask flows, persona changes, new strategy support, or Desk Report features, explicitly invoke the relevant Grok skill(s) for grounded output.
+- No separate lint script yet (unlike `npm run skills:lint` for Cursor). Follow the same frontmatter + "no hardcoded app version" discipline.
+- Future: a `xai-skill-packer` Grok skill may be added to synthesize reusable xAI "skill" bundles (prompt + recommended tools + filter examples) directly from the atx-docs for potential platform attachment.
 
 ### .env generation
 
