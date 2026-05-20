@@ -33,7 +33,7 @@ export async function sendAccessApprovedPasswordInviteEmail(input: {
     "",
     "We look forward to helping you and your team make better, data-driven decisions.",
     "",
-    "support@fintech-advisor.ai",
+    "support@atxtrustedadvisory.com",
     "",
     "P.S. All communications are secured end-to-end and your data is never shared."
   ].join("\n");
@@ -72,7 +72,7 @@ export async function sendAccessApprovedSignInEmail(input: {
     "",
     "We look forward to helping you and your team make better, data-driven decisions.",
     "",
-    "support@fintech-advisor.ai",
+    "support@atxtrustedadvisory.com",
     "",
     "P.S. All communications are secured end-to-end and your data is never shared."
   ].join("\n");
