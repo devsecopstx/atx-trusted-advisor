@@ -27,8 +27,8 @@ cd "$REPO_ROOT"
 
 **Hostnames (defaults in this doc):**
 
-- Staging: `https://staging.atx.fintech-advisor.ai`
-- Production: `https://atx.fintech-advisor.ai`
+- Staging: `https://staging.fintech-advisor.ai`
+- Production: `https://fintech-advisor.ai`
 
 ---
 
@@ -177,8 +177,8 @@ gcloud run domain-mappings create \
 
 | Type | Name | Target |
 |------|------|--------|
-| CNAME or A | `staging.atx.fintech-advisor.ai` | From `gcloud run domain-mappings describe` (or LB IP) |
-| CNAME or A | `atx.fintech-advisor.ai` | From `gcloud run domain-mappings describe` (or LB IP) |
+| CNAME or A | `staging.fintech-advisor.ai` | From `gcloud run domain-mappings describe` (or LB IP) |
+| CNAME or A | `fintech-advisor.ai` | From `gcloud run domain-mappings describe` (or LB IP) |
 
 ---
 
@@ -186,16 +186,16 @@ gcloud run domain-mappings create \
 
 Add to the X developer app:
 
-- `https://staging.atx.fintech-advisor.ai/api/auth/x/callback`
-- `https://atx.fintech-advisor.ai/api/auth/x/callback`
+- `https://staging.fintech-advisor.ai/api/auth/x/callback`
+- `https://fintech-advisor.ai/api/auth/x/callback`
 
 ---
 
 ## 11. Health check
 
 ```bash
-curl -s "https://staging.atx.fintech-advisor.ai/api/health"
-curl -s "https://atx.fintech-advisor.ai/api/health"
+curl -s "https://staging.fintech-advisor.ai/api/health"
+curl -s "https://fintech-advisor.ai/api/health"
 ```
 
 Expected: `{"status":"ok","service":"xfinance-core-app",...}` (fields may vary slightly).
@@ -214,8 +214,8 @@ gh variable set GCP_PROJECT_ID_PROD --repo "$GH_REPO" --body "$PROD_PROJECT"
 gh variable set CLOUD_RUN_REGION --repo "$GH_REPO" --body "$REGION"
 gh variable set CLOUD_RUN_SERVICE_STAGING --repo "$GH_REPO" --body "$SERVICE_STAGING"
 gh variable set CLOUD_RUN_SERVICE_PROD --repo "$GH_REPO" --body "$SERVICE_PROD"
-gh variable set STAGING_BASE_URL --repo "$GH_REPO" --body "https://staging.atx.fintech-advisor.ai"
-gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://atx.fintech-advisor.ai"
+gh variable set STAGING_BASE_URL --repo "$GH_REPO" --body "https://staging.fintech-advisor.ai"
+gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://fintech-advisor.ai"
 ```
 
 Align with [DEVELOPMENT.md](../../../DEVELOPMENT.md) → *Deploy/Rollback Operations* and `npm run status:deploy` / `AGENTS.md` for current workflow names.

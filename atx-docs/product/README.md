@@ -14,7 +14,10 @@ Canonical **marketing and business** descriptions for the **xFinance** platform 
 | **Legal / descriptor** | **atx Trusted Advisor** | Footers, Terms — see [xfinance-branding-review.md](../xchat/xfinance-branding-review.md) §8 |
 
 **Tagline:** *No Atoms Moved. Just Gains Earned.*  
-**Subline:** *Options Profits Powered by Grok*
+**Subline:** *xAI-Powered Options Intelligence for Serious Portfolios*  
+**Production URL:** [https://fintech-advisor.ai/](https://fintech-advisor.ai/) · **Staging:** `https://staging.fintech-advisor.ai`
+
+Code constants: `src/lib/xfinance-brand.ts` (`FINTECH_ADVISOR_PROD_ORIGIN`, `XFINANCE_BRAND_SUBLINE`).
 
 ---
 

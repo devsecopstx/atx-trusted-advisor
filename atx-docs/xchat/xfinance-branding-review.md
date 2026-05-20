@@ -30,7 +30,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 | Background / dark | `#050505`, dark-only                                           | Use `--xf-*` / tokens per brand kit where possible        |
 | Lockup            | **aTx⚡Finance** in `**AtxFinanceLogo`**                        | Bolt between aTx and Finance                              |
 | Tagline           | "No Atoms Moved. Just Gains Earned."                           | ✅                                                         |
-| Subline           | "Options Profits Powered by Grok" (optional secondary on access/plans) | Align with `xfinance-branding.mdc` when hero is refreshed |
+| Subline           | "xAI-Powered Options Intelligence for Serious Portfolios" (optional secondary on access/plans) | Align with `xfinance-branding.mdc` when hero is refreshed |
 | Accent green      | Rule `#22c55e` vs `--xf-gain-green`                            | See §3                                                    |
 | Product hierarchy | xFinance, xChat, xCoach, xMoney                                | Footer / descriptor                                       |
 | CTAs              | Real `<Link>` targets                                          | `/xchat`, plans, etc.                                     |

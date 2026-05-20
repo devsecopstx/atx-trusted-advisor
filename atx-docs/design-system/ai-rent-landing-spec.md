@@ -11,7 +11,7 @@
 
 - **Narrative:** Lead with **outcomes** — isolated, Grok-powered options-aware advisory **for their end-clients**, delivered via **HTTPS API** they control (`POST /api/ai/rent/*`). Then stack: tenant isolation, **risk posture** (conservative default), portfolio-aware chat, strategy/analyze job pattern.
 - **Tagline (hero):** **No Atoms Moved. Just Gains Earned.**
-- **Subline:** **Options Profits Powered by Grok** (secondary line may mention **approved partner access** / **API integration** — not mass-market scale).
+- **Subline:** **xAI-Powered Options Intelligence for Serious Portfolios** (secondary line may mention **approved partner access** / **API integration** — not mass-market scale).
 - **Wordmark:** **aTx⚡Finance** — lightning bolt between **aTx** and **Finance**; use `AtxFinanceMark` / tokens from `src/app/ui/atxfinance-logo.tsx` when implementing.
 
 Differentiation (use one short paragraph): execution-style portfolio context + **Grok** advisory in **their** branded tenant boundary — distinct from generic chat-only widgets.

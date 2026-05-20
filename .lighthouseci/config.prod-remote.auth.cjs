@@ -12,7 +12,7 @@
  * Reports land in `.lighthouseci/reports-prod-auth/` (kept distinct from the
  * guest run’s `reports-prod/`).
  */
-const origin = process.env.LHCI_PROD_ORIGIN || "https://atx.fintech-advisor.ai";
+const origin = process.env.LHCI_PROD_ORIGIN || "https://fintech-advisor.ai";
 
 const authCookie = process.env.LHCI_PROD_AUTH_COOKIE || process.env.LHCI_AUTH_COOKIE;
 if (!authCookie) {

@@ -18,8 +18,8 @@ Set up Cursor cloud agents with deterministic behavior for atxfinance:
 
 - Repo target: `atxfinance`
 - Agents reference: `https://vscode.dev/github/devsecopstx/xfinance/blob/main/.cursor/agents`
-- Production host: `https://atx.fintech-advisor.ai`
-- Staging host: `https://staging.atx.fintech-advisor.ai`
+- Production host: `https://fintech-advisor.ai`
+- Staging host: `https://staging.fintech-advisor.ai`
 - GCP model: separate projects for staging and production
 - OAuth model: single X OAuth app with both callback URLs
 
@@ -74,7 +74,7 @@ Mark setup complete only if both tasks succeed.
 - [ ] Atlas mode confirmed (no local Mongo startup in cloud agent)
 - [ ] Secret ownership model agreed
 - [ ] Required management key configured (`XAI_MANAGEMENT_API_KEY`)
-- [ ] GCP hostnames agreed (`atx.fintech-advisor.ai`, `staging.atx.fintech-advisor.ai`)
+- [ ] GCP hostnames agreed (`fintech-advisor.ai`, `staging.fintech-advisor.ai`)
 - [ ] OAuth callback URLs documented
 - [ ] Next action queued: GCP DNS/LB/Cloud Run deployment
 

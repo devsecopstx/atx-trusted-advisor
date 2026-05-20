@@ -50,7 +50,7 @@ function stripTrailingSlash(u: string): string {
  *
  * Resolution order (first wins):
  * 1. `CAPACITOR_SERVER_URL` — use for CI/TestFlight when `.env` is not the prod file.
- * 2. `PUBLIC_APP_BASE_URL` — same canonical origin as email links / deploy (e.g. `https://atxtrustedadvisory.com`).
+ * 2. `PUBLIC_APP_BASE_URL` — same canonical origin as email links / deploy (e.g. `https://fintech-advisor.ai`).
  * 3. Default `http://127.0.0.1:3000` — simulator + `npm run dev`.
  *
  * Before App Store / TestFlight archive: ensure this resolves to your **HTTPS** production origin

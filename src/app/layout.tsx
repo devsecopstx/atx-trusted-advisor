@@ -5,13 +5,13 @@ import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
 import { FullBleedBackground } from "@/components/FullBleedBackground";
 import { getSessionUser } from "@/lib/auth";
 import { getGa4MeasurementId } from "@/lib/env";
-import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
-import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
 import {
     getCoreUserXfUiThemePreferenceForHexCached,
     getTenantShellBrandingForHexCached,
     getTenantXfUiThemePreferenceForHexCached
 } from "@/lib/identity-shell-cache";
+import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
+import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
 import { ObjectId } from "mongodb";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
@@ -27,7 +27,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://atxtrustedadvisory.com"),
+  metadataBase: new URL("https://fintech-advisor.ai"),
   title: "aTx Trusted Advisory",
   description:
     `aTx⚡Finance — Powered by xAI. No Atoms Moved. Just Gains Earned. Options workspace, xChat, and portfolio tools. ${EDUCATIONAL_ONLY_SHORT}`,

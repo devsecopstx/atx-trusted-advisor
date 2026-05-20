@@ -4,8 +4,8 @@ Add these callback URLs in your X app developer settings:
 
 **URLs to add:**
 
-- `https://staging.atx.fintech-advisor.ai/api/auth/x/callback`
-- `https://atx.fintech-advisor.ai/api/auth/x/callback`
+- `https://staging.fintech-advisor.ai/api/auth/x/callback`
+- `https://fintech-advisor.ai/api/auth/x/callback`
 
 **Where:** [developer.x.com](https://developer.x.com) → Your app → User authentication settings → Callback URLs
 

@@ -8,7 +8,7 @@
 
 Advisory chat **grounded in your real book** — Grok-powered desk workflows, portfolio and watchlist context, and compliance-forward access inside one workspace.
 
-**Subline:** *Options Profits Powered by Grok*
+**Subline:** *xAI-Powered Options Intelligence for Serious Portfolios*
 
 ---
 

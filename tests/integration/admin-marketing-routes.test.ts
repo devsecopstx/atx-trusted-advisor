@@ -76,7 +76,7 @@ describe("admin marketing routes", () => {
       scheduleCron: "0 13 * * 1-5",
       config: {
         platforms: ["x"],
-        destinationUrl: "https://atxtrustedadvisory.com",
+        destinationUrl: "https://fintech-advisor.ai",
         utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
       }
     });
@@ -88,7 +88,7 @@ describe("admin marketing routes", () => {
       scheduleCron: "0 13 * * 1-5",
       config: {
         platforms: ["x"],
-        destinationUrl: "https://atxtrustedadvisory.com",
+        destinationUrl: "https://fintech-advisor.ai",
         utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
       }
     });
@@ -156,7 +156,7 @@ describe("admin marketing routes", () => {
           config: {
             templateId: "507f1f77bcf86cd799439050",
             platforms: ["x"],
-            destinationUrl: "https://atxtrustedadvisory.com",
+            destinationUrl: "https://fintech-advisor.ai",
             utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
           }
         })
@@ -191,7 +191,7 @@ describe("admin marketing routes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           templateId: "507f1f77bcf86cd799439050",
-          destinationUrl: "https://atxtrustedadvisory.com",
+          destinationUrl: "https://fintech-advisor.ai",
           platforms: ["x", "linkedin"],
           utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
         })
@@ -262,7 +262,7 @@ describe("admin marketing routes", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postText: "Test post content\n\nhttps://atxtrustedadvisory.com?utm_source=x&utm_campaign=weekly-pulse"
+          postText: "Test post content\n\nhttps://fintech-advisor.ai?utm_source=x&utm_campaign=weekly-pulse"
         })
       })
     );

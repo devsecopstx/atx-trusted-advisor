@@ -59,7 +59,7 @@ curl -sS "${BACKEND_URL}/api/health" | head -c 200
 
 ```bash
 # Quick smoke: with a valid session cookie, call a proxied route
-curl -b "xf_core_session=<valid-cookie>" "https://staging.atx.fintech-advisor.ai/api/portfolios/current"
+curl -b "xf_core_session=<valid-cookie>" "https://staging.fintech-advisor.ai/api/portfolios/current"
 ```
 
 ---

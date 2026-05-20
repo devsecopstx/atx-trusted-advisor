@@ -58,8 +58,8 @@ Cursor Cloud → **Secrets** → set `MONGODB_URI_B64` to the new base64 value.
 
 ### X OAuth: 6. Verify
 
-- Staging: `curl -sSf https://staging.atx.fintech-advisor.ai/api/health`
-- Production: `curl -sSf https://atx.fintech-advisor.ai/api/health`
+- Staging: `curl -sSf https://staging.fintech-advisor.ai/api/health`
+- Production: `curl -sSf https://fintech-advisor.ai/api/health`
 
 Expected: `{"status":"ok","service":"xfinance-core-app",...}` (db name may vary)
 
@@ -88,8 +88,8 @@ Atlas → **Database Access** → delete or disable old user.
 Ensure these are in **User authentication settings** → **Callback URI / Redirect URL**:
 
 - Local: `http://127.0.0.1:3000/api/auth/x/callback`
-- Staging: `https://staging.atx.fintech-advisor.ai/api/auth/x/callback`
-- Production: `https://atx.fintech-advisor.ai/api/auth/x/callback`
+- Staging: `https://staging.fintech-advisor.ai/api/auth/x/callback`
+- Production: `https://fintech-advisor.ai/api/auth/x/callback`
 
 ### 3. Update local .env
 
@@ -132,8 +132,8 @@ Cursor Cloud → **Secrets** → set `X_OAUTH_CLIENT_ID` and `X_OAUTH_CLIENT_SEC
 
 ### 6. Verify
 
-- Staging: sign in with X at `https://staging.atx.fintech-advisor.ai/xchat`
-- Production: sign in with X at `https://atx.fintech-advisor.ai/xchat`
+- Staging: sign in with X at `https://staging.fintech-advisor.ai/xchat`
+- Production: sign in with X at `https://fintech-advisor.ai/xchat`
 
 ### 7. Revoke old credentials (after 24–48h stable)
 

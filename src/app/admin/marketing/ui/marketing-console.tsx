@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
+import { FINTECH_ADVISOR_PROD_ORIGIN } from "@/lib/xfinance-brand";
 import type { MarketingPlatform, MarketingTaskConfig } from "@/modules/marketing/types";
 
 import { MarketingXPostingConnectPanel } from "./marketing-x-posting-connect";
@@ -130,7 +131,7 @@ const DEFAULT_DRAFT: EditDraft = {
     "Destination URL:",
     "{{destination_url}}"
   ].join("\n"),
-  destinationUrl: "https://atxtrustedadvisory.com",
+  destinationUrl: FINTECH_ADVISOR_PROD_ORIGIN,
   platforms: ["x"],
   utmSource: "x",
   utmCampaign: "weekly-pulse",
@@ -488,7 +489,7 @@ export function MarketingConsole() {
       templateId: schedule.config.templateId ?? "",
       customContent: schedule.config.customContent ?? "",
       generationPrompt: schedule.config.generationPrompt ?? DEFAULT_DRAFT.generationPrompt,
-      destinationUrl: schedule.config.destinationUrl ?? "https://atxtrustedadvisory.com",
+      destinationUrl: schedule.config.destinationUrl ?? FINTECH_ADVISOR_PROD_ORIGIN,
       platforms: schedule.config.platforms ?? ["x"],
       utmSource: schedule.config.utmParams.utm_source,
       utmCampaign: schedule.config.utmParams.utm_campaign,

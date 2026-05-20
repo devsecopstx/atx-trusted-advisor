@@ -6,7 +6,7 @@ export type UtmParams = {
   utm_term?: string;
 };
 
-const DEFAULT_BASE = "https://atxtrustedadvisory.com";
+const DEFAULT_BASE = "https://fintech-advisor.ai";
 
 export function withUtmParams(href: string, utm: UtmParams): string {
   const trimmed = href.trim();

@@ -27,12 +27,12 @@ Branding reference for UI copy: `[atx-docs/xchat/xfinance-branding-review.md](at
 
 The following Resources pages are publicly accessible (no login required) and are served as static/ISR with hourly revalidation:
 
-- https://atxtrustedadvisory.com/resources/about
-- https://atxtrustedadvisory.com/resources/decision-workflow
-- https://atxtrustedadvisory.com/resources/secret-sauce
-- https://atxtrustedadvisory.com/resources/getting-started
-- https://atxtrustedadvisory.com/resources/building-wheel
-- https://atxtrustedadvisory.com/resources/building-wheel/wheel-vs-iron-condor
+- https://fintech-advisor.ai/resources/about
+- https://fintech-advisor.ai/resources/decision-workflow
+- https://fintech-advisor.ai/resources/secret-sauce
+- https://fintech-advisor.ai/resources/getting-started
+- https://fintech-advisor.ai/resources/building-wheel
+- https://fintech-advisor.ai/resources/building-wheel/wheel-vs-iron-condor
 
 Notes
 - Navigation: Links are visible to logged-out visitors in the guest rail and workspace sidebar.

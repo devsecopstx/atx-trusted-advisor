@@ -89,7 +89,7 @@ class CredentialInviteService(
 
     companion object {
         private const val INVITE_TTL_MS = 7L * 24 * 60 * 60 * 1000
-        private const val DEFAULT_PUBLIC_APP_BASE_URL = "https://atxtrustedadvisory.com"
+        private const val DEFAULT_PUBLIC_APP_BASE_URL = "https://fintech-advisor.ai"
     }
 
     private fun resolvePublicAppBaseUrl(): String {

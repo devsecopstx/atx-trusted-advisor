@@ -1,6 +1,7 @@
 import { getEnv } from "@/lib/env";
+import { FINTECH_ADVISOR_PROD_ORIGIN } from "@/lib/xfinance-brand";
 
-const DEFAULT_PUBLIC_APP_ORIGIN = "https://atxtrustedadvisory.com";
+const DEFAULT_PUBLIC_APP_ORIGIN = FINTECH_ADVISOR_PROD_ORIGIN;
 
 /** Hosts that must never appear in user-facing email links (loopback, bind-all, metadata). */
 export function shouldRejectPublicLinkOrigin(origin: string): boolean {

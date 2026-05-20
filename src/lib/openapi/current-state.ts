@@ -1893,8 +1893,8 @@ export function buildCurrentStateOpenApi(): OpenApiDocument {
       ].join("\n")
     },
     servers: [
-      { url: "https://staging.atx.fintech-advisor.ai", description: "Staging server" },
-      { url: "https://atx.fintech-advisor.ai", description: "Production server" }
+      { url: "https://staging.fintech-advisor.ai", description: "Staging server" },
+      { url: "https://fintech-advisor.ai", description: "Production server" }
     ],
     tags: collectTags(),
     paths: buildPaths(),

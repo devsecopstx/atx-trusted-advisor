@@ -17,7 +17,7 @@ describe("shouldRejectPublicLinkOrigin", () => {
   });
 
   it("allows normal public HTTPS origins", () => {
-    expect(shouldRejectPublicLinkOrigin("https://atxtrustedadvisory.com")).toBe(false);
+    expect(shouldRejectPublicLinkOrigin("https://fintech-advisor.ai")).toBe(false);
     expect(shouldRejectPublicLinkOrigin("https://example.run.app")).toBe(false);
   });
 });
@@ -30,7 +30,7 @@ describe("resolvePublicAppOrigin", () => {
     } as ReturnType<typeof getEnv>);
 
     const req = new Request("http://0.0.0.0:8080/api/admin/access-requests/x");
-    expect(resolvePublicAppOrigin(req)).toBe("https://atxtrustedadvisory.com");
+    expect(resolvePublicAppOrigin(req)).toBe("https://fintech-advisor.ai");
   });
 
   it("uses PUBLIC_APP_BASE_URL when valid", async () => {
@@ -50,6 +50,6 @@ describe("resolvePublicAppOrigin", () => {
     } as ReturnType<typeof getEnv>);
 
     const req = new Request("http://0.0.0.0:8080/api/test");
-    expect(resolvePublicAppOrigin(req)).toBe("https://atxtrustedadvisory.com");
+    expect(resolvePublicAppOrigin(req)).toBe("https://fintech-advisor.ai");
   });
 });

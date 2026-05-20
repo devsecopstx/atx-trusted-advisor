@@ -6,6 +6,7 @@ import { LightningBolt } from "@/app/ui/atxfinance-logo";
 import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { LandingProductScreenshot } from "@/app/ui/landing-product-screenshot";
+import { XFINANCE_BRAND_SUBLINE } from "@/app/ui/product-brand-constants";
 import { PublicLandingXchatDemo } from "@/app/ui/public-landing-xchat-demo";
 import {
     MARKETING_HEADER_BTN_PRIMARY,
@@ -83,7 +84,7 @@ export function PublicMarketingLanding() {
               <span className="block">Real-Money Options Income.</span>
               <span className="mt-2 block">AI That Understands Your Book.</span>
               <span className="mt-3 block text-2xl font-semibold leading-snug tracking-tight text-[var(--xf-gain-green)] sm:text-3xl md:text-4xl">
-                Powered by xAI Grok.
+                {XFINANCE_BRAND_SUBLINE}
               </span>
             </h1>
 

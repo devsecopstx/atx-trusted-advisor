@@ -8,7 +8,7 @@
 
 Move from **holdings to defined-risk structures** in one desk — stepped builder, HNWI review reports, wheel screener, and quant tail-risk with one-click handoff back to **xChat**.
 
-**Subline:** *Options Profits Powered by Grok*
+**Subline:** *xAI-Powered Options Intelligence for Serious Portfolios*
 
 ---
 

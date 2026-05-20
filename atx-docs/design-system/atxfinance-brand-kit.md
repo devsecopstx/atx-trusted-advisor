@@ -6,7 +6,7 @@
 
 - **Core promise:** Institutional-grade defined-risk options income tools + Grok-powered advisory at retail price with minimal daily screen time.
 - **Primary tagline:** **"No Atoms Moved. Just Gains Earned."**
-- **Secondary:** **"Options Profits Powered by Grok"**
+- **Secondary:** **"xAI-Powered Options Intelligence for Serious Portfolios"**
 - **Tone:** Professional, calm, benefit-first. Never hype.
 - **Ecosystem naming:** `xFinance` (core workspace), `xChat` (Grok advisor), `xOptions` (strategy builder + scanner), `xCoach` (exam readiness). `xMoney` is future.
 

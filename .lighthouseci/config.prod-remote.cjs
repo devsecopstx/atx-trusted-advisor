@@ -9,7 +9,7 @@
  * Reported baseline: atx-docs/design-system/current-state-features.md
  * § "Lighthouse production baseline (2026-04-08)".
  */
-const origin = process.env.LHCI_PROD_ORIGIN || "https://atx.fintech-advisor.ai";
+const origin = process.env.LHCI_PROD_ORIGIN || "https://fintech-advisor.ai";
 
 const onlyPerf = process.env.LHCI_PERF_ONLY === "1" || process.env.LHCI_PERF_ONLY === "true";
 

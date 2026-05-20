@@ -131,7 +131,7 @@ Email clients do not reliably support `var(--xf-*)` or external stylesheets. Inl
       "to": [{ "email": "advisor@firm.com", "name": "Jane Doe" }],
       "dynamic_template_data": {
         "first_name": "Jane",
-        "login_url": "https://atx.fintech-advisor.ai",
+        "login_url": "https://fintech-advisor.ai",
         "environment_label": "Production",
         "support_email": "support@atxfinance.com",
         "founder_name": "Samuel Perez",

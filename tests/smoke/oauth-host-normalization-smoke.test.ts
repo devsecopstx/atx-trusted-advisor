@@ -160,13 +160,13 @@ describe("oauth host normalization smoke", () => {
     envMocks.getEnv.mockReturnValue({
       NODE_ENV: "production",
       X_OAUTH_CLIENT_SECRET: "secret",
-      X_OAUTH_CALLBACK_URL: "https://atx.fintech-advisor.ai/api/auth/x/callback"
+      X_OAUTH_CALLBACK_URL: "https://fintech-advisor.ai/api/auth/x/callback"
     });
     const response = await loginGet(
       new Request("https://www.fintech-advisor.ai/api/auth/x/login")
     );
     expect(response.headers.get("location")).toBe(
-      "https://atx.fintech-advisor.ai/api/auth/x/login"
+      "https://fintech-advisor.ai/api/auth/x/login"
     );
   });
 
@@ -174,7 +174,7 @@ describe("oauth host normalization smoke", () => {
     envMocks.getEnv.mockReturnValue({
       NODE_ENV: "production",
       X_OAUTH_CLIENT_SECRET: "secret",
-      X_OAUTH_CALLBACK_URL: "https://atx.fintech-advisor.ai/api/auth/x/callback"
+      X_OAUTH_CALLBACK_URL: "https://fintech-advisor.ai/api/auth/x/callback"
     });
     const response = await callbackGet(
       new Request(
@@ -182,7 +182,7 @@ describe("oauth host normalization smoke", () => {
       )
     );
     expect(response.headers.get("location")).toBe(
-      "https://atx.fintech-advisor.ai/api/auth/x/callback?code=abc&state=state"
+      "https://fintech-advisor.ai/api/auth/x/callback?code=abc&state=state"
     );
   });
 

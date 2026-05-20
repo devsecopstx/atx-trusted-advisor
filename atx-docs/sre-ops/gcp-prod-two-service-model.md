@@ -85,7 +85,7 @@ Keep **`.env.prod` gitignored**; set at least:
 | **`GCP_PROJECT_ID`** or **`GOOGLE_PROJECT_ID`** | `fintech-advisor-prod` |
 | **`CLOUD_RUN_REGION`** | `us-central1` |
 | **`CLOUD_RUN_SERVICE_PROD`** | **`xfinance-core-prod`** |
-| **`PROD_BASE_URL`** | `https://atx.fintech-advisor.ai` (no trailing slash) |
+| **`PROD_BASE_URL`** | `https://fintech-advisor.ai` (no trailing slash) |
 | **`ATXFINANCE_BACKEND_ORIGIN`** | **`https://atxfinance-backend-prod-….us-central1.run.app`** (Spring only) |
 
 Then deploy Next from repo root:

@@ -357,7 +357,7 @@ These are **documented** backlog items or **conscious** holes — not a feature 
 - **Post-deploy smoke:** **`GET /api/health`** (version matches image); app_user / admin paths per [`AGENTS.md`](../../AGENTS.md) § Production validation.
 - **High-risk clients:** ApexCharts (xOptions symbol panel), long xChat threads, watchlist quote refresh, IBKR snapshot panels, virtualized portfolio tables.
 - **Local regression:** After **`NODE_ENV=production npm run build`**, run **Lighthouse CI** with **`.lighthouseci/config.cjs`** — it starts **`next start`** on **`localhost:3001`** by default (override with **`LHCI_PORT`**) and audits **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/xoptions`**. Not a merge blocker unless workflow is added to GitHub Actions.
-- **Live prod regression:** **`npm run lh:prod`** → **`.lighthouseci/config.prod-remote.cjs`** (same four URLs against **`https://atx.fintech-advisor.ai`**; guest shells unless you add LHCI auth).
+- **Live prod regression:** **`npm run lh:prod`** → **`.lighthouseci/config.prod-remote.cjs`** (same four URLs against **`https://fintech-advisor.ai`**; guest shells unless you add LHCI auth).
 - **Recent LHCI direction:** improve performance scores on **`/xchat`** and **`/portfolios`** (history + virtualized lists); keep INP ≤ 200 ms on interactive surfaces.
 
 #### LHCI workflow — guest + authenticated runs
@@ -410,7 +410,7 @@ npm run lh:prod:auth
 | `LHCI_PORT` | local configs | Port for `next start` (default `3001`). |
 | `LHCI_RUNS` | all configs | Override `numberOfRuns` (default 2). |
 | `LHCI_PERF_ONLY` | all configs | When `1`/`true`, restricts categories to `performance` for fast iteration. |
-| `LHCI_PROD_ORIGIN` | prod configs | Override origin (default `https://atx.fintech-advisor.ai`). |
+| `LHCI_PROD_ORIGIN` | prod configs | Override origin (default `https://fintech-advisor.ai`). |
 | `LHCI_AUTH_USER_ID` / `LHCI_AUTH_TENANT_ID` | mint script | Defaults for the cookie payload (CLI flags override). |
 
 **Comparing runs:** each invocation drops a versioned set of `lhr-*.html` + `manifest.json` into the reports dir for that mode. To compare guest vs authenticated for `/xchat`, open both `reports/lhr-*-xchat-*.html` and `reports-auth/lhr-*-xchat-*.html` in a browser, or diff `manifest.json` `summary` blocks. Treat any drop ≥ 0.05 in performance score (or > 200 ms LCP regression) as a blocker for hot-path PRs.

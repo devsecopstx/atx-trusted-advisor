@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 // Base URL for canonical links
-const BASE_URL = "https://atxtrustedadvisory.com";
+const BASE_URL = "https://fintech-advisor.ai";
 
 // Central list of public, marketing/guest pages to include in the sitemap
 // Only include pages that are accessible without authentication and are intended for SEO indexing.

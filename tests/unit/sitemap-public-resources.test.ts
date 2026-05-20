@@ -6,7 +6,7 @@ describe("sitemap public resources", () => {
     const entries = sitemap();
     const urls = entries.map((e) => e.url).sort();
 
-    const BASE = "https://atxtrustedadvisory.com";
+    const BASE = "https://fintech-advisor.ai";
     const expected = [
       "/resources/guides",
       "/resources/onboarding-checklist",
@@ -37,7 +37,7 @@ describe("sitemap public resources", () => {
   it("includes SEO solution landing routes", () => {
     const entries = sitemap();
     const urls = entries.map((e) => e.url).sort();
-    const BASE = "https://atxtrustedadvisory.com";
+    const BASE = "https://fintech-advisor.ai";
     const expected = [
       "/wheel-strategy-ai",
       "/covered-call-portfolio-manager",
