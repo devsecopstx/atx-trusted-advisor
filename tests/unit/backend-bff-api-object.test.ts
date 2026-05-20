@@ -19,7 +19,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/portfolios/{portfolioId}/snapshot", methods: ["GET"] },
   { pathTemplate: "/api/read/product-shell-v1", methods: ["GET"] },
   { pathTemplate: "/api/positions", methods: ["GET", "POST"] },
-  { pathTemplate: "/api/positions/{positionId}", methods: ["DELETE"] },
+  { pathTemplate: "/api/positions/{positionId}", methods: ["PATCH", "DELETE"] },
   { pathTemplate: "/api/recommendations", methods: ["GET", "POST"] },
   { pathTemplate: "/api/recommendations/{recommendationId}", methods: ["GET"] },
   { pathTemplate: "/api/portfolios/{portfolioId}/recommendations", methods: ["GET", "POST"] },
@@ -69,7 +69,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   },
   {
     pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions/{positionId}",
-    methods: ["DELETE"]
+    methods: ["PATCH", "DELETE"]
   },
   { pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations", methods: ["GET", "POST"] },
   {
