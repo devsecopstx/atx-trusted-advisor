@@ -18,11 +18,20 @@ export const metadata: Metadata = {
     description:
       "Practical guides on wheels, CSPs, covered calls, risk management, and Grok-powered xChat/xOptions workflows — grounded in real portfolios. Public reading for serious options income professionals.",
     type: "website",
+    images: [
+      {
+        url: "/landing/xchat.png",
+        width: 1800,
+        height: 1125,
+        alt: "aTx Advisor educational resources for options income strategies"
+      }
+    ]
   },
   twitter: {
     card: "summary_large_image",
     title: "Options Income Resources | Educational Hub",
     description: "Wheels, CSPs, risk frameworks & Grok workflows — free guides for HNWI and Investment Advisors.",
+    images: ["/landing/xchat.png"]
   },
 };
 

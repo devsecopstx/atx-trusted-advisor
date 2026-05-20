@@ -14,12 +14,21 @@ export const metadata: Metadata = {
   openGraph: {
     title: "xOptions · aTx Advisor",
     description: `Options income and strategy analysis. ${EDUCATIONAL_ONLY_SHORT}`,
-    type: "website"
+    type: "website",
+    images: [
+      {
+        url: "/landing/xoptions.png",
+        width: 1800,
+        height: 1125,
+        alt: "xOptions strategy builder workspace in aTx Advisor"
+      }
+    ]
   },
   twitter: {
     card: "summary_large_image",
     title: "xOptions · aTx Advisor",
-    description: `Options strategy workspace. ${EDUCATIONAL_ONLY_SHORT}`
+    description: `Options strategy workspace. ${EDUCATIONAL_ONLY_SHORT}`,
+    images: ["/landing/xoptions.png"]
   }
 };
 

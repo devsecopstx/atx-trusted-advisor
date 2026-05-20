@@ -41,6 +41,28 @@ export const metadata: Metadata = {
     icon: "/pwa/atx-logo-512.png",
     shortcut: "/pwa/atx-logo-512.png",
     apple: "/pwa/atx-logo-512.png"
+  },
+  openGraph: {
+    title: "aTx Trusted Advisory — xAI-Powered Options Income Workspace",
+    description:
+      "One workspace for real-money options income. Portfolio-aware xChat, xOptions defined-risk strategies, and AI that understands your book. Built for Investment Advisors and HNWI.",
+    images: [
+      {
+        url: "/landing/xchat.png",
+        width: 1800,
+        height: 1125,
+        alt: "aTx Advisor xChat interface showing portfolio context, trade rationale, and defined-risk options workflow"
+      }
+    ],
+    siteName: "aTx Trusted Advisory",
+    type: "website"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "aTx Trusted Advisory — AI Options Workspace",
+    description:
+      "Portfolio context + xChat + xOptions in one flow. Defined-risk trades: covered calls, protective puts, straddles. No tab chaos.",
+    images: ["/landing/xchat.png"]
   }
 };
 
