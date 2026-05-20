@@ -10,6 +10,11 @@ This folder contains image assets plus the 2026 refresh docs used by prompt gene
 - `atxfinance-typography.md`: typography system and readability constraints
 - `atxfinance-brand-validation.md`: prompt dry-run and QA scorecard
 
+## Product briefs (GTM)
+
+- [product/xchat-product-brief.md](../product/xchat-product-brief.md)
+- [product/xoptions-product-brief.md](../product/xoptions-product-brief.md)
+
 ## Workflow
 
 1. Start from `atxfinance-brand-prompts.md`.

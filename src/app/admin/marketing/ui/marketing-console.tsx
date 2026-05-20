@@ -139,7 +139,7 @@ const DEFAULT_DRAFT: EditDraft = {
   utmTerm: ""
 };
 
-type TabKey = "overview" | "schedules" | "templates" | "history" | "test-x";
+type TabKey = "overview" | "schedules" | "templates" | "history" | "test-x" | "x-ads";
 
 function formatTs(value?: string): string {
   if (!value) return "—";
@@ -180,6 +180,14 @@ export function MarketingConsole() {
   const [testPostText, setTestPostText] = useState("");
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [creatingTemplate, setCreatingTemplate] = useState(false);
+
+  // X Ads tab state
+  const [adsAccounts, setAdsAccounts] = useState<Array<{ id: string; name: string; timezone?: string }>>([]);
+  const [adsLoading, setAdsLoading] = useState(false);
+  const [adsAccountIdInput, setAdsAccountIdInput] = useState("");
+  const [adsPostText, setAdsPostText] = useState("");
+  const [adsDailyBudget, setAdsDailyBudget] = useState<number>(25);
+  const [adsResult, setAdsResult] = useState<string>("");
   const [templateDraft, setTemplateDraft] = useState<TemplateDraft>({
     name: "",
     platforms: ["x"],
@@ -384,6 +392,62 @@ export function MarketingConsole() {
     } finally {
       setLoading(false);
       setTestPostRunning(false);
+    }
+  }
+
+  async function fetchAdsAccounts() {
+    setAdsLoading(true);
+    setStatus("Fetching X Ads accounts…");
+    try {
+      const qs = adsAccountIdInput ? "" : ""; // we can pass xUserId from stored config via status, but the route accepts ?user_id
+      // For simplicity the backend route will use the stored xUserId if present; we pass it explicitly if admin typed one.
+      const url = `/api/admin/marketing/x-ads/accounts${adsAccountIdInput ? `?user_id=${encodeURIComponent(adsAccountIdInput)}` : ""}`;
+      const payload = await parseJson<{ data: { accounts: Array<{ id: string; name: string; timezone?: string }> } }>(
+        await fetch(url)
+      );
+      setAdsAccounts(payload.data.accounts || []);
+      setStatus(`Found ${payload.data.accounts?.length || 0} ads account(s). Pick one below or paste its id.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to list ads accounts");
+    } finally {
+      setAdsLoading(false);
+    }
+  }
+
+  async function createXAdPost() {
+    const text = adsPostText.trim();
+    const acct = adsAccountIdInput.trim();
+    if (!text) {
+      setStatus("Enter post text for the ad");
+      return;
+    }
+    if (!acct) {
+      setStatus("Select or enter an X Ads account id first (use Fetch or the ids saved in Connect panel)");
+      return;
+    }
+    setAdsLoading(true);
+    setStatus("Creating tweet + X Ads campaign / line item / promoted tweet (starts PAUSED)…");
+    setAdsResult("");
+    try {
+      const payload = await parseJson<{ data: { success: boolean; message: string; tweetId?: string; campaignId?: string; lineItemId?: string } }>(
+        await fetch("/api/admin/marketing/x-ads/promoted-posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postText: text,
+            accountId: acct,
+            dailyBudgetUsd: adsDailyBudget || 25
+          })
+        })
+      );
+      const d = payload.data;
+      const summary = `${d.message}\nTweet: ${d.tweetId || "—"}  Campaign: ${d.campaignId || "—"}  LineItem: ${d.lineItemId || "—"}`;
+      setAdsResult(summary);
+      setStatus(d.success ? "Ad campaign created (paused). Review & activate in X Ads Manager." : "Ad creation completed with warnings — see details.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Create promoted post failed");
+    } finally {
+      setAdsLoading(false);
     }
   }
 
@@ -594,7 +658,7 @@ export function MarketingConsole() {
 
       <div className="tool-row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <div className="tool-row" role="tablist" aria-label="Marketing tabs" style={{ gap: "0.4rem" }}>
-          {(["overview", "schedules", "templates", "history", "test-x"] as TabKey[]).map((tab) => (
+          {(["overview", "schedules", "templates", "history", "test-x", "x-ads"] as TabKey[]).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -1186,6 +1250,97 @@ export function MarketingConsole() {
               Clear
             </button>
           </div>
+        </article>
+      ) : null}
+
+      {activeTab === "x-ads" ? (
+        <article className="surface-card xf-widget section-card stack-form">
+          <h3>X Ads — create post with ad campaign</h3>
+          <p className="status-text">
+            Uses the <strong>X User ID</strong> and <strong>Ads Account ID</strong> saved in the Connect panel above.
+            Fetches your ads accounts (requires the connected OAuth user to have Ads Manager access + Ads API enabled on the X app).
+            Creates a real tweet, then a <strong>PAUSED</strong> campaign + line item + promoted tweet. Activate the campaign in X Ads Manager to spend.
+          </p>
+
+          <div className="tool-row" style={{ gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              type="button"
+              className="tiny-button"
+              onClick={() => void fetchAdsAccounts()}
+              disabled={adsLoading || loading}
+            >
+              Fetch my ads accounts (using saved X user id)
+            </button>
+            <input
+              className="crud-input text-sm font-mono"
+              style={{ minWidth: "16rem" }}
+              placeholder="Or paste Ads account id (18ce5...)"
+              value={adsAccountIdInput}
+              onChange={(e) => setAdsAccountIdInput(e.target.value)}
+            />
+            <input
+              className="crud-input text-sm"
+              style={{ width: "7rem" }}
+              type="number"
+              min={5}
+              step={5}
+              value={adsDailyBudget}
+              onChange={(e) => setAdsDailyBudget(Math.max(5, Number(e.target.value) || 25))}
+            />
+            <span className="text-xs text-[var(--xf-text-muted)]">USD daily budget</span>
+          </div>
+
+          {adsAccounts.length > 0 ? (
+            <div className="mt-2 text-xs">
+              <strong>Accounts found:</strong>{" "}
+              {adsAccounts.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className="tiny-button"
+                  style={{ marginRight: "0.25rem" }}
+                  onClick={() => setAdsAccountIdInput(a.id)}
+                >
+                  {a.name} ({a.id})
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <textarea
+            className="crud-input mt-2"
+            rows={5}
+            placeholder="Post text for the promoted tweet (will also appear as organic tweet)"
+            value={adsPostText}
+            onChange={(e) => setAdsPostText(e.target.value)}
+          />
+
+          <div className="tool-row mt-2" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="cta cta-primary"
+              onClick={() => void createXAdPost()}
+              disabled={adsLoading || loading || !adsPostText.trim() || !adsAccountIdInput.trim()}
+            >
+              {adsLoading ? "Creating ad campaign..." : "Create post + ad (paused campaign)"}
+            </button>
+            <button type="button" className="tiny-button" onClick={() => { setAdsPostText(""); setAdsResult(""); }} disabled={adsLoading}>
+              Clear
+            </button>
+          </div>
+
+          {adsResult ? (
+            <pre
+              className="surface-card"
+              style={{ whiteSpace: "pre-wrap", fontSize: "12px", background: "var(--xf-surface-900)", padding: "0.75rem", marginTop: "0.5rem" }}
+            >
+              {adsResult}
+            </pre>
+          ) : null}
+
+          <p className="mt-2 text-xs text-[var(--xf-text-muted)]">
+            The campaign and line item start <strong>PAUSED</strong>. Open X Ads Manager, review targeting / creative, set the campaign active, and monitor spend. Common first-run issues: no funding instrument on the account, token lacks ads scope, or the app project needs Ads API enabled.
+          </p>
         </article>
       ) : null}
     </section>

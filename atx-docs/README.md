@@ -6,6 +6,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** `
 
 ## Table of contents
 
+- [Product & GTM briefs](#product-gtm-briefs)
 - [Architecture & shipped stack](#architecture-shipped-stack)
 - [Backlog](#backlog)
 - [Guides](#guides)
@@ -14,6 +15,18 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** `
 - [Options (RAG + seed)](#options-rag-seed)
 - [Diagrams & assets](#diagrams-assets)
 - [Audit & governance](#audit-governance)
+
+---
+
+## Product GTM briefs
+
+Canonical **marketing and business** copy for primary surfaces (investor one-slides, waitlist, partner intros). Engineering contracts stay in [current-state-features.md](./design-system/current-state-features.md).
+
+| Doc | Purpose |
+| --- | ------- |
+| **[product/README.md](./product/README.md)** | Index + naming standard (xFinance / xChat / xOptions / aTx⚡Finance) |
+| **[product/xchat-product-brief.md](./product/xchat-product-brief.md)** | Grok advisory chat grounded in the user's book |
+| **[product/xoptions-product-brief.md](./product/xoptions-product-brief.md)** | Options desk: builder, HNWI review, wheel, quant |
 
 ---
 

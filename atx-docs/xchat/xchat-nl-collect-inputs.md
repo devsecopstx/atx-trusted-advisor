@@ -25,7 +25,7 @@
 
 ## xOptions / strategy jobs (current state)
 
-- **Shipped:** Kotlin strategy job API (`/api/strategy-jobs`, turns), multi-agent design in [`atx-multi-agent.md`](./atx-multi-agent.md); app_user xOptions strategy surface `/xoptions` (stepped builder + context API — see [`xoptions-strategy-builder.md`](./xoptions-strategy-builder.md)).
+- **Shipped:** Kotlin strategy job API (`/api/strategy-jobs`, turns), multi-agent design in [`atx-multi-agent.md`](./atx-multi-agent.md); app_user xOptions strategy surface `/xoptions` (stepped builder + context API — see [`product-ux-spec.md`](../design-system/xoptions/product-ux-spec.md)).
 - **Not wired in xChat yet:** There is **no** `atxfinance` operation that creates or posts strategy-job turns. Until that ships, use **nl** to clarify intent and explain that full **xOptions / strategy job** execution runs in the dedicated product flow (UI or API), not via chat tools today.
 
 ## See also

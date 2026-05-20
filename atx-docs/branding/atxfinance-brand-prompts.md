@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This prompt set recreates atxFinance marketing assets with a premium, low-noise institutional fintech style that stays legible on mobile and consistent with `atxFinance`, `Powered by xAI`, `Grok`, and `xStrategyBuilder`.
+This prompt set recreates atxFinance marketing assets with a premium, low-noise institutional fintech style that stays legible on mobile and consistent with `atxFinance`, `Powered by xAI`, `Grok`, and **xOptions** (options desk).
 
 ## Core Prompt (Primary)
 
@@ -12,7 +12,7 @@ Create a premium vertical 4:5 institutional fintech hero for atxFinance.
 Brand lockup:
 - Primary mark: "atxFinance"
 - Subtitle: "Powered by xAI"
-- Product entities in scene: "Grok" and "xStrategyBuilder"
+- Product entities in scene: "Grok" and "xOptions"
 
 Visual direction:
 - Dark-first, modern fintech interface
@@ -84,7 +84,7 @@ Keep logo and key metrics inside center 70% safe zone.
 
 ```text
 Generate a 16:9 website hero for atxFinance with left-aligned copy space and right-aligned strategy console mockup.
-Retain Powered by xAI lockup and Grok/xStrategyBuilder feature cards.
+Retain Powered by xAI lockup and Grok/xOptions feature cards.
 ```
 
 ### App Store Screenshot Style

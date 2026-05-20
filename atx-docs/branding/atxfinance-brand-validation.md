@@ -28,7 +28,7 @@ Keep left licensing model cards minimal and readable. Use charcoal base with res
 
 ```text
 Create a 16:9 landing hero for atxFinance with left-side copy space and right-side strategy console.
-Include "Powered by xAI", Grok, and xStrategyBuilder labels in a clean low-noise composition.
+Include "Powered by xAI", Grok, and xOptions labels in a clean low-noise composition.
 Prioritize readability and trust, avoid exaggerated PnL claims, and keep compliance/audit cues visible.
 ```
 
@@ -42,7 +42,7 @@ Use clean typography and balanced spacing, ensure all labels are legible on mobi
 
 ## QA Checklist Result
 
-- [x] Identity lock includes atxFinance, Powered by xAI, Grok, xStrategyBuilder
+- [x] Identity lock includes atxFinance, Powered by xAI, Grok, xOptions
 - [x] Prompts enforce legibility constraints
 - [x] Prompts block misleading financial content
 - [x] Composition remains mobile-safe and procurement-ready

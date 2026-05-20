@@ -24,6 +24,10 @@ export type XchatPlatformSettingsDoc = {
   marketingXPostingOAuthScopes?: string;
   marketingXPostingUpdatedAt?: Date;
   marketingXPostingUpdatedByUserId?: string;
+  /** Numeric X user id (data.id from /2/users/me) for the account used for posting and ads targeting. */
+  marketingXUserId?: string;
+  /** Selected X Ads account id (e.g. "18ce54d4x5t") to use when creating ad campaigns / promoted posts. */
+  marketingXAdsAccountId?: string;
   updatedAt: Date;
   updatedByUserId?: string;
 };
@@ -89,6 +93,8 @@ export async function upsertMarketingXPostingOAuth(input: {
   accessTokenExpiresAt?: Date;
   /** Raw `scope` string from X token endpoint (optional). */
   oauthScopes?: string | null;
+  /** Numeric X user id captured during OAuth (optional but recommended for ads). */
+  xUserId?: string | null;
 }): Promise<XchatPlatformSettingsDoc> {
   await ensureIndexes();
   const db = await getDb();
@@ -108,6 +114,12 @@ export async function upsertMarketingXPostingOAuth(input: {
   if (input.oauthScopes !== undefined && input.oauthScopes !== null) {
     const s = input.oauthScopes.trim();
     set.marketingXPostingOAuthScopes = s.length > 0 ? s : undefined;
+  }
+  if (input.xUserId !== undefined && input.xUserId !== null) {
+    const v = input.xUserId.trim();
+    if (v.length > 0) {
+      set.marketingXUserId = v;
+    }
   }
 
   await db.collection<XchatPlatformSettingsDoc>(COLLECTION).updateOne(
@@ -184,6 +196,43 @@ export async function clearMarketingXPostingOAuth(actorUserId: string): Promise<
     },
     { upsert: true }
   );
+}
+
+/** Persist the target X user id (numeric) and/or Ads account id for marketing / ad campaigns.
+ * These are independent of the OAuth tokens and survive disconnect.
+ */
+export async function setMarketingXPostingTargetIds(input: {
+  xUserId?: string | null;
+  adsAccountId?: string | null;
+  actorUserId: string;
+}): Promise<XchatPlatformSettingsDoc> {
+  await ensureIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const $set: Record<string, unknown> = {
+    updatedAt: now,
+    updatedByUserId: input.actorUserId.trim()
+  };
+  if (input.xUserId !== undefined) {
+    const v = (input.xUserId ?? "").trim();
+    $set.marketingXUserId = v.length > 0 ? v : undefined;
+  }
+  if (input.adsAccountId !== undefined) {
+    const v = (input.adsAccountId ?? "").trim();
+    $set.marketingXAdsAccountId = v.length > 0 ? v : undefined;
+  }
+
+  await db.collection<XchatPlatformSettingsDoc>(COLLECTION).updateOne(
+    { singletonKey: SINGLETON_KEY },
+    { $set, $setOnInsert: { singletonKey: SINGLETON_KEY } },
+    { upsert: true }
+  );
+
+  const next = await getXchatPlatformSettings();
+  if (!next) {
+    throw new Error("xchat_platform_settings target ids update failed");
+  }
+  return next;
 }
 
 /** Normalize X OAuth `scope` response for checks (e.g. `tweet.write`). */

@@ -8,6 +8,8 @@ type StatusPayload = {
   data: {
     linked: boolean;
     username: string | null;
+    xUserId: string | null;
+    adsAccountId: string | null;
     updatedAt: string | null;
     grantedScopes: string[];
     postingLikelyBlocked: boolean | null;
@@ -22,14 +24,27 @@ export type MarketingXPostingConnectPanelProps = {
 export function MarketingXPostingConnectPanel({ returnPath = "/admin/marketing" }: MarketingXPostingConnectPanelProps) {
   const [hint, setHint] = useState<string>("Loading posting OAuth status…");
   const [linked, setLinked] = useState<boolean | null>(null);
+  const [xUserId, setXUserId] = useState<string>("");
+  const [adsAccountId, setAdsAccountId] = useState<string>("");
+  const [savingIds, setSavingIds] = useState(false);
+  const [idsStatus, setIdsStatus] = useState<string>("");
 
   const load = useCallback(async () => {
     await Promise.resolve();
     try {
       const payload = await parseJson<StatusPayload>(await fetch("/api/admin/marketing/x-posting/status"));
       setLinked(payload.data.linked);
+      setXUserId(payload.data.xUserId || "");
+      setAdsAccountId(payload.data.adsAccountId || "");
+
       if (payload.data.linked && payload.data.username) {
         let msg = `Connected for posting as @${payload.data.username}. Scheduled and test posts use this account.`;
+        if (payload.data.xUserId) {
+          msg += ` X user id: ${payload.data.xUserId}.`;
+        }
+        if (payload.data.adsAccountId) {
+          msg += ` Ads account: ${payload.data.adsAccountId}.`;
+        }
         if (payload.data.postingLikelyBlocked === true) {
           msg +=
             " Stored OAuth scopes do not include tweet.write — POST /2/tweets will return 403 until the X app is **Read and write** in the Developer Portal (not Read only), then **Reconnect** here.";
@@ -43,6 +58,7 @@ export function MarketingXPostingConnectPanel({ returnPath = "/admin/marketing" 
           "Not connected — connect the X account that should publish marketing and test posts (OAuth approval required)."
         );
       }
+      setIdsStatus("");
     } catch (error) {
       setHint(error instanceof Error ? error.message : "Failed to load status");
       setLinked(null);
@@ -90,26 +106,36 @@ export function MarketingXPostingConnectPanel({ returnPath = "/admin/marketing" 
     }
   }
 
+  async function saveTargetIds() {
+    setSavingIds(true);
+    setIdsStatus("Saving X user / ads ids…");
+    try {
+      await parseJson(
+        await fetch("/api/admin/marketing/x-posting/config", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            xUserId: xUserId.trim() || null,
+            adsAccountId: adsAccountId.trim() || null
+          })
+        })
+      );
+      setIdsStatus("Saved. These ids are used for X Ads campaign creation and scoping.");
+      await load();
+    } catch (error) {
+      setIdsStatus(error instanceof Error ? error.message : "Save failed");
+    } finally {
+      setSavingIds(false);
+    }
+  }
+
   const startHref = `/api/admin/marketing/x-posting/oauth/start?next=${encodeURIComponent(returnPath)}`;
 
   return (
     <article className="surface-card xf-widget section-card">
       <h3 className="mt-0">Connect X for posting</h3>
       <p className="text-sm text-[var(--xf-text-muted)]">{hint}</p>
-      {linked === false ? (
-        <p className="text-xs text-[var(--xf-text-muted)]">
-          Use the same OAuth callback as Sign in with X — whitelist{" "}
-          <code className="rounded bg-[var(--xf-surface-900)] px-1 py-0.5 font-mono">
-            …/api/auth/x/callback
-          </code>{" "}
-          (or your <code className="font-mono">X_OAUTH_CALLBACK_URL</code> in production). No separate posting URL.
-          Posting scopes:{" "}
-          <code className="font-mono">tweet.read tweet.write offline.access users.read</code>. Portal App permissions must
-          be <strong>Read and write</strong>. If you still get HTTP 403 with minimal JSON, check developer.x.com{" "}
-          <strong>Products / Billing</strong> — Tweet creation needs an API tier that includes Manage Tweets, not only
-          OAuth settings.
-        </p>
-      ) : null}
+
       <div className="tool-row mt-3 flex-wrap">
         <a className="cta cta-primary" href={startHref}>
           {linked ? "Reconnect X for posting" : "Connect X for posting"}
@@ -123,9 +149,44 @@ export function MarketingXPostingConnectPanel({ returnPath = "/admin/marketing" 
           Refresh status
         </button>
       </div>
-      <p className="mt-2 text-xs text-[var(--xf-text-muted)]">
-        Legacy: set <code className="font-mono">X_OAUTH_REFRESH_TOKEN</code> in env instead of using Connect (not
-        recommended).
+
+      <div className="mt-4 border-t border-[var(--xf-border-subtle)] pt-3">
+        <p className="text-sm font-semibold">X targeting for ads &amp; posting</p>
+        <p className="text-xs text-[var(--xf-text-muted)]">
+          Enter the numeric X user id (from <code>/2/users/me</code> or your profile) and the X Ads account id you want to use when creating ad campaigns. These are persisted independently of the OAuth tokens and are used by the X Ads integration below.
+        </p>
+        <div className="tool-row mt-2 flex-wrap" style={{ gap: "0.5rem" }}>
+          <input
+            className="crud-input text-sm font-mono"
+            style={{ minWidth: "12rem" }}
+            placeholder="X user id (numeric, e.g. 1234567890123456789)"
+            value={xUserId}
+            onChange={(e) => setXUserId(e.target.value)}
+            disabled={savingIds}
+          />
+          <input
+            className="crud-input text-sm font-mono"
+            style={{ minWidth: "10rem" }}
+            placeholder="Ads account id (e.g. 18ce54d4x5t)"
+            value={adsAccountId}
+            onChange={(e) => setAdsAccountId(e.target.value)}
+            disabled={savingIds}
+          />
+          <button
+            type="button"
+            className="tiny-button"
+            onClick={() => void saveTargetIds()}
+            disabled={savingIds}
+          >
+            {savingIds ? "Saving…" : "Save X user / ads ids"}
+          </button>
+        </div>
+        {idsStatus ? <p className="status-text mt-1">{idsStatus}</p> : null}
+      </div>
+
+      <p className="mt-3 text-xs text-[var(--xf-text-muted)]">
+        Legacy: set <code className="font-mono">X_OAUTH_REFRESH_TOKEN</code> in env instead of using Connect (not recommended).
+        For Ads API access the connected app must have the Ads API product enabled and the X user must have access to the target ads account in X Ads Manager.
       </p>
     </article>
   );

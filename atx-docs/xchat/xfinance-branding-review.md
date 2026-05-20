@@ -6,7 +6,7 @@ Review against `**.cursor/rules/xfinance-branding.mdc**` (expert pass).
 
 **Product decision:** Keep the current **AtxFinanceLogo** + **MarketingHero** for the landing. Do **not** add a separate full-page hero with inline ⚡ + "xF" + "xFinance Coach" + custom CTAs; that treatment was reverted and is not desired.
 
-**Investor / GTM / waitlist:** Differentiation, channel targets, MVP priority (xChat + portfolio first), compliance narrative, and roadmap tiered pricing live in `**.cursor/rules/xfinance-branding.mdc`** — mirror **shipped** billing/plans UI for any dollar amounts; waitlist/deck may reference roadmap tiers as secondary copy.
+**Investor / GTM / waitlist:** Differentiation, channel targets, MVP priority (xChat + portfolio first), compliance narrative, and roadmap tiered pricing live in `**.cursor/rules/xfinance-branding.mdc`** — summarized for **xChat** and **xOptions** in [`product/xchat-product-brief.md`](../product/xchat-product-brief.md) and [`product/xoptions-product-brief.md`](../product/xoptions-product-brief.md). Mirror **shipped** billing/plans UI for any dollar amounts; waitlist/deck may reference roadmap tiers as secondary copy.
 
 ---
 
@@ -56,7 +56,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 | ----------------- | ----------------------------------------------------- | -------------------------------------------------- |
 | Hero refresh      | Subline, billing/plans alignment, CTA links if drift   | This doc + PR                                      |
 | Green tokens      | Single table “where which green” if confusion returns | Brand kit or `DEVELOPMENT.md`                      |
-| Waitlist page     | Not in core app yet — copy lives in rule until routed | `xfinance-branding.mdc` + [`../PLAN.md`](../PLAN.md) if needed |
+| Waitlist page     | Not in core app yet — copy lives in rule + product briefs until routed | `xfinance-branding.mdc` · [`../product/`](../product/) · [`../PLAN.md`](../PLAN.md) if needed |
 | Credential upload | Rule = roadmap only; don’t ship fake FINRA/SEC UI     | `xfinance-branding.mdc`                            |
 
 
@@ -93,7 +93,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 - **xChat left rail (signed-in):** **Persona** picker, then **Active persona** (name + last-turn tool summary), then **Status** (collection list / scope messages) — not duplicated in the main column. Persona now uses the same disclosure pattern as **Examples** and **Recent chats** for consistent rail behavior.
 - **App user header / guest xChat:** Home link uses `USER_PRODUCT_HOME_ARIA_LABEL`.
 - **Footer:** `**GlobalFooter**` — © line **atx Trusted Advisor** in `**app-footer-brand-stack**`.
-- **Marketing / plans / portfolio / xStrategyBuilder:** User-facing copy uses **atx Trusted Advisor** where the old product string **xFinance** appeared.
+- **Marketing / plans / portfolio / xOptions:** User-facing chrome uses **atx Trusted Advisor** where a legal descriptor is needed; product nav labels remain **xChat**, **xOptions**, **xFinance** (portfolios) per [`product/README.md`](../product/README.md).
 - **Legal stubs:** `**legal-default-content.tsx**` uses `PRODUCT_PUBLIC_NAME = "atx Trusted Advisor"` for the web app; entity line may still read **aTx⚡Finance** where appropriate.
 - **Backend persona name:** Default published app-role persona is **atx-trusted-advisor** (admin default remains **Super-Agent**).
 

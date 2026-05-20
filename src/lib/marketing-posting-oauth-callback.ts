@@ -9,7 +9,7 @@ import {
 import { getEnv, getXOauthClientId } from "@/lib/env";
 import { getPublicOriginFromRequest } from "@/lib/http-origin";
 import { sealMarketingXPostingAccessToken, sealMarketingXPostingRefreshToken } from "@/lib/marketing-x-oauth-seal";
-import { fetchXUsersMeUsername } from "@/lib/x-api-users-me";
+import { fetchXUserMe } from "@/lib/x-api-users-me";
 import { resolveXOAuthRedirectUri } from "@/lib/x-oauth-redirect-uri";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { clearMarketingPostingOAuthRuntimeCaches } from "@/modules/marketing/x-posting-token-manager";
@@ -91,8 +91,9 @@ export async function tryMarketingPostingOAuthCallback(request: Request): Promis
     });
   }
 
-  const username =
-    (await fetchXUsersMeUsername(tokenJson.access_token)) ?? session.username ?? "unknown";
+  const me = await fetchXUserMe(tokenJson.access_token);
+  const username = me?.username ?? session.username ?? "unknown";
+  const xUserId = me?.id ?? null;
 
   const secret = env.AUTH_SECRET ?? env.X_OAUTH_CLIENT_SECRET;
   const sealedRt = sealMarketingXPostingRefreshToken(refreshToken, secret);
@@ -109,7 +110,8 @@ export async function tryMarketingPostingOAuthCallback(request: Request): Promis
     accessTokenExpiresAt: accessExpiresAt,
     linkedUsername: username,
     actorUserId: session.userId,
-    oauthScopes: tokenJson.scope ?? null
+    oauthScopes: tokenJson.scope ?? null,
+    xUserId
   });
   clearMarketingPostingOAuthRuntimeCaches();
 

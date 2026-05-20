@@ -2,6 +2,8 @@
 
 This is the xChat/persona entrypoint. It summarizes operational behavior and links to the canonical deep docs.
 
+**Marketing / business:** [`product/xchat-product-brief.md`](../product/xchat-product-brief.md)
+
 ## Deep-dive docs
 
 - `atx-docs/xchat/xchat-tools-guide.md` (tool-loop, routing, prompt assembly)

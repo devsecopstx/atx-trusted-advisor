@@ -133,7 +133,7 @@ Used on the main product surfaces for depth.
 - Separate flow (`/xoptions/wheel`) with per-scenario economics (income/cycle, yield, annualized).
 - Reports can be shared via time-limited token + optional PDF.
 
-**When editing:** Keep `xchat/xoptions-strategy-builder.md` as the detailed UX spec and sync high-level patterns here.
+**When editing:** Keep [`xoptions/product-ux-spec.md`](./xoptions/product-ux-spec.md) as the detailed UX spec; sync high-level patterns here. Business copy: [`product/xoptions-product-brief.md`](../product/xoptions-product-brief.md).
 
 ## 9. Common Anti-Patterns (Blockers for Review)
 

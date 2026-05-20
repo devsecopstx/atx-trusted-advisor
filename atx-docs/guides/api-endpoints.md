@@ -194,7 +194,7 @@ UI: **`/account/integrations/ibkr`** (read-only snapshot uses **`snapshot`**).
 
 ## xOptions — find-options (app_user session)
 
-Used by **`/xoptions`** for holdings-aware bootstrap and symbol context (see `atx-docs/xchat/xoptions-strategy-builder.md`).
+Used by **`/xoptions`** for holdings-aware bootstrap and symbol context (see `atx-docs/design-system/xoptions/product-ux-spec.md`).
 
 - `GET /api/app-user/find-options/bootstrap` — workspace snapshot + top holdings + hot watchlist + scoring context in one call
 - `GET /api/app-user/find-options/context` — narrow context payload for the builder
@@ -218,7 +218,7 @@ Report surfaces (**`WheelReportView`**) derive **cycle yield %** as premium per 
 - `GET /api/market/symbol-quotes` — batch-style symbol quotes for product shells
 - `GET /api/market/workspace-pulse` — workspace-oriented pulse (e.g. nearest-expiry options highlight summary)
 
-## xStrategyBuilder / strategy-options (chain + expirations)
+## xOptions / strategy-options (chain + expirations)
 
 - `GET /api/strategy-options/expirations` — session; **Next Yahoo only** (handler stays on Next so local dev and prod avoid JVM stalls on expirations).
 - `GET /api/strategy-options` — session; may **BFF-proxy** to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is set and the BFF gate allows; if Spring returns a sparse chain or non-JSON **200**, Next falls back to its Yahoo handler (`src/app/api/strategy-options/route.ts`). Spring contract: `atx-docs/sre-ops/atxfinance-backend-http-api.md` § Strategy options.

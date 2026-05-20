@@ -64,19 +64,21 @@ When Kotlin handlers or Next proxies change:
 
 Sync when touching `buildXchatSystemPrompt`, `buildSessionToolInstructions`, `appendXchatKbMetadata`, tool stubs, or RAG scope:
 
+- `atx-docs/product/xchat-product-brief.md` (GTM / business)
 - `atx-docs/xchat/xchat-tools-guide.md`
 - `atx-docs/xchat/context-routing-multi-agent-policy.md`
 - `atx-docs/xchat/atxfinance-tool-stub.md`
 - `atx-docs/xchat/xchat-debug-logging.md` (if logging changes)
 - `tests/integration/xchat-ask-route.test.ts`
 
-## xStrategyBuilder / strategy-options
+## xOptions / strategy-options
 
 When changing `/api/strategy-options*`, `src/modules/strategy-options/**`, or xOptions chain UI:
 
 - OpenAPI + `tests/integration/strategy-options*.test.ts`
 - `DEVELOPMENT.md` options chain section
-- `atx-docs/xchat/xoptions-strategy-builder.md` (product behavior)
+- `atx-docs/product/xoptions-product-brief.md` (GTM / business)
+- `atx-docs/design-system/xoptions/product-ux-spec.md` (xOptions UX + API behavior)
 
 **Payoff chart implementation** (not a Cursor skill): `src/lib/options-payoff.ts`, `src/app/xoptions/...` — spec: `atx-docs/design-system/xoptions/options-payoff-chart-spec.md`.
 

@@ -8,8 +8,8 @@ Last updated: 2026-04-02
 
 | Surface | Component / file |
 |--------|-------------------|
-| xStrategyBuilder | `src/app/xstrategybuilder/ui/options-payoff-chart.tsx` — payoff at expiration (area + annotations for spot, strikes, breakevens). |
-| xOptions | `src/app/xoptions/xoptions-symbol-chart-panel.tsx` — IV / skew style panels. |
+| xOptions (payoff) | `src/app/xoptions/ui/options-payoff-chart.tsx` (and legacy `src/app/xstrategybuilder/ui/options-payoff-chart.tsx` if still referenced) — payoff at expiration. |
+| xOptions (symbol) | `src/app/xoptions/xoptions-symbol-chart-panel.tsx` — IV / skew style panels. |
 
 Math helpers for the strategy payoff curve stay in `src/lib/options-payoff.ts` (framework-agnostic).
 

@@ -662,6 +662,21 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-marketing"
   },
   {
+    path: "/api/admin/marketing/x-ads/accounts",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/x-ads/promoted-posts",
+    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    tag: "admin-marketing"
+  },
+  {
+    path: "/api/admin/marketing/x-posting/config",
+    operations: [{ method: "PATCH", auth: "admin", hasRequestBody: true }],
+    tag: "admin-marketing"
+  },
+  {
     path: "/api/admin/marketing/x-posting/status",
     operations: [{ method: "GET", auth: "admin" }],
     tag: "admin-marketing"

@@ -7,7 +7,7 @@ End-to-end notes for **Account → Billing** (`/account/billing`), `POST /api/bi
 | Plan       | Positioning (summary) | Amount   | Billing   | Env price id                         |
 |-----------|------------------------|----------|-----------|--------------------------------------|
 | Basic     | HNWI-focused; workspace users, portfolios, accounts (risk & outlook), portfolio scoring factors; plan limits | $5       | Monthly   | `STRIPE_PRICE_BASIC_MONTHLY`         |
-| Premium   | Complex portfolios; unlimited with fair per-hour caps on xChat + xStrategyBuilder | $15 | Monthly | `STRIPE_PRICE_PREMIUM_MONTHLY` |
+| Premium   | Complex portfolios; unlimited with fair per-hour caps on xChat + xOptions | $15 | Monthly | `STRIPE_PRICE_PREMIUM_MONTHLY` |
 | Premium+  | White-glove; dedicated enterprise-grade instance; private (no training use) | $30    | Monthly   | `STRIPE_PRICE_PREMIUM_PLUS_MONTHLY` (fallback: `STRIPE_PRICE_PREMIUM_PLUS_YEARLY`) |
 
 Create matching **Products** and **Prices** in Stripe (recurring subscription) and copy each Price id (`price_…`) into env. **Amount changes require new Price objects in Stripe** — update `STRIPE_PRICE_*` to the new `price_…` ids (existing ids keep their original amounts).
