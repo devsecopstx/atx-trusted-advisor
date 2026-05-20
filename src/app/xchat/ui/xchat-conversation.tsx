@@ -48,6 +48,7 @@ import type {
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
 import { XchatOutlookDeskFreshnessLabel } from "@/app/xchat/ui/xchat-outlook-desk-freshness-label";
 import { XchatUsageStatusRow } from "@/app/xchat/ui/xchat-usage-status-row";
+import { XchatUsageMeter } from "@/app/xchat/ui/usage-meter";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { isRetailPaidSubscriptionPlan } from "@/lib/subscription-plan";
@@ -99,6 +100,7 @@ const XchatComposerPanelLazy = dynamic(
 );
 
 type XchatPendingPasteImage = import("./xchat-composer-panel").XchatPendingPasteImage;
+type XchatPastedTextBlock = import("./xchat-composer-panel").XchatPastedTextBlock;
 
 const GLOBAL_ADMIN_DEFAULT_PERSONA_PICKER_BLOCK = new Set(
   XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS.map((k) => k.toLowerCase())
@@ -401,6 +403,8 @@ export function XchatConversation({
   const [quoteFreshness, setQuoteFreshness] = useState<"cached_first" | "live">("cached_first");
   const [pendingPasteImages, setPendingPasteImages] = useState<XchatPendingPasteImage[]>([]);
   const [pasteImageError, setPasteImageError] = useState<string | null>(null);
+  /** Full original multi-line text from a substantial clipboard paste. The visible `input` holds a short marker while this is set (keeps composer height compact). */
+  const [pastedTextBlock, setPastedTextBlock] = useState<XchatPastedTextBlock | null>(null);
   const [visionUseWorkspace, setVisionUseWorkspace] = useState(false);
   const [promptUsageRefreshKey, setPromptUsageRefreshKey] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -1451,9 +1455,15 @@ export function XchatConversation({
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const prompt = input.trim();
     const pastedImages = pendingPasteImages;
     const hasPasteImage = pastedImages.length > 0;
+
+    // Resolve the actual message to send: prefer the original pasted block (full text) when present.
+    // The visible `input` may only contain the short marker for UI compactness.
+    let prompt = input.trim();
+    if (pastedTextBlock && pastedTextBlock.text.trim()) {
+      prompt = pastedTextBlock.text.trim();
+    }
     if ((!prompt && !hasPasteImage) || loading || sendSubmittingRef.current) return;
     sendSubmittingRef.current = true;
 
@@ -1502,6 +1512,9 @@ export function XchatConversation({
       setPendingPasteImages([]);
       setPasteImageError(null);
       setVisionUseWorkspace(false);
+    }
+    if (pastedTextBlock) {
+      setPastedTextBlock(null);
     }
 
     if (hasPendingStrategyJobOffer(messages) && shouldLaunchStrategyJobFromReply(prompt)) {
@@ -2278,6 +2291,10 @@ export function XchatConversation({
                 ) : null}
               </div>
               <XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} inline />
+              <XchatUsageMeter
+                variant="header"
+                refreshSignal={promptUsageRefreshKey}
+              />
             </div>
             <p className="xchat-welcome-sub">
               Portfolio, watchlist, and options tools — Templates above the composer; Depth sets reasoning.
@@ -2330,7 +2347,8 @@ export function XchatConversation({
           onStop={cancelAskInFlight}
         />
 
-        <XchatUsageStatusRow refreshSignal={promptUsageRefreshKey} variant="composer" />
+        {/* Usage % now lives in the top welcome header row next to the portfolio outlook (see below).
+            The rail variant in the left sidebar is unchanged. */}
         {privacyPrefs?.enableLongTermXaiMemory === true ? (
           <p className="status-text xchat-long-term-memory-banner" role="status">
             Personalized strategy memory enabled — history will be included in all tool calls.
@@ -2350,6 +2368,8 @@ export function XchatConversation({
             onQuoteFreshnessChange={persistQuoteFreshness}
             pasteImageError={pasteImageError}
             pendingPasteImages={pendingPasteImages}
+            pastedTextBlock={pastedTextBlock}
+            setPastedTextBlock={setPastedTextBlock}
             personaListError={personaListError}
             personaPickerLocked={personaPickerLocked}
             personaSelectRows={personaSelectRows}

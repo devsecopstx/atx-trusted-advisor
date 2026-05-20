@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.22.4",
+  "version": "3.23.0",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -76,9 +76,9 @@
     "migrate:persona-name-normalized": "node --env-file=.env scripts/backfill-persona-name-normalized.mjs",
     "migrate:persona-tools": "node --env-file=.env scripts/backfill-persona-tools.mjs",
     "migrate:account-outlook": "node --env-file=.env scripts/migrate-account-outlook.mjs",
-    "xchat:create-indexes": "tsx scripts/create-xchat-indexes.ts",
-    "xchat:backfill-usage-stats": "tsx scripts/backfill-xchat-usage-stats.ts",
-    "xchat:migrate-performance": "tsx scripts/migrate-xchat-performance.ts",
+    "xchat:create-indexes": "node --env-file=.env --import tsx scripts/create-xchat-indexes.ts",
+    "xchat:backfill-usage-stats": "node --env-file=.env --import tsx scripts/backfill-xchat-usage-stats.ts",
+    "xchat:migrate-performance": "node --env-file=.env --import tsx scripts/migrate-xchat-performance.ts",
     "xchat:perf": "npm run xchat:migrate-performance",
     "migrate:merge-user-watchlists": "node --env-file=.env scripts/ops/merge-user-watchlists.mjs",
     "migrate:merge-user-watchlists:apply": "node --env-file=.env scripts/ops/merge-user-watchlists.mjs --apply",

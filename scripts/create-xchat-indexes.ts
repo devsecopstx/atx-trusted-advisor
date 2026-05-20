@@ -1,11 +1,11 @@
 // @ts-nocheck
 /**
- * Creates recommended performance indexes for xChat.
+ * Creates recommended performance indexes for xChat (logs, personas, and pre-aggregated usage stats).
  *
  * Run with:
  *   npm run xchat:create-indexes
  *   npm run xchat:create-indexes -- --dry-run
- *   MONGODB_URI=... npm run xchat:create-indexes
+ *   node --env-file=.env --import tsx scripts/create-xchat-indexes.ts
  */
 
 import { readFileSync } from 'node:fs';
@@ -63,6 +63,7 @@ export async function createXchatIndexes() {
 
     const chatLogs = db.collection('xchat_logs');
     const personas = db.collection('xchat_personas');
+    const usageStats = db.collection('xchat_user_usage_stats');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const createIndexSafe = async (collection: any, spec: any, options: Record<string, unknown> = {}) => {
@@ -97,6 +98,10 @@ export async function createXchatIndexes() {
     await createIndexSafe(personas, { status: 1, updatedAt: -1 }, { name: 'idx_personas_status_updated' });
     await createIndexSafe(personas, { tenantId: 1, status: 1, updatedAt: -1 }, { name: 'idx_personas_tenant_status_updated' });
     await createIndexSafe(personas, { status: 1, isDefaultForAppUsers: 1 }, { name: 'idx_personas_status_default_app_users' });
+
+    // Pre-aggregated usage stats (powers token sidebar + rate limiting; matches seed-admin)
+    await createIndexSafe(usageStats, { userId: 1, tenantId: 1 }, { name: 'uniq_xchat_user_usage_stats_user_tenant', unique: true });
+    await createIndexSafe(usageStats, { tenantId: 1, updatedAt: -1 }, { name: 'idx_xchat_user_usage_stats_tenant_updated' });
 
     if (!isDryRun) {
       console.log('\n✅ All xChat indexes created successfully.');

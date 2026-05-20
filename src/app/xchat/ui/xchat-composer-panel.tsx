@@ -55,6 +55,12 @@ export type XchatPendingPasteImage = {
   previewUrl: string;
 };
 
+export type XchatPastedTextBlock = {
+  text: string;
+  lineCount: number;
+  charCount: number;
+};
+
 export type XchatComposerPanelProps = {
   handleSend: (e: FormEvent<HTMLFormElement>) => void;
   composerFormRef: RefObject<HTMLFormElement | null>;
@@ -66,6 +72,9 @@ export type XchatComposerPanelProps = {
   setPendingPasteImages: Dispatch<SetStateAction<XchatPendingPasteImage[]>>;
   pasteImageError: string | null;
   setPasteImageError: (next: string | null) => void;
+  /** Optional compacted multi-line paste (marker lives in `input`; full text is sent). */
+  pastedTextBlock: XchatPastedTextBlock | null;
+  setPastedTextBlock: Dispatch<SetStateAction<XchatPastedTextBlock | null>>;
   visionUseWorkspace: boolean;
   setVisionUseWorkspace: (next: boolean) => void;
   personaSelectRows: Array<{ _id: string; name: string; previewLine?: string }>;
@@ -108,6 +117,8 @@ export function XchatComposerPanel({
   setPendingPasteImages,
   pasteImageError,
   setPasteImageError,
+  pastedTextBlock,
+  setPastedTextBlock,
   visionUseWorkspace,
   setVisionUseWorkspace,
   personaSelectRows,
@@ -230,6 +241,27 @@ export function XchatComposerPanel({
         ].slice(0, MAX_XCHAT_VISION_ATTACHMENTS_PER_ASK);
       });
       return;
+    }
+
+    // --- Text paste compaction for long / multi-line pastes (keeps composer UI compact like terminal Grok) ---
+    // Only trigger for substantial pastes (multiple lines or long single block). Small pastes use normal browser insertion.
+    const pastedText = e.clipboardData?.getData("text/plain");
+    if (pastedText && pastedText.trim().length > 0) {
+      const normalized = pastedText.replace(/\r\n?/g, "\n");
+      const lineCount = normalized.split("\n").length;
+      const charCount = normalized.length;
+      const isSubstantial = lineCount >= 4 || charCount > 220;
+
+      if (isSubstantial) {
+        e.preventDefault();
+        // Clear any prior paste block and set new one + marker in the controlled input
+        const marker = `[Pasted ${lineCount} lines · ${charCount.toLocaleString()} chars]`;
+        setPastedTextBlock({ text: normalized, lineCount, charCount });
+        setInput(marker);
+        setPasteImageError(null);
+        return;
+      }
+      // Small text paste: fall through and let the browser populate the textarea normally
     }
   }
 
@@ -476,6 +508,35 @@ export function XchatComposerPanel({
                   <span className="xchat-composer__sources-label">Sources</span>
                 </Link>
               </XfHoverHint>
+              {pastedTextBlock ? (
+                <div className="xchat-composer__paste-chip" title="Full content will be sent to the model. Click edit to bring it into the box.">
+                  <span className="xchat-composer__paste-chip__label">Pasted</span>
+                  <button
+                    type="button"
+                    className="xchat-composer__paste-chip__btn"
+                    onClick={() => {
+                      if (pastedTextBlock) {
+                        setInput(pastedTextBlock.text);
+                        setPastedTextBlock(null);
+                      }
+                      // focus after swap
+                      queueMicrotask(() => composerRef.current?.focus());
+                    }}
+                  >
+                    edit
+                  </button>
+                  <button
+                    type="button"
+                    className="xchat-composer__paste-chip__btn xchat-composer__paste-chip__btn--danger"
+                    onClick={() => {
+                      setPastedTextBlock(null);
+                      setInput("");
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
               <XfHoverHint
                 className="xchat-composer__input-grow"
                 hint="Enter: send · Shift+Enter: newline · Paste: vision"
@@ -489,7 +550,15 @@ export function XchatComposerPanel({
                   onBlur={() => {
                     setTextareaFocused(false);
                   }}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    // If a paste block is active and the user has edited the marker away, drop the block
+                    // so the typed text becomes the real prompt (normal flow).
+                    if (pastedTextBlock && !next.startsWith("[Pasted ")) {
+                      setPastedTextBlock(null);
+                    }
+                    setInput(next);
+                  }}
                   onFocus={() => {
                     setTextareaFocused(true);
                   }}

@@ -29,9 +29,12 @@ npm run xchat:backfill-usage-stats -- --dry-run
 npm run xchat:migrate-performance -- --dry-run
 ```
 
+They automatically load your `.env` (via `node --env-file=.env`), exactly like other seed / migrate / ops scripts in the repo.  
+To use a different file as override: `npm run xchat:create-indexes -- --env-file=.env.prod`.
+
 ### What They Do
 
-- **create-xchat-indexes.ts**: Creates optimized indexes on `xchat_logs` and `xchat_personas` (including new indexes for persona filtering and tenant-level analytics).
+- **create-xchat-indexes.ts**: Creates optimized indexes on `xchat_logs`, `xchat_personas`, and the pre-aggregated `xchat_user_usage_stats` collection (for fast token sidebar + rate limiting). Matches the indexes declared in `seed-admin-user.mjs`.
 - **backfill-xchat-usage-stats.ts**: Populates the `xchat_user_usage_stats` collection with pre-aggregated token counts so that the sidebar and rate limit checks no longer need to scan millions of log rows.
 - **migrate-xchat-performance.ts**: Convenience wrapper that runs the above two steps.
 

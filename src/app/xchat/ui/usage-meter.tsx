@@ -76,7 +76,7 @@ type FetchState =
   | { status: "error"; message: string };
 
 export type XchatUsageMeterProps = {
-  variant: "composer" | "rail";
+  variant: "composer" | "rail" | "header";
   refreshSignal?: number;
   /** Single-line layout inside {@link XchatUsageStatusRow}. */
   layout?: "stack" | "inline";
@@ -122,12 +122,16 @@ export function XchatUsageMeter({
 
   const rootCls = [
     variant === "rail" ? "xchat-usage-meter xchat-usage-meter--rail" : "xchat-usage-meter",
-    layout === "inline" ? "xchat-usage-meter--inline" : ""
+    layout === "inline" ? "xchat-usage-meter--inline" : "",
+    variant === "header" ? "xchat-usage-meter--header" : ""
   ]
     .filter(Boolean)
     .join(" ");
 
   if (state.status === "loading") {
+    if (variant === "header") {
+      return <span className="xchat-usage-header-pct" aria-busy style={{ opacity: 0.5 }}>--</span>;
+    }
     return (
       <div aria-busy className={rootCls} role="status">
         <p className="status-text xchat-usage-meter__line">Prompt usage…</p>
@@ -136,6 +140,10 @@ export function XchatUsageMeter({
   }
 
   if (state.status === "error") {
+    if (variant === "header") {
+      // Silent fail in header row — user still sees outlook; full meter in rail will show the error if needed
+      return null;
+    }
     return (
       <div className={rootCls} role="status">
         <p className="status-text status-error xchat-usage-meter__line">{state.message}</p>
@@ -168,6 +176,22 @@ export function XchatUsageMeter({
 
   const noticeCls = layout === "inline" ? " xchat-usage-meter__notice" : "";
 
+  // Ultra-compact usage % badge for the top welcome header row (next to portfolio outlook)
+  if (variant === "header") {
+    const headerColor = fillVar; // re-uses the gain/warn/danger token from the meter
+    return (
+      <span
+        className="xchat-usage-header-pct"
+        style={{ color: headerColor }}
+        title={`xChat prompts: ${used}/${cap} today (${pct}%) · resets ~${hoursLabel}`}
+        role="status"
+        aria-label={`Prompt usage ${pct}% of daily cap`}
+      >
+        {pct}%
+      </span>
+    );
+  }
+
   return (
     <div className={rootCls} role="region" aria-label="xChat prompt usage">
       {d.limitsFallback === "plan_defaults" ? (
@@ -190,11 +214,22 @@ export function XchatUsageMeter({
       ) : null}
       <div className="xchat-usage-meter__main">
         <p className="status-text xchat-usage-meter__line">
-          <span className="xchat-usage-meter__value">
-            {used}/{cap}
-          </span>{" "}
-          prompts today · reset ~{hoursLabel}
-          {hourlySuffix}
+          {variant === "composer" ? (
+            <>
+              <span className="xchat-usage-meter__value">{used}/{cap}</span>
+              <span className="xchat-usage-meter__pct-badge" title={`${pct}% of daily prompt cap (resets ~${hoursLabel})`}>
+                {pct}%
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="xchat-usage-meter__value">
+                {used}/{cap}
+              </span>{" "}
+              prompts today · reset ~{hoursLabel}
+              {hourlySuffix}
+            </>
+          )}
         </p>
         <div
           aria-valuemax={100}

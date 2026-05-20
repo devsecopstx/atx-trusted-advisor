@@ -552,6 +552,43 @@
   color: var(--xf-text-400);
 }
 
+/* Compact paste text block chip (for composer textarea compaction) */
+.xchat-composer__paste-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 92%, transparent);
+  color: var(--xf-text-400);
+  margin-right: 0.35rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.xchat-composer__paste-chip__label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.xchat-composer__paste-chip__btn {
+  appearance: none;
+  border: 0;
+  background: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  color: var(--xf-text-300);
+  font-size: 0.6rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.xchat-composer__paste-chip__btn:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 22%, transparent);
+}
+.xchat-composer__paste-chip__btn--danger {
+  color: var(--xf-loss-red, #f87171);
+}
+
 .xchat-usage-meter__line {
   margin: 0;
   font-size: 0.66rem;
@@ -7091,6 +7128,20 @@ html[data-xf-ui="soft"] .xchat-workspace-bar {
   text-align: right;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* Compact prompt usage % pill placed on the same row as the portfolio outlook in the welcome header */
+.xchat-usage-header-pct {
+  font-size: 0.625rem;
+  line-height: 1;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 70%, transparent);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
 }
 
 .xchat-welcome-header--compact .xchat-welcome-title {

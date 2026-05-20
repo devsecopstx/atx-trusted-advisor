@@ -111,6 +111,18 @@ async function createPersonaIndexes(): Promise<void> {
     { nameNormalized: 1 },
     { unique: true, name: "uniq_xpersona_name_normalized" }
   );
+  await personaCollection.createIndex(
+    { status: 1, updatedAt: -1 },
+    { name: "idx_personas_status_updated" }
+  );
+  await personaCollection.createIndex(
+    { tenantId: 1, status: 1, updatedAt: -1 },
+    { name: "idx_personas_tenant_status_updated" }
+  );
+  await personaCollection.createIndex(
+    { status: 1, isDefaultForAppUsers: 1 },
+    { name: "idx_personas_status_default_app_users" }
+  );
 }
 
 async function createXchatLogIndexes(): Promise<void> {
@@ -154,6 +166,23 @@ async function createXchatLogIndexes(): Promise<void> {
         xaiResponseId: { $exists: true, $type: "string", $gt: "" }
       }
     }
+  );
+  // Additional performance indexes for tenant/persona analytics and token stats
+  await chatLogCollection.createIndex(
+    { tenantId: 1, userId: 1, createdAt: -1 },
+    { name: "idx_xchat_logs_tenant_user_created" }
+  );
+  await chatLogCollection.createIndex(
+    { userId: 1, personaId: 1, createdAt: -1, _id: -1 },
+    { name: "idx_xchat_logs_user_persona_created" }
+  );
+  await chatLogCollection.createIndex(
+    { tenantId: 1, createdAt: -1 },
+    { name: "idx_xchat_logs_tenant_created" }
+  );
+  await chatLogCollection.createIndex(
+    { tenantId: 1, personaId: 1, createdAt: -1 },
+    { name: "idx_xchat_logs_tenant_persona_created" }
   );
 }
 
