@@ -2,9 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 
-import { ADMIN_FUNCTION_GROUPS } from "@/app/admin/ui/admin-hub-sections";
+import { ADMIN_HUB_ITEM_ICONS, AdminHubNavIcon } from "@/app/admin/ui/admin-hub-nav-icons";
+import {
+    ADMIN_FUNCTION_GROUPS,
+    ADMIN_PLATFORM_OPS_ITEMS,
+    getAdminRailPrimaryItems
+} from "@/app/admin/ui/admin-hub-sections";
+import type { AdminHubSummaryResponse } from "@/lib/admin-hub-summary-contract";
 
 const ADMIN_APP_USER_SHORTCUTS: Array<{ href: string; label: string; title: string }> = [
   {
@@ -70,10 +76,12 @@ function AdminRailChevron({ open }: { open: boolean }) {
 function AdminRailDisclosure({
   title,
   defaultOpen = false,
+  badge,
   children
 }: {
   title: string;
   defaultOpen?: boolean;
+  badge?: ReactNode;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -90,7 +98,10 @@ function AdminRailDisclosure({
         type="button"
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="admin-left-rail__section-title">{title}</span>
+        <span className="admin-left-rail__trigger-label">
+          <span className="admin-left-rail__section-title">{title}</span>
+          {badge}
+        </span>
         <AdminRailChevron open={open} />
       </button>
       {open ? (
@@ -99,6 +110,30 @@ function AdminRailDisclosure({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function AdminRailLink({
+  href,
+  label,
+  title,
+  pathname
+}: {
+  href: string;
+  label: string;
+  title: string;
+  pathname: string;
+}) {
+  const icon = ADMIN_HUB_ITEM_ICONS[href];
+  return (
+    <Link
+      className={`admin-left-rail__link${isActive(pathname, href) ? " admin-left-rail__link--active" : ""}`}
+      href={href}
+      title={title}
+    >
+      {icon ? <AdminHubNavIcon className="admin-left-rail__link-icon" icon={icon} /> : null}
+      <span className="admin-left-rail__link-text">{label}</span>
+    </Link>
   );
 }
 
@@ -111,12 +146,33 @@ function ChevronLeftIcon() {
 }
 
 type AdminLeftRailProps = {
-  /** When set, shows a collapse control at the top of the rail */
   onCollapse?: () => void;
 };
 
 export function AdminLeftRail({ onCollapse }: AdminLeftRailProps) {
   const pathname = usePathname() ?? "";
+  const primaryItems = getAdminRailPrimaryItems();
+  const [summary, setSummary] = useState<AdminHubSummaryResponse | null>(null);
+
+  const loadSummary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/hub/summary", { cache: "no-store" });
+      if (res.ok) {
+        setSummary((await res.json()) as AdminHubSummaryResponse);
+      }
+    } catch {
+      setSummary(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
+
+  const deskBadge =
+    summary && summary.pendingAccessRequests > 0 ? (
+      <span className="admin-left-rail__dot" title={`${summary.pendingAccessRequests} pending access requests`} />
+    ) : null;
 
   return (
     <aside className="admin-left-rail xf-widget" aria-label="Admin navigation">
@@ -136,44 +192,91 @@ export function AdminLeftRail({ onCollapse }: AdminLeftRailProps) {
       ) : null}
       <div className="admin-left-rail__section">
         <Link
-          className={`admin-left-rail__link${isActive(pathname, "/admin") ? " admin-left-rail__link--active" : ""}`}
+          className={`admin-left-rail__link admin-left-rail__link--hub${isActive(pathname, "/admin") ? " admin-left-rail__link--active" : ""}`}
           href="/admin"
         >
-          Admin Hub
+          <AdminHubNavIcon className="admin-left-rail__link-icon" icon="hub" />
+          <span className="admin-left-rail__link-text">Admin Hub</span>
         </Link>
+        <Link
+          className="admin-left-rail__link admin-left-rail__link--xchat-promo"
+          href="/xchat"
+          title="Open xChat as admin"
+        >
+          <AdminHubNavIcon className="admin-left-rail__link-icon" icon="chat" />
+          <span className="admin-left-rail__link-text">xChat (admin)</span>
+        </Link>
+      </div>
+
+      <div className="admin-left-rail__section admin-left-rail__section--flat">
+        <p className="admin-left-rail__section-title admin-left-rail__section-title--static">Primary</p>
+        <nav className="admin-left-rail__links" aria-label="Primary admin shortcuts">
+          {primaryItems.map((item) => (
+            <AdminRailLink
+              key={item.href}
+              href={item.href}
+              label={item.title}
+              pathname={pathname}
+              title={item.description}
+            />
+          ))}
+        </nav>
       </div>
 
       <AdminRailDisclosure title="App user shortcuts">
         <nav className="admin-left-rail__links" aria-label="App user shortcuts">
           {ADMIN_APP_USER_SHORTCUTS.map((item) => (
-            <Link
-              className={`admin-left-rail__link${isActive(pathname, item.href) ? " admin-left-rail__link--active" : ""}`}
-              href={item.href}
+            <AdminRailLink
               key={`app-shortcut:${item.href}`}
+              href={item.href}
+              label={item.label}
+              pathname={pathname}
               title={item.title}
-            >
-              {item.label}
-            </Link>
+            />
           ))}
         </nav>
       </AdminRailDisclosure>
 
       {ADMIN_FUNCTION_GROUPS.map((group) => (
-        <AdminRailDisclosure key={group.title} title={group.title}>
+        <AdminRailDisclosure
+          key={group.title}
+          badge={group.title === "Desk & operations" ? deskBadge : null}
+          defaultOpen={group.title === "Desk & operations"}
+          title={group.title}
+        >
           <nav className="admin-left-rail__links" aria-label={`${group.title} links`}>
             {group.items.map((item) => (
-              <Link
-                className={`admin-left-rail__link${isActive(pathname, item.href) ? " admin-left-rail__link--active" : ""}`}
-                href={item.href}
+              <AdminRailLink
                 key={`${group.title}:${item.href}:${item.title}`}
+                href={item.href}
+                label={item.title}
+                pathname={pathname}
                 title={item.description}
-              >
-                {item.title}
-              </Link>
+              />
             ))}
           </nav>
         </AdminRailDisclosure>
       ))}
+
+      <AdminRailDisclosure title="Platform ops & audit">
+        <nav className="admin-left-rail__links" aria-label="Platform ops and audit">
+          {ADMIN_PLATFORM_OPS_ITEMS.map((item) => (
+            <AdminRailLink
+              key={item.href}
+              href={item.href}
+              label={item.title}
+              pathname={pathname}
+              title={item.description}
+            />
+          ))}
+          <AdminRailLink
+            href="/admin/platform-health"
+            label="Platform health"
+            pathname={pathname}
+            title="Ops summary, data-plane health, tenant UX drills"
+          />
+        </nav>
+      </AdminRailDisclosure>
     </aside>
   );
 }

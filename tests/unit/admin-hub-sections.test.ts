@@ -7,7 +7,11 @@ import {
     DELIVERY_CHANNELS_TABS,
     parseDeliveryChannelsTab
 } from "@/app/admin/delivery-channels/ui/admin-delivery-channels-console";
-import { ADMIN_FUNCTION_GROUPS } from "@/app/admin/ui/admin-hub-sections";
+import {
+    ADMIN_FUNCTION_GROUPS,
+    ADMIN_PLATFORM_OPS_ITEMS,
+    getAdminRailPrimaryItems
+} from "@/app/admin/ui/admin-hub-sections";
 
 describe("admin hub sections", () => {
   it("uses four hub groups without People & access or Developer & integration", () => {
@@ -27,6 +31,24 @@ describe("admin hub sections", () => {
     expect(desk?.items[0]?.href).toBe("/admin/manage-users");
     expect(desk?.items.some((i) => i.href === "/admin/delivery-channels")).toBe(true);
     expect(desk?.items.some((i) => i.href === "/admin/tasks")).toBe(true);
+  });
+
+  it("exposes five primary rail shortcuts", () => {
+    const hrefs = getAdminRailPrimaryItems().map((i) => i.href);
+    expect(hrefs).toEqual([
+      "/admin/portfolios",
+      "/admin/manage-users",
+      "/admin/tasks",
+      "/admin/personas",
+      "/admin/tenant-preferences"
+    ]);
+  });
+
+  it("moves audit and usage links to platform ops rail disclosure", () => {
+    const platform = ADMIN_FUNCTION_GROUPS.find((g) => g.title === "Platform & compliance");
+    expect(platform?.items.some((i) => i.href === "/admin/audit")).toBe(false);
+    expect(ADMIN_PLATFORM_OPS_ITEMS.some((i) => i.href === "/admin/audit")).toBe(true);
+    expect(ADMIN_PLATFORM_OPS_ITEMS.some((i) => i.href === "/admin/xchat-tool-usage")).toBe(true);
   });
 
   it("documents developer harnesses on delivery channels hub item", () => {

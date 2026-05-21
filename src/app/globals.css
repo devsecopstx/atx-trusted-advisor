@@ -1000,6 +1000,281 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   box-shadow: none;
 }
 
+.admin-left-rail__link {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.admin-left-rail__link-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.admin-left-rail__link--hub {
+  font-weight: 600;
+}
+
+.admin-left-rail__link--xchat-promo {
+  margin-top: 0.2rem;
+  border-color: color-mix(in srgb, var(--xf-gain-green) 35%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+}
+
+.admin-left-rail__section--flat {
+  padding: 0.55rem 0.65rem 0.65rem;
+}
+
+.admin-left-rail__section-title--static {
+  padding: 0 0 0.35rem;
+}
+
+.admin-left-rail__trigger-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.admin-left-rail__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--xf-lightning-yellow);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--xf-lightning-yellow) 35%, transparent);
+  flex-shrink: 0;
+}
+
+.admin-hub-launchpad {
+  --admin-hub-tenant-accent: var(--xf-gain-green);
+}
+
+.admin-hub-hero__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-hub-hero__tenant {
+  border: 1px solid color-mix(in srgb, var(--admin-hub-tenant-accent) 40%, var(--xf-border-subtle));
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  background: color-mix(in srgb, var(--admin-hub-tenant-accent) 12%, var(--xf-surface-900));
+  min-width: 10rem;
+}
+
+.admin-hub-hero__tenant-label {
+  display: block;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-muted);
+}
+
+.admin-hub-hero__tenant-name {
+  display: block;
+  font-size: 1rem;
+  color: var(--xf-text-100);
+}
+
+.admin-hub-hero__tenant-slug {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  color: var(--xf-text-muted);
+}
+
+.admin-hub-hero__xchat-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-hub-hero__xchat-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.admin-hub-quick-stats__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.admin-hub-quick-stats__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.admin-hub-quick-stats__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.55rem;
+}
+
+.admin-hub-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--xf-border-subtle);
+  background: var(--xf-surface-900);
+  text-decoration: none;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.admin-hub-stat:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 8%, var(--xf-surface-900));
+}
+
+.admin-hub-stat--warn .admin-hub-stat__value {
+  color: var(--xf-lightning-yellow);
+}
+
+.admin-hub-stat__value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--xf-text-100);
+}
+
+.admin-hub-stat__label {
+  font-size: 0.72rem;
+  color: var(--xf-text-muted);
+  line-height: 1.25;
+}
+
+.admin-hub-cards__heading {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.admin-hub-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.05rem;
+  border-top: 3px solid var(--admin-hub-card-accent, var(--xf-gain-green));
+}
+
+.admin-hub-card__header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.55rem 0.65rem;
+  align-items: start;
+}
+
+.admin-hub-card__index {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.7rem;
+  color: var(--admin-hub-card-accent, var(--xf-gain-green));
+  opacity: 0.85;
+}
+
+.admin-hub-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.admin-hub-card__blurb {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--xf-text-muted);
+  line-height: 1.35;
+}
+
+.admin-hub-card__badge {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: start;
+  font-size: 0.65rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 18%, transparent);
+  color: var(--xf-lightning-yellow);
+  white-space: nowrap;
+}
+
+.admin-hub-card__ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.admin-hub-card__cta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--xf-border-subtle);
+  text-decoration: none;
+  color: var(--xf-text-secondary);
+  font-size: 0.84rem;
+  font-weight: 500;
+}
+
+.admin-hub-card__cta:hover {
+  color: var(--xf-nav-green-hover);
+  border-color: color-mix(in srgb, var(--xf-nav-green) 35%, transparent);
+  background: color-mix(in srgb, var(--xf-nav-green) 8%, transparent);
+}
+
+.admin-hub-card__cta-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.admin-hub-card__more {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.admin-platform-internals__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--xf-border-subtle);
+  background: var(--xf-surface-900);
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-platform-internals__trigger-title {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.admin-platform-internals__trigger-sub {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--xf-text-muted);
+}
+
 /* Admin content links: semantic nav green (soft = WCAG emerald-700; deep = neon gain-green) */
 .admin-layout-content a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link) {
   color: color-mix(in srgb, var(--xf-nav-green) 88%, var(--xf-text-100));

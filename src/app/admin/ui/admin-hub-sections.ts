@@ -1,10 +1,15 @@
 import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "@/app/admin/lib/broker-import-description";
 
+import type { AdminHubIconKey } from "@/app/admin/ui/admin-hub-nav-icons";
+
 export type AdminFunction = {
   href: string;
   title: string;
   description: string;
   comingSoon?: boolean;
+  icon?: AdminHubIconKey;
+  /** Shown in the left rail Primary section (always visible). */
+  railPrimary?: boolean;
 };
 
 export type AdminFunctionGroup = {
@@ -12,6 +17,43 @@ export type AdminFunctionGroup = {
   blurb?: string;
   items: AdminFunction[];
 };
+
+/** Collapsed under "Platform ops & audit" in the left rail (not on hub cards). */
+export const ADMIN_PLATFORM_OPS_ITEMS: AdminFunction[] = [
+  {
+    href: "/admin/manage-backoffice",
+    title: "Manage backoffice",
+    description:
+      "Audited core_users lookup and allowlisted field patches (subscription plan, roles, status, email, X profile, xAI collection) — constrained DB ops, not an open Mongo shell.",
+    icon: "settings"
+  },
+  {
+    href: "/admin/audit",
+    title: "Audit explorer",
+    description: "Browse and filter change trails across users, access requests, and xPersonas.",
+    icon: "audit"
+  },
+  {
+    href: "/admin/logins-today",
+    title: "Logins today",
+    description:
+      "Successful and failed sign-in attempts since local midnight (audit_login), quick scan with filters on Login audit.",
+    icon: "audit"
+  },
+  {
+    href: "/admin/login-audit",
+    title: "Login audit",
+    description: "Success and failed sign-in attempts with IP and time (audit_login) for security review.",
+    icon: "audit"
+  },
+  {
+    href: "/admin/xchat-tool-usage",
+    title: "xChat usage & spend",
+    description:
+      "Tool telemetry, token-based estimates, and vendor cost_usd_ticks rollups by day / tenant / persona.",
+    icon: "chat"
+  }
+];
 
 export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
   {
@@ -27,6 +69,8 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
       {
         href: "/admin/portfolios",
         title: "Portfolios",
+        icon: "portfolio",
+        railPrimary: true,
         description:
           "Private / Secure: per-user workspace portfolios in tenant_portfolio; default book uses tenantPortfolioOrgKey (org-atx-finance) under core_tenants. Edit names, tenant org ref, broker type, and default per user. Open each row’s Manage accounts for custodian CRUD, book-level desk risk & outlook (table columns), per-account risk & outlook, and watchlist on the sibling link."
       },
@@ -55,12 +99,16 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
       {
         href: "/admin/manage-users",
         title: "Manage users & access",
+        icon: "users",
+        railPrimary: true,
         description:
           "Directory of users plus open access requests (approve/reject), add user, sortable table, and per-user broker, portfolio, billing, and xChat defaults. Legacy /admin/access-requests redirects here."
       },
       {
         href: "/admin/tasks",
         title: "Scheduled jobs",
+        icon: "calendar",
+        railPrimary: true,
         description: "Create scheduled jobs, run manually, and review run history."
       },
       {
@@ -94,12 +142,15 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
       {
         href: "/xchat",
         title: "xChat",
+        icon: "chat",
         description:
           "Same signed-in product xChat as app users (AppUserApprovedHeader shell), default persona atx-trusted-advisor—not the admin advisor console."
       },
       {
         href: "/admin/personas",
         title: "Manage xPersonas",
+        icon: "persona",
+        railPrimary: true,
         description: "Create and edit xChat personas, models, collections, and default scope presets."
       },
       {
@@ -152,42 +203,42 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
       {
         href: "/admin/tenant-preferences",
         title: "Tenant preferences",
+        icon: "settings",
+        railPrimary: true,
         description:
           "Workspace limits, ambient experience, default xChat persona, and feature flags — unified per-tenant configuration (legacy paths redirect here)."
       },
       {
-        href: "/admin/manage-backoffice",
-        title: "Manage backoffice",
-        description:
-          "Audited core_users lookup and allowlisted field patches (subscription plan, roles, status, email, X profile, xAI collection) — constrained DB ops, not an open Mongo shell."
-      },
-      {
-        href: "/admin/audit",
-        title: "Audit explorer",
-        description: "Browse and filter change trails across users, access requests, and xPersonas."
-      },
-      {
-        href: "/admin/logins-today",
-        title: "Logins today",
-        description:
-          "Successful and failed sign-in attempts since local midnight (audit_login), quick scan with filters on Login audit."
-      },
-      {
-        href: "/admin/login-audit",
-        title: "Login audit",
-        description: "Success and failed sign-in attempts with IP and time (audit_login) for security review."
-      },
-      {
         href: "/admin/api-docs",
         title: "API docs",
+        icon: "audit",
         description: "OpenAPI current-state and interactive API documentation."
-      },
-      {
-        href: "/admin/xchat-tool-usage",
-        title: "xChat usage & spend",
-        description:
-          "Tool telemetry, token-based estimates, and vendor cost_usd_ticks rollups by day / tenant / persona."
       }
     ]
   }
 ];
+
+const LAUNCHPAD_CTA_LIMIT = 3;
+
+export function getAdminRailPrimaryItems(): AdminFunction[] {
+  const fromGroups = ADMIN_FUNCTION_GROUPS.flatMap((g) => g.items).filter((i) => i.railPrimary);
+  const seen = new Set<string>();
+  return fromGroups.filter((item) => {
+    if (seen.has(item.href)) {
+      return false;
+    }
+    seen.add(item.href);
+    return true;
+  });
+}
+
+export function getAdminHubLaunchpadCtas(group: AdminFunctionGroup): AdminFunction[] {
+  return group.items.filter((item) => !item.comingSoon).slice(0, LAUNCHPAD_CTA_LIMIT);
+}
+
+export const ADMIN_HUB_GROUP_ACCENTS = [
+  "var(--xf-gain-green)",
+  "var(--xf-lightning-yellow)",
+  "color-mix(in srgb, var(--xf-gain-green) 70%, var(--xf-lightning-yellow))",
+  "var(--xf-text-300)"
+] as const;

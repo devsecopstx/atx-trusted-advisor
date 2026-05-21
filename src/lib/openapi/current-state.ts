@@ -517,6 +517,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/hub/summary",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/investment-outlooks",
     operations: [{ method: "GET", auth: "admin" }],
     tag: "admin-system"
