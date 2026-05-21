@@ -1,6 +1,7 @@
 import { type Filter, MongoServerError, ObjectId } from "mongodb";
 
 import { FIDELITY_DEFAULT_PROVISION_ACCOUNT_REF } from "@/lib/account-xref-display";
+import { DEFAULT_BROKER_CATALOG_ENTRIES } from "@/lib/broker-catalog-defaults";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import {
     mongoPortfolioFamilyUserPortfolioScope,
@@ -46,8 +47,12 @@ import {
     type PortfolioAlert,
     type PortfolioDeliveryChannel,
     type Position,
+    type PositionAssetClass,
     type PositionOptionType,
     type PositionType,
+    type RealEstatePositionMetadata,
+    type RealEstateValuationSource,
+    realEstateNetEquityUsd,
     type Recommendation,
     type ScheduledTask,
     type TaskRun,
@@ -320,6 +325,12 @@ export type UpsertPositionInput = {
   avgCost: number;
   /** Defaults to **stock** when omitted. */
   type?: PositionType;
+  assetClass?: PositionAssetClass;
+  holdingName?: string;
+  currentValueUsd?: number;
+  lastValuationDate?: Date;
+  valuationSource?: RealEstateValuationSource;
+  metadata?: RealEstatePositionMetadata;
   yahooRef?: string;
   optionType?: PositionOptionType;
   strike?: number;
@@ -2925,46 +2936,46 @@ async function seedBrokerCatalogIfEmpty(): Promise<void> {
     return;
   }
   const now = new Date();
-  await col.insertMany([
-    {
-      type: "merrill",
-      name: "Merrill Edge",
-      description:
-        "Bank of America Merrill Edge — typical CSV exports for positions and activity (admin + broker import defaults).",
-      iconUrl: "/brokers/merrill-edge.png",
+  await col.insertMany(
+    DEFAULT_BROKER_CATALOG_ENTRIES.map((entry) => ({
+      type: entry.type,
+      name: entry.name,
+      description: entry.description,
+      iconUrl: entry.iconUrl,
       createdAt: now,
       updatedAt: now
-    },
-    {
-      type: "fidelity",
-      name: "Fidelity",
-      description: "Fidelity Investments — common retail brokerage CSV layouts for holdings.",
-      iconUrl: "/brokers/fidelity.png",
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      type: "etrade",
-      name: "E*TRADE",
-      description: "E*TRADE from Morgan Stanley — CSV holdings and history exports.",
-      iconUrl: "/brokers/etrade.png",
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      type: "ibkr",
-      name: "Interactive Brokers (IBKR)",
-      description: "Interactive Brokers (IBKR) — multi-asset brokerage accounts and global trading.",
-      iconUrl: "/brokers/ibkr.png",
-      createdAt: now,
-      updatedAt: now
-    }
-  ]);
+    }))
+  );
 }
 
-/** Ensures indexes and default Merrill / Fidelity / E*TRADE / IBKR rows when the catalog is empty. */
+/** Upserts catalog rows that shipped after first seed (e.g. Forge Global, Hiive) without overwriting admin edits. */
+async function ensureDefaultBrokerCatalogEntries(): Promise<void> {
+  await ensureBrokerCatalogIndexes();
+  const db = await getDb();
+  const col = db.collection<BrokerCatalogEntry>(collections.brokerCatalog);
+  const now = new Date();
+  for (const entry of DEFAULT_BROKER_CATALOG_ENTRIES) {
+    await col.updateOne(
+      { type: entry.type },
+      {
+        $setOnInsert: {
+          type: entry.type,
+          name: entry.name,
+          description: entry.description,
+          iconUrl: entry.iconUrl,
+          createdAt: now,
+          updatedAt: now
+        }
+      },
+      { upsert: true }
+    );
+  }
+}
+
+/** Ensures indexes, seeds the full default catalog when empty, and adds any missing default slugs. */
 export async function adminEnsureBrokerCatalogReady(): Promise<void> {
   await seedBrokerCatalogIfEmpty();
+  await ensureDefaultBrokerCatalogEntries();
 }
 
 export async function adminListBrokerCatalog(): Promise<BrokerCatalogEntry[]> {
@@ -4359,7 +4370,29 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
   const normalizedUnderlying = rawSym.toUpperCase().slice(0, 32);
   const cashLabel = (rawSym || "CASH").toUpperCase().slice(0, 32);
 
-  if (positionType === "stock") {
+  if (positionType === "real_estate") {
+    const holdingName = (input.holdingName ?? rawSym).trim();
+    if (!holdingName) {
+      throw new PositionValidationError(
+        "POSITION_FIELDS_INCOMPLETE",
+        "Real estate requires a holding name"
+      );
+    }
+    const valueUsd = input.currentValueUsd;
+    if (typeof valueUsd !== "number" || !Number.isFinite(valueUsd) || valueUsd <= 0) {
+      throw new PositionValidationError(
+        "POSITION_FIELDS_INCOMPLETE",
+        "Real estate requires a positive currentValueUsd"
+      );
+    }
+    const valDate = input.lastValuationDate;
+    if (!(valDate instanceof Date) || Number.isNaN(valDate.getTime())) {
+      throw new PositionValidationError(
+        "POSITION_FIELDS_INCOMPLETE",
+        "Real estate requires a valid lastValuationDate"
+      );
+    }
+  } else if (positionType === "stock") {
     if (!normalizedUnderlying) {
       throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Stock requires a symbol");
     }
@@ -4442,13 +4475,47 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
 
   const now = new Date();
   const tenantObjectId = toTenantObjectId(input.tenantId);
-  const effectiveQty = positionType === "cash" ? 1 : input.qty;
+  const effectiveQty =
+    positionType === "cash" || positionType === "real_estate" ? 1 : input.qty;
   const yrefTrim = input.yahooRef?.trim();
 
   let filterCore: Record<string, unknown>;
   let displaySymbol: string;
+  let setDoc: Record<string, unknown>;
 
-  if (positionType === "stock") {
+  if (positionType === "real_estate") {
+    const holdingName = (input.holdingName ?? rawSym).trim();
+    const valueUsd = input.currentValueUsd!;
+    const netUsd = realEstateNetEquityUsd({ currentValueUsd: valueUsd, metadata: input.metadata });
+    filterCore = {
+      ...userIdQuery(input.userId),
+      portfolioId,
+      accountId,
+      type: "real_estate",
+      holdingName
+    };
+    displaySymbol = "";
+    setDoc = {
+      userId: input.userId,
+      portfolioId,
+      accountId,
+      symbol: displaySymbol,
+      qty: 1,
+      avgCost: netUsd,
+      type: "real_estate",
+      assetClass: "real_estate" as const,
+      holdingName,
+      currentValueUsd: valueUsd,
+      lastValuationDate: input.lastValuationDate,
+      valuationSource: input.valuationSource ?? "user_provided",
+      metadata: input.metadata ?? null,
+      updatedAt: now,
+      yahooRef: null,
+      optionType: null,
+      strike: null,
+      expiration: null
+    };
+  } else if (positionType === "stock") {
     filterCore = {
       ...userIdQuery(input.userId),
       portfolioId,
@@ -4491,20 +4558,28 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
 
   const filter = withTenantScope(filterCore, input.tenantId);
 
-  const setDoc = {
-    userId: input.userId,
-    portfolioId,
-    accountId,
-    symbol: displaySymbol,
-    qty: effectiveQty,
-    avgCost: input.avgCost,
-    type: positionType,
-    updatedAt: now,
-    yahooRef: positionType === "option" && yrefTrim ? yrefTrim : null,
-    optionType: positionType === "option" ? input.optionType ?? null : null,
-    strike: positionType === "option" ? input.strike ?? null : null,
-    expiration: positionType === "option" ? input.expiration ?? null : null
-  };
+  if (positionType !== "real_estate") {
+    setDoc = {
+      userId: input.userId,
+      portfolioId,
+      accountId,
+      symbol: displaySymbol,
+      qty: effectiveQty,
+      avgCost: input.avgCost,
+      type: positionType,
+      assetClass: input.assetClass ?? (positionType === "cash" ? "fixed_income" : "equity"),
+      updatedAt: now,
+      yahooRef: positionType === "option" && yrefTrim ? yrefTrim : null,
+      optionType: positionType === "option" ? input.optionType ?? null : null,
+      strike: positionType === "option" ? input.strike ?? null : null,
+      expiration: positionType === "option" ? input.expiration ?? null : null,
+      holdingName: null,
+      currentValueUsd: null,
+      lastValuationDate: null,
+      valuationSource: null,
+      metadata: null
+    };
+  }
 
   await db.collection<Position>(collections.positions).updateOne(
     filter,
@@ -4513,7 +4588,7 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
         tenantId: tenantObjectId,
         createdAt: now
       },
-      $set: setDoc
+      $set: setDoc!
     },
     { upsert: true }
   );

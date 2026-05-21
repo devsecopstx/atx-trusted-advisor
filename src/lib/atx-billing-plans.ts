@@ -69,12 +69,12 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
   {
     id: "premium_plus_monthly",
     name: "Premium+",
-    tagline: "Dedicated posture — family-office complexity & IB-linked verification (roadmap)",
+    tagline: "Dedicated posture — family-office complexity & multi-broker connectivity (roadmap)",
     priceLabel: "$30",
     periodNote: "per month",
     summaryValueProp:
       "White-glove ultra-complex family-office workflows + dedicated instance + automated trade recs (roadmap)",
     limitsExpandNote:
-      "Private deployment — your data is never used for provider training. Interactive Brokers verification and automated trade recommendations are roadmap commitments alongside your workspace limits."
+      "Private deployment — your data is never used for provider training. Broker roadmap: Merrill & Fidelity CSV import today; Interactive Brokers (live snapshots where enabled), E*TRADE, Forge Global, and Hiive pre-IPO marketplace support coming soon; automated trade recommendations follow with workspace limits."
   }
 ] as const;

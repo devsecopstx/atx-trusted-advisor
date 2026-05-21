@@ -3,7 +3,7 @@ import {
     listPortfolioAccounts,
     listPortfolioPositionsByAccount
 } from "@/modules/core-admin/repository";
-import { normalizePositionType } from "@/modules/core-admin/types";
+import { normalizePositionType, realEstateNetEquityUsd } from "@/modules/core-admin/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 /**
@@ -58,6 +58,12 @@ export async function getPortfolioLiveMarketValueUsdForSessionUser(input: {
         });
         symbolsToQuote.add(sym);
       }
+    } else if (t === "real_estate") {
+      const gross =
+        typeof p.currentValueUsd === "number" && Number.isFinite(p.currentValueUsd)
+          ? p.currentValueUsd
+          : p.avgCost;
+      cashUsd += realEstateNetEquityUsd({ currentValueUsd: gross, metadata: p.metadata });
     }
     // Options deliberately ignored for this market value calculation
   }

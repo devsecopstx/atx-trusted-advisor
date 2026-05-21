@@ -83,6 +83,27 @@ describe("computePortfolioTotalMarketValueUsd", () => {
     await expect(computePortfolioTotalMarketValueUsd(accounts, [cashLot, opt], 0)).resolves.toBe(100 + 50 + 200);
   });
 
+  it("includes real_estate net equity in total", async () => {
+    vi.mocked(lookupSymbols).mockResolvedValue(new Map());
+    const now = new Date();
+    const positions = [
+      {
+        userId: "u",
+        portfolioId: new ObjectId(),
+        accountId: new ObjectId(),
+        symbol: "",
+        qty: 1,
+        avgCost: 400_000,
+        type: "real_estate" as const,
+        currentValueUsd: 500_000,
+        metadata: { mortgageBalanceUsd: 100_000, ownershipPct: 100 },
+        createdAt: now,
+        updatedAt: now
+      } satisfies Position
+    ];
+    await expect(computePortfolioTotalMarketValueUsd([], positions, 0)).resolves.toBe(400_000);
+  });
+
   it("aggregates same symbol across rows before quoting once", async () => {
     vi.mocked(lookupSymbols).mockResolvedValue(
       new Map([["ZZZ", { symbol: "ZZZ", price: 10, source: LOOKUP_ROUTE }]])

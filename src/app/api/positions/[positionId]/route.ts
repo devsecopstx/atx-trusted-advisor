@@ -120,13 +120,37 @@ export async function PATCH(
     // empty body is ok for some updates
   }
 
-  // Minimal local support: update qty / avgCost on the position document
-  const { qty, avgCost, symbol } = body;
+  const {
+    qty,
+    avgCost,
+    symbol,
+    holdingName,
+    currentValueUsd,
+    lastValuationDate,
+    valuationSource,
+    metadata
+  } = body;
 
-  const update: Record<string, any> = {};
+  const update: Record<string, unknown> = {};
   if (typeof qty === "number" && Number.isFinite(qty)) update.qty = qty;
   if (typeof avgCost === "number" && Number.isFinite(avgCost)) update.avgCost = avgCost;
   if (typeof symbol === "string" && symbol.trim()) update.symbol = symbol.trim().toUpperCase();
+  if (typeof holdingName === "string" && holdingName.trim()) update.holdingName = holdingName.trim();
+  if (typeof currentValueUsd === "number" && Number.isFinite(currentValueUsd) && currentValueUsd > 0) {
+    update.currentValueUsd = currentValueUsd;
+  }
+  if (typeof lastValuationDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(lastValuationDate.trim())) {
+    const parsed = new Date(`${lastValuationDate.trim()}T00:00:00.000Z`);
+    if (!Number.isNaN(parsed.getTime())) {
+      update.lastValuationDate = parsed;
+    }
+  }
+  if (typeof valuationSource === "string" && valuationSource.trim()) {
+    update.valuationSource = valuationSource.trim();
+  }
+  if (metadata && typeof metadata === "object") {
+    update.metadata = metadata;
+  }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 });

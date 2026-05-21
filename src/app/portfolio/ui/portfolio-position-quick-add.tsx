@@ -66,8 +66,10 @@ export function PortfolioPositionQuickAdd({
       setAccountId(lockedAccountId);
     }
   }, [lockedAccountId]);
-  const [type, setType] = useState<"stock" | "option" | "cash">("stock");
+  const [type, setType] = useState<"stock" | "option" | "cash" | "real_estate">("stock");
   const [ticker, setTicker] = useState("");
+  const [valuationDate, setValuationDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [propertyAddress, setPropertyAddress] = useState("");
   const [shares, setShares] = useState("");
   const [contracts, setContracts] = useState("");
   const [optionType, setOptionType] = useState<"call" | "put">("call");
@@ -89,7 +91,56 @@ export function PortfolioPositionQuickAdd({
       setError("Select an account.");
       return;
     }
-    const normalizedTicker = ticker.trim().toUpperCase();
+    const normalizedName = ticker.trim();
+    if (type === "real_estate") {
+      if (!normalizedName) {
+        setError("Property name is required.");
+        return;
+      }
+      const valueUsd = Number(purchasePrice);
+      if (!Number.isFinite(valueUsd) || valueUsd <= 0) {
+        setError("Current value must be a positive number.");
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(valuationDate.trim())) {
+        setError("Valuation date must be YYYY-MM-DD.");
+        return;
+      }
+      setPending(true);
+      try {
+        const response = await fetch("/api/positions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portfolioId,
+            accountId,
+            type: "real_estate",
+            holdingName: normalizedName,
+            currentValueUsd: valueUsd,
+            lastValuationDate: valuationDate.trim(),
+            valuationSource: "user_provided",
+            metadata: propertyAddress.trim() ? { address: propertyAddress.trim() } : undefined
+          })
+        });
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        if (!response.ok) {
+          setError(payload.error ?? "Could not save property.");
+          return;
+        }
+        setSuccess("Property saved.");
+        setTicker("");
+        setPurchasePrice("");
+        setPropertyAddress("");
+        startNavTransition(() => router.refresh());
+      } catch {
+        setError("Network error while saving property.");
+      } finally {
+        setPending(false);
+      }
+      return;
+    }
+
+    const normalizedTicker = normalizedName.toUpperCase();
     if (!normalizedTicker) {
       setError("Ticker is required.");
       return;
@@ -285,23 +336,54 @@ export function PortfolioPositionQuickAdd({
           <select
             className="crud-input"
             value={type}
-            onChange={(event) => setType(event.target.value as "stock" | "option" | "cash")}
+            onChange={(event) =>
+              setType(event.target.value as "stock" | "option" | "cash" | "real_estate")
+            }
           >
             <option value="stock">stock</option>
             <option value="option">option</option>
             <option value="cash">cash</option>
+            <option value="real_estate">real estate</option>
           </select>
         </label>
         <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Ticker</span>
+          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>
+            {type === "real_estate" ? "Property name" : "Ticker"}
+          </span>
           <input
             className="crud-input"
             value={ticker}
             onChange={(event) => setTicker(event.target.value)}
-            placeholder={type === "cash" ? "USD" : "TSLA"}
+            placeholder={type === "cash" ? "USD" : type === "real_estate" ? "Lake Travis — Primary" : "TSLA"}
             required
           />
         </label>
+        {type === "real_estate" ? (
+          <>
+            <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+              <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Valuation date</span>
+              <input
+                className="crud-input"
+                type="date"
+                value={valuationDate}
+                onChange={(event) => setValuationDate(event.target.value)}
+                required
+              />
+            </label>
+            <label
+              className="stack-gap"
+              style={{ gap: "0.25rem", display: "flex", flexDirection: "column", gridColumn: "1 / -1" }}
+            >
+              <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Address (optional)</span>
+              <input
+                className="crud-input"
+                value={propertyAddress}
+                onChange={(event) => setPropertyAddress(event.target.value)}
+                placeholder="123 Lakeview Dr, Austin, TX"
+              />
+            </label>
+          </>
+        ) : null}
         {type === "stock" ? (
           <div className="stack-gap" style={{ gridColumn: "1 / -1", maxWidth: "28rem" }}>
             <StockSymbolLiveField
@@ -324,6 +406,7 @@ export function PortfolioPositionQuickAdd({
             onChange={(event) => setShares(event.target.value)}
             placeholder={type === "cash" ? "5000" : "10"}
             required={type === "cash" || type === "stock"}
+            disabled={type === "real_estate"}
           />
         </label>
         {type === "option" ? (
@@ -379,7 +462,9 @@ export function PortfolioPositionQuickAdd({
           </>
         ) : null}
         <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Purchase price</span>
+          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>
+            {type === "real_estate" ? "Current value (USD)" : "Purchase price"}
+          </span>
           <input
             className="crud-input"
             type="number"
@@ -387,7 +472,7 @@ export function PortfolioPositionQuickAdd({
             step="0.01"
             value={purchasePrice}
             onChange={(event) => setPurchasePrice(event.target.value)}
-            placeholder={type === "cash" ? "1.00" : "250.00"}
+            placeholder={type === "cash" ? "1.00" : type === "real_estate" ? "2850000" : "250.00"}
             required
           />
         </label>

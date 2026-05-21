@@ -6,7 +6,9 @@ export const importActivityPageCopy = {
   introLead:
     "Upload CSV exports from your broker to refresh your portfolio positions and activity history.",
   introBackground:
-    "The import runs safely in the background and keeps your risk data, xOptions scanners, and monitoring accurate."
+    "The import runs safely in the background and keeps your risk data, xOptions scanners, and monitoring accurate.",
+  brokerRoadmapNote:
+    "CSV import today: Merrill Edge and Fidelity. Coming soon: Interactive Brokers (IBKR), E*TRADE, Forge Global (private markets), and Hiive (pre-IPO marketplace)."
 } as const;
 
 export const importActivityWorkflowCopy = {

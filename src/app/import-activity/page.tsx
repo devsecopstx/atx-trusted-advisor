@@ -113,6 +113,9 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
               <p className="billing-hero__copy mt-2 max-w-none text-[0.82rem] leading-snug">
                 {importActivityPageCopy.introBackground}
               </p>
+              <p className="billing-hero__copy mt-2 max-w-none text-[0.78rem] leading-snug text-[var(--xf-text-300)]">
+                {importActivityPageCopy.brokerRoadmapNote}
+              </p>
             </header>
 
             <div className="surface-card xf-widget section-card import-activity__main-surface p-2.5 md:p-3.5 dark:ring-1 dark:ring-[color:color-mix(in_srgb,var(--xf-text-100)_12%,transparent)]">

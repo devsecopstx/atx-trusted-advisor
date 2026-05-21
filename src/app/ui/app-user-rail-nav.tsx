@@ -178,7 +178,10 @@ export function AppUserResourcesRailSection({
         title="Resources"
       >
         <nav className="app-user-rail-sublinks app-user-rail-sublinks--resource-links" aria-label="Broker import and tasks">
-          <RailNavLink href={importHref} title="Upload broker CSV exports (Merrill, Fidelity, …)">
+          <RailNavLink
+            href={importHref}
+            title="Upload broker CSV exports (Merrill, Fidelity; Forge, Hiive, IBKR coming soon)"
+          >
             <span className="app-user-rail-sublink__row">
               <LucideUploadIcon className="app-user-rail-sublink__glyph" />
               <span>Broker import</span>

@@ -1871,6 +1871,33 @@
   font-size: 0.7rem;
 }
 
+.portfolio-consolidated-holdings__sym-icon--re {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: var(--xf-radius-sm);
+  background: color-mix(in srgb, var(--xf-lightning-yellow, #eab308) 18%, transparent);
+  color: var(--xf-lightning-yellow, #eab308);
+  font-size: 0.85rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.portfolio-consolidated-holdings__illiquid-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-300) 35%, transparent);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--xf-text-300);
+}
+
 .portfolio-consolidated-holdings__leg {
   display: flex;
   flex-direction: column;

@@ -1,7 +1,9 @@
 import {
     formatPositionUsd,
     normalizePositionType,
-    type Position
+    realEstateNetEquityUsd,
+    type Position,
+    type RealEstateValuationSource
 } from "@/modules/core-admin/types";
 
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
@@ -26,6 +28,24 @@ export function serializePositionsForUi(rows: Position[]): SerializablePosition[
         label: p.symbol,
         amount: p.avgCost,
         amountFormatted: formatPositionUsd(p.avgCost)
+      };
+    }
+    if (t === "real_estate") {
+      const gross =
+        typeof p.currentValueUsd === "number" && Number.isFinite(p.currentValueUsd)
+          ? p.currentValueUsd
+          : p.avgCost;
+      const holdingName = (p.holdingName ?? p.symbol).trim() || "Real estate";
+      const valDate = p.lastValuationDate;
+      return {
+        _id: id,
+        type: "real_estate" as const,
+        holdingName,
+        currentValueUsd: gross,
+        netEquityUsd: realEstateNetEquityUsd({ currentValueUsd: gross, metadata: p.metadata }),
+        lastValuationDate: valDate ? valDate.toISOString().slice(0, 10) : "",
+        valuationSource: (p.valuationSource as RealEstateValuationSource | null) ?? null,
+        metadata: p.metadata ?? null
       };
     }
     const exp = p.expiration;

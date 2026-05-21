@@ -1,5 +1,5 @@
 import type { Account, Position } from "@/modules/core-admin/types";
-import { normalizePositionType } from "@/modules/core-admin/types";
+import { normalizePositionType, realEstateNetEquityUsd } from "@/modules/core-admin/types";
 import { lookupSymbols, type SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 const OPTION_SHARES_PER_CONTRACT = 100;
@@ -44,6 +44,12 @@ export async function computePortfolioTotalMarketValueUsd(
       stockBySymbol.set(sym, agg);
     } else if (t === "cash") {
       total += stockBookUsd(p);
+    } else if (t === "real_estate") {
+      const gross =
+        typeof p.currentValueUsd === "number" && Number.isFinite(p.currentValueUsd)
+          ? p.currentValueUsd
+          : p.avgCost;
+      total += realEstateNetEquityUsd({ currentValueUsd: gross, metadata: p.metadata });
     } else {
       total += optionBookUsd(p);
     }

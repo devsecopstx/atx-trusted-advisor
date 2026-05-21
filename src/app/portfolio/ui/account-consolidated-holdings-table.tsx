@@ -17,6 +17,7 @@ import {
     isValidXoptionsUnderlyingSymbol,
     normalizeXoptionsUnderlyingSymbol
 } from "@/lib/xoptions/xoptions-desk-deep-link";
+import { realEstateValuationSourceLabel } from "@/modules/core-admin/types";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 function fmtUsd(n: number): string {
@@ -94,7 +95,21 @@ function defaultDeskAlertBody(
 
 type HoldingsSortColumn = "symbol" | "dayChange" | "qty";
 
+function formatRealEstateValuationDate(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    return iso.trim() || "—";
+  }
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) {
+    return "—";
+  }
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function symbolSortKey(p: SerializablePosition): string {
+  if (p.type === "real_estate") {
+    return p.holdingName.trim().toUpperCase();
+  }
   if (p.type === "cash") {
     return (p.label.trim() || "CASH").toUpperCase();
   }
@@ -379,6 +394,7 @@ export function AccountConsolidatedHoldingsTable({
   }, [positions, quotes]);
 
   const showDeskAlertCol = Boolean(portfolioIdHex && accountIdHex);
+  const hasRealEstateHoldings = positions.some((p) => p.type === "real_estate");
 
   return (
     <>
@@ -391,7 +407,7 @@ export function AccountConsolidatedHoldingsTable({
             <tr>
               <HoldingsSortHeader col="symbol" label="Symbol" sort={sort} onSort={setSortColumn} />
               <th scope="col" className="portfolio-consolidated-holdings__num">
-                Last price
+                {hasRealEstateHoldings ? "Valuation / price" : "Last price"}
               </th>
               <th scope="col" className="portfolio-consolidated-holdings__num">
                 Last chg
@@ -442,7 +458,8 @@ export function AccountConsolidatedHoldingsTable({
               const u = underlyingQuoteLookupKey(p);
               const q = u ? quotes[u] ?? null : null;
               const metrics = computeHoldingsRowMetrics(p, quotes);
-              const showQuote = p.type === "stock" || p.type === "option";
+              const isRealEstate = p.type === "real_estate";
+              const showQuote = !isRealEstate && (p.type === "stock" || p.type === "option");
               const pct =
                 accountTotals.currentValueUsd > 0
                   ? (metrics.currentValueUsd / accountTotals.currentValueUsd) * 100
@@ -457,7 +474,20 @@ export function AccountConsolidatedHoldingsTable({
                 Number.isFinite(wkHi);
 
               const symCell =
-                p.type === "cash" ? (
+                isRealEstate ? (
+                  <div className="portfolio-consolidated-holdings__sym-stack">
+                    <div className="portfolio-consolidated-holdings__sym">
+                      <span className="portfolio-consolidated-holdings__sym-icon--re" aria-hidden>
+                        ⌂
+                      </span>
+                      <span className="portfolio-consolidated-holdings__sym-ticker">{p.holdingName}</span>
+                      <span className="portfolio-consolidated-holdings__illiquid-badge">Illiquid</span>
+                    </div>
+                    <span className="portfolio-consolidated-holdings__sym-sub">
+                      {p.metadata?.address?.trim() || "Real estate · manual valuation"}
+                    </span>
+                  </div>
+                ) : p.type === "cash" ? (
                   <div className="portfolio-consolidated-holdings__sym-stack">
                     <span className="portfolio-consolidated-holdings__sym-ticker">{p.label}</span>
                     <span className="portfolio-consolidated-holdings__sym-sub">Cash / sweep</span>
@@ -501,7 +531,11 @@ export function AccountConsolidatedHoldingsTable({
                 <tr key={p._id}>
                   <td>{symCell}</td>
                   <td className="portfolio-consolidated-holdings__num">
-                    {loading && showQuote && metrics.lastPrice == null ? (
+                    {isRealEstate ? (
+                      <span className="portfolio-consolidated-holdings__mono text-[0.72rem]">
+                        {formatRealEstateValuationDate(p.lastValuationDate)}
+                      </span>
+                    ) : loading && showQuote && metrics.lastPrice == null ? (
                       <span className="portfolio-consolidated-holdings__muted">…</span>
                     ) : metrics.lastPrice != null ? (
                       <span className="portfolio-consolidated-holdings__mono">{fmtUsd(metrics.lastPrice)}</span>
@@ -554,10 +588,16 @@ export function AccountConsolidatedHoldingsTable({
                     {accountTotals.currentValueUsd > 0 ? `${pct.toFixed(2)}%` : "—"}
                   </td>
                   <td className="portfolio-consolidated-holdings__num">
-                    <span className="portfolio-consolidated-holdings__mono">{metrics.qty.toLocaleString("en-US")}</span>
+                    <span className="portfolio-consolidated-holdings__mono">
+                      {isRealEstate ? `${metrics.qty.toFixed(0)}% own` : metrics.qty.toLocaleString("en-US")}
+                    </span>
                   </td>
                   <td className="portfolio-consolidated-holdings__num">
-                    {metrics.avgCost != null ? (
+                    {isRealEstate ? (
+                      <span className="portfolio-consolidated-holdings__sym-sub">
+                        {realEstateValuationSourceLabel(p.valuationSource)}
+                      </span>
+                    ) : metrics.avgCost != null ? (
                       <span className="portfolio-consolidated-holdings__mono">
                         {p.type === "option" ? `${fmtUsd(metrics.avgCost)}/ct` : fmtUsd(metrics.avgCost)}
                       </span>

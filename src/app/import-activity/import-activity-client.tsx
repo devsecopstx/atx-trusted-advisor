@@ -8,6 +8,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UploadIcon } from "@/app/admin/ui/crud-icons";
 import { accountRefLastFourOnlyDisplay } from "@/lib/account-xref-display";
 import { brokerExportRefMatchesStoredExt } from "@/lib/broker-account-ref-match";
+import {
+    BROKER_CATALOG_COMING_SOON_LABEL,
+    BROKER_CATALOG_CSV_IMPORT_READY_TYPES
+} from "@/lib/broker-catalog-defaults";
 import type { BrokerImportCsvStats, BrokerImportPreviewSampleRow } from "@/modules/portfolio-import/broker-import-dry-run-preview";
 import { brokerImportDryRunResponseSchema } from "@/modules/portfolio-import/broker-import-dry-run-schema";
 import { detectFidelityActivitiesCsv } from "@/modules/portfolio-import/fidelity-activities-csv";
@@ -65,8 +69,15 @@ async function parseJson<T>(res: Response): Promise<T> {
   return body as T;
 }
 
-const SUPPORTED_IMPORT_BROKERS = new Set(["merrill", "fidelity"]);
-const BROKER_IMPORT_PREFERRED_ORDER = ["fidelity", "merrill", "etrade", "ibkr"] as const;
+const SUPPORTED_IMPORT_BROKERS = BROKER_CATALOG_CSV_IMPORT_READY_TYPES;
+const BROKER_IMPORT_PREFERRED_ORDER = [
+  "fidelity",
+  "merrill",
+  "ibkr",
+  "etrade",
+  "forge",
+  "hiive"
+] as const;
 const PREVIEW_ROW_HEIGHT = 36;
 
 function orderBrokersForImport(brokers: ImportActivityBrokerOption[]): ImportActivityBrokerOption[] {
@@ -94,8 +105,14 @@ function brokerCapabilityBadges(brokerId: string): string[] {
       return ["Holdings"];
     case "fidelity":
       return ["Holdings", "Activities"];
+    case "ibkr":
+      return ["API", "TBD"];
+    case "forge":
+      return ["Pre-IPO", "TBD"];
+    case "hiive":
+      return ["Pre-IPO", "TBD"];
     default:
-      return ["Soon"];
+      return ["TBD"];
   }
 }
 
@@ -351,7 +368,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       if (!brokerImportSupported) {
         if (!silent) {
           setMessage(
-            `${selectedBroker?.name ?? brokerKind} import is not available yet. Choose Merrill or Fidelity for now.`
+            `${selectedBroker?.name ?? brokerKind} import is not available yet. ${BROKER_CATALOG_COMING_SOON_LABEL}`
           );
         }
         return false;
@@ -427,7 +444,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
     }
     if (!brokerImportSupported) {
       setMessage(
-        `${selectedBroker?.name ?? brokerKind} import is not available yet. Choose Merrill or Fidelity for now.`
+        `${selectedBroker?.name ?? brokerKind} import is not available yet. ${BROKER_CATALOG_COMING_SOON_LABEL}`
       );
       return;
     }
@@ -797,7 +814,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
 
             {!brokerImportSupported ? (
               <p className="import-activity__source-panel-warn">
-                {selectedBroker?.name ?? brokerKind} import is not enabled yet. Choose Merrill or Fidelity.
+                {selectedBroker?.name ?? brokerKind} import is not enabled yet. {BROKER_CATALOG_COMING_SOON_LABEL}
               </p>
             ) : null}
 

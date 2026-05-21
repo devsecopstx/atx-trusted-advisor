@@ -1,4 +1,9 @@
-import type { AccountOutlook, PortfolioAccountHnwiGuardrails } from "@/modules/core-admin/types";
+import type {
+  AccountOutlook,
+  PortfolioAccountHnwiGuardrails,
+  RealEstatePositionMetadata,
+  RealEstateValuationSource
+} from "@/modules/core-admin/types";
 
 export type SerializableAccount = {
   _id: string;
@@ -51,7 +56,19 @@ export type SerializableOptionPosition = {
   premiumPerContract: number;
 };
 
+export type SerializableRealEstatePosition = {
+  _id: string;
+  type: "real_estate";
+  holdingName: string;
+  currentValueUsd: number;
+  netEquityUsd: number;
+  lastValuationDate: string;
+  valuationSource: RealEstateValuationSource | null;
+  metadata: RealEstatePositionMetadata | null;
+};
+
 export type SerializablePosition =
   | SerializableStockPosition
   | SerializableCashPosition
-  | SerializableOptionPosition;
+  | SerializableOptionPosition
+  | SerializableRealEstatePosition;

@@ -8,6 +8,8 @@ describe("import-activity copy", () => {
     expect(importActivityPageCopy.introLead.toLowerCase()).toContain("csv");
     expect(importActivityPageCopy.introBackground.toLowerCase()).toContain("background");
     expect(importActivityPageCopy.introBackground.toLowerCase()).toContain("xoptions");
+    expect(importActivityPageCopy.brokerRoadmapNote.toLowerCase()).toContain("forge");
+    expect(importActivityPageCopy.brokerRoadmapNote.toLowerCase()).toContain("hiive");
   });
 
   it("lists three supported file kinds and how-to steps", () => {

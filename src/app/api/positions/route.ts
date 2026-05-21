@@ -19,8 +19,12 @@ import {
 import {
     normalizePositionType,
     positionTypeValues,
+    realEstatePropertyTypeValues,
+    realEstateValuationSourceValues,
     type PositionOptionType,
-    type PositionType
+    type PositionType,
+    type RealEstatePositionMetadata,
+    type RealEstateValuationSource
 } from "@/modules/core-admin/types";
 import { ObjectId } from "mongodb";
 
@@ -57,6 +61,27 @@ function isFutureIsoDate(value: string): boolean {
   const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   return parsed.getTime() > todayUtc.getTime();
 }
+
+const realEstateMetadataSchema = z
+  .object({
+    address: z.string().trim().max(240).optional(),
+    propertyType: z.enum(realEstatePropertyTypeValues).optional(),
+    ownershipPct: z.preprocess(parseNumberLike, z.number().min(0).max(100)).optional(),
+    mortgageBalanceUsd: nonNegativeNumberLike().optional(),
+    notes: z.string().trim().max(500).optional()
+  })
+  .optional();
+
+const realEstateUpsertSchema = z.object({
+  portfolioId: z.string().trim().min(1),
+  accountId: z.string().trim().min(1),
+  type: z.literal("real_estate"),
+  holdingName: z.string().trim().min(1).max(200),
+  currentValueUsd: positiveNumberLike(),
+  lastValuationDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+  valuationSource: z.enum(realEstateValuationSourceValues).optional(),
+  metadata: realEstateMetadataSchema
+});
 
 const upsertPositionSchema = z.object({
   portfolioId: z.string().trim().min(1),
@@ -97,6 +122,12 @@ type NormalizedPositionUpsert = {
   qty: number;
   avgCost: number;
   type: PositionType;
+  assetClass?: "real_estate" | "equity" | "fixed_income" | "alternative";
+  holdingName?: string;
+  currentValueUsd?: number;
+  lastValuationDate?: Date;
+  valuationSource?: RealEstateValuationSource;
+  metadata?: RealEstatePositionMetadata;
   yahooRef?: string;
   optionType?: PositionOptionType;
   strike?: number;
@@ -184,6 +215,50 @@ export async function POST(request: Request) {
   }
 
   const payload = await request.json();
+  const realEstateParsed = realEstateUpsertSchema.safeParse(payload);
+  if (realEstateParsed.success) {
+    const valDate = parseIsoDateAtUtcMidnight(realEstateParsed.data.lastValuationDate);
+    if (!valDate) {
+      return NextResponse.json({ error: "lastValuationDate must be YYYY-MM-DD" }, { status: 400 });
+    }
+    const deniedRe = await requireAccountInPortfolio(
+      session,
+      realEstateParsed.data.portfolioId,
+      realEstateParsed.data.accountId
+    );
+    if (deniedRe) {
+      return deniedRe;
+    }
+    try {
+      const position = await upsertPositionForAccount({
+        userId: session.userId,
+        tenantId: session.tenantId,
+        portfolioId: realEstateParsed.data.portfolioId,
+        accountId: realEstateParsed.data.accountId,
+        symbol: "",
+        qty: 1,
+        avgCost: 0,
+        type: "real_estate",
+        assetClass: "real_estate",
+        holdingName: realEstateParsed.data.holdingName,
+        currentValueUsd: realEstateParsed.data.currentValueUsd,
+        lastValuationDate: valDate,
+        valuationSource: realEstateParsed.data.valuationSource,
+        metadata: realEstateParsed.data.metadata
+      });
+      return NextResponse.json({ data: position }, { status: 201 });
+    } catch (error) {
+      if (error instanceof PositionValidationError) {
+        const status =
+          error.code === "ACCOUNT_NOT_FOUND" || error.code === "ACCOUNT_PORTFOLIO_MISMATCH"
+            ? 404
+            : 400;
+        return NextResponse.json({ error: error.message, code: error.code }, { status });
+      }
+      throw error;
+    }
+  }
+
   const legacyParsed = upsertPositionSchema.safeParse(payload);
   const openApiParsed = legacyParsed.success ? null : openApiPositionSchema.safeParse(payload);
   if (!legacyParsed.success && (!openApiParsed || !openApiParsed.success)) {

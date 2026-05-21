@@ -57,6 +57,9 @@ export type HoldingsRowMetrics = {
 };
 
 export function rowCostBasisUsd(p: SerializablePosition): number {
+  if (p.type === "real_estate") {
+    return p.netEquityUsd;
+  }
   if (p.type === "cash") {
     return Math.max(0, p.amount);
   }
@@ -67,6 +70,10 @@ export function rowCostBasisUsd(p: SerializablePosition): number {
 }
 
 export function rowQuantity(p: SerializablePosition): number {
+  if (p.type === "real_estate") {
+    const pct = p.metadata?.ownershipPct;
+    return typeof pct === "number" && Number.isFinite(pct) ? pct : 100;
+  }
   if (p.type === "stock") {
     return p.shares;
   }
@@ -77,6 +84,9 @@ export function rowQuantity(p: SerializablePosition): number {
 }
 
 export function rowAverageCost(p: SerializablePosition): number | null {
+  if (p.type === "real_estate") {
+    return p.currentValueUsd;
+  }
   if (p.type === "stock") {
     return p.purchasePrice;
   }
@@ -94,6 +104,9 @@ export function rowMarkUsd(
   p: SerializablePosition,
   quotes: Record<string, SymbolLookupResult | null>
 ): { valueUsd: number; usesOptionBookMark: boolean } {
+  if (p.type === "real_estate") {
+    return { valueUsd: p.netEquityUsd, usesOptionBookMark: false };
+  }
   if (p.type === "cash") {
     return { valueUsd: Math.max(0, p.amount), usesOptionBookMark: false };
   }
@@ -119,7 +132,7 @@ function quoteForPosition(
   p: SerializablePosition,
   quotes: Record<string, SymbolLookupResult | null>
 ): SymbolLookupResult | null {
-  if (p.type === "cash") {
+  if (p.type === "cash" || p.type === "real_estate") {
     return null;
   }
   if (p.type === "stock") {
@@ -143,6 +156,22 @@ export function computeHoldingsRowMetrics(
 ): HoldingsRowMetrics {
   const costBasisUsd = rowCostBasisUsd(p);
   const { valueUsd, usesOptionBookMark } = rowMarkUsd(p, quotes);
+  if (p.type === "real_estate") {
+    return {
+      costBasisUsd,
+      currentValueUsd: valueUsd,
+      totalGainUsd: null,
+      totalGainPct: null,
+      dayGainUsd: null,
+      dayGainPct: null,
+      lastPrice: null,
+      lastChange: null,
+      lastChangePct: null,
+      qty: rowQuantity(p),
+      avgCost: rowAverageCost(p),
+      usesOptionBookMark: false
+    };
+  }
   const quote = quoteForPosition(p, quotes);
   const lastPrice = quote?.price != null && Number.isFinite(quote.price) ? quote.price : null;
   const lastChange = quote?.change != null && Number.isFinite(quote.change) ? quote.change : null;

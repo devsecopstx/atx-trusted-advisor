@@ -561,17 +561,91 @@ export type PortfolioDeliveryChannel = {
 };
 
 /** Instrument line kind for `portfolio_positions` (admin holdings + app positions). */
-export const positionTypeValues = ["stock", "option", "cash"] as const;
+export const positionTypeValues = ["stock", "option", "cash", "real_estate"] as const;
 export type PositionType = (typeof positionTypeValues)[number];
+
+/** Asset class for consolidated holdings (securities default to equity when unset). */
+export const positionAssetClassValues = [
+  "real_estate",
+  "equity",
+  "fixed_income",
+  "alternative"
+] as const;
+export type PositionAssetClass = (typeof positionAssetClassValues)[number];
+
+export const realEstatePropertyTypeValues = [
+  "primary_residence",
+  "sfr_investment",
+  "multi_family",
+  "commercial",
+  "land",
+  "other"
+] as const;
+export type RealEstatePropertyType = (typeof realEstatePropertyTypeValues)[number];
+
+export const realEstateValuationSourceValues = [
+  "user_provided",
+  "zestimate_user_verified",
+  "housecanary_avm",
+  "appraiser"
+] as const;
+export type RealEstateValuationSource = (typeof realEstateValuationSourceValues)[number];
+
+export type RealEstatePositionMetadata = {
+  address?: string;
+  propertyType?: RealEstatePropertyType;
+  /** 0–100; defaults to 100 when omitted. */
+  ownershipPct?: number;
+  mortgageBalanceUsd?: number;
+  notes?: string;
+};
 
 export const positionOptionTypeValues = ["call", "put"] as const;
 export type PositionOptionType = (typeof positionOptionTypeValues)[number];
 
 export function normalizePositionType(raw: unknown): PositionType {
-  if (raw === "cash" || raw === "option") {
+  if (raw === "cash" || raw === "option" || raw === "real_estate") {
     return raw;
   }
   return "stock";
+}
+
+export function isRealEstatePositionType(raw: unknown): boolean {
+  return normalizePositionType(raw) === "real_estate";
+}
+
+export function realEstateValuationSourceLabel(source: RealEstateValuationSource | null | undefined): string {
+  switch (source) {
+    case "user_provided":
+      return "User provided";
+    case "zestimate_user_verified":
+      return "Zestimate (verified)";
+    case "housecanary_avm":
+      return "HouseCanary AVM";
+    case "appraiser":
+      return "Appraiser";
+    default:
+      return "Valuation";
+  }
+}
+
+/** Gross value × ownership % minus optional mortgage (illiquid desk mark). */
+export function realEstateNetEquityUsd(input: {
+  currentValueUsd: number;
+  metadata?: RealEstatePositionMetadata | null;
+}): number {
+  const gross = input.currentValueUsd;
+  if (!Number.isFinite(gross) || gross < 0) {
+    return 0;
+  }
+  const pctRaw = input.metadata?.ownershipPct;
+  const ownershipPct =
+    typeof pctRaw === "number" && Number.isFinite(pctRaw) ? Math.min(100, Math.max(0, pctRaw)) : 100;
+  const owned = gross * (ownershipPct / 100);
+  const mortgage = input.metadata?.mortgageBalanceUsd;
+  const debt =
+    typeof mortgage === "number" && Number.isFinite(mortgage) && mortgage > 0 ? mortgage : 0;
+  return Math.max(0, Math.round((owned - debt) * 100) / 100);
 }
 
 /** Calendar expiration stored at UTC midnight (option positions). */
@@ -602,8 +676,17 @@ export type Position = {
   symbol: string;
   qty: number;
   avgCost: number;
-  /** cash | stock | option — omitted on legacy rows → treat as {@link normalizePositionType}. */
+  /** cash | stock | option | real_estate — omitted on legacy rows → treat as {@link normalizePositionType}. */
   type?: PositionType;
+  /** Semantic asset class; real_estate rows set `real_estate`, securities typically `equity`. */
+  assetClass?: PositionAssetClass | null;
+  /** Display name for real_estate (and future illiquid alts). */
+  holdingName?: string | null;
+  /** User-marked value for real_estate; securities use quotes. */
+  currentValueUsd?: number | null;
+  lastValuationDate?: Date | null;
+  valuationSource?: RealEstateValuationSource | null;
+  metadata?: RealEstatePositionMetadata | null;
   /** Yahoo / OCC-style instrument reference; unique per account when set. */
   yahooRef?: string | null;
   optionType?: PositionOptionType | null;
