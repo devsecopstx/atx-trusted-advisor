@@ -1,4 +1,4 @@
-import { accountTypePickerValues, accountTypeValues, type AccountType } from "@/modules/core-admin/types";
+import { accountTypePickerValues, type AccountType } from "@/modules/core-admin/types";
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   fidelity: "Fidelity",
@@ -11,16 +11,6 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 
 /** Order for add/edit account broker dropdowns (legacy `etrade` rows still resolve via {@link ACCOUNT_TYPE_LABELS}). */
 export const ACCOUNT_TYPE_PICKER_ORDER: readonly AccountType[] = accountTypePickerValues;
-
-/** Public static paths (see `public/brokers/`, aligned with admin broker catalog seeds). */
-export const BROKER_ICON_URL: Record<AccountType, string> = {
-  merrill: "/brokers/merrill-edge.png",
-  fidelity: "/brokers/fidelity.png",
-  ibkr: "/brokers/ibkr.png",
-  schwab: "/brokers/fidelity.png",
-  other: "/brokers/fidelity.png",
-  etrade: "/brokers/etrade.png"
-};
 
 /** Slugs with built-in SVG marks in `BrokerIcon` (aligned with broker catalog seeds). */
 export const brokerIconSlugValues = [
@@ -37,13 +27,6 @@ export function brokerIconSlugFromCatalogType(type: string): BrokerIconSlug | nu
   const slug = type.trim().toLowerCase();
   if ((brokerIconSlugValues as readonly string[]).includes(slug)) {
     return slug as BrokerIconSlug;
-  }
-  return null;
-}
-
-export function brokerIconUrlForType(slug: string): string | null {
-  if ((accountTypeValues as readonly string[]).includes(slug)) {
-    return BROKER_ICON_URL[slug as AccountType];
   }
   return null;
 }

@@ -21,10 +21,10 @@ export default async function AdminBrokersPage() {
         <h1 className="hero-title">Manage Brokers</h1>
         <p className="hero-copy">
           Define custodian <strong>type</strong> slugs (stored on <strong>accounts</strong> as{" "}
-          <code className="font-mono text-xs">type</code>), human-readable <strong>name</strong>, optional{" "}
-          <strong>description</strong>, and <strong>icon URL</strong> for this console. Defaults seed Merrill,
-          Fidelity, E*TRADE, Interactive Brokers (IBKR), Forge Global, and Hiive when the catalog is empty;
-          missing default slugs are added on read without overwriting admin edits.
+          <code className="font-mono text-xs">type</code>), human-readable <strong>name</strong>, and optional{" "}
+          <strong>description</strong>. Built-in slugs render SVG marks in this catalog and on app-user portfolio
+          accounts. Defaults seed Merrill, Fidelity, E*TRADE, Interactive Brokers (IBKR), Forge Global, and Hiive
+          when the catalog is empty; missing default slugs are added on read without overwriting admin edits.
         </p>
       </section>
 

@@ -13,6 +13,7 @@ import {
 import { HoldingsFiftyTwoWeekRange } from "@/app/portfolio/ui/holdings-fifty-two-week-range";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
+import { REAL_ESTATE_HOLDING_DISCLAIMER } from "@/lib/real-estate-holding-form";
 import {
     isValidXoptionsUnderlyingSymbol,
     normalizeXoptionsUnderlyingSymbol
@@ -485,7 +486,11 @@ export function AccountConsolidatedHoldingsTable({
                     </div>
                     <span className="portfolio-consolidated-holdings__sym-sub">
                       {p.metadata?.address?.trim() || "Real estate · manual valuation"}
+                      {p.lastValuationDate ? ` · Last updated ${formatRealEstateValuationDate(p.lastValuationDate)}` : ""}
                     </span>
+                    <p className="portfolio-re-holding-row__disclaimer" role="note">
+                      {REAL_ESTATE_HOLDING_DISCLAIMER}
+                    </p>
                   </div>
                 ) : p.type === "cash" ? (
                   <div className="portfolio-consolidated-holdings__sym-stack">

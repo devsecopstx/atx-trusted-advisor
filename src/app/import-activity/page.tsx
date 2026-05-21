@@ -56,8 +56,7 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
   const brokerCatalog = await adminListBrokerCatalog();
   const brokers: ImportActivityBrokerOption[] = brokerCatalog.map((broker) => ({
     id: broker.type,
-    name: broker.name,
-    iconUrl: broker.iconUrl ?? ""
+    name: broker.name
   }));
 
   const sp = searchParams ? await searchParams : {};

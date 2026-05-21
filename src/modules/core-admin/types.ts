@@ -594,6 +594,8 @@ export type RealEstateValuationSource = (typeof realEstateValuationSourceValues)
 export type RealEstatePositionMetadata = {
   address?: string;
   propertyType?: RealEstatePropertyType;
+  /** Free-text label when `propertyType` is `other`. */
+  propertyTypeOther?: string;
   /** 0–100; defaults to 100 when omitted. */
   ownershipPct?: number;
   mortgageBalanceUsd?: number;

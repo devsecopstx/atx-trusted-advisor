@@ -1174,13 +1174,25 @@
   flex-wrap: wrap;
 }
 
-.portfolio-manage-table__broker-icon {
+.portfolio-manage-table__broker-mark {
   flex-shrink: 0;
+  line-height: 0;
+}
+
+.portfolio-manage-table__broker-fallback {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 4px;
-  object-fit: contain;
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 700;
+  font-family: var(--xf-font-mono);
+  color: var(--xf-text-300);
   background: color-mix(in srgb, var(--xf-surface-200) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-text-400) 18%, transparent);
 }
 
 .portfolio-manage-table__broker-label {
@@ -4266,5 +4278,120 @@ html[data-xf-ui="soft"] .portfolio-alerts-pill--sym {
 
   .portfolio-alerts-unified__cell--act {
     padding-top: 0.35rem;
+  }
+}
+
+/* Alternative holdings (real estate) — add form + table disclaimer */
+.portfolio-edit-holdings-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 0.85rem;
+}
+
+.portfolio-edit-holdings-mode__btn {
+  border: 1px solid color-mix(in srgb, var(--xf-text-400) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 88%, transparent);
+  color: var(--xf-text-200);
+  border-radius: var(--xf-radius-sm);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.portfolio-edit-holdings-mode__btn--active {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  color: var(--xf-gain-green);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, var(--xf-surface-700));
+}
+
+.portfolio-re-holding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 42rem;
+}
+
+.portfolio-re-holding-form__disclaimer {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-warning-400) 28%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 92%, transparent);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--xf-text-300);
+}
+
+.portfolio-re-holding-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.65rem 0.75rem;
+}
+
+.portfolio-re-holding-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.portfolio-re-holding-form__field--full {
+  grid-column: 1 / -1;
+}
+
+.portfolio-re-holding-form__label {
+  font-size: 0.78rem;
+  color: var(--xf-text-300);
+}
+
+.portfolio-re-holding-form__hint {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--xf-text-400);
+}
+
+.portfolio-re-holding-form__net {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--xf-text-200);
+}
+
+.portfolio-re-holding-form__lookup {
+  padding: 0.65rem 0.7rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px dashed color-mix(in srgb, var(--xf-text-400) 20%, transparent);
+}
+
+.portfolio-re-holding-form__lookup-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xf-text-200);
+}
+
+.portfolio-re-holding-form__lookup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+}
+
+.portfolio-re-holding-form__submit {
+  align-self: flex-start;
+}
+
+.portfolio-re-holding-row__disclaimer {
+  margin: 0.35rem 0 0;
+  max-width: 28rem;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  color: var(--xf-text-400);
+}
+
+@media (max-width: 640px) {
+  .portfolio-re-holding-form__lookup-actions .cta {
+    flex: 1 1 100%;
+    justify-content: center;
   }
 }

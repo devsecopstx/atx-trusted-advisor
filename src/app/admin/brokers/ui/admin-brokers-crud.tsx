@@ -12,7 +12,6 @@ type BrokerRow = {
   type: string;
   name: string;
   description: string;
-  iconUrl: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -24,7 +23,6 @@ export function AdminBrokersCrud() {
   const [newType, setNewType] = useState("");
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
-  const [newIconUrl, setNewIconUrl] = useState("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -63,15 +61,13 @@ export function AdminBrokersCrud() {
           body: JSON.stringify({
             type,
             name,
-            ...(newDescription.trim() ? { description: newDescription.trim() } : {}),
-            ...(newIconUrl.trim() ? { iconUrl: newIconUrl.trim() } : {})
+            ...(newDescription.trim() ? { description: newDescription.trim() } : {})
           })
         })
       );
       setNewType("");
       setNewName("");
       setNewDescription("");
-      setNewIconUrl("");
       setStatus("Created");
       void refresh();
     } catch (e) {
@@ -79,7 +75,7 @@ export function AdminBrokersCrud() {
     }
   }
 
-  async function saveRow(row: BrokerRow, patch: { name: string; description: string; iconUrl: string }) {
+  async function saveRow(row: BrokerRow, patch: { name: string; description: string }) {
     setStatus(`Saving ${row.type}…`);
     try {
       await parseJson(
@@ -88,8 +84,7 @@ export function AdminBrokersCrud() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: patch.name.trim(),
-            description: patch.description.trim() || null,
-            iconUrl: patch.iconUrl.trim() || null
+            description: patch.description.trim() || null
           })
         })
       );
@@ -128,8 +123,11 @@ export function AdminBrokersCrud() {
       <h3>Add broker</h3>
       <p className="status-text" style={{ marginBottom: "0.75rem" }}>
         <strong>Type</strong> is a lowercase slug (<code className="font-mono text-xs">a–z</code>, digits, underscore) used
-        as custodian account <code className="font-mono text-xs">type</code>. Name, description, and icon URL are for the
-        admin console; icon URL is optional.
+        as custodian account <code className="font-mono text-xs">type</code>. Built-in slugs (
+        <code className="font-mono text-xs">fidelity</code>, <code className="font-mono text-xs">merrill</code>,{" "}
+        <code className="font-mono text-xs">ibkr</code>, <code className="font-mono text-xs">etrade</code>,{" "}
+        <code className="font-mono text-xs">forge</code>, <code className="font-mono text-xs">hiive</code>) render SVG marks
+        in this catalog and on portfolio accounts.
       </p>
       <div
         className="grid gap-3"
@@ -166,15 +164,6 @@ export function AdminBrokersCrud() {
             placeholder="Short note for admins"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm md:col-span-2">
-          <span>Icon URL</span>
-          <input
-            className="crud-input font-mono text-xs"
-            value={newIconUrl}
-            onChange={(e) => setNewIconUrl(e.target.value)}
-            placeholder="https://…"
-          />
-        </label>
       </div>
       <button className="cta cta-primary mb-6" disabled={loading} onClick={() => void createBroker()} type="button">
         <AddIcon className="crud-icon" /> Add broker
@@ -188,10 +177,9 @@ export function AdminBrokersCrud() {
         <table className="crud-table">
           <thead>
             <tr>
-              <th>Type</th>
+              <th>Type / mark</th>
               <th>Name</th>
               <th>Description</th>
-              <th>Icon</th>
               <th>Updated</th>
               <th />
             </tr>
@@ -214,42 +202,31 @@ export function AdminBrokersCrud() {
 
 function BrokerCatalogRow(props: {
   row: BrokerRow;
-  onSave: (row: BrokerRow, patch: { name: string; description: string; iconUrl: string }) => void | Promise<void>;
+  onSave: (row: BrokerRow, patch: { name: string; description: string }) => void | Promise<void>;
   onDelete: () => void | Promise<void>;
 }) {
   const { row } = props;
   const [name, setName] = useState(row.name);
   const [description, setDescription] = useState(row.description);
-  const [iconUrl, setIconUrl] = useState(row.iconUrl);
 
-  const dirty = name !== row.name || description !== row.description || iconUrl !== row.iconUrl;
+  const dirty = name !== row.name || description !== row.description;
   const builtInIcon = brokerIconSlugFromCatalogType(row.type);
 
   return (
     <tr>
       <td className="align-top">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <code className="font-mono text-xs text-[var(--xf-text-300)]">{row.type}</code>
-          <div className="flex items-center gap-2">
-            {builtInIcon ? (
-              <BrokerIcon broker={builtInIcon} size={36} showTooltip tooltipVariant="rich" />
-            ) : iconUrl.trim() ? (
-              // eslint-disable-next-line @next/next/no-img-element -- admin-supplied arbitrary icon URLs
-              <img
-                alt={`${row.name || row.type} broker icon`}
-                className="h-12 w-12 rounded border border-white/10 object-contain"
-                src={iconUrl.trim()}
-                title={row.type}
-              />
-            ) : (
-              <span
-                className="inline-flex h-12 w-12 items-center justify-center rounded border border-white/10 text-xs font-mono uppercase text-[var(--xf-text-300)]"
-                title={row.type}
-              >
-                {row.type.slice(0, 2)}
-              </span>
-            )}
-          </div>
+          {builtInIcon ? (
+            <BrokerIcon broker={builtInIcon} size={40} showTooltip tooltipVariant="rich" />
+          ) : (
+            <span
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-xs font-mono uppercase text-[var(--xf-text-300)]"
+              title={`No built-in mark for ${row.type}`}
+            >
+              {row.type.slice(0, 2)}
+            </span>
+          )}
         </div>
       </td>
       <td className="align-top">
@@ -264,28 +241,12 @@ function BrokerCatalogRow(props: {
           aria-label="Description"
         />
       </td>
-      <td className="align-top" style={{ minWidth: 120 }}>
-        <input
-          className="crud-input font-mono text-xs"
-          value={iconUrl}
-          onChange={(e) => setIconUrl(e.target.value)}
-          aria-label="Icon URL"
-        />
-        {iconUrl.trim() ? (
-          // eslint-disable-next-line @next/next/no-img-element -- admin-supplied arbitrary icon URLs
-          <img
-            alt=""
-            className="mt-1 h-12 w-12 rounded border border-white/10 object-contain"
-            src={iconUrl.trim()}
-          />
-        ) : null}
-      </td>
       <td className="text-xs opacity-80 align-top whitespace-nowrap">{new Date(row.updatedAt).toLocaleString()}</td>
       <td className="align-top whitespace-nowrap">
         <button
           className="cta cta-secondary text-xs"
           disabled={!dirty}
-          onClick={() => void props.onSave(row, { name, description, iconUrl })}
+          onClick={() => void props.onSave(row, { name, description })}
           title="Save changes for this broker row"
           type="button"
         >

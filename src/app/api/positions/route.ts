@@ -66,6 +66,7 @@ const realEstateMetadataSchema = z
   .object({
     address: z.string().trim().max(240).optional(),
     propertyType: z.enum(realEstatePropertyTypeValues).optional(),
+    propertyTypeOther: z.string().trim().max(120).optional(),
     ownershipPct: z.preprocess(parseNumberLike, z.number().min(0).max(100)).optional(),
     mortgageBalanceUsd: nonNegativeNumberLike().optional(),
     notes: z.string().trim().max(500).optional()

@@ -6,8 +6,11 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { SaveIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { AccountConsolidatedHoldingsTable } from "@/app/portfolio/ui/account-consolidated-holdings-table";
+import { RealEstateHoldingForm } from "@/app/portfolio/ui/real-estate-holding-form";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
 import type { PositionType } from "@/modules/core-admin/types";
+
+type HoldingsAddMode = "securities" | "real_estate";
 
 type AccountHoldingsCrudCardProps = {
   portfolioIdHex: string;
@@ -34,6 +37,7 @@ export function AccountHoldingsCrudCard({
   const [error, setError] = useState<string | null>(null);
   const [positions, setPositions] = useState(initialPositions);
 
+  const [addMode, setAddMode] = useState<HoldingsAddMode>("securities");
   const [holdingType, setHoldingType] = useState<PositionType>("stock");
   const [stSym, setStSym] = useState("");
   const [stShares, setStShares] = useState("");
@@ -283,7 +287,9 @@ export function AccountHoldingsCrudCard({
         </p>
       ) : null}
       {positions.length === 0 ? (
-        <p className="portfolio-edit-holdings-card__empty">No positions yet — add stock, options, or cash below.</p>
+        <p className="portfolio-edit-holdings-card__empty">
+          No positions yet — add securities or an alternative holding below.
+        </p>
       ) : (
         <div className="portfolio-edit-holdings-card__table-wrap">
           <AccountConsolidatedHoldingsTable
@@ -302,8 +308,44 @@ export function AccountHoldingsCrudCard({
 
       <div className="portfolio-edit-holdings-card__divider" aria-hidden />
       <h3 className="portfolio-edit-holdings-card__subtitle">
-        {editingStockPositionId ? "Change position" : "Add or Change position"}
+        {addMode === "real_estate"
+          ? "Add alternative holding"
+          : editingStockPositionId
+            ? "Change position"
+            : "Add or change position"}
       </h3>
+      <div className="portfolio-edit-holdings-mode" role="tablist" aria-label="Add holding type">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={addMode === "securities"}
+          className={`portfolio-edit-holdings-mode__btn${addMode === "securities" ? " portfolio-edit-holdings-mode__btn--active" : ""}`}
+          onClick={() => setAddMode("securities")}
+        >
+          Securities
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={addMode === "real_estate"}
+          className={`portfolio-edit-holdings-mode__btn${addMode === "real_estate" ? " portfolio-edit-holdings-mode__btn--active" : ""}`}
+          onClick={() => setAddMode("real_estate")}
+        >
+          Alternative holding
+        </button>
+      </div>
+
+      {addMode === "real_estate" ? (
+        <RealEstateHoldingForm
+          portfolioId={portfolioIdHex}
+          accountId={accountIdHex}
+          disabled={pending}
+          onSuccess={() => startTransition(() => router.refresh())}
+          onError={setError}
+        />
+      ) : null}
+
+      {addMode === "securities" ? (
       <form onSubmit={addHolding} className="stack-gap portfolio-edit-holdings-form">
         <label className="portfolio-edit-holdings-field">
           <span className="portfolio-edit-holdings-field__label">Instrument type</span>
@@ -470,6 +512,7 @@ export function AccountHoldingsCrudCard({
           </div>
         ) : null}
       </form>
+      ) : null}
     </section>
   );
 }

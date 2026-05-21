@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 
 import { AddIcon } from "@/app/admin/ui/crud-icons";
+import { RealEstateHoldingForm } from "@/app/portfolio/ui/real-estate-holding-form";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
+
+type QuickAddMode = "securities" | "real_estate";
 
 type AccountOption = {
   id: string;
@@ -66,10 +69,9 @@ export function PortfolioPositionQuickAdd({
       setAccountId(lockedAccountId);
     }
   }, [lockedAccountId]);
-  const [type, setType] = useState<"stock" | "option" | "cash" | "real_estate">("stock");
+  const [addMode, setAddMode] = useState<QuickAddMode>("securities");
+  const [type, setType] = useState<"stock" | "option" | "cash">("stock");
   const [ticker, setTicker] = useState("");
-  const [valuationDate, setValuationDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [propertyAddress, setPropertyAddress] = useState("");
   const [shares, setShares] = useState("");
   const [contracts, setContracts] = useState("");
   const [optionType, setOptionType] = useState<"call" | "put">("call");
@@ -91,56 +93,7 @@ export function PortfolioPositionQuickAdd({
       setError("Select an account.");
       return;
     }
-    const normalizedName = ticker.trim();
-    if (type === "real_estate") {
-      if (!normalizedName) {
-        setError("Property name is required.");
-        return;
-      }
-      const valueUsd = Number(purchasePrice);
-      if (!Number.isFinite(valueUsd) || valueUsd <= 0) {
-        setError("Current value must be a positive number.");
-        return;
-      }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(valuationDate.trim())) {
-        setError("Valuation date must be YYYY-MM-DD.");
-        return;
-      }
-      setPending(true);
-      try {
-        const response = await fetch("/api/positions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            portfolioId,
-            accountId,
-            type: "real_estate",
-            holdingName: normalizedName,
-            currentValueUsd: valueUsd,
-            lastValuationDate: valuationDate.trim(),
-            valuationSource: "user_provided",
-            metadata: propertyAddress.trim() ? { address: propertyAddress.trim() } : undefined
-          })
-        });
-        const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        if (!response.ok) {
-          setError(payload.error ?? "Could not save property.");
-          return;
-        }
-        setSuccess("Property saved.");
-        setTicker("");
-        setPurchasePrice("");
-        setPropertyAddress("");
-        startNavTransition(() => router.refresh());
-      } catch {
-        setError("Network error while saving property.");
-      } finally {
-        setPending(false);
-      }
-      return;
-    }
-
-    const normalizedTicker = normalizedName.toUpperCase();
+    const normalizedTicker = ticker.trim().toUpperCase();
     if (!normalizedTicker) {
       setError("Ticker is required.");
       return;
@@ -275,13 +228,41 @@ export function PortfolioPositionQuickAdd({
           color: "var(--xf-text-100)"
         }}
       >
-        {locked ? "Add holdings" : "Quick add position"}
+        {locked
+          ? addMode === "real_estate"
+            ? "Add alternative holding"
+            : "Add holdings"
+          : addMode === "real_estate"
+            ? "Add alternative holding"
+            : "Quick add position"}
       </h2>
       <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-        {locked
-          ? "Enter type, symbol, quantity, and purchase price. Options need expiration and usually strike."
-          : "Use OpenAPI position shape fields (`type`, `ticker`, `shares`, `purchasePrice`) and choose the account. Option rows also support `contracts`, `optionType`, `strike`, and `expiration`."}
+        {addMode === "real_estate"
+          ? "Real estate and other illiquid assets — manual valuation with optional Zillow / Redfin lookup."
+          : locked
+            ? "Enter type, symbol, quantity, and purchase price. Options need expiration and usually strike."
+            : "Use OpenAPI position shape fields (`type`, `ticker`, `shares`, `purchasePrice`) and choose the account. Option rows also support `contracts`, `optionType`, `strike`, and `expiration`."}
       </p>
+      <div className="portfolio-edit-holdings-mode" role="tablist" aria-label="Add holding type" style={{ marginBottom: "0.75rem" }}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={addMode === "securities"}
+          className={`portfolio-edit-holdings-mode__btn${addMode === "securities" ? " portfolio-edit-holdings-mode__btn--active" : ""}`}
+          onClick={() => setAddMode("securities")}
+        >
+          Securities
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={addMode === "real_estate"}
+          className={`portfolio-edit-holdings-mode__btn${addMode === "real_estate" ? " portfolio-edit-holdings-mode__btn--active" : ""}`}
+          onClick={() => setAddMode("real_estate")}
+        >
+          Alternative holding
+        </button>
+      </div>
       {selectedAccount ? (
         <p className="status-text" style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>
           Target account: <strong>{selectedAccount.name}</strong> ({formatBrokerType(selectedAccount.brokerType)})
@@ -297,6 +278,38 @@ export function PortfolioPositionQuickAdd({
           {success}
         </p>
       ) : null}
+      {addMode === "real_estate" ? (
+        <>
+          {locked ? null : (
+            <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column", marginBottom: "0.75rem" }}>
+              <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Account</span>
+              <select
+                className="crud-input"
+                value={accountId}
+                onChange={(event) => setAccountId(event.target.value)}
+                required
+              >
+                {accounts.map((account) => (
+                  <option value={account.id} key={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <RealEstateHoldingForm
+            portfolioId={portfolioId}
+            accountId={accountId}
+            disabled={pending}
+            onSuccess={() => {
+              setSuccess("Property saved.");
+              startNavTransition(() => router.refresh());
+            }}
+            onError={setError}
+          />
+        </>
+      ) : null}
+      {addMode === "securities" ? (
       <form
         onSubmit={submitPosition}
         className="stack-gap"
@@ -336,54 +349,23 @@ export function PortfolioPositionQuickAdd({
           <select
             className="crud-input"
             value={type}
-            onChange={(event) =>
-              setType(event.target.value as "stock" | "option" | "cash" | "real_estate")
-            }
+            onChange={(event) => setType(event.target.value as "stock" | "option" | "cash")}
           >
             <option value="stock">stock</option>
             <option value="option">option</option>
             <option value="cash">cash</option>
-            <option value="real_estate">real estate</option>
           </select>
         </label>
         <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>
-            {type === "real_estate" ? "Property name" : "Ticker"}
-          </span>
+          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Ticker</span>
           <input
             className="crud-input"
             value={ticker}
             onChange={(event) => setTicker(event.target.value)}
-            placeholder={type === "cash" ? "USD" : type === "real_estate" ? "Lake Travis — Primary" : "TSLA"}
+            placeholder={type === "cash" ? "USD" : "TSLA"}
             required
           />
         </label>
-        {type === "real_estate" ? (
-          <>
-            <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-              <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Valuation date</span>
-              <input
-                className="crud-input"
-                type="date"
-                value={valuationDate}
-                onChange={(event) => setValuationDate(event.target.value)}
-                required
-              />
-            </label>
-            <label
-              className="stack-gap"
-              style={{ gap: "0.25rem", display: "flex", flexDirection: "column", gridColumn: "1 / -1" }}
-            >
-              <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Address (optional)</span>
-              <input
-                className="crud-input"
-                value={propertyAddress}
-                onChange={(event) => setPropertyAddress(event.target.value)}
-                placeholder="123 Lakeview Dr, Austin, TX"
-              />
-            </label>
-          </>
-        ) : null}
         {type === "stock" ? (
           <div className="stack-gap" style={{ gridColumn: "1 / -1", maxWidth: "28rem" }}>
             <StockSymbolLiveField
@@ -406,7 +388,6 @@ export function PortfolioPositionQuickAdd({
             onChange={(event) => setShares(event.target.value)}
             placeholder={type === "cash" ? "5000" : "10"}
             required={type === "cash" || type === "stock"}
-            disabled={type === "real_estate"}
           />
         </label>
         {type === "option" ? (
@@ -462,9 +443,7 @@ export function PortfolioPositionQuickAdd({
           </>
         ) : null}
         <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>
-            {type === "real_estate" ? "Current value (USD)" : "Purchase price"}
-          </span>
+          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Purchase price</span>
           <input
             className="crud-input"
             type="number"
@@ -472,7 +451,7 @@ export function PortfolioPositionQuickAdd({
             step="0.01"
             value={purchasePrice}
             onChange={(event) => setPurchasePrice(event.target.value)}
-            placeholder={type === "cash" ? "1.00" : type === "real_estate" ? "2850000" : "250.00"}
+            placeholder={type === "cash" ? "1.00" : "250.00"}
             required
           />
         </label>
@@ -481,6 +460,7 @@ export function PortfolioPositionQuickAdd({
           Add position
         </button>
       </form>
+      ) : null}
     </section>
   );
 }

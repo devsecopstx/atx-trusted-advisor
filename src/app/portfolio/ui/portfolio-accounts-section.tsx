@@ -1,12 +1,13 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import Image from "next/image";
 import { useMemo, useRef } from "react";
 
 import { PortfolioAccountActionsCell } from "@/app/portfolio/ui/portfolio-account-actions-cell";
 import type { PortfolioAccountManageOption } from "@/app/portfolio/ui/portfolio-account-manage-bar";
 import { PortfolioAddAccountPanel } from "@/app/portfolio/ui/portfolio-add-account-panel";
+import { BrokerIcon } from "@/components/brokers/BrokerIcon";
+import type { BrokerIconSlug } from "@/lib/broker-ui";
 
 export type PortfolioAccountTableRow = {
   accountIdHex: string;
@@ -14,8 +15,8 @@ export type PortfolioAccountTableRow = {
   isDefault: boolean;
   deskLine: string;
   brokerTypeLabel: string;
-  /** Static `/brokers/*.png` when type matches a known custodian. */
-  brokerIconUrl: string | null;
+  /** Built-in SVG mark from `BrokerIcon` when catalog slug matches. */
+  brokerIconSlug: BrokerIconSlug | null;
   extAccountId: string;
   positionsLabel: string;
   /** Book-style cost basis (cash + lots + option premium) when positions exist; otherwise "—". */
@@ -79,15 +80,22 @@ function PortfolioAccountTableDataRow({
       </td>
       <td className="portfolio-manage-table__mono">
         <div className="portfolio-manage-table__broker-row">
-          {row.brokerIconUrl ? (
-            <Image
-              className="portfolio-manage-table__broker-icon"
-              src={row.brokerIconUrl}
-              alt=""
-              width={22}
-              height={22}
+          {row.brokerIconSlug ? (
+            <BrokerIcon
+              broker={row.brokerIconSlug}
+              size={22}
+              showTooltip={false}
+              className="portfolio-manage-table__broker-mark"
             />
-          ) : null}
+          ) : (
+            <span
+              className="portfolio-manage-table__broker-fallback"
+              title={row.brokerTypeLabel}
+              aria-hidden
+            >
+              {row.brokerTypeLabel.slice(0, 2).toUpperCase()}
+            </span>
+          )}
           <span className="portfolio-manage-table__broker-label">{row.brokerTypeLabel}</span>
         </div>
         <div className="portfolio-manage-table__ref">{row.extAccountId || "—"}</div>

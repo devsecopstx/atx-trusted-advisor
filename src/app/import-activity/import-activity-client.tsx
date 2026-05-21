@@ -29,7 +29,6 @@ export type ImportActivityPortfolioOption = {
 export type ImportActivityBrokerOption = {
   id: string;
   name: string;
-  iconUrl: string;
 };
 
 type AccountRow = {

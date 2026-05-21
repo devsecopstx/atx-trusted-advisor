@@ -2941,7 +2941,6 @@ async function seedBrokerCatalogIfEmpty(): Promise<void> {
       type: entry.type,
       name: entry.name,
       description: entry.description,
-      iconUrl: entry.iconUrl,
       createdAt: now,
       updatedAt: now
     }))
@@ -2962,7 +2961,6 @@ async function ensureDefaultBrokerCatalogEntries(): Promise<void> {
           type: entry.type,
           name: entry.name,
           description: entry.description,
-          iconUrl: entry.iconUrl,
           createdAt: now,
           updatedAt: now
         }
