@@ -49,25 +49,19 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
     ]
   },
   {
-    title: "People & access",
-    blurb: "User lifecycle, roles, open access requests, and per-user defaults — unified on Manage users.",
+    title: "Desk & operations",
+    blurb: "Users and access, schedulers, batches, delivery, and portfolio-scoped recommendations.",
     items: [
       {
         href: "/admin/manage-users",
         title: "Manage users & access",
         description:
           "Directory of users plus open access requests (approve/reject), add user, sortable table, and per-user broker, portfolio, billing, and xChat defaults. Legacy /admin/access-requests redirects here."
-      }
-    ]
-  },
-  {
-    title: "Desk & operations",
-    blurb: "Schedulers, batches, and portfolio-scoped recommendations.",
-    items: [
+      },
       {
         href: "/admin/tasks",
-        title: "Scheduled tasks",
-        description: "Create scheduled tasks, run jobs manually, and monitor status."
+        title: "Scheduled jobs",
+        description: "Create scheduled jobs, run manually, and review run history."
       },
       {
         href: "/admin/marketing",
@@ -89,7 +83,7 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/admin/delivery-channels",
         title: "Delivery channels",
         description:
-          "Create platform delivery channels (in-app, Slack webhook, or SMTP email), store destinations, and send a test message."
+          "Delivery channels (in-app, Slack, email) plus developer tabs: xOptions API test, xChat API test, and test post to X."
       }
     ]
   },
@@ -193,30 +187,6 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         title: "xChat usage & spend",
         description:
           "Tool telemetry, token-based estimates, and vendor cost_usd_ticks rollups by day / tenant / persona."
-      }
-    ]
-  },
-  {
-    title: "Developer & integration",
-    blurb: "Temporary tooling; fold into product flows when stable.",
-    items: [
-      {
-        href: "/admin/xoptions",
-        title: "xOptions API test",
-        description:
-          "TODO: Remove or merge into product when strategy-options is fully integrated. Exercise GET expirations and option-chain reads (BFF / backend parity)."
-      },
-      {
-        href: "/admin/xchat-api-test",
-        title: "xChat API test",
-        description:
-          "Run canned POST /api/xchat/ask checks (including code_interpreter prompts) to verify persona tool wiring and response payloads."
-      },
-      {
-        href: "/admin/test-post-x",
-        title: "Test post to X",
-        description:
-          "Send a direct test tweet via POST /api/admin/marketing/test-post-x (OAuth posting credentials; restricted test handle)."
       }
     ]
   }

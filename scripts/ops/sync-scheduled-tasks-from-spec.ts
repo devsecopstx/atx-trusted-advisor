@@ -29,13 +29,17 @@ import { type Collection, type Db, MongoClient, ObjectId } from "mongodb";
 
 import cronstrue from "cronstrue";
 
-import { SCHEDULED_TASK_CATEGORY_DISPLAY_NAME } from "@/lib/scheduled-task-category-catalog";
+import {
+    SCHEDULED_TASK_CATEGORY_CATALOG,
+    SCHEDULED_TASK_CATEGORY_DISPLAY_NAME
+} from "@/lib/scheduled-task-category-catalog";
 import {
     SCHEDULED_TASK_CATEGORIES,
     SCHEDULED_TASK_CATEGORY_DEFAULT_CRON,
     type ScheduledTaskCategory
 } from "@/lib/scheduled-task-category-schema";
 import { computeNextRunAtFromCron } from "@/lib/scheduled-task-cron";
+import { pruneDuplicateSystemWideScheduledTasks } from "@/modules/core-admin/repository";
 
 /** Categories omitted from automatic upsert (operators create rows manually). */
 const SCHEDULED_TASK_CATEGORIES_EXCLUDED_FROM_SPEC_SYNC: ReadonlySet<ScheduledTaskCategory> = new Set([
@@ -385,7 +389,8 @@ async function main(): Promise<void> {
       continue;
     }
     const scheduleCron = SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[category];
-    const name = SCHEDULED_TASK_CATEGORY_DISPLAY_NAME[category];
+    const name = SCHEDULED_TASK_CATEGORY_CATALOG[category].defaultJobName;
+    const displayName = SCHEDULED_TASK_CATEGORY_DISPLAY_NAME[category];
     const scheduleDescription = describeCron(scheduleCron);
     const nextRunAt =
       computeNextRunAtFromCron(scheduleCron, now) ?? new Date(now.getTime() + 5 * 60 * 1000);
@@ -413,7 +418,8 @@ async function main(): Promise<void> {
     }
 
     const cronDrift = (existing.scheduleCron ?? "").trim() !== scheduleCron;
-    const nameDrift = (existing.name ?? "").trim() !== name;
+    const nameDrift =
+      (existing.name ?? "").trim() !== name && (existing.name ?? "").trim() !== displayName;
     if (!cronDrift && !nameDrift && !cli.force) {
       plan.push(`OK ${category} (matches spec)`);
       continue;
@@ -448,6 +454,33 @@ async function main(): Promise<void> {
     );
     if (cli.apply) {
       await coll.updateMany(legacyFilter, { $set: { category: "options_scanner" } });
+    }
+  }
+
+  if (useGlobalTaskRows && cli.apply) {
+    const { removed } = await pruneDuplicateSystemWideScheduledTasks();
+    if (removed > 0) {
+      plan.push(`PRUNE removed ${removed} duplicate system-wide task row(s) (one per category)`);
+    }
+  } else if (useGlobalTaskRows) {
+    const dupCategories = await coll
+      .aggregate<{ _id: string; n: number }>([
+        {
+          $match: {
+            $and: [
+              { $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }] },
+              { $or: [{ tenantId: null }, { tenantId: { $exists: false } }] }
+            ]
+          }
+        },
+        { $group: { _id: "$category", n: { $sum: 1 } } },
+        { $match: { n: { $gt: 1 } } }
+      ])
+      .toArray();
+    if (dupCategories.length > 0) {
+      plan.push(
+        `PRUNE would remove duplicate system-wide rows for: ${dupCategories.map((d) => `${d._id}×${d.n}`).join(", ")}`
+      );
     }
   }
 

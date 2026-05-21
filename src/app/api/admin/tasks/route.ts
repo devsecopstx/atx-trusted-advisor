@@ -16,7 +16,9 @@ import {
 import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
 import {
     createScheduledTask,
-    listScheduledTasks
+    findSystemWideScheduledTaskByCategory,
+    listScheduledTasks,
+    pruneDuplicateSystemWideScheduledTasks
 } from "@/modules/core-admin/repository";
 
 const createTaskSchema = z.object({
@@ -48,6 +50,7 @@ export async function GET(request: Request) {
     return tenantIdHex;
   }
 
+  await pruneDuplicateSystemWideScheduledTasks();
   const tasks = await listScheduledTasks({
     tenantId: tenantIdHex,
     systemWideOnly: true
@@ -86,6 +89,16 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: scheduleValidation.message ?? "Invalid schedule payload" },
       { status: 400 }
+    );
+  }
+
+  const existingSystemWide = await findSystemWideScheduledTaskByCategory(parsed.data.category);
+  if (existingSystemWide?._id) {
+    return NextResponse.json(
+      {
+        error: `A system-wide job already exists for category "${parsed.data.category}". Edit the existing row or delete it first.`
+      },
+      { status: 409 }
     );
   }
 

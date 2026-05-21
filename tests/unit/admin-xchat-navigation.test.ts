@@ -21,10 +21,10 @@ describe("admin navigation includes xChat", () => {
     expect(shell).toContain("<AdminLeftRail");
   });
 
-  it("developer & integration group includes xChat API test link", () => {
+  it("delivery channels hub entry mentions xChat API test tab", () => {
     const groupsPath = path.join(process.cwd(), "src/app/admin/ui/admin-hub-sections.ts");
     const groups = readFileSync(groupsPath, "utf8");
-    expect(groups).toContain('href: "/admin/xchat-api-test"');
-    expect(groups).toContain('title: "xChat API test"');
+    expect(groups).toContain('href: "/admin/delivery-channels"');
+    expect(groups).toContain("xChat API test");
   });
 });

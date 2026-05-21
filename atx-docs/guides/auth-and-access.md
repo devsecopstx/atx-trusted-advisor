@@ -81,7 +81,7 @@ If X does not expose an email, the UI uses the **link email** step so the user c
 
 ## Admin — Manage users (directory + onboarding test)
 
-**≥3.19.1:** **Admin → Manage users** (`/admin/manage-users`) lists **Access requests** first, then **Users** (sortable columns; grouped section headers). **Create user** opens a dedicated card from the toolbar; **User settings** opens broker/portfolio/notification defaults for the selected approved user. Pending onboarding rows (open request + **`core_users`** with no login role) appear **only** in **Access requests** until approval — not duplicated under **Users**. Approve/reject use shield/circle access icons; approval still requires tenant + role + plan on **`PUT /api/admin/access-requests/{id}`**. **Onboarding test** checkbox creates a pending request via **`POST /api/admin/access-requests`** without immediate login provisioning.
+**≥3.19.1:** **Admin → Desk & operations → Manage users & access** (`/admin/manage-users`; hub entry under **Desk & operations** since **≥3.24.6**) lists **Access requests** first, then **Users** (sortable columns; grouped section headers). **Create user** opens a dedicated card from the toolbar; **User settings** opens broker/portfolio/notification defaults for the selected approved user. Pending onboarding rows (open request + **`core_users`** with no login role) appear **only** in **Access requests** until approval — not duplicated under **Users**. Approve/reject use shield/circle access icons; approval still requires tenant + role + plan on **`PUT /api/admin/access-requests/{id}`**. **Onboarding test** checkbox creates a pending request via **`POST /api/admin/access-requests`** without immediate login provisioning.
 
 ## Admin — Manage users (credential invite resend)
 

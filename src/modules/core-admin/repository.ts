@@ -19,6 +19,11 @@ import {
     resolveScheduleDescription
 } from "@/lib/scheduled-task-schedule";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
+import {
+    dedupeSystemWideScheduledTasksByCategory,
+    scheduledTaskRowIdHex,
+    systemWideScheduledTaskCategoryFilter
+} from "@/lib/system-wide-scheduled-task-dedupe";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import {
@@ -919,7 +924,63 @@ export async function listScheduledTasks(options?: {
           ]
         } as Filter<ScheduledTask>)
       : (scheduledTaskTenantReadScope(portfolioFilter, options?.tenantId) as Filter<ScheduledTask>);
-  return db.collection<ScheduledTask>(collections.scheduledTasks).find(query).sort({ name: 1 }).limit(limit).toArray();
+  const rows = await db
+    .collection<ScheduledTask>(collections.scheduledTasks)
+    .find(query)
+    .sort({ name: 1 })
+    .limit(options?.systemWideOnly === true ? Math.max(limit, 200) : limit)
+    .toArray();
+  if (options?.systemWideOnly === true) {
+    return dedupeSystemWideScheduledTasksByCategory(rows).slice(0, limit);
+  }
+  return rows;
+}
+
+/** System-wide job for a category (no tenantId / portfolioId), if any. */
+export async function findSystemWideScheduledTaskByCategory(
+  category: ScheduledTask["category"]
+): Promise<ScheduledTask | null> {
+  const db = await getDb();
+  const rows = await db
+    .collection<ScheduledTask>(collections.scheduledTasks)
+    .find(systemWideScheduledTaskCategoryFilter(category) as Filter<ScheduledTask>)
+    .toArray();
+  if (rows.length === 0) {
+    return null;
+  }
+  return dedupeSystemWideScheduledTasksByCategory(rows)[0] ?? null;
+}
+
+/** Removes extra system-wide rows that share a category (keeps canonical name + enabled). */
+export async function pruneDuplicateSystemWideScheduledTasks(): Promise<{ removed: number }> {
+  const db = await getDb();
+  const coll = db.collection<ScheduledTask>(collections.scheduledTasks);
+  const rows = await coll
+    .find({
+      $and: [
+        { $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }] },
+        { $or: [{ tenantId: null }, { tenantId: { $exists: false } }] }
+      ]
+    } as Filter<ScheduledTask>)
+    .toArray();
+  const canonical = dedupeSystemWideScheduledTasksByCategory(rows);
+  const keepIds = new Set(
+    canonical.map((r) => scheduledTaskRowIdHex(r)).filter((id): id is string => Boolean(id))
+  );
+  const deleteIds: string[] = [];
+  for (const r of rows) {
+    const id = scheduledTaskRowIdHex(r);
+    if (id && !keepIds.has(id)) {
+      deleteIds.push(id);
+    }
+  }
+  if (deleteIds.length === 0) {
+    return { removed: 0 };
+  }
+  const res = await coll.deleteMany({
+    _id: { $in: deleteIds.map((id) => new ObjectId(id)) }
+  });
+  return { removed: res.deletedCount ?? 0 };
 }
 
 export async function createScheduledTask(

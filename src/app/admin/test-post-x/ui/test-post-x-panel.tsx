@@ -11,7 +11,11 @@ function freshPlaceholder(): string {
   return `[dev] aTx⚡Finance admin test post — ${new Date().toISOString().slice(0, 19)}Z`;
 }
 
-export function TestPostXPanel() {
+type TestPostXPanelProps = {
+  returnPath?: string;
+};
+
+export function TestPostXPanel({ returnPath = "/admin/delivery-channels?tab=test-post-x" }: TestPostXPanelProps) {
   const [text, setText] = useState(freshPlaceholder);
   const [status, setStatus] = useState("Enter text and send a test post.");
   const [busy, setBusy] = useState(false);
@@ -43,7 +47,7 @@ export function TestPostXPanel() {
 
   return (
     <section className="panel stack-gap">
-      <MarketingXPostingConnectPanel returnPath="/admin/test-post-x" />
+      <MarketingXPostingConnectPanel returnPath={returnPath} />
 
       <article className="surface-card xf-widget section-card">
         <h3 className="mt-0">Post body</h3>
@@ -83,8 +87,8 @@ export function TestPostXPanel() {
       </article>
 
       <div className="tool-row flex-wrap">
-        <Link className="cta cta-secondary" href="/admin">
-          Back to admin hub
+        <Link className="cta cta-secondary" href="/admin/delivery-channels">
+          Delivery channels
         </Link>
         <Link className="cta cta-secondary" href="/admin/marketing">
           Marketing scheduler

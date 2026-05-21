@@ -18,11 +18,14 @@ export default async function AdminTasksPage() {
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <p className="eyebrow">atxfinance core admin</p>
-        <h1 className="hero-title">Manage Tasks Schedule</h1>
+        <h1 className="hero-title">Scheduled jobs</h1>
         <p className="hero-copy">
-          Create and run predefined scheduler jobs with robust cron controls. Use the tabs below:{" "}
-          <strong>Delivery channels</strong> to review targets, <strong>Schedule tasks</strong> to create jobs and
-          optionally attach a channel for notifications.
+          Create and run tenant-level scheduler jobs (cron / RRULE). Use <strong>Jobs</strong> to edit and run,{" "}
+          <strong>Add job</strong> for new schedules, and{" "}
+          <a className="underline font-medium" href="/admin/delivery-channels">
+            Delivery channels
+          </a>{" "}
+          for Slack/email targets.
         </p>
       </section>
 

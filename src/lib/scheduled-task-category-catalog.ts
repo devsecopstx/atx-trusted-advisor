@@ -8,7 +8,7 @@ import {
  * Keep descriptions aligned with `task-runner.ts` executors and design-system scheduled-task docs.
  */
 export type ScheduledTaskCategoryCatalogEntry = {
-  /** Human-readable name (used by sync script `name` field and admin labels). */
+  /** Human-readable label (Job type column / templates). */
   displayName: string;
   /** Default `name` on create (kebab-case, matches job module conventions where applicable). */
   defaultJobName: string;

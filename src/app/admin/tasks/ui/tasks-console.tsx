@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RRuleScheduleBuilderModal } from "@/app/admin/tasks/ui/rrule-schedule-builder-modal";
@@ -41,20 +42,6 @@ type DeliveryChannelRow = {
   createdAt: string;
   updatedAt: string;
 };
-
-function formatSlackWebhookPreview(url: string): string {
-  const t = url.trim();
-  if (!t) return "—";
-  if (t.length <= 48) return t;
-  return `${t.slice(0, 28)}…${t.slice(-12)}`;
-}
-
-function formatEmailPreview(email: string): string {
-  const t = email.trim();
-  if (!t) return "—";
-  if (t.length <= 40) return t;
-  return `${t.slice(0, 22)}…${t.slice(-10)}`;
-}
 
 type TaskRun = {
   _id?: string;
@@ -118,7 +105,7 @@ function buildSchedulePayload(schedule: SchedulePayload) {
 }
 
 export function TasksConsole() {
-  const [activeTab, setActiveTab] = useState<"tasks" | "schedule" | "runs" | "channels">("tasks");
+  const [activeTab, setActiveTab] = useState<"jobs" | "schedule" | "runs">("jobs");
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [runs, setRuns] = useState<TaskRun[]>([]);
   /** Default: current UTC calendar day; optional rolling 30 days. */
@@ -268,8 +255,8 @@ export function TasksConsole() {
         })
       );
       await refreshAll();
-      setActiveTab("tasks");
-      setStatus("Created — see Tasks tab");
+      setActiveTab("jobs");
+      setStatus("Created — see Jobs tab");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to create job");
     } finally {
@@ -576,7 +563,7 @@ export function TasksConsole() {
         <div
           className="tool-row"
           role="tablist"
-          aria-label="Scheduled tasks sections"
+          aria-label="Scheduled jobs sections"
           style={{
             gap: "0.35rem",
             marginBottom: "1rem",
@@ -588,12 +575,12 @@ export function TasksConsole() {
           <button
             type="button"
             role="tab"
-            aria-selected={activeTab === "tasks"}
-            className={`tiny-button ${activeTab === "tasks" ? "cta cta-primary" : ""}`}
-            onClick={() => setActiveTab("tasks")}
+            aria-selected={activeTab === "jobs"}
+            className={`tiny-button ${activeTab === "jobs" ? "cta cta-primary" : ""}`}
+            onClick={() => setActiveTab("jobs")}
             disabled={loading}
           >
-            Tasks ({tasks.length})
+            Jobs ({tasks.length})
           </button>
           <button
             type="button"
@@ -603,7 +590,7 @@ export function TasksConsole() {
             onClick={() => setActiveTab("schedule")}
             disabled={loading}
           >
-            Schedule tasks
+            Add job
           </button>
           <button
             type="button"
@@ -616,26 +603,22 @@ export function TasksConsole() {
             Task runs ({runs.length}
             {runHistoryWindow === "today" ? " · today (UTC window)" : " · 30d"})
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "channels"}
-            className={`tiny-button ${activeTab === "channels" ? "cta cta-primary" : ""}`}
-            onClick={() => setActiveTab("channels")}
-            disabled={loading}
-          >
-            Delivery channels ({deliveryChannels.length})
-          </button>
+          <Link className="tiny-button cta cta-secondary" href="/admin/delivery-channels">
+            Delivery channels
+          </Link>
         </div>
 
-        {activeTab === "tasks" ? (
+        {activeTab === "jobs" ? (
           <div className="stack-gap">
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
               Edit <strong>system-wide</strong> scheduled jobs (global admin only): each row runs once per tenant in{" "}
               <code className="font-mono text-xs">core_tenants</code>, and run summaries (Slack/email) include{" "}
-              <strong>combined output across tenants</strong>. Use <strong>Schedule tasks</strong> to add schedules.
-              Set a delivery channel to post after every run (manual or scheduler). Delivery channels are still
-              chosen from your tenant&apos;s admin list; the job itself is not stored with a single{" "}
+              <strong>combined output across tenants</strong>. Use <strong>Add job</strong> to create schedules.
+              Set a delivery channel to post after every run (manual or scheduler). Manage channels on{" "}
+              <Link className="underline font-medium" href="/admin/delivery-channels">
+                Delivery channels
+              </Link>
+              ; the job itself is not stored with a single{" "}
               <code className="font-mono text-xs">tenantId</code>.{" "}
               <strong>Cron expressions use UTC</strong> (engine matches UTC clock); <strong>Next run</strong> and run
               history timestamps use the <strong>display timezone</strong> you pick above (default Central).
@@ -815,7 +798,7 @@ export function TasksConsole() {
                 </table>
               </div>
             ) : (
-              <p className="status-text">No tasks yet. Open the Schedule tasks tab to create a job schedule.</p>
+              <p className="status-text">No jobs yet. Open the Add job tab to create a schedule.</p>
             )}
           </div>
         ) : activeTab === "schedule" ? (
@@ -1070,56 +1053,7 @@ export function TasksConsole() {
               </div>
             )}
           </div>
-        ) : (
-          <div className="stack-gap">
-            <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Tenant delivery targets for task output and notifications. Use the admin hub <strong>Delivery channels</strong>{" "}
-              page to add, edit, or send test messages.
-            </p>
-            {deliveryChannels.length > 0 ? (
-              <div className="crud-table-wrap">
-                <table className="crud-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Target</th>
-                      <th>Slack / email</th>
-                      <th>Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {deliveryChannels.map((ch) => (
-                      <tr key={ch._id}>
-                        <td>{ch.name}</td>
-                        <td>
-                          {ch.deliveryTarget === "slack"
-                            ? "Slack"
-                            : ch.deliveryTarget === "email"
-                              ? "Email"
-                              : "In-app"}
-                        </td>
-                        <td className="font-mono text-xs">
-                          {ch.deliveryTarget === "slack"
-                            ? formatSlackWebhookPreview(ch.slackWebhookUrl ?? "")
-                            : ch.deliveryTarget === "email"
-                              ? formatEmailPreview(ch.emailTo ?? "")
-                              : "—"}
-                        </td>
-                        <td className="font-mono text-xs text-slate-400">
-                          {formatDateTimeInTimeZone(ch.updatedAt, displayTimeZone)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="status-text">
-                No delivery channels yet. Create one from the admin hub <strong>Delivery channels</strong> page.
-              </p>
-            )}
-          </div>
-        )}
+        ) : null}
       </article>
       <RRuleScheduleBuilderModal
         key={

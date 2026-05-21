@@ -17,11 +17,14 @@
 
 | Surface | Route / entry | Component |
 |--------|----------------|-----------|
-| **Tenant tasks** | **`/admin/tasks`** | **`src/app/admin/tasks/ui/tasks-console.tsx`** (`TasksConsole`) |
+| **Tenant tasks** | **`/admin/tasks`** (hero: **Scheduled jobs**) | **`src/app/admin/tasks/ui/tasks-console.tsx`** (`TasksConsole`) |
+| **Delivery channels** | **`/admin/delivery-channels`** | **`admin-delivery-channels-console.tsx`** — **Channels** CRUD + developer tabs (**xOptions API test**, **xChat API test**, **Test post to X**); legacy **`/admin/xoptions`**, **`/admin/xchat-api-test`**, **`/admin/test-post-x`** redirect here |
 
 **UI behavior (tenant console):**
 
+- Tabs: **Jobs** (edit/run existing rows), **Add job** (create schedule), **Task runs** (history). Delivery-channel configuration is linked to **`/admin/delivery-channels`** (not a tab on this page).
 - Polls **`GET /api/admin/tasks`** and **`GET /api/admin/task-runs`** on an interval and on refresh.
+- **`GET /api/admin/tasks`** prunes duplicate **system-wide** rows that share the same **`category`** (keeps canonical **`name`** from **`scheduled-task-category-catalog`** / sync spec — see **`src/lib/system-wide-scheduled-task-dedupe.ts`**). **`POST`** returns **409** when a system-wide job for that category already exists.
 - **Create task:** `name`, `category`, `scheduleCron` (cron string), POST **`/api/admin/tasks`** with `enabled: true`.
 - **Edit row:** inline name, category, cron, enabled; per-row **Save** → **`PATCH /api/admin/tasks/{id}`** (or bulk **Save changes**).
 - **Run now:** **`POST /api/admin/tasks/{id}/run`** → shows status and refreshes runs. **Next.js:** manual Run passes **`bypassMarketWindow: true`** through **`executeScheduledTask`** so **price**, **options**, **options expiration roll**, and **watchlist price** scanners execute **on demand** even **outside** the US regular-session desk window. **`POST /api/admin/scheduler/tick`** does **not** bypass — due tasks still respect market hours on Next.
@@ -36,7 +39,7 @@
 
 **Reviewer / parity:** tenant + desk-mutation rules and test inventory — **[`scanner-jobs-tenant-pattern.md`](./scanner-jobs-tenant-pattern.md)**. **Internal delegate route:** **`tests/integration/internal-scheduler-execute-task-route.test.ts`** (mocked Mongo + task-runner; secret header / Zod / 404 paths).
 
-**Tenant task run summaries:** Optional **`deliveryChannelTarget`** on **`admin_scheduled_tasks`** points at **`admin_delivery_channels`**. Configure channels under **`/admin/delivery-channels`**: **`slack`** (incoming webhook), **`email`** (recipient `emailTo`; SMTP uses **`SMTP_*`** + **`DESK_EMAIL_FROM`** like portfolio desk mail), or **`in_app`** (no external send). After each run, **`notifyScheduledTaskSlackSummary`** (`scheduled-task-slack-notify.ts`) posts to Slack or sends email.
+**Tenant task run summaries:** Optional **`deliveryChannelTarget`** on **`admin_scheduled_tasks`** points at **`admin_delivery_channels`**. Configure channels under **`/admin/delivery-channels`** (**Channels** tab): **`slack`** (incoming webhook), **`email`** (recipient `emailTo`; SMTP uses **`SMTP_*`** + **`DESK_EMAIL_FROM`** like portfolio desk mail), or **`in_app`** (no external send). Developer harnesses (xOptions chain reads, xChat ask, test post to X) live on sibling tabs on the same page (**≥3.24.6**). After each run, **`notifyScheduledTaskSlackSummary`** (`scheduled-task-slack-notify.ts`) posts to Slack or sends email.
 
 **Desk notifications (shipped):** When scanners create alerts, the app calls **`dispatchPortfolioDeskEvents`** for enabled **`portfolio_delivery_channels`** — Slack webhooks (`hooks.slack.com`) with retries; **email** when **`SMTP_*`** + **`DESK_EMAIL_FROM`** are set (`src/lib/desk-smtp.ts`); SMS/push still deferred. Optional env: **`DESK_NOTIFICATION_SLACK_RETRIES`**, **`DESK_NOTIFICATION_RETRY_BASE_MS`** (also used for SMTP retries).
 

@@ -10,7 +10,10 @@ const authMocks = vi.hoisted(() => ({
 const repositoryMocks = vi.hoisted(() => ({
   listScheduledTasks: vi.fn(),
   listDueScheduledTasks: vi.fn(),
-  claimDueScheduledTaskForExecution: vi.fn()
+  claimDueScheduledTaskForExecution: vi.fn(),
+  pruneDuplicateSystemWideScheduledTasks: vi.fn(),
+  findSystemWideScheduledTaskByCategory: vi.fn(),
+  createScheduledTask: vi.fn()
 }));
 
 const runnerMocks = vi.hoisted(() => ({
@@ -37,7 +40,7 @@ vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/modules/core-admin/task-runner", () => runnerMocks);
 
 import { POST as postSchedulerTick } from "@/app/api/admin/scheduler/tick/route";
-import { GET as getTasks } from "@/app/api/admin/tasks/route";
+import { GET as getTasks, POST as postTasks } from "@/app/api/admin/tasks/route";
 
 describe("admin RBAC and scheduler semantics", () => {
   beforeEach(() => {
@@ -52,6 +55,8 @@ describe("admin RBAC and scheduler semantics", () => {
     repositoryMocks.listScheduledTasks.mockResolvedValue([]);
     repositoryMocks.listDueScheduledTasks.mockResolvedValue([]);
     repositoryMocks.claimDueScheduledTaskForExecution.mockResolvedValue(null);
+    repositoryMocks.pruneDuplicateSystemWideScheduledTasks.mockResolvedValue(undefined);
+    repositoryMocks.findSystemWideScheduledTaskByCategory.mockResolvedValue(null);
     runnerMocks.executeScheduledTask.mockResolvedValue({
       runId: new ObjectId("507f1f77bcf86cd799439055"),
       status: "success",
@@ -86,10 +91,37 @@ describe("admin RBAC and scheduler semantics", () => {
     expect(response.status).toBe(200);
     expect(payload.data).toHaveLength(1);
     expect(payload.data[0]?.name).toBe("Watchlist price scanner");
+    expect(repositoryMocks.pruneDuplicateSystemWideScheduledTasks).toHaveBeenCalledTimes(1);
     expect(repositoryMocks.listScheduledTasks).toHaveBeenCalledWith({
       tenantId: "507f1f77bcf86cd799439022",
       systemWideOnly: true
     });
+  });
+
+  it("returns 409 when creating a duplicate system-wide category", async () => {
+    repositoryMocks.findSystemWideScheduledTaskByCategory.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439099"),
+      name: "sync-broker-job",
+      category: "sync-broker",
+      scheduleCron: "0 * * * *",
+      enabled: true
+    });
+
+    const response = await postTasks(
+      new Request("http://localhost/api/admin/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "duplicate-broker",
+          category: "sync-broker",
+          scheduleCron: "0 3 * * *",
+          enabled: true
+        })
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(repositoryMocks.createScheduledTask).not.toHaveBeenCalled();
   });
 
   it("runs due tasks for tenant and tags scheduler trigger", async () => {
