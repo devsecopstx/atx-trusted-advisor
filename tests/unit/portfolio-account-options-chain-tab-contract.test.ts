@@ -34,8 +34,9 @@ describe("portfolio holdings position desk actions contract", () => {
     expect(table).toContain("PositionOptionsChainDrawer");
     expect(table).toContain("isPositionOptionsChainEligible");
     expect(table).toContain("buildPositionDeskHandoffUrls");
-    expect(table).toContain("writePortfolioDeskXchatHandoff");
-    expect(table).toMatch(/alert · chain · chat/);
+    expect(table).toContain("XoptionsRocketIcon");
+    expect(table).toContain("RailSidebarZapIcon");
+    expect(table).toMatch(/alert · xOptions · xChat/);
   });
 
   it("exports reusable OptionChainTable from xoptions components", () => {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ActivityPulseIcon, AskIcon, DeleteIcon, SyncArrowsIcon } from "@/app/admin/ui/crud-icons";
+import { ActivityPulseIcon, DeleteIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import {
     computeHoldingsRowMetrics,
@@ -15,6 +15,8 @@ import { HoldingsFiftyTwoWeekRange } from "@/app/portfolio/ui/holdings-fifty-two
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { PositionOptionsChainDrawer } from "@/app/portfolio/ui/position-options-chain-drawer";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
+import { XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
+import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import {
     buildPortfolioDeskXchatPrompt,
@@ -476,7 +478,7 @@ export function AccountConsolidatedHoldingsTable({
               {showDeskActionsCol ? (
                 <th scope="col" className="portfolio-consolidated-holdings__th-desk">
                   Desk
-                  <span className="portfolio-consolidated-holdings__th-sub">alert · chain · chat</span>
+                  <span className="portfolio-consolidated-holdings__th-sub">alert · xOptions · xChat</span>
                 </th>
               ) : null}
               <th scope="col" aria-label="Remove" />
@@ -654,9 +656,12 @@ export function AccountConsolidatedHoldingsTable({
                               disabled={pending}
                               onClick={() => setChainPosition(p)}
                               aria-label={`View options chain for ${u}`}
-                              title="View options chain"
+                              title="View options chain (xOptions)"
                             >
-                              <SyncArrowsIcon className="crud-icon" aria-hidden />
+                              <XoptionsRocketIcon
+                                className="portfolio-consolidated-holdings__desk-glyph"
+                                aria-hidden
+                              />
                             </button>
                           ) : null}
                           <Link
@@ -672,7 +677,11 @@ export function AccountConsolidatedHoldingsTable({
                             aria-label={`Ask xChat about ${u}`}
                             title="Ask xChat about this position"
                           >
-                            <AskIcon className="crud-icon" aria-hidden />
+                            <RailSidebarZapIcon
+                              className="portfolio-consolidated-holdings__desk-glyph portfolio-consolidated-holdings__desk-glyph--zap"
+                              size="disclosure"
+                              aria-hidden
+                            />
                           </Link>
                         </div>
                       ) : (

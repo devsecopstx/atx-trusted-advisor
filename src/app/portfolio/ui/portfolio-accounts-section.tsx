@@ -57,6 +57,28 @@ function todayGainClass(tone: PortfolioAccountTableRow["todayGainLossTone"]): st
   return "portfolio-manage-table__muted portfolio-manage-table__num value-currency";
 }
 
+function AccountBrokerGlyph({ row }: { row: PortfolioAccountTableRow }) {
+  if (row.brokerIconSlug) {
+    return (
+      <BrokerIcon
+        broker={row.brokerIconSlug}
+        size={20}
+        showTooltip={false}
+        className="portfolio-manage-table__account-broker-mark"
+      />
+    );
+  }
+  return (
+    <span
+      className="portfolio-manage-table__broker-fallback portfolio-manage-table__account-broker-fallback"
+      title={row.brokerTypeLabel}
+      aria-hidden
+    >
+      {row.brokerTypeLabel.slice(0, 2).toUpperCase()}
+    </span>
+  );
+}
+
 function PortfolioAccountTableDataRow({
   row,
   portfolioIdHex,
@@ -69,10 +91,13 @@ function PortfolioAccountTableDataRow({
       <td>
         <div className="portfolio-manage-table__account-cell">
           <span className={row.riskDotClassName} title="Risk level" aria-hidden />
-          <div>
+          <div className="portfolio-manage-table__account-main">
             <div className="portfolio-manage-table__account-name">
-              {row.name}
-              {row.isDefault ? <span className="portfolio-account-card__badge ml-2">Default</span> : null}
+              <AccountBrokerGlyph row={row} />
+              <span className="portfolio-manage-table__account-name-text">
+                {row.name}
+                {row.isDefault ? <span className="portfolio-account-card__badge ml-2">Default</span> : null}
+              </span>
             </div>
             <div className="portfolio-manage-table__account-meta portfolio-manage-table__account-desk">{row.deskLine}</div>
           </div>
