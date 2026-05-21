@@ -1,0 +1,527 @@
+/* Institutional onboarding — page-scoped gold/bronze accents (uses brand kit tokens only) */
+.onboarding-checklist-shell {
+  --xf-institutional-gold: var(--xf-lightning-yellow);
+  --xf-institutional-bronze: var(--xf-warning-400);
+  --xf-institutional-accent: color-mix(
+    in srgb,
+    var(--xf-institutional-gold) 55%,
+    var(--xf-institutional-bronze) 45%
+  );
+  --xf-institutional-accent-muted: color-mix(
+    in srgb,
+    var(--xf-institutional-accent) 38%,
+    transparent
+  );
+  --xf-institutional-glass: color-mix(in srgb, var(--xf-surface-700) 72%, transparent);
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.onboarding-checklist-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--xf-institutional-accent) 28%, transparent);
+  background:
+    radial-gradient(
+      circle at 12% 0%,
+      color-mix(in srgb, var(--xf-institutional-gold) 14%, transparent),
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 88% 100%,
+      color-mix(in srgb, var(--xf-tenant-accent, var(--xf-institutional-bronze)) 8%, transparent),
+      transparent 42%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--xf-surface-700) 88%, var(--xf-bg-900)),
+      color-mix(in srgb, var(--xf-bg-900) 92%, var(--xf-surface-700))
+    );
+  padding: 1.15rem 1.2rem;
+  backdrop-filter: var(--xf-blur-glass);
+  box-shadow: var(--xf-shadow-soft);
+}
+
+.onboarding-checklist-hero__badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}
+
+.onboarding-checklist-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-institutional-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-institutional-accent) 12%, transparent);
+  color: var(--xf-institutional-gold);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.58rem;
+}
+
+.onboarding-checklist-hero__eyebrow {
+  margin: 0;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-300);
+}
+
+.onboarding-checklist-hero__title {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.4rem, 2.1vw + 0.75rem, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--xf-text-100);
+}
+
+.onboarding-checklist-hero__copy {
+  margin: 0.55rem 0 0;
+  max-width: none;
+  line-height: 1.55;
+  color: var(--xf-text-300);
+  font-size: 0.9rem;
+}
+
+.onboarding-checklist-fiduciary-note {
+  display: block;
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  border-left: 3px solid color-mix(in srgb, var(--xf-institutional-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-200);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.onboarding-checklist-progress {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.onboarding-checklist-progress__track {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  overflow: hidden;
+}
+
+.onboarding-checklist-progress__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--xf-institutional-bronze) 80%, var(--xf-bg-900)),
+    var(--xf-institutional-gold)
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--xf-institutional-gold) 35%, transparent);
+}
+
+.onboarding-checklist-progress__meta {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--xf-text-200);
+}
+
+.onboarding-checklist-rail {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+}
+
+.onboarding-checklist-rail__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-decoration: none;
+  color: var(--xf-text-300);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.2;
+  transition: color 0.15s ease;
+}
+
+.onboarding-checklist-rail__item:hover {
+  color: var(--xf-institutional-gold);
+}
+
+.onboarding-checklist-rail__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  font-size: 0.58rem;
+  font-weight: 800;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.onboarding-checklist-rail__item--complete .onboarding-checklist-rail__dot {
+  border-color: color-mix(in srgb, var(--xf-institutional-accent) 65%, transparent);
+  background: color-mix(in srgb, var(--xf-institutional-accent) 22%, transparent);
+  color: var(--xf-institutional-gold);
+}
+
+.onboarding-checklist-rail__item--active .onboarding-checklist-rail__dot {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-institutional-gold)) 55%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--xf-institutional-accent-muted) 80%, transparent);
+}
+
+.onboarding-checklist-step {
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--xf-institutional-glass) 95%, var(--xf-bg-900)),
+      color-mix(in srgb, var(--xf-surface-700) 88%, var(--xf-bg-900))
+    );
+  padding: 0;
+  scroll-margin-top: 1.25rem;
+  backdrop-filter: blur(10px);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.onboarding-checklist-step:hover {
+  border-color: color-mix(in srgb, var(--xf-institutional-accent) 32%, transparent);
+  box-shadow: var(--xf-shadow-card);
+}
+
+.onboarding-checklist-step--complete {
+  border-color: color-mix(in srgb, var(--xf-institutional-accent) 38%, transparent);
+}
+
+.onboarding-checklist-step__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.95rem 1rem 0.75rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.onboarding-checklist-step__header--accordion {
+  cursor: pointer;
+}
+
+.onboarding-checklist-step__checkbox {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.15rem;
+  accent-color: var(--xf-tenant-accent, var(--xf-institutional-gold));
+  cursor: pointer;
+}
+
+.onboarding-checklist-step__heading-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-checklist-step__number {
+  margin: 0;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--xf-institutional-gold);
+}
+
+.onboarding-checklist-step__title {
+  margin: 0.2rem 0 0;
+  color: var(--xf-text-100);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.onboarding-checklist-step__chevron {
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+  color: var(--xf-text-400);
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.onboarding-checklist-step__chevron--open {
+  transform: rotate(180deg);
+}
+
+.onboarding-checklist-step__body {
+  padding: 0 1rem 1rem 2.75rem;
+}
+
+.onboarding-checklist-step__desc {
+  margin: 0;
+  color: var(--xf-text-300);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.onboarding-checklist-step__fo-note {
+  margin: 0.65rem 0 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--xf-institutional-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-institutional-accent) 6%, transparent);
+}
+
+.onboarding-checklist-step__fo-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-institutional-bronze);
+}
+
+.onboarding-checklist-step__fo-copy {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--xf-text-200);
+}
+
+.onboarding-checklist-step__actions {
+  margin: 0.7rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.onboarding-checklist-step__action {
+  padding-left: 0.85rem;
+  border-left: 2px solid color-mix(in srgb, var(--xf-institutional-accent) 35%, transparent);
+}
+
+.onboarding-checklist-step__action-label {
+  display: block;
+  color: var(--xf-text-100);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.onboarding-checklist-step__action-detail {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--xf-text-300);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.onboarding-checklist-step__impact {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--xf-text-200);
+}
+
+.onboarding-checklist-step__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+
+.onboarding-checklist-step__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-institutional-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--xf-institutional-accent) 14%, transparent);
+  color: var(--xf-institutional-gold);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.38rem 0.75rem;
+  text-decoration: none;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.onboarding-checklist-step__cta:hover {
+  background: color-mix(in srgb, var(--xf-institutional-accent) 24%, transparent);
+  border-color: color-mix(in srgb, var(--xf-institutional-accent) 70%, transparent);
+}
+
+.onboarding-checklist-step__advance {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-institutional-gold)) 45%, transparent);
+  background: transparent;
+  color: var(--xf-text-200);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.36rem 0.7rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.onboarding-checklist-step__advance:hover {
+  color: var(--xf-institutional-gold);
+  border-color: color-mix(in srgb, var(--xf-institutional-gold) 55%, transparent);
+}
+
+.onboarding-checklist-trust-bar {
+  margin: 0.25rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+  line-height: 1.6;
+}
+
+.onboarding-checklist-final-cta {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--xf-institutional-accent) 35%, transparent);
+  background:
+    radial-gradient(
+      circle at 80% 20%,
+      color-mix(in srgb, var(--xf-tenant-accent, var(--xf-institutional-gold)) 10%, transparent),
+      transparent 50%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--xf-surface-700) 90%, var(--xf-bg-900)),
+      color-mix(in srgb, var(--xf-bg-900) 94%, var(--xf-surface-700))
+    );
+  padding: 1.1rem 1.15rem;
+  text-align: center;
+}
+
+.onboarding-checklist-final-cta__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.onboarding-checklist-final-cta__copy {
+  margin: 0.5rem auto 0;
+  max-width: 62ch;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--xf-text-300);
+}
+
+.onboarding-checklist-final-cta__features {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--xf-institutional-bronze);
+}
+
+.onboarding-checklist-final-cta__link {
+  display: inline-flex;
+  margin-top: 0.85rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-institutional-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-institutional-accent) 18%, transparent);
+  color: var(--xf-institutional-gold);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.48rem 1rem;
+  text-decoration: none;
+}
+
+.onboarding-checklist-final-cta__link:hover {
+  background: color-mix(in srgb, var(--xf-institutional-accent) 28%, transparent);
+}
+
+.onboarding-checklist-disclaimer {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--xf-text-400);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .onboarding-checklist-rail {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 0.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .onboarding-checklist-rail {
+    display: none;
+  }
+
+  .onboarding-checklist-step__body {
+    padding-left: 1rem;
+  }
+
+  .onboarding-checklist-step__body--collapsed {
+    display: none;
+  }
+
+  .onboarding-checklist-step__header {
+    padding-bottom: 0.95rem;
+  }
+
+  .onboarding-checklist-step__header--accordion.onboarding-checklist-step__header--collapsed {
+    padding-bottom: 0.95rem;
+  }
+}
+
+html[data-xf-ui="soft"] .onboarding-checklist-hero,
+html[data-xf-ui="soft"] .onboarding-checklist-step,
+html[data-xf-ui="soft"] .onboarding-checklist-final-cta {
+  background: color-mix(in srgb, var(--xf-bg-900) 96%, var(--xf-surface-700));
+}

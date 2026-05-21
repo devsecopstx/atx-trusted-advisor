@@ -32,9 +32,9 @@ export const RESOURCE_GUIDE_SECTIONS: readonly ResourceGuideSection[] = [
     links: [
       {
         href: "/resources/onboarding-checklist",
-        title: "Onboarding checklist",
+        title: "Institutional onboarding",
         description:
-          "HNWI order of operations through validation: portfolio, watchlist, risk, broker parity, xChat/xOptions, StrategyJob test."
+          "Seven HNWI foundations: capital architecture, conviction watchlist, posture, IBKR parity, xAI advisory, validation, institutional workspace."
       },
       {
         href: "/resources/about",

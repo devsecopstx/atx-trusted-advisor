@@ -51,6 +51,44 @@ body {
   background-image: url("/branding/atx-skyline-night.png");
 }
 
+/* Root shell — dual skyline layers (theme + optional data-skyline), opacity cross-fade */
+.xf-skyline-bleed {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.xf-skyline-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 58%;
+  opacity: 0;
+  transition: opacity 500ms ease-out;
+  transition-property: opacity;
+  will-change: opacity;
+  pointer-events: none;
+}
+
+html[data-xf-ui="soft"]:not([data-skyline="night"]) .xf-skyline-layer--day,
+html[data-skyline="day"] .xf-skyline-layer--day {
+  opacity: 0.38;
+}
+
+html:not([data-xf-ui="soft"]):not([data-skyline="day"]) .xf-skyline-layer--night,
+html[data-skyline="night"] .xf-skyline-layer--night {
+  opacity: 0.36;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xf-skyline-layer {
+    transition: none !important;
+    will-change: auto;
+  }
+}
+
 .xchat-layout-root,
 .xchat-container,
 main[data-page="xchat"] {
@@ -89,21 +127,25 @@ main[data-page="xchat"] {
 }
 
 .starfield {
-  --star-node-rgb: 148 163 184;
-  --star-node-opacity: 0.1;
   --star-line-rgb: 203 213 225;
   --star-line-opacity: 0.06;
   --star-grid-opacity: 0.06;
+  --star-sky-rgb: 148 163 184;
+  --star-sky-mask: linear-gradient(
+    180deg,
+    rgb(0 0 0 / 1) 0%,
+    rgb(0 0 0 / 0.92) 38%,
+    rgb(0 0 0 / 0.3) 52%,
+    transparent 60%
+  );
+  pointer-events: none;
+  background-repeat: no-repeat;
+  transform: translateZ(0);
+}
+
+.starfield--grid {
+  --star-line-rgb: 203 213 225;
   background-image:
-    radial-gradient(circle at 12% 18%, rgb(var(--star-node-rgb) / 0.45) 0.11rem, transparent 0.12rem),
-    radial-gradient(circle at 26% 34%, rgb(var(--star-node-rgb) / 0.32) 0.12rem, transparent 0.13rem),
-    radial-gradient(circle at 41% 22%, rgb(var(--star-node-rgb) / 0.38) 0.11rem, transparent 0.12rem),
-    radial-gradient(circle at 56% 16%, rgb(var(--star-node-rgb) / 0.38) 0.12rem, transparent 0.13rem),
-    radial-gradient(circle at 72% 29%, rgb(var(--star-node-rgb) / 0.36) 0.11rem, transparent 0.12rem),
-    radial-gradient(circle at 84% 51%, rgb(var(--star-node-rgb) / 0.4) 0.12rem, transparent 0.13rem),
-    radial-gradient(circle at 64% 68%, rgb(var(--star-node-rgb) / 0.35) 0.11rem, transparent 0.12rem),
-    radial-gradient(circle at 36% 72%, rgb(var(--star-node-rgb) / 0.34) 0.1rem, transparent 0.11rem),
-    radial-gradient(circle at 18% 64%, rgb(var(--star-node-rgb) / 0.32) 0.11rem, transparent 0.12rem),
     linear-gradient(to right, rgb(var(--star-line-rgb) / var(--star-grid-opacity)) 1px, transparent 1px),
     linear-gradient(to bottom, rgb(var(--star-line-rgb) / var(--star-grid-opacity)) 1px, transparent 1px),
     linear-gradient(
@@ -116,83 +158,222 @@ main[data-page="xchat"] {
       transparent 73%,
       transparent 100%
     );
-  background-size:
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    44px 44px,
-    44px 44px,
-    100% 100%;
-  opacity: 1;
-  transform: translateZ(0);
+  background-size: 44px 44px, 44px 44px, 100% 100%;
+  will-change: background-position;
+  animation: starfield-grid-drift 18s linear infinite;
+}
+
+html[data-xf-ui="soft"] .starfield--grid {
+  --star-line-opacity: 0.07;
+  --star-grid-opacity: 0.07;
+}
+
+html:not([data-xf-ui="soft"]) .starfield--grid {
+  --star-line-rgb: 100 116 139;
+  --star-line-opacity: 0.1;
+  --star-grid-opacity: 0.05;
+  -webkit-mask-image: var(--star-sky-mask);
+  mask-image: var(--star-sky-mask);
+  animation-duration: 14s;
+}
+
+/* Shared star-layer motion (opacity + background-position only — skyline stays fixed) */
+.starfield--stars-a,
+.starfield--stars-b,
+.starfield--stars-c,
+.starfield--accent-a,
+.starfield--accent-b {
+  display: none;
+  background-size: 100% 100%;
+  -webkit-mask-image: var(--star-sky-mask);
+  mask-image: var(--star-sky-mask);
   will-change: opacity, background-position;
   animation:
-    starfield-breathe 10s ease-in-out infinite,
-    starfield-grid-drift 14s linear infinite;
+    starfield-sky-twinkle var(--star-twinkle-duration, 4s) ease-in-out infinite,
+    starfield-sky-drift var(--star-drift-duration, 15s) ease-in-out infinite alternate;
+  animation-delay: var(--star-twinkle-delay, 0s), var(--star-drift-delay, 0s);
 }
 
-html[data-xf-ui="soft"] .starfield {
-  --star-node-rgb: 148 163 184;
-  --star-line-rgb: 203 213 225;
-  --star-node-opacity: 0.1;
-  --star-line-opacity: 0.06;
-  --star-grid-opacity: 0.06;
+html:not([data-xf-ui="soft"]) .starfield--stars-a,
+html:not([data-xf-ui="soft"]) .starfield--stars-b,
+html:not([data-xf-ui="soft"]) .starfield--stars-c,
+html:not([data-xf-ui="soft"]) .starfield--accent-a,
+html:not([data-xf-ui="soft"]) .starfield--accent-b,
+html[data-skyline="night"] .starfield--stars-a,
+html[data-skyline="night"] .starfield--stars-b,
+html[data-skyline="night"] .starfield--stars-c,
+html[data-skyline="night"] .starfield--accent-a,
+html[data-skyline="night"] .starfield--accent-b {
+  display: block;
 }
 
-html:not([data-xf-ui="soft"]) .starfield {
-  --star-node-rgb: 100 116 139;
-  --star-line-rgb: 71 85 105;
-  --star-node-opacity: 0.12;
-  --star-line-opacity: 0.08;
-  --star-grid-opacity: 0.04;
+/* ~14 medium stars per layer — staggered phases read as individual twinkles */
+.starfield--stars-a {
+  --star-twinkle-duration: 3.4s;
+  --star-drift-duration: 13s;
+  --star-twinkle-delay: 0s;
+  --star-drift-delay: 0s;
+  opacity: 0.72;
+  animation-name: starfield-sky-twinkle, starfield-sky-drift-a;
+  background-image:
+    radial-gradient(circle at 7% 9%, rgb(var(--star-sky-rgb) / 0.7) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 14% 20%, rgb(var(--star-sky-rgb) / 0.55) 0.09rem, transparent 0.11rem),
+    radial-gradient(circle at 22% 7%, rgb(var(--star-sky-rgb) / 0.65) 0.11rem, transparent 0.13rem),
+    radial-gradient(circle at 31% 16%, rgb(var(--star-sky-rgb) / 0.6) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 40% 6%, rgb(var(--star-sky-rgb) / 0.68) 0.11rem, transparent 0.13rem),
+    radial-gradient(circle at 49% 14%, rgb(var(--star-sky-rgb) / 0.58) 0.09rem, transparent 0.11rem),
+    radial-gradient(circle at 58% 8%, rgb(var(--star-sky-rgb) / 0.64) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 67% 18%, rgb(var(--star-sky-rgb) / 0.62) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 76% 11%, rgb(var(--star-sky-rgb) / 0.66) 0.11rem, transparent 0.13rem),
+    radial-gradient(circle at 85% 7%, rgb(var(--star-sky-rgb) / 0.7) 0.12rem, transparent 0.14rem),
+    radial-gradient(circle at 93% 17%, rgb(var(--star-sky-rgb) / 0.56) 0.09rem, transparent 0.11rem),
+    radial-gradient(circle at 11% 30%, rgb(var(--star-sky-rgb) / 0.52) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 36% 28%, rgb(var(--star-sky-rgb) / 0.54) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 61% 32%, rgb(var(--star-sky-rgb) / 0.5) 0.08rem, transparent 0.1rem);
 }
 
-@keyframes starfield-breathe {
-  0%,
-  100% {
-    opacity: calc(var(--star-node-opacity) + 0.18);
-  }
-  50% {
-    opacity: calc(var(--star-node-opacity) + 0.45);
-  }
+.starfield--stars-b {
+  --star-twinkle-duration: 4.6s;
+  --star-drift-duration: 17s;
+  --star-twinkle-delay: -1.6s;
+  --star-drift-delay: -4s;
+  opacity: 0.68;
+  animation-name: starfield-sky-twinkle, starfield-sky-drift-b;
+  background-image:
+    radial-gradient(circle at 10% 12%, rgb(var(--star-sky-rgb) / 0.58) 0.09rem, transparent 0.11rem),
+    radial-gradient(circle at 19% 24%, rgb(var(--star-sky-rgb) / 0.48) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 27% 10%, rgb(var(--star-sky-rgb) / 0.62) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 35% 19%, rgb(var(--star-sky-rgb) / 0.52) 0.09rem, transparent 0.11rem),
+    radial-gradient(circle at 44% 11%, rgb(var(--star-sky-rgb) / 0.6) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 53% 22%, rgb(var(--star-sky-rgb) / 0.5) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 62% 13%, rgb(var(--star-sky-rgb) / 0.57) 0.09rem, transparent 0.11rem),
+    radial-gradient(circle at 71% 8%, rgb(var(--star-sky-rgb) / 0.63) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 80% 20%, rgb(var(--star-sky-rgb) / 0.55) 0.09rem, transparent 0.11rem),
+    radial-gradient(circle at 89% 14%, rgb(var(--star-sky-rgb) / 0.59) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 6% 34%, rgb(var(--star-sky-rgb) / 0.46) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 29% 36%, rgb(var(--star-sky-rgb) / 0.44) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 54% 38%, rgb(var(--star-sky-rgb) / 0.47) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 78% 35%, rgb(var(--star-sky-rgb) / 0.45) 0.08rem, transparent 0.1rem);
+}
+
+.starfield--stars-c {
+  --star-twinkle-duration: 5.8s;
+  --star-drift-duration: 12s;
+  --star-twinkle-delay: -3.1s;
+  --star-drift-delay: -7s;
+  opacity: 0.64;
+  animation-name: starfield-sky-twinkle, starfield-sky-drift-c;
+  background-image:
+    radial-gradient(circle at 5% 15%, rgb(var(--star-sky-rgb) / 0.42) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 17% 8%, rgb(var(--star-sky-rgb) / 0.5) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 25% 26%, rgb(var(--star-sky-rgb) / 0.4) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 33% 12%, rgb(var(--star-sky-rgb) / 0.48) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 42% 21%, rgb(var(--star-sky-rgb) / 0.44) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 51% 9%, rgb(var(--star-sky-rgb) / 0.46) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 60% 24%, rgb(var(--star-sky-rgb) / 0.4) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 69% 15%, rgb(var(--star-sky-rgb) / 0.45) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 77% 26%, rgb(var(--star-sky-rgb) / 0.41) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 86% 18%, rgb(var(--star-sky-rgb) / 0.47) 0.08rem, transparent 0.1rem),
+    radial-gradient(circle at 94% 9%, rgb(var(--star-sky-rgb) / 0.43) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 18% 38%, rgb(var(--star-sky-rgb) / 0.38) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 47% 40%, rgb(var(--star-sky-rgb) / 0.36) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 72% 39%, rgb(var(--star-sky-rgb) / 0.37) 0.07rem, transparent 0.09rem),
+    radial-gradient(circle at 88% 32%, rgb(var(--star-sky-rgb) / 0.39) 0.07rem, transparent 0.09rem);
+}
+
+/* Bright accent layers — screen blend, offset twinkle so not all pulse together */
+.starfield--accent-a {
+  --star-accent-rgb: 203 213 225;
+  --star-twinkle-duration: 2.8s;
+  --star-drift-duration: 11s;
+  --star-twinkle-delay: -0.8s;
+  --star-drift-delay: -2s;
+  mix-blend-mode: screen;
+  opacity: 0.82;
+  animation-name: starfield-sky-twinkle, starfield-sky-drift-a;
+  background-image:
+    radial-gradient(circle at 9% 11%, rgb(var(--star-accent-rgb) / 0.95) 0.13rem, transparent 0.15rem),
+    radial-gradient(circle at 21% 6%, rgb(var(--star-accent-rgb) / 0.8) 0.11rem, transparent 0.13rem),
+    radial-gradient(circle at 34% 15%, rgb(var(--star-accent-rgb) / 0.88) 0.12rem, transparent 0.14rem),
+    radial-gradient(circle at 47% 8%, rgb(var(--star-accent-rgb) / 0.92) 0.12rem, transparent 0.14rem),
+    radial-gradient(circle at 59% 17%, rgb(var(--star-accent-rgb) / 0.78) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 71% 10%, rgb(var(--star-accent-rgb) / 0.9) 0.13rem, transparent 0.15rem),
+    radial-gradient(circle at 83% 6%, rgb(var(--star-accent-rgb) / 1) 0.15rem, transparent 0.17rem),
+    radial-gradient(circle at 92% 19%, rgb(var(--star-accent-rgb) / 0.82) 0.11rem, transparent 0.13rem),
+    radial-gradient(circle at 16% 27%, rgb(var(--star-accent-rgb) / 0.72) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 38% 31%, rgb(var(--star-accent-rgb) / 0.76) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 63% 29%, rgb(var(--star-accent-rgb) / 0.74) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 86% 24%, rgb(var(--star-accent-rgb) / 0.8) 0.11rem, transparent 0.13rem);
+}
+
+.starfield--accent-b {
+  --star-accent-rgb: 186 198 216;
+  --star-twinkle-duration: 3.6s;
+  --star-drift-duration: 14s;
+  --star-twinkle-delay: -2.4s;
+  --star-drift-delay: -5.5s;
+  mix-blend-mode: screen;
+  opacity: 0.78;
+  animation-name: starfield-sky-twinkle, starfield-sky-drift-b;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(var(--star-accent-rgb) / 0.88) 0.12rem, transparent 0.14rem),
+    radial-gradient(circle at 24% 12%, rgb(var(--star-accent-rgb) / 0.75) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 37% 22%, rgb(var(--star-accent-rgb) / 0.84) 0.11rem, transparent 0.13rem),
+    radial-gradient(circle at 50% 13%, rgb(var(--star-accent-rgb) / 0.9) 0.12rem, transparent 0.14rem),
+    radial-gradient(circle at 63% 7%, rgb(var(--star-accent-rgb) / 0.7) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 74% 21%, rgb(var(--star-accent-rgb) / 0.86) 0.12rem, transparent 0.14rem),
+    radial-gradient(circle at 87% 15%, rgb(var(--star-accent-rgb) / 0.92) 0.13rem, transparent 0.15rem),
+    radial-gradient(circle at 4% 26%, rgb(var(--star-accent-rgb) / 0.68) 0.09rem, transparent 0.11rem),
+    radial-gradient(circle at 28% 34%, rgb(var(--star-accent-rgb) / 0.72) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 45% 36%, rgb(var(--star-accent-rgb) / 0.7) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 68% 33%, rgb(var(--star-accent-rgb) / 0.74) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 81% 28%, rgb(var(--star-accent-rgb) / 0.76) 0.1rem, transparent 0.12rem),
+    radial-gradient(circle at 96% 11%, rgb(var(--star-accent-rgb) / 0.85) 0.12rem, transparent 0.14rem);
 }
 
 @keyframes starfield-grid-drift {
   from {
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0;
+    background-position: 0 0, 0 0, 0 0;
   }
   to {
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      44px 0,
-      0 0,
-      0 0;
+    background-position: 44px 22px, 0 44px, 0 0;
+  }
+}
+
+@keyframes starfield-sky-twinkle {
+  0%,
+  100% {
+    opacity: 0.32;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes starfield-sky-drift-a {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 4% 3%;
+  }
+}
+
+@keyframes starfield-sky-drift-b {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: -3.5% 4%;
+  }
+}
+
+@keyframes starfield-sky-drift-c {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 3% -2.5%;
   }
 }
 
