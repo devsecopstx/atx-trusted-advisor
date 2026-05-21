@@ -4,12 +4,22 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useTransition, type FormEvent, type ReactNode } from "react";
 
-import { BackIcon, DeleteIcon, EditIcon, ListRowsIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
+import {
+    BackIcon,
+    DeleteIcon,
+    EditIcon,
+    ListRowsIcon,
+    SaveIcon,
+    XMarkIcon
+} from "@/app/admin/ui/crud-icons";
 import {
     editAccountFormSchema,
     editAccountFormSchemaWithoutExtRef
 } from "@/app/portfolio/lib/edit-account-schema";
-import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_PICKER_ORDER } from "@/lib/broker-ui";
+import {
+    ACCOUNT_TYPE_LABELS,
+    ACCOUNT_TYPE_PICKER_ORDER
+} from "@/lib/broker-ui";
 import {
     hnwiGuardrailsPartialSchema,
     type HnwiGuardrailsPatchPayload
@@ -747,6 +757,7 @@ function AccountWorkspaceInner({
               embeddedInTab
               initialPositions={initialPositions}
               portfolioIdHex={portfolioId}
+              portfolioName={portfolioName}
             />
           </div>
         </div>

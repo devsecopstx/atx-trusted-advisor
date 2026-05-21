@@ -1,6 +1,8 @@
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { buildPortfolioAccountTableRows } from "@/app/portfolio/ui/build-portfolio-account-table-rows";
 import { PortfolioManageShell } from "@/app/portfolio/ui/portfolio-manage-shell";
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
+import { brokerIconSlugFromCatalogType, formatBrokerTypeLabel } from "@/lib/broker-ui";
 import type { PortfolioAccountLiveRollup } from "@/lib/portfolio-account-live-metrics";
 import type { PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import type { Account } from "@/modules/core-admin/types";
@@ -39,7 +41,10 @@ export function PortfolioOverview({
     .map((account) => ({
       id: account._id.toHexString(),
       name: account.name,
-      isDefault: Boolean(account.isDefault)
+      isDefault: Boolean(account.isDefault),
+      brokerTypeLabel: formatBrokerTypeLabel(account.type),
+      brokerIconSlug: brokerIconSlugFromCatalogType(account.type),
+      extAccountRefMasked: maskAccountXrefForDisplay(account.extAccountId ?? "")
     }));
 
   const tableRows = buildPortfolioAccountTableRows(accounts, metrics, liveByAccountHex);

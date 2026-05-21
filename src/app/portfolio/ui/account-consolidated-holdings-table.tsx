@@ -3,21 +3,29 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ActivityPulseIcon, DeleteIcon } from "@/app/admin/ui/crud-icons";
+import { ActivityPulseIcon, AskIcon, DeleteIcon, SyncArrowsIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import {
     computeHoldingsRowMetrics,
     optionQuoteLookupKey,
     underlyingQuoteLookupKey
 } from "@/app/portfolio/lib/holdings-row-metrics";
+import { isPositionOptionsChainEligible } from "@/app/portfolio/lib/portfolio-position-options-chain";
 import { HoldingsFiftyTwoWeekRange } from "@/app/portfolio/ui/holdings-fifty-two-week-range";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
+import { PositionOptionsChainDrawer } from "@/app/portfolio/ui/position-options-chain-drawer";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
+import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
+import {
+    buildPortfolioDeskXchatPrompt,
+    buildPositionDeskHandoffUrls
+} from "@/lib/portfolio/portfolio-desk-handoff";
+import { writePortfolioDeskXchatHandoff } from "@/lib/portfolio/portfolio-desk-xchat-handoff";
 import { REAL_ESTATE_HOLDING_DISCLAIMER } from "@/lib/real-estate-holding-form";
 import {
-    isValidXoptionsUnderlyingSymbol,
-    normalizeXoptionsUnderlyingSymbol
-} from "@/lib/xoptions/xoptions-desk-deep-link";
+    dispatchWorkspaceAccountChanged,
+    writeStoredWorkspaceAccountId
+} from "@/lib/workspace-account-selection";
 import { realEstateValuationSourceLabel } from "@/modules/core-admin/types";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
@@ -190,8 +198,7 @@ type AccountConsolidatedHoldingsTableProps = {
   onDeskAlertSaved?: () => void;
   /** Broker-style account caption above the grid (e.g. custodian account name). */
   accountLabel?: string | null;
-  deskFocusSymbol?: string | null;
-  onDeskFocusSymbolChange?: (symbol: string | null) => void;
+  portfolioName?: string | null;
 };
 
 type HoldingsSortState = { col: HoldingsSortColumn; dir: "asc" | "desc" };
@@ -251,13 +258,8 @@ export function AccountConsolidatedHoldingsTable({
   accountIdHex,
   onDeskAlertSaved,
   accountLabel = null,
-  deskFocusSymbol = null,
-  onDeskFocusSymbolChange
+  portfolioName = null
 }: AccountConsolidatedHoldingsTableProps) {
-  const normalizedDeskFocusSymbol = useMemo(() => {
-    const sym = normalizeXoptionsUnderlyingSymbol(deskFocusSymbol ?? "");
-    return isValidXoptionsUnderlyingSymbol(sym) ? sym : null;
-  }, [deskFocusSymbol]);
   const quoteSymbols = useMemo(() => {
     const s = new Set<string>();
     for (const p of positions) {
@@ -285,6 +287,32 @@ export function AccountConsolidatedHoldingsTable({
   const [deskSeverity, setDeskSeverity] = useState<"info" | "warning" | "critical">("info");
   const [deskBusy, setDeskBusy] = useState(false);
   const [deskError, setDeskError] = useState<string | null>(null);
+  const [chainPosition, setChainPosition] = useState<SerializablePosition | null>(null);
+
+  const syncWorkspaceAccount = useCallback(() => {
+    if (!portfolioIdHex || !accountIdHex) {
+      return;
+    }
+    if (!isLikelyMongoObjectIdHex(portfolioIdHex) || !isLikelyMongoObjectIdHex(accountIdHex)) {
+      return;
+    }
+    writeStoredWorkspaceAccountId(portfolioIdHex, accountIdHex);
+    dispatchWorkspaceAccountChanged({ portfolioId: portfolioIdHex, accountId: accountIdHex });
+  }, [portfolioIdHex, accountIdHex]);
+
+  const preparePositionXchatHandoff = useCallback(
+    (symbol: string) => {
+      syncWorkspaceAccount();
+      writePortfolioDeskXchatHandoff(
+        buildPortfolioDeskXchatPrompt({
+          accountName: accountLabel?.trim() || "this account",
+          portfolioName,
+          symbol
+        })
+      );
+    },
+    [accountLabel, portfolioName, syncWorkspaceAccount]
+  );
 
   useEffect(() => {
     if (deskCtx && deskDialogRef.current) {
@@ -394,7 +422,7 @@ export function AccountConsolidatedHoldingsTable({
     };
   }, [positions, quotes]);
 
-  const showDeskAlertCol = Boolean(portfolioIdHex && accountIdHex);
+  const showDeskActionsCol = Boolean(portfolioIdHex && accountIdHex);
   const hasRealEstateHoldings = positions.some((p) => p.type === "real_estate");
 
   return (
@@ -445,10 +473,10 @@ export function AccountConsolidatedHoldingsTable({
               <th scope="col" className="portfolio-consolidated-holdings__range-col">
                 52-week range
               </th>
-              {showDeskAlertCol ? (
+              {showDeskActionsCol ? (
                 <th scope="col" className="portfolio-consolidated-holdings__th-desk">
                   Desk
-                  <span className="portfolio-consolidated-holdings__th-sub">alert</span>
+                  <span className="portfolio-consolidated-holdings__th-sub">alert · chain · chat</span>
                 </th>
               ) : null}
               <th scope="col" aria-label="Remove" />
@@ -501,26 +529,11 @@ export function AccountConsolidatedHoldingsTable({
                   <div className="portfolio-consolidated-holdings__sym-stack">
                     <div className="portfolio-consolidated-holdings__sym">
                       <PortfolioSymbolMark logoUrl={q?.logoUrl} symbol={u} title={q?.companyName ?? u} size={22} />
-                      {onDeskFocusSymbolChange ? (
-                        <button
-                          type="button"
-                          className={`portfolio-consolidated-holdings__sym-focus${
-                            normalizedDeskFocusSymbol === u ? " portfolio-consolidated-holdings__sym-focus--active" : ""
-                          }`}
-                          onClick={() => onDeskFocusSymbolChange(u)}
-                          title={`Use ${u} for xOptions and xChat handoff`}
-                        >
-                          {p.type === "option"
-                            ? `${u} ${p.strike} ${p.optionType === "put" ? "Put" : "Call"}`
-                            : u}
-                        </button>
-                      ) : (
-                        <span className="portfolio-consolidated-holdings__sym-ticker">
-                          {p.type === "option"
-                            ? `${u} ${p.strike} ${p.optionType === "put" ? "Put" : "Call"}`
-                            : u}
-                        </span>
-                      )}
+                      <span className="portfolio-consolidated-holdings__sym-ticker">
+                        {p.type === "option"
+                          ? `${u} ${p.strike} ${p.optionType === "put" ? "Put" : "Call"}`
+                          : u}
+                      </span>
                     </div>
                     {p.type === "option" ? (
                       <span className="portfolio-consolidated-holdings__sym-sub">{optionLegLabel(p)}</span>
@@ -620,18 +633,48 @@ export function AccountConsolidatedHoldingsTable({
                       <span className="portfolio-consolidated-holdings__muted">—</span>
                     )}
                   </td>
-                  {showDeskAlertCol ? (
+                  {showDeskActionsCol ? (
                     <td className="portfolio-consolidated-holdings__desk">
-                      {showQuote && u ? (
-                        <button
-                          type="button"
-                          className="cta cta-secondary portfolio-consolidated-holdings__desk-btn"
-                          disabled={pending}
-                          onClick={() => openDeskDialog(p, u, q, metrics.currentValueUsd)}
-                          aria-label={`Create desk alert for ${u}`}
-                        >
-                          <ActivityPulseIcon className="crud-icon" aria-hidden />
-                        </button>
+                      {showQuote && u && portfolioIdHex && accountIdHex ? (
+                        <div className="portfolio-consolidated-holdings__desk-actions">
+                          <button
+                            type="button"
+                            className="cta cta-secondary portfolio-consolidated-holdings__desk-btn"
+                            disabled={pending}
+                            onClick={() => openDeskDialog(p, u, q, metrics.currentValueUsd)}
+                            aria-label={`Create desk alert for ${u}`}
+                            title="Desk alert"
+                          >
+                            <ActivityPulseIcon className="crud-icon" aria-hidden />
+                          </button>
+                          {isPositionOptionsChainEligible(p) ? (
+                            <button
+                              type="button"
+                              className="cta cta-secondary portfolio-consolidated-holdings__desk-btn"
+                              disabled={pending}
+                              onClick={() => setChainPosition(p)}
+                              aria-label={`View options chain for ${u}`}
+                              title="View options chain"
+                            >
+                              <SyncArrowsIcon className="crud-icon" aria-hidden />
+                            </button>
+                          ) : null}
+                          <Link
+                            className="cta cta-secondary portfolio-consolidated-holdings__desk-btn"
+                            href={
+                              buildPositionDeskHandoffUrls({
+                                portfolioIdHex,
+                                accountIdHex,
+                                symbol: u
+                              }).xchatHref
+                            }
+                            onClick={() => preparePositionXchatHandoff(u)}
+                            aria-label={`Ask xChat about ${u}`}
+                            title="Ask xChat about this position"
+                          >
+                            <AskIcon className="crud-icon" aria-hidden />
+                          </Link>
+                        </div>
                       ) : (
                         <span className="portfolio-consolidated-holdings__muted">—</span>
                       )}
@@ -682,7 +725,7 @@ export function AccountConsolidatedHoldingsTable({
                   {fmtUsd(accountTotals.currentValueUsd)}
                 </td>
                 <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">100%</td>
-                <td colSpan={showDeskAlertCol ? 6 : 5} />
+                <td colSpan={showDeskActionsCol ? 6 : 5} />
               </tr>
             </tfoot>
           ) : null}
@@ -764,6 +807,16 @@ export function AccountConsolidatedHoldingsTable({
           </div>
         </form>
       </dialog>
+      {portfolioIdHex && accountIdHex ? (
+        <PositionOptionsChainDrawer
+          accountIdHex={accountIdHex}
+          accountLabel={accountLabel?.trim() || "Account"}
+          open={chainPosition != null}
+          portfolioIdHex={portfolioIdHex}
+          position={chainPosition}
+          onClose={() => setChainPosition(null)}
+        />
+      ) : null}
     </>
   );
 }

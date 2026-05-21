@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import "@/app/portfolios/portfolios-dashboard.css";
 
 import "@/app/watchlist/watchlist.css";
+import "@/app/xoptions/xoptions.css";
 import "../xchat/xchat-shell.css";
 import "./portfolio.css";
 

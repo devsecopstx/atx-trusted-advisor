@@ -19,8 +19,7 @@ type AccountHoldingsCrudCardProps = {
   /** When true (Edit Account tab), outer “Holdings” heading is screen-reader only — tab bar shows the label. */
   embeddedInTab?: boolean;
   accountLabel?: string | null;
-  deskFocusSymbol?: string | null;
-  onDeskFocusSymbolChange?: (symbol: string | null) => void;
+  portfolioName?: string | null;
 };
 
 export function AccountHoldingsCrudCard({
@@ -29,8 +28,7 @@ export function AccountHoldingsCrudCard({
   initialPositions,
   embeddedInTab = false,
   accountLabel = null,
-  deskFocusSymbol = null,
-  onDeskFocusSymbolChange
+  portfolioName = null
 }: AccountHoldingsCrudCardProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -297,8 +295,7 @@ export function AccountHoldingsCrudCard({
             portfolioIdHex={portfolioIdHex}
             accountIdHex={accountIdHex}
             accountLabel={accountLabel}
-            deskFocusSymbol={deskFocusSymbol}
-            onDeskFocusSymbolChange={onDeskFocusSymbolChange}
+            portfolioName={portfolioName}
             positions={positions}
             onRemove={removePosition}
             onDeskAlertSaved={() => startTransition(() => router.refresh())}

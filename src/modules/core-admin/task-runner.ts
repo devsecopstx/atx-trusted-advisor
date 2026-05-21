@@ -1,5 +1,9 @@
 import { ObjectId } from "mongodb";
 
+import {
+    buildScheduledTaskExecutorIdentity,
+    type TaskRunExecutor
+} from "@/lib/scheduled-task-executor-identity";
 import type { AuditActor } from "@/modules/audit/types";
 import {
     createTaskRun,
@@ -79,7 +83,16 @@ export type ScheduledTaskExecutionOptions = {
    * Used by scheduler tick claim flow to avoid double-advancing `nextRunAt`.
    */
   scheduleAlreadyClaimed?: boolean;
+  /** Persisted on admin_task_runs for ops attribution (Spring delegate vs local Next tick). */
+  executor?: TaskRunExecutor;
 };
+
+function resolveTaskRunExecutor(executionOptions?: ScheduledTaskExecutionOptions): TaskRunExecutor {
+  if (executionOptions?.executor) {
+    return executionOptions.executor;
+  }
+  return buildScheduledTaskExecutorIdentity({ runtime: "next" });
+}
 
 export async function executeScheduledTask(
   task: ScheduledTask,

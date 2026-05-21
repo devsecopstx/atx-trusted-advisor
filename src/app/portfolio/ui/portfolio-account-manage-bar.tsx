@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
+import { PortfolioBrokerAccountMark } from "@/app/portfolio/ui/portfolio-broker-account-mark";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
+import type { BrokerIconSlug } from "@/lib/broker-ui";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import {
     buildPortfolioDeskHandoffUrls,
@@ -21,6 +23,9 @@ export type PortfolioAccountManageOption = {
   id: string;
   name: string;
   isDefault?: boolean;
+  brokerTypeLabel: string;
+  brokerIconSlug: BrokerIconSlug | null;
+  extAccountRefMasked: string;
 };
 
 type Props = {
@@ -32,7 +37,6 @@ type Props = {
   portfolioIdHex?: string;
   portfolioName?: string | null;
   accountPositions?: SerializablePosition[];
-  focusSymbol?: string | null;
 };
 
 export function PortfolioAccountManageBar({
@@ -41,8 +45,7 @@ export function PortfolioAccountManageBar({
   onSelectedAccountIdChange,
   portfolioIdHex,
   portfolioName = null,
-  accountPositions = [],
-  focusSymbol = null
+  accountPositions = []
 }: Props) {
   const router = useRouter();
   const preferredId = useMemo(() => {
@@ -77,6 +80,7 @@ export function PortfolioAccountManageBar({
   }
 
   const selectedAccountName = accounts.find((a) => a.id === effectiveId)?.name ?? "Selected account";
+  const selectedAccount = accounts.find((a) => a.id === effectiveId);
 
   const deskHandoff =
     portfolioIdHex &&
@@ -88,8 +92,7 @@ export function PortfolioAccountManageBar({
           accountIdHex: effectiveId,
           accountName: selectedAccountName,
           portfolioName,
-          positions: accountPositions,
-          focusSymbol
+          positions: accountPositions
         })
       : null;
 
@@ -164,6 +167,14 @@ export function PortfolioAccountManageBar({
           ))}
         </select>
       </label>
+      {selectedAccount ? (
+        <PortfolioBrokerAccountMark
+          brokerIconSlug={selectedAccount.brokerIconSlug}
+          brokerTypeLabel={selectedAccount.brokerTypeLabel}
+          compact
+          extAccountRefMasked={selectedAccount.extAccountRefMasked}
+        />
+      ) : null}
       {deskHandoff ? (
         <Link
           className="cta cta-secondary portfolio-head-action-btn"

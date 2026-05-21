@@ -124,7 +124,12 @@ describe("POST /api/internal/scheduler/execute-task", () => {
       expect.objectContaining({ _id: taskId, category: "watchlist_price_scanner" }),
       "integration-test",
       undefined,
-      {}
+      expect.objectContaining({
+        executor: expect.objectContaining({
+          runtime: "next",
+          delegateFrom: "spring"
+        })
+      })
     );
   });
 
@@ -201,7 +206,13 @@ describe("POST /api/internal/scheduler/execute-task", () => {
       expect.objectContaining({ category: "watchlist_price_scanner" }),
       "scheduler:admin1",
       undefined,
-      { bypassMarketWindow: true }
+      expect.objectContaining({
+        bypassMarketWindow: true,
+        executor: expect.objectContaining({
+          runtime: "next",
+          delegateFrom: "spring"
+        })
+      })
     );
   });
 

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { EditIcon, ExternalLinkIcon, FolderPortfolioIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
@@ -15,7 +16,7 @@ import {
     type PortfolioAccountTableRow
 } from "@/app/portfolio/ui/portfolio-accounts-section";
 import type { PortfolioDeskPrefetchStrip } from "@/app/portfolio/ui/portfolio-desk-prefetch";
-import { PortfolioManageTabs } from "@/app/portfolio/ui/portfolio-manage-tabs";
+import { PortfolioManageTabs, type PortfolioWorkspaceTabId } from "@/app/portfolio/ui/portfolio-manage-tabs";
 import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { PortfoliosWatchlistCompact } from "@/app/portfolios/portfolios-watchlist-compact";
@@ -39,7 +40,14 @@ export type PortfolioManageShellProps = {
   deskPrefetch?: PortfolioDeskPrefetchStrip | null;
 };
 
-export function PortfolioManageShell({
+function parsePortfolioWorkspaceTab(raw: string | null): PortfolioWorkspaceTabId {
+  if (raw === "holdings" || raw === "activities") {
+    return raw;
+  }
+  return "portfolios";
+}
+
+function PortfolioManageShellInner({
   portfolioDisplayName,
   portfolioIdHex,
   admin,
@@ -51,14 +59,21 @@ export function PortfolioManageShell({
   positionsByAccount,
   deskPrefetch = null
 }: PortfolioManageShellProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tabFromUrl = parsePortfolioWorkspaceTab(searchParams.get("tab"));
+
   const [selectedAccountHex, setSelectedAccountHex] = useState(defaultAccountHex);
-  const [deskFocusSymbol, setDeskFocusSymbol] = useState<string | null>(null);
-  const [workspaceTab, setWorkspaceTab] = useState<"portfolios" | "holdings" | "activities">("portfolios");
+  const [workspaceTab, setWorkspaceTab] = useState<PortfolioWorkspaceTabId>(tabFromUrl);
+
+  useEffect(() => {
+    setWorkspaceTab(tabFromUrl);
+  }, [tabFromUrl]);
 
   const setSelectedAccountHexSynced = useCallback(
     (id: string) => {
       setSelectedAccountHex(id);
-      setDeskFocusSymbol(null);
       if (
         portfolioIdHex &&
         isLikelyMongoObjectIdHex(portfolioIdHex) &&
@@ -79,6 +94,7 @@ export function PortfolioManageShell({
 
   const selectedAccountName =
     manageOptions.find((a) => a.id === resolvedSelectedHex)?.name ?? "Selected account";
+  const selectedAccountMeta = manageOptions.find((a) => a.id === resolvedSelectedHex);
 
   const portfoliosHubHref = `/portfolios?portfolioId=${encodeURIComponent(portfolioIdHex)}`;
 
@@ -295,16 +311,24 @@ export function PortfolioManageShell({
           key={resolvedSelectedHex}
           accountIdHex={resolvedSelectedHex}
           accountLabel={selectedAccountName}
-          deskFocusSymbol={deskFocusSymbol}
           embeddedInTab
           initialPositions={initialForSelected}
-          onDeskFocusSymbolChange={setDeskFocusSymbol}
           portfolioIdHex={portfolioIdHex}
+          portfolioName={portfolioDisplayName}
         />
       ) : (
         <p className="status-text">Select an account using the Account selector to add or edit holdings.</p>
       )}
     </div>
+  );
+
+  const setWorkspaceTabSynced = useCallback(
+    (tab: PortfolioWorkspaceTabId) => {
+      setWorkspaceTab(tab);
+      const qs = tab === "portfolios" ? "" : `?tab=${encodeURIComponent(tab)}`;
+      router.replace(`${pathname}${qs}`, { scroll: false });
+    },
+    [pathname, router]
   );
 
   return (
@@ -315,7 +339,6 @@ export function PortfolioManageShell({
           <PortfolioAccountManageBar
             accountPositions={initialForSelected}
             accounts={manageOptions}
-            focusSymbol={deskFocusSymbol}
             portfolioIdHex={portfolioIdHex}
             portfolioName={portfolioDisplayName}
             selectedAccountId={resolvedSelectedHex}
@@ -325,7 +348,7 @@ export function PortfolioManageShell({
             activeTab={workspaceTab}
             activitiesPanel={activitiesPanelContent}
             holdingsPanel={holdingsPanel}
-            onTabChange={setWorkspaceTab}
+            onTabChange={setWorkspaceTabSynced}
             portfoliosPanel={overviewPanel}
           />
         </div>
@@ -334,5 +357,13 @@ export function PortfolioManageShell({
         </aside>
       </div>
     </div>
+  );
+}
+
+export function PortfolioManageShell(props: PortfolioManageShellProps) {
+  return (
+    <Suspense fallback={<div className="portfolio-overview portfolio-overview--tab-loading" aria-hidden />}>
+      <PortfolioManageShellInner {...props} />
+    </Suspense>
   );
 }

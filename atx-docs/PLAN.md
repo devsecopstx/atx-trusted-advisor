@@ -167,7 +167,7 @@ Use **`grok-4.20-multi-agent`** only for narrow cases (open-ended synthesis, ide
 
 - Watchlist quote freshness: background cadence + last-updated + stale badge.
 - **Options scan share/report:** watermark/recipient banner for `/reports/scan/{token}`, signed-download audit, configurable TTL beyond default 24h.
-- **Edit Account → scanner thresholds:** Row binding to price-alert service, scheduled thresholds from desk fields, option marks when chain data wired — [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md).
+- **Edit Account → scanner thresholds:** Row binding to price-alert service, scheduled thresholds from desk fields, option marks when chain data wired — [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md). **Shipped (May 2026):** per-position **Desk** row actions (alert · options chain drawer · xChat) on holdings — option **marks** in the Holdings table remain backlog.
 - **RAG isolation hardening** — Add **`XAI_FINANCE_CORE_COLLECTION_ID`** + **`XAI_FINANCE_ADVANCED_COLLECTION_ID`**, update **`refresh-finance`** / Finance seed to upload into the matching collections, and rely on **admin persona → collection** linking in console (post-deploy). Pursue if **`finance-advisor`** does not consistently meet **&lt;2.5s p95** once operators have linked personas and you have measured ask latency in prod/staging.
 
 ### Desk email & delivery
