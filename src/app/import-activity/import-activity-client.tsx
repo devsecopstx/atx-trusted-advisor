@@ -1,17 +1,19 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { UploadIcon } from "@/app/admin/ui/crud-icons";
 import { accountRefLastFourOnlyDisplay } from "@/lib/account-xref-display";
 import { brokerExportRefMatchesStoredExt } from "@/lib/broker-account-ref-match";
 import type { BrokerImportCsvStats, BrokerImportPreviewSampleRow } from "@/modules/portfolio-import/broker-import-dry-run-preview";
-import { countCsvNonEmptyLines } from "@/modules/portfolio-import/broker-import-dry-run-preview";
 import { brokerImportDryRunResponseSchema } from "@/modules/portfolio-import/broker-import-dry-run-schema";
 import { detectFidelityActivitiesCsv } from "@/modules/portfolio-import/fidelity-activities-csv";
 import { detectFidelityPortfolioHoldingsCsv } from "@/modules/portfolio-import/fidelity-holdings-csv";
 
+import { ImportActivityBreadcrumb, type ImportActivityStep } from "./import-activity-breadcrumb";
 import { importActivityWorkflowCopy } from "./import-activity-copy";
 import { brokerImportPreviewRowKey, type BrokerPreviewAccount } from "./import-activity-types";
 
@@ -117,6 +119,7 @@ function fidelityExportKindLabel(
 }
 
 export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }: ImportActivityClientProps) {
+  const router = useRouter();
   const initialPick =
     initialPortfolioId && portfolios.some((p) => p.id === initialPortfolioId)
       ? initialPortfolioId
@@ -133,13 +136,14 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const [results, setResults] = useState<BrokerApplyRow[] | null>(null);
   const [taskOutput, setTaskOutput] = useState<string | null>(null);
   const [deleteExistingHoldingsFirst, setDeleteExistingHoldingsFirst] = useState(true);
-  const [previewSectionOpen, setPreviewSectionOpen] = useState(false);
+  const [importStep, setImportStep] = useState<ImportActivityStep>(1);
   const [previewSampleRows, setPreviewSampleRows] = useState<BrokerImportPreviewSampleRow[]>([]);
   const [previewCsvStats, setPreviewCsvStats] = useState<BrokerImportCsvStats | null>(null);
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
   const [csvZoneFocused, setCsvZoneFocused] = useState(false);
   const [workflowExpanded, setWorkflowExpanded] = useState(false);
   const [selectedCsvFileName, setSelectedCsvFileName] = useState("");
+  const [importCompletePortfolioId, setImportCompletePortfolioId] = useState<string | null>(null);
 
   const previewSectionRef = useRef<HTMLDivElement>(null);
   const previewRowsScrollRef = useRef<HTMLDivElement>(null);
@@ -293,26 +297,40 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
     selectedBrokerAccountCount
   ]);
 
-  const csvStatusLine = useMemo(() => {
-    const lines = previewCsvStats?.nonEmptyLines ?? countCsvNonEmptyLines(brokerCsv);
-    const brokerName = selectedBroker?.name ?? brokerKind;
-    if (!brokerCsv.trim()) {
-      return `Drop or paste a ${brokerName} CSV to continue`;
-    }
-    if (previewCsvStats && brokerPreview?.length) {
-      return `${brokerName} export ready • ${lines} lines • ${previewCsvStats.totalPositionsParsed} positions parsed`;
-    }
-    return `${brokerName} file loaded • ${lines} lines — run Preview (dry run)`;
-  }, [brokerCsv, brokerKind, selectedBroker?.name, previewCsvStats, brokerPreview]);
-
   const resetPreviewState = useCallback(() => {
     setBrokerPreview(null);
     setImportRowSelected({});
     setPreviewSampleRows([]);
     setPreviewCsvStats(null);
     setPreviewWarnings([]);
-    setPreviewSectionOpen(false);
+    setImportCompletePortfolioId(null);
   }, []);
+
+  const openImportedPortfolio = useCallback(async () => {
+    const pid = importCompletePortfolioId ?? portfolioId;
+    if (!pid) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/user/workspace-portfolio", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ portfolioId: pid })
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setMessage(body.error ?? "Could not open portfolio");
+        return;
+      }
+      router.push("/portfolio");
+    } catch {
+      setMessage("Could not open portfolio");
+    } finally {
+      setBusy(false);
+    }
+  }, [importCompletePortfolioId, portfolioId, router]);
 
   const executeDryRun = useCallback(
     async (csvText: string, options?: { openPanel?: boolean; silent?: boolean }): Promise<boolean> => {
@@ -375,8 +393,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         setPreviewCsvStats(payload.csvStats);
         setPreviewWarnings(payload.previewWarnings);
         if (openPanel) {
-          setPreviewSectionOpen(true);
-          queueMicrotask(() => previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+          setImportStep(3);
         }
         if (!silent) {
           setMessage(`Preview ready — ${payload.accounts.length} broker account(s). Review the sheet, then apply.`);
@@ -398,10 +415,6 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       resetPreviewState
     ]
   );
-
-  const runPreview = async () => {
-    await executeDryRun(brokerCsv, { openPanel: true, silent: false });
-  };
 
   const runImport = async () => {
     if (!portfolioId) {
@@ -475,7 +488,6 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
     setMessage(null);
     setResults(null);
     setTaskOutput(null);
-    setPreviewSectionOpen(false);
     try {
       if (deleteExistingHoldingsFirst) {
         await parseJson<{
@@ -518,10 +530,12 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       );
       setResults(payload.data.results ?? []);
       setTaskOutput(payload.data.taskOutput);
+      setImportCompletePortfolioId(portfolioId);
+      setImportStep(3);
       setMessage(
         payload.data.status === "success"
-          ? "Import complete. Positions were updated for mapped accounts."
-          : "Import completed with exceptions. Review the summary below."
+          ? "Import complete. Open the portfolio to review holdings."
+          : "Import completed with exceptions. Review the summary below, then open the portfolio."
       );
       void loadAccounts();
     } catch (e) {
@@ -534,15 +548,62 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const csvExpanded = csvZoneFocused || brokerCsv.trim().length > 0;
   const hasSelectedCsvFile = selectedCsvFileName.trim().length > 0;
   const hasPreviewRows = previewSampleRows.length > 0;
-  const csvRawPreview = useMemo(() => {
-    if (!brokerCsv.trim()) {
-      return "";
-    }
-    return brokerCsv.split(/\r?\n/).slice(0, 80).join("\n");
-  }, [brokerCsv]);
   const parsedPositionCount = previewCsvStats?.totalPositionsParsed ?? 0;
-  const previewHeaderCount = parsedPositionCount > 0 ? parsedPositionCount : previewSampleRows.length;
-  const previewCollapsibleLabel = previewSectionOpen ? "Hide parsed positions" : "Show parsed positions";
+  const importCompletePortfolioName = useMemo(() => {
+    if (!importCompletePortfolioId) {
+      return null;
+    }
+    return portfolios.find((p) => p.id === importCompletePortfolioId)?.name ?? "Portfolio";
+  }, [importCompletePortfolioId, portfolios]);
+  const selectedPortfolioName =
+    portfolios.find((p) => p.id === portfolioId)?.name ?? "Portfolio";
+  const step1Complete = Boolean(portfolioId && portfolios.length > 0 && somePortfolioAccountEligible);
+  const step2Complete =
+    step1Complete && hasSelectedCsvFile && brokerCsv.trim().length > 0 && brokerImportSupported;
+
+  const unlockedStep = useMemo((): ImportActivityStep => {
+    if (!step1Complete) {
+      return 1;
+    }
+    if (!step2Complete) {
+      return 2;
+    }
+    return 3;
+  }, [step1Complete, step2Complete]);
+
+  const handleStepChange = useCallback(
+    async (step: ImportActivityStep) => {
+      if (step > unlockedStep) {
+        return;
+      }
+      if (step === 3 && !brokerPreview?.length) {
+        const ok = await executeDryRun(brokerCsv, { openPanel: false, silent: false });
+        if (!ok) {
+          return;
+        }
+      }
+      setImportStep(step);
+    },
+    [unlockedStep, brokerPreview, brokerCsv, executeDryRun]
+  );
+
+  useEffect(() => {
+    if (importStep > unlockedStep) {
+      setImportStep(unlockedStep);
+    }
+  }, [importStep, unlockedStep]);
+
+  const continueToReviewStep = useCallback(async () => {
+    if (!step2Complete) {
+      setMessage("Choose a supported broker and CSV file before review.");
+      return;
+    }
+    const ok = await executeDryRun(brokerCsv, { openPanel: false, silent: false });
+    if (ok) {
+      setImportStep(3);
+    }
+  }, [step2Complete, brokerCsv, executeDryRun]);
+
   const canRunImport =
     !busy &&
     Boolean(
@@ -554,15 +615,54 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         somePortfolioAccountEligible &&
         mappingDiagnostics.healthy
     );
-  const canRunPreview =
-    !busy && Boolean(portfolioId) && brokerImportSupported && hasSelectedCsvFile && brokerCsv.trim().length > 0;
+  const renderWorkflowReference = () => (
+    <details
+      className="import-activity__workflow-details"
+      open={workflowExpanded}
+      onToggle={(e) => setWorkflowExpanded((e.target as HTMLDetailsElement).open)}
+    >
+      <summary className="import-activity__workflow-summary">Import reference (expand)</summary>
+      <div className="import-activity__workflow-inner">
+        <h2 className="import-activity__workflow-h">{importActivityWorkflowCopy.supportedFilesHeading}</h2>
+        <ul className="import-activity__workflow-ul">
+          {importActivityWorkflowCopy.supportedFiles.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+        <h2 className="import-activity__workflow-h">{importActivityWorkflowCopy.howToHeading}</h2>
+        <div className="import-activity__workflow-steps">
+          {importActivityWorkflowCopy.howToSteps.map((line) => (
+            <p key={line} className="import-activity__workflow-step">
+              {line}
+            </p>
+          ))}
+        </div>
+        <h2 className="import-activity__workflow-h">{importActivityWorkflowCopy.optionsHeading}</h2>
+        <p className="import-activity__workflow-step m-0">{importActivityWorkflowCopy.optionsBody}</p>
+      </div>
+    </details>
+  );
 
   return (
     <div className="import-activity import-activity--compact flex w-full min-w-0 flex-col gap-3">
-      <div className="import-activity__layout-grid">
-        <div className="import-activity__primary flex min-w-0 flex-col gap-2.5">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <section className="import-activity__panel p-2.5 md:p-3" aria-label="Portfolio selection and accounts">
+      <ImportActivityBreadcrumb
+        currentStep={importStep}
+        unlockedStep={unlockedStep}
+        onStepChange={(step) => void handleStepChange(step)}
+      />
+
+      {message ? <p className="import-activity__status-msg text-[0.8rem]">{message}</p> : null}
+
+      <div className="import-activity__step-shell">
+        {importStep === 1 ? (
+          <section className="import-activity__step-panel" aria-labelledby="import-step-1-title">
+            <h2 id="import-step-1-title" className="import-activity__step-title">
+              Step 1 — {importActivityWorkflowCopy.stepPortfolioLabel}
+            </h2>
+            <p className="import-activity__step-hint">
+              Select the portfolio book to update. Enable accounts that should match broker refs in your CSV.
+            </p>
+            <section className="import-activity__panel import-activity__panel--tight p-2.5" aria-label="Portfolio selection and accounts">
               {portfolios.length === 0 ? (
                 <p className="text-xs import-activity__text-secondary mb-2">
                   No portfolios yet — create one from Portfolios first.
@@ -646,8 +746,30 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 </div>
               ) : null}
             </section>
+            {renderWorkflowReference()}
+            <div className="import-activity__step-nav">
+              <button
+                type="button"
+                className="import-activity__btn-primary min-h-11 px-4 py-2 text-[0.8rem]"
+                disabled={busy || !step1Complete}
+                onClick={() => setImportStep(2)}
+              >
+                {importActivityWorkflowCopy.stepNext}
+              </button>
+            </div>
+          </section>
+        ) : null}
 
-            <section className="import-activity__source-panel mb-1.5" aria-label="Broker and CSV import">
+        {importStep === 2 ? (
+          <section className="import-activity__step-panel" aria-labelledby="import-step-2-title">
+            <h2 id="import-step-2-title" className="import-activity__step-title">
+              Step 2 — {importActivityWorkflowCopy.stepFileLabel}
+            </h2>
+            <p className="import-activity__step-hint">
+              Portfolio: <strong className="text-[var(--xf-text-100)]">{selectedPortfolioName}</strong>. Choose broker
+              and upload or paste the CSV export.
+            </p>
+            <section className="import-activity__source-panel" aria-label="Broker and CSV import">
             <label className="import-activity__inline-field import-activity__source-panel-broker">
               <span className="import-activity__section-label">Broker</span>
               <select
@@ -704,11 +826,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 void f.text().then((t) => {
                   setBrokerCsv(t);
                   resetPreviewState();
-                  void executeDryRun(t, { openPanel: true, silent: true }).then((ok) => {
-                    if (ok) {
-                      setMessage("Preview opened from file — confirm mappings, then Apply import.");
-                    }
-                  });
+                  setMessage(null);
                 });
               }}
             >
@@ -728,19 +846,14 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                         void f.text().then((t) => {
                           setBrokerCsv(t);
                           resetPreviewState();
-                          void executeDryRun(t, { openPanel: true, silent: true }).then((ok) => {
-                            if (ok) {
-                              setMessage("Preview opened from file — confirm mappings, then Apply import.");
-                            }
-                          });
+                          setMessage(null);
                         });
                       }}
                     />
                   </span>
                 </label>
                 <p className="m-0 text-[0.68rem] leading-snug text-[var(--ia-secondary-text)]">
-                  Choose file, then click <strong className="text-[var(--xf-text-100)]">Run import now</strong> after
-                  selection.
+                  Choose a file or paste CSV text, then continue to review parsed positions.
                 </p>
                 {hasSelectedCsvFile ? (
                   <p className="m-0 text-[0.68rem] leading-snug text-[var(--xf-text-300)]">
@@ -780,23 +893,10 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 placeholder="Drag & drop a .csv here, choose file, or paste…"
                 aria-label="Broker CSV contents"
               />
-              <details className="import-activity__workflow-details mt-2">
-                <summary className="import-activity__workflow-summary">Raw CSV preview (compact)</summary>
-                <div className="import-activity__workflow-inner">
-                  {csvRawPreview ? (
-                    <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded-md border border-[var(--ia-border)] bg-[var(--ia-field-bg)] p-2 font-mono text-[0.65rem] leading-snug text-[var(--xf-text-100)]">
-                      {csvRawPreview}
-                    </pre>
-                  ) : (
-                    <p className="m-0 text-[0.7rem]">Upload or paste CSV content to preview rows here.</p>
-                  )}
-                </div>
-              </details>
             </div>
             </section>
-          </div>
 
-          {brokerKind === "fidelity" ? (
+            {brokerKind === "fidelity" ? (
             <div className="import-activity__note import-activity__note--tight mb-2" role="note">
               <p className="m-0 text-[0.68rem] leading-snug">
                 <strong className="text-[var(--xf-text-100)]">Fidelity:</strong>{" "}
@@ -816,167 +916,73 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 </p>
               ) : null}
             </div>
-          ) : null}
+            ) : null}
 
-          <div className="import-activity__actions-row import-activity__actions-row--tight mb-1 hidden md:flex">
-            <button
-              type="button"
-              className="import-activity__btn-secondary min-h-11 text-[0.8rem] py-2.5"
-              disabled={!canRunPreview}
-              onClick={() => void runPreview()}
-            >
-              <UploadIcon className="crud-icon h-3.5 w-3.5" /> Preview (dry run)
-            </button>
-            <button
-              type="button"
-              className="import-activity__btn-primary min-h-11 text-[0.8rem] py-2.5"
-              disabled={!canRunImport}
-              onClick={() => void runImport()}
-            >
-              <UploadIcon className="crud-icon h-3.5 w-3.5" /> Run import now
-            </button>
-            {brokerPreview?.length ? (
+            <div className="import-activity__step-nav">
               <button
                 type="button"
-                className="import-activity__btn-secondary min-h-11 text-[0.8rem] py-2.5"
-                disabled={busy || !hasSelectedCsvFile}
-                onClick={() => {
-                  setPreviewSectionOpen(true);
-                  previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                className="import-activity__btn-secondary min-h-11 px-4 py-2 text-[0.8rem]"
+                disabled={busy}
+                onClick={() => setImportStep(1)}
               >
-                Open preview
+                {importActivityWorkflowCopy.stepBack}
               </button>
-            ) : null}
-          </div>
+              <button
+                type="button"
+                className="import-activity__btn-primary min-h-11 px-4 py-2 text-[0.8rem]"
+                disabled={busy || !step2Complete}
+                onClick={() => void continueToReviewStep()}
+              >
+                {importActivityWorkflowCopy.stepRunPreview}
+              </button>
+            </div>
+          </section>
+        ) : null}
 
-          {message ? <p className="import-activity__status-msg text-[0.8rem] mb-2">{message}</p> : null}
-          <p className="text-[0.72rem] font-medium text-[color:var(--xf-gain-green)]">
-            Safe preview — no positions will be changed yet
-          </p>
-
-          <details
-            className="import-activity__workflow-details mb-2"
-            open={workflowExpanded}
-            onToggle={(e) => setWorkflowExpanded((e.target as HTMLDetailsElement).open)}
+        {importStep === 3 ? (
+          <section
+            ref={previewSectionRef}
+            className="import-activity__step-panel"
+            aria-labelledby="import-step-3-title"
           >
-            <summary className="import-activity__workflow-summary">Import reference (expand)</summary>
-            <div className="import-activity__workflow-inner">
-              <h2 className="import-activity__workflow-h">{importActivityWorkflowCopy.supportedFilesHeading}</h2>
-              <ul className="import-activity__workflow-ul">
-                {importActivityWorkflowCopy.supportedFiles.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-              <h2 className="import-activity__workflow-h">{importActivityWorkflowCopy.howToHeading}</h2>
-              <div className="import-activity__workflow-steps">
-                {importActivityWorkflowCopy.howToSteps.map((line) => (
-                  <p key={line} className="import-activity__workflow-step">
-                    {line}
-                  </p>
-                ))}
+            <h2 id="import-step-3-title" className="import-activity__step-title">
+              Step 3 — {importActivityWorkflowCopy.stepReviewLabel}
+            </h2>
+            <p className="import-activity__step-hint">{summaryHeadline}</p>
+            <p className="m-0 mb-2 text-[0.68rem] text-[color:var(--xf-gain-green)]">
+              Dry run only — positions are not changed until you run import.
+            </p>
+
+            {importCompletePortfolioId ? (
+              <div
+                className="import-activity__panel import-activity__complete-cta mb-2 flex flex-col gap-2 sm:flex-row sm:items-center"
+                role="status"
+              >
+                <p className="m-0 flex-1 text-[0.8rem] text-[var(--xf-text-200)]">
+                  <strong className="text-[var(--xf-text-100)]">{importCompletePortfolioName}</strong> was updated.
+                  Open it to review accounts and holdings.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="import-activity__btn-primary min-h-11 px-3 py-2 text-[0.8rem]"
+                    disabled={busy}
+                    onClick={() => void openImportedPortfolio()}
+                  >
+                    {importActivityWorkflowCopy.importCompleteOpenPortfolio}
+                  </button>
+                  <Link
+                    href={`/portfolios?focus=${encodeURIComponent(importCompletePortfolioId)}`}
+                    className="import-activity__btn-secondary inline-flex min-h-11 items-center px-3 py-2 text-[0.8rem]"
+                  >
+                    {importActivityWorkflowCopy.importCompleteViewWorkspace}
+                  </Link>
+                </div>
               </div>
-              <h2 className="import-activity__workflow-h">{importActivityWorkflowCopy.optionsHeading}</h2>
-              <p className="import-activity__workflow-step m-0">{importActivityWorkflowCopy.optionsBody}</p>
-              {brokerPreview?.length ? (
-                <>
-                  <h2 className="import-activity__workflow-h">Broker ref validation</h2>
-                  <ul className="import-activity__workflow-ul">
-                    {brokerPreview.map((row) => {
-                      const key = brokerImportPreviewRowKey(row);
-                      const matched = findAccountByExternalRef(row.accountRef);
-                      const on = importRowSelected[key] === true;
-                      return (
-                        <li key={key}>
-                          {row.label || accountRefLastFourOnlyDisplay(row.accountRef)} —{" "}
-                          {on ? (matched ? "✓ matched" : "⚠ no portfolio match") : "skipped"}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </>
-              ) : null}
-            </div>
-          </details>
-
-          {results && results.length > 0 ? (
-            <div className="import-activity__panel mb-2">
-              <table className="import-activity__table">
-                <thead className="import-activity__thead">
-                  <tr>
-                    <th className="p-2">Account</th>
-                    <th className="p-2">Imported</th>
-                    <th className="p-2">Skipped</th>
-                    <th className="p-2">Cleared prior</th>
-                    <th className="p-2">Error</th>
-                  </tr>
-                </thead>
-                <tbody className="import-activity__tbody">
-                  {results.map((r) => (
-                    <tr key={r.accountRef} className="import-activity__tr">
-                      <td className="p-2">{r.label}</td>
-                      <td className="p-2">{r.imported}</td>
-                      <td className="p-2">{r.skippedNonStock}</td>
-                      <td className="p-2">{r.deletedPrior}</td>
-                      <td className="p-2 import-activity__error-cell">{r.error ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-
-          {taskOutput ? (
-            <details className="import-activity__details">
-              <summary>Task output</summary>
-              <pre>{taskOutput}</pre>
-            </details>
-          ) : null}
-        </div>
-      </div>
-
-      <section
-        ref={previewSectionRef}
-        className="import-activity__panel p-2.5 md:p-3"
-        aria-label="Parsed positions preview"
-      >
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-[var(--xf-text-100)]">Parsed Positions</h2>
-            <span className="inline-flex min-h-6 items-center rounded-full border border-[var(--ia-border)] bg-[var(--ia-muted-bg)] px-2 font-mono text-[0.7rem] tabular-nums text-[var(--xf-text-100)]">
-              {previewHeaderCount}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="import-activity__btn-secondary min-h-11 px-3 py-2 text-[0.75rem] md:hidden"
-            onClick={() => setPreviewSectionOpen((prev) => !prev)}
-            aria-expanded={previewSectionOpen}
-            aria-controls="import-activity-parsed-positions"
-          >
-            {previewCollapsibleLabel}
-          </button>
-        </div>
-
-        <div className="mt-1.5 import-activity__summary-card">
-          <p className="import-activity__summary-headline">{summaryHeadline}</p>
-          <p className="import-activity__summary-csv">{csvStatusLine}</p>
-          <p className="import-activity__summary-risk">{importActivityWorkflowCopy.optionsBody}</p>
-          <div className="import-activity__summary-chips" aria-label="Accounts enabled for import mapping">
-            {accounts
-              .filter((a) => Boolean(a._id?.trim()) && accountUseForImport[a._id!] !== false)
-              .map((a) => (
-                <span key={a._id} className="import-activity__summary-chip">
-                  {a.name} <span className="font-mono tabular-nums">({accountRefLastFourOnlyDisplay(a.extAccountId)})</span> ✓
-                </span>
-              ))}
-            {selectedBrokerAccountCount === 0 ? (
-              <span className="import-activity__text-tertiary text-[0.65rem]">No accounts enabled for import.</span>
             ) : null}
-          </div>
-        </div>
 
-        <div id="import-activity-parsed-positions" className={previewSectionOpen ? "mt-3 space-y-2" : "mt-3 hidden md:block md:space-y-2"}>
+            {brokerPreview?.length ? (
+              <div id="import-activity-parsed-positions" className="mt-1 space-y-2">
           {!mappingDiagnostics.healthy && mappingDiagnostics.issueLabels.length > 0 ? (
             <p className="import-activity-preview-warn-copy">
               No portfolio match: {mappingDiagnostics.issueLabels.slice(0, 6).join(", ")}
@@ -993,8 +999,6 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
               <span className="import-activity-preview-metric-value">{selectedPositionsEstimate}</span>
             </div>
           </div>
-          <p className="import-activity-preview-note">Safe preview — no positions will be changed yet</p>
-
           {brokerPreview?.length ? (
             <div className="import-activity-preview-account-toggles">
               <span className="import-activity-preview-section-label">Include broker accounts</span>
@@ -1087,39 +1091,67 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
               ))}
             </ul>
           ) : null}
-        </div>
-      </section>
+              </div>
+            ) : (
+              <p className="import-activity-preview-empty">
+                No preview yet — go back to step 2 and upload a CSV, then continue to review.
+              </p>
+            )}
 
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--ia-border)] bg-[color:color-mix(in_srgb,var(--xf-bg-900)_94%,transparent)] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-2">
-          <button
-            type="button"
-            className="import-activity__btn-secondary min-h-11 w-full justify-center px-3 py-2.5 text-[0.85rem]"
-            disabled={!canRunPreview}
-            onClick={() => void runPreview()}
-          >
-            <UploadIcon className="crud-icon h-4 w-4" /> Preview (dry run)
-          </button>
-          <button
-            type="button"
-            className="import-activity__btn-primary min-h-11 w-full justify-center px-3 py-2.5 text-[0.85rem]"
-            disabled={!canRunImport}
-            onClick={() => void runImport()}
-          >
-            <UploadIcon className="crud-icon h-4 w-4" /> Run import now
-          </button>
-          <button
-            type="button"
-            className="import-activity__btn-secondary min-h-11 w-full justify-center px-3 py-2.5 text-[0.85rem]"
-            disabled={busy || !hasSelectedCsvFile || !brokerPreview?.length}
-            onClick={() => {
-              setPreviewSectionOpen(true);
-              previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-          >
-            Open preview
-          </button>
-        </div>
+            {results && results.length > 0 ? (
+              <div className="import-activity__panel mb-2 mt-2">
+                <table className="import-activity__table">
+                  <thead className="import-activity__thead">
+                    <tr>
+                      <th className="p-2">Account</th>
+                      <th className="p-2">Imported</th>
+                      <th className="p-2">Skipped</th>
+                      <th className="p-2">Cleared prior</th>
+                      <th className="p-2">Error</th>
+                    </tr>
+                  </thead>
+                  <tbody className="import-activity__tbody">
+                    {results.map((r) => (
+                      <tr key={r.accountRef} className="import-activity__tr">
+                        <td className="p-2">{r.label}</td>
+                        <td className="p-2">{r.imported}</td>
+                        <td className="p-2">{r.skippedNonStock}</td>
+                        <td className="p-2">{r.deletedPrior}</td>
+                        <td className="p-2 import-activity__error-cell">{r.error ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            {taskOutput ? (
+              <details className="import-activity__details mt-2">
+                <summary>Task output</summary>
+                <pre>{taskOutput}</pre>
+              </details>
+            ) : null}
+
+            <div className="import-activity__step-nav">
+              <button
+                type="button"
+                className="import-activity__btn-secondary min-h-11 px-4 py-2 text-[0.8rem]"
+                disabled={busy}
+                onClick={() => setImportStep(2)}
+              >
+                {importActivityWorkflowCopy.stepBack}
+              </button>
+              <button
+                type="button"
+                className="import-activity__btn-primary min-h-11 px-4 py-2 text-[0.8rem]"
+                disabled={!canRunImport}
+                onClick={() => void runImport()}
+              >
+                <UploadIcon className="crud-icon h-3.5 w-3.5" /> {importActivityWorkflowCopy.stepRunImport}
+              </button>
+            </div>
+          </section>
+        ) : null}
       </div>
     </div>
   );

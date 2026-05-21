@@ -1099,3 +1099,104 @@ html[data-xf-ui="soft"] .import-activity__summary-csv {
   font-size: 0.55rem;
   color: var(--ia-secondary-text);
 }
+
+/* Step wizard (xOptions-style breadcrumb) */
+.import-activity-breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.import-activity-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.import-activity-breadcrumb__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ia-secondary-text);
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.import-activity-breadcrumb__link--current {
+  color: color-mix(in srgb, var(--xf-gain-green) 86%, var(--xf-text-100));
+}
+
+.import-activity-breadcrumb__link--disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.import-activity-breadcrumb__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  border: 1px solid var(--ia-border);
+  color: var(--xf-text-300);
+}
+
+.import-activity-breadcrumb__link--current .import-activity-breadcrumb__num {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  color: color-mix(in srgb, var(--xf-gain-green) 90%, var(--xf-text-100));
+}
+
+.import-activity-breadcrumb__sep {
+  color: var(--ia-tertiary-text);
+  font-size: 0.62rem;
+}
+
+.import-activity__step-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.import-activity__step-panel {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid var(--ia-border-strong);
+  background: var(--ia-field-bg);
+  box-shadow: var(--ia-panel-shadow);
+  padding: 0.85rem 1rem;
+}
+
+.import-activity__step-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.import-activity__step-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--ia-secondary-text);
+}
+
+.import-activity__step-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+}

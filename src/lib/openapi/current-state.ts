@@ -445,6 +445,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "market"
   },
   {
+    path: "/api/market/symbol-research",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "market"
+  },
+  {
     path: "/api/market/workspace-pulse",
     operations: [{ method: "GET", auth: "session" }],
     tag: "market"

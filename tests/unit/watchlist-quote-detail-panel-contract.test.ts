@@ -10,7 +10,8 @@ describe("watchlist quote detail panel contract", () => {
   );
 
   it("exports quote and rationale tabs with desk meta fields", () => {
-    expect(panelSrc).toContain('export type WatchlistQuotePanelTab = "quote" | "rationale"');
+    expect(panelSrc).toContain('export type WatchlistQuotePanelTab = "quote" | "rationale" | "research"');
+    expect(panelSrc).toContain("WatchlistResearchTab");
     expect(panelSrc).toContain("WatchlistQuotePanelDeskMeta");
     expect(panelSrc).toContain("<dt>Status</dt>");
     expect(panelSrc).toContain("<dt>% book risk</dt>");

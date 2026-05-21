@@ -10,6 +10,13 @@ export const importActivityPageCopy = {
 } as const;
 
 export const importActivityWorkflowCopy = {
+  stepPortfolioLabel: "Portfolio",
+  stepFileLabel: "Import file",
+  stepReviewLabel: "Review & import",
+  stepNext: "Continue",
+  stepBack: "Back",
+  stepRunPreview: "Continue to review",
+  stepRunImport: "Run import",
   supportedFilesHeading: "Supported Files",
   supportedFiles: [
     "Portfolio holdings (multi-account positions export)",
@@ -18,14 +25,16 @@ export const importActivityWorkflowCopy = {
   ],
   howToHeading: "How to Import",
   howToSteps: [
-    "Choose portfolio, broker, and CSV (or paste). Account numbers in the file must match Broker ref below.",
-    'Turn on "Use for import" for each account this file should update.',
-    "Preview, pick rows, then Run import. Leave delete holdings checked for a full replace (default)."
+    "Step 1 — Choose the portfolio and which accounts can receive this import.",
+    "Step 2 — Pick broker and upload or paste the CSV export.",
+    "Step 3 — Review parsed positions, confirm mappings, then run import."
   ],
   optionsHeading: "Options note",
   optionsBody:
     "Option quantity sign is preserved: positive contracts = long, negative = short (e.g. covered calls, CSPs). Scanners use this sign for close/hold logic.",
   deleteHoldingsFirstLabel: "Delete existing holdings before import",
   deleteHoldingsFirstHint:
-    "When checked (default), all current positions in this portfolio are removed and prior broker-import jobs cleared immediately before your CSV is applied — a clean replace. Accounts and watchlists stay. Uncheck only if you intend to merge into positions already in the book."
+    "When checked (default), all current positions in this portfolio are removed and prior broker-import jobs cleared immediately before your CSV is applied — a clean replace. Accounts and watchlists stay. Uncheck only if you intend to merge into positions already in the book.",
+  importCompleteOpenPortfolio: "Open portfolio",
+  importCompleteViewWorkspace: "View in portfolios workspace"
 } as const;

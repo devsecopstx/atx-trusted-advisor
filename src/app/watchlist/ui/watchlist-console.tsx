@@ -39,9 +39,9 @@ import {
     XMarkIcon
 } from "@/app/admin/ui/crud-icons";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
-import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
 import { watchlistQueryKeys } from "@/lib/react-query/query-keys";
 import { fetchWatchlistDesk, type WatchlistApiData } from "@/lib/react-query/watchlist-api";
+import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
 import {
     XCHAT_PENDING_PERSONA_NAME_STORAGE_KEY,
     XCHAT_PENDING_PROMPT_STORAGE_KEY,
@@ -736,10 +736,10 @@ function WatchlistRowActionsInner(
         <ReviewListIcon />
       </button>
       <button
-        aria-label={`View quote and rationale for ${row.symbol}`}
+        aria-label={`Open research for ${row.symbol}`}
         className="xf-watchlist-row-action-btn"
         disabled={mutating}
-        title="View quote and rationale"
+        title="Research — quote, chart, and news"
         type="button"
         onClick={() => onShowQuote(row)}
       >
@@ -1344,7 +1344,7 @@ export function WatchlistConsole({
   const [deskColumnVisibility, setDeskColumnVisibility] = useState<VisibilityState>({});
   const [deskColumnVisibilityHydrated, setDeskColumnVisibilityHydrated] = useState(false);
   const [quotePanelSymbol, setQuotePanelSymbol] = useState<string | null>(null);
-  const [quotePanelTab, setQuotePanelTab] = useState<WatchlistQuotePanelTab>("quote");
+  const [quotePanelTab, setQuotePanelTab] = useState<WatchlistQuotePanelTab>("research");
   const [aiSuggestSymbol, setAiSuggestSymbol] = useState<string | null>(null);
   const [selectedWatchlistId, setSelectedWatchlistId] = useState("");
   const [availableWatchlists, setAvailableWatchlists] = useState<
@@ -1361,14 +1361,14 @@ export function WatchlistConsole({
   const viewportAllowsVirtualize = useWatchlistViewportAllowsVirtualize();
   const deskCompactLayout = useWatchlistDeskCompactLayout();
 
-  const openQuotePanel = useCallback((row: WatchlistRow, tab: WatchlistQuotePanelTab = "quote") => {
+  const openQuotePanel = useCallback((row: WatchlistRow, tab: WatchlistQuotePanelTab = "research") => {
     setQuotePanelTab(tab);
     setQuotePanelSymbol(row.symbol);
   }, []);
 
   const closeQuotePanel = useCallback(() => {
     setQuotePanelSymbol(null);
-    setQuotePanelTab("quote");
+    setQuotePanelTab("research");
   }, []);
 
   const handleXchatPreflightForRow = useCallback(

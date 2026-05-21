@@ -9,10 +9,11 @@ import {
     targetEntryRiskPctNumeric,
     targetEntryRiskPctToneClass
 } from "@/app/watchlist/ui/watchlist-metrics";
+import { WatchlistResearchTab } from "@/app/watchlist/ui/watchlist-research-tab";
 import type { WatchlistRowStatus } from "@/modules/core-admin/types";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
-export type WatchlistQuotePanelTab = "quote" | "rationale";
+export type WatchlistQuotePanelTab = "quote" | "rationale" | "research";
 
 export type WatchlistQuotePanelRow = {
   symbol: string;
@@ -255,14 +256,32 @@ export function WatchlistQuoteDetailPanel({
 }: WatchlistQuoteDetailPanelProps) {
   const quoteTabId = `watchlist-quote-tab-${row.symbol}`;
   const rationaleTabId = `watchlist-rationale-tab-${row.symbol}`;
+  const researchTabId = `watchlist-research-tab-${row.symbol}`;
   const quotePanelId = `watchlist-quote-panel-${row.symbol}`;
   const rationalePanelId = `watchlist-rationale-panel-${row.symbol}`;
+  const researchPanelId = `watchlist-research-panel-${row.symbol}`;
+
+  const seedResearchQuote =
+    row.quote?.price != null
+      ? {
+          symbol: row.symbol,
+          companyName: row.quote.companyName,
+          price: row.quote.price,
+          change: row.quote.change,
+          changePercent: row.quote.changePercent,
+          volume: row.quote.volume,
+          dayLow: row.quote.low,
+          dayHigh: row.quote.high,
+          fiftyTwoWeekLow: row.quote.fiftyTwoWeekLow,
+          fiftyTwoWeekHigh: row.quote.fiftyTwoWeekHigh
+        }
+      : null;
 
   return (
     <aside
-      aria-label={`${row.symbol} quote and rationale`}
+      aria-label={`${row.symbol} quote, research, and rationale`}
       aria-modal="true"
-      className="xf-watchlist-quote-panel"
+      className={`xf-watchlist-quote-panel${activeTab === "research" ? " xf-watchlist-quote-panel--research" : ""}`}
       role="dialog"
       onClick={(event) => event.stopPropagation()}
     >
@@ -283,7 +302,7 @@ export function WatchlistQuoteDetailPanel({
             </div>
           )}
           <div className="xf-watchlist-quote-panel__brand-text">
-            <h3 className="xf-watchlist-quote-panel__title">{row.symbol} quote &amp; rationale</h3>
+            <h3 className="xf-watchlist-quote-panel__title">{row.symbol} desk research</h3>
             <p className="xf-watchlist-quote-panel__delayed">US equity · delayed quote</p>
           </div>
         </div>
@@ -302,7 +321,18 @@ export function WatchlistQuoteDetailPanel({
         onTabChange={onTabChange}
       />
 
-      <div className="xf-watchlist-quote-panel__tabs" role="tablist" aria-label={`${row.symbol} quote and rationale`}>
+      <div className="xf-watchlist-quote-panel__tabs" role="tablist" aria-label={`${row.symbol} desk panels`}>
+        <button
+          aria-controls={researchPanelId}
+          aria-selected={activeTab === "research"}
+          className={`xf-watchlist-quote-panel__tab${activeTab === "research" ? " xf-watchlist-quote-panel__tab--active" : ""}`}
+          id={researchTabId}
+          role="tab"
+          type="button"
+          onClick={() => onTabChange("research")}
+        >
+          Research
+        </button>
         <button
           aria-controls={quotePanelId}
           aria-selected={activeTab === "quote"}
@@ -325,6 +355,20 @@ export function WatchlistQuoteDetailPanel({
         >
           Rationale
         </button>
+      </div>
+
+      <div
+        aria-labelledby={researchTabId}
+        className="xf-watchlist-quote-panel__tab-panel xf-watchlist-quote-panel__tab-panel--research"
+        hidden={activeTab !== "research"}
+        id={researchPanelId}
+        role="tabpanel"
+      >
+        <WatchlistResearchTab
+          listLoadedAtLabel={listLoadedAtLabel}
+          seedQuote={seedResearchQuote}
+          symbol={row.symbol}
+        />
       </div>
 
       <div
