@@ -15,7 +15,6 @@ import {
     PortfolioAccountsSection,
     type PortfolioAccountTableRow
 } from "@/app/portfolio/ui/portfolio-accounts-section";
-import { PortfolioBrokerAccountMark } from "@/app/portfolio/ui/portfolio-broker-account-mark";
 import type { PortfolioDeskPrefetchStrip } from "@/app/portfolio/ui/portfolio-desk-prefetch";
 import { PortfolioManageTabs, type PortfolioWorkspaceTabId } from "@/app/portfolio/ui/portfolio-manage-tabs";
 import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
@@ -95,7 +94,6 @@ function PortfolioManageShellInner({
 
   const selectedAccountName =
     manageOptions.find((a) => a.id === resolvedSelectedHex)?.name ?? "Selected account";
-  const selectedAccountMeta = manageOptions.find((a) => a.id === resolvedSelectedHex);
 
   const portfoliosHubHref = `/portfolios?portfolioId=${encodeURIComponent(portfolioIdHex)}`;
 
@@ -248,18 +246,6 @@ function PortfolioManageShellInner({
             <div className="portfolio-manage-head__metric">
               <p className="portfolio-metric__label">Options (basis)</p>
               <p className="portfolio-manage-head__metric-val">{formatUsd2(metrics.optionBookValueUsd)}</p>
-            </div>
-          ) : null}
-          {workspaceTab === "portfolios" && selectedAccountMeta ? (
-            <div className="portfolio-manage-head__metric portfolio-manage-head__metric--broker">
-              <p className="portfolio-metric__label">Selected account</p>
-              <PortfolioBrokerAccountMark
-                accountName={selectedAccountName}
-                brokerIconSlug={selectedAccountMeta.brokerIconSlug}
-                brokerTypeLabel={selectedAccountMeta.brokerTypeLabel}
-                compact
-                extAccountRefMasked={selectedAccountMeta.extAccountRefMasked}
-              />
             </div>
           ) : null}
         </div>

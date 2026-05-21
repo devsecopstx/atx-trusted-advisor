@@ -173,6 +173,7 @@ export function PortfolioAccountManageBar({
           brokerTypeLabel={selectedAccount.brokerTypeLabel}
           compact
           extAccountRefMasked={selectedAccount.extAccountRefMasked}
+          selector
         />
       ) : null}
       {deskHandoff ? (

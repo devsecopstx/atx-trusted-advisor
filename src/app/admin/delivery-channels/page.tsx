@@ -4,10 +4,8 @@ import { Suspense } from "react";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-import {
-    AdminDeliveryChannelsConsole,
-    parseDeliveryChannelsTab
-} from "./ui/admin-delivery-channels-console";
+import { parseDeliveryChannelsTab } from "./delivery-channels-tabs";
+import { AdminDeliveryChannelsConsole } from "./ui/admin-delivery-channels-console";
 
 type PageProps = {
   searchParams?: Promise<{ tab?: string }>;

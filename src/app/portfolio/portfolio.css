@@ -775,10 +775,6 @@
   border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
 }
 
-.portfolio-manage-head__metric--broker {
-  min-width: min(100%, 11rem);
-}
-
 .portfolio-manage-head__metric {
   min-width: 0;
 }
@@ -1155,27 +1151,9 @@
   align-items: flex-start;
 }
 
-.portfolio-manage-table__account-main {
-  min-width: 0;
-}
-
 .portfolio-manage-table__account-name {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
   font-weight: 700;
   color: var(--xf-text-100);
-}
-
-.portfolio-manage-table__account-name-text {
-  min-width: 0;
-}
-
-.portfolio-manage-table__account-broker-mark,
-.portfolio-manage-table__account-broker-fallback {
-  flex-shrink: 0;
-  line-height: 0;
 }
 
 .portfolio-manage-table__account-meta {
@@ -4475,6 +4453,28 @@ html[data-xf-ui="soft"] .portfolio-alerts-pill--sym {
 
 .portfolio-broker-account-mark--compact {
   gap: 0.1rem;
+}
+
+.portfolio-broker-account-mark--selector {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.portfolio-broker-account-mark--selector .portfolio-broker-account-mark__broker-row {
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.portfolio-broker-account-mark__icon {
+  flex-shrink: 0;
+}
+
+.portfolio-broker-account-mark__ref-inline {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--xf-text-300);
+  font-family: var(--xf-font-mono);
 }
 
 .portfolio-broker-account-mark__account {

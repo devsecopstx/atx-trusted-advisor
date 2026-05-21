@@ -46,7 +46,9 @@
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`, `.cursor/skills/README.md`).
 - [ ] **`.cursor/skills/**` changed:** `npm run skills:lint` passes (README index ↔ folders, frontmatter).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
-- [ ] **`package.json` version bumped:** **`atx-docs/sre-ops/release-notes.md`** has a **newest-first** one-line entry for that semver (see **`.cursor/agents/sre.md`** § Resources).
+- [ ] **`package.json` version bumped:** **`atx-docs/sre-ops/release-notes.md`** has a **newest-first** one-line entry for that semver with a **`**Deploy:** …`** tag (see **`.cursor/agents/sre.md`** § Resources).
+- [ ] **`BrokerIcon` / admin brokers catalog:** **`broker-brand-icons.tsx`** + **`tests/unit/broker-brand-icons.test.ts`** when TYPE/mark SVGs change.
+- [ ] **Admin delivery-channels tabs:** tab parsers stay in server-safe **`delivery-channels-tabs.ts`** (not `"use client"` console modules).
 - [ ] Open gaps (if any) are captured in **`atx-docs/sre-ops/api-consolidation-spring-backend.md`**, **`.cursor/plans/*.plan.md`**, or the relevant ops doc — or consciously not applicable to this change (see **`generate-docs`**).
 
 ## Staging and production

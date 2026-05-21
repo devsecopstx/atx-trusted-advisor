@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
     DELIVERY_CHANNELS_TABS,
     parseDeliveryChannelsTab
-} from "@/app/admin/delivery-channels/ui/admin-delivery-channels-console";
+} from "@/app/admin/delivery-channels/delivery-channels-tabs";
 import {
     ADMIN_FUNCTION_GROUPS,
     ADMIN_PLATFORM_OPS_ITEMS,
