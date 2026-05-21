@@ -308,6 +308,7 @@ class AdminScheduledTasksService(
         runDoc["output"] = withTenantIdInTaskOutput("Task accepted and started", tenantOid)
         runDoc["status"] = "running"
         runDoc["startedAt"] = Date()
+        runDoc["executor"] = TaskRunExecutorIdentity.toDocument(TaskRunExecutorIdentity.build("spring"))
         tenantOid?.let { runDoc["tenantId"] = it }
 
         val inserted = mongoTemplate.insert(runDoc, props.taskRunsCollection)
@@ -567,6 +568,13 @@ class AdminScheduledTasksService(
                 output =
                     "xchat_spend_alert: Kotlin worker noop — tenant spend alert executes on Next.js task-runner."
             }
+            "price_scanner", "user_access_requests", "marketing_post", "user_alert_manager" -> {
+                status = "failed"
+                output =
+                    "$category: Kotlin worker cannot execute this job — set ATX_SCHEDULER_NEXT_BASE_URL + " +
+                    "ATX_SCHEDULER_INTERNAL_SECRET on Spring and Next, or run via Next " +
+                    "(POST /api/admin/tasks/{id}/run / scheduler tick on Next)."
+            }
             "corporate_events_scanner", "income_cash_flow_projector", "options_expiration_roll_manager",
             "risk_concentration_scanner", "tax_loss_harvest_scanner" -> {
                 status = "success"
@@ -615,6 +623,16 @@ class AdminScheduledTasksService(
         doc.getDate("completedAt")?.let { m["completedAt"] = it.toInstant().toString() }
         (doc["durationMs"] as? Number)?.toLong()?.let { m["durationMs"] = it }
         m["output"] = doc.getString("output")
+        (doc["executor"] as? Document)?.let { ex ->
+            m["executor"] = mapOf(
+                "runtime" to ex.getString("runtime"),
+                "environment" to ex.getString("environment"),
+                "label" to ex.getString("label"),
+                "service" to ex.getString("service"),
+                "revision" to ex.getString("revision"),
+                "host" to ex.getString("host"),
+            ).filterValues { it != null }
+        }
         return m
     }
 

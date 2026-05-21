@@ -101,6 +101,7 @@ export async function executeScheduledTask(
     taskName: task.name,
     category: task.category,
     triggeredBy,
+    executor: resolveTaskRunExecutor(executionOptions),
     output: appendTenantIdToScheduledTaskOutput("Task accepted and started", task.tenantId)
   });
   if (!run._id) {
@@ -115,7 +116,17 @@ export async function executeScheduledTask(
     });
   }
 
-  const execution = await runScheduledCategory(task, executionOptions);
+  let execution: ScheduledCategoryResult;
+  try {
+    execution = await runScheduledCategory(task, executionOptions);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error && error.stack ? `\n${error.stack}` : "";
+    execution = {
+      status: "failed",
+      output: `Unhandled scheduler error: ${message}${stack}`
+    };
+  }
   const completedAt = new Date();
   const durationMs = Math.max(1, completedAt.getTime() - startedAt.getTime());
 
@@ -273,6 +284,7 @@ async function executeSystemWideScheduledTask(
       taskName: templateTask.name,
       category: templateTask.category,
       triggeredBy,
+      executor: resolveTaskRunExecutor(executionOptions),
       output: appendTenantIdToScheduledTaskOutput(
         "system_wide: no core_tenants rows — nothing to run",
         undefined
@@ -323,13 +335,24 @@ async function executeSystemWideScheduledTask(
       taskName: templateTask.name,
       category: templateTask.category,
       triggeredBy,
+      executor: resolveTaskRunExecutor(executionOptions),
       output: appendTenantIdToScheduledTaskOutput("Task accepted and started", tid)
     });
     if (!run._id) {
       throw new Error("Task run ID missing");
     }
     const iterStart = run.startedAt;
-    const execution = await runScheduledCategory(perTask, executionOptions);
+    let execution: ScheduledCategoryResult;
+    try {
+      execution = await runScheduledCategory(perTask, executionOptions);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error && error.stack ? `\n${error.stack}` : "";
+      execution = {
+        status: "failed",
+        output: `Unhandled scheduler error: ${message}${stack}`
+      };
+    }
     const completedAt = new Date();
     const durationMs = Math.max(1, completedAt.getTime() - iterStart.getTime());
     const outputWithTenant = appendTenantIdToScheduledTaskOutput(execution.output, tid);

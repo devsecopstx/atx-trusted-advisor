@@ -5,6 +5,7 @@ import {
     isSchedulerInternalSecretValid,
     readSchedulerInternalSecretFromEnv
 } from "@/lib/internal-scheduler-execute-auth";
+import { buildScheduledTaskExecutorIdentity } from "@/lib/scheduled-task-executor-identity";
 import { getScheduledTaskByIdForInternalDelegate } from "@/modules/core-admin/repository";
 import { executeScheduledTask } from "@/modules/core-admin/task-runner";
 
@@ -61,7 +62,11 @@ export async function POST(request: Request) {
     "next-scheduler-delegate";
 
   const result = await executeScheduledTask(task, triggeredBy, undefined, {
-    ...(parsed.data.bypassMarketWindow === true ? { bypassMarketWindow: true } : {})
+    ...(parsed.data.bypassMarketWindow === true ? { bypassMarketWindow: true } : {}),
+    executor: buildScheduledTaskExecutorIdentity({
+      runtime: "next",
+      delegateFrom: "spring"
+    })
   });
 
   return NextResponse.json({

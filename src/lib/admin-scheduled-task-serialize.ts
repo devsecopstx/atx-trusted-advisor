@@ -1,4 +1,62 @@
-import type { ScheduledTask } from "@/modules/core-admin/types";
+import type { ScheduledTask, TaskRun } from "@/modules/core-admin/types";
+
+export type AdminTaskRunExecutorJson = {
+  runtime: string;
+  environment: string;
+  label: string;
+  service?: string;
+  revision?: string;
+  host?: string;
+  delegateFrom?: string;
+};
+
+export type AdminTaskRunJson = {
+  _id?: string;
+  tenantId?: string;
+  taskId: string;
+  taskName: string;
+  category: string;
+  triggeredBy: string;
+  status: TaskRun["status"];
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+  output: string;
+  executor?: AdminTaskRunExecutorJson;
+};
+
+function serializeExecutor(run: TaskRun): AdminTaskRunExecutorJson | undefined {
+  const ex = run.executor;
+  if (!ex?.label?.trim()) {
+    return undefined;
+  }
+  return {
+    runtime: ex.runtime,
+    environment: ex.environment,
+    label: ex.label,
+    ...(ex.service ? { service: ex.service } : {}),
+    ...(ex.revision ? { revision: ex.revision } : {}),
+    ...(ex.host ? { host: ex.host } : {}),
+    ...(ex.delegateFrom ? { delegateFrom: ex.delegateFrom } : {})
+  };
+}
+
+export function serializeAdminTaskRunForJson(run: TaskRun): AdminTaskRunJson {
+  return {
+    _id: run._id?.toHexString(),
+    tenantId: run.tenantId?.toHexString(),
+    taskId: run.taskId.toHexString(),
+    taskName: run.taskName,
+    category: run.category,
+    triggeredBy: run.triggeredBy,
+    status: run.status,
+    startedAt: run.startedAt.toISOString(),
+    completedAt: run.completedAt?.toISOString(),
+    durationMs: run.durationMs,
+    output: run.output ?? "",
+    executor: serializeExecutor(run)
+  };
+}
 
 export function serializeScheduledTaskForJson(t: ScheduledTask) {
   return {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { serializeAdminTaskRunForJson } from "@/lib/admin-scheduled-task-serialize";
 import { resolveTaskRunListWindowQuery } from "@/lib/admin-task-run-window";
 import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     limit
   });
   return NextResponse.json({
-    data: runs,
+    data: runs.map(serializeAdminTaskRunForJson),
     meta: {
       window,
       startedAtMin: startedAtMin.toISOString(),

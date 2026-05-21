@@ -136,6 +136,16 @@ export type ScheduledTask = {
   nextRunAt?: Date;
 };
 
+export type TaskRunExecutor = {
+  runtime: "next" | "spring";
+  environment: string;
+  label: string;
+  service?: string;
+  revision?: string;
+  host?: string;
+  delegateFrom?: "spring";
+};
+
 export type TaskRun = {
   _id?: ObjectId;
   tenantId?: ObjectId;
@@ -148,6 +158,8 @@ export type TaskRun = {
   completedAt?: Date;
   durationMs?: number;
   output: string;
+  /** Runtime/node snapshot at enqueue — local vs staging/production, Next vs Spring. */
+  executor?: TaskRunExecutor;
 };
 
 export type BrokerBinding = {

@@ -3360,6 +3360,144 @@ fieldset label.checkbox-label input[type="checkbox"] {
   white-space: nowrap;
 }
 
+.admin-tasks-category-cell {
+  min-width: 10rem;
+  max-width: 14rem;
+}
+
+.admin-tasks-category-slug {
+  display: block;
+  word-break: break-all;
+}
+
+.admin-tasks-category-slug--invalid {
+  color: var(--xf-lightning-yellow);
+}
+
+.admin-tasks-category-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.admin-tasks-executed-on-cell {
+  min-width: 9rem;
+  max-width: 14rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.admin-task-runs-table__row--failed {
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 6%, transparent);
+}
+
+.admin-task-runs-table__output-btn {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--xf-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.admin-task-runs-table__output-btn:hover {
+  color: var(--xf-nav-green-hover);
+  text-decoration: underline;
+}
+
+.admin-task-run-detail__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--xf-bg-900) 55%, transparent);
+}
+
+.admin-task-run-detail {
+  width: min(52rem, 100%);
+  max-height: min(85dvh, 40rem);
+  overflow: auto;
+  padding: 1rem 1.15rem 1.25rem;
+  border: 1px solid var(--xf-border-subtle);
+}
+
+.admin-task-run-detail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.admin-task-run-detail__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.admin-task-run-detail__meta {
+  margin: 0.35rem 0 0;
+}
+
+.admin-task-run-detail__facts {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) 1fr;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.84rem;
+  margin: 0 0 1rem;
+}
+
+.admin-task-run-detail__facts dt {
+  color: var(--xf-text-muted);
+  font-weight: 500;
+}
+
+.admin-task-run-detail__facts dd {
+  margin: 0;
+}
+
+.admin-task-run-detail__output-section {
+  border-top: 1px solid var(--xf-border-subtle);
+  padding-top: 0.85rem;
+}
+
+.admin-task-run-detail__output-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-task-run-detail__output-title {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.admin-task-run-detail__output-pre {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--xf-border-subtle);
+  background: var(--xf-surface-900);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: min(50dvh, 22rem);
+  overflow: auto;
+  color: var(--xf-text-secondary);
+}
+
 /* Persona directory */
 .persona-directory-grid {
   display: grid;

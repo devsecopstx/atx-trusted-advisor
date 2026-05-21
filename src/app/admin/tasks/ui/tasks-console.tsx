@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+    AdminTaskRunDetailDialog,
+    taskRunOutputSnippet,
+    type AdminTaskRunDetail
+} from "@/app/admin/tasks/ui/admin-task-run-detail-dialog";
 import { RRuleScheduleBuilderModal } from "@/app/admin/tasks/ui/rrule-schedule-builder-modal";
 import { AddIcon, DeleteIcon, RefreshIcon, RunIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
@@ -15,6 +20,10 @@ import {
 } from "@/lib/admin-tasks-display-timezone";
 import { SCHEDULED_TASK_CATEGORY_CATALOG } from "@/lib/scheduled-task-category-catalog";
 import {
+    isKnownScheduledTaskCategory,
+    scheduledTaskCategoryDisplayName
+} from "@/lib/scheduled-task-category-display";
+import {
     SCHEDULED_TASK_CATEGORIES,
     SCHEDULED_TASK_CATEGORY_DEFAULT_CRON
 } from "@/lib/scheduled-task-category-schema";
@@ -23,7 +32,8 @@ import type { ScheduledTask as ScheduledTaskDoc } from "@/modules/core-admin/typ
 type ScheduledTask = {
   _id?: string;
   name: string;
-  category: ScheduledTaskDoc["category"];
+  /** Executor slug from Mongo — may be invalid if row was misconfigured. */
+  category: string;
   scheduleCron?: string;
   scheduleRRule?: string;
   scheduleDescription?: string;
@@ -43,6 +53,16 @@ type DeliveryChannelRow = {
   updatedAt: string;
 };
 
+type TaskRunExecutorRow = {
+  runtime: string;
+  environment: string;
+  label: string;
+  service?: string;
+  revision?: string;
+  host?: string;
+  delegateFrom?: string;
+};
+
 type TaskRun = {
   _id?: string;
   taskId: string;
@@ -54,6 +74,7 @@ type TaskRun = {
   completedAt?: string;
   durationMs?: number;
   output: string;
+  executor?: TaskRunExecutorRow;
 };
 
 type SchedulePayload = {
@@ -114,6 +135,8 @@ export function TasksConsole() {
   const [runCategoryFilter, setRunCategoryFilter] = useState<"" | ScheduledTaskDoc["category"]>("");
   const [runSortField, setRunSortField] = useState<"startedAt" | "status">("startedAt");
   const [runSortDir, setRunSortDir] = useState<"asc" | "desc">("desc");
+  const [runFailedOnly, setRunFailedOnly] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<AdminTaskRunDetail | null>(null);
   const [deliveryChannels, setDeliveryChannels] = useState<DeliveryChannelRow[]>([]);
   /** Timestamps (next run, run history, channel updated); cron matching stays UTC — see copy in Tasks tab. */
   const [displayTimeZone, setDisplayTimeZone] = useState(DEFAULT_ADMIN_TASKS_DISPLAY_TIME_ZONE);
@@ -164,10 +187,13 @@ export function TasksConsole() {
   );
 
   const filteredSortedRuns = useMemo(() => {
-    const list =
+    let list =
       runCategoryFilter === ""
         ? [...runs]
         : runs.filter((r) => r.category === runCategoryFilter);
+    if (runFailedOnly) {
+      list = list.filter((r) => r.status === "failed");
+    }
     const statusRank: Record<TaskRun["status"], number> = { failed: 3, running: 2, success: 1 };
     list.sort((a, b) => {
       if (runSortField === "startedAt") {
@@ -190,7 +216,7 @@ export function TasksConsole() {
       return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
     });
     return list;
-  }, [runs, runCategoryFilter, runSortField, runSortDir]);
+  }, [runs, runCategoryFilter, runFailedOnly, runSortField, runSortDir]);
 
   const refreshTasks = useCallback(async () => {
     try {
@@ -422,11 +448,23 @@ export function TasksConsole() {
     setRunningTaskId(taskId);
     setStatus(`Running job ${taskId}...`);
     try {
+      const row = tasks.find((t) => t._id === taskId);
       const payload = await parseJson<{
-        data: { runId: string; status: string; output: string };
+        data: { runId: string; status: TaskRun["status"]; output: string };
       }>(await fetch(`${TASKS_BASE}/${encodeURIComponent(taskId)}/run`, { method: "POST" }));
       setStatus(`Job finished: ${payload.data.status}`);
       await refreshAll();
+      setActiveTab("runs");
+      setSelectedRun({
+        _id: payload.data.runId,
+        taskId,
+        taskName: row?.name ?? taskId,
+        category: row?.category ?? "compliance",
+        triggeredBy: "manual",
+        status: payload.data.status,
+        startedAt: new Date().toISOString(),
+        output: payload.data.output ?? ""
+      });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to run job");
     } finally {
@@ -629,7 +667,8 @@ export function TasksConsole() {
                   <thead>
                     <tr>
                       <th>Name</th>
-                      <th>Job Type</th>
+                      <th>Category</th>
+                      <th>Job type</th>
                       <th>Delivery channel</th>
                       <th>Schedule</th>
                       <th>Enabled</th>
@@ -658,6 +697,25 @@ export function TasksConsole() {
                               }
                             />
                           </td>
+                          <td className="admin-tasks-category-cell">
+                            <code className="font-mono text-xs admin-tasks-category-slug" title="Executor slug">
+                              {m.category}
+                            </code>
+                            {!isKnownScheduledTaskCategory(m.category) ? (
+                              <p className="status-text status-warn admin-tasks-category-hint">
+                                Invalid category — pick a job type and Save.
+                              </p>
+                            ) : (
+                              <p className="status-text admin-tasks-category-hint">
+                                {scheduledTaskCategoryDisplayName(m.category)}
+                              </p>
+                            )}
+                            {id ? (
+                              <p className="status-text admin-tasks-category-hint">
+                                Job id: <code className="font-mono text-xs">{id}</code>
+                              </p>
+                            ) : null}
+                          </td>
                           <td>
                             <select
                               className="crud-input text-xs"
@@ -668,11 +726,14 @@ export function TasksConsole() {
                                   ...prev,
                                   [id]: {
                                     ...prev[id],
-                                    category: e.target.value as ScheduledTask["category"]
+                                    category: e.target.value
                                   }
                                 }))
                               }
                             >
+                              {!isKnownScheduledTaskCategory(m.category) ? (
+                                <option value={m.category}>{m.category} (invalid — fix me)</option>
+                              ) : null}
                               {CATEGORIES.map((c) => (
                                 <option key={c} value={c}>
                                   {JOB_TYPE_LABELS[c]}
@@ -887,6 +948,12 @@ export function TasksConsole() {
                 ))}
               </select>
               <p className="status-text">
+                Category slug:{" "}
+                <code className="font-mono text-xs">{createJobType}</code>
+                {" · "}
+                {scheduledTaskCategoryDisplayName(createJobType)}
+              </p>
+              <p className="status-text">
                 Job name:{" "}
                 <code className="font-mono text-xs">{defaultJobNameForCategory(createJobType)}</code>
                 <span className="text-[var(--xf-text-300)]"> — {selectedCreateTemplate.description}</span>
@@ -977,6 +1044,20 @@ export function TasksConsole() {
                   ))}
                 </select>
               </label>
+              <label
+                className="flex items-end gap-2 text-sm checkbox-label"
+                htmlFor="admin-task-runs-failed-only"
+                style={{ minHeight: "2.75rem" }}
+              >
+                <input
+                  checked={runFailedOnly}
+                  disabled={loading}
+                  id="admin-task-runs-failed-only"
+                  type="checkbox"
+                  onChange={(e) => setRunFailedOnly(e.target.checked)}
+                />
+                <span className="status-text">Failed only</span>
+              </label>
               <label className="flex flex-col gap-1 text-sm" style={{ minWidth: "11rem" }}>
                 <span className="status-text text-xs uppercase tracking-wide">Sort by</span>
                 <select
@@ -1013,41 +1094,103 @@ export function TasksConsole() {
             {runs.length === 0 ? (
               <p className="status-text">No task runs yet.</p>
             ) : filteredSortedRuns.length === 0 ? (
-              <p className="status-text">No runs match the selected job type. Choose &quot;All types&quot; or widen the time window.</p>
+              <p className="status-text">
+                {runFailedOnly
+                  ? "No failed runs in this window. Clear Failed only or widen the time range."
+                  : "No runs match the selected job type. Choose &quot;All types&quot; or widen the time window."}
+              </p>
             ) : (
               <div className="crud-table-wrap">
-                <table className="crud-table">
+                <table className="crud-table admin-task-runs-table">
                   <thead>
                     <tr>
                       <th>Job</th>
-                      <th>Job Type</th>
+                      <th>Category</th>
+                      <th>Job type</th>
                       <th>Status</th>
                       <th>Triggered By</th>
                       <th>Started</th>
                       <th>Duration</th>
-                      <th>Output</th>
+                      <th>Output preview</th>
+                      <th aria-label="Actions"> </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredSortedRuns.map((run) => (
-                      <tr key={run._id ?? run.startedAt}>
-                        <td>
-                          <span title={`Job id: ${run.taskId}`}>{run.taskName}</span>
-                        </td>
-                        <td>{JOB_TYPE_LABELS[run.category as ScheduledTaskDoc["category"]] ?? run.category}</td>
-                        <td>
-                          <span
-                            className={`status-badge status-${run.status === "success" ? "ready" : run.status === "failed" ? "error" : "pending"}`}
-                          >
-                            {run.status}
-                          </span>
-                        </td>
-                        <td>{run.triggeredBy}</td>
-                        <td>{formatDateTimeInTimeZone(run.startedAt, displayTimeZone)}</td>
-                        <td>{run.durationMs != null ? `${run.durationMs}ms` : "—"}</td>
-                        <td className="output-cell">{run.output || "—"}</td>
-                      </tr>
-                    ))}
+                    {filteredSortedRuns.map((run) => {
+                      const jobLabel = scheduledTaskCategoryDisplayName(run.category);
+                      const categoryInvalid = !isKnownScheduledTaskCategory(run.category);
+                      return (
+                        <tr
+                          key={run._id ?? run.startedAt}
+                          className={run.status === "failed" ? "admin-task-runs-table__row--failed" : undefined}
+                        >
+                          <td>
+                            <span title={`Job id: ${run.taskId}`}>{run.taskName}</span>
+                          </td>
+                          <td>
+                            <code
+                              className={`font-mono text-xs${categoryInvalid ? " admin-tasks-category-slug--invalid" : ""}`}
+                              title={categoryInvalid ? "Unknown executor category" : undefined}
+                            >
+                              {run.category}
+                            </code>
+                          </td>
+                          <td>
+                            {jobLabel ?? (
+                              <span className="status-text status-warn">Unknown type</span>
+                            )}
+                          </td>
+                          <td className="admin-tasks-executed-on-cell">
+                            {run.executor?.label ? (
+                              <span
+                                title={[
+                                  run.executor.runtime,
+                                  run.executor.environment,
+                                  run.executor.service,
+                                  run.executor.revision,
+                                  run.executor.host
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              >
+                                {run.executor.label}
+                              </span>
+                            ) : (
+                              <span className="status-text">—</span>
+                            )}
+                          </td>
+                          <td>
+                            <span
+                              className={`status-badge status-${run.status === "success" ? "ready" : run.status === "failed" ? "error" : "pending"}`}
+                            >
+                              {run.status}
+                            </span>
+                          </td>
+                          <td>{run.triggeredBy}</td>
+                          <td>{formatDateTimeInTimeZone(run.startedAt, displayTimeZone)}</td>
+                          <td>{run.durationMs != null ? `${run.durationMs}ms` : "—"}</td>
+                          <td className="output-cell">
+                            <button
+                              className="admin-task-runs-table__output-btn"
+                              title={run.output?.trim() ? "View full log output" : "No output stored"}
+                              type="button"
+                              onClick={() => setSelectedRun(run)}
+                            >
+                              {taskRunOutputSnippet(run.output)}
+                            </button>
+                          </td>
+                          <td>
+                            <button
+                              className={`tiny-button${run.status === "failed" ? " cta cta-secondary" : ""}`}
+                              type="button"
+                              onClick={() => setSelectedRun(run)}
+                            >
+                              View log
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1055,6 +1198,11 @@ export function TasksConsole() {
           </div>
         ) : null}
       </article>
+      <AdminTaskRunDetailDialog
+        displayTimeZone={displayTimeZone}
+        run={selectedRun}
+        onClose={() => setSelectedRun(null)}
+      />
       <RRuleScheduleBuilderModal
         key={
           cronBuilder
