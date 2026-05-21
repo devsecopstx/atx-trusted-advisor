@@ -7,11 +7,11 @@ describe("watchlist console layout contract", () => {
   const consoleSrc = readFileSync(join(process.cwd(), "src/app/watchlist/ui/watchlist-console.tsx"), "utf8");
   const cssSrc = readFileSync(join(process.cwd(), "src/app/watchlist/watchlist.css"), "utf8");
 
-  it("uses toolbar watchlist picker + create and quote/rationale side panel", () => {
+  it("uses toolbar watchlist picker + create and research side panel", () => {
     expect(consoleSrc).toContain("xf-watchlist-list-picker");
     expect(consoleSrc).toContain("New watchlist");
     expect(consoleSrc).toContain("WatchlistQuoteDetailPanel");
-    expect(consoleSrc).toContain("View quote and rationale");
+    expect(consoleSrc).toContain("Research — quote, chart, and news");
     expect(consoleSrc).toContain("portfolioTotalUsd={portfolioTotalUsd}");
     expect(consoleSrc).toContain("xf-watchlist-ops-note");
     expect(consoleSrc).toContain("onRefreshDeskQuotes");
