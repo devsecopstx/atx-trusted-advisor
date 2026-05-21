@@ -22,6 +22,25 @@ export const BROKER_ICON_URL: Record<AccountType, string> = {
   etrade: "/brokers/etrade.png"
 };
 
+/** Slugs with built-in SVG marks in `BrokerIcon` (aligned with broker catalog seeds). */
+export const brokerIconSlugValues = [
+  "fidelity",
+  "etrade",
+  "forge",
+  "hiive",
+  "ibkr",
+  "merrill"
+] as const;
+export type BrokerIconSlug = (typeof brokerIconSlugValues)[number];
+
+export function brokerIconSlugFromCatalogType(type: string): BrokerIconSlug | null {
+  const slug = type.trim().toLowerCase();
+  if ((brokerIconSlugValues as readonly string[]).includes(slug)) {
+    return slug as BrokerIconSlug;
+  }
+  return null;
+}
+
 export function brokerIconUrlForType(slug: string): string | null {
   if ((accountTypeValues as readonly string[]).includes(slug)) {
     return BROKER_ICON_URL[slug as AccountType];

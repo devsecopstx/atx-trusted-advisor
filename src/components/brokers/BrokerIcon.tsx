@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
 interface BrokerIconProps {
-  broker: 'fidelity' | 'etrade' | 'forge' | 'hive' | 'ibkr' | 'merrill';
+  broker: 'fidelity' | 'etrade' | 'forge' | 'hiive' | 'ibkr' | 'merrill';
   size?: number;
   className?: string;
   showTooltip?: boolean;
@@ -32,10 +32,10 @@ const brokerData = {
     description: 'Private market & pre-IPO shares',
     color: '#FF6B00',
   },
-  hive: {
-    name: 'Hive',
-    fullName: 'Hive Finance',
-    description: 'Modern brokerage for active investors',
+  hiive: {
+    name: 'Hiive',
+    fullName: 'Hiive',
+    description: 'Pre-IPO marketplace for private company shares',
     color: '#00C9A7',
   },
   ibkr: {
@@ -85,7 +85,7 @@ export const BrokerIcon = ({
         <text x="50" y="58" textAnchor="middle" fill="white" fontSize="18" fontWeight="700">FG</text>
       </svg>
     ),
-    hive: (
+    hiive: (
       <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="50" r="48" fill="#00C9A7" />
         <path d="M50 22 L72 35 L72 65 L50 78 L28 65 L28 35 Z" fill="white" />

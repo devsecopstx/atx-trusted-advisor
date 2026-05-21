@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { AddIcon, DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { BrokerIcon } from "@/components/brokers/BrokerIcon";
+import { brokerIconSlugFromCatalogType } from "@/lib/broker-ui";
 
 type BrokerRow = {
   _id: string;
@@ -221,27 +223,33 @@ function BrokerCatalogRow(props: {
   const [iconUrl, setIconUrl] = useState(row.iconUrl);
 
   const dirty = name !== row.name || description !== row.description || iconUrl !== row.iconUrl;
+  const builtInIcon = brokerIconSlugFromCatalogType(row.type);
 
   return (
     <tr>
       <td className="align-top">
-        <div className="flex items-center gap-2">
-          {iconUrl.trim() ? (
-            // eslint-disable-next-line @next/next/no-img-element -- admin-supplied arbitrary icon URLs
-            <img
-              alt={`${row.name || row.type} broker icon`}
-              className="h-12 w-12 rounded border border-white/10 object-contain"
-              src={iconUrl.trim()}
-              title={row.type}
-            />
-          ) : (
-            <span
-              className="inline-flex h-12 w-12 items-center justify-center rounded border border-white/10 text-xs font-mono uppercase text-[var(--xf-text-300)]"
-              title={row.type}
-            >
-              {row.type.slice(0, 2)}
-            </span>
-          )}
+        <div className="flex flex-col gap-1">
+          <code className="font-mono text-xs text-[var(--xf-text-300)]">{row.type}</code>
+          <div className="flex items-center gap-2">
+            {builtInIcon ? (
+              <BrokerIcon broker={builtInIcon} size={36} showTooltip tooltipVariant="rich" />
+            ) : iconUrl.trim() ? (
+              // eslint-disable-next-line @next/next/no-img-element -- admin-supplied arbitrary icon URLs
+              <img
+                alt={`${row.name || row.type} broker icon`}
+                className="h-12 w-12 rounded border border-white/10 object-contain"
+                src={iconUrl.trim()}
+                title={row.type}
+              />
+            ) : (
+              <span
+                className="inline-flex h-12 w-12 items-center justify-center rounded border border-white/10 text-xs font-mono uppercase text-[var(--xf-text-300)]"
+                title={row.type}
+              >
+                {row.type.slice(0, 2)}
+              </span>
+            )}
+          </div>
         </div>
       </td>
       <td className="align-top">
