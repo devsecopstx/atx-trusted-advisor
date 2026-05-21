@@ -9,6 +9,7 @@ describe("/resources/about page contract", () => {
     expect(pageSrc).toContain('id="eight-pillars"');
     expect(pageSrc).toContain("AboutPillarCards");
     expect(pageSrc).toContain("ADVISORY_RESOURCE_PILLARS");
-    expect(pageSrc).toMatch(/Welcome to aTx Trusted Advisory[\s\S]*eight-pillars/);
+    expect(pageSrc).toContain("XfinancePremiumValueBlock");
+    expect(pageSrc).toMatch(/Austin high-net-worth[\s\S]*eight-pillars/);
   });
 });

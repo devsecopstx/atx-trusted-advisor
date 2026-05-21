@@ -27,7 +27,7 @@ export const RESOURCE_GUIDE_SECTIONS: readonly ResourceGuideSection[] = [
     shortLabel: "Platform",
     heading: "Platform overview",
     subtitle:
-      "How aTx Trusted Advisory fits your book — dashboards, decision workflow, and the xFinance workspace alongside reporting and governance.",
+      "What xFinance delivers for Austin HNWI investors and advisors — xChat + xOptions + portfolio desk, multi-tenant admin, and the onboarding path from book setup to validated strategy jobs.",
     icon: "platform",
     links: [
       {

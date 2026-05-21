@@ -11,16 +11,18 @@ import { canUserLogin } from "@/modules/identity/authorization";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { XfinancePremiumValueBlock } from "@/app/ui/xfinance-premium-value-block";
 import "../../xchat/xchat.css";
 import "../getting-started/resources-getting-started.css";
+
 import { AboutPillarCards } from "./about-pillar-cards";
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "About the Educational Hub | Resources",
+  title: "About xFinance for Austin HNWI Investors & Advisors | Resources",
   description:
-    "How the xFinance Educational Hub is organized — pillars, risk frameworks, and how every article connects to real xChat and xOptions workflows in your workspace.",
+    "What xFinance delivers for Austin high-net-worth retail investors and Investment Advisors — xChat, xOptions, portfolio desk, multi-tenant admin, and illustrative time/value math for options income workflows.",
   alternates: {
     canonical: "/resources/about"
   },
@@ -31,14 +33,6 @@ export const metadata: Metadata = {
     type: "website"
   }
 };
-
-const ABOUT_BULLETS: string[] = [
-  "Consolidate all your accounts and assets into a single dashboard",
-  "Track performance, cash flow, and net worth in real time",
-  "Generate clean, professional reports",
-  "Collaborate securely with your advisors and family members",
-  "Get powerful insights tailored to Austin's unique market — from tech wealth and real estate concentration to Texas tax advantages"
-];
 
 export default async function ResourcesAboutPage() {
   const session = await getSessionUser();
@@ -63,35 +57,22 @@ export default async function ResourcesAboutPage() {
 
       <header className="resources-doc-hero">
         <p className="resources-doc-hero__eyebrow">Resources · About</p>
-        <h1 className="resources-doc-hero__title">About the Educational Hub</h1>
+        <h1 className="resources-doc-hero__title">About xFinance for Austin HNWI desks</h1>
         <p className="resources-doc-hero__copy resources-doc-hero__copy--full">
-          {`Sophisticated portfolio management software for Austin's high-net-worth families and their advisors.`}
+          {`aTx Trusted Advisory built xFinance for Austin high-net-worth retail investors and the Investment Advisors who run their books — options income with book-aware Grok, production xOptions, and audit-ready portfolio workflows in one workspace.`}
         </p>
       </header>
 
       <section className="resources-doc-section">
         <p className="resources-doc-section__desc">
-          Welcome to aTx Trusted Advisory. We built our platform to help high-net-worth families and their trusted
-          advisors in the Austin area manage complex family portfolios with clarity and confidence.
-        </p>
-        <p className="resources-doc-section__desc">
-          {`Whether you're overseeing multiple accounts, multiple generations, or a mix of investments and real estate, aTx Trusted Advisory brings everything together in one secure, easy-to-use place. You can:`}
-        </p>
-        <ul className="resources-about-list">
-          {ABOUT_BULLETS.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-        <p className="resources-doc-section__desc">
-          {`It's designed specifically for families with portfolios exceeding $1 million and the financial professionals who serve them. Simple enough for daily use, powerful enough for serious wealth management.`}
-        </p>
-        <p className="resources-doc-section__desc">
-          {`At aTx Trusted Advisory, we focus on giving you better visibility, better organization, and better control over your family's financial picture — all in a private, Austin-built platform.`}
+          {`Whether you manage your own concentrated tech and real-estate wealth or advise families across multiple custodians, the Educational Hub maps directly to xChat prompts, xOptions structures, and portfolio guardrails inside the product.`}
         </p>
         <p className="resources-doc-section__desc resources-doc-section__desc--closing">
-          {`We'd love to show you how it works.`}
+          {`Start with the premium stack overview below, then dive into playbooks and onboarding checklists.`}
         </p>
       </section>
+
+      <XfinancePremiumValueBlock variant="doc" />
 
       <section className="resources-doc-section resources-doc-section--pillars" id="eight-pillars">
         <h2>Eight pillars — options income, risk &amp; execution</h2>

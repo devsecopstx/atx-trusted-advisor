@@ -15,6 +15,7 @@ import {
     PublicMarketingHeader
 } from "@/app/ui/public-marketing-header";
 import { PoweredByXai } from "@/app/ui/xai-brand-mark";
+import { XfinancePremiumValueBlock } from "@/app/ui/xfinance-premium-value-block";
 import { withUtmParams } from "@/lib/marketing/utm";
 
 
@@ -93,16 +94,18 @@ export function PublicMarketingLanding() {
             </div>
 
             <p className="mt-4 max-w-2xl text-lg font-semibold leading-snug text-[var(--xf-text-200)] sm:text-xl md:text-2xl">
-              One workspace. Your actual portfolios + Grok that sees your book + xOptions execution.
-              Defined-risk income with less screen time.
+              Austin-built for HNWI retail investors and Investment Advisors — one workspace that combines
+              book-aware Grok, production xOptions, and audit-ready portfolio desk tools.
             </p>
 
             <div className="mt-6 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
               <p className="mb-2">
-                <span className="font-semibold text-[var(--xf-text-100)]">Book-aware Grok</span> — prompts grounded in your real holdings, watchlist, and desk workflows.
+                <span className="font-semibold text-[var(--xf-text-100)]">xChat + RAG</span> — multi-agent orchestration
+                with conservative, balanced, and aggressive income playbooks grounded in your holdings.
               </p>
               <p>
-                <span className="font-semibold text-[var(--xf-text-100)]">Guardrails + execution</span> — risk tiers, strategy jobs, and scanners that keep income trades inside your rules.
+                <span className="font-semibold text-[var(--xf-text-100)]">xOptions + desk</span> — chains, payoff
+                previews, strategy jobs, alerts, and scanners with an IBKR integration path and full audit lineage.
               </p>
             </div>
 
@@ -186,20 +189,7 @@ export function PublicMarketingLanding() {
         </div>
       </section>
 
-      <section
-        id="trust-bar"
-        className="border-t border-white/10 bg-[color-mix(in_srgb,var(--xf-bg-900)_88%,var(--xf-surface-700))] py-8 sm:py-10"
-        aria-label="Trust and platform posture"
-      >
-        <div className="mx-auto max-w-screen-2xl px-4 text-center sm:px-8">
-          <p className="mx-auto max-w-4xl text-sm font-medium leading-relaxed text-[var(--xf-text-300)] sm:text-base md:text-lg">
-            <span className="text-[var(--xf-text-100)]">Enterprise-grade</span>
-            {" "}
-            (Spring/Kotlin backend, tenant isolation, full audit lineage). Used by operators managing multi-million-dollar
-            books.
-          </p>
-        </div>
-      </section>
+      <XfinancePremiumValueBlock id="premium-value" />
 
       <section
         id="platform"

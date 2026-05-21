@@ -60,7 +60,8 @@ export default async function ResourcesGuidesHubPage() {
         <p className="resources-doc-hero__eyebrow">Resources · Guides</p>
         <h1 className="resources-doc-hero__title">Guides</h1>
         <p className="resources-doc-hero__copy resources-doc-hero__copy--full">
-          Choose a panel — platform and <strong className="resources-guides-hub__hero-strong">xFinance</strong> workspace,
+          Choose a panel — platform overview for Austin HNWI desks (
+          <strong className="resources-guides-hub__hero-strong">xFinance</strong> workspace, premium stack, onboarding),
           <strong className="resources-guides-hub__hero-strong"> xChat</strong> prompts, wheel income foundations tied to{" "}
           <strong className="resources-guides-hub__hero-strong">xOptions</strong>, then deeper playbooks. Everything here
           is educational; it is not individualized advice.

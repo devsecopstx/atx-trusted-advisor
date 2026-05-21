@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { PublicMarketingHeader } from "@/app/ui/public-marketing-header";
+import { XfinancePremiumValueBlock } from "@/app/ui/xfinance-premium-value-block";
 import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pillars";
 import { withUtmParams } from "@/lib/marketing/utm";
 
@@ -86,6 +87,8 @@ export default function ResourcesHubPage() {
             </div>
           </div>
         </div>
+
+        <XfinancePremiumValueBlock className="mt-10 rounded-3xl border border-white/10" id="premium-value" />
 
         {/* Primary CTA */}
         <div className="mt-8 flex flex-wrap gap-4">
