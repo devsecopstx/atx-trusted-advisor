@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { computeHoldingsRowMetrics, rowMarkUsd } from "@/app/portfolio/lib/holdings-row-metrics";
 import type { SerializableRealEstatePosition } from "@/app/portfolio/accounts/serializable-account";
+import { computeHoldingsRowMetrics, rowMarkUsd } from "@/app/portfolio/lib/holdings-row-metrics";
 import { computePortfolioTotalMarketValueUsd } from "@/lib/portfolio-total-market-value";
 import type { Account, Position } from "@/modules/core-admin/types";
 import { realEstateNetEquityUsd } from "@/modules/core-admin/types";

@@ -52,7 +52,6 @@ import {
     type PositionType,
     type RealEstatePositionMetadata,
     type RealEstateValuationSource,
-    realEstateNetEquityUsd,
     type Recommendation,
     type ScheduledTask,
     type TaskRun,
@@ -63,7 +62,8 @@ import {
     type WatchlistSymbolImportEntry,
     accountTypeValues,
     normalizePositionType,
-    parseAccountOutlook
+    parseAccountOutlook,
+    realEstateNetEquityUsd
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
 import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";

@@ -1,8 +1,8 @@
 import type {
-  AccountOutlook,
-  PortfolioAccountHnwiGuardrails,
-  RealEstatePositionMetadata,
-  RealEstateValuationSource
+    AccountOutlook,
+    PortfolioAccountHnwiGuardrails,
+    RealEstatePositionMetadata,
+    RealEstateValuationSource
 } from "@/modules/core-admin/types";
 
 export type SerializableAccount = {
