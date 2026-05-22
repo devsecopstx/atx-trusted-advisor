@@ -129,6 +129,21 @@ export function personaSatisfiesFileSearchCollectionRequirement(value: {
   return ids.length > 0;
 }
 
+export const PERSONA_PUBLISH_COLLECTION_SEARCH_ERROR =
+  "Invalid persona payload: collection search requires xaiCollection, teamCollection, or collection ids on tools";
+
+/** Publish + live published edits must satisfy RAG/tool collection wiring. */
+export function getPersonaPublishReadinessError(value: {
+  xaiCollection?: { collectionId?: string };
+  teamCollection?: { collectionId?: string };
+  xapi: PersonaXapiConfig;
+}): string | null {
+  if (personaSatisfiesFileSearchCollectionRequirement(value)) {
+    return null;
+  }
+  return PERSONA_PUBLISH_COLLECTION_SEARCH_ERROR;
+}
+
 export const createPersonaPayloadSchema = z.object({
   name: z.string().trim().min(2).max(PERSONA_VALIDATION_LIMITS.nameLength),
   systemPrompt: z.string().trim().min(10).max(PERSONA_VALIDATION_LIMITS.systemPromptLength),

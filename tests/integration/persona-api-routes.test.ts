@@ -20,7 +20,8 @@ const repositoryMocks = vi.hoisted(() => ({
   createPersona: vi.fn(),
   getPersonaById: vi.fn(),
   updatePersona: vi.fn(),
-  deletePersona: vi.fn()
+  deletePersona: vi.fn(),
+  publishPersona: vi.fn()
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -46,6 +47,7 @@ vi.mock("@/modules/xchat/repository", async (importOriginal) => {
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 
+import { POST as postPublishPersona } from "@/app/api/personas/[personaId]/publish/route";
 import {
     DELETE as deletePersonaById,
     GET as getPersonaByIdRoute,
@@ -996,13 +998,14 @@ describe("persona API routes", () => {
     expect(payload.code).toBe("PERSONA_NAME_CONFLICT");
   });
 
-  it("rejects update when file_search tool has no collection binding", async () => {
+  it("rejects update when published persona has file_search tool without collection binding", async () => {
     repositoryMocks.getPersonaById.mockResolvedValueOnce({
       _id: new ObjectId("507f1f77bcf86cd799439055"),
       name: "Ops",
       nameNormalized: "ops",
       systemPrompt: "You are an operations persona for controls and audit.",
       overridePrompt: "Summarize as an action plan.",
+      status: "published",
       xaiCollection: {
         collectionId: "",
         collectionName: ""
@@ -1041,5 +1044,128 @@ describe("persona API routes", () => {
 
     expect(response.status).toBe(400);
     expect(repositoryMocks.updatePersona).not.toHaveBeenCalled();
+  });
+
+  it("allows draft persona update when file_search tool has no collection binding", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Ops",
+      nameNormalized: "ops",
+      systemPrompt: "You are an operations persona for controls and audit.",
+      overridePrompt: "Summarize as an action plan.",
+      status: "draft",
+      xaiCollection: {
+        collectionId: "",
+        collectionName: ""
+      },
+      model: "grok-4-latest",
+      temperature: 0.1,
+      enableRag: false,
+      defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: []
+      },
+      createdAt: now,
+      updatedAt: now
+    });
+
+    const response = await putPersonaById(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemPrompt: "You are a draft persona still wiring collections.",
+          xapi: {
+            mode: "responses",
+            toolChoice: "required",
+            maxTurns: 5,
+            tools: [{ type: "file_search" }]
+          }
+        })
+      }),
+      {
+        params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePersona).toHaveBeenCalled();
+  });
+
+  it("rejects publish when persona is not publish-ready", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Draft Ops",
+      nameNormalized: "draft ops",
+      systemPrompt: "You are a draft persona.",
+      overridePrompt: "",
+      status: "draft",
+      xaiCollection: { collectionId: "", collectionName: "" },
+      model: "grok-4-latest",
+      temperature: 0.2,
+      enableRag: true,
+      defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "collections_search", collection_ids: [] }]
+      },
+      createdAt: now,
+      updatedAt: now
+    });
+
+    const response = await postPublishPersona(new Request("http://test", { method: "POST" }), {
+      params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+    });
+    const payload = (await response.json()) as { code?: string };
+
+    expect(response.status).toBe(400);
+    expect(payload.code).toBe("persona_not_publish_ready");
+    expect(repositoryMocks.publishPersona).not.toHaveBeenCalled();
+  });
+
+  it("publishes draft persona when publish-ready", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Draft Ops",
+      nameNormalized: "draft ops",
+      systemPrompt: "You are a draft persona.",
+      overridePrompt: "",
+      status: "draft",
+      xaiCollection: {
+        collectionId: "collection_ops-global",
+        collectionName: "Ops Global Docs"
+      },
+      model: "grok-4-latest",
+      temperature: 0.2,
+      enableRag: true,
+      defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "atx_function" }]
+      },
+      createdAt: now,
+      updatedAt: now
+    });
+    repositoryMocks.publishPersona.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Draft Ops",
+      status: "published",
+      version: 1,
+      publishedAt: now
+    });
+
+    const response = await postPublishPersona(new Request("http://test", { method: "POST" }), {
+      params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+    });
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.publishPersona).toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.25.4",
+  "version": "3.25.5",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",

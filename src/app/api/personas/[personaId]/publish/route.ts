@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/api-auth";
 import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent } from "@/modules/audit/repository";
+import { getPersonaPublishReadinessError } from "@/modules/xchat/persona-validation";
 import { publishPersona } from "@/modules/xchat/repository";
+import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 
 type RouteContext = {
   params: Promise<{ personaId: string }>;
@@ -21,6 +23,18 @@ export async function POST(_request: Request, context: RouteContext) {
 
   if (existing.status === "published") {
     return NextResponse.json({ error: "Persona is already published" }, { status: 409 });
+  }
+
+  const publishReadinessError = getPersonaPublishReadinessError({
+    xaiCollection: existing.xaiCollection,
+    teamCollection: existing.teamCollection,
+    xapi: normalizePersonaXapiConfig(existing.xapi)
+  });
+  if (publishReadinessError) {
+    return NextResponse.json(
+      { error: publishReadinessError, code: "persona_not_publish_ready" },
+      { status: 400 }
+    );
   }
 
   const actor = { userId: session.userId, email: session.email, username: session.username };

@@ -14,6 +14,7 @@ import {
 import { AddIcon, DeleteIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { isMultiAgentPersonaModelId } from "@/modules/xchat/multi-agent-persona-models";
+import type { PersonaStatus } from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 type PersonaEditorPageProps = {
@@ -110,6 +111,10 @@ export function PersonaEditorPage({
   /** When true, save merges `web_search` + `x_search` into the tools array if missing. */
   const [includeHostedSearchInTools, setIncludeHostedSearchInTools] = useState(false);
   const [showEmptyToolsGuard, setShowEmptyToolsGuard] = useState(false);
+  const [personaStatus, setPersonaStatus] = useState<PersonaStatus>("draft");
+  const [personaVersion, setPersonaVersion] = useState(0);
+  const [personaIsSystem, setPersonaIsSystem] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -145,6 +150,9 @@ export function PersonaEditorPage({
             defaultScope: string;
             citationsEnabled?: boolean;
             keepXchatHistory?: boolean;
+            status?: PersonaStatus;
+            version?: number;
+            isSystem?: boolean;
             xapi: {
               mode: "responses" | "chat_completions";
               toolChoice: "auto" | "required" | "none";
@@ -183,6 +191,9 @@ export function PersonaEditorPage({
         setRestrictCollectionScope(selectedIds.length > 0);
         setIncludeHostedSearchInTools(personaToolsIncludeHostedSearch(loadedTools));
         setShowEmptyToolsGuard(false);
+        setPersonaStatus(payload.data.status ?? "draft");
+        setPersonaVersion(payload.data.version ?? 0);
+        setPersonaIsSystem(payload.data.isSystem === true);
         setStatus("Loaded");
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Failed to load persona");
@@ -318,6 +329,10 @@ export function PersonaEditorPage({
 
   async function onDelete() {
     if (!personaId || mode !== "edit") return;
+    if (personaIsSystem) {
+      setStatus("System-seeded personas cannot be deleted.");
+      return;
+    }
     if (!window.confirm(`Delete persona "${form.name}"? This cannot be undone.`)) return;
     setStatus("Deleting persona...");
     try {
@@ -333,10 +348,58 @@ export function PersonaEditorPage({
     }
   }
 
+  async function onPublish() {
+    if (!personaId || mode !== "edit" || personaStatus === "published") {
+      return;
+    }
+    setPublishLoading(true);
+    setStatus("Publishing persona...");
+    try {
+      const payload = await parseJson<{
+        data: { status: PersonaStatus; version: number; publishedAt: string | null };
+      }>(await fetch(`/api/personas/${personaId}/publish`, { method: "POST" }));
+      setPersonaStatus(payload.data.status);
+      setPersonaVersion(payload.data.version);
+      setStatus(`Published v${String(payload.data.version)}.`);
+      router.refresh();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to publish persona");
+    } finally {
+      setPublishLoading(false);
+    }
+  }
+
   return (
     <section className="panel stack-gap">
       <article className="surface-card xf-widget section-card">
         <h3>{mode === "create" ? "Create Persona" : "Edit Persona"}</h3>
+        {mode === "edit" ? (
+          <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.35rem" }}>
+            <span
+              className={`status-badge ${
+                personaStatus === "published"
+                  ? "status-live"
+                  : personaStatus === "archived"
+                    ? "status-ready"
+                    : "status-warn"
+              }`}
+            >
+              {personaStatus}
+            </span>
+            {personaVersion > 0 ? <span className="status-badge">v{personaVersion}</span> : null}
+            {personaIsSystem ? <span className="status-badge status-ready">system</span> : null}
+          </div>
+        ) : null}
+        {mode === "edit" && personaStatus !== "published" ? (
+          <p className="status-text" style={{ marginTop: 0, lineHeight: 1.45 }}>
+            Draft or archived — save changes here without affecting app users. Publish when ready.
+          </p>
+        ) : null}
+        {mode === "edit" && personaStatus === "published" ? (
+          <p className="status-text status-warn" style={{ marginTop: 0, lineHeight: 1.45 }}>
+            Published — saves apply immediately to live xChat for users on this persona.
+          </p>
+        ) : null}
         <p className="status-text">{loading ? "Loading..." : status}</p>
         <form className="stack-form" onSubmit={onSubmit}>
           <div className="persona-editor__tabs" role="tablist" aria-label="Persona editor sections">
@@ -901,7 +964,7 @@ export function PersonaEditorPage({
             <button
               aria-label={mode === "create" ? "Create persona" : "Save persona changes"}
               className="cta cta-primary"
-              disabled={loading}
+              disabled={loading || publishLoading}
               title={mode === "create" ? "Create this persona" : "Save persona changes"}
               type="submit"
             >
@@ -924,14 +987,30 @@ export function PersonaEditorPage({
             >
               Back to personas
             </button>
+            {mode === "edit" && personaId && personaStatus !== "published" ? (
+              <button
+                className="cta cta-secondary"
+                disabled={loading || publishLoading}
+                onClick={() => void onPublish()}
+                type="button"
+                aria-label="Publish persona"
+                title="Make this persona available to app users"
+              >
+                {publishLoading ? "Publishing…" : "Publish"}
+              </button>
+            ) : null}
             {mode === "edit" && personaId ? (
               <button
                 className="cta cta-danger"
-                disabled={loading}
+                disabled={loading || publishLoading || personaIsSystem}
                 onClick={() => void onDelete()}
                 type="button"
-                aria-label="Delete persona"
-                title="Delete persona permanently"
+                aria-label={personaIsSystem ? "Delete blocked (system persona)" : "Delete persona"}
+                title={
+                  personaIsSystem
+                    ? "System-seeded personas cannot be deleted"
+                    : "Delete persona permanently"
+                }
               >
                 <DeleteIcon className="crud-icon" /> Delete persona
               </button>

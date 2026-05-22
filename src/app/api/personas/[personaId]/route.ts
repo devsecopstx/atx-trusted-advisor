@@ -5,10 +5,9 @@ import { proxyPersonasRequestToBackend } from "@/lib/backend-bff";
 import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import {
-    hasFileSearchTool,
+    getPersonaPublishReadinessError,
     isPersonaPayloadTooLargeByBody,
     isPersonaPayloadTooLargeByHeader,
-    personaSatisfiesFileSearchCollectionRequirement,
     updatePersonaPayloadSchema
 } from "@/modules/xchat/persona-validation";
 import { PersonaNameConflictError, deletePersona, updatePersona } from "@/modules/xchat/repository";
@@ -92,17 +91,12 @@ export async function PUT(request: Request, context: RouteContext) {
         : existingPersona.teamCollection,
     xapi: normalizePersonaXapiConfig(parsed.data.xapi ?? existingPersona.xapi)
   };
-  if (
-    hasFileSearchTool(mergedForFileSearch.xapi.tools) &&
-    !personaSatisfiesFileSearchCollectionRequirement(mergedForFileSearch)
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Invalid persona payload: collection search requires xaiCollection, teamCollection, or collection ids on tools"
-      },
-      { status: 400 }
-    );
+  // Draft/archived personas may be saved while WIP; published personas must stay publish-ready.
+  if (existingPersona.status === "published") {
+    const publishReadinessError = getPersonaPublishReadinessError(mergedForFileSearch);
+    if (publishReadinessError) {
+      return NextResponse.json({ error: publishReadinessError, code: "persona_not_publish_ready" }, { status: 400 });
+    }
   }
 
   const updates = Object.fromEntries(
