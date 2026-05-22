@@ -41,7 +41,7 @@ export function PortfoliosWorkspaceHeader({
   const loading = pulseQuery.isLoading || pulseQuery.isFetching;
 
   const spy = useMemo(() => indices.find((i) => i.symbol === "SPY") ?? indices[0], [indices]);
-  const sessionStatus = useMemo(() => usMarketSessionStatusLabel(market), [market]);
+  const sessionStatus = useMemo(() => usMarketSessionStatusLabel(market, new Date()), [market]);
   const sessionTapeActive = market.marketWindowOpen && sessionStatus.label === "Open";
 
   const macroTapeIndices: MacroTapeIndex[] = useMemo(
@@ -95,7 +95,7 @@ export function PortfoliosWorkspaceHeader({
                     : "portfolios-workspace-header__market-status"
                 }
               >
-                {sessionStatus.label}
+                {sessionStatus.headerLabel ?? sessionStatus.label}
               </span>
             </XfHoverHint>
             <span className="portfolios-workspace-header__market-pill font-mono tabular-nums">

@@ -1,20 +1,15 @@
 import { pickHealthTipForLocalDate } from "@/lib/desk-wellness-health-tips";
 import { respondWithXai } from "@/lib/xai";
-import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
 
-const DESK_WELLNESS_SYSTEM = [
-  "You are a concise assistant on the portfolio desk workspace.",
-  "Use the web_search tool at least once to ground answers in current conditions.",
-  "Task A — Weather: one friendly sentence — conditions plus temperature for the user's location and today's date (Imperial primary, optional metric in parentheses). Example tone: \"Mostly sunny, high near 83°F (28°C).\" No hour-by-hour forecast. No city name required unless it reads naturally.",
-  "Task B — Wellness: one short line with a practical desk-worker habit (movement, hydration, eyes, posture, stress breaks). Educational only — not medical diagnosis or treatment.",
-  "Do not give investment advice. Keep total reasoning tight.",
-  "Neither line may contain URLs, markdown links, footnotes, or citation markers — no [[1]](...), no [text](https://...), no bracketed source lists. Plain readable prose only.",
-  "",
-  "Output EXACTLY this tagged plain-text shape (no markdown fences, no text outside the tags):",
-  "<<<WEATHER>>>",
-  "single line here",
-  "<<<WELLNESS>>>",
-  "single line here"
+/** Latency-first desk weather (wellness tip is local-only). */
+const DESK_WEATHER_MODEL = "grok-4-1-fast";
+
+const DESK_WEATHER_SYSTEM = [
+  "You are a concise weather assistant on the portfolio desk.",
+  "Call web_search exactly once for current conditions at the user's location today.",
+  "Reply with ONE plain sentence: conditions plus temperature (Imperial primary, optional metric in parentheses).",
+  "Example: \"Mostly sunny, high near 83°F (28°C).\" No hour-by-hour forecast.",
+  "No URLs, markdown links, footnotes, or citation markers — no [[1]](...), no [text](https://...). Plain prose only."
 ].join("\n");
 
 export type DeskWellnessBriefResult = {
@@ -134,29 +129,43 @@ export async function fetchDeskWellnessBriefViaXai(input: {
     return normalizeBriefResult(hit.value);
   }
 
+  const wellnessLine = pickHealthTipForLocalDate(new Date(input.isoDate));
+
   const userPrompt = [
     `Today's date (ISO): ${input.isoDate}`,
-    `Location context for weather search: ${input.locationDescription}`,
-    "",
-    "Search the web as needed, then reply using ONLY the <<<WEATHER>>> / <<<WELLNESS>>> tagged format from your instructions.",
-    "Do not append URLs, footnotes, or [[n]](...) citation tails to either line."
+    `Location: ${input.locationDescription}`,
+    "One sentence of current weather only."
   ].join("\n");
 
   try {
     const result = await respondWithXai({
-      model: getDefaultPersonaChatModelId(),
-      systemPrompt: DESK_WELLNESS_SYSTEM,
+      model: DESK_WEATHER_MODEL,
+      systemPrompt: DESK_WEATHER_SYSTEM,
       userPrompt,
       tools: [{ type: "web_search", name: "web_search" }] as Array<Record<string, unknown>>,
       toolChoice: "auto",
-      maxTurns: 12
+      maxTurns: 4
     });
 
     const tagged = parseDeskWellnessTaggedOutput(result.outputText);
-    if (tagged) {
+    if (tagged?.weatherLine) {
       const value = normalizeBriefResult({
         weatherLine: tagged.weatherLine,
-        wellnessLine: tagged.wellnessLine,
+        wellnessLine,
+        parsed: true
+      });
+      memoryCache.set(key, { exp: now + MEMORY_TTL_MS, value });
+      return value;
+    }
+
+    const singleLine = sanitizeDeskWellnessLine(
+      result.outputText.replace(/\r?\n+/g, " "),
+      WEATHER_MAX
+    );
+    if (singleLine) {
+      const value = normalizeBriefResult({
+        weatherLine: singleLine,
+        wellnessLine,
         parsed: true
       });
       memoryCache.set(key, { exp: now + MEMORY_TTL_MS, value });
@@ -164,8 +173,12 @@ export async function fetchDeskWellnessBriefViaXai(input: {
     }
 
     const soft = softParseLines(result.outputText);
-    if (soft) {
-      const normalized = normalizeBriefResult(soft);
+    if (soft?.weatherLine) {
+      const normalized = normalizeBriefResult({
+        weatherLine: soft.weatherLine,
+        wellnessLine,
+        parsed: false
+      });
       memoryCache.set(key, { exp: now + MEMORY_TTL_MS, value: normalized });
       return normalized;
     }
@@ -173,7 +186,7 @@ export async function fetchDeskWellnessBriefViaXai(input: {
     /* fall through */
   }
 
-  const fb = normalizeBriefResult(fallbackBrief());
+  const fb = normalizeBriefResult({ ...fallbackBrief(), wellnessLine });
   memoryCache.set(key, { exp: now + Math.min(MEMORY_TTL_MS, 5 * 60 * 1000), value: fb });
   return fb;
 }

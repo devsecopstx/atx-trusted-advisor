@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { MacroTapeDeskNav } from "@/app/portfolios/macro-tape-desk-nav";
+import {
+    deskWellnessLocationKey,
+    readDeskWellnessWeatherSessionCache,
+    writeDeskWellnessWeatherSessionCache
+} from "@/lib/desk-wellness-brief-session-cache";
 import { pickHealthTipForLocalDate } from "@/lib/desk-wellness-health-tips";
 
 type Props = {
@@ -11,7 +16,7 @@ type Props = {
 };
 
 export function PortfoliosMacroTapeWellness({ visiblePathPrefixes, deskPortfolioId }: Props) {
-  const [weatherLine, setWeatherLine] = useState<string>("Loading desk brief…");
+  const [weatherLine, setWeatherLine] = useState<string>("Loading today's weather…");
   const [wellnessLine, setWellnessLine] = useState<string>(
     pickHealthTipForLocalDate(new Date())
   );
@@ -19,31 +24,47 @@ export function PortfoliosMacroTapeWellness({ visiblePathPrefixes, deskPortfolio
   useEffect(() => {
     let cancelled = false;
 
+    async function resolveGeoParams(): Promise<URLSearchParams> {
+      const params = new URLSearchParams();
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        return params;
+      }
+      await new Promise<void>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            params.set("lat", String(pos.coords.latitude));
+            params.set("lon", String(pos.coords.longitude));
+            resolve();
+          },
+          () => resolve(),
+          { enableHighAccuracy: false, maximumAge: 600_000, timeout: 1_500 }
+        );
+      });
+      return params;
+    }
+
     async function run() {
       const finishWithFallback = () => {
         setWeatherLine("Weather unavailable — try xChat with web search for a live lookup.");
-        setWellnessLine(pickHealthTipForLocalDate(new Date()));
       };
 
-      const params = new URLSearchParams();
-      if (typeof navigator !== "undefined" && navigator.geolocation) {
-        await new Promise<void>((resolve) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              params.set("lat", String(pos.coords.latitude));
-              params.set("lon", String(pos.coords.longitude));
-              resolve();
-            },
-            () => {
-              resolve();
-            },
-            { enableHighAccuracy: false, maximumAge: 600_000, timeout: 8_000 }
-          );
-        });
-      }
-
+      const params = await resolveGeoParams();
       if (cancelled) {
         return;
+      }
+
+      const lat = params.get("lat");
+      const lon = params.get("lon");
+      const latN = lat != null ? Number(lat) : null;
+      const lonN = lon != null ? Number(lon) : null;
+      const locationKey = deskWellnessLocationKey(
+        latN != null && Number.isFinite(latN) ? latN : null,
+        lonN != null && Number.isFinite(lonN) ? lonN : null
+      );
+
+      const cachedWeather = readDeskWellnessWeatherSessionCache(locationKey);
+      if (cachedWeather) {
+        setWeatherLine(cachedWeather);
       }
 
       try {
@@ -57,14 +78,19 @@ export function PortfoliosMacroTapeWellness({ visiblePathPrefixes, deskPortfolio
         if (cancelled) {
           return;
         }
-        if (!res.ok || !body.data?.weatherLine || !body.data?.wellnessLine) {
-          finishWithFallback();
+        if (!res.ok || !body.data?.weatherLine) {
+          if (!cachedWeather) {
+            finishWithFallback();
+          }
           return;
         }
         setWeatherLine(body.data.weatherLine);
-        setWellnessLine(body.data.wellnessLine);
+        writeDeskWellnessWeatherSessionCache(locationKey, body.data.weatherLine);
+        if (body.data.wellnessLine?.trim()) {
+          setWellnessLine(body.data.wellnessLine);
+        }
       } catch {
-        if (!cancelled) {
+        if (!cancelled && !cachedWeather) {
           finishWithFallback();
         }
       }

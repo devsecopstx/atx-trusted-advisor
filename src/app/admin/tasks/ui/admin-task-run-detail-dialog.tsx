@@ -20,7 +20,7 @@ export type AdminTaskRunExecutorDetail = {
 
 export type AdminTaskRunDetail = {
   _id?: string;
-  tenantId?: string;
+  tenantId?: string | null;
   taskId: string;
   taskName: string;
   category: string;

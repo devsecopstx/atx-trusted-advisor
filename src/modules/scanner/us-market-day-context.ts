@@ -178,16 +178,112 @@ export function resolveUsMarketDayContext(value: Date): MarketDayContext {
   };
 }
 
+const MARKET_OPEN_MINUTE = 9 * 60 + 30;
+
+function addCivilDaysKey(civilYmd: string, days: number): string {
+  const [y, mo, d] = civilYmd.split("-").map((x) => Number.parseInt(x, 10));
+  const t = new Date(Date.UTC(y!, mo! - 1, d! + days, 12, 0, 0));
+  return civilYmdKey(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+}
+
+/** Wall-clock instant in America/New_York for a civil YYYY-MM-DD + hour/minute. */
+export function dateAtNyWallClock(civilYmd: string, hour: number, minute: number): Date {
+  const [y, mo, d] = civilYmd.split("-").map((x) => Number.parseInt(x, 10));
+  let ms = Date.UTC(y!, mo! - 1, d!, 14, minute, 0);
+  if (hour !== 14) {
+    ms = Date.UTC(y!, mo! - 1, d!, hour + 5, minute, 0);
+  }
+  for (let iter = 0; iter < 32; iter++) {
+    const probe = new Date(ms);
+    if (ymd.format(probe) !== civilYmd) {
+      const probeParts = parseYmd(probe);
+      const targetNoon = Date.UTC(y!, mo! - 1, d!, 12, 0, 0);
+      const probeNoon = Date.UTC(probeParts.year, probeParts.month - 1, probeParts.day, 12, 0, 0);
+      ms += targetNoon > probeNoon ? 3 * 3_600_000 : -3 * 3_600_000;
+      continue;
+    }
+    const hmParsed = parseHm(probe);
+    const deltaMin = hour * 60 + minute - (hmParsed.hour * 60 + hmParsed.minute);
+    if (deltaMin === 0) {
+      return probe;
+    }
+    ms += deltaMin * 60_000;
+  }
+  return new Date(ms);
+}
+
+/** Next US regular-session open (9:30 ET) strictly after `now`, or null when already open. */
+export function resolveNextUsMarketOpenAt(now: Date): Date | null {
+  const ctx = resolveUsMarketDayContext(now);
+  if (ctx.marketWindowOpen) {
+    return null;
+  }
+  const { hour, minute } = parseHm(now);
+  const minuteOfDay = hour * 60 + minute;
+  if (ctx.isBusinessDay && minuteOfDay < MARKET_OPEN_MINUTE) {
+    return dateAtNyWallClock(ctx.marketDate, 9, 30);
+  }
+  let cursor = ctx.marketDate;
+  for (let i = 0; i < 14; i++) {
+    cursor = addCivilDaysKey(cursor, 1);
+    const probe = dateAtNyWallClock(cursor, 12, 0);
+    const dayCtx = resolveUsMarketDayContext(probe);
+    if (dayCtx.isBusinessDay) {
+      return dateAtNyWallClock(cursor, 9, 30);
+    }
+  }
+  return null;
+}
+
+/** Human countdown until session open, e.g. `2h 15m` or `45m`. */
+export function formatUsMarketOpensInLabel(now: Date, openAt: Date): string {
+  const ms = openAt.getTime() - now.getTime();
+  if (ms <= 0) {
+    return "soon";
+  }
+  const totalMin = Math.max(1, Math.ceil(ms / 60_000));
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  if (hours > 0 && mins > 0) {
+    return `${hours}h ${mins}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h`;
+  }
+  return `${mins}m`;
+}
+
+export type UsMarketSessionStatus = {
+  label: "Open" | "Closed";
+  detail: string;
+  /** Workspace header badge copy (includes opens-in when closed). */
+  headerLabel: string;
+};
+
+function closedStatus(
+  detail: string,
+  now: Date
+): UsMarketSessionStatus {
+  const nextOpen = resolveNextUsMarketOpenAt(now);
+  const opensIn = nextOpen ? formatUsMarketOpensInLabel(now, nextOpen) : null;
+  const headerLabel = opensIn ? `Closed · opens in ${opensIn}` : "Closed";
+  const detailWithCountdown = opensIn ? `${detail} · opens in ${opensIn}` : detail;
+  return { label: "Closed", detail: detailWithCountdown, headerLabel };
+}
+
 /** Short label + detail string for workspace / portfolio headers (US regular session, ET). */
-export function usMarketSessionStatusLabel(m: MarketDayContext): { label: "Open" | "Closed"; detail: string } {
+export function usMarketSessionStatusLabel(
+  m: MarketDayContext,
+  now: Date = new Date()
+): UsMarketSessionStatus {
+  if (m.marketWindowOpen) {
+    return { label: "Open", detail: "US regular session (ET)", headerLabel: "Open" };
+  }
   if (m.isHoliday) {
-    return { label: "Closed", detail: m.holidayName ?? "Market holiday" };
+    return closedStatus(m.holidayName ?? "Market holiday", now);
   }
   if (!m.isBusinessDay) {
-    return { label: "Closed", detail: "Weekend" };
+    return closedStatus("Weekend", now);
   }
-  if (m.marketWindowOpen) {
-    return { label: "Open", detail: "US regular session (ET)" };
-  }
-  return { label: "Closed", detail: "Outside 9:30–4:00 ET" };
+  return closedStatus("Outside 9:30–4:00 ET", now);
 }
