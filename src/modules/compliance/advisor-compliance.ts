@@ -49,6 +49,7 @@ export function normalizeAdvisorComplianceProfile(
       raw.attestationAccepted === true ? raw.attestationAcceptedAt ?? now : raw.attestationAcceptedAt,
     aiDisclosureVersionAccepted: raw.aiDisclosureVersionAccepted,
     aiDisclosureAcceptedAt: raw.aiDisclosureAcceptedAt,
+    complianceCompletedAt: raw.complianceCompletedAt,
     updatedAt: raw.updatedAt ?? now
   };
 }

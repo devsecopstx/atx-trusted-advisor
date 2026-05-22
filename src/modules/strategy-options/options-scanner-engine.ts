@@ -9,6 +9,9 @@ import {
 import { buildOptionsScannerAlertMetadata } from "@/lib/portfolio-alert-scan-metadata";
 import { chatWithXai, respondWithXai, respondWithXaiToolLoop } from "@/lib/xai";
 import {
+    fireAndForgetArchiveAdvisorSystemAdvice
+} from "@/modules/compliance/advisor-advice-events";
+import {
     adminCreatePortfolioAlert,
     adminCreateRecommendationForPortfolio,
     adminListPortfolioAlerts,
@@ -673,6 +676,37 @@ export async function processOptionRecommendationsPass(input: {
         if (grokOut) {
           grokBudget -= 1;
           result.grokCalls += 1;
+          const owner =
+            tgt.watchlistOwnerUserId != null
+              ? { userId: tgt.watchlistOwnerUserId, tenantId: input.tenantId?.toHexString() ?? null }
+              : ownerByPortfolio.get(portfolioId) ?? null;
+          if (owner) {
+            fireAndForgetArchiveAdvisorSystemAdvice({
+              tenantId: owner.tenantId ?? input.tenantId?.toHexString(),
+              userId: owner.userId,
+              surface: "options_scanner",
+              artifactKind: "scanner_rationale",
+              prompt: JSON.stringify({
+                underlying,
+                expYmd: displayExp,
+                strike,
+                optionType: ot,
+                side,
+                mark,
+                dte
+              }),
+              responseText: grokOut.rationale,
+              responsePayload: {
+                action: grokOut.action,
+                confidence: grokOut.confidence
+              },
+              metadata: {
+                source: "options_scanner",
+                portfolioId,
+                fingerprint: fp
+              }
+            });
+          }
         }
       }
 
@@ -744,6 +778,24 @@ export async function processOptionRecommendationsPass(input: {
         }
       }
 
+      {
+        const owner =
+          tgt.watchlistOwnerUserId != null
+            ? { userId: tgt.watchlistOwnerUserId, tenantId: input.tenantId?.toHexString() ?? null }
+            : ownerByPortfolio.get(portfolioId) ?? null;
+        if (owner && note.trim().length > 0) {
+          fireAndForgetArchiveAdvisorSystemAdvice({
+            tenantId: owner.tenantId ?? input.tenantId?.toHexString(),
+            userId: owner.userId,
+            surface: "options_scanner",
+            artifactKind: "recommendation_note",
+            prompt: JSON.stringify({ underlying, fingerprint: fp, source: tgt.source }),
+            responseText: note,
+            metadata: { portfolioId, recAction, exit }
+          });
+        }
+      }
+
       const palerts = await alertsFor(portfolioId);
 
       if (!exit) {
@@ -799,6 +851,27 @@ export async function processOptionRecommendationsPass(input: {
           result.alertsCreated += 1;
           alertsBudget -= 1;
           invalidateAlerts(portfolioId);
+          const owner =
+            tgt.watchlistOwnerUserId != null
+              ? { userId: tgt.watchlistOwnerUserId, tenantId: input.tenantId?.toHexString() ?? null }
+              : ownerByPortfolio.get(portfolioId) ?? null;
+          if (owner) {
+            fireAndForgetArchiveAdvisorSystemAdvice({
+              tenantId: owner.tenantId ?? input.tenantId?.toHexString(),
+              userId: owner.userId,
+              surface: "portfolio_alert",
+              artifactKind: "portfolio_alert",
+              prompt: title,
+              responseText: body,
+              responsePayload: {
+                alertId: al._id?.toHexString() ?? null,
+                contractKey,
+                closeKind,
+                finalRationale
+              },
+              metadata: { source: "options_scanner", severity: "warning" }
+            });
+          }
         }
       }
 

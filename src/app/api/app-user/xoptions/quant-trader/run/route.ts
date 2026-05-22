@@ -9,7 +9,9 @@ import {
     extractClientRateLimitKey
 } from "@/lib/distributed-rate-limit";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { archiveAdvisorXoptionsAdviceIfRequired } from "@/modules/compliance/advisor-advice-events";
 import { assertAdvisorComplianceForSession } from "@/modules/compliance/advisor-compliance-gate";
+import { buildAdvisorComplianceBlockedBody } from "@/modules/compliance/advisor-compliance-redirect";
 import { isAdvisorPlatformRole, isGlobalAdmin } from "@/modules/identity/authorization";
 import { runMonteCarloTailRiskTool } from "@/modules/xchat/monte-carlo-tail-risk-tool";
 
@@ -53,15 +55,7 @@ export async function POST(request: Request) {
       tenant
     });
     if (!complianceGate.ok) {
-      return NextResponse.json(
-        {
-          error: "Advisor compliance profile required",
-          code: complianceGate.code,
-          missingSteps: complianceGate.status.missingSteps,
-          redirectPath: complianceGate.status.redirectPath
-        },
-        { status: 403 }
-      );
+      return NextResponse.json(buildAdvisorComplianceBlockedBody(complianceGate.status), { status: 403 });
     }
   }
 
@@ -127,6 +121,20 @@ export async function POST(request: Request) {
       { status }
     );
   }
+
+  archiveAdvisorXoptionsAdviceIfRequired({
+    roles: session.roles,
+    tenantId: session.tenantId,
+    userId: session.userId,
+    surface: "xoptions_quant_trader",
+    artifactKind: "simulation_report",
+    prompt: JSON.stringify(toolArgs),
+    responsePayload: { data: result },
+    metadata: {
+      portfolioScope: parsed.data.portfolioScope ?? "workspace",
+      perPortfolioRisk
+    }
+  });
 
   return NextResponse.json({ data: result });
 }

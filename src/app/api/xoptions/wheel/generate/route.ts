@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { canUserLogin } from "@/modules/identity/authorization";
+import { archiveAdvisorXoptionsAdviceIfRequired } from "@/modules/compliance/advisor-advice-events";
+import { canUserLogin, isAdvisorPlatformRole, isGlobalAdmin } from "@/modules/identity/authorization";
 import { generateWheelPayload } from "@/modules/xoptions/wheel-generator";
 import { createWheelReport } from "@/modules/xoptions/wheel-report-repository";
 import type { WheelGeneratorInput } from "@/modules/xoptions/wheel-types";
@@ -63,6 +64,22 @@ export async function POST(request: Request) {
       userDisplayName: session.displayName?.trim() || session.username?.trim() || session.email,
       payload: generated
     });
+    if (!isGlobalAdmin(session.roles) && isAdvisorPlatformRole(session.roles)) {
+      archiveAdvisorXoptionsAdviceIfRequired({
+        roles: session.roles,
+        tenantId: session.tenantId,
+        userId: session.userId,
+        surface: "xoptions_wheel",
+        artifactKind: "wheel_report",
+        prompt: JSON.stringify(input),
+        responsePayload: {
+          reportId: persisted.reportId,
+          report: generated
+        },
+        metadata: { reportStyle: input.reportStyle }
+      });
+    }
+
     return NextResponse.json({
       data: {
         reportId: persisted.reportId,

@@ -26,6 +26,7 @@ import { GoogleGIcon } from "@/app/ui/oauth-provider-icons";
 import { RailUserFeedbackDialog } from "@/app/ui/rail-user-feedback-dialog";
 import { SidebarDestructiveAction } from "@/app/ui/sidebar-destructive-action";
 import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
+import { formatTenantNameWithPlatformRole } from "@/lib/platform-role-display";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { USER_FEEDBACK_OPEN_EVENT } from "@/lib/user-feedback-open-event";
 
@@ -135,8 +136,10 @@ export function WorkspaceProfileFooterMenu({
 
   const displayName =
     accountDetails.displayName?.trim() || accountDetails.username?.trim() || "Account";
-  const subtitle =
-    branding?.displayName?.trim() || `@${accountDetails.username?.trim() || "account"}`;
+  const tenantName = branding?.displayName?.trim();
+  const subtitle = tenantName
+    ? formatTenantNameWithPlatformRole(tenantName, accountDetails.platformRole)
+    : `@${accountDetails.username?.trim() || "account"}`;
   const pageLabel = feedbackPageLabel?.trim() || pathname || "App";
 
   useEffect(() => {

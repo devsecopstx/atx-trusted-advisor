@@ -13,6 +13,45 @@
   font-size: 0.875rem;
 }
 
+.compliance-page__banner-lead {
+  margin: 0 0 0.35rem;
+}
+
+.compliance-page__banner-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.compliance-page__timestamps {
+  display: grid;
+  grid-template-columns: minmax(9rem, auto) 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+}
+
+.compliance-page__timestamps dt {
+  margin: 0;
+  color: var(--xf-text-300);
+  font-weight: 500;
+}
+
+.compliance-page__timestamps dd {
+  margin: 0;
+  color: var(--xf-text-100);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+}
+
+.compliance-page__timestamp-meta {
+  color: var(--xf-text-300);
+  font-family: inherit;
+}
+
+.compliance-page__hint {
+  margin: 0.65rem 0 0;
+}
+
 .compliance-page__panel {
   padding: 1rem 1.15rem;
   border-radius: var(--xf-radius-md);

@@ -24,6 +24,8 @@ export type AppUserRailAccountPanelDetails = {
   /** From `core_users.subscriptionPlan` (normalized). */
   subscriptionPlan: SubscriptionPlan;
   isGlobalAdmin: boolean;
+  /** Highest platform role for sidebar tenant label, e.g. `advisor`. */
+  platformRole?: string | null;
 };
 
 type AppUserRailAccountPanelProps = {

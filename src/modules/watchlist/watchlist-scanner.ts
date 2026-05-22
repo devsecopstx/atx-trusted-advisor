@@ -1,3 +1,4 @@
+import { fireAndForgetArchiveAdvisorSystemAdvice } from "@/modules/compliance/advisor-advice-events";
 import {
     getDefaultPortfolio,
     listWatchlistsForTenantScope,
@@ -27,6 +28,7 @@ import {
     resolveWatchlistScannerPersonaContext,
     watchlistScannerGrokEnv
 } from "./watchlist-scanner-persona";
+
 import { buildWatchlistScannerRationaleAppendix } from "./watchlist-scanner-rationale";
 import { getYahooBatchQuotes } from "./yahoo-batch-quotes";
 
@@ -224,16 +226,56 @@ export async function runWatchlistPriceScanner(
             lineType: desk.lineType,
             strategy: desk.strategy
           });
+          const ownerHex = normalizeMongoUserIdHex(wl.userId);
+          if (grokLine && ownerHex) {
+            fireAndForgetArchiveAdvisorSystemAdvice({
+              tenantId: wl.tenantId?.toHexString(),
+              userId: ownerHex,
+              surface: "watchlist_scanner",
+              artifactKind: "scanner_rationale",
+              prompt: JSON.stringify({
+                symbol: sym,
+                spotPrice: spotForGrok,
+                lineType: desk.lineType ?? null,
+                strategy: desk.strategy ?? null
+              }),
+              responseText: grokLine,
+              metadata: {
+                watchlistId: wl._id?.toHexString() ?? null,
+                source: "watchlist_price_scanner"
+              }
+            });
+          }
         }
         const stitched = [desk.rationale?.trim(), grokLine].filter((x) => (x?.length ?? 0) > 0).join("\n\n");
         const appendixSpot = yahooPx ?? priorPx;
+        const mergedRationale = buildWatchlistScannerRationaleAppendix(
+          stitched || undefined,
+          appendixSpot,
+          nowRow
+        );
+        const ownerHexForRow = normalizeMongoUserIdHex(wl.userId);
+        if (ownerHexForRow && mergedRationale.trim().length > 0) {
+          fireAndForgetArchiveAdvisorSystemAdvice({
+            tenantId: wl.tenantId?.toHexString(),
+            userId: ownerHexForRow,
+            surface: "watchlist_scanner",
+            artifactKind: "watchlist_rationale",
+            prompt: JSON.stringify({ symbol: sym, spotPrice: appendixSpot ?? null }),
+            responseText: mergedRationale,
+            metadata: {
+              watchlistId: wl._id?.toHexString() ?? null,
+              source: "watchlist_price_scanner_merged"
+            }
+          });
+        }
         updates.push({
           symbolRowIndex: i,
           symbol: sym,
           ...(yahooPx !== undefined ? { lastPrice: yahooPx } : {}),
           /** Always stamp so `/watchlist` “Last update” reflects a scan even when Yahoo missed (rationale-only merge). */
           lastUpdatedAt: nowRow,
-          rationale: buildWatchlistScannerRationaleAppendix(stitched || undefined, appendixSpot, nowRow),
+          rationale: mergedRationale,
           rowStatus: "review"
         });
       }

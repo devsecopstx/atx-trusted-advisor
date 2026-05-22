@@ -1,4 +1,8 @@
 import {
+    fireAndForgetArchiveAdvisorSystemAdvice,
+    resolvePortfolioOwnerForAdviceArchive
+} from "@/modules/compliance/advisor-advice-events";
+import {
     adminCreatePortfolioAlert,
     adminHasRecentPriceAlertForSymbol
 } from "@/modules/core-admin/repository";
@@ -148,6 +152,7 @@ export async function persistPriceMoveAlerts(
   let skippedCooldown = 0;
   const recorded: PersistedPriceAlertRow[] = [];
   const notify: Array<{ title: string; body: string; symbol: string }> = [];
+  const portfolioOwner = await resolvePortfolioOwnerForAdviceArchive(portfolioIdHex);
   for (const e of evaluations) {
     if (cooldownMs > 0) {
       const recent = await adminHasRecentPriceAlertForSymbol(portfolioIdHex, e.symbol, since);
@@ -174,6 +179,22 @@ export async function persistPriceMoveAlerts(
         newPrice: e.newPrice
       });
       notify.push({ title, body, symbol: e.symbol });
+      if (portfolioOwner) {
+        fireAndForgetArchiveAdvisorSystemAdvice({
+          tenantId: portfolioOwner.tenantId,
+          userId: portfolioOwner.userId,
+          surface: "portfolio_alert",
+          artifactKind: "portfolio_alert",
+          prompt: title,
+          responseText: body,
+          responsePayload: {
+            alertId: row._id?.toHexString() ?? null,
+            changePct: e.changePct,
+            newPrice: e.newPrice
+          },
+          metadata: { source: "watchlist_price_scanner", severity: "info" }
+        });
+      }
     }
   }
   if (notify.length > 0) {

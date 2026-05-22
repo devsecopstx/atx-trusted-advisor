@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
+import { fireAndForgetArchiveAdvisorSystemAdvice } from "@/modules/compliance/advisor-advice-events";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { fetchDeskWellnessBriefViaXai } from "@/modules/portfolio/desk-wellness-xai-brief";
 
@@ -66,6 +67,17 @@ export async function GET(request: Request) {
     userId: session.userId,
     locationDescription,
     isoDate
+  });
+  fireAndForgetArchiveAdvisorSystemAdvice({
+    roles: session.roles,
+    tenantId: session.tenantId,
+    userId: session.userId,
+    surface: "portfolio_desk_wellness",
+    artifactKind: "desk_wellness_brief",
+    prompt: locationDescription,
+    responseText: `${brief.weatherLine}\n${brief.wellnessLine}`.trim(),
+    responsePayload: { parsed: brief.parsed },
+    metadata: { isoDate, hasGeolocation: lat != null && lon != null }
   });
   return NextResponse.json({
     data: {

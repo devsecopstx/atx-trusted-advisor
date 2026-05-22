@@ -13,6 +13,14 @@ export type AdvisorLicenseType = (typeof advisorLicenseTypeValues)[number];
 export const advisorFinraRegistrationStatusValues = ["active", "inactive"] as const;
 export type AdvisorFinraRegistrationStatus = (typeof advisorFinraRegistrationStatusValues)[number];
 
+export type AdvisorFinraEvidenceDocument = {
+  evidenceFilename: string;
+  evidenceXaiFileId: string;
+  evidenceRagFileId?: string | null;
+  evidenceCollectionId?: string | null;
+  linkedToCollection?: boolean | null;
+};
+
 /**
  * Per-advisor FINRA / IARD registration row (tenant = one IA firm; advisor users only).
  * Stored in Mongo `advisor_finra_registrations`.
@@ -33,6 +41,8 @@ export type AdvisorFinraRegistration = {
   evidenceRagFileId?: ObjectId;
   /** User bootstrap / xChat history xAI collection id the file was linked to. */
   evidenceCollectionId?: string | null;
+  /** Additional credential files indexed to the user xChat history collection. */
+  evidenceDocuments?: AdvisorFinraEvidenceDocument[] | null;
   notes?: string | null;
   status: AdvisorFinraRegistrationStatus;
   createdAt: Date;
@@ -46,6 +56,8 @@ export type AdvisorComplianceProfile = {
   attestationAcceptedAt?: Date;
   aiDisclosureVersionAccepted?: AdvisorAiDisclosureVersion | string;
   aiDisclosureAcceptedAt?: Date;
+  /** Set when all compliance steps first become satisfied (or re-satisfied after a gap). */
+  complianceCompletedAt?: Date;
   updatedAt: Date;
 };
 

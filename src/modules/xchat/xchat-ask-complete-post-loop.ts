@@ -8,6 +8,7 @@ import type { ToolCallLog, XaiToolLoopResult } from "@/lib/xai";
 import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import { createAuditEvent } from "@/modules/audit/repository";
+import { archiveAdvisorXchatTurnIfRequired } from "@/modules/compliance/advisor-advice-events";
 import type { HnwiPromptTemplateV21Slug } from "@/modules/xchat/prompt-templates-v21-defaults";
 import { saveXChatLog } from "@/modules/xchat/repository";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
@@ -335,6 +336,27 @@ export async function completeXchatAskAfterModelLoop(
     personaName: ctx.persona?.name,
     requestId: ctx.requestId,
     toolCalls: toolCallLogs
+  });
+
+  archiveAdvisorXchatTurnIfRequired({
+    roles: ctx.session.roles,
+    tenantId: ctx.session.tenantId,
+    userId: ctx.session.userId,
+    prompt: ctx.messageForPersistence,
+    response: responseMarkdown,
+    threadId: ctx.threadId,
+    requestId: ctx.requestId,
+    correlationId: ctx.correlationId,
+    logId: chatLogId?.toHexString(),
+    personaId: ctx.persona?._id,
+    personaName: ctx.persona.name,
+    model: xaiResponse.model,
+    scope: ctx.scope,
+    metadata: {
+      contextSource: ctx.contextSource,
+      contextCount: ctx.contextCount,
+      responseServedFromCache: ctx.responseServedFromCache === true
+    }
   });
 
   return NextResponse.json(

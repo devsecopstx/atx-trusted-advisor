@@ -1,4 +1,5 @@
 import { getCurrentAdvisorDisclosureBundle } from "@/lib/advisor-disclosures";
+import { countAdvisorAdviceEventsForAdvisor } from "@/modules/compliance/advisor-advice-events";
 import { resolveAdvisorComplianceStatusForSession } from "@/modules/compliance/advisor-compliance-gate";
 import {
     listFinraRegistrationsForAdvisor,
@@ -30,6 +31,7 @@ export type AdvisorComplianceReportExport = {
     profile: ReturnType<typeof serializeAdvisorComplianceProfile>;
   };
   finraRegistrations: ReturnType<typeof serializeFinraRegistration>[];
+  adviceEventCount: number;
   disclosure: {
     version: string;
     short: string;
@@ -59,6 +61,10 @@ export async function buildAdvisorComplianceReportExport(input: {
     advisorUserId: input.userId,
     limit: 100
   });
+  const adviceEventCount = await countAdvisorAdviceEventsForAdvisor({
+    tenantId: input.tenantId,
+    advisorUserId: input.userId
+  });
   const bundle = getCurrentAdvisorDisclosureBundle();
 
   return {
@@ -83,6 +89,7 @@ export async function buildAdvisorComplianceReportExport(input: {
       profile: serializeAdvisorComplianceProfile(status.profile)
     },
     finraRegistrations: registrations.map(serializeFinraRegistration),
+    adviceEventCount,
     disclosure: {
       version: bundle.version,
       short: bundle.short,

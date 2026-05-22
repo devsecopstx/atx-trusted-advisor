@@ -41,7 +41,9 @@ import {
     wantsXchatLiveToolLoopSse
 } from "@/lib/xchat-live-sse-policy";
 import { createAuditEvent } from "@/modules/audit/repository";
+import { archiveAdvisorXchatTurnIfRequired } from "@/modules/compliance/advisor-advice-events";
 import { assertAdvisorComplianceForSession } from "@/modules/compliance/advisor-compliance-gate";
+import { buildAdvisorComplianceBlockedBody } from "@/modules/compliance/advisor-compliance-redirect";
 import {
     getDefaultPortfolio,
     getUserAdminSettings
@@ -453,15 +455,7 @@ export async function POST(request: Request) {
       tenant: tenantForDebug
     });
     if (!complianceGate.ok) {
-      return NextResponse.json(
-        {
-          error: "Advisor compliance profile required",
-          code: complianceGate.code,
-          missingSteps: complianceGate.status.missingSteps,
-          redirectPath: complianceGate.status.redirectPath
-        },
-        { status: 403 }
-      );
+      return NextResponse.json(buildAdvisorComplianceBlockedBody(complianceGate.status), { status: 403 });
     }
   }
 
@@ -1222,6 +1216,22 @@ export async function POST(request: Request) {
           interactionGenerationMs: preflightMeta.generationMs
         })
       : null;
+    archiveAdvisorXchatTurnIfRequired({
+      roles: session.roles,
+      tenantId: session.tenantId,
+      userId: session.userId,
+      prompt: messageForPersistence,
+      response: responseMarkdown,
+      artifactKind: "desk_report",
+      threadId,
+      requestId: preflightRequestId,
+      correlationId: preflightCorrelationId,
+      logId: chatLogId?.toHexString(),
+      personaId: persona?._id,
+      personaName: persona.name,
+      model: "strategy_job_preflight",
+      scope
+    });
     return NextResponse.json(
       {
         data: withXchatAskContentAndMetadata(
@@ -1670,6 +1680,23 @@ export async function POST(request: Request) {
           })
         : null;
 
+      archiveAdvisorXchatTurnIfRequired({
+        roles: session.roles,
+        tenantId: session.tenantId,
+        userId: session.userId,
+        prompt: messageForPersistence,
+        response: output,
+        artifactKind: "monte_carlo_report",
+        threadId,
+        requestId,
+        correlationId,
+        logId: chatLogId?.toHexString(),
+        personaId: persona?._id,
+        personaName: persona.name,
+        model: "monte_carlo_tail_risk_direct",
+        scope
+      });
+
       return NextResponse.json(
         {
           data: withXchatAskContentAndMetadata(
@@ -1808,6 +1835,22 @@ export async function POST(request: Request) {
           ]
         })
       : null;
+    archiveAdvisorXchatTurnIfRequired({
+      roles: session.roles,
+      tenantId: session.tenantId,
+      userId: session.userId,
+      prompt: messageForPersistence,
+      response: output,
+      artifactKind: "options_scan_report",
+      threadId,
+      requestId,
+      correlationId,
+      logId: chatLogId?.toHexString(),
+      personaId: persona?._id,
+      personaName: persona.name,
+      model: "options_scan_direct",
+      scope
+    });
     return NextResponse.json(
       {
         data: withXchatAskContentAndMetadata(
@@ -2043,6 +2086,24 @@ export async function POST(request: Request) {
         })
       : null;
 
+    archiveAdvisorXchatTurnIfRequired({
+      roles: session.roles,
+      tenantId: session.tenantId,
+      userId: session.userId,
+      prompt: messageForPersistence,
+      response: output,
+      artifactKind: "options_scan_report",
+      threadId,
+      requestId,
+      correlationId,
+      logId: chatLogId?.toHexString(),
+      personaId: persona?._id,
+      personaName: persona.name,
+      model: "options_action_scan_direct",
+      scope,
+      metadata: { optionsScanReportId: optionsScanReportId ?? null }
+    });
+
     return NextResponse.json(
       {
         data: withXchatAskContentAndMetadata(
@@ -2244,6 +2305,23 @@ export async function POST(request: Request) {
           ]
         })
       : null;
+
+    archiveAdvisorXchatTurnIfRequired({
+      roles: session.roles,
+      tenantId: session.tenantId,
+      userId: session.userId,
+      prompt: messageForPersistence,
+      response: output,
+      artifactKind: "watchlist_desk",
+      threadId,
+      requestId,
+      correlationId,
+      logId: chatLogId?.toHexString(),
+      personaId: persona?._id,
+      personaName: persona.name,
+      model: "watchlist_snapshot_direct",
+      scope
+    });
 
     return NextResponse.json(
       {

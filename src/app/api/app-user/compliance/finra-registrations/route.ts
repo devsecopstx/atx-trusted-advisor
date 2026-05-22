@@ -1,44 +1,19 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
 import { MAX_FINRA_EVIDENCE_BYTES } from "@/modules/compliance/finra-evidence-upload";
+import {
+    finraRegistrationFieldsSchema,
+    readFinraEvidenceFilesFromForm
+} from "@/modules/compliance/finra-registration-schema";
 import {
     createFinraRegistration,
     listFinraRegistrationsForAdvisor,
     serializeFinraRegistration
 } from "@/modules/compliance/repository";
-import { advisorFinraRegistrationStatusValues, advisorLicenseTypeValues } from "@/modules/compliance/types";
 import { isAdvisorPlatformRole } from "@/modules/identity/authorization";
 
 export const dynamic = "force-dynamic";
-
-const finraFieldsSchema = z.object({
-  crdNumber: z.string().trim().min(1).max(32),
-  licenseType: z.enum(advisorLicenseTypeValues),
-  jurisdiction: z
-    .string()
-    .trim()
-    .length(2)
-    .transform((v) => v.toUpperCase())
-    .refine((v) => /^[A-Z]{2}$/.test(v), "Invalid jurisdiction"),
-  evidenceUrl: z
-    .string()
-    .trim()
-    .url()
-    .max(2048)
-    .optional()
-    .or(z.literal(""))
-    .transform((v) => (v ? v : undefined)),
-  notes: z
-    .string()
-    .trim()
-    .max(2000)
-    .optional()
-    .or(z.literal(""))
-    .transform((v) => (v ? v : undefined)),
-  status: z.enum(advisorFinraRegistrationStatusValues).optional()
-});
 
 function errorStatus(error: string): number {
   if (error === "invalid_scope" || error === "invalid_request") {
@@ -54,62 +29,59 @@ function errorStatus(error: string): number {
   return 400;
 }
 
+function invalidRequestResponse(details?: string[]) {
+  return NextResponse.json(
+    {
+      error: "invalid_request",
+      ...(details && details.length > 0 ? { details } : {})
+    },
+    { status: 400 }
+  );
+}
+
 async function parseFinraRegistrationRequest(request: Request): Promise<
   | {
       ok: true;
       body: Record<string, unknown>;
-      evidenceFile?: { filename: string; mimeType: string; bytes: Uint8Array };
+      evidenceFiles: Array<{ filename: string; mimeType: string; bytes: Uint8Array }>;
     }
   | { ok: false; response: NextResponse }
 > {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
     const contentLength = Number(request.headers.get("content-length") ?? "0");
-    if (Number.isFinite(contentLength) && contentLength > MAX_FINRA_EVIDENCE_BYTES + 8_192) {
+    if (Number.isFinite(contentLength) && contentLength > MAX_FINRA_EVIDENCE_BYTES * 8 + 8_192) {
       return {
         ok: false,
         response: NextResponse.json({ error: "Payload too large" }, { status: 413 })
       };
     }
     const form = await request.formData();
-    const file = form.get("evidenceFile");
-    const parsedFields = finraFieldsSchema.safeParse({
+    const parsedFields = finraRegistrationFieldsSchema.safeParse({
       crdNumber: String(form.get("crdNumber") ?? ""),
       licenseType: String(form.get("licenseType") ?? ""),
       jurisdiction: String(form.get("jurisdiction") ?? ""),
-      evidenceUrl: String(form.get("evidenceUrl") ?? ""),
-      notes: String(form.get("notes") ?? ""),
+      evidenceUrl: form.get("evidenceUrl") ?? "",
+      notes: form.get("notes") ?? "",
       status: form.get("status") ? String(form.get("status")) : undefined
     });
     if (!parsedFields.success) {
       return {
         ok: false,
-        response: NextResponse.json({ error: "invalid_request" }, { status: 400 })
+        response: invalidRequestResponse(parsedFields.error.issues.map((issue) => issue.message))
       };
     }
-    let evidenceFile: { filename: string; mimeType: string; bytes: Uint8Array } | undefined;
-    if (file instanceof File && file.size > 0) {
-      if (file.size > MAX_FINRA_EVIDENCE_BYTES) {
-        return {
-          ok: false,
-          response: NextResponse.json({ error: "evidence_file_too_large" }, { status: 413 })
-        };
-      }
-      const arrayBuffer = await file.arrayBuffer();
-      evidenceFile = {
-        filename: file.name,
-        mimeType: file.type || "application/octet-stream",
-        bytes: new Uint8Array(arrayBuffer)
+    const evidenceFilesResult = await readFinraEvidenceFilesFromForm(form, MAX_FINRA_EVIDENCE_BYTES);
+    if ("error" in evidenceFilesResult) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: evidenceFilesResult.error }, { status: 413 })
       };
     }
     return {
       ok: true,
-      body: {
-        ...parsedFields.data,
-        evidenceUrl: parsedFields.data.evidenceUrl ?? null,
-        notes: parsedFields.data.notes ?? null
-      },
-      evidenceFile
+      body: parsedFields.data,
+      evidenceFiles: evidenceFilesResult
     };
   }
 
@@ -119,10 +91,17 @@ async function parseFinraRegistrationRequest(request: Request): Promise<
   } catch {
     return {
       ok: false,
-      response: NextResponse.json({ error: "invalid_request" }, { status: 400 })
+      response: invalidRequestResponse()
     };
   }
-  return { ok: true, body: body as Record<string, unknown> };
+  const parsedBody = finraRegistrationFieldsSchema.safeParse(body);
+  if (!parsedBody.success) {
+    return {
+      ok: false,
+      response: invalidRequestResponse(parsedBody.error.issues.map((issue) => issue.message))
+    };
+  }
+  return { ok: true, body: parsedBody.data, evidenceFiles: [] };
 }
 
 export async function GET() {
@@ -163,7 +142,7 @@ export async function POST(request: Request) {
     advisorUserId: session.userId,
     email: session.email,
     body: parsedRequest.body,
-    evidenceFile: parsedRequest.evidenceFile
+    evidenceFiles: parsedRequest.evidenceFiles
   });
 
   if ("error" in result) {

@@ -5,7 +5,9 @@ import { requireSessionUser } from "@/lib/auth";
 import { parseYahooOptionContractId, toYahooOptionContractId } from "@/lib/xoptions/xoptions-contract-id";
 import type { XoptionsOpeningAction } from "@/lib/xoptions/xoptions-order-preview";
 import type { XoptionsPortfolioContext } from "@/lib/xoptions/xoptions-review-types";
+import { archiveAdvisorXoptionsAdviceIfRequired } from "@/modules/compliance/advisor-advice-events";
 import { getFindOptionsContext, getTopStockHoldingsByValue } from "@/modules/find-options/find-options-service";
+import { isAdvisorPlatformRole, isGlobalAdmin } from "@/modules/identity/authorization";
 import { getStrategyOptionsChain } from "@/modules/strategy-options/options-chain";
 import { assembleXoptionsReviewPayload } from "@/modules/xoptions/xoptions-review-assembler";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
@@ -140,6 +142,9 @@ export async function GET(request: Request) {
       strike
     });
 
+  const isAdvisorSession =
+    !isGlobalAdmin(session.roles) && isAdvisorPlatformRole(session.roles);
+
   const payload = assembleXoptionsReviewPayload({
     symbol,
     contractId,
@@ -163,6 +168,30 @@ export async function GET(request: Request) {
     },
     portfolioContext
   });
+
+  if (isAdvisorSession) {
+    archiveAdvisorXoptionsAdviceIfRequired({
+      roles: session.roles,
+      tenantId: session.tenantId,
+      userId: session.userId,
+      surface: "xoptions_review",
+      artifactKind: "order_review",
+      prompt: JSON.stringify({
+        symbol,
+        contractId,
+        expiration,
+        strike,
+        side,
+        openingAction,
+        strategyLabel: q.strategyLabel?.trim() || null
+      }),
+      responsePayload: payload as unknown as Record<string, unknown>,
+      metadata: {
+        outlook: q.outlook?.trim() || null,
+        riskProfile: q.riskProfile?.trim() || null
+      }
+    });
+  }
 
   return NextResponse.json({ data: payload });
 }

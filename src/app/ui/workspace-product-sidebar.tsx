@@ -47,6 +47,7 @@ import { WorkspaceProfileFooterMenu } from "@/app/ui/workspace-profile-footer-me
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import { formatTenantNameWithPlatformRole } from "@/lib/platform-role-display";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import {
     getRailExpandedSnapshot,
@@ -372,7 +373,11 @@ function WorkspaceTopChromeBar({
   isGlobalAdmin
 }: WorkspaceTopChromeBarProps) {
   const branding = useTenantShellBranding();
-  const deskLabel = branding?.displayName?.trim() || null;
+  const tenantName = branding?.displayName?.trim() || null;
+  const deskLabel =
+    tenantName != null
+      ? formatTenantNameWithPlatformRole(tenantName, accountDetails?.platformRole)
+      : null;
 
   return (
     <header className="workspace-top-chrome">

@@ -5,19 +5,21 @@ import { getCurrentAdvisorDisclosureBundle } from "@/lib/advisor-disclosures";
 import { getDb } from "@/lib/mongodb";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
+    isAdvisorComplianceComplete,
     normalizeAdvisorComplianceProfile,
     parseAdvisorComplianceProfileFromUserDoc
 } from "@/modules/compliance/advisor-compliance";
 import { uploadFinraCredentialEvidenceToUserXchatHistory } from "@/modules/compliance/finra-evidence-upload";
+import {
+    finraRegistrationBodySchema,
+    finraRegistrationPatchSchema
+} from "@/modules/compliance/finra-registration-schema";
 import type {
     AdvisorComplianceProfile,
+    AdvisorFinraEvidenceDocument,
     AdvisorFinraRegistration,
     AdvisorFinraRegistrationStatus,
     AdvisorLicenseType
-} from "@/modules/compliance/types";
-import {
-    advisorFinraRegistrationStatusValues,
-    advisorLicenseTypeValues
 } from "@/modules/compliance/types";
 import type { CoreUser } from "@/modules/identity/types";
 import { upsertXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
@@ -74,8 +76,82 @@ export async function countActiveFinraRegistrationsForAdvisor(input: {
   });
 }
 
+async function resolveAdvisorComplianceCompleteState(input: {
+  userId: string;
+  tenantId: string;
+}): Promise<{
+  profile: AdvisorComplianceProfile | null;
+  finraRegistrationCount: number;
+  complete: boolean;
+}> {
+  const profile = await getAdvisorComplianceProfileForUser(input.userId);
+  const finraRegistrationCount = await countActiveFinraRegistrationsForAdvisor({
+    tenantId: input.tenantId,
+    advisorUserId: input.userId
+  });
+  return {
+    profile,
+    finraRegistrationCount,
+    complete: isAdvisorComplianceComplete({ profile, finraRegistrationCount })
+  };
+}
+
+async function recordAdvisorComplianceCompletionIfNeeded(input: {
+  userId: string;
+  tenantId: string;
+  email: string;
+  wasCompleteBefore: boolean;
+}): Promise<void> {
+  const state = await resolveAdvisorComplianceCompleteState({
+    userId: input.userId,
+    tenantId: input.tenantId
+  });
+  if (!state.complete || input.wasCompleteBefore || !state.profile) {
+    return;
+  }
+
+  const now = new Date();
+  const bundle = getCurrentAdvisorDisclosureBundle();
+  const db = await getDb();
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: new ObjectId(input.userId) },
+    {
+      $set: {
+        "advisorComplianceProfile.complianceCompletedAt": now,
+        "advisorComplianceProfile.updatedAt": now,
+        updatedAt: now
+      }
+    }
+  );
+
+  await createAuditEvent({
+    entityType: "core_user",
+    entityId: input.userId,
+    action: "advisor_compliance_completed",
+    actor: { userId: input.userId, email: input.email },
+    details: {
+      tenantId: input.tenantId,
+      disclosureVersion: bundle.version,
+      attestationAcceptedAt: state.profile.attestationAcceptedAt?.toISOString() ?? null,
+      aiDisclosureAcceptedAt: state.profile.aiDisclosureAcceptedAt?.toISOString() ?? null,
+      complianceCompletedAt: now.toISOString(),
+      finraRegistrationCount: state.finraRegistrationCount
+    }
+  });
+}
+
 const advisorAckBodySchema = z.object({
-  complianceContactEmail: z.string().trim().email().max(320).optional(),
+  complianceContactEmail: z.preprocess((value) => {
+    if (value == null) {
+      return undefined;
+    }
+    const trimmed = String(value).trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const parsed = z.string().email().max(320).safeParse(trimmed);
+    return parsed.success ? parsed.data : undefined;
+  }, z.string().email().max(320).optional()),
   attestationAccepted: z.literal(true),
   acceptAiDisclosure: z.literal(true)
 });
@@ -93,6 +169,11 @@ export async function upsertAdvisorComplianceAcknowledgments(input: {
   if (!ObjectId.isValid(input.userId)) {
     return { error: "invalid_user" };
   }
+
+  const beforeComplete = await resolveAdvisorComplianceCompleteState({
+    userId: input.userId,
+    tenantId: input.tenantId
+  });
 
   const now = new Date();
   const bundle = getCurrentAdvisorDisclosureBundle();
@@ -134,28 +215,22 @@ export async function upsertAdvisorComplianceAcknowledgments(input: {
     details: {
       tenantId: input.tenantId,
       disclosureVersion: bundle.version,
+      attestationAcceptedAt: now.toISOString(),
+      aiDisclosureAcceptedAt: now.toISOString(),
       chatHistoryRetentionEnabled: true
     }
   });
 
-  return { profile };
+  await recordAdvisorComplianceCompletionIfNeeded({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    email: input.email,
+    wasCompleteBefore: beforeComplete.complete
+  });
+
+  const savedProfile = await getAdvisorComplianceProfileForUser(input.userId);
+  return { profile: savedProfile ?? profile };
 }
-
-const finraRegistrationBodySchema = z.object({
-  crdNumber: z.string().trim().min(1).max(32),
-  licenseType: z.enum(advisorLicenseTypeValues),
-  jurisdiction: z
-    .string()
-    .trim()
-    .length(2)
-    .transform((v) => v.toUpperCase())
-    .refine((v) => /^[A-Z]{2}$/.test(v), "Invalid jurisdiction"),
-  evidenceUrl: z.string().trim().url().max(2048).nullable().optional(),
-  notes: z.string().trim().max(2000).nullable().optional(),
-  status: z.enum(advisorFinraRegistrationStatusValues).optional()
-});
-
-const finraRegistrationPatchSchema = finraRegistrationBodySchema.partial();
 
 export async function listFinraRegistrationsForAdvisor(input: {
   tenantId: string;
@@ -188,6 +263,11 @@ export async function createFinraRegistration(input: {
     mimeType: string;
     bytes: Uint8Array;
   };
+  evidenceFiles?: Array<{
+    filename: string;
+    mimeType: string;
+    bytes: Uint8Array;
+  }>;
 }): Promise<{ registration: AdvisorFinraRegistration } | { error: string }> {
   const parsed = finraRegistrationBodySchema.safeParse(input.body);
   if (!parsed.success) {
@@ -197,28 +277,49 @@ export async function createFinraRegistration(input: {
     return { error: "invalid_scope" };
   }
 
+  const beforeComplete = await resolveAdvisorComplianceCompleteState({
+    userId: input.advisorUserId,
+    tenantId: input.tenantId
+  });
+
+  const uploadCandidates = [
+    ...(input.evidenceFiles ?? []),
+    ...(input.evidenceFile ? [input.evidenceFile] : [])
+  ];
+  const evidenceDocuments: AdvisorFinraEvidenceDocument[] = [];
   let evidenceFields: Pick<
     AdvisorFinraRegistration,
     "evidenceFilename" | "evidenceXaiFileId" | "evidenceRagFileId" | "evidenceCollectionId"
   > = {};
-  if (input.evidenceFile) {
+
+  for (const file of uploadCandidates) {
     const uploaded = await uploadFinraCredentialEvidenceToUserXchatHistory({
       userId: input.advisorUserId,
       tenantId: input.tenantId,
       email: input.email,
-      filename: input.evidenceFile.filename,
-      mimeType: input.evidenceFile.mimeType,
-      bytes: input.evidenceFile.bytes
+      filename: file.filename,
+      mimeType: file.mimeType,
+      bytes: file.bytes
     });
     if ("error" in uploaded) {
       return { error: uploaded.error };
     }
-    evidenceFields = {
+    const document: AdvisorFinraEvidenceDocument = {
       evidenceFilename: uploaded.evidenceFilename,
       evidenceXaiFileId: uploaded.evidenceXaiFileId,
-      evidenceRagFileId: uploaded.evidenceRagFileId,
-      evidenceCollectionId: uploaded.evidenceCollectionId
+      evidenceRagFileId: uploaded.evidenceRagFileId.toHexString(),
+      evidenceCollectionId: uploaded.evidenceCollectionId,
+      linkedToCollection: uploaded.linkedToCollection
     };
+    evidenceDocuments.push(document);
+    if (!evidenceFields.evidenceFilename) {
+      evidenceFields = {
+        evidenceFilename: uploaded.evidenceFilename,
+        evidenceXaiFileId: uploaded.evidenceXaiFileId,
+        evidenceRagFileId: uploaded.evidenceRagFileId,
+        evidenceCollectionId: uploaded.evidenceCollectionId
+      };
+    }
   }
 
   const now = new Date();
@@ -230,6 +331,7 @@ export async function createFinraRegistration(input: {
     jurisdiction: parsed.data.jurisdiction,
     evidenceUrl: parsed.data.evidenceUrl ?? null,
     ...evidenceFields,
+    evidenceDocuments: evidenceDocuments.length > 0 ? evidenceDocuments : null,
     notes: parsed.data.notes ?? null,
     status: (parsed.data.status ?? "active") as AdvisorFinraRegistrationStatus,
     createdAt: now,
@@ -255,8 +357,17 @@ export async function createFinraRegistration(input: {
       jurisdiction: saved.jurisdiction,
       evidenceUrl: saved.evidenceUrl ?? null,
       evidenceFilename: saved.evidenceFilename ?? null,
-      evidenceCollectionId: saved.evidenceCollectionId ?? null
+      evidenceCollectionId: saved.evidenceCollectionId ?? null,
+      evidenceDocumentCount: saved.evidenceDocuments?.length ?? 0,
+      registrationCreatedAt: saved.createdAt.toISOString()
     }
+  });
+
+  await recordAdvisorComplianceCompletionIfNeeded({
+    userId: input.advisorUserId,
+    tenantId: input.tenantId,
+    email: input.email,
+    wasCompleteBefore: beforeComplete.complete
   });
 
   return { registration: saved };
@@ -280,6 +391,11 @@ export async function updateFinraRegistration(input: {
   ) {
     return { error: "invalid_scope" };
   }
+
+  const beforeComplete = await resolveAdvisorComplianceCompleteState({
+    userId: input.advisorUserId,
+    tenantId: input.tenantId
+  });
 
   const now = new Date();
   const $set: Record<string, unknown> = { updatedAt: now };
@@ -314,8 +430,16 @@ export async function updateFinraRegistration(input: {
     actor: { userId: input.advisorUserId, email: input.email },
     details: {
       tenantId: input.tenantId,
-      registrationId: input.registrationId
+      registrationId: input.registrationId,
+      registrationUpdatedAt: now.toISOString()
     }
+  });
+
+  await recordAdvisorComplianceCompletionIfNeeded({
+    userId: input.advisorUserId,
+    tenantId: input.tenantId,
+    email: input.email,
+    wasCompleteBefore: beforeComplete.complete
   });
 
   return { registration: result };
@@ -372,6 +496,13 @@ export function serializeFinraRegistration(row: AdvisorFinraRegistration) {
     evidenceXaiFileId: row.evidenceXaiFileId ?? null,
     evidenceRagFileId: row.evidenceRagFileId?.toHexString() ?? null,
     evidenceCollectionId: row.evidenceCollectionId ?? null,
+    evidenceDocuments: (row.evidenceDocuments ?? []).map((doc) => ({
+      evidenceFilename: doc.evidenceFilename,
+      evidenceXaiFileId: doc.evidenceXaiFileId,
+      evidenceRagFileId: doc.evidenceRagFileId ?? null,
+      evidenceCollectionId: doc.evidenceCollectionId ?? null,
+      linkedToCollection: doc.linkedToCollection ?? null
+    })),
     notes: row.notes ?? null,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
@@ -389,6 +520,7 @@ export function serializeAdvisorComplianceProfile(profile: AdvisorComplianceProf
     attestationAcceptedAt: profile.attestationAcceptedAt?.toISOString() ?? null,
     aiDisclosureVersionAccepted: profile.aiDisclosureVersionAccepted ?? null,
     aiDisclosureAcceptedAt: profile.aiDisclosureAcceptedAt?.toISOString() ?? null,
+    complianceCompletedAt: profile.complianceCompletedAt?.toISOString() ?? null,
     updatedAt: profile.updatedAt.toISOString()
   };
 }

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { fireAndForgetArchiveAdvisorSystemAdvice } from "@/modules/compliance/advisor-advice-events";
 
 const reportRowSchema = z.object({
   rowId: z.string().trim().min(1).max(160),
@@ -136,6 +137,22 @@ export async function POST(request: Request) {
   }
 
   const generatedAt = parsed.data.scanData.generatedAt.slice(0, 10);
+  const reportRows = parsed.data.scanData.rows
+    .map((row) => `${row.symbol}: ${row.recommendedAction} — ${row.why}`)
+    .join("\n");
+  fireAndForgetArchiveAdvisorSystemAdvice({
+    roles: session.roles,
+    tenantId: session.tenantId,
+    userId: session.userId,
+    surface: "options_scan_report",
+    artifactKind: "options_scan_report",
+    prompt: parsed.data.title ?? "Options Action Scan Report",
+    responseText: reportRows.slice(0, 32_000),
+    responsePayload: {
+      scanData: parsed.data.scanData as unknown as Record<string, unknown>
+    },
+    metadata: { format: "pdf", generatedAt }
+  });
   return new NextResponse(new Uint8Array(result.stdout), {
     headers: {
       "Content-Type": "application/pdf",

@@ -74,6 +74,7 @@ import {
     anchorXchatThreadViewportAfterTurn,
     clearXchatComposerDraft
 } from "@/lib/xchat/xchat-thread-viewport-anchor";
+import { advisorComplianceWorkspaceRedirectPath } from "@/modules/compliance/advisor-compliance-redirect";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import type { OptionsActionScanDisplayData } from "@/modules/xchat/options-action-scan-display";
 import { personaPreviewLineFromSystemPrompt } from "@/modules/xchat/persona-preview-line";
@@ -1692,10 +1693,16 @@ export function XchatConversation({
         resetAt?: string;
         contactAdmin?: boolean;
         correlationId?: string;
+        redirectPath?: string;
+        message?: string;
       };
 
       const handleAskFailure = (response: Response, payload: AskPayload) => {
         setPromptUsageRefreshKey((k) => k + 1);
+        if (payload.code === "advisor_compliance_required") {
+          router.push(advisorComplianceWorkspaceRedirectPath("xchat"));
+          return;
+        }
         if (isXchatUsageLimitCode(payload.code)) {
           setThreadSystemBanner(
             buildXchatAskLimitBannerMarkdown({

@@ -13,7 +13,20 @@ import "../compliance/compliance.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountWorkspacePreferencesPage() {
+type AccountWorkspacePreferencesPageProps = {
+  searchParams: Promise<{
+    compliance?: string;
+    from?: string;
+  }>;
+};
+
+export default async function AccountWorkspacePreferencesPage({
+  searchParams
+}: AccountWorkspacePreferencesPageProps) {
+  const params = await searchParams;
+  const complianceRequired = params.compliance === "required";
+  const complianceFrom = typeof params.from === "string" ? params.from : null;
+
   const session = await getSessionUser();
   if (!session || !canUserLogin(session.roles)) {
     redirect("/account/billing");
@@ -51,7 +64,11 @@ export default async function AccountWorkspacePreferencesPage() {
                   : " workspace settings for your tenant."}
               </p>
             </header>
-            <WorkspacePreferencesClient isAdvisorRole={isAdvisor} />
+            <WorkspacePreferencesClient
+              complianceFrom={complianceFrom}
+              complianceRequired={complianceRequired}
+              isAdvisorRole={isAdvisor}
+            />
           </div>
         </AppUserCollapsibleRailLayout>
       </div>

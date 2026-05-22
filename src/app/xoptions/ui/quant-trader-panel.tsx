@@ -3,6 +3,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -23,6 +24,7 @@ import {
     quantTraderResultsToCsvWithMeta,
     type QuantTraderRunParams
 } from "@/lib/xoptions/quant-trader-helpers";
+import { advisorComplianceWorkspaceRedirectPath } from "@/modules/compliance/advisor-compliance-redirect";
 import type { McRiskTolerance } from "@/modules/strategy-options/monte-carlo-tail-risk";
 import type {
     GreeksExposureRow,
@@ -69,6 +71,7 @@ function formatUsd(n: number): string {
 }
 
 export function QuantTraderPanel({ symbol, strategyLabel, payoffOverlay, compact = false }: Props) {
+  const router = useRouter();
   const [context, setContext] = useState<QuantTraderContextPayload | null>(null);
   const [params, setParams] = useState<QuantTraderRunParams>(QUANT_TRADER_DEFAULT_PARAMS);
   const [result, setResult] = useState<MonteCarloTailRiskToolSuccess | null>(null);
@@ -134,10 +137,15 @@ export function QuantTraderPanel({ symbol, strategyLabel, payoffOverlay, compact
         data?: MonteCarloTailRiskToolSuccess;
         message?: string;
         error?: string;
+        code?: string;
       };
       if (!res.ok) {
         setResult(null);
-        setError(json.message ?? "Simulation failed.");
+        if (json.code === "advisor_compliance_required") {
+          router.push(advisorComplianceWorkspaceRedirectPath("quant-trader"));
+          return;
+        }
+        setError(json.message ?? json.error ?? "Simulation failed.");
         return;
       }
       setResult(json.data ?? null);
@@ -147,7 +155,7 @@ export function QuantTraderPanel({ symbol, strategyLabel, payoffOverlay, compact
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [params, router]);
 
   useEffect(() => {
     if (autoRan.current || !context) {

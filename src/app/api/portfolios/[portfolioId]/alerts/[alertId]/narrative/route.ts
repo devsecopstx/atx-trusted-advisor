@@ -11,6 +11,7 @@ import {
     portfolioAlertRowScannerMetadata
 } from "@/lib/portfolio-alert-desk-present";
 import { respondWithXai } from "@/lib/xai";
+import { fireAndForgetArchiveAdvisorSystemAdvice } from "@/modules/compliance/advisor-advice-events";
 import { adminGetPortfolioAlert } from "@/modules/core-admin/repository";
 
 type RouteContext = {
@@ -73,6 +74,22 @@ export async function POST(request: Request, context: RouteContext) {
       maxTurns: 1
     });
     const text = out.outputText.trim().slice(0, 2800);
+    fireAndForgetArchiveAdvisorSystemAdvice({
+      roles: session.roles,
+      tenantId: session.tenantId,
+      userId: session.userId,
+      surface: "portfolio_alert_narrative",
+      artifactKind: "alert_narrative",
+      prompt: JSON.stringify(payload),
+      responseText: text,
+      model: out.model,
+      metadata: {
+        portfolioId,
+        alertId,
+        alertTitle: alert.title,
+        alertSymbol: alert.symbol ?? null
+      }
+    });
     return NextResponse.json({
       data: { narrative: text, model: out.model }
     });

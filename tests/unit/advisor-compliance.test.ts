@@ -43,6 +43,20 @@ describe("advisor compliance", () => {
       updatedAt: new Date()
     });
     expect(isAdvisorComplianceComplete({ profile: complete, finraRegistrationCount: 1 })).toBe(true);
+    expect(complete.complianceCompletedAt).toBeUndefined();
+  });
+
+  it("preserves complianceCompletedAt on profile normalization", () => {
+    const completedAt = new Date("2026-05-20T12:00:00.000Z");
+    const profile = normalizeAdvisorComplianceProfile({
+      attestationAccepted: true,
+      attestationAcceptedAt: completedAt,
+      aiDisclosureVersionAccepted: ADVISOR_AI_DISCLOSURE_VERSION,
+      aiDisclosureAcceptedAt: completedAt,
+      complianceCompletedAt: completedAt,
+      updatedAt: completedAt
+    });
+    expect(profile?.complianceCompletedAt).toEqual(completedAt);
   });
 
   it("builds status with workspace preferences redirect", () => {

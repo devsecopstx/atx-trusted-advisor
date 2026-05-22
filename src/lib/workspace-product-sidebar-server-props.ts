@@ -4,6 +4,7 @@ import type { WorkspaceProductSidebarProps } from "@/app/ui/workspace-product-si
 import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
+import { resolvePrimaryPlatformRoleForDisplay } from "@/lib/platform-role-display";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
@@ -55,7 +56,8 @@ export async function getWorkspaceProductSidebarPropsForSession(
       mongoConnection,
       tenantIdHex: session.tenantId?.trim() || undefined,
       subscriptionPlan,
-      isGlobalAdmin: admin
+      isGlobalAdmin: admin,
+      platformRole: resolvePrimaryPlatformRoleForDisplay(session.roles)
     },
     accountFeedbackPageLabel,
     defaultPortfolioId: workspacePortfolioId,

@@ -144,6 +144,7 @@ Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-too
 | **UI** | **`/account/workspace-preferences`** (profile menu) — appearance + advisor FINRA/disclosure; **`/account/compliance`** redirects. |
 | **Gates** | Incomplete advisor compliance → **403** `advisor_compliance_required` (advisor role only). |
 | **Audit** | `advisor_compliance_ack_updated`, `advisor_finra_registration_*`. |
+| **Advice archive (advisor role)** | Mongo **`advisor_advice_events`** — compliance copy of system-generated advice/rationale/reports/alerts/narratives for **`advisor`** users only (not `operator`/`viewer`; `global_admin` excluded). Module: **`src/modules/compliance/advisor-advice-events.ts`**. Wired surfaces: **`POST /api/xchat/ask`** (incl. direct scan/MC/watchlist paths), **`POST /api/app-user/xoptions/quant-trader/run`**, **`GET /api/app-user/xoptions/review`**, **`POST /api/xoptions/wheel/generate`**, **`POST …/alerts/{id}/narrative`**, **`GET /api/portfolios/desk-wellness-brief`**, **`PATCH …/watchlist`** (saved rationales), **`POST /api/reports/options-scan`** (PDF report rows), scheduled **`watchlist_price_scanner`** + **`options_scanner`** (Grok rationale, recommendation notes, portfolio alerts), watchlist price-move alerts. **`GET /api/app-user/compliance/report/export`** includes **`adviceEventCount`**. User purge deletes **`advisor_advice_events`**. |
 
 ### Phase 2 — In-product enforcement (~weeks 5–8)
 
@@ -151,7 +152,7 @@ Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-too
 | ---- | ---- |
 | **Suitability gate** | Block strategy jobs, desk reports with trade ideas, and xOptions apply flows when linked client profile is missing or stale (>12 months). Reuse **`xchat-strategy-job-preflight`** pattern. |
 | **AI transparency** | Persistent xChat chip: **AI-assisted · persona · model family**; first-thread expanded disclosure; export includes model metadata from **`xchat_logs`**. |
-| **Recommendation audit** | New **`advice_events`** (or extend audit types): advisor, client profile id, artifact/thread id, suitability snapshot hash, disclosure version shown, optional advisor note. |
+| **Advice archive v2** | Extend **`advisor_advice_events`** with client profile id, suitability snapshot hash, CCO export UI, and retention policy (no TTL today). **`POST /api/xchat/batch`** (admin) only if product requires advisor-visible batch runs. |
 
 ### Phase 3 — Compliance program (operational ~weeks 9–12)
 

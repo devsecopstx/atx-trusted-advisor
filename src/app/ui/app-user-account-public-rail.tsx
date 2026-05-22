@@ -2,6 +2,7 @@ import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
+import { resolvePrimaryPlatformRoleForDisplay } from "@/lib/platform-role-display";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
@@ -38,7 +39,8 @@ export async function AppUserAccountPublicRailForSession({
     mongoConnection,
     tenantIdHex: session.tenantId?.trim() || undefined,
     subscriptionPlan: entitlements.subscriptionPlan,
-    isGlobalAdmin: admin
+    isGlobalAdmin: admin,
+    platformRole: resolvePrimaryPlatformRoleForDisplay(session.roles)
   };
 
   if (railVariant === "workspace-product") {

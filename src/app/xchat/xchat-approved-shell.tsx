@@ -11,6 +11,7 @@ import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
 import { getTenantShellBrandingForHexCached } from "@/lib/identity-shell-cache";
+import { resolvePrimaryPlatformRoleForDisplay } from "@/lib/platform-role-display";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { logXchatPerfDebug } from "@/lib/xchat-debug";
@@ -173,7 +174,8 @@ export async function XchatApprovedShell({
         mongoConnection,
         tenantIdHex: session.tenantId?.trim() || undefined,
         subscriptionPlan: entitlements.subscriptionPlan,
-        isGlobalAdmin: isAdminSession
+        isGlobalAdmin: isAdminSession,
+        platformRole: resolvePrimaryPlatformRoleForDisplay(session.roles)
       }}
       accountFeedbackPageLabel="xChat"
       defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}

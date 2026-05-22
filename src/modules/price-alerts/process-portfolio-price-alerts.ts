@@ -4,6 +4,10 @@ import { sendDeskHtmlEmailWithRetry } from "@/lib/desk-smtp";
 import { buildUserPriceAlertEmailHtml, buildUserPriceAlertEmailText } from "@/lib/email/user-price-alert-email";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
+    fireAndForgetArchiveAdvisorSystemAdvice,
+    resolvePortfolioOwnerForAdviceArchive
+} from "@/modules/compliance/advisor-advice-events";
+import {
     adminCreatePortfolioAlert,
     adminHasRecentPriceAlertForSymbol
 } from "@/modules/core-admin/repository";
@@ -129,7 +133,7 @@ export async function processPortfolioPriceAlertsWithQuotes(input: {
     }
 
     if (!deskSkipped) {
-      await adminCreatePortfolioAlert({
+      const deskAlert = await adminCreatePortfolioAlert({
         portfolioId: portfolioIdHex,
         title,
         body,
@@ -138,6 +142,26 @@ export async function processPortfolioPriceAlertsWithQuotes(input: {
         symbol: sym,
         accountContext: "watchlist"
       });
+      if (deskAlert) {
+        const owner = await resolvePortfolioOwnerForAdviceArchive(portfolioIdHex);
+        if (owner) {
+          fireAndForgetArchiveAdvisorSystemAdvice({
+            tenantId: owner.tenantId,
+            userId: owner.userId,
+            surface: "portfolio_alert",
+            artifactKind: "portfolio_alert",
+            prompt: title,
+            responseText: body,
+            responsePayload: {
+              alertId: deskAlert._id?.toHexString() ?? null,
+              ruleKind: alert.ruleKind,
+              targetPriceUsd: alert.targetPriceUsd,
+              quoteUsd: px
+            },
+            metadata: { source: "portfolio_price_alert_rule", severity: "info" }
+          });
+        }
+      }
       try {
         await dispatchPortfolioDeskEvents(portfolioIdHex, [{ title, body, symbol: sym }]);
       } catch (error) {

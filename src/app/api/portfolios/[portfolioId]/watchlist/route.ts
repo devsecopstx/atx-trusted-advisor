@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
+import { fireAndForgetArchiveAdvisorSystemAdvice } from "@/modules/compliance/advisor-advice-events";
 import {
     createUserWatchlist,
     ensurePortfolioWatchlistForUser,
@@ -456,5 +457,29 @@ export async function PATCH(request: Request, context: RouteContext) {
   const chainGlance = new URL(request.url).searchParams.get("chainGlance") === "1";
   const technicals = new URL(request.url).searchParams.get("technicals") === "1";
   const payload = await buildJsonPayload(updated, quotes, quotes && chainGlance, quotes && technicals);
+  if (entries?.length) {
+    for (const entry of entries) {
+      const rationale = entry.rationale?.trim() ?? "";
+      if (rationale.length === 0) {
+        continue;
+      }
+      fireAndForgetArchiveAdvisorSystemAdvice({
+        roles: session.roles,
+        tenantId: session.tenantId,
+        userId: session.userId,
+        surface: "portfolio_watchlist",
+        artifactKind: "watchlist_rationale",
+        prompt: JSON.stringify({
+          portfolioId,
+          symbol: entry.symbol,
+          rowStatus: entry.rowStatus ?? null,
+          lineType: entry.lineType ?? null,
+          strategy: entry.strategy ?? null
+        }),
+        responseText: rationale,
+        metadata: { source: "watchlist_patch_add_entries" }
+      });
+    }
+  }
   return NextResponse.json(payload);
 }

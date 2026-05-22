@@ -9,6 +9,7 @@ import {
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
 import { canonicalMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
+import { resolvePrimaryPlatformRoleForDisplay } from "@/lib/platform-role-display";
 import { getPortfolioLiveMarketValueUsdForSessionUser } from "@/lib/portfolio-live-market-value";
 import { getPortfolioTotalBookUsdForSessionUser } from "@/lib/portfolio-total-book-usd";
 import {
@@ -183,7 +184,8 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
           mongoConnection,
           tenantIdHex: session.tenantId?.trim() || undefined,
           subscriptionPlan: entitlements.subscriptionPlan,
-          isGlobalAdmin: admin
+          isGlobalAdmin: admin,
+          platformRole: resolvePrimaryPlatformRoleForDisplay(session.roles)
         }}
         accountFeedbackPageLabel="Portfolio desk"
         accountSlices={accountSlices}
