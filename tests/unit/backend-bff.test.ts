@@ -351,6 +351,62 @@ describe("proxyAdminAccessRequestsRequestToBackend (Spring BFF)", () => {
   });
 });
 
+describe("proxyPortfolioRequestToBackend (user positions)", () => {
+  const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+
+  beforeEach(() => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    delete process.env.ATXFINANCE_BACKEND_ORIGIN;
+  });
+
+  it("does not forward POST /api/positions when type is real_estate (Next-only schema)", async () => {
+    vi.resetModules();
+    const { proxyPortfolioRequestToBackend } = await import("@/lib/backend-bff");
+    const req = new Request("https://next.local/api/positions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        portfolioId: "507f1f77bcf86cd799439011",
+        accountId: "6a0fbeb166d5226f7e8bb03d",
+        type: "real_estate",
+        holdingName: "Lake Travis — Primary",
+        currentValueUsd: 2_850_000,
+        lastValuationDate: "2026-05-18"
+      })
+    });
+    await expect(proxyPortfolioRequestToBackend(req)).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forwards POST /api/positions for securities when user positions BFF is on", async () => {
+    vi.resetModules();
+    const { proxyPortfolioRequestToBackend } = await import("@/lib/backend-bff");
+    const req = new Request("https://next.local/api/positions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        portfolioId: "507f1f77bcf86cd799439011",
+        accountId: "6a0fbeb166d5226f7e8bb03d",
+        symbol: "AAPL",
+        qty: 10,
+        avgCost: 150
+      })
+    });
+    await proxyPortfolioRequestToBackend(req);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const target = fetchMock.mock.calls[0][0];
+    const url = typeof target === "string" ? target : (target as Request).url;
+    expect(url).toContain("http://127.0.0.1:8080/api/positions");
+  });
+});
+
 describe("getStrategyJobsBffUnavailableMessage", () => {
   const savedOrigin = process.env.ATXFINANCE_BACKEND_ORIGIN;
 

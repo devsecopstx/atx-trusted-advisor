@@ -634,6 +634,34 @@ export function shouldProxyUserPositionsToBackend(): boolean {
   return true;
 }
 
+/**
+ * **`POST /api/positions`** with **`type: "real_estate"`** — stay on **Next + Mongo**.
+ * Spring `PositionsController` only parses legacy/OpenAPI security payloads;
+ * alternative holdings are implemented on the Next route (`realEstateUpsertSchema`).
+ */
+export async function shouldSkipUserPositionsBffProxyForRealEstatePost(
+  request: Request
+): Promise<boolean> {
+  try {
+    if (request.method.toUpperCase() !== "POST") {
+      return false;
+    }
+    const pathname = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    if (pathname !== "/api/positions") {
+      return false;
+    }
+    const clone = request.clone();
+    const text = await clone.text();
+    if (!text.trim()) {
+      return false;
+    }
+    const body = JSON.parse(text) as { type?: unknown };
+    return body.type === "real_estate";
+  } catch {
+    return false;
+  }
+}
+
 /** Spring BFF for {@link shouldProxyPortfolioRequestsToBackend} routes; `null` → Next Mongo handlers. */
 export async function proxyPortfolioRequestToBackend(request: Request): Promise<Response | null> {
   const pathname = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
@@ -642,6 +670,9 @@ export async function proxyPortfolioRequestToBackend(request: Request): Promise<
   // on an account position from the app-user holdings UI.
   if (isUserPositionsPath(pathname)) {
     if (!shouldProxyUserPositionsToBackend()) {
+      return null;
+    }
+    if (await shouldSkipUserPositionsBffProxyForRealEstatePost(request)) {
       return null;
     }
     return proxyRequestToBackend(request);
