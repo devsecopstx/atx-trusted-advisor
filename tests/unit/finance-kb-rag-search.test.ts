@@ -65,6 +65,14 @@ describe("inferStrategyTypesFromUserMessage", () => {
       expect.arrayContaining(["iron_condor"])
     );
   });
+
+  it("detects strategy_index triggers including list/catalog variants", () => {
+    expect(inferStrategyTypesFromUserMessage("options 101")).toContain("strategy_index");
+    expect(inferStrategyTypesFromUserMessage("show core skills")).toContain("strategy_index");
+    expect(inferStrategyTypesFromUserMessage("list the options strategies")).toContain("strategy_index");
+    expect(inferStrategyTypesFromUserMessage("what strategies are available")).toContain("strategy_index");
+    expect(inferStrategyTypesFromUserMessage("strategy catalog")).toContain("strategy_index");
+  });
 });
 
 describe("inferRiskLevelsFromUserMessage", () => {

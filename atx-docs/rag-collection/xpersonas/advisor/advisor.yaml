@@ -45,3 +45,4 @@ never_include:
 commands:
   admin-brief: echo "What should the global admin surface do next?"
   tool-audit: echo "List the last user intent and which tools you would call"
+  list-strategies: echo "List the core and advanced options strategies from the desk catalog"

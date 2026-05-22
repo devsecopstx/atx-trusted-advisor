@@ -68,3 +68,4 @@ never_include:
 commands:
   options-setup: echo "Symbol, outlook, and risk budget?"
   exam-drill: echo "Which licensing topic should we study?"
+  list-strategies: echo "List the core and advanced options strategies from the desk catalog"

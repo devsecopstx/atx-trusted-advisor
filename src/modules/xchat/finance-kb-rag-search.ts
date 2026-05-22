@@ -22,7 +22,7 @@ const STRATEGY_TOKEN_TO_TYPES: ReadonlyArray<{ re: RegExp; types: string[] }> = 
   { re: /\btax\b|\bwash\s*sale\b|\bstraddle\s*rule\b/i, types: ["tax_compliance"] },
   { re: /\bposition\s*sizing\b|\bsizing\b/i, types: ["position_sizing"] },
   { re: /\bpayoff\b|\breference\b/i, types: ["payoff_reference"] },
-  { re: /\boptions\s+101\b|\bcore\s*skills\b|\bcatalog\b/i, types: ["strategy_index"] }
+  { re: /\boptions\s+101\b|\bcore\s*skills\b|\bcatalog\b|\blist.*strateg(?:y|ies)?\b|\bstrategy\s+(?:list|catalog|index|map)\b|\b(?:available|what)\s+strateg(?:y|ies)?\b|\bstrateg(?:y|ies)?\s+(?:available|list|catalog)\b/i, types: ["strategy_index"] }
 ];
 
 /** xAI `/v1/documents/search` `filter` uses AIP-160 string syntax (not Mongo operators). */
