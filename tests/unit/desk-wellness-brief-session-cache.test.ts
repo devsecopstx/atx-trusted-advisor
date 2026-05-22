@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     deskWellnessLocationKey,
@@ -7,8 +7,31 @@ import {
 } from "@/lib/desk-wellness-brief-session-cache";
 
 describe("desk-wellness-brief-session-cache", () => {
+  const store = new Map<string, string>();
+
+  const sessionStoragePolyfill = {
+    getItem(key: string) {
+      return store.has(key) ? store.get(key)! : null;
+    },
+    setItem(key: string, value: string) {
+      store.set(key, value);
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    clear() {
+      store.clear();
+    },
+  };
+
+  beforeEach(() => {
+    store.clear();
+    vi.stubGlobal("sessionStorage", sessionStoragePolyfill);
+    vi.stubGlobal("window", { sessionStorage: sessionStoragePolyfill });
+  });
+
   afterEach(() => {
-    sessionStorage.clear();
+    vi.unstubAllGlobals();
   });
 
   it("round-trips weather for today and location bucket", () => {

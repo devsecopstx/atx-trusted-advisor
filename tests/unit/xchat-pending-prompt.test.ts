@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     clearXchatPendingComposerHandoffMemory,
@@ -7,14 +7,33 @@ import {
 } from "@/lib/xchat/xchat-pending-prompt";
 
 describe("xchat pending composer handoff", () => {
+  const store = new Map<string, string>();
+
+  const sessionStoragePolyfill = {
+    getItem(key: string) {
+      return store.has(key) ? store.get(key)! : null;
+    },
+    setItem(key: string, value: string) {
+      store.set(key, value);
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    clear() {
+      store.clear();
+    },
+  };
+
   beforeEach(() => {
+    store.clear();
     clearXchatPendingComposerHandoffMemory();
-    sessionStorage.clear();
+    vi.stubGlobal("sessionStorage", sessionStoragePolyfill);
+    vi.stubGlobal("window", { sessionStorage: sessionStoragePolyfill });
   });
 
   afterEach(() => {
     clearXchatPendingComposerHandoffMemory();
-    sessionStorage.clear();
+    vi.unstubAllGlobals();
   });
 
   it("writes and consumes prompt + persona once", () => {
@@ -36,6 +55,8 @@ describe("xchat pending composer handoff", () => {
     writeXchatPendingComposerHandoff({ prompt: "Desk prompt" });
     consumeXchatPendingComposerHandoff();
     clearXchatPendingComposerHandoffMemory();
+    // Also drain the sessionStorage backing store (simulates the value having been fully consumed)
+    store.clear();
     expect(consumeXchatPendingComposerHandoff().prompt).toBe("");
   });
 });
