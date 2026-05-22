@@ -1,7 +1,10 @@
-# Cloud Run deploy — manual trigger with selectable branch + target.
-# Manual approval is enforced via:
-#   1) input guard (confirm_manual_approval=yes), and
-#   2) environment protection rules (Settings -> Environments -> staging/production -> Required reviewers).
+# Cloud Run deploy — manual trigger only.
+#
+# IMPORTANT (as of now):
+#   Deploys are being done from the command line using local .env files.
+#   GitHub-based deploys are temporarily blocked by the guard job below.
+#
+# To re-enable: remove or comment out the `guard-github-deploys-paused` job.
 name: Deploy Cloud Run
 
 on:
@@ -52,9 +55,28 @@ env:
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  # Temporary safety guard while deploys are being done from the command line
+  # using local .env.prod / .env.stage files (no GitHub deploys for now).
+  guard-github-deploys-paused:
+    name: GitHub deploys temporarily disabled (CLI + local .env only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail — GitHub deploys paused
+        run: |
+          echo "::error::GitHub-based Cloud Run deploys are currently disabled."
+          echo ""
+          echo "Current process: Deploying from the command line with local .env files."
+          echo ""
+          echo "Use:"
+          echo "  npm run ops:deploy:cloud-run:production"
+          echo "  npm run ops:deploy:cloud-run:staging"
+          echo ""
+          echo "See AGENTS.md section 'Prod/stage Next deploy (no GitHub required)'."
+          exit 1
   guard-manual-confirm:
     if: inputs.confirm_manual_approval != 'yes'
     name: Block unconfirmed deploy
+    needs: [guard-github-deploys-paused]
     runs-on: ubuntu-latest
     steps:
       - name: Fail — confirmation required
@@ -65,6 +87,7 @@ jobs:
   verify:
     if: inputs.confirm_manual_approval == 'yes'
     name: Verify (lint, typecheck, tests, Next build)
+    needs: [guard-github-deploys-paused]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -87,7 +110,7 @@ jobs:
   deploy:
     if: inputs.confirm_manual_approval == 'yes'
     name: Deploy (${{ inputs.target }})
-    needs: verify
+    needs: [verify, guard-github-deploys-paused]
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-${{ inputs.target }}

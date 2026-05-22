@@ -15,7 +15,8 @@ load_env_file_for_verify() {
 }
 
 resolve_backend_origin_for_verify() {
-  if [[ -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
+  # Safe check under `set -u` (nounset) — use :- to provide default
+  if [[ -n "${ATXFINANCE_BACKEND_ORIGIN:-}" && -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
     return 0
   fi
   if [[ "$PROJECT" == *staging* ]]; then
@@ -23,7 +24,7 @@ resolve_backend_origin_for_verify() {
   else
     load_env_file_for_verify "${REPO_ROOT}/.env.prod" || true
   fi
-  if [[ -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
+  if [[ -n "${ATXFINANCE_BACKEND_ORIGIN:-}" && -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
     return 0
   fi
   local svc="${ATXFINANCE_BACKEND_CLOUD_RUN_SERVICE:-}"

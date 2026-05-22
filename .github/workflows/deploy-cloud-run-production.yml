@@ -1,6 +1,10 @@
-# Production Cloud Run deploy — workflow_dispatch ONLY (no push / no schedule).
-# Staging: deploy-cloud-run.yml (workflow_dispatch only, same as prod).
-# Manual approval: Settings → Environments → production → Required reviewers.
+# Production Cloud Run deploy — workflow_dispatch ONLY.
+#
+# IMPORTANT (as of now):
+#   Deploys are being done from the command line using local .env.prod / .env.stage files.
+#   GitHub-based deploys are temporarily blocked (see guard job below).
+#
+# To re-enable GitHub deploys later: remove or disable the `guard-github-deploys-paused` job.
 name: Deploy Cloud Run Production
 
 on:
@@ -38,6 +42,25 @@ env:
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  # Temporary safety guard while deploys are being done from the command line
+  # using local .env.prod / .env.stage files.
+  guard-github-deploys-paused:
+    name: GitHub deploys temporarily disabled (using local .env CLI deploys)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail — GitHub deploys paused
+        run: |
+          echo "::error::GitHub-based Cloud Run deploys are currently disabled."
+          echo ""
+          echo "You are deploying from the command line with local .env files."
+          echo ""
+          echo "Use one of these instead:"
+          echo "  npm run ops:deploy:cloud-run:production"
+          echo "  npm run ops:deploy:cloud-run:staging"
+          echo ""
+          echo "See AGENTS.md → 'Prod/stage Next deploy (no GitHub required)' for details."
+          exit 1
+
   guard-manual-prod-confirm:
     if: inputs.confirm_manual_prod != 'yes'
     name: Block unconfirmed manual production
@@ -51,6 +74,7 @@ jobs:
   verify-production:
     if: inputs.confirm_manual_prod == 'yes'
     name: Verify (lint, typecheck, tests, Next build)
+    needs: [guard-github-deploys-paused]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -71,7 +95,7 @@ jobs:
   deploy-production-manual:
     if: inputs.confirm_manual_prod == 'yes'
     name: Deploy Production (manual)
-    needs: verify-production
+    needs: [verify-production, guard-github-deploys-paused]
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-production
