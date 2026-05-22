@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
+import { auditLoginUtcDayBounds } from "@/lib/audit-login-utc-day";
 
 type LoginAuditRow = {
   _id?: string;
@@ -20,19 +21,6 @@ type LoginAuditRow = {
   createdAt: string;
 };
 
-function localDayBounds(): { from: Date; to: Date; label: string } {
-  const n = new Date();
-  const from = new Date(n.getFullYear(), n.getMonth(), n.getDate(), 0, 0, 0, 0);
-  const to = new Date();
-  const label = from.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric"
-  });
-  return { from, to, label };
-}
-
 const FETCH_LIMIT = 500;
 
 export function LoginsTodayConsole() {
@@ -40,7 +28,7 @@ export function LoginsTodayConsole() {
   const [status, setStatus] = useState("Loading…");
 
   function fullLoginAuditTodayHref(): string {
-    const { from, to } = localDayBounds();
+    const { from, to } = auditLoginUtcDayBounds();
     const params = new URLSearchParams({
       from: from.toISOString(),
       to: to.toISOString(),
@@ -52,7 +40,7 @@ export function LoginsTodayConsole() {
   const load = useCallback(async () => {
     await Promise.resolve();
     setStatus("Loading…");
-    const { from, to, label } = localDayBounds();
+    const { from, to, label } = auditLoginUtcDayBounds();
     const params = new URLSearchParams({
       from: from.toISOString(),
       to: to.toISOString(),
@@ -85,7 +73,7 @@ export function LoginsTodayConsole() {
     return () => window.clearTimeout(id);
   }, [load]);
 
-  const dayLabel = useMemo(() => localDayBounds().label, []);
+  const dayLabel = useMemo(() => auditLoginUtcDayBounds().label, []);
 
   return (
     <section className="panel stack-gap">
@@ -94,7 +82,8 @@ export function LoginsTodayConsole() {
           <div>
             <h3 className="m-0">Logins today</h3>
             <p className="mt-1 text-sm text-[var(--xf-text-muted)]">
-              Successful and failed sign-in attempts since midnight in your local timezone ({dayLabel}), newest first.
+              Successful and failed sign-in attempts since UTC midnight ({dayLabel}), newest first — same window as the
+              hub quick stat.
               Raw feed:{" "}
               <Link className="text-[var(--xf-gain-green)] underline" href="/admin/login-audit">
                 Login audit

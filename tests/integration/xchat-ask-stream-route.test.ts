@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const authMocks = vi.hoisted(() => ({
+  requireSessionUser: vi.fn()
+}));
+
 const bffMocks = vi.hoisted(() => ({
   proxyPortfolioRequestToBackend: vi.fn(),
   releaseUnusedProxyResponse: vi.fn(),
@@ -9,6 +13,16 @@ const bffMocks = vi.hoisted(() => ({
 
 const askMocks = vi.hoisted(() => ({
   postAsk: vi.fn()
+}));
+
+vi.mock("@/lib/auth", () => authMocks);
+
+vi.mock("@/lib/server-request-cache", () => ({
+  getTenantByHexIdCached: vi.fn().mockResolvedValue({ name: "Test Tenant", tenantPreferences: {} })
+}));
+
+vi.mock("@/modules/compliance/advisor-compliance-gate", () => ({
+  advisorComplianceGateResponseForAppUser: vi.fn().mockResolvedValue(null)
 }));
 
 vi.mock("@/lib/backend-bff", () => bffMocks);
@@ -34,6 +48,15 @@ async function readAll(stream: ReadableStream<Uint8Array> | null): Promise<strin
 
 describe("POST /api/xchat/ask/stream", () => {
   beforeEach(() => {
+    authMocks.requireSessionUser.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      roles: ["global_admin"],
+      email: "admin@test.local",
+      tenantRole: "tenant_admin",
+      xUserId: "x1",
+      username: "adminuser"
+    });
     bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
     bffMocks.shouldProxyPortfolioRequestsToBackend.mockReturnValue(false);
   });

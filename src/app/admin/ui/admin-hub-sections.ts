@@ -37,7 +37,7 @@ export const ADMIN_PLATFORM_OPS_ITEMS: AdminFunction[] = [
     href: "/admin/logins-today",
     title: "Logins today",
     description:
-      "Successful and failed sign-in attempts since local midnight (audit_login), quick scan with filters on Login audit.",
+      "Successful and failed sign-in attempts since UTC midnight (audit_login), aligned with the hub quick stat.",
     icon: "audit"
   },
   {

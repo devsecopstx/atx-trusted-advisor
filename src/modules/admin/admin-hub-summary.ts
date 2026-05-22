@@ -1,4 +1,5 @@
 import type { AdminHubQuickStat, AdminHubSummaryResponse } from "@/lib/admin-hub-summary-contract";
+import { startOfUtcDay } from "@/lib/audit-login-utc-day";
 import type { SessionUser } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
 import {
@@ -19,10 +20,6 @@ const TASK_RUNS = "admin_task_runs";
 const AUDIT_LOGIN = "audit_login";
 const XCHAT_USAGE = "xchat_usage_limits";
 const STRATEGY_JOBS = "strategy_jobs";
-
-function startOfUtcDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
 
 function startOfUtcMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
