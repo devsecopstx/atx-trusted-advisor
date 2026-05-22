@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -11,6 +12,12 @@ import {
 import { RRuleScheduleBuilderModal } from "@/app/admin/tasks/ui/rrule-schedule-builder-modal";
 import { AddIcon, DeleteIcon, RefreshIcon, RunIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import {
+    adminScheduledTasksListScopeLabel,
+    parseAdminScheduledTasksListScope,
+    type AdminScheduledTasksListScope
+} from "@/lib/admin-scheduled-tasks-list-scope";
+import type { TaskRunHistoryWindow } from "@/lib/admin-task-run-window";
 import {
     ADMIN_TASKS_DISPLAY_TIME_ZONE_OPTIONS,
     DEFAULT_ADMIN_TASKS_DISPLAY_TIME_ZONE,
@@ -29,8 +36,18 @@ import {
 } from "@/lib/scheduled-task-category-schema";
 import type { ScheduledTask as ScheduledTaskDoc } from "@/modules/core-admin/types";
 
+type SessionTenantMeta = {
+  tenantId: string;
+  tenantName: string | null;
+  tenantSlug: string | null;
+};
+
 type ScheduledTask = {
   _id?: string;
+  systemWide?: boolean;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  tenantSlug?: string | null;
   name: string;
   /** Executor slug from Mongo — may be invalid if row was misconfigured. */
   category: string;
@@ -65,6 +82,9 @@ type TaskRunExecutorRow = {
 
 type TaskRun = {
   _id?: string;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  tenantSlug?: string | null;
   taskId: string;
   taskName: string;
   category: string;
@@ -85,6 +105,24 @@ type SchedulePayload = {
 
 const POLL_INTERVAL_MS = 30_000;
 
+function parseTasksConsoleTab(value: string | null): "jobs" | "schedule" | "runs" {
+  if (value === "runs" || value === "schedule") {
+    return value;
+  }
+  return "jobs";
+}
+
+function parseTasksRunHistoryWindow(value: string | null): TaskRunHistoryWindow {
+  if (value === "24h" || value === "30d") {
+    return value;
+  }
+  return "today";
+}
+
+function parseTasksFailedOnly(value: string | null): boolean {
+  return value === "1" || value === "true";
+}
+
 const CATEGORIES = [...SCHEDULED_TASK_CATEGORIES];
 
 function defaultJobNameForCategory(category: ScheduledTaskDoc["category"]): string {
@@ -97,6 +135,61 @@ const JOB_TYPE_LABELS: Record<ScheduledTaskDoc["category"], string> = Object.fro
 
 const TASKS_BASE = "/api/admin/tasks";
 const DELIVERY_CHANNELS_BASE = "/api/admin/delivery-channels";
+
+function AdminScheduledTaskTenantCell({ row }: { row: ScheduledTask }) {
+  if (row.systemWide !== false && !row.tenantId) {
+    return (
+      <td className="align-top whitespace-nowrap">
+        <span className="text-[var(--xf-gain-green)] text-sm font-medium">System</span>
+        <p className="status-text m-0 text-xs">All tenants</p>
+      </td>
+    );
+  }
+  const name = row.tenantName?.trim() || "Unknown tenant";
+  const slug = row.tenantSlug?.trim();
+  const id = row.tenantId?.trim();
+  return (
+    <td className="align-top max-w-[220px]">
+      <p className="m-0 text-sm font-medium truncate" title={name}>
+        {name}
+      </p>
+      {slug ? (
+        <p className="m-0 font-mono text-xs text-[var(--xf-text-muted)] truncate" title={slug}>
+          {slug}
+        </p>
+      ) : null}
+      {id ? (
+        <p className="m-0 font-mono text-xs text-[var(--xf-text-muted)] truncate" title={id}>
+          {id}
+        </p>
+      ) : null}
+    </td>
+  );
+}
+
+function AdminTaskRunTenantCell({ run }: { run: TaskRun }) {
+  if (!run.tenantId?.trim()) {
+    return <td className="text-[var(--xf-text-muted)] text-xs">—</td>;
+  }
+  const name = run.tenantName?.trim() || "Unknown tenant";
+  const slug = run.tenantSlug?.trim();
+  const id = run.tenantId.trim();
+  return (
+    <td className="align-top max-w-[200px]">
+      <p className="m-0 text-xs font-medium truncate" title={name}>
+        {name}
+      </p>
+      {slug ? (
+        <p className="m-0 font-mono text-xs text-[var(--xf-text-muted)] truncate" title={slug}>
+          {slug}
+        </p>
+      ) : null}
+      <p className="m-0 font-mono text-xs text-[var(--xf-text-muted)] truncate" title={id}>
+        {id}
+      </p>
+    </td>
+  );
+}
 
 /** Builds PATCH/POST `schedule` object; omits null/empty so Zod never sees `null` (API JSON can include null from Mongo). */
 function buildSchedulePayload(schedule: SchedulePayload) {
@@ -126,16 +219,30 @@ function buildSchedulePayload(schedule: SchedulePayload) {
 }
 
 export function TasksConsole() {
-  const [activeTab, setActiveTab] = useState<"jobs" | "schedule" | "runs">("jobs");
+  const searchParams = useSearchParams();
+
+  const [activeTab, setActiveTab] = useState<"jobs" | "schedule" | "runs">(() =>
+    parseTasksConsoleTab(searchParams.get("tab"))
+  );
+  const [jobsListScope, setJobsListScope] = useState<AdminScheduledTasksListScope>(() =>
+    parseAdminScheduledTasksListScope(searchParams.get("scope"))
+  );
+  const [sessionTenant, setSessionTenant] = useState<SessionTenantMeta | null>(null);
+  const [jobsSortField, setJobsSortField] = useState<"name" | "category" | "nextRunAt">("name");
+  const [jobsSortDir, setJobsSortDir] = useState<"asc" | "desc">("asc");
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [runs, setRuns] = useState<TaskRun[]>([]);
-  /** Default: current UTC calendar day; optional rolling 30 days. */
-  const [runHistoryWindow, setRunHistoryWindow] = useState<"today" | "30d">("today");
+  /** Default: current UTC calendar day; hub failed-runs links use rolling 24h. */
+  const [runHistoryWindow, setRunHistoryWindow] = useState<TaskRunHistoryWindow>(() =>
+    parseTasksRunHistoryWindow(searchParams.get("window"))
+  );
   /** Run history tab — filter/sort apply to rows already loaded for the window. */
   const [runCategoryFilter, setRunCategoryFilter] = useState<"" | ScheduledTaskDoc["category"]>("");
   const [runSortField, setRunSortField] = useState<"startedAt" | "status">("startedAt");
   const [runSortDir, setRunSortDir] = useState<"asc" | "desc">("desc");
-  const [runFailedOnly, setRunFailedOnly] = useState(false);
+  const [runFailedOnly, setRunFailedOnly] = useState(() =>
+    parseTasksFailedOnly(searchParams.get("failedOnly"))
+  );
   const [selectedRun, setSelectedRun] = useState<AdminTaskRunDetail | null>(null);
   const [deliveryChannels, setDeliveryChannels] = useState<DeliveryChannelRow[]>([]);
   /** Timestamps (next run, run history, channel updated); cron matching stays UTC — see copy in Tasks tab. */
@@ -186,6 +293,24 @@ export function TasksConsole() {
     [createJobType]
   );
 
+  const sortedTasks = useMemo(() => {
+    const list = [...tasks];
+    list.sort((a, b) => {
+      let cmp = 0;
+      if (jobsSortField === "name") {
+        cmp = (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" });
+      } else if (jobsSortField === "category") {
+        cmp = (a.category ?? "").localeCompare(b.category ?? "", undefined, { sensitivity: "base" });
+      } else {
+        const ta = a.nextRunAt ? new Date(a.nextRunAt).getTime() : Number.POSITIVE_INFINITY;
+        const tb = b.nextRunAt ? new Date(b.nextRunAt).getTime() : Number.POSITIVE_INFINITY;
+        cmp = ta - tb;
+      }
+      return jobsSortDir === "asc" ? cmp : -cmp;
+    });
+    return list;
+  }, [tasks, jobsSortField, jobsSortDir]);
+
   const filteredSortedRuns = useMemo(() => {
     let list =
       runCategoryFilter === ""
@@ -220,17 +345,25 @@ export function TasksConsole() {
 
   const refreshTasks = useCallback(async () => {
     try {
-      const payload = await parseJson<{ data: ScheduledTask[] }>(await fetch(TASKS_BASE));
+      const params = new URLSearchParams({ scope: jobsListScope });
+      const payload = await parseJson<{
+        data: ScheduledTask[];
+        meta?: { sessionTenant?: SessionTenantMeta };
+      }>(await fetch(`${TASKS_BASE}?${params.toString()}`));
       setTasks(payload.data);
+      setSessionTenant(payload.meta?.sessionTenant ?? null);
       setEdits({});
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to refresh jobs");
     }
-  }, []);
+  }, [jobsListScope]);
 
   const refreshRuns = useCallback(async () => {
     try {
       const params = new URLSearchParams({ window: runHistoryWindow });
+      if (runFailedOnly) {
+        params.set("status", "failed");
+      }
       const payload = await parseJson<{ data: TaskRun[] }>(
         await fetch(`/api/admin/task-runs?${params.toString()}`)
       );
@@ -238,7 +371,7 @@ export function TasksConsole() {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to refresh runs");
     }
-  }, [runHistoryWindow]);
+  }, [runHistoryWindow, runFailedOnly]);
 
   const refreshDeliveryChannels = useCallback(async () => {
     try {
@@ -495,7 +628,11 @@ export function TasksConsole() {
       return;
     }
     void refreshRuns();
-  }, [runHistoryWindow, refreshRuns]);
+  }, [runHistoryWindow, runFailedOnly, refreshRuns]);
+
+  useEffect(() => {
+    void refreshTasks();
+  }, [jobsListScope, refreshTasks]);
 
   return (
     <section className="panel stack-gap">
@@ -648,24 +785,84 @@ export function TasksConsole() {
 
         {activeTab === "jobs" ? (
           <div className="stack-gap">
+            <div className="tool-row flex-wrap" style={{ marginBottom: "0.65rem" }}>
+              <label className="flex flex-col gap-1 text-sm" style={{ minWidth: "18rem" }}>
+                <span className="status-text text-xs uppercase tracking-wide">Job list scope</span>
+                <select
+                  aria-label="Scheduled job list scope"
+                  className="crud-input text-sm"
+                  disabled={loading}
+                  value={jobsListScope}
+                  onChange={(e) =>
+                    setJobsListScope(parseAdminScheduledTasksListScope(e.target.value || null))
+                  }
+                >
+                  <option value="system">{adminScheduledTasksListScopeLabel("system")}</option>
+                  <option value="tenant_workspace">
+                    {adminScheduledTasksListScopeLabel("tenant_workspace")}
+                    {sessionTenant?.tenantName
+                      ? ` — ${sessionTenant.tenantName}`
+                      : sessionTenant?.tenantSlug
+                        ? ` — ${sessionTenant.tenantSlug}`
+                        : ""}
+                  </option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm" style={{ minWidth: "14rem" }}>
+                <span className="status-text text-xs uppercase tracking-wide">Sort by</span>
+                <select
+                  aria-label="Sort scheduled jobs"
+                  className="crud-input text-sm"
+                  disabled={loading}
+                  value={`${jobsSortField}:${jobsSortDir}`}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v.startsWith("name:")) {
+                      setJobsSortField("name");
+                      setJobsSortDir(v.endsWith("desc") ? "desc" : "asc");
+                    } else if (v.startsWith("category:")) {
+                      setJobsSortField("category");
+                      setJobsSortDir(v.endsWith("desc") ? "desc" : "asc");
+                    } else if (v.startsWith("nextRunAt:")) {
+                      setJobsSortField("nextRunAt");
+                      setJobsSortDir(v.endsWith("desc") ? "desc" : "asc");
+                    }
+                  }}
+                >
+                  <option value="name:asc">Name — A→Z</option>
+                  <option value="name:desc">Name — Z→A</option>
+                  <option value="category:asc">Category — A→Z</option>
+                  <option value="category:desc">Category — Z→A</option>
+                  <option value="nextRunAt:asc">Next run — soonest first</option>
+                  <option value="nextRunAt:desc">Next run — latest first</option>
+                </select>
+              </label>
+              {sessionTenant ? (
+                <p className="status-text m-0 text-sm" style={{ alignSelf: "flex-end" }}>
+                  Workspace: <strong>{sessionTenant.tenantName ?? sessionTenant.tenantSlug ?? "—"}</strong>
+                  {sessionTenant.tenantSlug ? (
+                    <>
+                      {" "}
+                      <code className="font-mono text-xs">{sessionTenant.tenantSlug}</code>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
+            </div>
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Edit <strong>system-wide</strong> scheduled jobs (global admin only): each row runs once per tenant in{" "}
-              <code className="font-mono text-xs">core_tenants</code>, and run summaries (Slack/email) include{" "}
-              <strong>combined output across tenants</strong>. Use <strong>Add job</strong> to create schedules.
-              Set a delivery channel to post after every run (manual or scheduler). Manage channels on{" "}
+              Edit schedules, enable or disable jobs, and run manually. Cron is evaluated in UTC; displayed times use
+              your timezone above.{" "}
               <Link className="underline font-medium" href="/admin/delivery-channels">
                 Delivery channels
-              </Link>
-              ; the job itself is not stored with a single{" "}
-              <code className="font-mono text-xs">tenantId</code>.{" "}
-              <strong>Cron expressions use UTC</strong> (engine matches UTC clock); <strong>Next run</strong> and run
-              history timestamps use the <strong>display timezone</strong> you pick above (default Central).
+              </Link>{" "}
+              control post-run notifications.
             </p>
             {tasks.length > 0 ? (
               <div className="crud-table-wrap">
                 <table className="crud-table">
                   <thead>
                     <tr>
+                      <th>Tenant</th>
                       <th>Name</th>
                       <th>Category</th>
                       <th>Job type</th>
@@ -677,12 +874,13 @@ export function TasksConsole() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tasks.map((row) => {
+                    {sortedTasks.map((row) => {
                       const id = row._id ?? "";
                       const m = mergeRow(row);
                       const dirty = rowDirty(row);
                       return (
                         <tr key={id || m.name}>
+                          <AdminScheduledTaskTenantCell row={m} />
                           <td>
                             <input
                               className="crud-input text-sm"
@@ -866,12 +1064,7 @@ export function TasksConsole() {
           <div className="stack-gap">
             <h3>Predefined job templates</h3>
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Pick a template to prefill job type and default cron (
-              <code className="font-mono text-xs">{SCHEDULED_TASK_CATEGORY_DEFAULT_CRON.price_scanner}</code> — weekdays
-              08:00–17:59 UTC, every 15 minutes). Link a <strong>Slack</strong> delivery channel on each task to receive run
-              summaries (status, duration, full job output — same keyed metrics style for core scanners, e.g.{" "}
-              <code className="font-mono text-xs">price_scanner</code>,{" "}
-              <code className="font-mono text-xs">watchlist_price_scanner</code>).
+              Pick a template to prefill job type and schedule. Optional delivery channels send a summary after each run.
             </p>
             <div className="crud-table-wrap" style={{ marginBottom: "0.75rem" }}>
               <table className="crud-table">
@@ -1017,9 +1210,12 @@ export function TasksConsole() {
                   className="crud-input text-sm"
                   disabled={loading}
                   value={runHistoryWindow}
-                  onChange={(e) => setRunHistoryWindow(e.target.value === "30d" ? "30d" : "today")}
+                  onChange={(e) =>
+                    setRunHistoryWindow(parseTasksRunHistoryWindow(e.target.value || null))
+                  }
                 >
                   <option value="today">Today (UTC calendar day)</option>
+                  <option value="24h">Last 24 hours (hub stat)</option>
                   <option value="30d">Last 30 days</option>
                 </select>
               </label>
@@ -1083,13 +1279,11 @@ export function TasksConsole() {
                 </select>
               </label>
               <p className="status-text" style={{ margin: 0, flex: "1 1 12rem", alignSelf: "flex-end" }}>
-                Default shows runs that <strong>started</strong> on the current UTC calendar day (API window). The{" "}
-                <strong>Started</strong> column uses your display timezone. Widen to 30 days for troubleshooting;
-                polling and refresh use the same window. Filter and sort apply to the loaded rows only.
+                Times use your display timezone. Filters apply to loaded rows only.
               </p>
             </div>
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Execution history for tenant-level scheduled tasks.
+              Recent manual and scheduled runs.
             </p>
             {runs.length === 0 ? (
               <p className="status-text">No task runs yet.</p>
@@ -1105,6 +1299,7 @@ export function TasksConsole() {
                   <thead>
                     <tr>
                       <th>Job</th>
+                      <th>Tenant</th>
                       <th>Category</th>
                       <th>Job type</th>
                       <th>Status</th>
@@ -1127,6 +1322,7 @@ export function TasksConsole() {
                           <td>
                             <span title={`Job id: ${run.taskId}`}>{run.taskName}</span>
                           </td>
+                          <AdminTaskRunTenantCell run={run} />
                           <td>
                             <code
                               className={`font-mono text-xs${categoryInvalid ? " admin-tasks-category-slug--invalid" : ""}`}

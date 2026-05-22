@@ -721,6 +721,33 @@ export function shouldProxyAdminScheduledTasksToBackend(): boolean {
   return shouldProxyAdminUsersToBackend();
 }
 
+/** Admin scheduled-task **GET** paths that must stay on Next + Mongo when BFF is on (hub parity). */
+const ADMIN_SCHEDULED_TASKS_BFF_NEXT_ONLY_GET_PATHS = new Set([
+  /**
+   * Spring `listTasks` is tenant-scoped; Next uses `systemWideOnly` (platform jobs, no `tenantId`).
+   */
+  "/api/admin/tasks",
+  /**
+   * Spring ignores `window` / `allTenants`; Next matches hub failed-run counts (`allTenants` + time bounds).
+   */
+  "/api/admin/task-runs"
+]);
+
+/**
+ * When BFF is on, keep admin task list + run history on Next so hub quick stats match `/admin/tasks`.
+ */
+export function shouldSkipAdminScheduledTasksBffProxyForRequest(request: Request): boolean {
+  try {
+    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    if (request.method.toUpperCase() !== "GET") {
+      return false;
+    }
+    return ADMIN_SCHEDULED_TASKS_BFF_NEXT_ONLY_GET_PATHS.has(path);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * **`POST /api/admin/tasks/{taskId}/run`** — stay on **Next + Mongo** when BFF is on.
  * Yahoo watchlist / price / options scanners run in the Next task-runner with `bypassMarketWindow` for
@@ -743,6 +770,9 @@ export async function proxyAdminScheduledTasksRequestToBackend(
   request: Request
 ): Promise<Response | null> {
   if (!shouldProxyAdminScheduledTasksToBackend()) {
+    return null;
+  }
+  if (shouldSkipAdminScheduledTasksBffProxyForRequest(request)) {
     return null;
   }
   if (shouldSkipAdminScheduledTasksBffProxyForTaskRunPost(request)) {

@@ -1,4 +1,5 @@
 import type { AdminHubQuickStat, AdminHubSummaryResponse } from "@/lib/admin-hub-summary-contract";
+import { resolveTaskRunListWindowQuery } from "@/lib/admin-task-run-window";
 import { startOfUtcDay } from "@/lib/audit-login-utc-day";
 import type { SessionUser } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
@@ -35,8 +36,8 @@ function formatUsd(amount: number): string {
 export async function collectAdminHubSummary(session: SessionUser): Promise<AdminHubSummaryResponse> {
   const db = await getDb();
   const now = new Date();
-  const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const dayStart = startOfUtcDay(now);
+  const failedRuns24hWindow = resolveTaskRunListWindowQuery("24h", now);
   const monthStart = startOfUtcMonth(now);
   const platformWide = isGlobalAdmin(session.roles);
   const tenantHex = session.tenantId.trim();
@@ -46,12 +47,17 @@ export async function collectAdminHubSummary(session: SessionUser): Promise<Admi
   });
 
   await pruneDuplicateSystemWideScheduledTasks();
-  const scheduledRows = await listScheduledTasks({ tenantId: tenantHex, systemWideOnly: true });
+  const scheduledRows = await listScheduledTasks({
+    tenantId: tenantHex,
+    systemWideOnly: true,
+    limit: 200
+  });
+  const totalSystemScheduledJobs = scheduledRows.length;
   const enabledScheduledJobs = scheduledRows.filter((row) => row.enabled).length;
 
   const failedTaskRuns24h = await db.collection(TASK_RUNS).countDocuments({
     status: "failed",
-    startedAt: { $gte: since24h }
+    startedAt: { $gte: failedRuns24hWindow.startedAtMin }
   });
 
   const batchJobs =
@@ -134,16 +140,16 @@ export async function collectAdminHubSummary(session: SessionUser): Promise<Admi
     },
     {
       id: "scheduled-jobs",
-      label: "Scheduled jobs",
-      value: String(enabledScheduledJobs),
+      label: "System jobs",
+      value: String(totalSystemScheduledJobs),
       href: "/admin/tasks",
-      title: "Enabled tenant-level scheduler jobs"
+      title: `${enabledScheduledJobs} enabled · platform-wide scheduler rows (no tenantId), same list as Scheduled jobs`
     },
     {
       id: "failed-runs",
       label: "Failed runs (24h)",
       value: String(failedTaskRuns24h),
-      href: "/admin/tasks",
+      href: "/admin/tasks?tab=runs&window=24h&failedOnly=1",
       emphasis: failedTaskRuns24h > 0 ? "warn" : "default",
       title: "Scheduled task runs that failed in the last 24 hours"
     },

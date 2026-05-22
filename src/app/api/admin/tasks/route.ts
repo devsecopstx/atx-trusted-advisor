@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
+import {
+    pickAdminTenantLabel,
+    resolveAdminTenantLabelsByHex
+} from "@/lib/admin-scheduled-task-tenant-labels";
+import {
+    parseAdminScheduledTasksListScope,
+    type AdminScheduledTasksListScope
+} from "@/lib/admin-scheduled-tasks-list-scope";
 import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
@@ -20,6 +28,11 @@ import {
     listScheduledTasks,
     pruneDuplicateSystemWideScheduledTasks
 } from "@/modules/core-admin/repository";
+import { getTenantByHexId } from "@/modules/identity/repository";
+
+const listTasksQuerySchema = z.object({
+  scope: z.enum(["system", "tenant_workspace"]).default("system")
+});
 
 const createTaskSchema = z.object({
   name: z.string().min(1),
@@ -50,12 +63,48 @@ export async function GET(request: Request) {
     return tenantIdHex;
   }
 
+  const url = new URL(request.url);
+  const parsedQuery = listTasksQuerySchema.safeParse({
+    scope: url.searchParams.get("scope") ?? undefined
+  });
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      { error: "Invalid query", details: parsedQuery.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const scope: AdminScheduledTasksListScope = parseAdminScheduledTasksListScope(parsedQuery.data.scope);
+
   await pruneDuplicateSystemWideScheduledTasks();
   const tasks = await listScheduledTasks({
     tenantId: tenantIdHex,
-    systemWideOnly: true
+    systemWideOnly: scope === "system",
+    limit: 200
   });
-  return NextResponse.json({ data: tasks.map(serializeScheduledTaskForJson) });
+  const tenantLabels = await resolveAdminTenantLabelsByHex(
+    tasks.map((task) => task.tenantId?.toHexString())
+  );
+  const sessionTenant = await getTenantByHexId(tenantIdHex);
+  return NextResponse.json({
+    data: tasks.map((task) => {
+      const base = serializeScheduledTaskForJson(task);
+      const label = pickAdminTenantLabel(tenantLabels, base.tenantId);
+      return {
+        ...base,
+        tenantName: label?.tenantName ?? null,
+        tenantSlug: label?.tenantSlug ?? null
+      };
+    }),
+    meta: {
+      scope,
+      sessionTenant: {
+        tenantId: tenantIdHex,
+        tenantName: sessionTenant?.name?.trim() ?? null,
+        tenantSlug: sessionTenant?.slug?.trim() ?? null
+      }
+    }
+  });
 }
 
 export async function POST(request: Request) {

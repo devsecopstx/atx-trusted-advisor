@@ -11,6 +11,14 @@ describe("resolveTaskRunListWindowQuery", () => {
     expect(q.defaultLimit).toBe(150);
   });
 
+  it("24h uses rolling 24-hour lower bound (admin hub failed-runs stat)", () => {
+    const now = new Date("2026-04-09T15:30:00.000Z");
+    const q = resolveTaskRunListWindowQuery("24h", now);
+    expect(q.startedAtMaxExclusive).toBeUndefined();
+    expect(q.startedAtMin.toISOString()).toBe("2026-04-08T15:30:00.000Z");
+    expect(q.defaultLimit).toBe(500);
+  });
+
   it("30d uses rolling lower bound and no exclusive max", () => {
     const now = new Date("2026-04-09T12:00:00.000Z");
     const q = resolveTaskRunListWindowQuery("30d", now);

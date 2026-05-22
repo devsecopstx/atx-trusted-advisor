@@ -17,6 +17,8 @@
  * **`GET /api/admin/tenants`**, **`GET /api/admin/users`**, **`GET /api/admin/login-audit`**, **`GET /api/admin/audit`:**
  * Next-only when BFF is on — see `ADMIN_USERS_BFF_NEXT_ONLY_GET_PATHS` / `shouldSkipAdminUsersBffProxyForRequest` in
  * `backend-bff.ts` (tenant register, `tenantMemberships`, login-audit collection, audit `entityType` parity).
+ * **`GET /api/admin/tasks`**, **`GET /api/admin/task-runs`:** Next-only via `shouldSkipAdminScheduledTasksBffProxyForRequest`
+ * (system-wide job list + `window`/`status` run history — hub quick stats parity; Spring list is tenant-scoped).
  *
  * **`/api/app-user/*`:** Next-only (find-options bootstrap, xOptions entitlements, symbol-chart). Do not call
  * `proxyRequestToBackend` there — Kotlin has no matching controllers; proxying returns JVM 404 before local logic runs.

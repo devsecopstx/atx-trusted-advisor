@@ -1428,6 +1428,7 @@ export async function listTaskRuns(options?: {
   tenantId?: string;
   /** When true (Admin → Task runs), list runs for all tenants — matches system-wide job fan-out. */
   allTenants?: boolean;
+  status?: TaskRun["status"];
   /** Inclusive lower bound on `startedAt`. */
   startedAtMin?: Date;
   /** Exclusive upper bound on `startedAt` (Mongo `$lt`). */
@@ -1442,7 +1443,10 @@ export async function listTaskRuns(options?: {
   if (options?.startedAtMaxExclusive) {
     time.$lt = options.startedAtMaxExclusive;
   }
-  const base: Filter<TaskRun> = Object.keys(time).length > 0 ? { startedAt: time } : {};
+  const base: Filter<TaskRun> = {
+    ...(Object.keys(time).length > 0 ? { startedAt: time } : {}),
+    ...(options?.status ? { status: options.status } : {})
+  };
   const filter: Filter<TaskRun> =
     options?.allTenants === true ? base : withTenantScope(base, options?.tenantId);
   return db

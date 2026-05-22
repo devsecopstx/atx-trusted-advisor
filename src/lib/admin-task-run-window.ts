@@ -1,4 +1,6 @@
-export type TaskRunHistoryWindow = "today" | "30d";
+export type TaskRunHistoryWindow = "today" | "24h" | "30d";
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type TaskRunWindowQuery = {
   startedAtMin: Date;
@@ -14,6 +16,12 @@ export function resolveTaskRunListWindowQuery(
   window: TaskRunHistoryWindow,
   now: Date = new Date()
 ): TaskRunWindowQuery {
+  if (window === "24h") {
+    return {
+      startedAtMin: new Date(now.getTime() - MS_PER_DAY),
+      defaultLimit: 500
+    };
+  }
   if (window === "today") {
     const min = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)
