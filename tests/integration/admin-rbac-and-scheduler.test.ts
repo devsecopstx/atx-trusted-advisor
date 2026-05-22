@@ -20,6 +20,10 @@ const runnerMocks = vi.hoisted(() => ({
   executeScheduledTask: vi.fn()
 }));
 
+const identityMocks = vi.hoisted(() => ({
+  getTenantByHexId: vi.fn()
+}));
+
 vi.mock("@/lib/api-auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api-auth")>();
   return {
@@ -38,6 +42,13 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
 });
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/modules/core-admin/task-runner", () => runnerMocks);
+vi.mock("@/modules/identity/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/identity/repository")>();
+  return {
+    ...actual,
+    getTenantByHexId: identityMocks.getTenantByHexId
+  };
+});
 
 import { POST as postSchedulerTick } from "@/app/api/admin/scheduler/tick/route";
 import { GET as getTasks, POST as postTasks } from "@/app/api/admin/tasks/route";
@@ -61,6 +72,11 @@ describe("admin RBAC and scheduler semantics", () => {
       runId: new ObjectId("507f1f77bcf86cd799439055"),
       status: "success",
       output: "ok"
+    });
+    identityMocks.getTenantByHexId.mockResolvedValue({
+      _id: new ObjectId("507f1f77bcf86cd799439022"),
+      name: "Test workspace",
+      slug: "test-workspace"
     });
   });
 
@@ -94,7 +110,8 @@ describe("admin RBAC and scheduler semantics", () => {
     expect(repositoryMocks.pruneDuplicateSystemWideScheduledTasks).toHaveBeenCalledTimes(1);
     expect(repositoryMocks.listScheduledTasks).toHaveBeenCalledWith({
       tenantId: "507f1f77bcf86cd799439022",
-      systemWideOnly: true
+      systemWideOnly: true,
+      limit: 200
     });
   });
 

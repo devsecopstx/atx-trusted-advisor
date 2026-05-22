@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useXchatOutlookBookScope } from "@/app/xchat/ui/use-xchat-outlook-book-scope";
+import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import {
     formatOutlookFreshnessLabel,
     type XchatInitialOutlookDesk
@@ -21,14 +23,20 @@ type FetchedOutlook = {
 
 export type XchatOutlookFreshnessBadgeProps = {
   workspacePortfolioId: string | null | undefined;
+  workspaceBook?: AppUserDefaultBook | null;
   /** When set (SSR / parent), skip the first client fetch for this portfolio. */
   initialOutlookDesk?: XchatInitialOutlookDesk | null;
+  /** Welcome header row layout (right-aligned, next to usage %). */
+  inline?: boolean;
 };
 
 export function XchatOutlookFreshnessBadge({
   workspacePortfolioId,
-  initialOutlookDesk = null
+  workspaceBook = null,
+  initialOutlookDesk = null,
+  inline = false
 }: XchatOutlookFreshnessBadgeProps) {
+  const bookScope = useXchatOutlookBookScope(workspaceBook, workspacePortfolioId);
   const portfolioId = workspacePortfolioId?.trim() || "";
   const initialMatchesPortfolio =
     Boolean(initialOutlookDesk) &&
@@ -104,9 +112,10 @@ export function XchatOutlookFreshnessBadge({
     }
     return formatOutlookFreshnessLabel({
       marketOutlookLabel: activeDesk.marketOutlookLabel,
-      lastOutlookRefreshAt: activeDesk.lastOutlookRefreshAt
+      lastOutlookRefreshAt: activeDesk.lastOutlookRefreshAt,
+      bookScope
     });
-  }, [activeDesk]);
+  }, [activeDesk, bookScope]);
 
   if (!label) {
     return null;
@@ -115,14 +124,12 @@ export function XchatOutlookFreshnessBadge({
   return (
     <p
       aria-live="polite"
-      className="xchat-outlook-freshness-badge"
-      style={{
-        margin: "0 0 0.35rem",
-        fontSize: "0.72rem",
-        lineHeight: 1.35,
-        color: "var(--xf-text-muted)",
-        textAlign: "center"
-      }}
+      className={
+        inline
+          ? "xchat-outlook-freshness-badge xchat-outlook-freshness-badge--welcome-row"
+          : "xchat-outlook-freshness-badge"
+      }
+      title={label}
     >
       {label}
     </p>

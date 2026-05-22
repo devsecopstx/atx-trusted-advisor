@@ -28,6 +28,8 @@ describe("/xchat workspace shell contract", () => {
     expect(approvedShellSrc).not.toContain("<XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} />");
     expect(conversationSrc).toContain("initialOutlookDesk?: XchatInitialOutlookDesk | null");
     expect(conversationSrc).toContain('className="xchat-welcome-header__row"');
-    expect(conversationSrc).toContain("<XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} inline />");
+    expect(conversationSrc).toContain("<XchatOutlookFreshnessBadge");
+    expect(conversationSrc).toContain("workspaceBook={workspaceBook}");
+    expect(conversationSrc).toContain("workspacePortfolioId={workspacePortfolioId}");
   });
 });

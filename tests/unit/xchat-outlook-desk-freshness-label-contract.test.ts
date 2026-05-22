@@ -7,13 +7,15 @@ import { readXchatThreadCss } from "../helpers/read-xchat-stylesheet";
 
 describe("xChat outlook desk freshness label contract", () => {
   const labelSrc = readFileSync(
-    join(process.cwd(), "src/app/xchat/ui/xchat-outlook-desk-freshness-label.tsx"),
+    join(process.cwd(), "src/app/xchat/ui/xchat-outlook-freshness-badge.tsx"),
     "utf8"
   );
   const cssSrc = readXchatThreadCss();
 
-  it("supports inline welcome-row rendering without standalone shell margin", () => {
+  it("supports inline welcome-row rendering with portfolio-aware badge", () => {
     expect(labelSrc).toContain("inline?: boolean");
+    expect(labelSrc).toContain("useXchatOutlookBookScope");
+    expect(labelSrc).toContain("workspaceBook");
     expect(labelSrc).toContain("xchat-outlook-freshness-badge--welcome-row");
     expect(cssSrc).toContain(".xchat-outlook-freshness-badge--welcome-row");
     expect(cssSrc).toContain(".xchat-welcome-header__row");

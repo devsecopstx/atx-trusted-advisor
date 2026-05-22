@@ -7126,8 +7126,10 @@ html[data-xf-ui="soft"] .xchat-workspace-bar {
   margin: 0;
   margin-left: auto;
   text-align: right;
-  white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: min(100%, 22rem);
+  white-space: normal;
 }
 
 /* Compact prompt usage % pill placed on the same row as the portfolio outlook in the welcome header */

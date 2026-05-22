@@ -47,7 +47,7 @@ import type {
     XchatInteractionMeta
 } from "@/app/xchat/ui/xchat-conversation-types";
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
-import { XchatOutlookDeskFreshnessLabel } from "@/app/xchat/ui/xchat-outlook-desk-freshness-label";
+import { XchatOutlookFreshnessBadge } from "@/app/xchat/ui/xchat-outlook-freshness-badge";
 import { XchatUsageStatusRow } from "@/app/xchat/ui/xchat-usage-status-row";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
@@ -2309,7 +2309,12 @@ export function XchatConversation({
                   </p>
                 ) : null}
               </div>
-              <XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} inline />
+              <XchatOutlookFreshnessBadge
+                inline
+                initialOutlookDesk={initialOutlookDesk}
+                workspaceBook={workspaceBook}
+                workspacePortfolioId={workspacePortfolioId}
+              />
               <XchatUsageMeter
                 variant="header"
                 refreshSignal={promptUsageRefreshKey}
