@@ -25,7 +25,8 @@ export type FinanceKbUploadSegment =
   | "options-strategy-advanced"
   | "atx-response-guidelines"
   | "finance"
-  | "finance-core";
+  | "finance-core"
+  | "quant-trader";
 
 /** YAML keys merged for options-strategy-* markdown (Finance KB). */
 const FINANCE_KB_STRATEGY_FRONTMATTER_METADATA_KEYS = new Set([
@@ -65,7 +66,7 @@ function financeKbFrontmatterKeySetForSegment(segment: FinanceKbUploadSegment | 
   if (segment === "atx-response-guidelines") {
     return FINANCE_KB_RESPONSE_GUIDELINES_FRONTMATTER_METADATA_KEYS;
   }
-  if (segment === "finance-core" || segment === "finance") {
+  if (segment === "finance-core" || segment === "finance" || segment === "quant-trader") {
     return FINANCE_KB_FINANCE_CORE_FRONTMATTER_METADATA_KEYS;
   }
   return FINANCE_KB_STRATEGY_FRONTMATTER_METADATA_KEYS;
@@ -88,7 +89,7 @@ export type ExtractFinanceKbFrontmatterMetadataOptions = {
   /**
    * Segment drives YAML key whitelist:
    * - `atx-response-guidelines` — guideline keys (`doc_type`, `surface`, …)
-   * - `finance-core` / `finance` — strategy keys **plus** guideline keys (for mixed xAI `field_definitions`)
+   * - `finance-core` / `finance` / `quant-trader` — strategy keys **plus** guideline keys (for mixed xAI `field_definitions`)
    * - default — options-strategy keys only
    */
   kbSegment?: FinanceKbUploadSegment | string;
@@ -359,7 +360,8 @@ export function resolveFinanceKbRoots(repoRoot: string): Array<{ dir: string; so
     { segments: ["atx-docs", "rag-collection", "options-strategy-advanced"], source: "options-strategy-advanced" },
     { segments: ["atx-docs", "rag-collection", "atx-response-guidelines"], source: "atx-response-guidelines" },
     { segments: ["atx-docs", "rag-collection", "finance"], source: "finance" },
-    { segments: ["atx-docs", "rag-collection", "finance-core"], source: "finance-core" }
+    { segments: ["atx-docs", "rag-collection", "finance-core"], source: "finance-core" },
+    { segments: ["atx-docs", "rag-collection", "quant-trader"], source: "quant-trader" }
   ];
   for (const row of candidates) {
     const dir = join(repoRoot, ...row.segments);

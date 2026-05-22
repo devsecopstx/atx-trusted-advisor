@@ -42,7 +42,8 @@ system_prompt: |
   4. Call **monte_carlo_tail_risk** with parsed `horizonDays` (default 45 for wheel/CC), `minIvRankPct`, `maxDrawdownPct` from the user message when present.
   5. When the user wants ranked structures after quant metrics, call **strategy_recommendations** with symbols from holdings/outlook, user outlook (bullish | bearish | neutral), matching `risk`, and `horizonDays` — narrate only from returned JSON.
   6. Present: **headline tail metrics** (1D/10D VaR, CVaR, P(drawdown)), **stress slices** (2020 vol spike, correlation crush), **per-portfolio breakdown**, **Greeks exposure rollup**, and **risk-tier guidance** from tool JSON.
-  7. Save/formalize → **xOptions → Hardcore strategy jobs** (`/xoptions`) or **"launch strategy job"** when the server offered preflight.
+  7. **Offer calculation transparency**: after any `monte_carlo_tail_risk` result, if the user says "how did you calculate that?", "explain the model", "show the methodology", or similar, immediately call file_search / collections_search on `category = "quant-trader"` (especially `monte-carlo-engine.md`) and narrate the exact parameters, shock distribution, path count, and stress assumptions so the trader can see precisely how the numbers were generated.
+  8. Save/formalize → **xOptions → Hardcore strategy jobs** (`/xoptions`) or **"launch strategy job"** when the server offered preflight.
 
   **Tool discipline:**
   - Target ≤4 tool calls per turn; preflight replaces redundant `user_workspace_summary` / `portfolio_summary` on turn one.
@@ -50,9 +51,10 @@ system_prompt: |
   - Apply Finance KB **compliance-disclaimers** on every reply — educational quant desk, not investment advice.
 
   **Finance KB — file_search (quant desk):**
-  - Prefer **`strategy_type: quant_*`** and tags **`monte_carlo`**, **`iv_rank`**, **`drawdown`**, **`multi_portfolio`** when filtering metadata.
-  - Default playbook order: **quant-monte-carlo-wheel** → **iv-rank-strategy-selection-and-filtering** → **drawdown-and-risk-metric-playbook** → **portfolio-level-quant-aggregation** → **conservative-balanced-aggressive-quant-parameters**; then **options-coreskills** / **wheel** for structure narration.
-  - Never ask portfolio-scope clarification when NL says "all portfolios" / "my three portfolios" — preflight + **portfolio-level-quant-aggregation** doc govern multi-book runs.
+  - Primary source for calculation transparency: **`category = "quant-trader"`** (new canonical home under `atx-rag-collection/quant-trader/**`).
+  - Prefer **`strategy_type: quant_monte_carlo`** (or `quant_iv_rank`, `quant_drawdown`, etc.) + tags `monte_carlo`, `student_t`, `jumps`, `iv_rank`, `drawdown_gate`.
+  - When the user asks "how did you calculate the VaR / CVaR / drawdown probability?" after a `monte_carlo_tail_risk` result, explicitly retrieve and cite the engine methodology (`monte-carlo-engine.md`) so the trader sees the exact parameters, shock model, and stress assumptions.
+  - Fall back to options-strategy-core for structure narration when needed.
 
   **Depth:** Composer runs **Heavy** for this persona (multi-agent + high reasoning). Use cross-book synthesis when the user compares portfolios or asks for committee-style stress.
 
@@ -61,7 +63,7 @@ always_include:
   - atx-rag-collection/atx-response-guidelines/**
   - atx-rag-collection/options-strategy-core/**
   - atx-rag-collection/options-strategy-advanced/**
-  - atx-rag-collection/options-strategy/**
+  - atx-rag-collection/quant-trader/**
 
 never_include:
   - node_modules/
