@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { parseTenantObjectId } from "@/lib/mongo-tenant-scope";
 import {
+    getPortfolioAccountByIdForSessionUser,
     getPortfolioByIdForSessionUser,
     listPortfolioAccounts
 } from "@/modules/core-admin/repository";
@@ -47,11 +48,18 @@ export async function requireAccountInPortfolio(
     portfolioId: portfolioIdNorm,
     tenantId: session.tenantId
   });
-  const match = accounts.some((a) => a._id?.toHexString() === accountIdNorm);
-  if (!match) {
-    return NextResponse.json({ error: "Account not found" }, { status: 404 });
+  if (accounts.some((a) => a._id?.toHexString() === accountIdNorm)) {
+    return null;
   }
-  return null;
+  const direct = await getPortfolioAccountByIdForSessionUser({
+    userId: session.userId,
+    tenantId: session.tenantId,
+    accountId: accountIdNorm
+  });
+  if (direct?._id && direct.portfolioId.toHexString() === portfolioIdNorm) {
+    return null;
+  }
+  return NextResponse.json({ error: "Account not found" }, { status: 404 });
 }
 
 /**

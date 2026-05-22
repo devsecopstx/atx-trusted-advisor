@@ -207,12 +207,13 @@ class PortfolioCrudService(
     }
 
     fun listAccountsForPortfolio(portfolioId: ObjectId, session: ResolvedSession): List<Document> {
-        val parts = mutableListOf(
-            Criteria.where("portfolioId").`is`(portfolioId),
-            userIdCriteria(session.userId),
-        )
-        tenantObjectId(session.tenantId)?.let { parts.add(Criteria.where("tenantId").`is`(it)) }
-        val q = Query.query(Criteria().andOperator(*parts.toTypedArray()))
+        val base =
+            Criteria().andOperator(
+                Criteria.where("portfolioId").`is`(portfolioId),
+                userIdCriteria(session.userId),
+            )
+        val crit = PortfolioMongoFilter.portfolioFamilyReadTenantCriteria(base, session.tenantId)
+        val q = Query.query(crit)
         q.with(Sort.by(Sort.Order.desc("isDefault"), Sort.Order.asc("createdAt")))
         return mongoTemplate.find(q, Document::class.java, props.accountsCollection)
     }
@@ -267,12 +268,12 @@ class PortfolioCrudService(
     }
 
     private fun portfolioAccessCriteria(portfolioObjectId: ObjectId, session: ResolvedSession): Criteria {
-        val parts = mutableListOf(
-            Criteria.where("_id").`is`(portfolioObjectId),
-            userIdCriteria(session.userId),
-        )
-        tenantObjectId(session.tenantId)?.let { parts.add(Criteria.where("tenantId").`is`(it)) }
-        return Criteria().andOperator(*parts.toTypedArray())
+        val base =
+            Criteria().andOperator(
+                Criteria.where("_id").`is`(portfolioObjectId),
+                userIdCriteria(session.userId),
+            )
+        return PortfolioMongoFilter.portfolioFamilyReadTenantCriteria(base, session.tenantId)
     }
 
     private fun userIdCriteria(userId: String): Criteria =

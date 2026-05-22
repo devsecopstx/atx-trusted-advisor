@@ -26,6 +26,22 @@ internal object PortfolioMongoFilter {
         return Criteria().andOperator(base, Criteria.where("tenantId").`is`(oid))
     }
 
+    /**
+     * Portfolio-family reads (accounts, portfolios): session tenant or legacy rows with no `tenantId`.
+     * Mirrors Next `mongoPortfolioFamilyUserScope` in `src/lib/mongo-tenant-scope.ts`.
+     */
+    fun portfolioFamilyReadTenantCriteria(base: Criteria, tenantHex: String?): Criteria {
+        val oid = tenantObjectId(tenantHex ?: return base) ?: return base
+        return Criteria().andOperator(
+            base,
+            Criteria().orOperator(
+                Criteria.where("tenantId").`is`(oid),
+                Criteria.where("tenantId").`is`(null),
+                Criteria.where("tenantId").exists(false),
+            ),
+        )
+    }
+
     /** `admin_scheduled_tasks`: session tenant or legacy rows without `tenantId` (Next `scheduledTaskTenantReadScope`). */
     fun scheduledTaskTenantReadCriteria(base: Criteria, tenantId: String?): Criteria {
         val oid = tenantObjectId(tenantId ?: return base) ?: return base

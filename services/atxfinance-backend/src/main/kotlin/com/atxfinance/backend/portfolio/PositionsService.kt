@@ -23,13 +23,15 @@ class PositionsService(
      * Mirrors `requireAccountInPortfolio` + `listPortfolioAccounts` in Next.
      */
     fun accountInPortfolio(session: ResolvedSession, portfolioId: String, accountId: String): Boolean {
-        if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId)) {
+        val portfolioIdNorm = portfolioId.trim().lowercase()
+        val accountIdNorm = accountId.trim().lowercase()
+        if (!ObjectId.isValid(portfolioIdNorm) || !ObjectId.isValid(accountIdNorm)) {
             return false
         }
-        val portfolio = portfolioCrud.findPortfolioForSessionUser(portfolioId, session) ?: return false
+        val portfolio = portfolioCrud.findPortfolioForSessionUser(portfolioIdNorm, session) ?: return false
         val pid = portfolio.getObjectId("_id") ?: return false
         val accounts = portfolioCrud.listAccountsForPortfolio(pid, session)
-        return accounts.any { it.getObjectId("_id")?.toHexString() == accountId }
+        return accounts.any { it.getObjectId("_id")?.toHexString()?.lowercase() == accountIdNorm }
     }
 
     /** Caller must enforce `accountInPortfolio` first (matches Next `requireAccountInPortfolio` then list). */
@@ -71,7 +73,7 @@ class PositionsService(
         val accountId = ObjectId(accountIdStr)
 
         val accountFilter =
-            PortfolioMongoFilter.withTenantScopeCriteria(
+            PortfolioMongoFilter.portfolioFamilyReadTenantCriteria(
                 Criteria().andOperator(
                     Criteria.where("_id").`is`(accountId),
                     PortfolioMongoFilter.userIdCriteria(session.userId),
