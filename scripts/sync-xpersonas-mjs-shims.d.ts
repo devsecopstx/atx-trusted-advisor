@@ -8,6 +8,7 @@ declare module "./lib/persona-xapi-tools.mjs" {
 }
 
 declare module "./lib/resolve-mongo-uri.mjs" {
+  export function parseMongoConnectionString(raw: string): string;
   export function resolveMongoUri(): string;
   export function resolveSeedDbName(): string;
   export function resolveAdminSeedDbName(): string;

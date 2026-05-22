@@ -38,7 +38,8 @@ import type {
     CoreUserOptionsScanPreferences,
     CoreUserStripeSubscriptionStatus,
     Tenant,
-    TenantMembership
+    TenantMembership,
+    TenantRole
 } from "@/modules/identity/types";
 import { deleteTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
 

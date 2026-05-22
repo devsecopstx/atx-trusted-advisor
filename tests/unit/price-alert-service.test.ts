@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import * as adviceEvents from "@/modules/compliance/advisor-advice-events";
 import * as repo from "@/modules/core-admin/repository";
 import * as notifications from "@/modules/notifications/portfolio-notification-service";
 import {
@@ -172,6 +173,11 @@ describe("resolveMinMovePercent", () => {
 
 describe("persistPriceMoveAlerts", () => {
   const portfolioId = "507f1f77bcf86cd799439011";
+
+  beforeEach(() => {
+    vi.spyOn(adviceEvents, "resolvePortfolioOwnerForAdviceArchive").mockResolvedValue(null);
+    vi.spyOn(adviceEvents, "fireAndForgetArchiveAdvisorSystemAdvice").mockImplementation(() => {});
+  });
 
   afterEach(() => {
     vi.restoreAllMocks();

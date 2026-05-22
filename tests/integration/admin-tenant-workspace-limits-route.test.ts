@@ -126,6 +126,7 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
       data: {
         tenantId: string;
         slug: string;
+        hasTenantAdmin: boolean;
         workspaceLimits: Record<string, number>;
         planOverrides: Record<string, unknown>;
         workspaceLimitsRaw: Record<string, number> | null;

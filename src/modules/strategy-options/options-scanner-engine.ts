@@ -9,7 +9,8 @@ import {
 import { buildOptionsScannerAlertMetadata } from "@/lib/portfolio-alert-scan-metadata";
 import { chatWithXai, respondWithXai, respondWithXaiToolLoop } from "@/lib/xai";
 import {
-    fireAndForgetArchiveAdvisorSystemAdvice
+    fireAndForgetArchiveAdvisorSystemAdvice,
+    resolvePortfolioOwnerForAdviceArchive
 } from "@/modules/compliance/advisor-advice-events";
 import {
     adminCreatePortfolioAlert,
@@ -545,6 +546,15 @@ export async function processOptionRecommendationsPass(input: {
 
   const portfolioIdsHex = [...new Set(valid.map((x) => x.portfolioId.toHexString()))];
   const ctxByPortfolio = await loadOptionScannerPortfolioContexts(portfolioIdsHex);
+  const ownerByPortfolio = new Map<string, { userId: string; tenantId: string | null }>();
+  await Promise.all(
+    portfolioIdsHex.map(async (hex) => {
+      const owner = await resolvePortfolioOwnerForAdviceArchive(hex);
+      if (owner) {
+        ownerByPortfolio.set(hex, owner);
+      }
+    })
+  );
 
   for (const t of valid) {
     if (t.source === "position") {

@@ -18,6 +18,7 @@ const repositoryMocks = vi.hoisted(() => ({
   getDefaultPortfolio: vi.fn(),
   getPortfolioByIdForSessionUser: vi.fn(),
   listPortfolioAccounts: vi.fn(),
+  getPortfolioAccountByIdForSessionUser: vi.fn(),
   listUserWatchlists: vi.fn(),
   mutatePortfolioWatchlistSymbols: vi.fn(),
   listPortfolioPositionsByAccount: vi.fn(),
@@ -174,6 +175,7 @@ describe("portfolio API routes", () => {
         updatedAt: new Date("2025-01-01T00:00:00.000Z")
       }
     ]);
+    repositoryMocks.getPortfolioAccountByIdForSessionUser.mockResolvedValue(null);
     repositoryMocks.listPortfolioPositionsByAccount.mockResolvedValue([]);
     repositoryMocks.provisionDefaultPortfolioForUser.mockResolvedValue({
       portfolio: {
@@ -822,6 +824,20 @@ describe("portfolio API routes", () => {
   });
 
   it("maps position validation errors to HTTP status codes", async () => {
+    repositoryMocks.listPortfolioAccounts.mockResolvedValueOnce([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439044" },
+        userId: "507f1f77bcf86cd799439011",
+        portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+        name: "mismatch-account",
+        type: "fidelity",
+        extAccountId: "ext_mismatch",
+        cashBalance: 0,
+        isDefault: false,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-01T00:00:00.000Z")
+      }
+    ]);
     repositoryMocks.upsertPositionForAccount.mockRejectedValueOnce(
       new PositionValidationError(
         "ACCOUNT_PORTFOLIO_MISMATCH",

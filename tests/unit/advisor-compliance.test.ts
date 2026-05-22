@@ -42,8 +42,9 @@ describe("advisor compliance", () => {
       aiDisclosureAcceptedAt: new Date(),
       updatedAt: new Date()
     });
+    expect(complete).not.toBeNull();
     expect(isAdvisorComplianceComplete({ profile: complete, finraRegistrationCount: 1 })).toBe(true);
-    expect(complete.complianceCompletedAt).toBeUndefined();
+    expect(complete!.complianceCompletedAt).toBeUndefined();
   });
 
   it("preserves complianceCompletedAt on profile normalization", () => {
