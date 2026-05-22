@@ -13,7 +13,7 @@ runs:
   using: composite
   steps:
     - name: Setup Node
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: ${{ inputs.node-version }}
         cache: npm
@@ -23,7 +23,7 @@ runs:
       run: npm ci
 
     - name: Restore ESLint cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: .eslintcache
         key: eslint-${{ runner.os }}-${{ hashFiles('**/package-lock.json', 'eslint.config.mjs') }}
@@ -39,7 +39,7 @@ runs:
       run: npm run typecheck
 
     - name: Restore Next.js build cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           ${{ github.workspace }}/.next/cache
