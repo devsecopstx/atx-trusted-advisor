@@ -131,16 +131,11 @@ async function buildTechnicalsBySymbol(symbols: string[]): Promise<Map<string, W
     const rows = await Promise.all(
       batch.map(async (symbol) => {
         try {
-          const chart = await yahooChartWithValidationFallback(
-            yf,
-            symbol,
-            {
-              period1,
-              period2,
-              interval: "1d"
-            },
-            "watchlist technicals"
-          );
+          const chart = await yahooChartWithValidationFallback(yf, symbol, {
+            period1,
+            period2,
+            interval: "1d"
+          });
           const closes = extractDailyClosesFromYahooChart(chart);
           return {
             symbol,

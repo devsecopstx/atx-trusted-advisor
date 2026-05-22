@@ -518,7 +518,7 @@ async function loadMcChainSnapshot(
         regularMarketPrice?: number;
       };
       if (typeof q.regularMarketPrice === "number" && q.regularMarketPrice > 0) {
-        return loadMcChainSnapshotWithSpot(sym, exp, q.regularMarketPrice, horizonDays);
+        return loadMcChainSnapshotWithSpot(sym, exp, q.regularMarketPrice);
       }
     } catch {
       return null;
@@ -526,14 +526,13 @@ async function loadMcChainSnapshot(
     return null;
   }
 
-  return loadMcChainSnapshotWithSpot(sym, exp, spot, horizonDays);
+  return loadMcChainSnapshotWithSpot(sym, exp, spot);
 }
 
 async function loadMcChainSnapshotWithSpot(
   symbol: string,
   expiration: string,
-  spot: number,
-  horizonDays: number
+  spot: number
 ): Promise<OptionChainMcSnapshot | null> {
   const dte = daysToExpirationUtc(expiration);
   const chain = await fetchYahooOptionChainForExpiration(symbol, expiration, spot, Math.max(1, dte));

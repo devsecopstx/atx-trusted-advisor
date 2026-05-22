@@ -18,9 +18,19 @@ const bootstrapMocks = vi.hoisted(() => ({
   listPortfoliosForSessionUser: vi.fn()
 }));
 
+const complianceMocks = vi.hoisted(() => ({
+  assertAdvisorComplianceForSession: vi.fn()
+}));
+
+const tenantMocks = vi.hoisted(() => ({
+  getTenantByHexIdCached: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/app-user-default-book", () => bookMocks);
 vi.mock("@/modules/xchat/monte-carlo-tail-risk-tool", () => mcMocks);
+vi.mock("@/modules/compliance/advisor-compliance-gate", () => complianceMocks);
+vi.mock("@/lib/server-request-cache", () => tenantMocks);
 vi.mock("@/modules/find-options/find-options-service", () => ({
   getFindOptionsBootstrap: bootstrapMocks.getFindOptionsBootstrap
 }));
@@ -53,6 +63,8 @@ describe("xOptions quant-trader API routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMocks.requireSessionUser.mockResolvedValue(session);
+    tenantMocks.getTenantByHexIdCached.mockResolvedValue({ name: "Desk Tenant", slug: "desk" });
+    complianceMocks.assertAdvisorComplianceForSession.mockResolvedValue({ ok: true });
     bookMocks.loadAppUserDefaultBook.mockResolvedValue({
       portfolioId: "507f1f77bcf86cd799439011",
       portfolioName: "Default Portfolio",
@@ -114,6 +126,26 @@ describe("xOptions quant-trader API routes", () => {
       }),
       expect.objectContaining({ userId: "u1", workspacePortfolioId: "507f1f77bcf86cd799439011" })
     );
+  });
+
+  it("POST run returns 403 for non-advisor app roles", async () => {
+    authMocks.requireSessionUser.mockResolvedValue({
+      ...session,
+      roles: ["operator"]
+    });
+
+    const res = await postRun(
+      new Request("http://localhost/api/app-user/xoptions/quant-trader/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ horizonDays: 45 })
+      })
+    );
+
+    expect(res.status).toBe(403);
+    const json = (await res.json()) as { code?: string };
+    expect(json.code).toBe("advisor_role_required");
+    expect(mcMocks.runMonteCarloTailRiskTool).not.toHaveBeenCalled();
   });
 
   it("POST run returns 401 when unauthenticated", async () => {

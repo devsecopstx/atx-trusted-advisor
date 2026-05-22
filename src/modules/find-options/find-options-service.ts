@@ -549,16 +549,11 @@ export async function getSymbolSnapshot(_session: SessionUser, symbol: string): 
   try {
     const period2 = new Date();
     const period1 = new Date(period2.getTime() - 120 * 24 * 60 * 60 * 1000);
-    const chart = await yahooChartWithValidationFallback(
-      yf,
-      sym,
-      {
-        period1,
-        period2,
-        interval: "1d"
-      },
-      "find-options context rsi"
-    );
+    const chart = await yahooChartWithValidationFallback(yf, sym, {
+      period1,
+      period2,
+      interval: "1d"
+    });
     const closes = extractDailyClosesFromYahooChart(chart);
     rsi14 = computeRsiFromCloses(closes, 14);
   } catch {

@@ -15,22 +15,26 @@ type PortfolioScoringFactorsReadonlyTableProps = {
   factors: PortfolioScoringFactorApi[];
   /** Full = description column + formula footnote; compact = factor + weight only (e.g. xChat popover). */
   variant?: "full" | "compact";
+  /** Override default intro copy (e.g. tenant-level defaults on workspace preferences). */
+  intro?: string;
 };
 
 export function PortfolioScoringFactorsReadonlyTable({
   factors,
-  variant = "full"
+  variant = "full",
+  intro
 }: PortfolioScoringFactorsReadonlyTableProps) {
   const compact = variant === "compact";
+  const introCopy =
+    intro ??
+    (compact
+      ? "Book-level weights used to rank recommendations (read-only)."
+      : "Portfolio scoring factors weight how recommendations are ranked for this book (read-only). Workspace admins can adjust weights in the admin console.");
   return (
     <div
       className={`portfolio-scoring-readonly${compact ? " portfolio-scoring-readonly--compact" : ""}`}
     >
-      <p className="portfolio-scoring-readonly__intro">
-        {compact
-          ? "Book-level weights used to rank recommendations (read-only)."
-          : "Portfolio scoring factors weight how recommendations are ranked for this book (read-only). Workspace admins can adjust weights in the admin console."}
-      </p>
+      <p className="portfolio-scoring-readonly__intro">{introCopy}</p>
       <div className="portfolio-scoring-readonly__scroll">
         <table className="portfolio-scoring-readonly__table" data-lcp-candidate="portfolio-scoring">
           <thead>

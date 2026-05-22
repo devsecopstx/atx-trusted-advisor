@@ -9,17 +9,18 @@ export async function POST(request: Request) {
     return session;
   }
 
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const postText = typeof body?.postText === "string" ? body.postText : "";
-  const accountId = typeof body?.accountId === "string" ? body.accountId.trim() : "";
-  const name = typeof body?.name === "string" ? body.name : undefined;
-  const dailyBudgetUsd = typeof body?.dailyBudgetUsd === "number" ? body.dailyBudgetUsd : undefined;
+  const payload = body as Record<string, unknown>;
+  const postText = typeof payload.postText === "string" ? payload.postText : "";
+  const accountId = typeof payload.accountId === "string" ? payload.accountId.trim() : "";
+  const name = typeof payload.name === "string" ? payload.name : undefined;
+  const dailyBudgetUsd = typeof payload.dailyBudgetUsd === "number" ? payload.dailyBudgetUsd : undefined;
 
   if (!postText.trim() || !accountId) {
     return NextResponse.json({ error: "postText and accountId are required" }, { status: 400 });

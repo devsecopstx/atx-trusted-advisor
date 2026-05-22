@@ -20,8 +20,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const xUserId = typeof (body as any)?.xUserId === "string" ? (body as any).xUserId : undefined;
-  const adsAccountId = typeof (body as any)?.adsAccountId === "string" ? (body as any).adsAccountId : undefined;
+  const payload =
+    body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const xUserId = typeof payload.xUserId === "string" ? payload.xUserId : undefined;
+  const adsAccountId = typeof payload.adsAccountId === "string" ? payload.adsAccountId : undefined;
 
   if (xUserId === undefined && adsAccountId === undefined) {
     return NextResponse.json({ error: "Provide xUserId and/or adsAccountId" }, { status: 400 });

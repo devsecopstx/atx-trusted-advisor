@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * One-shot migration for xChat performance improvements.
  *
@@ -10,8 +9,8 @@
  *   MONGODB_URI=... npm run xchat:migrate-performance
  */
 
-import { createXchatIndexes } from './create-xchat-indexes';
 import { backfillXchatUsageStats } from './backfill-xchat-usage-stats';
+import { createXchatIndexes } from './create-xchat-indexes';
 
 async function runMigration() {
   const isDryRun = process.argv.includes('--dry-run');

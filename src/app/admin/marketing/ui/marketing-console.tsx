@@ -400,8 +400,6 @@ export function MarketingConsole() {
     setAdsLoading(true);
     setStatus("Fetching X Ads accounts…");
     try {
-      const qs = adsAccountIdInput ? "" : ""; // we can pass xUserId from stored config via status, but the route accepts ?user_id
-      // For simplicity the backend route will use the stored xUserId if present; we pass it explicitly if admin typed one.
       const url = `/api/admin/marketing/x-ads/accounts${adsAccountIdInput ? `?user_id=${encodeURIComponent(adsAccountIdInput)}` : ""}`;
       const payload = await parseJson<{ data: { accounts: Array<{ id: string; name: string; timezone?: string }> } }>(
         await fetch(url)

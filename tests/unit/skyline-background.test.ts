@@ -5,12 +5,14 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(process.cwd(), "src");
 
 describe("root skyline background", () => {
-  it("FullBleedBackground uses dual img layers with eager load and dimensions", () => {
+  it("FullBleedBackground uses dual next/image skyline layers with priority load and dimensions", () => {
     const src = readFileSync(join(ROOT, "components/FullBleedBackground.tsx"), "utf8");
+    expect(src).toContain('from "next/image"');
     expect(src).toContain('xf-skyline-layer--day');
     expect(src).toContain('xf-skyline-layer--night');
-    expect(src).toContain('loading="eager"');
+    expect(src).toContain("priority");
     expect(src).toContain("width={SKYLINE_WIDTH}");
+    expect(src).toContain("height={SKYLINE_HEIGHT}");
     expect(src).toContain("atx-skyline-day.png");
     expect(src).toContain("atx-skyline-night.png");
     expect(src).toContain("starfield--stars-a");

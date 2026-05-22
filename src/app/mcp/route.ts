@@ -17,24 +17,41 @@
  * - "Self-onboard" for tenants — just mint a key and point Grok at this URL
  */
 
-import { randomUUID } from "node:crypto";
-
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  Tool,
+    Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { authenticateRentalAiApiKey } from "@/modules/platform/rental-ai-auth";
+type RentalChatRequestBody = Record<string, unknown> & {
+  message?: string;
+  portfolioId?: string;
+  stream?: boolean;
+};
 
-// ---------------------------------------------------------------------------
-// Streaming helper for rental_ai_chat when stream: true
-// Consumes the internal SSE and returns the final accumulated content + headers
-// ---------------------------------------------------------------------------
+type JsonRpcRequest = {
+  jsonrpc?: string;
+  id?: string | number | null;
+  method?: string;
+  params?: {
+    name?: string;
+    arguments?: Record<string, unknown>;
+  };
+};
+
+type JsonRpcResponse = {
+  jsonrpc: "2.0";
+  id: string | number | null;
+  result?: unknown;
+  error?: { code: number; message: string };
+};
+
+type RentalEndpointPayload = {
+  data?: { response?: string };
+  jobId?: string;
+  raw?: string;
+};
 
 async function callRentalChatStreaming(
-  body: any,
+  body: RentalChatRequestBody,
   authHeader: string
 ): Promise<{ content: string; used?: string; remaining?: string }> {
   const origin = process.env.INTERNAL_SELF_ORIGIN || "http://localhost:3000";
@@ -58,8 +75,8 @@ async function callRentalChatStreaming(
   const decoder = new TextDecoder();
   let buffer = "";
   let finalContent = "";
-  let used = res.headers.get("x-rental-tokens-used") || undefined;
-  let remaining = res.headers.get("x-rental-tokens-remaining") || undefined;
+  const used = res.headers.get("x-rental-tokens-used") || undefined;
+  const remaining = res.headers.get("x-rental-tokens-remaining") || undefined;
 
   // Accumulate deltas from OpenAI-style chat.completion.chunk events
   while (true) {
@@ -213,9 +230,9 @@ async function callRentalEndpoint(
   });
 
   const text = await res.text();
-  let data: any;
+  let data: RentalEndpointPayload;
   try {
-    data = JSON.parse(text);
+    data = JSON.parse(text) as RentalEndpointPayload;
   } catch {
     data = { raw: text };
   }
@@ -237,8 +254,8 @@ async function callRentalEndpoint(
 // HTTP/JSON-RPC layer ourselves because the official transport expects raw Node http.
 // ---------------------------------------------------------------------------
 
-async function handleMcpJsonRpc(body: any, authHeader: string) {
-  const { jsonrpc, id, method, params } = body || {};
+async function handleMcpJsonRpc(body: JsonRpcRequest | null, authHeader: string): Promise<JsonRpcResponse> {
+  const { jsonrpc, id = null, method, params } = body || {};
 
   if (jsonrpc !== "2.0") {
     return { jsonrpc: "2.0", id: id ?? null, error: { code: -32600, message: "Invalid Request" } };
@@ -269,7 +286,7 @@ async function handleMcpJsonRpc(body: any, authHeader: string) {
       let result;
       switch (toolName) {
         case "rental_ai_chat": {
-          const wantsStream = !!(args as any).stream;
+          const wantsStream = args.stream === true;
 
           if (wantsStream) {
             // Improved streaming path: consume internal SSE and return final content
@@ -305,7 +322,7 @@ async function handleMcpJsonRpc(body: any, authHeader: string) {
 
         case "rental_ai_get_strategy":
         case "rental_ai_get_analyze": {
-          const jobId = args.jobId;
+          const jobId = typeof args.jobId === "string" ? args.jobId : "";
           const path = toolName === "rental_ai_get_strategy"
             ? `/api/ai/rent/strategy?jobId=${jobId}`
             : `/api/ai/rent/analyze?jobId=${jobId}`;
@@ -336,18 +353,19 @@ async function handleMcpJsonRpc(body: any, authHeader: string) {
     }
 
     return { jsonrpc: "2.0", id: id ?? null, error: { code: -32601, message: `Method not found: ${method}` } };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Internal error";
     return {
       jsonrpc: "2.0",
       id: id ?? null,
-      error: { code: -32603, message: err.message || "Internal error" },
+      error: { code: -32603, message },
     };
   }
 }
 
 async function handleMcpRequest(request: Request, authHeader: string) {
   const contentType = request.headers.get("content-type") || "";
-  let body: any = null;
+  let body: JsonRpcRequest | null = null;
 
   if (request.method === "POST" && contentType.includes("application/json")) {
     try {

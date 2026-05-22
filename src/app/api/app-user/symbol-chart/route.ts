@@ -44,16 +44,11 @@ export async function GET(request: Request) {
   try {
     const yf = getYahooFinance2();
     const { period1, period2, interval } = resolveYahooChartWindow(range);
-    const chart = (await yahooChartWithValidationFallback(
-      yf,
-      symbol,
-      {
-        period1,
-        period2,
-        interval
-      },
-      "symbol-chart"
-    )) as {
+    const chart = (await yahooChartWithValidationFallback(yf, symbol, {
+      period1,
+      period2,
+      interval
+    })) as {
       quotes?: Array<{
         date: Date | string;
         open: number | null;

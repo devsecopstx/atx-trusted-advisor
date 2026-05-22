@@ -11,7 +11,8 @@ const identityRepoMocks = vi.hoisted(() => ({
   updateTenantWorkspaceLimits: vi.fn(),
   updateTenantBrandingPreferencesOneTime: vi.fn(),
   updateTenantXchatDebugEnabled: vi.fn(),
-  updateTenantFeatureFlags: vi.fn()
+  updateTenantFeatureFlags: vi.fn(),
+  tenantHasAdminMembership: vi.fn()
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -36,7 +37,8 @@ vi.mock("@/modules/identity/repository", async (importOriginal) => {
     updateTenantWorkspaceLimits: identityRepoMocks.updateTenantWorkspaceLimits,
     updateTenantBrandingPreferencesOneTime: identityRepoMocks.updateTenantBrandingPreferencesOneTime,
     updateTenantXchatDebugEnabled: identityRepoMocks.updateTenantXchatDebugEnabled,
-    updateTenantFeatureFlags: identityRepoMocks.updateTenantFeatureFlags
+    updateTenantFeatureFlags: identityRepoMocks.updateTenantFeatureFlags,
+    tenantHasAdminMembership: identityRepoMocks.tenantHasAdminMembership
   };
 });
 
@@ -83,6 +85,7 @@ describe("PATCH /api/admin/tenants/[tenantId]/workspace-limits — featureFlags"
     });
     identityRepoMocks.updateTenantWorkspaceLimits.mockResolvedValue(baseTenant());
     auditMocks.createAuditEvent.mockResolvedValue({});
+    identityRepoMocks.tenantHasAdminMembership.mockResolvedValue(true);
   });
 
   it("saves valid feature flags and writes audit event", async () => {

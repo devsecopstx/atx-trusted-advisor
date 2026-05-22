@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Creates recommended performance indexes for xChat (logs, personas, and pre-aggregated usage stats).
  *
@@ -8,8 +7,8 @@
  *   node --env-file=.env --import tsx scripts/create-xchat-indexes.ts
  */
 
-import { readFileSync } from 'node:fs';
 import { MongoClient } from 'mongodb';
+import { readFileSync } from 'node:fs';
 
 import { parseMongoConnectionString, resolveSeedDbName } from './lib/resolve-mongo-uri.mjs';
 

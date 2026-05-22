@@ -45,10 +45,10 @@ export default async function AccountWorkspacePreferencesPage() {
               <p className="billing-hero__eyebrow">Profile</p>
               <h1 className="billing-hero__title">Workspace preferences</h1>
               <p className="billing-hero__copy">
-                Appearance for all workspace users
+                Advisor compliance, tenant scoring defaults, appearance, and history exports —
                 {isAdvisor
-                  ? "; advisor-role FINRA registrations and AI disclosure acknowledgments unlock advice-like product paths."
-                  : "."}
+                  ? " FINRA registrations and AI disclosure acknowledgments unlock advice-like product paths."
+                  : " workspace settings for your tenant."}
               </p>
             </header>
             <WorkspacePreferencesClient isAdvisorRole={isAdvisor} />

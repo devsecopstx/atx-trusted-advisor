@@ -67,7 +67,7 @@ export function AdminTaskRunDetailDialog({
     } catch {
       /* ignore */
     }
-  }, [run?.output]);
+  }, [run]);
 
   useEffect(() => {
     if (!run) {

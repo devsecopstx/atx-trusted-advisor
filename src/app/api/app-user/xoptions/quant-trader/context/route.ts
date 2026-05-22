@@ -8,6 +8,7 @@ import {
 } from "@/lib/xoptions/quant-trader-helpers";
 import { listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
 import { getFindOptionsBootstrap } from "@/modules/find-options/find-options-service";
+import { isAdvisorPlatformRole, isGlobalAdmin } from "@/modules/identity/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,16 @@ export async function GET(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+
+  if (!isGlobalAdmin(session.roles) && !isAdvisorPlatformRole(session.roles)) {
+    return NextResponse.json(
+      {
+        error: "Quant Trader requires advisor platform role",
+        code: "advisor_role_required"
+      },
+      { status: 403 }
+    );
   }
 
   const book = await loadAppUserDefaultBook(session);

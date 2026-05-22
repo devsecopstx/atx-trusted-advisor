@@ -46,7 +46,7 @@ import {
     getDefaultPortfolio,
     getUserAdminSettings
 } from "@/modules/core-admin/repository";
-import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { canUserLogin, isAdvisorPlatformRole, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     getCoreUserOptionsScanPreferences,
     updateCoreUserOptionsScanPreferences
@@ -884,6 +884,7 @@ export async function POST(request: Request) {
     const access = canSessionUsePersona({
       isAdminSession,
       hasAppRole,
+      hasAdvisorRole: isAdvisorPlatformRole(session.roles),
       personaName: requestedPersona.name,
       personaStatus: requestedPersona.status,
       isAssignedPersona: Boolean(assignedPersonaId && candidatePersonaId === assignedPersonaId)
@@ -2947,12 +2948,24 @@ function buildDeterministicId(prefix: string, ...parts: Array<string | undefined
 function canSessionUsePersona(input: {
   isAdminSession: boolean;
   hasAppRole: boolean;
+  hasAdvisorRole: boolean;
   personaName: string;
   personaStatus: string | undefined;
   isAssignedPersona: boolean;
 }): AskPersonaAccessResult {
   if (input.isAdminSession) {
     return { ok: true };
+  }
+  if (
+    isQuantTraderPersona({ name: input.personaName }) &&
+    !input.hasAdvisorRole
+  ) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Quant Trader persona requires advisor platform role",
+      code: "persona_advisor_role_required"
+    };
   }
   if (!input.hasAppRole) {
     return {

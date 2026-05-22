@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Backfills the xchat_user_usage_stats collection from xchat_logs.
  * This makes the token stats sidebar and rate limiting much faster.
@@ -6,8 +5,8 @@
  * Supports --env-file for easy prod/stage runs.
  */
 
-import { readFileSync } from 'node:fs';
 import { MongoClient } from 'mongodb';
+import { readFileSync } from 'node:fs';
 
 import { parseMongoConnectionString, resolveSeedDbName } from './lib/resolve-mongo-uri.mjs';
 

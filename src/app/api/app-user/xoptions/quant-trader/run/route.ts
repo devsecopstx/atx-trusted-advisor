@@ -10,7 +10,7 @@ import {
 } from "@/lib/distributed-rate-limit";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { assertAdvisorComplianceForSession } from "@/modules/compliance/advisor-compliance-gate";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { isAdvisorPlatformRole, isGlobalAdmin } from "@/modules/identity/authorization";
 import { runMonteCarloTailRiskTool } from "@/modules/xchat/monte-carlo-tail-risk-tool";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +32,16 @@ export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+
+  if (!isGlobalAdmin(session.roles) && !isAdvisorPlatformRole(session.roles)) {
+    return NextResponse.json(
+      {
+        error: "Quant Trader requires advisor platform role",
+        code: "advisor_role_required"
+      },
+      { status: 403 }
+    );
   }
 
   if (!isGlobalAdmin(session.roles)) {

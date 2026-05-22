@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import { DEFAULT_COUNTRY_CODE as DEFAULT_CORE_USER_COUNTRY_CODE } from "@/lib/country-options";
 import { googleLinkedId, isGoogleLegacyXUserId } from "@/lib/google-oauth-identity";
 import { getDb } from "@/lib/mongodb";
-import { DEFAULT_TENANT_ACCENT_HEX, normalizeXfAccentColor } from "@/lib/tenant-accent-color";
+import { normalizeXfAccentColor } from "@/lib/tenant-accent-color";
 import { isXfBrandPaletteId } from "@/lib/tenant-branding-palette";
 import { MAX_XF_HERO_ICON_URL_CHARS } from "@/lib/tenant-hero-icon-url";
 import { MAX_XF_TENANT_LOGO_URL_CHARS } from "@/lib/tenant-logo-url";

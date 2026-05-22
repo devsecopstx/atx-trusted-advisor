@@ -41,6 +41,7 @@ export async function DELETE(request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  void context;
   const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;

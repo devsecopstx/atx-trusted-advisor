@@ -1,0 +1,92 @@
+import { getCurrentAdvisorDisclosureBundle } from "@/lib/advisor-disclosures";
+import { resolveAdvisorComplianceStatusForSession } from "@/modules/compliance/advisor-compliance-gate";
+import {
+    listFinraRegistrationsForAdvisor,
+    serializeAdvisorComplianceProfile,
+    serializeFinraRegistration
+} from "@/modules/compliance/repository";
+import { isAdvisorPlatformRole } from "@/modules/identity/authorization";
+import type { Tenant } from "@/modules/identity/types";
+
+export type AdvisorComplianceReportExport = {
+  exportedAt: string;
+  reportVersion: "2026-05-advisor-compliance-v1";
+  user: {
+    userId: string;
+    email: string;
+    roles: string[];
+  };
+  tenant: {
+    tenantId: string;
+    firmName: string | null;
+    slug: string | null;
+  };
+  compliance: {
+    enforced: boolean;
+    complete: boolean;
+    missingSteps: string[];
+    disclosureVersion: string;
+    chatHistoryRetentionRequired: boolean;
+    profile: ReturnType<typeof serializeAdvisorComplianceProfile>;
+  };
+  finraRegistrations: ReturnType<typeof serializeFinraRegistration>[];
+  disclosure: {
+    version: string;
+    short: string;
+    attestationText: string;
+  };
+};
+
+export async function buildAdvisorComplianceReportExport(input: {
+  userId: string;
+  tenantId: string;
+  email: string;
+  roles: string[];
+  tenant: Pick<Tenant, "name" | "slug" | "tenantPreferences"> | null | undefined;
+}): Promise<AdvisorComplianceReportExport | { error: "forbidden" }> {
+  if (!isAdvisorPlatformRole(input.roles)) {
+    return { error: "forbidden" };
+  }
+
+  const status = await resolveAdvisorComplianceStatusForSession({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    roles: input.roles,
+    tenant: input.tenant
+  });
+  const registrations = await listFinraRegistrationsForAdvisor({
+    tenantId: input.tenantId,
+    advisorUserId: input.userId,
+    limit: 100
+  });
+  const bundle = getCurrentAdvisorDisclosureBundle();
+
+  return {
+    exportedAt: new Date().toISOString(),
+    reportVersion: "2026-05-advisor-compliance-v1",
+    user: {
+      userId: input.userId,
+      email: input.email,
+      roles: input.roles
+    },
+    tenant: {
+      tenantId: input.tenantId,
+      firmName: status.tenantFirmName,
+      slug: input.tenant?.slug ?? null
+    },
+    compliance: {
+      enforced: status.enforced,
+      complete: status.complete,
+      missingSteps: status.missingSteps,
+      disclosureVersion: status.disclosureVersion,
+      chatHistoryRetentionRequired: status.profile?.attestationAccepted === true,
+      profile: serializeAdvisorComplianceProfile(status.profile)
+    },
+    finraRegistrations: registrations.map(serializeFinraRegistration),
+    disclosure: {
+      version: bundle.version,
+      short: bundle.short,
+      attestationText: bundle.attestationText
+    }
+  };
+}

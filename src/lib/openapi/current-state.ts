@@ -172,6 +172,55 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "user"
   },
   {
+    path: "/api/app-user/compliance/status",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "compliance"
+  },
+  {
+    path: "/api/app-user/compliance/disclosures",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "compliance"
+  },
+  {
+    path: "/api/app-user/compliance/advisor-profile",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "PUT", auth: "session", hasRequestBody: true }
+    ],
+    tag: "compliance"
+  },
+  {
+    path: "/api/app-user/compliance/finra-registrations",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true }
+    ],
+    tag: "compliance"
+  },
+  {
+    path: "/api/app-user/compliance/finra-registrations/{registrationId}",
+    operations: [
+      { method: "PATCH", auth: "session", hasRequestBody: true },
+      { method: "DELETE", auth: "session" }
+    ],
+    tag: "compliance"
+  },
+  {
+    path: "/api/app-user/compliance/report/export",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "compliance"
+  },
+  {
+    path: "/api/app-user/tenant/scoring-factors",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "tenant"
+  },
+  {
+    path: "/api/app-user/xchat/history/export",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xchat"
+  },
+  {
     path: "/api/xoptions/wheel/generate",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "xoptions"
@@ -1016,7 +1065,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/admin/tenants/{tenantId}/memberships",
-    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
     tag: "admin-tenants"
   },
   {

@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { SkylineTimeBoot } from "@/components/SkylineTimeBoot";
 
 const SKYLINE_WIDTH = 1536;
@@ -9,23 +11,23 @@ export function FullBleedBackground() {
       <SkylineTimeBoot />
       <div className="absolute inset-0 bg-[#F1F5F9] dark:bg-[#0B0F14]" />
       <div className="xf-skyline-bleed" aria-hidden>
-        <img
+        <Image
           alt=""
           aria-hidden
           className="xf-skyline-layer xf-skyline-layer--day"
           decoding="async"
           height={SKYLINE_HEIGHT}
-          loading="eager"
+          priority
           src="/branding/atx-skyline-day.png"
           width={SKYLINE_WIDTH}
         />
-        <img
+        <Image
           alt=""
           aria-hidden
           className="xf-skyline-layer xf-skyline-layer--night"
           decoding="async"
           height={SKYLINE_HEIGHT}
-          loading="eager"
+          priority
           src="/branding/atx-skyline-night.png"
           width={SKYLINE_WIDTH}
         />

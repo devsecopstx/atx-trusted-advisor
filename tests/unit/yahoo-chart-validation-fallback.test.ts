@@ -10,7 +10,7 @@ describe("yahooChartWithValidationFallback", () => {
     const chart = vi.fn().mockResolvedValue({ quotes: [{ close: 10 }] });
     const yf = { chart };
     const options = { period1: new Date(), period2: new Date(), interval: "1d" };
-    const out = await yahooChartWithValidationFallback(yf, "AAPL", options, "test");
+    const out = await yahooChartWithValidationFallback(yf, "AAPL", options);
     expect(chart).toHaveBeenCalledTimes(1);
     expect(chart).toHaveBeenCalledWith("AAPL", options, { validateResult: false });
     expect(extractDailyClosesFromYahooChart(out)).toEqual([10]);

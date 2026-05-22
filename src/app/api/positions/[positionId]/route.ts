@@ -10,7 +10,7 @@ import {
 } from "@/lib/distributed-rate-limit";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
-import { deletePositionForAccount } from "@/modules/core-admin/repository";
+import { deletePositionForAccount, patchPositionForAccount } from "@/modules/core-admin/repository";
 
 const POSITIONS_DELETE_POLICY = getBffRouteRateLimitPolicy("positions_delete");
 
@@ -113,9 +113,9 @@ export async function PATCH(
     return denied;
   }
 
-  let body: any = {};
+  let body: Record<string, unknown> = {};
   try {
-    body = await request.json();
+    body = (await request.json()) as Record<string, unknown>;
   } catch {
     // empty body is ok for some updates
   }
@@ -156,21 +156,16 @@ export async function PATCH(
     return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 });
   }
 
-  const { getDb } = await import("@/lib/mongodb");
-  const db = await getDb();
-  const { ObjectId } = await import("mongodb");
+  const patched = await patchPositionForAccount({
+    userId: session.userId,
+    tenantId: session.tenantId,
+    portfolioId,
+    accountId,
+    positionId,
+    update
+  });
 
-  const result = await db.collection("portfolio_positions").updateOne(
-    {
-      _id: new ObjectId(positionId),
-      portfolioId: new ObjectId(portfolioId),
-      accountId: new ObjectId(accountId),
-      userId: new ObjectId(session.userId)
-    },
-    { $set: update }
-  );
-
-  if (result.matchedCount === 0) {
+  if (!patched) {
     return NextResponse.json({ error: "Position not found" }, { status: 404 });
   }
 

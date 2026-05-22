@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
@@ -75,13 +74,7 @@ export function OptionsChainTab({
   extAccountRefMasked,
   initialPositions,
   initialSymbol = null,
-  variant = "account",
-  positionLabel = null,
-  initialSide = null,
-  initialStrike = null,
-  initialExpiration = null,
-  positionBuilderHref = null,
-  positionFullChainHref = null
+  variant = "account"
 }: OptionsChainTabProps) {
   const isPositionScope = variant === "position";
   const holdingsSymbols = useMemo(
@@ -304,7 +297,7 @@ export function OptionsChainTab({
       <div className="portfolio-options-chain-tab__toolbar">
         <div className="portfolio-options-chain-tab__symbol-block">
           <p className="portfolio-options-chain-tab__label">Symbol</p>
-          <div className="portfolio-options-chain-tab__chips" role="list">
+          <div className="portfolio-options-chain-tab__chips">
             {symbolOptions.length === 0 ? (
               <p className="portfolio-options-chain-tab__hint">Add holdings or enter a ticker below.</p>
             ) : (
@@ -312,7 +305,6 @@ export function OptionsChainTab({
                 <button
                   key={sym}
                   type="button"
-                  role="listitem"
                   className={`portfolio-options-chain-tab__chip${sym === u ? " portfolio-options-chain-tab__chip--active" : ""}`}
                   onClick={() => setSymbol(sym)}
                   aria-pressed={sym === u}

@@ -470,8 +470,11 @@ export function UserSettingsConsole() {
     queryFn: loadDirectory
   });
 
-  const approvedUsers = directoryQuery.data?.users ?? [];
-  const openAccessRequests = directoryQuery.data?.openAccessRequests ?? [];
+  const approvedUsers = useMemo(() => directoryQuery.data?.users ?? [], [directoryQuery.data?.users]);
+  const openAccessRequests = useMemo(
+    () => directoryQuery.data?.openAccessRequests ?? [],
+    [directoryQuery.data?.openAccessRequests]
+  );
 
   useEffect(() => {
     if (!directoryQuery.data) {

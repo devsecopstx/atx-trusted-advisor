@@ -83,7 +83,7 @@ export function AccountHoldingsCrudCard({
     } else {
       setEditingStockPositionId(null);
     }
-  }, [stSym, positions]); // note: we intentionally don't include stShares/stPx to avoid loops
+  }, [stSym, positions]); // eslint-disable-line react-hooks/exhaustive-deps -- omit stShares/stPx to avoid edit loops
 
   async function addHolding(e: FormEvent) {
     e.preventDefault();

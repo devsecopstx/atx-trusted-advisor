@@ -299,10 +299,17 @@ describe("positions API BFF proxy", () => {
       response = await patchPosition(req, {
         params: Promise.resolve({ positionId })
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // If it blows up early due to missing env (common in unit tests), that's acceptable
       // as long as we never saw a 405 from the route handler itself.
-      if (err?.status === 405) throw err;
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "status" in err &&
+        (err as { status?: unknown }).status === 405
+      ) {
+        throw err;
+      }
       response = new Response(null, { status: 500 });
     }
 

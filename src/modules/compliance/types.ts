@@ -25,7 +25,14 @@ export type AdvisorFinraRegistration = {
   licenseType: AdvisorLicenseType;
   /** US state or DC (ISO 3166-2 style alpha-2). */
   jurisdiction: string;
+  /** External evidence link (firm doc store, FINRA portal export URL, etc.). */
   evidenceUrl?: string | null;
+  /** Original filename when credential evidence was uploaded (also indexed in user xChat history collection). */
+  evidenceFilename?: string | null;
+  evidenceXaiFileId?: string | null;
+  evidenceRagFileId?: ObjectId;
+  /** User bootstrap / xChat history xAI collection id the file was linked to. */
+  evidenceCollectionId?: string | null;
   notes?: string | null;
   status: AdvisorFinraRegistrationStatus;
   createdAt: Date;

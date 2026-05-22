@@ -28,8 +28,7 @@ export async function yahooChartWithValidationFallback(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   yf: any,
   symbol: string,
-  options: Record<string, unknown>,
-  _logLabel: string
+  options: Record<string, unknown>
 ): Promise<unknown> {
   return await yf.chart(symbol, options, { validateResult: false });
 }

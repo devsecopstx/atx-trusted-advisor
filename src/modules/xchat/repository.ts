@@ -352,6 +352,9 @@ export async function createRagFile(
 /** App-user Premium+ xChat uploads — linked to `core_tenants.tenantPreferences.xchat_team_attachments_collection_id`. */
 export const TENANT_PREMIUM_ATTACHMENTS_SCOPE = "tenant_premium_attachments" as const;
 
+/** Advisor FINRA credential uploads — linked to the user's xChat history xAI collection. */
+export const ADVISOR_FINRA_EVIDENCE_SCOPE = "advisor_finra_evidence" as const;
+
 export async function listRagFiles(input?: {
   scope?: string;
   tenantId?: ObjectId;
@@ -793,6 +796,46 @@ export async function listXChatHistoryByUser(input: {
         ? log.interactionGenerationMs
         : undefined
   }));
+}
+
+const XCHAT_HISTORY_EXPORT_MAX_ROWS = 500;
+
+/** Paginated read for user data export (newest first, capped). */
+export async function listAllXChatHistoryForExport(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+  maxRows?: number;
+}): Promise<XChatHistoryItem[]> {
+  const maxRows = Math.min(Math.max(input.maxRows ?? XCHAT_HISTORY_EXPORT_MAX_ROWS, 1), XCHAT_HISTORY_EXPORT_MAX_ROWS);
+  const collected: XChatHistoryItem[] = [];
+  let before: Date | undefined;
+  let beforeId: ObjectId | undefined;
+
+  while (collected.length < maxRows) {
+    const batchSize = Math.min(50, maxRows - collected.length);
+    const batch = await listXChatHistoryByUser({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      limit: batchSize,
+      before,
+      beforeId
+    });
+    if (batch.length === 0) {
+      break;
+    }
+    collected.push(...batch);
+    const last = batch[batch.length - 1];
+    if (!last) {
+      break;
+    }
+    before = last.createdAt;
+    beforeId = ObjectId.isValid(last.id) ? new ObjectId(last.id) : undefined;
+    if (batch.length < batchSize) {
+      break;
+    }
+  }
+
+  return collected;
 }
 
 export async function listXChatThreadsByUser(input: {

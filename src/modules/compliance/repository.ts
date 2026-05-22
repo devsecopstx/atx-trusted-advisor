@@ -8,6 +8,7 @@ import {
     normalizeAdvisorComplianceProfile,
     parseAdvisorComplianceProfileFromUserDoc
 } from "@/modules/compliance/advisor-compliance";
+import { uploadFinraCredentialEvidenceToUserXchatHistory } from "@/modules/compliance/finra-evidence-upload";
 import type {
     AdvisorComplianceProfile,
     AdvisorFinraRegistration,
@@ -182,6 +183,11 @@ export async function createFinraRegistration(input: {
   advisorUserId: string;
   email: string;
   body: unknown;
+  evidenceFile?: {
+    filename: string;
+    mimeType: string;
+    bytes: Uint8Array;
+  };
 }): Promise<{ registration: AdvisorFinraRegistration } | { error: string }> {
   const parsed = finraRegistrationBodySchema.safeParse(input.body);
   if (!parsed.success) {
@@ -189,6 +195,30 @@ export async function createFinraRegistration(input: {
   }
   if (!ObjectId.isValid(input.tenantId) || !ObjectId.isValid(input.advisorUserId)) {
     return { error: "invalid_scope" };
+  }
+
+  let evidenceFields: Pick<
+    AdvisorFinraRegistration,
+    "evidenceFilename" | "evidenceXaiFileId" | "evidenceRagFileId" | "evidenceCollectionId"
+  > = {};
+  if (input.evidenceFile) {
+    const uploaded = await uploadFinraCredentialEvidenceToUserXchatHistory({
+      userId: input.advisorUserId,
+      tenantId: input.tenantId,
+      email: input.email,
+      filename: input.evidenceFile.filename,
+      mimeType: input.evidenceFile.mimeType,
+      bytes: input.evidenceFile.bytes
+    });
+    if ("error" in uploaded) {
+      return { error: uploaded.error };
+    }
+    evidenceFields = {
+      evidenceFilename: uploaded.evidenceFilename,
+      evidenceXaiFileId: uploaded.evidenceXaiFileId,
+      evidenceRagFileId: uploaded.evidenceRagFileId,
+      evidenceCollectionId: uploaded.evidenceCollectionId
+    };
   }
 
   const now = new Date();
@@ -199,6 +229,7 @@ export async function createFinraRegistration(input: {
     licenseType: parsed.data.licenseType as AdvisorLicenseType,
     jurisdiction: parsed.data.jurisdiction,
     evidenceUrl: parsed.data.evidenceUrl ?? null,
+    ...evidenceFields,
     notes: parsed.data.notes ?? null,
     status: (parsed.data.status ?? "active") as AdvisorFinraRegistrationStatus,
     createdAt: now,
@@ -221,7 +252,10 @@ export async function createFinraRegistration(input: {
       tenantId: input.tenantId,
       registrationId: result.insertedId.toHexString(),
       licenseType: saved.licenseType,
-      jurisdiction: saved.jurisdiction
+      jurisdiction: saved.jurisdiction,
+      evidenceUrl: saved.evidenceUrl ?? null,
+      evidenceFilename: saved.evidenceFilename ?? null,
+      evidenceCollectionId: saved.evidenceCollectionId ?? null
     }
   });
 
@@ -334,6 +368,10 @@ export function serializeFinraRegistration(row: AdvisorFinraRegistration) {
     licenseType: row.licenseType,
     jurisdiction: row.jurisdiction,
     evidenceUrl: row.evidenceUrl ?? null,
+    evidenceFilename: row.evidenceFilename ?? null,
+    evidenceXaiFileId: row.evidenceXaiFileId ?? null,
+    evidenceRagFileId: row.evidenceRagFileId?.toHexString() ?? null,
+    evidenceCollectionId: row.evidenceCollectionId ?? null,
     notes: row.notes ?? null,
     status: row.status,
     createdAt: row.createdAt.toISOString(),

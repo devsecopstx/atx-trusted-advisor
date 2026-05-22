@@ -5055,6 +5055,47 @@ export async function deletePositionForAccount(input: {
   return ok;
 }
 
+export async function patchPositionForAccount(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  accountId: string;
+  positionId: string;
+  update: Record<string, unknown>;
+}): Promise<boolean> {
+  await ensurePortfolioIndexes();
+  if (
+    !ObjectId.isValid(input.portfolioId) ||
+    !ObjectId.isValid(input.accountId) ||
+    !ObjectId.isValid(input.positionId) ||
+    Object.keys(input.update).length === 0
+  ) {
+    return false;
+  }
+  const db = await getDb();
+  const result = await db.collection<Position>(collections.positions).updateOne(
+    withTenantScope(
+      {
+        _id: new ObjectId(input.positionId),
+        ...userIdQuery(input.userId),
+        portfolioId: new ObjectId(input.portfolioId),
+        accountId: new ObjectId(input.accountId)
+      },
+      input.tenantId
+    ),
+    { $set: input.update }
+  );
+  const ok = result.matchedCount === 1;
+  if (ok) {
+    await bumpPortfolioWorkspaceContentRev({
+      userId: input.userId,
+      portfolioId: input.portfolioId,
+      tenantId: input.tenantId
+    });
+  }
+  return ok;
+}
+
 export async function deleteAccessRequest(
   id: string,
   options?: TenantScopedOptions

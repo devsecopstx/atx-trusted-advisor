@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { PortfoliosMacroTape, type MacroTapeIndex } from "@/app/portfolios/portfolios-macro-tape";
-import { useWorkspacePulse } from "@/lib/react-query/use-workspace-pulse";
 import { PortfoliosMacroTapeWellness } from "@/app/portfolios/portfolios-macro-tape-wellness";
 import { PortfoliosBooksDayMarkUI } from "@/app/portfolios/portfolios-workspace-books-day-mark";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
+import { useWorkspacePulse } from "@/lib/react-query/use-workspace-pulse";
 import type { WorkspaceBooksDayMarkSummary } from "@/lib/workspace-dashboard-metrics";
 import { resolveUsMarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
 
@@ -36,7 +36,7 @@ export function PortfoliosWorkspaceHeader({
   booksDayMark
 }: Props) {
   const pulseQuery = useWorkspacePulse(topHoldingsKey);
-  const indices = pulseQuery.data?.indices ?? [];
+  const indices = useMemo(() => pulseQuery.data?.indices ?? [], [pulseQuery.data?.indices]);
   const market = pulseQuery.data?.market ?? resolveUsMarketDayContext(new Date());
   const loading = pulseQuery.isLoading || pulseQuery.isFetching;
 

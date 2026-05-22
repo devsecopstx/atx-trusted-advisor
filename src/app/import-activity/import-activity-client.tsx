@@ -564,7 +564,6 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const csvExpanded = csvZoneFocused || brokerCsv.trim().length > 0;
   const hasSelectedCsvFile = selectedCsvFileName.trim().length > 0;
   const hasPreviewRows = previewSampleRows.length > 0;
-  const parsedPositionCount = previewCsvStats?.totalPositionsParsed ?? 0;
   const importCompletePortfolioName = useMemo(() => {
     if (!importCompletePortfolioId) {
       return null;

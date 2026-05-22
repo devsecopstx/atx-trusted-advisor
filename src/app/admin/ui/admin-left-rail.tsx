@@ -166,7 +166,9 @@ export function AdminLeftRail({ onCollapse }: AdminLeftRailProps) {
   }, []);
 
   useEffect(() => {
-    void loadSummary();
+    queueMicrotask(() => {
+      void loadSummary();
+    });
   }, [loadSummary]);
 
   const deskBadge =

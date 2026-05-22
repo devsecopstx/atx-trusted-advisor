@@ -54,9 +54,11 @@ export function OnboardingChecklistClient({ userId }: OnboardingChecklistClientP
   const { isMobile, expandedStepId, toggleAccordion } = useMobileAccordion("portfolio-foundation");
 
   useEffect(() => {
-    const state = readOnboardingChecklistState(userId);
-    setCompletedStepIds(state.completedStepIds);
-    setHydrated(true);
+    queueMicrotask(() => {
+      const state = readOnboardingChecklistState(userId);
+      setCompletedStepIds(state.completedStepIds);
+      setHydrated(true);
+    });
   }, [userId]);
 
   const completedSet = useMemo(() => new Set(completedStepIds), [completedStepIds]);
