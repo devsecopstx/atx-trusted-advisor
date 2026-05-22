@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
+import { TenantAdminAssignPanel } from "@/app/admin/ui/tenant-admin-assign-panel";
 import { ATX_BILLING_PLAN_IDS, ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
@@ -244,6 +245,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
   const [workspaceLimitsOverrideEnabled, setWorkspaceLimitsOverrideEnabled] = useState(false);
   const [xfUiTheme, setXfUiTheme] = useState<XfUiThemePreference | "inherit">("inherit");
   const [slug, setSlug] = useState("");
+  const [hasTenantAdmin, setHasTenantAdmin] = useState(false);
   const [planDrafts, setPlanDrafts] = useState<PlanLimitDrafts>(() => emptyPlanDrafts());
 
   const load = useCallback(async () => {
@@ -258,6 +260,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
           workspaceLimits?: TenantWorkspaceLimits;
           planOverrides?: TenantPlanWorkspaceOverrides;
           slug?: string;
+          hasTenantAdmin?: boolean;
           tenantPreferences?: TenantBrandingPreferences;
           tenantPreferencesRaw?: Record<string, unknown>;
         };
@@ -275,6 +278,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       });
       setPlanDrafts(draftsFromPlanOverrides(payload.data.planOverrides));
       setSlug(payload.data.slug ?? "");
+      setHasTenantAdmin(payload.data.hasTenantAdmin === true);
       setTenantPreferences({
         xchat_brandname: payload.data.tenantPreferences?.xchat_brandname ?? "",
         xstrategybuilder_brandname: payload.data.tenantPreferences?.xstrategybuilder_brandname ?? ""
@@ -313,6 +317,10 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
   async function onSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!values) {
+      return;
+    }
+    if (!hasTenantAdmin) {
+      setErr("Assign a tenant admin before saving.");
       return;
     }
     setSaving(true);
@@ -394,6 +402,8 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
 
   return (
     <form className="xf-widget section-card admin-tenant-pref-form" onSubmit={(e) => void onSave(e)}>
+      <TenantAdminAssignPanel tenantId={tenantId} onHasTenantAdminChange={setHasTenantAdmin} />
+
       <div
         className="mb-4 rounded-lg border border-[var(--xf-border-subtle)] bg-[var(--xf-surface-800)]/40 p-4"
         role="region"
@@ -573,7 +583,12 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                   <button className="cta cta-secondary" type="button" onClick={onResetDraftToDefaults}>
                     Reset draft
                   </button>
-                  <button className="cta cta-primary" disabled={saving} type="submit">
+                  <button
+                    className="cta cta-primary"
+                    disabled={saving || !hasTenantAdmin}
+                    title={hasTenantAdmin ? undefined : "Assign a tenant admin first"}
+                    type="submit"
+                  >
                     <SaveIcon className="crud-icon" aria-hidden />
                     {saving ? "Saving…" : "Save"}
                   </button>

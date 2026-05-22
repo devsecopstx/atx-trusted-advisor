@@ -9,52 +9,84 @@ const authMocks = vi.hoisted(() => ({
 const repoMocks = vi.hoisted(() => ({
   getTenantByHexId: vi.fn(),
   getCoreUserById: vi.fn(),
-  upsertTenantMembership: vi.fn()
+  upsertTenantMembership: vi.fn(),
+  listTenantMembershipsForAdmin: vi.fn(),
+  tenantHasAdminMembership: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/identity/repository", () => repoMocks);
 
-import { POST } from "@/app/api/admin/tenants/[tenantId]/memberships/route";
+import { GET, POST } from "@/app/api/admin/tenants/[tenantId]/memberships/route";
 
-describe("POST /api/admin/tenants/[tenantId]/memberships", () => {
+const TENANT_HEX = "507f1f77bcf86cd799439022";
+const USER_HEX = "507f1f77bcf86cd799439033";
+
+describe("GET/POST /api/admin/tenants/[tenantId]/memberships", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMocks.requireGlobalAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
-      tenantId: "507f1f77bcf86cd799439022",
+      tenantId: TENANT_HEX,
       roles: ["global_admin"]
     });
     repoMocks.getTenantByHexId.mockResolvedValue({
-      _id: new ObjectId("507f1f77bcf86cd799439022"),
+      _id: new ObjectId(TENANT_HEX),
       slug: "acme"
     });
     repoMocks.getCoreUserById.mockResolvedValue({
-      _id: new ObjectId("507f1f77bcf86cd799439033"),
+      _id: new ObjectId(USER_HEX),
       email: "user@example.com"
     });
     repoMocks.upsertTenantMembership.mockResolvedValue({
       role: "tenant_admin",
       isDefaultTenant: true
     });
+    repoMocks.listTenantMembershipsForAdmin.mockResolvedValue([
+      {
+        userId: USER_HEX,
+        email: "user@example.com",
+        displayName: "user@example.com",
+        tenantRole: "tenant_admin",
+        isDefaultSessionTenant: true,
+        isTenantAdmin: true
+      }
+    ]);
+    repoMocks.tenantHasAdminMembership.mockResolvedValue(true);
   });
 
-  it("assigns a tenant role for a user", async () => {
+  it("GET lists tenant admins and membership flag", async () => {
+    const res = await GET(new Request("http://test"), {
+      params: Promise.resolve({ tenantId: TENANT_HEX })
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: { hasTenantAdmin: boolean; tenantAdmins: Array<{ userId: string }> };
+    };
+    expect(body.data.hasTenantAdmin).toBe(true);
+    expect(body.data.tenantAdmins).toHaveLength(1);
+    expect(body.data.tenantAdmins[0]?.userId).toBe(USER_HEX);
+  });
+
+  it("POST assigns a tenant role for a user", async () => {
     const res = await POST(
       new Request("http://test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: "507f1f77bcf86cd799439033",
+          userId: USER_HEX,
           tenantRole: "tenant_admin"
         })
       }),
-      { params: Promise.resolve({ tenantId: "507f1f77bcf86cd799439022" }) }
+      { params: Promise.resolve({ tenantId: TENANT_HEX }) }
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { role: string; isDefaultTenant: boolean } };
+    const body = (await res.json()) as {
+      data: { role: string; isDefaultTenant: boolean; hasTenantAdmin: boolean };
+    };
     expect(body.data.role).toBe("tenant_admin");
     expect(body.data.isDefaultTenant).toBe(true);
+    expect(body.data.hasTenantAdmin).toBe(true);
     expect(repoMocks.upsertTenantMembership).toHaveBeenCalledTimes(1);
   });
 
@@ -67,11 +99,11 @@ describe("POST /api/admin/tenants/[tenantId]/memberships", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: "507f1f77bcf86cd799439033",
+          userId: USER_HEX,
           tenantRole: "member"
         })
       }),
-      { params: Promise.resolve({ tenantId: "507f1f77bcf86cd799439022" }) }
+      { params: Promise.resolve({ tenantId: TENANT_HEX }) }
     );
     expect(res.status).toBe(403);
   });

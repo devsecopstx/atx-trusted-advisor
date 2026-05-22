@@ -342,6 +342,15 @@ export function WorkspaceProfileFooterMenu({
                       <ProfileGlyph className="workspace-profile-footer-menu__row-icon" />
                       Profile
                     </Link>
+                    <Link
+                      className="workspace-profile-footer-menu__row"
+                      href="/account/workspace-preferences"
+                      role="menuitem"
+                      onClick={closeMenu}
+                    >
+                      <LucideSettingsIcon className="workspace-profile-footer-menu__row-icon" />
+                      Workspace preferences
+                    </Link>
                     <Link className="workspace-profile-footer-menu__row" href="/legal/terms" role="menuitem" onClick={closeMenu}>
                       <LucideBookOpenIcon className="workspace-profile-footer-menu__row-icon" />
                       Legal

@@ -48,6 +48,11 @@ export function isAppUser(roles: string[]): boolean {
   return canUserLogin(roles) && !isGlobalAdmin(roles);
 }
 
+/** Platform role `advisor` (legacy `admin` does not count). */
+export function isAdvisorPlatformRole(roles: string[]): boolean {
+  return roles.some((role) => normalizeCoreRole(role) === "advisor");
+}
+
 /** Strategy-job creation: advisor/operator and global_admin; viewer excluded. */
 export function canCreateStrategyJobFromApp(roles: string[]): boolean {
   return roles.some((role) => {

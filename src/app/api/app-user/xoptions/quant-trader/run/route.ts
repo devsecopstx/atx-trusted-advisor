@@ -8,6 +8,9 @@ import {
     checkDistributedRateLimit,
     extractClientRateLimitKey
 } from "@/lib/distributed-rate-limit";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { assertAdvisorComplianceForSession } from "@/modules/compliance/advisor-compliance-gate";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { runMonteCarloTailRiskTool } from "@/modules/xchat/monte-carlo-tail-risk-tool";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +32,27 @@ export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+
+  if (!isGlobalAdmin(session.roles)) {
+    const tenant = await getTenantByHexIdCached(session.tenantId);
+    const complianceGate = await assertAdvisorComplianceForSession({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      roles: session.roles,
+      tenant
+    });
+    if (!complianceGate.ok) {
+      return NextResponse.json(
+        {
+          error: "Advisor compliance profile required",
+          code: complianceGate.code,
+          missingSteps: complianceGate.status.missingSteps,
+          redirectPath: complianceGate.status.redirectPath
+        },
+        { status: 403 }
+      );
+    }
   }
 
   const limit = await checkDistributedRateLimit({

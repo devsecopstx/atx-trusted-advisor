@@ -26,7 +26,6 @@ import {
     type XaiToolLoopResult
 } from "@/lib/xai";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
-import { isKnownPersonaChatModelId } from "@/modules/xchat/xai-persona-chat-models";
 import { summarizeToolLikeStreamEvent } from "@/lib/xai-responses-stream";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import {
@@ -42,6 +41,7 @@ import {
     wantsXchatLiveToolLoopSse
 } from "@/lib/xchat-live-sse-policy";
 import { createAuditEvent } from "@/modules/audit/repository";
+import { assertAdvisorComplianceForSession } from "@/modules/compliance/advisor-compliance-gate";
 import {
     getDefaultPortfolio,
     getUserAdminSettings
@@ -153,6 +153,7 @@ import {
     loadWorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
+import { isKnownPersonaChatModelId } from "@/modules/xchat/xai-persona-chat-models";
 import {
     completeXchatAskAfterModelLoop,
     type XchatAskCompletePostLoopCtx
@@ -443,6 +444,27 @@ export async function POST(request: Request) {
   const tenantForDebug = ObjectId.isValid(session.tenantId)
     ? await getTenantByHexIdCached(session.tenantId)
     : null;
+
+  if (!isAdminSession && tenantForDebug) {
+    const complianceGate = await assertAdvisorComplianceForSession({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      roles: session.roles,
+      tenant: tenantForDebug
+    });
+    if (!complianceGate.ok) {
+      return NextResponse.json(
+        {
+          error: "Advisor compliance profile required",
+          code: complianceGate.code,
+          missingSteps: complianceGate.status.missingSteps,
+          redirectPath: complianceGate.status.redirectPath
+        },
+        { status: 403 }
+      );
+    }
+  }
+
   const tenantDebugFlag = isTenantXchatDebugPreferenceEnabled(tenantForDebug);
 
   const tenantWorkspaceContextBlock = formatTenantWorkspaceContextBlockForXchat({

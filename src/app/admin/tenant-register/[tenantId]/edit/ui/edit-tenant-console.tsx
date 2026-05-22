@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
+import { TenantAdminAssignPanel } from "@/app/admin/ui/tenant-admin-assign-panel";
 import { DEFAULT_TENANT_ACCENT_HEX, normalizeXfAccentColor } from "@/lib/tenant-accent-color";
 import { XF_BRAND_PALETTE_IDS, XF_BRAND_PALETTE_LABELS, type XfBrandPaletteId } from "@/lib/tenant-branding-palette";
 
@@ -46,6 +47,7 @@ export function EditTenantConsole() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hasTenantAdmin, setHasTenantAdmin] = useState(false);
 
   const fieldClass =
     "rounded border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[var(--xf-surface-800)] px-3 py-2 text-sm text-[var(--xf-text-100)]";
@@ -108,6 +110,10 @@ export function EditTenantConsole() {
     if (!tenantId) {
       return;
     }
+    if (!hasTenantAdmin) {
+      setError("Assign a tenant admin before saving.");
+      return;
+    }
     setBusy(true);
     setStatus(null);
     setError(null);
@@ -145,7 +151,7 @@ export function EditTenantConsole() {
     } finally {
       setBusy(false);
     }
-  }, [tenantId, accentHex, xfBrandPalette, xfUiTheme, load]);
+  }, [tenantId, accentHex, xfBrandPalette, xfUiTheme, hasTenantAdmin, load]);
 
   if (!tenantId) {
     return <p className="status-text text-sm">Invalid route.</p>;
@@ -195,6 +201,8 @@ export function EditTenantConsole() {
       </div>
 
       <p className="text-sm font-semibold text-[var(--xf-text-100)]">{name || "—"}</p>
+
+      <TenantAdminAssignPanel tenantId={tenantId} onHasTenantAdminChange={setHasTenantAdmin} />
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_220px] md:items-start">
         <div className="flex flex-col gap-5">
@@ -248,7 +256,13 @@ export function EditTenantConsole() {
           </label>
 
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="cta" disabled={busy} onClick={() => void save()}>
+            <button
+              type="button"
+              className="cta"
+              disabled={busy || !hasTenantAdmin}
+              title={hasTenantAdmin ? undefined : "Assign a tenant admin first"}
+              onClick={() => void save()}
+            >
               {busy ? "Saving…" : "Save"}
             </button>
           </div>

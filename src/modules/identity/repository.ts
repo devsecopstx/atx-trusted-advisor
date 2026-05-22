@@ -1844,6 +1844,91 @@ export async function assertTenantHasRoomForAnotherUser(tenantId: ObjectId): Pro
   }
 }
 
+/** One membership row with user fields for admin tenant edit UI. */
+export type TenantMembershipAdminRow = {
+  userId: string;
+  email: string;
+  displayName: string;
+  tenantRole: TenantRole;
+  isDefaultSessionTenant: boolean;
+  /** Denormalized `core_users.isTenantAdmin` (true when user is tenant_admin on any tenant). */
+  isTenantAdmin: boolean;
+};
+
+export async function tenantHasAdminMembership(tenantId: ObjectId): Promise<boolean> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const count = await db.collection<TenantMembership>(collections.memberships).countDocuments({
+    tenantId,
+    role: "tenant_admin"
+  });
+  return count > 0;
+}
+
+export async function syncCoreUserIsTenantAdminFlag(userId: ObjectId): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const adminCount = await db.collection<TenantMembership>(collections.memberships).countDocuments({
+    userId,
+    role: "tenant_admin"
+  });
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: userId },
+    {
+      $set: {
+        isTenantAdmin: adminCount > 0,
+        updatedAt: new Date()
+      }
+    }
+  );
+}
+
+export async function listTenantMembershipsForAdmin(
+  tenantId: ObjectId
+): Promise<TenantMembershipAdminRow[]> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const memberships = await db
+    .collection<TenantMembership>(collections.memberships)
+    .find({ tenantId })
+    .sort({ updatedAt: -1 })
+    .toArray();
+  if (memberships.length === 0) {
+    return [];
+  }
+  const userIds = memberships.map((m) => m.userId).filter((id): id is ObjectId => Boolean(id));
+  const users = await db
+    .collection<CoreUser>(collections.users)
+    .find({ _id: { $in: userIds } })
+    .project({ email: 1, xAccount: 1, isTenantAdmin: 1 })
+    .toArray();
+  const userById = new Map(users.filter((u) => u._id).map((u) => [u._id!.toHexString(), u]));
+
+  return memberships
+    .map((m) => {
+      const uid = m.userId?.toHexString();
+      if (!uid) {
+        return null;
+      }
+      const u = userById.get(uid);
+      const email = u?.email ?? "";
+      const displayName =
+        u?.xAccount?.displayName?.trim() ||
+        u?.xAccount?.username?.trim() ||
+        email ||
+        uid;
+      return {
+        userId: uid,
+        email,
+        displayName,
+        tenantRole: m.role,
+        isDefaultSessionTenant: m.isDefaultTenant,
+        isTenantAdmin: u?.isTenantAdmin === true
+      } satisfies TenantMembershipAdminRow;
+    })
+    .filter((row): row is TenantMembershipAdminRow => row !== null);
+}
+
 export async function upsertTenantMembership(input: {
   userId: ObjectId;
   tenantId: ObjectId;
@@ -1888,6 +1973,7 @@ export async function upsertTenantMembership(input: {
   if (!membership?._id) {
     throw new Error("Failed to ensure tenant membership");
   }
+  await syncCoreUserIsTenantAdminFlag(input.userId);
   return membership;
 }
 

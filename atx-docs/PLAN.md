@@ -31,6 +31,7 @@ Living backlog for product, xChat, portfolio, JVM engine, and ops. **What is imp
 | **707** | **xChat harden** | High | Vision paste policy, metering refinements, artifacts/schema parity: [#xchat-harden](#xchat-harden) |
 | **709** | **HNWI prompt_templates (admin)** | Low | Tenant-visible editor + audit for Mongo **`prompt_templates`** overrides (bodies ship via seed/API today): [#xchat-harden](#xchat-harden) |
 | **708** | **Monte Carlo tail-risk** (`MonteCarloTailRiskEngine`) | High | **Open** — fat-tail sims, VaR/CVaR/drawdown stress, **`UserOptionsContext`** tier gates, Redis cache + quote circuit-break; companion to **`OptionsStrategyEngine`**: [#monte-carlo-tail-risk](#monte-carlo-tail-risk) · [strategy-engine.md](./design-system/xoptions/strategy-engine.md) |
+| **710** | **Advisor compliance program** | High | **Phase 1 shipped** — advisor profile + AI disclosure ack + client profiles + API gates: [#advisor-compliance-program](#advisor-compliance-program) |
 | **15** | **Quant Trader surface (xOptions)** | High | **Shipped (May 2026)** — `/xoptions?tab=quant`, `/xoptions/quant-trader`, step-4 sidebar toggle **Enable Quant Trader**, APIs **`GET /api/app-user/xoptions/quant-trader/context`** + **`POST …/run`**, strategy jobs **`jobType: monte-carlo-run`**, xChat handoff to **`quant-trader`** persona: [product-ux-spec.md](./design-system/xoptions/product-ux-spec.md) § Quant Trader · [xoptions-product-brief.md](./product/xoptions-product-brief.md) |
 | **900** | Automated trades w/ verify | Low | After **200** + custodian execution maturity; until then alerts / manual |
 
@@ -121,6 +122,47 @@ Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-too
 | **Indexes** | Extend **`StrategyJobMongoIndexes.kt`** pattern: compound indexes for **`portfolioId`**, **`riskTier`**, outlook-led queries — target **50+ portfolios per tenant** without table scans. |
 | **CSV import** | Next **`portfolio-import`** (Fidelity/Merrill): robust **short vs long** detection (e.g. VELO put misclassification), **`side: SHORT`**, **premium collected YTD** tags → **`portfolioDeltaHint`** into engine context. |
 | **Service** | **`PortfolioOutlookService`** (JVM or Next domain layer): aggregate outlook across accounts; inject into **`/portfolios`** workspace rail + xChat workspace preload. |
+
+---
+
+<a id="advisor-compliance-program"></a>
+
+## Advisor compliance program (IA / advisor role)
+
+**Track:** **710**. **Goal:** Technology-provider posture for licensed Investment Advisors — collect suitability context, disclose AI limitations, and maintain auditable records before advice-like outputs. ATX remains **not** a registered investment adviser; the advisor/firm retains suitability and client disclosure obligations.
+
+**Positioning:** Each **tenant = one IA firm** (`core_tenants.name`). Tenant users are **`operator`** or **`advisor`** (a tenant may have zero advisors). **Only `advisor`** completes FINRA + disclosure gates before **`POST /api/xchat/ask`** and Quant Trader run — no feature flag.
+
+### Shipped — Phase 1 (foundation & gates)
+
+| Area | Detail |
+| ---- | ------ |
+| **IA firm** | Firm identity = **tenant name** (one IA firm per tenant). |
+| **Advisor acks** | Mongo **`core_users.advisorComplianceProfile`**: optional CCO email, attestation + versioned AI disclosure ack. |
+| **FINRA CRUD** | Mongo **`advisor_finra_registrations`**: CRD, license type, jurisdiction, evidence URL, status — **`GET|POST /api/app-user/compliance/finra-registrations`**, **`PATCH|DELETE …/{id}`**. |
+| **APIs** | **`GET /api/app-user/compliance/status`**, **`…/disclosures`**, **`PUT …/advisor-profile`** (acks). |
+| **UI** | **`/account/workspace-preferences`** (profile menu) — appearance + advisor FINRA/disclosure; **`/account/compliance`** redirects. |
+| **Gates** | Incomplete advisor compliance → **403** `advisor_compliance_required` (advisor role only). |
+| **Audit** | `advisor_compliance_ack_updated`, `advisor_finra_registration_*`. |
+
+### Phase 2 — In-product enforcement (~weeks 5–8)
+
+| Area | Work |
+| ---- | ---- |
+| **Suitability gate** | Block strategy jobs, desk reports with trade ideas, and xOptions apply flows when linked client profile is missing or stale (>12 months). Reuse **`xchat-strategy-job-preflight`** pattern. |
+| **AI transparency** | Persistent xChat chip: **AI-assisted · persona · model family**; first-thread expanded disclosure; export includes model metadata from **`xchat_logs`**. |
+| **Recommendation audit** | New **`advice_events`** (or extend audit types): advisor, client profile id, artifact/thread id, suitability snapshot hash, disclosure version shown, optional advisor note. |
+
+### Phase 3 — Compliance program (operational ~weeks 9–12)
+
+| Area | Work |
+| ---- | ---- |
+| **`compliance` scheduled task** | Replace stub in **`task-runner.ts`**: stale suitability profiles, threads with strategy language but no client link, weekly CCO digest (email templates). |
+| **Admin compliance console** | Tenant-scoped dashboard: suitability completion, disclosure log, CSV/JSON export for exams. |
+| **Sales / legal enablement** | Technology-provider one-pager, sample firm WSP addendum language, Form ADV Item 12 / Reg BI **templates** (firm-adapted, not legal advice from ATX). |
+| **Credential verification** | Productize FINRA/SEC credential upload (replace admin placeholder URL field); optional CRD lookup integration. |
+
+**Cross-links:** [auth-and-access.md](./guides/auth-and-access.md) · route catalog **`account_workspace_preferences`** in **`data/platform/app-user-route-catalog.json`** · [audit-lineage-and-controls.md](./sre-ops/audit-lineage-and-controls.md).
 
 ---
 

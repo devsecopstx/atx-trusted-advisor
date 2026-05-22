@@ -10,8 +10,10 @@ import { createAuditEvent } from "@/modules/audit/repository";
 import {
     applyTenantShellPreferencesPatch,
     getTenantByHexId,
+    listTenantMembershipsForAdmin,
     resolvedWorkspaceLimitsForTenant,
     resolveTenantIdHexForGlobalAdminConsole,
+    tenantHasAdminMembership,
     updateTenantAmbientMarketVeil,
     updateTenantBrandingPreferencesOneTime,
     updateTenantFeatureFlags,
@@ -98,11 +100,17 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const effective = await resolvedWorkspaceLimitsForTenant(tenant);
   const planOverrides = await resolveEffectivePlanOverridesForTenant(tenant);
+  const hasTenantAdmin = await tenantHasAdminMembership(tenantObjectId);
+  const tenantAdmins = (await listTenantMembershipsForAdmin(tenantObjectId)).filter(
+    (m) => m.tenantRole === "tenant_admin"
+  );
   return NextResponse.json({
     data: {
       tenantId: tenant._id.toHexString(),
       slug: tenant.slug,
       name: tenant.name,
+      hasTenantAdmin,
+      tenantAdmins,
       workspaceLimits: effective,
       planOverrides,
       workspaceLimitsRaw: tenant.workspaceLimits ?? null,
@@ -125,6 +133,17 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const effectiveTenantHex = tenant._id.toHexString();
+
+  const hasTenantAdmin = await tenantHasAdminMembership(tenant._id);
+  if (!hasTenantAdmin) {
+    return NextResponse.json(
+      {
+        error: "tenant_admin_required",
+        message: "Assign at least one tenant admin before saving tenant settings."
+      },
+      { status: 400 }
+    );
+  }
 
   let body: unknown;
   try {

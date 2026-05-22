@@ -11,7 +11,9 @@ const identityRepoMocks = vi.hoisted(() => ({
   resolveTenantIdHexForGlobalAdminConsole: vi.fn(),
   updateTenantWorkspaceLimits: vi.fn(),
   updateTenantBrandingPreferencesOneTime: vi.fn(),
-  updateTenantXchatDebugEnabled: vi.fn()
+  updateTenantXchatDebugEnabled: vi.fn(),
+  tenantHasAdminMembership: vi.fn(),
+  listTenantMembershipsForAdmin: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => ({
@@ -27,7 +29,9 @@ vi.mock("@/modules/identity/repository", async (importOriginal) => {
     resolveTenantIdHexForGlobalAdminConsole: identityRepoMocks.resolveTenantIdHexForGlobalAdminConsole,
     updateTenantWorkspaceLimits: identityRepoMocks.updateTenantWorkspaceLimits,
     updateTenantBrandingPreferencesOneTime: identityRepoMocks.updateTenantBrandingPreferencesOneTime,
-    updateTenantXchatDebugEnabled: identityRepoMocks.updateTenantXchatDebugEnabled
+    updateTenantXchatDebugEnabled: identityRepoMocks.updateTenantXchatDebugEnabled,
+    tenantHasAdminMembership: identityRepoMocks.tenantHasAdminMembership,
+    listTenantMembershipsForAdmin: identityRepoMocks.listTenantMembershipsForAdmin
   };
 });
 
@@ -79,6 +83,17 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     identityRepoMocks.updateTenantXchatDebugEnabled.mockImplementation(async (_id: string, enabled: boolean) =>
       baseTenant({ tenantPreferences: { xchat_debug_enabled: enabled } })
     );
+    identityRepoMocks.tenantHasAdminMembership.mockResolvedValue(true);
+    identityRepoMocks.listTenantMembershipsForAdmin.mockResolvedValue([
+      {
+        userId: "507f1f77bcf86cd799439011",
+        email: "admin@atxfinance.ai",
+        displayName: "Admin",
+        tenantRole: "tenant_admin",
+        isDefaultSessionTenant: true,
+        isTenantAdmin: true
+      }
+    ]);
   });
 
   it("GET returns 403 when session is not global_admin", async () => {
@@ -125,6 +140,7 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     expect(json.data.workspaceLimitsRaw?.userChatLimit).toBe(8);
     expect(json.data.tenantPreferences).toEqual({});
     expect(json.data.planOverrides).toEqual({});
+    expect(json.data.hasTenantAdmin).toBe(true);
   });
 
   it("GET returns normalized planOverrides from tenant.workspaceLimits", async () => {
@@ -324,6 +340,22 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     );
     const json = (await res.json()) as { data: { planOverrides: { basic?: { userChatLimit: number } } } };
     expect(json.data.planOverrides.basic?.userChatLimit).toBe(4);
+  });
+
+  it("PATCH returns 400 tenant_admin_required when tenant has no admin", async () => {
+    identityRepoMocks.getTenantByHexId.mockResolvedValue(baseTenant());
+    identityRepoMocks.tenantHasAdminMembership.mockResolvedValueOnce(false);
+
+    const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceLimits: { userChatLimit: 8 } })
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ tenantId: TENANT_HEX }) });
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: string };
+    expect(json.error).toBe("tenant_admin_required");
+    expect(identityRepoMocks.updateTenantWorkspaceLimits).not.toHaveBeenCalled();
   });
 
   it("PATCH returns 400 for invalid workspaceLimits values", async () => {

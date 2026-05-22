@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 
 import type { SubscriptionPlan } from "@/lib/subscription-plan";
 import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
+import type { AdvisorComplianceProfile } from "@/modules/compliance/types";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import type {
@@ -125,6 +126,13 @@ export type CoreUser = {
   xfUiTheme?: XfUiThemePreference;
   /** Cadence + delivery config for options action scans (scheduled nudges). */
   optionsScanPreferences?: CoreUserOptionsScanPreferences;
+  /** Advisor-role compliance onboarding (firm profile + AI disclosure ack). */
+  advisorComplianceProfile?: AdvisorComplianceProfile;
+  /**
+   * Denormalized from `core_tenant_memberships.role === "tenant_admin"` (any tenant).
+   * Updated when membership role changes — source of truth remains membership.
+   */
+  isTenantAdmin?: boolean;
 };
 
 export type Tenant = {

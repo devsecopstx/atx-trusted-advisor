@@ -10,6 +10,7 @@ import {
 import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
+import { getTenantShellBrandingForHexCached } from "@/lib/identity-shell-cache";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { logXchatPerfDebug } from "@/lib/xchat-debug";
@@ -19,8 +20,9 @@ import {
     type XchatInitialOutlookDesk
 } from "@/lib/xchat/xchat-outlook-desk";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getTenantShellBrandingForHexCached } from "@/lib/identity-shell-cache";
+import { advisorComplianceRequiresChatHistoryRetention } from "@/modules/compliance/advisor-compliance";
+import { getAdvisorComplianceProfileForUser } from "@/modules/compliance/repository";
+import { isAdvisorPlatformRole, isGlobalAdmin } from "@/modules/identity/authorization";
 import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
 import { resolveAccountOutlookContextForXchat } from "@/modules/xchat/account-outlook-context";
 import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
@@ -114,7 +116,11 @@ export async function XchatApprovedShell({
   const workspaceChangePersonaEnabled = wl.changePersonaEnabled;
   const workspaceChatHistoryMax = wl.chatHistoryMax;
   const portfolioHexForOutlook = workspacePortfolioId?.trim() ?? "";
-  const [serverBootstrap, initialOutlookDesk] = await Promise.all([
+  const complianceProfilePromise =
+    isAdvisorPlatformRole(session.roles) && !isGlobalAdmin(session.roles)
+      ? getAdvisorComplianceProfileForUser(session.userId)
+      : Promise.resolve(null);
+  const [serverBootstrap, initialOutlookDesk, complianceProfile] = await Promise.all([
     getXchatServerShellBootstrap(session, workspaceChatHistoryMax),
     portfolioHexForOutlook
       ? resolveAccountOutlookContextForXchat({
@@ -122,8 +128,10 @@ export async function XchatApprovedShell({
           tenantId: session.tenantId,
           portfolioIdHex: portfolioHexForOutlook
         }).then((ctx) => serializeOutlookDeskForXchatShell(portfolioHexForOutlook, ctx))
-      : Promise.resolve(null as XchatInitialOutlookDesk | null)
+      : Promise.resolve(null as XchatInitialOutlookDesk | null),
+    complianceProfilePromise
   ]);
+  const chatHistoryRetentionRequired = advisorComplianceRequiresChatHistoryRetention(complianceProfile);
   markPerf("server_bootstrap", {
     workspaceChatHistoryMax,
     hasHistory: Boolean(serverBootstrap?.historyItemsNewestFirst?.length),
@@ -172,6 +180,7 @@ export async function XchatApprovedShell({
       includeSuperAgentInPersonaPicker={isAdminSession}
       initialXchatItem={resolvedInitialXchatItem}
       isGlobalAdmin={isAdminSession}
+      chatHistoryRetentionRequired={chatHistoryRetentionRequired}
       serverBootstrap={serverBootstrap}
       welcomeName={appUserPrimaryDisplayName(session)}
       workspaceBook={workspaceBook}

@@ -110,6 +110,17 @@
       "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
     },
     {
+      "id": "account_workspace_preferences",
+      "pathPattern": "/account/workspace-preferences",
+      "pathMatch": "prefix",
+      "label": "Workspace preferences",
+      "groupId": "account",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": false,
+      "complianceSummary": "Appearance for all app users; advisor-role FINRA CRUD + AI disclosure ack (tenant = one IA firm).",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
       "id": "workspace",
       "pathPattern": "/workspace",
       "pathMatch": "prefix",

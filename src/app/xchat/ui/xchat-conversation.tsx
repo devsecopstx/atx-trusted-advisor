@@ -27,6 +27,7 @@ import {
     WorkspaceProductSidebar
 } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { XchatUsageMeter } from "@/app/xchat/ui/usage-meter";
 import { XchatAdvisorWorkingOverlay } from "@/app/xchat/ui/xchat-advisor-working-overlay";
 import {
     buildXchatAskLimitBannerMarkdown,
@@ -48,7 +49,6 @@ import type {
 import { XchatRailExamplePromptsList } from "@/app/xchat/ui/xchat-example-prompts";
 import { XchatOutlookDeskFreshnessLabel } from "@/app/xchat/ui/xchat-outlook-desk-freshness-label";
 import { XchatUsageStatusRow } from "@/app/xchat/ui/xchat-usage-status-row";
-import { XchatUsageMeter } from "@/app/xchat/ui/usage-meter";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { isRetailPaidSubscriptionPlan } from "@/lib/subscription-plan";
@@ -154,6 +154,8 @@ export type XchatConversationProps = {
     | null;
   /** RSC bootstrap: prefs + recent Mongo turns (60s server cache) to avoid cold client waterfalls. */
   serverBootstrap?: XchatServerShellBootstrap | null;
+  /** When true, advisor compliance attestation locks chat history retention on. */
+  chatHistoryRetentionRequired?: boolean;
   /** Tenant display name for welcome copy (server: `core_tenants.name` via branding resolver). */
   tenantWorkspaceSessionLabel?: string | null;
   /** Server-seeded desk outlook for the active workspace portfolio. */
@@ -363,6 +365,7 @@ export function XchatConversation({
   workspaceChatHistoryMax = 10,
   initialXchatItem = null,
   serverBootstrap = null,
+  chatHistoryRetentionRequired = false,
   visiblePathPrefixes,
   tenantWorkspaceSessionLabel = null,
   initialOutlookDesk = null,
@@ -2112,7 +2115,11 @@ export function XchatConversation({
                       >
                         <input
                           checked={privacyPrefs?.keepLastTenMessages === true}
-                          disabled={privacyPrefsLoading || privacyPrefsSaving}
+                          disabled={
+                            privacyPrefsLoading ||
+                            privacyPrefsSaving ||
+                            chatHistoryRetentionRequired
+                          }
                           onChange={(e) => {
                             void setKeepLastTenMessages(e.target.checked);
                           }}
@@ -2120,6 +2127,11 @@ export function XchatConversation({
                         />
                       </label>
                     </div>
+                    {chatHistoryRetentionRequired ? (
+                      <p className="status-text text-xs text-[var(--xf-gain-green)]">
+                        Required while compliance attestation is on your record (stored for audit/export).
+                      </p>
+                    ) : null}
                     {privacyPrefs?.keepLastTenMessages === true ? (
                       <div className="xchat-sidebar-privacy-row">
                         <span className="xchat-sidebar-privacy-row__label">

@@ -4,7 +4,10 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { createAuditEvent } from "@/modules/audit/repository";
+import { advisorComplianceRequiresChatHistoryRetention } from "@/modules/compliance/advisor-compliance";
+import { getAdvisorComplianceProfileForUser } from "@/modules/compliance/repository";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
+import { isAdvisorPlatformRole } from "@/modules/identity/authorization";
 import { clearXchatLogsLongTermSyncSkippedForUser } from "@/modules/xchat/repository";
 import { clearPerUserXaiHistoryCollectionForUserTenant } from "@/modules/xchat/user-history-xai-purge";
 import {
@@ -78,6 +81,22 @@ export async function PUT(request: Request) {
       { error: "Invalid request payload", details: parsed.error.flatten() },
       { status: 400 }
     );
+  }
+  if (
+    parsed.data.keepLastTenMessages === false &&
+    isAdvisorPlatformRole(session.roles)
+  ) {
+    const complianceProfile = await getAdvisorComplianceProfileForUser(session.userId);
+    if (advisorComplianceRequiresChatHistoryRetention(complianceProfile)) {
+      return NextResponse.json(
+        {
+          error: "advisor_compliance_chat_history_required",
+          message:
+            "Chat history retention is required after compliance attestation so conversations can be stored and exported."
+        },
+        { status: 403 }
+      );
+    }
   }
   const userId = new ObjectId(session.userId);
   const tenantId = ObjectId.isValid(session.tenantId) ? new ObjectId(session.tenantId) : null;
