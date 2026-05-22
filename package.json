@@ -138,8 +138,8 @@
   "private": true,
   "type": "module",
   "overrides": {
-    "tar": "^7.5.15",
-    "minimatch": "^9.0.5",
+    "tar": ">=7.5.1",
+    "minimatch": ">=9.0.7",
     "follow-redirects": "^1.16.0",
     "axios": "^1.16.0",
     "@tootallnate/once": "^3.0.1",
