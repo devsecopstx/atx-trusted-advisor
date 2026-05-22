@@ -42,8 +42,7 @@ import {
 } from "@/lib/xchat-live-sse-policy";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { archiveAdvisorXchatTurnIfRequired } from "@/modules/compliance/advisor-advice-events";
-import { assertAdvisorComplianceForSession } from "@/modules/compliance/advisor-compliance-gate";
-import { buildAdvisorComplianceBlockedBody } from "@/modules/compliance/advisor-compliance-redirect";
+import { advisorComplianceGateResponseForAppUser } from "@/modules/compliance/advisor-compliance-gate";
 import {
     getDefaultPortfolio,
     getUserAdminSettings
@@ -447,15 +446,10 @@ export async function POST(request: Request) {
     ? await getTenantByHexIdCached(session.tenantId)
     : null;
 
-  if (!isAdminSession && tenantForDebug) {
-    const complianceGate = await assertAdvisorComplianceForSession({
-      userId: session.userId,
-      tenantId: session.tenantId,
-      roles: session.roles,
-      tenant: tenantForDebug
-    });
-    if (!complianceGate.ok) {
-      return NextResponse.json(buildAdvisorComplianceBlockedBody(complianceGate.status), { status: 403 });
+  if (!isAdminSession) {
+    const complianceBlocked = await advisorComplianceGateResponseForAppUser(session, tenantForDebug);
+    if (complianceBlocked) {
+      return complianceBlocked;
     }
   }
 

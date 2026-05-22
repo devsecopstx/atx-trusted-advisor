@@ -1,14 +1,19 @@
+import { NextResponse } from "next/server";
+
 import { getCurrentAdvisorDisclosureBundle } from "@/lib/advisor-disclosures";
+import type { SessionUser } from "@/lib/auth";
 import {
     buildAdvisorComplianceStatus,
     isAdvisorComplianceComplete,
     isAdvisorComplianceEnforced,
     resolveTenantFirmName
 } from "@/modules/compliance/advisor-compliance";
+import { buildAdvisorComplianceBlockedBody } from "@/modules/compliance/advisor-compliance-redirect";
 import {
     countActiveFinraRegistrationsForAdvisor,
     getAdvisorComplianceProfileForUser
 } from "@/modules/compliance/repository";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import type { Tenant } from "@/modules/identity/types";
 
 export async function resolveAdvisorComplianceStatusForSession(input: {
@@ -32,6 +37,29 @@ export async function resolveAdvisorComplianceStatusForSession(input: {
     finraRegistrationCount,
     tenantFirmName: resolveTenantFirmName(input.tenant)
   });
+}
+
+/**
+ * Returns a **403** JSON response when an app_user advisor must complete workspace compliance;
+ * `null` when the request may proceed (non-advisor, global_admin, or compliance complete).
+ */
+export async function advisorComplianceGateResponseForAppUser(
+  session: SessionUser,
+  tenant: Pick<Tenant, "name" | "tenantPreferences"> | null | undefined
+): Promise<NextResponse | null> {
+  if (isGlobalAdmin(session.roles)) {
+    return null;
+  }
+  const gate = await assertAdvisorComplianceForSession({
+    userId: session.userId,
+    tenantId: session.tenantId,
+    roles: session.roles,
+    tenant
+  });
+  if (!gate.ok) {
+    return NextResponse.json(buildAdvisorComplianceBlockedBody(gate.status), { status: 403 });
+  }
+  return null;
 }
 
 export async function assertAdvisorComplianceForSession(input: {

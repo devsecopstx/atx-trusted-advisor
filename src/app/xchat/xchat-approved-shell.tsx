@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { redirect } from "next/navigation";
 
 import { WorkspaceProductLegalFooter } from "@/app/ui/workspace-product-legal-footer";
 import { XchatConversationMount } from "@/app/xchat/xchat-conversation-mount";
@@ -12,7 +13,7 @@ import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
 import { getTenantShellBrandingForHexCached } from "@/lib/identity-shell-cache";
 import { resolvePrimaryPlatformRoleForDisplay } from "@/lib/platform-role-display";
-import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
+import { getTenantByHexIdCached, loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { logXchatPerfDebug } from "@/lib/xchat-debug";
 import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
@@ -22,6 +23,8 @@ import {
 } from "@/lib/xchat/xchat-outlook-desk";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { advisorComplianceRequiresChatHistoryRetention } from "@/modules/compliance/advisor-compliance";
+import { resolveAdvisorComplianceStatusForSession } from "@/modules/compliance/advisor-compliance-gate";
+import { advisorComplianceWorkspaceRedirectPath } from "@/modules/compliance/advisor-compliance-redirect";
 import { getAdvisorComplianceProfileForUser } from "@/modules/compliance/repository";
 import { isAdvisorPlatformRole, isGlobalAdmin } from "@/modules/identity/authorization";
 import { getTenantRoutePolicyForSession } from "@/modules/platform/tenant-route-policy";
@@ -50,6 +53,21 @@ export async function XchatApprovedShell({
   requestedAccountId
 }: XchatApprovedShellProps) {
   const isAdminSession = isGlobalAdmin(session.roles);
+  if (!isAdminSession && isAdvisorPlatformRole(session.roles)) {
+    const tenant =
+      session.tenantId && ObjectId.isValid(session.tenantId)
+        ? await getTenantByHexIdCached(session.tenantId)
+        : null;
+    const complianceStatus = await resolveAdvisorComplianceStatusForSession({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      roles: session.roles,
+      tenant
+    });
+    if (!complianceStatus.complete) {
+      redirect(advisorComplianceWorkspaceRedirectPath("xchat"));
+    }
+  }
   const markPerf = (stage: string, details?: Record<string, unknown>) => {
     logXchatPerfDebug({
       surface: "xchat_page",

@@ -1,13 +1,19 @@
+import { ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
+
+import { requireSessionUser } from "@/lib/auth";
 import {
     proxyPortfolioRequestToBackend,
     releaseUnusedProxyResponse
 } from "@/lib/backend-bff";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     isXchatSseProxyBackendEnabled,
     parseXchatStreamRequestMessage,
     resolveXchatStreamInternalSecretHeader,
     shouldSkipXchatStreamBffForDeterministicDeskMessage
 } from "@/lib/xchat-live-sse-policy";
+import { advisorComplianceGateResponseForAppUser } from "@/modules/compliance/advisor-compliance-gate";
 
 /**
  * Live SSE for xChat.
@@ -20,6 +26,20 @@ import {
  * - Options scan / watchlist / holdings paths may return JSON through this route (client handles non-SSE bodies).
  */
 export async function POST(request: Request) {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const tenant =
+    session.tenantId && ObjectId.isValid(session.tenantId)
+      ? await getTenantByHexIdCached(session.tenantId)
+      : null;
+  const complianceBlocked = await advisorComplianceGateResponseForAppUser(session, tenant);
+  if (complianceBlocked) {
+    return complianceBlocked;
+  }
+
   const bodyText = await request.text();
   const streamMessage = parseXchatStreamRequestMessage(bodyText);
   const skipBffForDeterministicDesk = shouldSkipXchatStreamBffForDeterministicDeskMessage(streamMessage);
