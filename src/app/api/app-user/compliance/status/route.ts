@@ -4,6 +4,7 @@ import { requireApprovedAppUserSession } from "@/lib/api-auth";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { advisorComplianceRequiresChatHistoryRetention } from "@/modules/compliance/advisor-compliance";
 import { resolveAdvisorComplianceStatusForSession } from "@/modules/compliance/advisor-compliance-gate";
+import { isCredentialSecFeatureEnabledForTenant } from "@/modules/compliance/credential-sec-gate";
 import { serializeAdvisorComplianceProfile } from "@/modules/compliance/repository";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ export async function GET() {
       missingSteps: status.missingSteps,
       disclosureVersion: status.disclosureVersion,
       finraRegistrationCount: status.finraRegistrationCount,
+      credentialSecEnabled: isCredentialSecFeatureEnabledForTenant(tenant),
       tenantFirmName: status.tenantFirmName,
       chatHistoryRetentionRequired: advisorComplianceRequiresChatHistoryRetention(status.profile),
       profile: serializeAdvisorComplianceProfile(status.profile)

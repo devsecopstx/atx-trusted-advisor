@@ -23,6 +23,7 @@ This aligns with our shipped stack (Next.js 16 + Spring BFF + Mongo) and existin
 
 | Flag key (`tenantPreferences.featureFlags`) | Behavior |
 |---------------------------------------------|----------|
+| **`credential-sec`** (boolean) | When **true**, advisor compliance requires FINRA registration CRUD + credential evidence upload (`/account/workspace-preferences`). Default **off** — roadmap only; no fake regulatory UI. Read via `isCredentialSecEnabled()`. |
 | **`xchat-live-sse-enabled`** (boolean) | When set, overrides **`NEXT_PUBLIC_XCHAT_LIVE_SSE`** for xChat client streaming (`resolveXchatLiveSseEnabled` → `XchatServerShellBootstrap.liveSseEnabled`). |
 
 ## Current State Analysis

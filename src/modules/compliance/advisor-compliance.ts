@@ -57,6 +57,7 @@ export function normalizeAdvisorComplianceProfile(
 export function listAdvisorComplianceMissingSteps(input: {
   profile: AdvisorComplianceProfile | null;
   finraRegistrationCount: number;
+  credentialSecEnabled?: boolean;
 }): AdvisorComplianceMissingStep[] {
   const missing: AdvisorComplianceMissingStep[] = [];
   const profile = input.profile;
@@ -71,7 +72,7 @@ export function listAdvisorComplianceMissingSteps(input: {
   ) {
     missing.push("ai_disclosure");
   }
-  if (input.finraRegistrationCount < 1) {
+  if (input.credentialSecEnabled === true && input.finraRegistrationCount < 1) {
     missing.push("finra_registration");
   }
   return missing;
@@ -80,6 +81,7 @@ export function listAdvisorComplianceMissingSteps(input: {
 export function isAdvisorComplianceComplete(input: {
   profile: AdvisorComplianceProfile | null;
   finraRegistrationCount: number;
+  credentialSecEnabled?: boolean;
 }): boolean {
   return listAdvisorComplianceMissingSteps(input).length === 0;
 }
@@ -89,11 +91,13 @@ export function buildAdvisorComplianceStatus(input: {
   profile: AdvisorComplianceProfile | null;
   finraRegistrationCount: number;
   tenantFirmName: string | null;
+  credentialSecEnabled?: boolean;
 }): AdvisorComplianceStatus {
   const missingSteps = input.enforced
     ? listAdvisorComplianceMissingSteps({
         profile: input.profile,
-        finraRegistrationCount: input.finraRegistrationCount
+        finraRegistrationCount: input.finraRegistrationCount,
+        credentialSecEnabled: input.credentialSecEnabled
       })
     : [];
   return {

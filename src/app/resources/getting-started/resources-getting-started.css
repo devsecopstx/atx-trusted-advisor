@@ -611,9 +611,139 @@
   margin-top: 0.25rem;
 }
 
+.resources-guides-hub__jump-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.resources-guides-hub__jump-chip-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.resources-guides-hub__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  margin-top: 0.35rem;
+}
+
+.resources-guides-hub__group {
+  border-radius: 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--xf-surface-700) 55%, transparent),
+      color-mix(in srgb, var(--xf-bg-900) 92%, transparent)
+    );
+  padding: 0.85rem 0.85rem 1rem;
+  scroll-margin-top: 1rem;
+}
+
+.resources-guides-hub__group--foundation {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
+}
+
+.resources-guides-hub__group--prompts {
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 24%, transparent);
+}
+
+.resources-guides-hub__group--income {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 24%, transparent);
+}
+
+.resources-guides-hub__group--library {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 18%, transparent);
+}
+
+.resources-guides-hub__group-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  padding: 0.15rem 0.2rem 0.55rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.resources-guides-hub__group-icon-wrap {
+  flex-shrink: 0;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-200);
+}
+
+.resources-guides-hub__group--foundation .resources-guides-hub__group-icon-wrap {
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 92%, var(--xf-text-100));
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 28%, transparent);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 10%, transparent);
+}
+
+.resources-guides-hub__group--prompts .resources-guides-hub__group-icon-wrap {
+  color: var(--xf-lightning-yellow);
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 32%, transparent);
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 10%, transparent);
+}
+
+.resources-guides-hub__group--income .resources-guides-hub__group-icon-wrap {
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 30%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 9%, transparent);
+}
+
+.resources-guides-hub__group--library .resources-guides-hub__group-icon-wrap {
+  color: color-mix(in srgb, var(--xf-gain-green) 82%, var(--xf-text-100));
+  border-color: color-mix(in srgb, var(--xf-gain-green) 24%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 7%, transparent);
+}
+
+.resources-guides-hub__group-icon-svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.resources-guides-hub__group-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.resources-guides-hub__group-eyebrow {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--xf-gain-green);
+}
+
+.resources-guides-hub__group-title {
+  margin: 0.2rem 0 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+  line-height: 1.25;
+}
+
+.resources-guides-hub__group-desc {
+  margin: 0.28rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--xf-text-300);
+}
+
 .resources-guides-hub__panel-grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
   grid-template-columns: 1fr;
 }
 
@@ -623,13 +753,11 @@
     align-items: stretch;
   }
 
-  .resources-guides-hub__panel--playbooks {
-    grid-column: 1 / -1;
+  .resources-guides-hub__group--library .resources-guides-hub__panel-grid {
+    grid-template-columns: 1fr;
   }
-}
 
-@media (min-width: 900px) {
-  .resources-guides-hub__panel--playbooks .resources-guides-hub__link-list {
+  .resources-guides-hub__group--library .resources-guides-hub__link-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.38rem;
@@ -640,18 +768,41 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  border-radius: 1rem;
+  border-radius: 0.9rem;
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
   background:
-    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--xf-gain-green) 10%, transparent), transparent 42%),
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--xf-gain-green) 8%, transparent), transparent 42%),
     linear-gradient(
       165deg,
-      color-mix(in srgb, var(--xf-surface-700) 90%, var(--xf-bg-900)),
-      color-mix(in srgb, var(--xf-bg-900) 88%, var(--xf-surface-700))
+      color-mix(in srgb, var(--xf-surface-700) 88%, var(--xf-bg-900)),
+      color-mix(in srgb, var(--xf-bg-900) 90%, var(--xf-surface-700))
     );
-  padding: 1rem 1rem 0.85rem;
+  padding: 0.85rem 0.85rem 0.75rem;
   scroll-margin-top: 1rem;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.resources-guides-hub__panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.resources-guides-hub__panel-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--xf-text-200);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
 }
 
 .resources-guides-hub__panel-header {
@@ -662,15 +813,16 @@
 
 .resources-guides-hub__panel-icon-wrap {
   flex-shrink: 0;
-  width: 2.65rem;
-  height: 2.65rem;
-  border-radius: 12px;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
   background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
   color: var(--xf-text-200);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-text-100) 4%, transparent) inset;
 }
 
 .resources-guides-hub__panel--platform .resources-guides-hub__panel-icon-wrap {
@@ -698,8 +850,8 @@
 }
 
 .resources-guides-hub__panel-icon-svg {
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.4rem;
+  height: 1.4rem;
 }
 
 .resources-guides-hub__panel-headings {
@@ -737,16 +889,40 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
+  gap: 0.55rem;
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 11%, transparent);
   background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
-  padding: 0.52rem 0.58rem;
+  padding: 0.48rem 0.52rem;
   text-decoration: none;
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease,
     transform 0.12s ease;
+}
+
+.resources-guides-hub__link-icon-wrap {
+  flex-shrink: 0;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 35%, transparent);
+  color: var(--xf-text-300);
+}
+
+.resources-guides-hub__link-icon-svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.resources-guides-hub__link:hover .resources-guides-hub__link-icon-wrap {
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 35%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
 }
 
 .resources-guides-hub__link:hover {

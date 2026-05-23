@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import {
+    credentialSecFeatureDisabledResponse,
+    isCredentialSecFeatureEnabledForTenant
+} from "@/modules/compliance/credential-sec-gate";
 import {
     deleteFinraRegistration,
     serializeFinraRegistration,
@@ -19,6 +24,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
   if (!isAdvisorPlatformRole(session.roles)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const tenant = await getTenantByHexIdCached(session.tenantId);
+  if (!isCredentialSecFeatureEnabledForTenant(tenant)) {
+    return credentialSecFeatureDisabledResponse();
   }
 
   const { registrationId } = await params;
@@ -53,6 +63,11 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   }
   if (!isAdvisorPlatformRole(session.roles)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const tenant = await getTenantByHexIdCached(session.tenantId);
+  if (!isCredentialSecFeatureEnabledForTenant(tenant)) {
+    return credentialSecFeatureDisabledResponse();
   }
 
   const { registrationId } = await params;

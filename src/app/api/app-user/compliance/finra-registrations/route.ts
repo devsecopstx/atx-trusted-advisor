@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import {
+    credentialSecFeatureDisabledResponse,
+    isCredentialSecFeatureEnabledForTenant
+} from "@/modules/compliance/credential-sec-gate";
 import { MAX_FINRA_EVIDENCE_BYTES } from "@/modules/compliance/finra-evidence-upload";
 import {
     finraRegistrationFieldsSchema,
@@ -113,6 +118,11 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const tenant = await getTenantByHexIdCached(session.tenantId);
+  if (!isCredentialSecFeatureEnabledForTenant(tenant)) {
+    return credentialSecFeatureDisabledResponse();
+  }
+
   const rows = await listFinraRegistrationsForAdvisor({
     tenantId: session.tenantId,
     advisorUserId: session.userId
@@ -130,6 +140,11 @@ export async function POST(request: Request) {
   }
   if (!isAdvisorPlatformRole(session.roles)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const tenant = await getTenantByHexIdCached(session.tenantId);
+  if (!isCredentialSecFeatureEnabledForTenant(tenant)) {
+    return credentialSecFeatureDisabledResponse();
   }
 
   const parsedRequest = await parseFinraRegistrationRequest(request);

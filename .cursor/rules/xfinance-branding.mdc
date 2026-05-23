@@ -31,6 +31,7 @@ When the share and this rule disagree, **this rule + repo implementation** win; 
 **Compliance narrative (trust, not legal advice)**
 - Emphasize **for approved professionals** and **controlled access** — aligns with dark-launch and Admin → Access flows.
 - **Roadmap:** Waitlist can mention **credential upload (FINRA / SEC)** to filter serious users — **only when productized**; never fake a flow in UI. Copy stays “not financial advice” where disclaimers exist (e.g. xChat footer).
+- **Credential upload = roadmap only per May 2026 gap closure. No fake regulatory UI permitted.** Gate with tenant feature flag **`credential-sec`** (default **off**); enable only when FINRA/SEC verification is productized (`isCredentialSecEnabled()` in `src/lib/feature-flags.ts`).
 
 **Monetization: roadmap vs pricing copy**
 - **Customer UI:** Use **shipped** `/account/billing`, plans, and in-product pricing only — do not invent dollar rates or usage-pricing hooks in marketing unless product ships them.

@@ -2,7 +2,9 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 import { getCurrentAdvisorDisclosureBundle } from "@/lib/advisor-disclosures";
+import { isCredentialSecEnabled } from "@/lib/feature-flags";
 import { getDb } from "@/lib/mongodb";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
     isAdvisorComplianceComplete,
@@ -79,20 +81,31 @@ export async function countActiveFinraRegistrationsForAdvisor(input: {
 async function resolveAdvisorComplianceCompleteState(input: {
   userId: string;
   tenantId: string;
+  credentialSecEnabled?: boolean;
 }): Promise<{
   profile: AdvisorComplianceProfile | null;
   finraRegistrationCount: number;
   complete: boolean;
 }> {
+  const credentialSecEnabled =
+    input.credentialSecEnabled ??
+    isCredentialSecEnabled(await getTenantByHexIdCached(input.tenantId));
   const profile = await getAdvisorComplianceProfileForUser(input.userId);
-  const finraRegistrationCount = await countActiveFinraRegistrationsForAdvisor({
-    tenantId: input.tenantId,
-    advisorUserId: input.userId
-  });
+  const finraRegistrationCount =
+    credentialSecEnabled
+      ? await countActiveFinraRegistrationsForAdvisor({
+          tenantId: input.tenantId,
+          advisorUserId: input.userId
+        })
+      : 0;
   return {
     profile,
     finraRegistrationCount,
-    complete: isAdvisorComplianceComplete({ profile, finraRegistrationCount })
+    complete: isAdvisorComplianceComplete({
+      profile,
+      finraRegistrationCount,
+      credentialSecEnabled
+    })
   };
 }
 

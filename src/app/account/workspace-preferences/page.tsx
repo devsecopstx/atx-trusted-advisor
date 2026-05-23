@@ -6,6 +6,8 @@ import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { resolveRouteGuardForSessionPath } from "@/lib/app-user-route-guard";
 import { getSessionUser } from "@/lib/auth";
+import { isCredentialSecEnabled } from "@/lib/feature-flags";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { canUserLogin, isAdvisorPlatformRole } from "@/modules/identity/authorization";
 
 import "../billing/billing-plans.css";
@@ -38,6 +40,8 @@ export default async function AccountWorkspacePreferencesPage({
   }
 
   const isAdvisor = isAdvisorPlatformRole(session.roles);
+  const tenant = await getTenantByHexIdCached(session.tenantId);
+  const credentialSecEnabled = isCredentialSecEnabled(tenant);
   const workspaceProductRail = await AppUserAccountPublicRailForSession({
     session,
     feedbackPageLabel: "Workspace preferences",
@@ -60,7 +64,9 @@ export default async function AccountWorkspacePreferencesPage({
               <p className="billing-hero__copy">
                 Advisor compliance, tenant scoring defaults, appearance, and history exports —
                 {isAdvisor
-                  ? " FINRA registrations and AI disclosure acknowledgments unlock advice-like product paths."
+                  ? credentialSecEnabled
+                    ? " FINRA registrations and AI disclosure acknowledgments unlock advice-like product paths."
+                    : " AI disclosure acknowledgments unlock advice-like product paths."
                   : " workspace settings for your tenant."}
               </p>
             </header>

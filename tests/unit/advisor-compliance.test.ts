@@ -26,13 +26,17 @@ describe("advisor compliance", () => {
     expect(resolveTenantFirmName({ name: "  Example IA LLC  " })).toBe("Example IA LLC");
   });
 
-  it("lists missing steps until acks + finra registration", () => {
+  it("lists missing steps until acks + finra registration when credential-sec is on", () => {
     const incomplete = normalizeAdvisorComplianceProfile({
       attestationAccepted: false,
       updatedAt: new Date()
     });
     expect(
-      listAdvisorComplianceMissingSteps({ profile: incomplete, finraRegistrationCount: 0 })
+      listAdvisorComplianceMissingSteps({
+        profile: incomplete,
+        finraRegistrationCount: 0,
+        credentialSecEnabled: true
+      })
     ).toEqual(["attestation", "ai_disclosure", "finra_registration"]);
 
     const complete = normalizeAdvisorComplianceProfile({
@@ -43,8 +47,30 @@ describe("advisor compliance", () => {
       updatedAt: new Date()
     });
     expect(complete).not.toBeNull();
-    expect(isAdvisorComplianceComplete({ profile: complete, finraRegistrationCount: 1 })).toBe(true);
+    expect(
+      isAdvisorComplianceComplete({ profile: complete, finraRegistrationCount: 1, credentialSecEnabled: true })
+    ).toBe(true);
     expect(complete!.complianceCompletedAt).toBeUndefined();
+  });
+
+  it("skips finra_registration when credential-sec is off (default)", () => {
+    const complete = normalizeAdvisorComplianceProfile({
+      attestationAccepted: true,
+      attestationAcceptedAt: new Date(),
+      aiDisclosureVersionAccepted: ADVISOR_AI_DISCLOSURE_VERSION,
+      aiDisclosureAcceptedAt: new Date(),
+      updatedAt: new Date()
+    });
+    expect(
+      listAdvisorComplianceMissingSteps({
+        profile: complete,
+        finraRegistrationCount: 0,
+        credentialSecEnabled: false
+      })
+    ).toEqual([]);
+    expect(
+      isAdvisorComplianceComplete({ profile: complete, finraRegistrationCount: 0, credentialSecEnabled: false })
+    ).toBe(true);
   });
 
   it("preserves complianceCompletedAt on profile normalization", () => {

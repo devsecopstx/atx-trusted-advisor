@@ -15,6 +15,7 @@ import { canUserLogin } from "@/modules/identity/authorization";
 import "@/app/portfolios/portfolios-dashboard.css";
 import "../../xchat/xchat.css";
 import "../getting-started/resources-getting-started.css";
+import { ResourceGuideJumpIcon } from "./resource-guides-hub-icons";
 import { ResourceGuidesHubPanels } from "./resource-guides-hub-panels";
 
 export const revalidate = 3600;
@@ -70,8 +71,9 @@ export default async function ResourcesGuidesHubPage() {
 
       <nav className="resources-doc-nav resources-guides-hub__jump" aria-label="Guide categories">
         {RESOURCE_GUIDE_SECTIONS.map((section) => (
-          <a key={section.id} className="resources-doc-nav__chip" href={`#${section.id}`}>
-            {section.shortLabel}
+          <a key={section.id} className="resources-doc-nav__chip resources-guides-hub__jump-chip" href={`#${section.id}`}>
+            <ResourceGuideJumpIcon className="resources-guides-hub__jump-chip-icon" icon={section.icon} />
+            <span>{section.shortLabel}</span>
           </a>
         ))}
       </nav>

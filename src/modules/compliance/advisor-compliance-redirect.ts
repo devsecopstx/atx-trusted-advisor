@@ -1,8 +1,22 @@
 import type { AdvisorComplianceStatus } from "@/modules/compliance/types";
 
-/** Short ops copy when advice-like APIs block incomplete advisor compliance. */
-export const ADVISOR_COMPLIANCE_BLOCKED_MESSAGE =
+const ADVISOR_COMPLIANCE_BLOCKED_MESSAGE_ACK_ONLY =
+  "Acknowledge the AI disclosure and advisor attestation, then save in Workspace preferences.";
+
+const ADVISOR_COMPLIANCE_BLOCKED_MESSAGE_WITH_FINRA =
   "Acknowledge the AI disclosure and advisor attestation, add your FINRA registration, then save in Workspace preferences.";
+
+/** Short ops copy when advice-like APIs block incomplete advisor compliance. */
+export const ADVISOR_COMPLIANCE_BLOCKED_MESSAGE = ADVISOR_COMPLIANCE_BLOCKED_MESSAGE_WITH_FINRA;
+
+export function buildAdvisorComplianceBlockedMessage(
+  missingSteps: AdvisorComplianceStatus["missingSteps"]
+): string {
+  if (missingSteps.includes("finra_registration")) {
+    return ADVISOR_COMPLIANCE_BLOCKED_MESSAGE_WITH_FINRA;
+  }
+  return ADVISOR_COMPLIANCE_BLOCKED_MESSAGE_ACK_ONLY;
+}
 
 export type AdvisorComplianceBlockedBody = {
   error: string;
@@ -15,9 +29,10 @@ export type AdvisorComplianceBlockedBody = {
 export function buildAdvisorComplianceBlockedBody(
   status: Pick<AdvisorComplianceStatus, "missingSteps" | "redirectPath">
 ): AdvisorComplianceBlockedBody {
+  const message = buildAdvisorComplianceBlockedMessage(status.missingSteps);
   return {
-    error: ADVISOR_COMPLIANCE_BLOCKED_MESSAGE,
-    message: ADVISOR_COMPLIANCE_BLOCKED_MESSAGE,
+    error: message,
+    message,
     code: "advisor_compliance_required",
     missingSteps: status.missingSteps,
     redirectPath: status.redirectPath

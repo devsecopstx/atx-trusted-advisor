@@ -70,7 +70,6 @@ type NotificationDefaults = {
 
 type UserAdminSettingsPayload = {
   assignedPersonaId?: string;
-  finraLicenseUploadUrl?: string;
   broker: BrokerSettings;
   portfolio: PortfolioSettings;
   account: AccountSettings;
@@ -253,7 +252,6 @@ function userDirectoryStatusLabel(user: ApprovedUser): string {
 
 const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
   assignedPersonaId: "",
-  finraLicenseUploadUrl: "",
   broker: { provider: "paper", accountRef: "paper-main", enabled: true },
   portfolio: {
     riskProfile: "balanced",
@@ -554,7 +552,6 @@ export function UserSettingsConsole() {
       );
       setSettingsForm({
         assignedPersonaId: payload.data.assignedPersonaId ?? "",
-        finraLicenseUploadUrl: payload.data.finraLicenseUploadUrl ?? "",
         broker: payload.data.broker,
         portfolio: {
           ...payload.data.portfolio,
@@ -1473,26 +1470,6 @@ export function UserSettingsConsole() {
                     </ul>
                   )}
                 </div>
-              </fieldset>
-
-              <fieldset>
-                <legend>Compliance Placeholder</legend>
-                <label>
-                  FINRA License Upload URL
-                  <input
-                    onChange={(e) =>
-                      setSettingsForm((s) => ({
-                        ...s,
-                        finraLicenseUploadUrl: e.target.value
-                      }))
-                    }
-                    placeholder="https://compliance.example.com/uploads/finra-license.pdf"
-                    value={settingsForm.finraLicenseUploadUrl ?? ""}
-                  />
-                </label>
-                <p className="status-text">
-                  Placeholder for investor compliance workflow. Upload handling is a later integration.
-                </p>
               </fieldset>
 
               <fieldset>

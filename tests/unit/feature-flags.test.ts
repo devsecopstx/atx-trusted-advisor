@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { getFeatureFlag, isFeatureEnabled } from "@/lib/feature-flags";
+import { CREDENTIAL_SEC_FEATURE_FLAG, getFeatureFlag, isCredentialSecEnabled, isFeatureEnabled } from "@/lib/feature-flags";
 import {
-  isValidFeatureFlagKey,
-  parseFeatureFlagsPayload
+    isValidFeatureFlagKey,
+    parseFeatureFlagsPayload
 } from "@/modules/identity/tenant-branding-preferences";
 
 describe("feature flag runtime helpers", () => {
@@ -49,6 +49,16 @@ describe("feature flag runtime helpers", () => {
       tenantPreferences: { featureFlags: { "threshold": "not-a-number" } }
     };
     expect(getFeatureFlag(tenant, "threshold", 42)).toBe(42);
+  });
+
+  it("isCredentialSecEnabled defaults off and respects tenant flag", () => {
+    expect(isCredentialSecEnabled(null)).toBe(false);
+    expect(isCredentialSecEnabled({ tenantPreferences: {} })).toBe(false);
+    expect(
+      isCredentialSecEnabled({
+        tenantPreferences: { featureFlags: { [CREDENTIAL_SEC_FEATURE_FLAG]: true } }
+      })
+    ).toBe(true);
   });
 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentAdvisorDisclosureBundle } from "@/lib/advisor-disclosures";
 import type { SessionUser } from "@/lib/auth";
+import { isCredentialSecEnabled } from "@/lib/feature-flags";
 import {
     buildAdvisorComplianceStatus,
     isAdvisorComplianceComplete,
@@ -23,19 +24,22 @@ export async function resolveAdvisorComplianceStatusForSession(input: {
   tenant: Pick<Tenant, "name" | "tenantPreferences"> | null | undefined;
 }) {
   const enforced = isAdvisorComplianceEnforced({ roles: input.roles });
+  const credentialSecEnabled = isCredentialSecEnabled(input.tenant);
   const profile = enforced ? await getAdvisorComplianceProfileForUser(input.userId) : null;
-  const finraRegistrationCount = enforced
-    ? await countActiveFinraRegistrationsForAdvisor({
-        tenantId: input.tenantId,
-        advisorUserId: input.userId
-      })
-    : 0;
+  const finraRegistrationCount =
+    enforced && credentialSecEnabled
+      ? await countActiveFinraRegistrationsForAdvisor({
+          tenantId: input.tenantId,
+          advisorUserId: input.userId
+        })
+      : 0;
 
   return buildAdvisorComplianceStatus({
     enforced,
     profile,
     finraRegistrationCount,
-    tenantFirmName: resolveTenantFirmName(input.tenant)
+    tenantFirmName: resolveTenantFirmName(input.tenant),
+    credentialSecEnabled
   });
 }
 

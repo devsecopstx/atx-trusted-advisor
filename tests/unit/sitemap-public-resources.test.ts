@@ -25,6 +25,7 @@ describe("sitemap public resources", () => {
       "/resources/options-risk-management-frameworks",
       "/resources/from-xchat-to-broker-ibkr",
       "/resources/top-10-hnwi-xchat-prompts",
+      "/resources/quant-trader-guide",
     ]
       .map((p) => `${BASE}${p}`)
       .sort();

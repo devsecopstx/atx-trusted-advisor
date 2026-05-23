@@ -14,6 +14,7 @@ import * as leapOptionsPlaybook from "@/app/resources/leap-options-playbook/page
 import * as multiPortfolioHnwi from "@/app/resources/multi-portfolio-management-hnwi/page";
 import * as onboardingChecklist from "@/app/resources/onboarding-checklist/page";
 import * as optionsRiskFrameworks from "@/app/resources/options-risk-management-frameworks/page";
+import * as quantTraderGuide from "@/app/resources/quant-trader-guide/page";
 import * as secret from "@/app/resources/secret-sauce/page";
 import * as top10HnwiXchatPrompts from "@/app/resources/top-10-hnwi-xchat-prompts/page";
 
@@ -44,6 +45,7 @@ describe("Resources pages exports for public/SEO delivery", () => {
       optionsRiskFrameworks,
       fromXchatToBrokerIbkr,
       top10HnwiXchatPrompts,
+      quantTraderGuide,
     ] as const;
     for (const mod of modules) {
       expect(mod).toHaveProperty("revalidate");

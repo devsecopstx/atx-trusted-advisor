@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
 import { WorkspaceRailAppearance } from "@/app/ui/workspace-rail-appearance";
-import { ADVISOR_COMPLIANCE_BLOCKED_MESSAGE } from "@/modules/compliance/advisor-compliance-redirect";
+import { buildAdvisorComplianceBlockedMessage } from "@/modules/compliance/advisor-compliance-redirect";
 import type { AdvisorFinraRegistrationStatus, AdvisorLicenseType } from "@/modules/compliance/types";
 import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
@@ -52,6 +52,7 @@ type ComplianceStatusWire = {
   missingSteps: string[];
   disclosureVersion?: string;
   finraRegistrationCount: number;
+  credentialSecEnabled?: boolean;
   tenantFirmName: string | null;
   chatHistoryRetentionRequired?: boolean;
   profile: AdvisorProfileWire | null;
@@ -179,17 +180,37 @@ export function WorkspacePreferencesClient({
     setError(null);
     try {
       const requests: Promise<Response>[] = [fetch("/api/app-user/compliance/status")];
-      if (isAdvisorRole) {
-        requests.push(fetch("/api/app-user/compliance/disclosures"));
-        requests.push(fetch("/api/app-user/compliance/finra-registrations"));
-      }
-      const responses = await Promise.all(requests);
-      const statusRes = responses[0]!;
+      const statusRes = await requests[0]!;
       if (!statusRes.ok) {
         throw new Error("Could not load workspace preferences.");
       }
       const statusBody = (await statusRes.json()) as { data: ComplianceStatusWire };
       setStatus(statusBody.data);
+
+      const credentialSecEnabled = statusBody.data.credentialSecEnabled === true;
+      if (isAdvisorRole) {
+        requests.push(fetch("/api/app-user/compliance/disclosures"));
+        if (credentialSecEnabled) {
+          requests.push(fetch("/api/app-user/compliance/finra-registrations"));
+        }
+      }
+      const followUpResponses = await Promise.all(requests.slice(1));
+      if (isAdvisorRole && followUpResponses[0]) {
+        if (!followUpResponses[0].ok) {
+          throw new Error("Could not load advisor disclosures.");
+        }
+        const disclosureBody = (await followUpResponses[0].json()) as { data: DisclosureBundle };
+        setDisclosures(disclosureBody.data);
+      }
+      if (isAdvisorRole && credentialSecEnabled && followUpResponses[1]) {
+        if (!followUpResponses[1].ok) {
+          throw new Error("Could not load FINRA registrations.");
+        }
+        const finraBody = (await followUpResponses[1].json()) as { data: FinraRegistrationWire[] };
+        setRegistrations(finraBody.data);
+      } else {
+        setRegistrations([]);
+      }
 
       const profile = statusBody.data.profile;
       if (profile) {
@@ -201,13 +222,6 @@ export function WorkspacePreferencesClient({
               profile.aiDisclosureVersionAccepted === statusBody.data.disclosureVersion
           )
         );
-      }
-
-      if (isAdvisorRole && responses[1]?.ok && responses[2]?.ok) {
-        const disclosureBody = (await responses[1]!.json()) as { data: DisclosureBundle };
-        const finraBody = (await responses[2]!.json()) as { data: FinraRegistrationWire[] };
-        setDisclosures(disclosureBody.data);
-        setRegistrations(finraBody.data);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed.");
@@ -476,6 +490,8 @@ export function WorkspacePreferencesClient({
     return <p className="compliance-page__muted">Loading workspace preferences…</p>;
   }
 
+  const credentialSecEnabled = status?.credentialSecEnabled === true;
+
   return (
     <div className="compliance-page">
       {error ? (
@@ -497,7 +513,9 @@ export function WorkspacePreferencesClient({
                 ? "Quant Trader is paused until advisor compliance is complete."
                 : "Complete advisor compliance to unlock advice-like product paths."}
           </p>
-          <p className="compliance-page__muted">{ADVISOR_COMPLIANCE_BLOCKED_MESSAGE}</p>
+          <p className="compliance-page__muted">
+            {buildAdvisorComplianceBlockedMessage(status?.missingSteps ?? [])}
+          </p>
         </div>
       ) : null}
 
@@ -541,8 +559,12 @@ export function WorkspacePreferencesClient({
           >
             <h2 className="compliance-page__section-title">History &amp; exports</h2>
             <p className="compliance-page__muted">
-              Download a JSON snapshot of your stored xChat turns and, when you are an advisor, your compliance
-              attestation and FINRA registration record.
+              Download a JSON snapshot of your stored xChat turns
+              {isAdvisorRole
+                ? credentialSecEnabled
+                  ? ", and your compliance attestation and FINRA registration record."
+                  : ", and your compliance attestation record."
+                : "."}
               {status?.chatHistoryRetentionRequired ? (
                 <>
                   {" "}
@@ -701,8 +723,8 @@ export function WorkspacePreferencesClient({
                 </dl>
                 {status?.complete ? (
                   <p className="compliance-page__hint text-sm text-[var(--xf-gain-green)]" role="status">
-                    Compliance is complete. Audit events are recorded for acknowledgments, FINRA changes, and
-                    completion.
+                    Compliance is complete. Audit events are recorded for acknowledgments
+                    {credentialSecEnabled ? ", FINRA changes," : ""} and completion.
                   </p>
                 ) : null}
               </section>
@@ -712,8 +734,10 @@ export function WorkspacePreferencesClient({
               <h2 className="compliance-page__section-title">AI disclosure &amp; attestation</h2>
               <p className="compliance-page__muted">
                 Checking the boxes alone does not complete compliance — click <strong>Save acknowledgments</strong> to
-                record them. If both boxes are checked when you add a FINRA registration below, acknowledgments save
-                automatically.
+                record them.
+                {credentialSecEnabled
+                  ? " If both boxes are checked when you add a FINRA registration below, acknowledgments save automatically."
+                  : null}
               </p>
               {disclosures ? (
                 <form className="compliance-page__form" onSubmit={saveAcknowledgments}>
@@ -769,6 +793,7 @@ export function WorkspacePreferencesClient({
               ) : null}
             </section>
 
+            {credentialSecEnabled ? (
             <section className="compliance-page__panel">
               <h2 className="compliance-page__section-title">FINRA registrations</h2>
               <p className="compliance-page__muted">
@@ -886,6 +911,7 @@ export function WorkspacePreferencesClient({
                 </button>
               </form>
             </section>
+            ) : null}
           </div>
         ) : null}
       </div>

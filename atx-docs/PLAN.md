@@ -137,7 +137,7 @@ Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-too
 
 **Track:** **710**. **Goal:** Technology-provider posture for licensed Investment Advisors — collect suitability context, disclose AI limitations, and maintain auditable records before advice-like outputs. ATX remains **not** a registered investment adviser; the advisor/firm retains suitability and client disclosure obligations.
 
-**Positioning:** Each **tenant = one IA firm** (`core_tenants.name`). Tenant users are **`operator`** or **`advisor`** (a tenant may have zero advisors). **Only `advisor`** completes FINRA + disclosure gates before **`POST /api/xchat/ask`** and Quant Trader run — no feature flag.
+**Positioning:** Each **tenant = one IA firm** (`core_tenants.name`). Tenant users are **`operator`** or **`advisor`** (a tenant may have zero advisors). **Only `advisor`** completes disclosure gates before **`POST /api/xchat/ask`** and Quant Trader run. **FINRA/SEC credential upload** is gated by tenant feature flag **`credential-sec`** (default **off** — no regulatory UI until productized; see `.cursor/rules/xfinance-branding.mdc`).
 
 ### Shipped — Phase 1 (foundation & gates)
 
@@ -167,7 +167,7 @@ Shipped P0–P5 slices (eager workspace preload, outlook desk cache, session-too
 | **`compliance` scheduled task** | Replace stub in **`task-runner.ts`**: stale suitability profiles, threads with strategy language but no client link, weekly CCO digest (email templates). |
 | **Admin compliance console** | Tenant-scoped dashboard: suitability completion, disclosure log, CSV/JSON export for exams. |
 | **Sales / legal enablement** | Technology-provider one-pager, sample firm WSP addendum language, Form ADV Item 12 / Reg BI **templates** (firm-adapted, not legal advice from ATX). |
-| **Credential verification** | Productize FINRA/SEC credential upload (replace admin placeholder URL field); optional CRD lookup integration. |
+| **Credential verification** | Productize FINRA/SEC credential upload behind **`credential-sec`** (default off; Admin → Tenant preferences → Feature flags). **Credential upload = roadmap only per May 2026 gap closure. No fake regulatory UI permitted.** Replace legacy admin placeholder URL field; optional CRD lookup integration. |
 
 **Cross-links:** [auth-and-access.md](./guides/auth-and-access.md) · route catalog **`account_workspace_preferences`** in **`data/platform/app-user-route-catalog.json`** · [audit-lineage-and-controls.md](./sre-ops/audit-lineage-and-controls.md).
 

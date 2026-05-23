@@ -1,6 +1,9 @@
 import type { TenantWorkspaceLimits } from "@/modules/identity/tenant-workspace-limits";
 import type { Tenant } from "@/modules/identity/types";
 
+/** Admin → Tenant preferences → Feature flags. Default **off** — no FINRA/SEC credential UI or gate until productized. */
+export const CREDENTIAL_SEC_FEATURE_FLAG = "credential-sec" as const;
+
 /**
  * Investment outlook auto-refresh — **`INVESTMENT_OUTLOOK_REFRESH_ENABLED`** (default on) with workspace limit
  * **`outlookRefreshEnabled`** opt-out when `false`.
@@ -21,6 +24,13 @@ export function getInvestmentOutlookRefreshEnabled(input: {
  *
  * Hot-path callers should pass a pre-loaded tenant document to avoid extra DB reads.
  */
+/** FINRA/SEC credential upload + registration requirement (advisor compliance Phase 3). */
+export function isCredentialSecEnabled(
+  tenant: Pick<Tenant, "tenantPreferences"> | null | undefined
+): boolean {
+  return isFeatureEnabled(tenant, CREDENTIAL_SEC_FEATURE_FLAG, false);
+}
+
 export function isFeatureEnabled(
   tenant: Pick<Tenant, "tenantPreferences"> | null | undefined,
   flagKey: string,

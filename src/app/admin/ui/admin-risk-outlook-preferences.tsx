@@ -21,7 +21,6 @@ type PortfolioSlice = {
 
 type UserAdminSettingsPayload = {
   assignedPersonaId?: string;
-  finraLicenseUploadUrl?: string;
   broker: {
     provider: "alpaca" | "interactive-brokers" | "paper";
     accountRef: string;
@@ -83,7 +82,6 @@ export function AdminRiskOutlookPreferences({
       const p = res.data.portfolio;
       setFullPayload({
         assignedPersonaId: res.data.assignedPersonaId,
-        finraLicenseUploadUrl: res.data.finraLicenseUploadUrl,
         broker: res.data.broker,
         portfolio: p,
         account: res.data.account,
