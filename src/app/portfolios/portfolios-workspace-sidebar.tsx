@@ -28,7 +28,6 @@ export function PortfoliosWorkspaceSidebar({
       accountFeedbackPageLabel={accountFeedbackPageLabel}
       defaultPortfolioId={defaultPortfolioId}
       isGlobalAdmin={isGlobalAdmin}
-      showReferenceDocs
       visiblePathPrefixes={visiblePathPrefixes}
       workspaceBook={workspaceBook}
     />

@@ -59,11 +59,7 @@ export function XchatGuestReadonlyShell({
 }: XchatGuestReadonlyShellProps) {
   const defaultRail = (
     <aside aria-label="Public read-only navigation" className="app-user-public-rail xf-widget">
-      <AppUserResourcesRailSection
-        isGlobalAdmin={false}
-        railDisclosureDefaultOpen={false}
-        showReferenceDocs={false}
-      />
+      <AppUserResourcesRailSection isGlobalAdmin={false} railDisclosureDefaultOpen={false} />
     </aside>
   );
 

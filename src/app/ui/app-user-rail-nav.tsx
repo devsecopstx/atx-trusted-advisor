@@ -142,8 +142,6 @@ export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
   /** When true, disclosure starts expanded. Default collapsed across product + xChat rails. */
   railDisclosureDefaultOpen?: boolean;
-  /** Hide non-resource shortcuts (used by guest/public shells). */
-  showReferenceDocs?: boolean;
   /** Hide account settings row (used by guest/read-only shells). */
   showSettingsLink?: boolean;
   /** Active workspace portfolio for import-activity deep link; omit for `/import-activity` only. */
@@ -160,9 +158,8 @@ export type AppUserAccountPublicRailProps = AppUserRailNavProps & {
 };
 
 export function AppUserResourcesRailSection({
-  isGlobalAdmin,
+  isGlobalAdmin: _isGlobalAdmin,
   railDisclosureDefaultOpen = false,
-  showReferenceDocs = true,
   workspacePortfolioId = null
 }: AppUserRailNavProps) {
   const pid = workspacePortfolioId?.trim() ?? "";
@@ -201,17 +198,6 @@ export function AppUserResourcesRailSection({
               <span>Guides</span>
             </span>
           </RailNavLink>
-          {showReferenceDocs
-            ? isGlobalAdmin ? (
-                <RailNavLink href="/admin/api-docs">Reference docs</RailNavLink>
-              ) : (
-                <XfHoverHint hint="Open API reference from Hub when you have admin access">
-                  <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
-                    Reference Docs
-                  </span>
-                </XfHoverHint>
-              )
-            : null}
         </nav>
       </RailDisclosure>
     </section>

@@ -171,6 +171,5 @@ export const ADMIN_HUB_ITEM_ICONS: Partial<Record<string, AdminHubIconKey>> = {
   "/admin/login-audit": "audit",
   "/admin/logins-today": "audit",
   "/admin/xchat-tool-usage": "chat",
-  "/admin/manage-backoffice": "settings",
-  "/admin/api-docs": "audit"
+  "/admin/manage-backoffice": "settings"
 };

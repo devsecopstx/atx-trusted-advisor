@@ -34,11 +34,8 @@ export default async function AdminPortfoliosPage() {
           <code className="font-mono text-xs">GET</code> / <code className="font-mono text-xs">PATCH</code> /{" "}
           <code className="font-mono text-xs">DELETE</code>{" "}
           <code className="font-mono text-xs">{"/api/admin/portfolios/{portfolioId}"}</code> (session:{" "}
-          <code className="font-mono text-xs">global_admin</code>). OpenAPI:{" "}
-          <Link className="underline font-medium" href="/admin/api-docs">
-            Admin API docs
-          </Link>
-          .
+          <code className="font-mono text-xs">global_admin</code>). OpenAPI inventory:{" "}
+          <code className="font-mono text-xs">GET /api/openapi</code>.
         </p>
         <p className="hero-copy" style={{ marginTop: "0.65rem" }}>
           <strong>Flow:</strong> use the table below for full CRUD — edit rows and <strong>Save all changes</strong>,

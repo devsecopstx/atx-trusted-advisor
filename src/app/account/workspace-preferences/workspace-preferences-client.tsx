@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
 import { WorkspaceRailAppearance } from "@/app/ui/workspace-rail-appearance";
 import { buildAdvisorComplianceBlockedMessage } from "@/modules/compliance/advisor-compliance-redirect";
-import type { AdvisorFinraRegistrationStatus, AdvisorLicenseType } from "@/modules/compliance/types";
+import type { AdvisorComplianceMissingStep, AdvisorFinraRegistrationStatus, AdvisorLicenseType } from "@/modules/compliance/types";
 import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
 type DisclosureBundle = {
@@ -49,7 +49,7 @@ type FinraRegistrationWire = {
 type ComplianceStatusWire = {
   enforced: boolean;
   complete: boolean;
-  missingSteps: string[];
+  missingSteps: AdvisorComplianceMissingStep[];
   disclosureVersion?: string;
   finraRegistrationCount: number;
   credentialSecEnabled?: boolean;
@@ -74,13 +74,13 @@ const LICENSE_OPTIONS: { value: AdvisorLicenseType; label: string }[] = [
   { value: "other", label: "Other" }
 ];
 
-const MISSING_STEP_GUIDANCE: Record<string, string> = {
+const MISSING_STEP_GUIDANCE: Record<AdvisorComplianceMissingStep, string> = {
   attestation: "accept the AI disclosure and attestation, then click Save acknowledgments",
   ai_disclosure: "accept the AI disclosure and attestation, then click Save acknowledgments",
   finra_registration: "add at least one FINRA registration (CRD, license, and jurisdiction)"
 };
 
-function complianceBannerLines(missingSteps: string[]): string[] {
+function complianceBannerLines(missingSteps: AdvisorComplianceMissingStep[]): string[] {
   const lines: string[] = [];
   if (missingSteps.includes("attestation") || missingSteps.includes("ai_disclosure")) {
     lines.push(MISSING_STEP_GUIDANCE.attestation);

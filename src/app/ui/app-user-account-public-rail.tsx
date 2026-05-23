@@ -53,7 +53,6 @@ export async function AppUserAccountPublicRailForSession({
         accountFeedbackPageLabel={feedbackPageLabel}
         defaultPortfolioId={workspacePortfolioId}
         isGlobalAdmin={admin}
-        showReferenceDocs
         visiblePathPrefixes={visiblePathPrefixes}
         workspaceBook={book}
       />

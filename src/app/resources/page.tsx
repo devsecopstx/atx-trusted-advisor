@@ -5,6 +5,7 @@ import { GlobalFooter } from "@/app/ui/global-footer";
 import { PublicMarketingHeader } from "@/app/ui/public-marketing-header";
 import { XfinancePremiumValueBlock } from "@/app/ui/xfinance-premium-value-block";
 import { ADVISORY_RESOURCE_PILLARS } from "@/lib/marketing/advisory-resource-pillars";
+import { MARKETING_LANDING_XOPTIONS_HREF } from "@/lib/marketing/landing-cta";
 import { withUtmParams } from "@/lib/marketing/utm";
 
 export const metadata: Metadata = {
@@ -37,7 +38,6 @@ export const metadata: Metadata = {
 };
 
 export default function ResourcesHubPage() {
-  const loginHref = "/login";
   const registerHref = withUtmParams("/account/billing?register=1&plan=basic", {
     utm_source: "resources",
     utm_campaign: "hub",
@@ -46,7 +46,7 @@ export default function ResourcesHubPage() {
   return (
     <div className="min-h-screen bg-[var(--xf-bg-900)] text-[var(--xf-text-100)]">
       <PublicMarketingHeader
-        loginHref={loginHref}
+        xoptionsHref={MARKETING_LANDING_XOPTIONS_HREF}
         registerTrialHref={registerHref}
       />
 

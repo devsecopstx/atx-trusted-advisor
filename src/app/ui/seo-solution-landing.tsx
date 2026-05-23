@@ -4,9 +4,9 @@ import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-ban
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { PublicMarketingHeader } from "@/app/ui/public-marketing-header";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
+import { MARKETING_LANDING_XOPTIONS_HREF } from "@/lib/marketing/landing-cta";
 
 const SEO_REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
-const SEO_LOGIN_HREF = `/login?next=${encodeURIComponent("/xchat")}`;
 
 export type SeoSolutionLandingProps = {
   h1: string;
@@ -25,7 +25,7 @@ export function SeoSolutionLanding({
 }: SeoSolutionLandingProps) {
   return (
     <div className="min-h-screen bg-[var(--xf-bg-900)] text-[var(--xf-text-100)]">
-      <PublicMarketingHeader loginHref={SEO_LOGIN_HREF} registerTrialHref={SEO_REGISTER_TRIAL_HREF} />
+      <PublicMarketingHeader xoptionsHref={MARKETING_LANDING_XOPTIONS_HREF} registerTrialHref={SEO_REGISTER_TRIAL_HREF} />
 
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-8 sm:py-16">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--xf-gain-green)]">aTx Trusted Advisory</p>

@@ -333,7 +333,6 @@ export type WorkspaceProductSidebarProps = {
   googleLinkHref?: string | null;
   accountFeedbackPageLabel?: string;
   workspaceBook?: AppUserDefaultBook | null;
-  showReferenceDocs?: boolean;
   visiblePathPrefixes?: string[];
   xchatSection?: ReactNode;
 };
@@ -523,7 +522,6 @@ export function WorkspaceProductSidebar({
   googleLinkHref = null,
   accountFeedbackPageLabel,
   workspaceBook = null,
-  showReferenceDocs = true,
   visiblePathPrefixes,
   xchatSection
 }: WorkspaceProductSidebarProps) {
@@ -1087,7 +1085,6 @@ export function WorkspaceProductSidebar({
           googleLinkHref={googleLinkHref}
           isGlobalAdmin={isGlobalAdmin}
           isPathVisible={isPathVisible}
-          showReferenceDocs={showReferenceDocs}
           showWideSidebarChrome={showWideSidebarChrome}
         />
       ) : null}

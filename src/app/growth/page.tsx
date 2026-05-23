@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { PublicMarketingHeader } from "@/app/ui/public-marketing-header";
+import { MARKETING_LANDING_XOPTIONS_HREF } from "@/lib/marketing/landing-cta";
 
 export const metadata: Metadata = {
   title: "2026–2027 Growth & Partnerships | xFinance",
@@ -10,13 +11,12 @@ export const metadata: Metadata = {
 };
 
 export default function GrowthPage() {
-  const loginHref = "/login";
   const registerHref = "/account/billing?register=1&plan=basic";
 
   return (
     <div className="min-h-screen bg-[var(--xf-bg-900)] text-[var(--xf-text-100)]">
       <PublicMarketingHeader
-        loginHref={loginHref}
+        xoptionsHref={MARKETING_LANDING_XOPTIONS_HREF}
         registerTrialHref={registerHref}
       />
 

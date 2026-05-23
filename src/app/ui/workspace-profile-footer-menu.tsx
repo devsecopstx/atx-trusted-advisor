@@ -111,7 +111,6 @@ export type WorkspaceProfileFooterMenuProps = {
   googleLinkHref?: string | null;
   isPathVisible: (pathPrefix: string) => boolean;
   isGlobalAdmin: boolean;
-  showReferenceDocs: boolean;
 };
 
 export function WorkspaceProfileFooterMenu({
@@ -120,8 +119,7 @@ export function WorkspaceProfileFooterMenu({
   feedbackPageLabel,
   googleLinkHref = null,
   isPathVisible,
-  isGlobalAdmin,
-  showReferenceDocs
+  isGlobalAdmin
 }: WorkspaceProfileFooterMenuProps) {
   const pathname = usePathname() ?? "";
   const branding = useTenantShellBranding();
@@ -387,17 +385,6 @@ export function WorkspaceProfileFooterMenu({
                       >
                         <LucideSettingsIcon className="workspace-profile-footer-menu__row-icon" />
                         Settings
-                      </Link>
-                    ) : null}
-                    {isGlobalAdmin && showReferenceDocs ? (
-                      <Link
-                        className="workspace-profile-footer-menu__row"
-                        href="/admin/api-docs"
-                        role="menuitem"
-                        onClick={closeMenu}
-                      >
-                        <LucideBookOpenIcon className="workspace-profile-footer-menu__row-icon" />
-                        Reference docs
                       </Link>
                     ) : null}
                     {isGlobalAdmin ? (

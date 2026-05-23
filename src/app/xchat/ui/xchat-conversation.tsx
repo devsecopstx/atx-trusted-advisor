@@ -2062,7 +2062,6 @@ export function XchatConversation({
               defaultPortfolioId={workspacePortfolioId?.trim() ? workspacePortfolioId.trim() : null}
               googleLinkHref={googleLinkHref}
               isGlobalAdmin={isGlobalAdminSession}
-              showReferenceDocs
               visiblePathPrefixes={visiblePathPrefixes}
               workspaceBook={workspaceBook}
               xchatSection={(

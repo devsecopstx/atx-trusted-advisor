@@ -207,12 +207,6 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         railPrimary: true,
         description:
           "Workspace limits, ambient experience, default xChat persona, and feature flags — unified per-tenant configuration (legacy paths redirect here)."
-      },
-      {
-        href: "/admin/api-docs",
-        title: "API docs",
-        icon: "audit",
-        description: "OpenAPI current-state and interactive API documentation."
       }
     ]
   }

@@ -18,7 +18,6 @@ export type WorkspaceProductSidebarServerProps = Pick<
   | "accountFeedbackPageLabel"
   | "defaultPortfolioId"
   | "isGlobalAdmin"
-  | "showReferenceDocs"
   | "visiblePathPrefixes"
   | "workspaceBook"
 >;
@@ -62,7 +61,6 @@ export async function getWorkspaceProductSidebarPropsForSession(
     accountFeedbackPageLabel,
     defaultPortfolioId: workspacePortfolioId,
     isGlobalAdmin: admin,
-    showReferenceDocs: true,
     visiblePathPrefixes,
     workspaceBook: book
   };
