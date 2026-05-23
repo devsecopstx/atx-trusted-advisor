@@ -1,10 +1,15 @@
 import Link from "next/link";
 
 import { LucideHouseIcon } from "@/app/ui/lucide-product-icons";
-import { withUtmParams } from "@/lib/marketing/utm";
 
 import { AtxFinanceLogo } from "./atxfinance-logo";
-import { USER_PRODUCT_DESCRIPTOR_LINE } from "./product-brand-constants";
+import { USER_PRODUCT_DESCRIPTOR_LINE, XFINANCE_BRAND_SUBLINE } from "./product-brand-constants";
+import {
+  MARKETING_LANDING_BILLING_PLANS_CTA_LABEL,
+  MARKETING_LANDING_BILLING_PLANS_HREF,
+  MARKETING_LANDING_XOPTIONS_CTA_LABEL,
+  MARKETING_LANDING_XOPTIONS_HREF
+} from "@/lib/marketing/landing-cta";
 
 function AtxFinanceIcon() {
   return (
@@ -71,12 +76,6 @@ type MarketingHeroProps = {
 };
 
 export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: MarketingHeroProps) {
-  const loginHref = withUtmParams("/api/auth/x/login?next=%2Fxchat", {
-    utm_source: "x",
-    utm_campaign: "weekly-pulse",
-    utm_medium: "owned-social"
-  });
-
   return (
     <section className="mh-hero">
       <div className="mh-grid-lines" aria-hidden="true" />
@@ -93,11 +92,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
             Just <span className="mh-tagline-glow">Gains</span> Earned.
           </h1>
 
-          <p className="mh-sub">
-            aTx is built for options-focused investors and professionals who want execution-style portfolio tooling,
-            xAI-powered advisory chat, and exam prep in one controlled workspace — not a pile of disconnected
-            dashboards or generic chatbots.
-          </p>
+          <p className="mh-sub">{XFINANCE_BRAND_SUBLINE}</p>
 
           <div className="mh-badges">
             <span className="mh-badge mh-badge-grok">Powered by Grok</span>
@@ -106,29 +101,32 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
 
           {signedIn && isGlobalAdmin ? (
             <div className="cta-row mh-cta-row mh-cta-row--triple" role="group" aria-label="Product shortcuts">
-              <Link className="cta cta-primary" href="/portfolio">
-                Portfolio
+              <Link className="cta cta-primary" href={MARKETING_LANDING_XOPTIONS_HREF}>
+                {MARKETING_LANDING_XOPTIONS_CTA_LABEL}
+              </Link>
+              <Link className="cta cta-secondary" href={MARKETING_LANDING_BILLING_PLANS_HREF}>
+                {MARKETING_LANDING_BILLING_PLANS_CTA_LABEL}
               </Link>
               <Link className="cta cta-secondary" href="/xchat">
                 xChat
-              </Link>
-              <Link className="cta cta-secondary" href="/xstrategybuilder">
-                xStrategyBuilder
               </Link>
               <Link className="cta cta-secondary" href="/admin">
                 Hub
               </Link>
             </div>
           ) : (
-            <div className="mh-guest-signin" role="group" aria-label="Sign in">
+            <div className="mh-guest-signin" role="group" aria-label="Get started">
               <div className="cta-row mh-cta-row">
-                <Link className="cta cta-primary" href={loginHref}>
-                  Sign in with X
+                <Link className="cta cta-primary" href={MARKETING_LANDING_XOPTIONS_HREF}>
+                  {MARKETING_LANDING_XOPTIONS_CTA_LABEL}
+                </Link>
+                <Link className="cta cta-secondary" href={MARKETING_LANDING_BILLING_PLANS_HREF}>
+                  {MARKETING_LANDING_BILLING_PLANS_CTA_LABEL}
                 </Link>
               </div>
               <p className="mh-login-hint">
-                Free plan is pre-selected on the next step. After approval you land in <strong>xChat</strong> by
-                default.
+                Start on <strong>/account/billing</strong> with Basic pre-selected. Limits on the billing cards match
+                your tenant workspace and subscription tier after approval.
               </p>
             </div>
           )}

@@ -29,11 +29,14 @@ describe("user surfaces: aTx Trusted Advisory brand", () => {
     expect(src).not.toMatch(/>\s*xFinance\s*</);
   });
 
-  it("marketing hero uses shared descriptor and retitles the portfolio product card", () => {
+  it("marketing hero uses shared descriptor, subline, and billing/xOptions CTAs", () => {
     const p = path.join(process.cwd(), "src/app/ui/marketing-hero.tsx");
     const src = readFileSync(p, "utf8");
     expect(src).toContain("USER_PRODUCT_DESCRIPTOR_LINE");
+    expect(src).toContain("XFINANCE_BRAND_SUBLINE");
     expect(src).toContain('name="aTx Trusted Advisory"');
+    expect(src).toContain("MARKETING_LANDING_XOPTIONS_HREF");
+    expect(src).toContain("MARKETING_LANDING_BILLING_PLANS_HREF");
     expect(src).not.toContain('name="xFinance"');
   });
 

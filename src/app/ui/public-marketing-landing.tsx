@@ -16,12 +16,16 @@ import {
 } from "@/app/ui/public-marketing-header";
 import { PoweredByXai } from "@/app/ui/xai-brand-mark";
 import { XfinancePremiumValueBlock } from "@/app/ui/xfinance-premium-value-block";
+import {
+  MARKETING_LANDING_BILLING_PLANS_CTA_LABEL,
+  MARKETING_LANDING_BILLING_PLANS_HREF,
+  MARKETING_LANDING_BILLING_REGISTER_HREF,
+  MARKETING_LANDING_XOPTIONS_CTA_LABEL,
+  MARKETING_LANDING_XOPTIONS_HREF
+} from "@/lib/marketing/landing-cta";
 import { withUtmParams } from "@/lib/marketing/utm";
 
-
-const REGISTER_TRIAL_HREF = "/account/billing?register=1&plan=basic";
 const TRIAL_CTA_LABEL = MARKETING_TRIAL_CTA_LABEL;
-const DEFAULT_POST_LOGIN = "/xchat";
 const MARKETING_UTM = { utm_source: "x", utm_campaign: "weekly-pulse", utm_medium: "owned-social" } as const;
 
 /** Drop real captures into `public/landing/` (same names, or change paths here). */
@@ -32,24 +36,21 @@ const LANDING_PRODUCT_SHOTS = {
 } as const;
 
 export function PublicMarketingLanding() {
-  const registerTrialHref = withUtmParams(REGISTER_TRIAL_HREF, MARKETING_UTM);
-  const iaPilotHref = withUtmParams(REGISTER_TRIAL_HREF, {
+  const xoptionsHref = withUtmParams(MARKETING_LANDING_XOPTIONS_HREF, MARKETING_UTM);
+  const registerTrialHref = withUtmParams(MARKETING_LANDING_BILLING_REGISTER_HREF, MARKETING_UTM);
+  const iaPilotHref = withUtmParams(MARKETING_LANDING_BILLING_REGISTER_HREF, {
     ...MARKETING_UTM,
     utm_content: "ia-pilot"
   });
-  const plansHref = withUtmParams("/account/billing", MARKETING_UTM);
-  const loginHref = withUtmParams(
-    `/login?next=${encodeURIComponent(DEFAULT_POST_LOGIN)}`,
-    MARKETING_UTM
-  );
-
-  const scrollDemo = () => {
-    document.getElementById("xchat-demo")?.scrollIntoView({ behavior: "smooth" });
-  };
+  const plansHref = withUtmParams(MARKETING_LANDING_BILLING_PLANS_HREF, MARKETING_UTM);
 
   return (
     <div className="min-h-screen bg-transparent text-[var(--xf-text-100)]">
-      <PublicMarketingHeader loginHref={loginHref} registerTrialHref={registerTrialHref} trialCtaLabel={TRIAL_CTA_LABEL} />
+      <PublicMarketingHeader
+        xoptionsHref={xoptionsHref}
+        registerTrialHref={registerTrialHref}
+        trialCtaLabel={TRIAL_CTA_LABEL}
+      />
 
       <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 flex justify-end">
         <EducationalDisclaimerBanner className="mt-3" />
@@ -82,11 +83,7 @@ export function PublicMarketingLanding() {
             </p>
 
             <h1 className="mt-3 text-4xl font-bold leading-[1.08] tracking-tighter text-[var(--xf-text-100)] sm:text-5xl md:text-6xl">
-              <span className="block">Real-Money Options Income.</span>
-              <span className="mt-2 block">AI That Understands Your Book.</span>
-              <span className="mt-3 block text-2xl font-semibold leading-snug tracking-tight text-[var(--xf-gain-green)] sm:text-3xl md:text-4xl">
-                {XFINANCE_BRAND_SUBLINE}
-              </span>
+              {XFINANCE_BRAND_SUBLINE}
             </h1>
 
             <div className="mt-4">
@@ -110,11 +107,8 @@ export function PublicMarketingLanding() {
             </div>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-              <Link href={loginHref} className={MARKETING_HEADER_BTN_SECONDARY}>
-                Sign In
-              </Link>
-              <Link href={registerTrialHref} className={MARKETING_HEADER_BTN_PRIMARY}>
-                {TRIAL_CTA_LABEL}
+              <Link href={xoptionsHref} className={MARKETING_HEADER_BTN_PRIMARY}>
+                {MARKETING_LANDING_XOPTIONS_CTA_LABEL}
                 <span
                   aria-hidden
                   className="rounded-xl bg-[color-mix(in_srgb,var(--xf-bg-900)_12%,transparent)] px-2 py-0.5 text-xs font-semibold"
@@ -122,29 +116,16 @@ export function PublicMarketingLanding() {
                   →
                 </span>
               </Link>
+              <Link href={registerTrialHref} className={MARKETING_HEADER_BTN_SECONDARY}>
+                {TRIAL_CTA_LABEL}
+              </Link>
 
               <Link
                 href={plansHref}
                 className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               >
-                See plans
+                {MARKETING_LANDING_BILLING_PLANS_CTA_LABEL}
               </Link>
-
-              <button
-                type="button"
-                onClick={scrollDemo}
-                className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-[var(--xf-text-200)] transition hover:border-white/20 hover:text-[var(--xf-text-100)]"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10" aria-hidden>
-                  <LightningBolt size={22} />
-                </span>
-                <span>
-                  <span className="block text-sm font-medium text-[var(--xf-text-100)]">Try xChat preview</span>
-                  <span className="text-xs text-[var(--xf-text-400)]">
-                    Interactive on-page demo · recorded strategy-job examples ship with approved trial workspaces
-                  </span>
-                </span>
-              </button>
             </div>
 
             <EducationalDisclaimerBanner className="mt-6 max-w-2xl" />
@@ -372,12 +353,12 @@ export function PublicMarketingLanding() {
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href={registerTrialHref} className={MARKETING_HEADER_BTN_PRIMARY}>
-              {TRIAL_CTA_LABEL}
+            <Link href={xoptionsHref} className={MARKETING_HEADER_BTN_PRIMARY}>
+              {MARKETING_LANDING_XOPTIONS_CTA_LABEL}
               <span aria-hidden className="ml-2">→</span>
             </Link>
-            <Link href={loginHref} className={MARKETING_HEADER_BTN_SECONDARY}>
-              Sign in with X
+            <Link href={registerTrialHref} className={MARKETING_HEADER_BTN_SECONDARY}>
+              {TRIAL_CTA_LABEL}
             </Link>
           </div>
 

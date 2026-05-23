@@ -7,8 +7,8 @@ describe("PublicMarketingHeader", () => {
   const headerPath = path.join(process.cwd(), "src/app/ui/public-marketing-header.tsx");
   const source = readFileSync(headerPath, "utf8");
 
-  it("ships paired Sign In + trial CTAs with shared button sizing", () => {
-    expect(source).toContain("Sign In");
+  it("ships paired xOptions + billing CTAs with shared button sizing", () => {
+    expect(source).toContain("MARKETING_LANDING_XOPTIONS_CTA_LABEL");
     expect(source).toContain("MARKETING_HEADER_BTN_SECONDARY");
     expect(source).toContain("MARKETING_HEADER_BTN_PRIMARY");
     expect(source).toContain("h-11");

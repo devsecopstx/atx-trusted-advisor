@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { LucideMenuIcon, LucideXIcon } from "@/app/ui/lucide-product-icons";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
+import { MARKETING_LANDING_XOPTIONS_CTA_LABEL } from "@/lib/marketing/landing-cta";
 
 export const MARKETING_TRIAL_CTA_LABEL = "Start Basic Trial — No Card";
 
@@ -21,7 +22,7 @@ const MARKETING_NAV_LINKS: { href: string; label: string }[] = [
 ];
 
 type MarketingHeaderCtasProps = {
-  loginHref: string;
+  xoptionsHref: string;
   registerTrialHref: string;
   trialCtaLabel: string;
   className?: string;
@@ -31,7 +32,7 @@ type MarketingHeaderCtasProps = {
 };
 
 function MarketingHeaderCtas({
-  loginHref,
+  xoptionsHref,
   registerTrialHref,
   trialCtaLabel,
   className,
@@ -44,11 +45,11 @@ function MarketingHeaderCtas({
   return (
     <div className={className}>
       <Link
-        href={loginHref}
+        href={xoptionsHref}
         className={`${MARKETING_HEADER_BTN_SECONDARY} ${widthClass(secondaryFullWidth)}`}
         onClick={onNavigate}
       >
-        Sign In
+        {MARKETING_LANDING_XOPTIONS_CTA_LABEL}
       </Link>
       <Link
         href={registerTrialHref}
@@ -68,13 +69,13 @@ function MarketingHeaderCtas({
 }
 
 type PublicMarketingHeaderProps = {
-  loginHref: string;
+  xoptionsHref: string;
   registerTrialHref: string;
   trialCtaLabel?: string;
 };
 
 export function PublicMarketingHeader({
-  loginHref,
+  xoptionsHref,
   registerTrialHref,
   trialCtaLabel = MARKETING_TRIAL_CTA_LABEL
 }: PublicMarketingHeaderProps) {
@@ -129,7 +130,7 @@ export function PublicMarketingHeader({
 
         <MarketingHeaderCtas
           className="hidden items-center gap-3 md:flex"
-          loginHref={loginHref}
+          xoptionsHref={xoptionsHref}
           registerTrialHref={registerTrialHref}
           trialCtaLabel={trialCtaLabel}
         />
@@ -175,7 +176,7 @@ export function PublicMarketingHeader({
           </div>
           <MarketingHeaderCtas
             className="mt-auto flex flex-col gap-4 pt-8"
-            loginHref={loginHref}
+            xoptionsHref={xoptionsHref}
             registerTrialHref={registerTrialHref}
             trialCtaLabel={trialCtaLabel}
             primaryFullWidth
