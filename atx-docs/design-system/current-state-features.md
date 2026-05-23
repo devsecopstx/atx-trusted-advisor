@@ -1,6 +1,6 @@
 # xFinance monorepo — technical architecture & current state
 
-Last updated: 2026-05-12  
+Last updated: 2026-05-22  
 App semver (canonical): root **`package.json`** (currently **3.20.3**; runtime label via `src/lib/app-version.ts` → **`APP_VERSION`** reads the same semver).
 
 This file is the **single consolidated technical architecture** reference: runtime topology, responsibilities, product surface map (what exists in repo today), CI/test matrix, pre-production gates, **known gaps**, and **baseline contracts** teams must not regress without review. Topic deep dives stay in linked **`atx-docs/*`** pages; **prioritized next work** lives in [`PLAN.md`](../PLAN.md). **Directional themes** (summary under [What's next (engineering)](#whats-next-engineering) below): **xChat harden**, **engine × xAI** conversational layer (tools + **InvestmentOutlook**), **Monte Carlo tail-risk** companion to **`OptionsStrategyEngine`**, **portfolio / multi-book outlook** schema & services, and **scheduling / observability / backtest** harness — full tables and priority IDs in **`PLAN.md`**. **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change — update **this doc** when architecture or baseline contracts change.
@@ -355,6 +355,7 @@ These are **documented** backlog items or **conscious** holes — not a feature 
 
 ### UX performance (baseline & release prep)
 
+- **Marketing proof captures (May 2026):** Shipped product screenshots for public CTAs live under **`public/marketing-screenshots/`** (URL **`/marketing-screenshots/*`**) — portfolios desk, IV >45% scanner, xChat action scan, xOptions stepped flow, wheel studio, and holdings Greeks overlay. Filename → channel matrix (X, hero, LinkedIn, email): [`xchat/xfinance-branding-review.md`](../xchat/xfinance-branding-review.md) §9. Re-capture after major shell or scanner UI changes so LHCI/marketing assets stay aligned.
 - **Targets (product):** LCP ≤ 2.0 s, INP ≤ 200 ms, CLS ≤ 0.1 on **`/portfolio`**, **`/portfolios`**, **`/xoptions`**, **`/watchlist`**, **`/xchat`** where feasible.
 - **Post-deploy smoke:** **`GET /api/health`** (version matches image); app_user / admin paths per [`AGENTS.md`](../../AGENTS.md) § Production validation.
 - **High-risk clients:** ApexCharts (xOptions symbol panel), long xChat threads, watchlist quote refresh, IBKR snapshot panels, virtualized portfolio tables.
@@ -459,7 +460,8 @@ Authenticated baselines: mint cookie per **Authenticated steps** above; attach *
 
 ## References (unchanged deep dives)
 
-- `services/atxfinance-backend/README.md`
+- `atx-docs/branding/` — prompt/tag docs + link to **`public/marketing-screenshots/`** (§ Public marketing screenshots in `branding/README.md`)
+- `atx-docs/xchat/xfinance-branding-review.md` — logo/hero rules + §9 marketing screenshot catalog
 - `atx-docs/sre-ops/atxfinance-backend-http-api.md`
 - `atx-docs/PLAN.md`
 - `atx-docs/guides/deploy-and-ops.md`

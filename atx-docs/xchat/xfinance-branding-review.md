@@ -97,3 +97,34 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 - **Legal stubs:** `**legal-default-content.tsx**` uses `PRODUCT_PUBLIC_NAME = "atx Trusted Advisor"` for the web app; entity line may still read **aTx⚡Finance** where appropriate.
 - **Backend persona name:** Default published app-role persona is **atx-trusted-advisor** (admin default remains **Super-Agent**).
 
+---
+
+## 9. Public CTA marketing screenshots (May 2026 — v2)
+
+**Path:** `public/marketing-screenshots/` — served at **`/marketing-screenshots/<filename>`** (Next `public/` static). Use for waitlist, FinTwit/X, LinkedIn, email digest, and hero refreshes. **Do not** invent live metrics or testimonials beyond what the captures show. Pair with tagline **"No Atoms Moved. Just Gains Earned."** and subline from `xfinance-branding.mdc`.
+
+**Index (v2 refresh — scanner tightening + xOptions/xChat proof):**
+
+| Filename | Surface / story | X post | Website hero | LinkedIn carousel | Email digest |
+| -------- | ---------------- | :----: | :------------: | :---------------: | :----------: |
+| `01-portfolios.png` | `/portfolios` desk — multi-book totals, watchlist IV/OI rail, movers | | **Primary** | Slide 1 — portfolio stack | Header / weekly book summary |
+| `01-covered-call.png` | xChat — wheel vs CC vs PMCC compare on top holdings (Heavy / Grok 4.3) | **Primary** | Alt hero — advisory | Slide 2 — xChat depth | Strategy compare callout |
+| `01-weekly-recap-dark-1200x630.png` | xChat weekly recap — what worked / didn't / next week (IV >45% scanner) | **Primary** (1200×630) | OG / social card | Slide 5 — recap | **Primary** — digest hero |
+| `02-scanner-iv45-hits.png` | xChat IV Rank Scanner (>45%) table + watchlist context | **Primary** | Alt hero — scanner | Slide 3 — scanner tightening | Scanner hits section |
+| `02-scanner-iv45-hits-1920x1080.png` | Same as above — **1920×1080** for deck / LinkedIn document | | Deck hero | **Primary** (16:9) | Full-width banner |
+| `02-wheel-studio-input.png` | Wheel Strategy Idea Generator inputs (HNWI report builder) | | Landing — wheel story | Slide 4 — defined-risk wheel | Wheel studio CTA block |
+| `02-xoptions-step1.png` | xOptions step 1 — symbol input (RDW), holdings + hot list | | Step flow intro | Carousel slide 1/5 | — |
+| `02-xoptions-step2.png` | xOptions — choose contract, put chain, premium summary | | — | Carousel slide 4/5 | — |
+| `02-xoptions-step3.png` | xOptions step 3 — choose strategy (cash-secured put selected) | | — | Carousel slide 3/5 | — |
+| `02-xoptions-step4.png` | xOptions step 3 variant — strategy cards + skyline (same step, wider crop) | | — | Alt carousel crop | — |
+| `03-xchat-step1.png` | xChat — wheel strategy narrative + ASCII payoff diagram | **Primary** | — | xChat advisory slide | — |
+| `03-xchat-option-scan.png` | xChat Options Action Scan card — close candidates + watchlist | **Primary** | — | Scanner + desk slide | Action scan recap |
+| `03-choose-contract-greeks.png` | xOptions step 4 + Quant Trader sidebar (VaR/CVaR, POP) | | Quant / pro hero | Slide — quant trader | — |
+| `04-new-defined-risk-wheel-card-1920x1080.png` | Wheel ideas compare — income, yield, assignment/call-away chart | | **Primary** (16:9) | **Primary** — wheel outcomes | Wheel idea spotlight |
+| `05-xoptions-step4-payoff-preview-1200x630.png` | xOptions review order — CSP RDW, advisor note, POP/yield (1200×630) | **Primary** (1200×630) | OG — execution preview | Final slide — review | Trade idea card |
+| `06-portfolio-context-greeks-overlay-1920x1080.png` | Portfolio holdings grid — IV rank, Greeks, broker-style marks | | Desk hero | Holdings + Greeks slide | Holdings table teaser |
+
+**Ops:** Prefer **`01-weekly-recap-dark-1200x630.png`** and **`05-xoptions-step4-payoff-preview-1200x630.png`** for Open Graph / X cards (1200×630). Prefer **`*-1920x1080.png`** for LinkedIn document posts and deck exports. **Exclude** scratch captures (e.g. `SCR-*.png`) from external CTAs until renamed and re-reviewed.
+
+**Cross-refs:** [`design-system/current-state-features.md`](../design-system/current-state-features.md) § UX performance · [`branding/README.md`](../branding/README.md) · [`PLAN.md`](../PLAN.md) § GTM.
+

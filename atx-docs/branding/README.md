@@ -2,6 +2,10 @@
 
 This folder contains image assets plus the 2026 refresh docs used by prompt generation and design review workflows.
 
+## Public marketing screenshots (shipped UI captures)
+
+Product-facing proof assets for CTAs (X, website hero, LinkedIn carousel, email digest) live outside this folder at **`public/marketing-screenshots/`** — served as **`/marketing-screenshots/<filename>`**. Full index with per-channel usage: [`xchat/xfinance-branding-review.md`](../xchat/xfinance-branding-review.md) §9. Reference from UX/perf baseline: [`design-system/current-state-features.md`](../design-system/current-state-features.md) § UX performance.
+
 ## Documents
 
 - `atxfinance-brand-prompts.md`: canonical prompt templates and variants
