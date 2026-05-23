@@ -490,7 +490,7 @@ export function WheelReportView({
                 key={idea.ideaId}
                 className={`rounded-lg border p-3 text-left transition ${
                   active
-                    ? "border-[var(--xf-gain-green)] bg-[color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)]"
+                    ? "border-[var(--xf-accent-cta)] bg-[color-mix(in_srgb,var(--xf-accent-cta)_14%,transparent)]"
                     : "border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)]"
                 }`}
                 type="button"
@@ -499,7 +499,7 @@ export function WheelReportView({
                 <p className="text-sm font-semibold text-[var(--xf-text-100)]">{idea.headline}</p>
                 <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-[0.7rem] leading-snug">
                   <span className="text-[var(--xf-text-400)]">Income / cycle</span>
-                  <span className="text-right font-semibold text-[var(--xf-gain-green)]">
+                  <span className="text-right font-semibold text-[var(--xf-accent-cta)]">
                     {currency(idea.premiumIncomePerCycleUsd)}
                   </span>
                   <span className="text-[var(--xf-text-400)]">Cycle yield</span>

@@ -52,7 +52,7 @@ export function XoptionsOrderPreviewCard({
   const contractLabelPlural = contracts === 1 ? contractLabel : `${contractLabel}s`;
   const maxCashflowLabel = openingAction === "sell_to_open" ? "Max Credit" : "Max Debit";
   const maxCashflowColor =
-    openingAction === "sell_to_open" ? "text-emerald-600 dark:text-emerald-500" : "text-rose-600 dark:text-rose-500";
+    openingAction === "sell_to_open" ? "text-xf-accent-cta" : "text-rose-600 dark:text-rose-500";
   const pOtmHelper =
     probabilityOtmPercent != null
       ? `${symbol.toUpperCase()} ${optionSide === "put" ? ">" : "<"} ${strikeDisplay} at expiration`
@@ -106,9 +106,9 @@ export function XoptionsOrderPreviewCard({
       </div>
 
       {potentialEarningPct != null ? (
-        <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--xf-gain-green)_38%,transparent)] bg-[color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)] px-3 py-1 text-[0.72rem] leading-relaxed text-[var(--xf-text-200)]">
-          <span className="font-bold text-emerald-600 dark:text-emerald-500">Potential earnings:</span>
-          <span className="font-bold text-emerald-600 dark:text-emerald-500">{potentialEarningPct.toFixed(1)}%</span>
+        <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--xf-green-500)_38%,transparent)] bg-[color-mix(in_srgb,var(--xf-green-500)_14%,transparent)] px-3 py-1 text-[0.72rem] leading-relaxed text-[var(--xf-text-200)]">
+          <span className="font-bold text-xf-accent-cta">Potential earnings:</span>
+          <span className="font-bold text-xf-accent-cta">{potentialEarningPct.toFixed(1)}%</span>
           <span>of secured notional</span>
           <span className="font-bold text-[var(--xf-text-100)]">({usd(securedNotionalUsd)})</span>
         </div>

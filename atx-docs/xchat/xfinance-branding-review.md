@@ -42,10 +42,11 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 
 ## 3. Design system vs rule green
 
-- **Rule / marketing:** Accent green `**#22c55e`** (neon gains) in prose.
-- **Design system:** `--xf-gain-green: #39ff14` (`atx-docs/design-system/atxfinance-brand-kit.css`).
+- **Rule / marketing:** Accent green `**#22c55e`** (neon gains) in prose maps to **`--xf-green-500`** in product CSS.
+- **Design system:** `--xf-gain-green: #39ff14` (`atx-docs/design-system/atxfinance-brand-kit.css`) — wordmark / tagline / nav only.
+- **Authoritative green usage table:** [`atxfinance-brand-kit.css`](../design-system/atxfinance-brand-kit.css) (comment after `:root`) · [DEVELOPMENT.md § Branding Tokens](../../DEVELOPMENT.md#branding-tokens) — scanner pass (`--xf-green-500`), IV/heat (`--xf-green-400`), wheel cards (`--xf-accent-cta` / emerald-500), Step 4 CTA borders (`border-green-500`).
 
-**Resolution:** App surfaces and charts use `**--xf-*`**; marketing hero may use `emerald-400` / `#22c55e` per rule. Document any new surface in the same PR if both greens appear side-by-side.
+**Resolution:** App surfaces use the **semantic green table** + `--xf-*`; marketing hero may still use `emerald-400` / `#22c55e` per rule where no product token applies. Document any new surface in the same PR if both greens appear side-by-side.
 
 ---
 
@@ -55,7 +56,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 | Topic             | Gap                                                   | Where to track                                     |
 | ----------------- | ----------------------------------------------------- | -------------------------------------------------- |
 | Hero refresh      | Subline, billing/plans alignment, CTA links if drift   | This doc + PR                                      |
-| Green tokens      | Single table “where which green” if confusion returns | Brand kit or `DEVELOPMENT.md`                      |
+| Green tokens      | Authoritative table in brand kit + DEVELOPMENT.md      | [`atxfinance-brand-kit.css`](../design-system/atxfinance-brand-kit.css) · [DEVELOPMENT.md § Branding Tokens](../../DEVELOPMENT.md#branding-tokens) |
 | Waitlist page     | Not in core app yet — copy lives in rule + product briefs until routed | `xfinance-branding.mdc` · [`../product/`](../product/) · [`../PLAN.md`](../PLAN.md) if needed |
 | Credential upload | Rule = roadmap only; don’t ship fake FINRA/SEC UI     | `xfinance-branding.mdc`                            |
 

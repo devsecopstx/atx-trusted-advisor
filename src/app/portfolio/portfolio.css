@@ -2037,15 +2037,15 @@
 }
 
 .portfolio-consolidated-holdings__iv-rank-badge--elevated {
-  border-color: color-mix(in srgb, var(--xf-warning-400) 45%, transparent);
-  color: var(--xf-warning-400);
-  background: color-mix(in srgb, var(--xf-warning-400) 13%, transparent);
+  border-color: color-mix(in srgb, var(--xf-green-400) 45%, transparent);
+  color: var(--xf-green-400);
+  background: color-mix(in srgb, var(--xf-green-400) 13%, transparent);
 }
 
 .portfolio-consolidated-holdings__iv-rank-badge--hot {
-  border-color: color-mix(in srgb, var(--xf-danger-400) 54%, transparent);
-  color: var(--xf-danger-400);
-  background: color-mix(in srgb, var(--xf-danger-400) 18%, transparent);
+  border-color: color-mix(in srgb, var(--xf-green-500) 54%, transparent);
+  color: var(--xf-green-500);
+  background: color-mix(in srgb, var(--xf-green-500) 18%, transparent);
 }
 
 .portfolio-consolidated-holdings__greek-line {

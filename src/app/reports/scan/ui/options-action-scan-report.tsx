@@ -780,7 +780,7 @@ function OptionsActionScanReportInner({
             <h2 className="text-xl font-semibold tracking-[-0.2px] text-slate-900 dark:text-slate-100">{title}</h2>
             <div className="text-xs text-slate-500 dark:text-slate-400">{generatedAtLabel}</div>
           </div>
-          <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium tracking-wider text-emerald-400">
+          <div className="rounded-full bg-xf-green-500/10 px-3 py-1 text-xs font-medium tracking-wider text-xf-green-400">
             ADVISOR
           </div>
         </header>
@@ -837,18 +837,18 @@ function OptionsActionScanReportInner({
             ) : null}
           </section>
 
-          <aside className="relative space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-950/60 p-5 pl-6 shadow-[0_0_22px_rgba(16,185,129,0.12)]">
-            <div className="pointer-events-none absolute inset-y-3 left-0 w-1 rounded-r bg-emerald-400/65" />
+          <aside className="relative space-y-4 rounded-xl border border-xf-green-500/30 bg-[color-mix(in_srgb,var(--xf-green-500)_10%,var(--xf-bg-900))] p-5 pl-6 shadow-[0_0_22px_color-mix(in_srgb,var(--xf-green-500)_12%,transparent)]">
+            <div className="pointer-events-none absolute inset-y-3 left-0 w-1 rounded-r bg-xf-green-400/65" />
             {showHeaderSummary ? (
               <>
                 <div className="flex items-center gap-2">
-                  <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
-                  <div className="text-[13px] font-semibold tracking-[0.5px] text-emerald-300">CONVICTION</div>
+                  <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-xf-green-400" />
+                  <div className="text-[13px] font-semibold tracking-[0.5px] text-xf-green-400">CONVICTION</div>
                 </div>
-                <div className="text-3xl font-semibold tracking-tighter text-emerald-400">
+                <div className="text-3xl font-semibold tracking-tighter text-xf-green-500">
                   {highConfidenceStc ?? "—"}
                 </div>
-                <div className="text-xs text-emerald-400/80">
+                <div className="text-xs text-xf-green-400/80">
                   {highConfidenceStc ? "Highest-confidence lane (STC bias)" : "No HIGH confidence signal yet"}
                 </div>
               </>

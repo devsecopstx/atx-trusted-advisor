@@ -1641,7 +1641,7 @@ html[data-xf-ui="soft"] .xoptions-at-a-glance {
   line-height: 1.25;
 }
 
-/* Primary chain CTA — aligns with app `cta` + gain-green (xChat / billing-style). */
+/* Primary chain CTA — border-green-500 (Step 4 / recommended action); see brand kit green table. */
 a.xoptions-chain-cta.cta.cta-primary {
   margin-top: 0.25rem;
   padding: 0.65rem 1.15rem;
@@ -1649,15 +1649,15 @@ a.xoptions-chain-cta.cta.cta-primary {
   letter-spacing: 0.03em;
   text-transform: none;
   border-radius: var(--xf-radius-sm);
-  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-green-500) 55%, transparent);
   background: var(--xf-gain-green);
   color: var(--xf-bg-900);
-  box-shadow: 0 0 24px color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--xf-green-500) 22%, transparent);
 }
 
 a.xoptions-chain-cta.cta.cta-primary:hover {
   background: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
-  border-color: color-mix(in srgb, var(--xf-gain-green) 75%, transparent);
+  border-color: color-mix(in srgb, var(--xf-green-500) 75%, transparent);
   color: var(--xf-bg-900);
 }
 
@@ -2052,12 +2052,12 @@ html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid--emp
   font-size: 0.52rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  background: color-mix(in srgb, var(--xf-gain-green) 26%, transparent);
+  background: color-mix(in srgb, var(--xf-green-400) 26%, transparent);
   color: var(--xf-text-100);
-  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 48%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-green-400) 48%, transparent);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 22%, transparent),
-    0 0 14px color-mix(in srgb, var(--xf-gain-green) 28%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--xf-green-400) 22%, transparent),
+    0 0 14px color-mix(in srgb, var(--xf-green-400) 28%, transparent);
 }
 
 .xoptions-chain-table__viewport .xoptions-chain-table__price-col .xoptions-chain-table__price-figure,
@@ -2789,7 +2789,7 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
 }
 
 .xoptions-review-order__gauge-fill {
-  stroke: var(--xf-gain-green);
+  stroke: var(--xf-green-500);
 }
 
 .xoptions-review-order__info {

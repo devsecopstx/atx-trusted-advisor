@@ -7,13 +7,13 @@
 export function XoptionsWeeklyReviewScreenshotMock() {
   return (
     <div
-      className="mx-auto w-full max-w-[720px] overflow-hidden rounded-[var(--xf-radius-md)] border border-[color-mix(in_srgb,var(--xf-gain-green)_28%,transparent)] bg-[var(--xf-bg-900)] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]"
+      className="mx-auto w-full max-w-[720px] overflow-hidden rounded-[var(--xf-radius-md)] border border-[color-mix(in_srgb,var(--xf-green-500)_28%,transparent)] bg-[var(--xf-bg-900)] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]"
       role="img"
       aria-label="xOptions weekly review mock — portfolio context, what worked metrics, educational footer"
     >
       <header className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div>
-          <p className="m-0 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--xf-gain-green)]">
+          <p className="m-0 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--xf-green-500)]">
             aTx⚡Finance · xOptions
           </p>
           <h2 className="m-0 mt-0.5 text-base font-bold text-[var(--xf-text-100)]">Weekly desk review</h2>
@@ -42,7 +42,7 @@ export function XoptionsWeeklyReviewScreenshotMock() {
           </p>
           <dl className="m-0 mt-2 grid grid-cols-2 gap-x-2 gap-y-1 font-mono text-[0.72rem]">
             <dt className="text-[var(--xf-text-500)]">IV rank floor</dt>
-            <dd className="m-0 text-[var(--xf-gain-green)]">&gt; 45%</dd>
+            <dd className="m-0 text-[var(--xf-green-500)]">&gt; 45%</dd>
             <dt className="text-[var(--xf-text-500)]">Straddle |Δ|</dt>
             <dd className="m-0 text-[var(--xf-text-200)]">0.15 – 0.30</dd>
             <dt className="text-[var(--xf-text-500)]">Top idea</dt>
@@ -51,7 +51,7 @@ export function XoptionsWeeklyReviewScreenshotMock() {
         </section>
       </div>
 
-      <section className="mx-4 mb-3 rounded-[var(--xf-radius-md)] border border-white/10 bg-[color-mix(in_srgb,var(--xf-gain-green)_8%,var(--xf-surface-700))] p-3">
+      <section className="mx-4 mb-3 rounded-[var(--xf-radius-md)] border border-white/10 bg-[color-mix(in_srgb,var(--xf-green-500)_8%,var(--xf-surface-700))] p-3">
         <p className="m-0 text-[0.62rem] font-semibold uppercase tracking-wider text-[var(--xf-text-400)]">
           What worked
         </p>
@@ -66,7 +66,7 @@ export function XoptionsWeeklyReviewScreenshotMock() {
               className="rounded border border-white/10 bg-[var(--xf-bg-900)]/60 px-2 py-2 text-center"
             >
               <p className="m-0 text-[0.58rem] uppercase tracking-wide text-[var(--xf-text-500)]">{m.label}</p>
-              <p className="m-0 mt-0.5 text-lg font-bold text-[var(--xf-gain-green)]">{m.value}</p>
+              <p className="m-0 mt-0.5 text-lg font-bold text-[var(--xf-green-500)]">{m.value}</p>
               <p className="m-0 mt-0.5 text-[0.62rem] text-[var(--xf-text-400)]">{m.sub}</p>
             </div>
           ))}

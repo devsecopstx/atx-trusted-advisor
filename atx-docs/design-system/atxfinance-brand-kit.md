@@ -58,7 +58,16 @@ See `shell-theme-guidelines.md` and `.cursor/rules/xfinance-branding.mdc` for cu
 | `--xf-success-400` | `#8bd5b3` | Success states, live badges |
 | `--xf-danger-400` | `#f5a0ad` | Error states, destructive actions |
 | `--xf-warning-400` | `#dfc78d` | Warning states, pending badges |
-| `--xf-gain-green` | `#39ff14` | Neon green for gains, CTAs, hero accents |
+### Semantic greens (authoritative usage)
+
+Full table (Token / Class · Usage · Meaning · Example): comment block in [`atxfinance-brand-kit.css`](./atxfinance-brand-kit.css) (immediately after `:root`) and [DEVELOPMENT.md § Branding Tokens](../../DEVELOPMENT.md#branding-tokens).
+
+| Token | Hex | Use |
+| --- | --- | --- |
+| `--xf-green-500` | `#22c55e` | Success / scanner pass / “what worked” (Tailwind `text-green-500`) |
+| `--xf-green-400` | `#4ade80` | IV rank badges, heat-map highlights (Tailwind `bg-green-400`) |
+| `--xf-accent-cta` | `#10b981` | Defined-risk wheel cards, emerald CTAs (Tailwind `text-emerald-500`) |
+| `--xf-gain-green` | `#39ff14` | Legacy neon — wordmark “Gains”, tagline, nav (not scanner/IV/step-4 rows) |
 | `--xf-gain-green-muted` | `#00cc00` | Subdued green for secondary gain indicators |
 
 ### Chart tokens

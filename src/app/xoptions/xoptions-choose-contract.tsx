@@ -1316,7 +1316,7 @@ export function XoptionsChooseContract({
                           const isAtm = atmStrike != null && Math.abs(row.strike - atmStrike) < 1e-6;
                           const oiCellStyle =
                             oiMix > 0
-                              ? { background: `color-mix(in srgb, var(--xf-gain-green) ${oiMix}%, transparent)` }
+                              ? { background: `color-mix(in srgb, var(--xf-green-400) ${oiMix}%, transparent)` }
                               : undefined;
                           const gb = (cid: XoptionsChainDataColumnId) =>
                             isFirstVisibleColumnInChainGroup(cid, visibleChainDataCols)
