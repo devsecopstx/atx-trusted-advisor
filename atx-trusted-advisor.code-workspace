@@ -2,6 +2,9 @@
   "folders": [
     {
       "path": "."
+    },
+    {
+      "path": "../xfinance-advisor-mcp"
     }
   ],
   "settings": {
