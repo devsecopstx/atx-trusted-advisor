@@ -13,7 +13,8 @@ export type StrategyChoiceId =
   | "cash-secured-put"
   | "buy-write"
   | "long-call-spread"
-  | "short-put-spread";
+  | "short-put-spread"
+  | "wheel-protective-collar";
 
 export type StrategyCapitalMode = "cash" | "stock";
 
@@ -95,6 +96,14 @@ export const MULTI_LEG_STRATEGIES: StrategyCardModel[] = [
     requiresKind: "cash",
     requiresLabel: "Cash (margin)",
     summary: "Credit spread; bullish/neutral, defined risk."
+  },
+  {
+    id: "wheel-protective-collar",
+    title: "Wheel + protective collar",
+    tier: "T2",
+    requiresKind: "cash",
+    requiresLabel: "Cash (collateral + floor debit)",
+    summary: "CSP income with long put floor — defined-risk wheel entry."
   }
 ];
 

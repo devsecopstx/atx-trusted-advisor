@@ -1,6 +1,13 @@
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
+import { heuristicIvPercentile } from "@/app/watchlist/ui/watchlist-metrics";
+import { europeanOptionGreeks } from "@/lib/xoptions/xoptions-bs-greeks";
+import { daysToExpirationUtc } from "@/lib/xoptions/xoptions-order-preview";
 import { parseOccOptionSymbol, underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
+
+const OPTION_MULTIPLIER = 100;
+const RISK_FREE_RATE = 0.045;
+const DEFAULT_OPTION_IV_DECIMAL = 0.35;
 
 export function underlyingQuoteLookupKey(p: SerializablePosition): string | null {
   if (p.type === "stock" || p.type === "option") {
@@ -55,6 +62,157 @@ export type HoldingsRowMetrics = {
   avgCost: number | null;
   usesOptionBookMark: boolean;
 };
+
+/** Nearest-expiry chain highlight — same shape as watchlist `chainGlance`. */
+export type HoldingsChainGlance = {
+  contractType: "call" | "put";
+  strike: number;
+  impliedVolatilityPercent: number;
+  openInterest: number;
+  optionVolume: number;
+  expirationDate: string | null;
+};
+
+export type HoldingsRowGreeks = {
+  deltaNotionalUsd: number | null;
+  gammaNotionalUsd: number | null;
+  thetaDailyUsd: number | null;
+  vegaPerIvPtUsd: number | null;
+};
+
+export function computeIvRankPercentFromChainGlance(
+  glance: HoldingsChainGlance | null | undefined
+): number | null {
+  const iv = glance?.impliedVolatilityPercent;
+  if (iv == null || !Number.isFinite(iv)) {
+    return null;
+  }
+  return heuristicIvPercentile(iv);
+}
+
+export function ivRankBadgeToneClass(ivRank: number | null): string {
+  if (ivRank == null) {
+    return "";
+  }
+  if (ivRank >= 85) {
+    return "portfolio-consolidated-holdings__iv-rank-badge--hot";
+  }
+  if (ivRank >= 70) {
+    return "portfolio-consolidated-holdings__iv-rank-badge--elevated";
+  }
+  return "";
+}
+
+export function greekHeatClass(value: number | null, kind: "delta" | "theta"): string {
+  if (value == null || !Number.isFinite(value)) {
+    return "portfolio-consolidated-holdings__greek--neutral";
+  }
+  if (kind === "theta") {
+    return value < 0
+      ? "portfolio-consolidated-holdings__greek--neg"
+      : "portfolio-consolidated-holdings__greek--pos";
+  }
+  return value < 0
+    ? "portfolio-consolidated-holdings__greek--neg"
+    : "portfolio-consolidated-holdings__greek--pos";
+}
+
+export function formatHoldingsGreekUsd(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) {
+    return "—";
+  }
+  const abs = Math.abs(n);
+  const sign = n > 0 ? "+" : n < 0 ? "−" : "";
+  if (abs >= 1_000_000) {
+    return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+  }
+  if (abs >= 1_000) {
+    return `${sign}$${(abs / 1_000).toFixed(1)}k`;
+  }
+  return `${sign}$${Math.round(abs)}`;
+}
+
+function ivDecimalFromChainGlance(glance: HoldingsChainGlance | null | undefined): number {
+  const ivPct = glance?.impliedVolatilityPercent;
+  if (ivPct == null || !Number.isFinite(ivPct) || ivPct <= 0) {
+    return DEFAULT_OPTION_IV_DECIMAL;
+  }
+  return Math.min(2.5, Math.max(0.05, ivPct / 100));
+}
+
+/** Per-row Greeks (Black–Scholes desk proxy; aligns with quant-trader exposure rollup). */
+export function computeHoldingsRowGreeks(
+  p: SerializablePosition,
+  quotes: Record<string, SymbolLookupResult | null>,
+  chainGlance: HoldingsChainGlance | null | undefined
+): HoldingsRowGreeks {
+  if (p.type === "cash" || p.type === "real_estate") {
+    return {
+      deltaNotionalUsd: null,
+      gammaNotionalUsd: null,
+      thetaDailyUsd: null,
+      vegaPerIvPtUsd: null
+    };
+  }
+
+  const underlyingKey = underlyingQuoteLookupKey(p);
+  const spot = underlyingKey ? quotes[underlyingKey]?.price : null;
+  if (spot == null || !Number.isFinite(spot) || spot <= 0) {
+    return {
+      deltaNotionalUsd: null,
+      gammaNotionalUsd: null,
+      thetaDailyUsd: null,
+      vegaPerIvPtUsd: null
+    };
+  }
+
+  if (p.type === "stock") {
+    const deltaNotionalUsd = p.shares * spot;
+    return {
+      deltaNotionalUsd,
+      gammaNotionalUsd: 0,
+      thetaDailyUsd: 0,
+      vegaPerIvPtUsd: 0
+    };
+  }
+
+  if (!p.expiration || !Number.isFinite(p.strike) || p.strike <= 0) {
+    return {
+      deltaNotionalUsd: null,
+      gammaNotionalUsd: null,
+      thetaDailyUsd: null,
+      vegaPerIvPtUsd: null
+    };
+  }
+
+  const dte = daysToExpirationUtc(p.expiration);
+  const T = Math.max(dte, 1) / 365;
+  const greeks = europeanOptionGreeks({
+    spot,
+    strike: p.strike,
+    T,
+    sigma: ivDecimalFromChainGlance(chainGlance),
+    riskFreeRate: RISK_FREE_RATE,
+    side: p.optionType
+  });
+  if (!greeks) {
+    return {
+      deltaNotionalUsd: null,
+      gammaNotionalUsd: null,
+      thetaDailyUsd: null,
+      vegaPerIvPtUsd: null
+    };
+  }
+
+  const sign = p.contracts < 0 ? -1 : 1;
+  const mult = OPTION_MULTIPLIER * Math.abs(p.contracts) * sign;
+  return {
+    deltaNotionalUsd: greeks.delta * spot * mult,
+    gammaNotionalUsd: greeks.gamma * spot * mult,
+    thetaDailyUsd: greeks.thetaPerDay * mult,
+    vegaPerIvPtUsd: greeks.vegaPerOnePercentIv * mult
+  };
+}
 
 export function rowCostBasisUsd(p: SerializablePosition): number {
   if (p.type === "real_estate") {

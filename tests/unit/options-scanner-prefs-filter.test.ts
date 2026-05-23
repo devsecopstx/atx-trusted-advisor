@@ -48,6 +48,15 @@ describe("mergeOptionsStrategyFilters", () => {
     expect(m.minDte).toBe(10);
     expect(m.maxDte).toBe(45);
   });
+
+  it("combines minIvRankPct as max", () => {
+    const m = mergeOptionsStrategyFilters([
+      { slug: "a", filters: { minIvRankPct: 45 } },
+      { slug: "b", filters: { minIvRankPct: 60 } }
+    ]);
+    expect(m.minIvRankPct).toBe(60);
+    expect(mergedScannerFiltersActive(m)).toBe(true);
+  });
 });
 
 describe("optionScanTargetPassesMergedFilters", () => {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 
 import { AmbientExperiencePanel } from "@/app/admin/tenant-preferences/ui/ambient-experience-panel";
 import { FeatureFlagsPanel } from "@/app/admin/tenant-preferences/ui/feature-flags-panel";
+import { OptionsStrategyEnginePanel } from "@/app/admin/tenant-preferences/ui/options-strategy-engine-panel";
 import { TenantWorkspaceLimitsPanel } from "@/app/admin/tenant-preferences/ui/tenant-workspace-limits-panel";
 import { XchatDefaultPersonaPanel } from "@/app/admin/tenant-preferences/ui/xchat-default-persona-panel";
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
@@ -28,6 +29,7 @@ type TenantRegisterResponse = {
 
 const TABS = [
   { id: "workspace-limits", label: "Workspace limits" },
+  { id: "strategy-engine", label: "Strategy engine" },
   { id: "ambient", label: "Ambient experience" },
   { id: "persona", label: "Default persona" },
   { id: "feature-flags", label: "Feature flags" }
@@ -207,6 +209,9 @@ export function UnifiedTenantPreferencesClient({
           <>
             {activeTab === "workspace-limits" && (
               <TenantWorkspaceLimitsPanel tenantId={selectedTenantId} />
+            )}
+            {activeTab === "strategy-engine" && (
+              <OptionsStrategyEnginePanel tenantId={selectedTenantId} />
             )}
             {activeTab === "ambient" && (
               <AmbientExperiencePanel tenantId={selectedTenantId} />

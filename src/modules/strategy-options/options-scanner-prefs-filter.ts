@@ -9,6 +9,8 @@ export type MergedScannerFilters = {
   minDte: number | null;
   /** Tightest upper bound across strategies that set `maxDte`. */
   maxDte: number | null;
+  /** Highest `minIvRankPct` across strategies (IV rank floor for premium scans). */
+  minIvRankPct: number | null;
   optionTypes: Set<"call" | "put"> | null;
   sources: Set<"position" | "watchlist"> | null;
 };
@@ -18,6 +20,7 @@ const EMPTY: MergedScannerFilters = {
   underlyingAllowlist: null,
   minDte: null,
   maxDte: null,
+  minIvRankPct: null,
   optionTypes: null,
   sources: null
 };
@@ -28,6 +31,7 @@ const EMPTY: MergedScannerFilters = {
  * - `underlyingDenylist`: string[] tickers (uppercased)
  * - `underlyingAllowlist`: string[] — union across strategies; if any row sets a non-empty allowlist, targets must be in the union
  * - `minDte` / `maxDte`: number — combined as max(minDte) and min(maxDte)
+ * - `minIvRankPct`: number — combined as max(minIvRankPct) across strategies
  * - `optionTypes`: ("call"|"put")[]
  * - `sources`: ("position"|"watchlist")[]
  */
@@ -42,6 +46,7 @@ export function mergeOptionsStrategyFilters(
   const allowChunks: string[][] = [];
   let minDte: number | null = null;
   let maxDte: number | null = null;
+  let minIvRankPct: number | null = null;
   const optTypes = new Set<"call" | "put">();
   const sources = new Set<"position" | "watchlist">();
 
@@ -72,6 +77,11 @@ export function mergeOptionsStrategyFilters(
     if (typeof mx === "number" && Number.isFinite(mx)) {
       maxDte = maxDte === null ? mx : Math.min(maxDte, mx);
     }
+    const ivFloor = f.minIvRankPct ?? f.minIvRank ?? f.ivRankMinPct;
+    if (typeof ivFloor === "number" && Number.isFinite(ivFloor)) {
+      const pct = Math.round(Math.max(1, Math.min(99, ivFloor)));
+      minIvRankPct = minIvRankPct === null ? pct : Math.max(minIvRankPct, pct);
+    }
     const ot = f.optionTypes;
     if (Array.isArray(ot)) {
       for (const t of ot) {
@@ -100,6 +110,7 @@ export function mergeOptionsStrategyFilters(
     underlyingAllowlist: allowUnion,
     minDte,
     maxDte,
+    minIvRankPct,
     optionTypes: optTypes.size > 0 ? optTypes : null,
     sources: sources.size > 0 ? sources : null
   };
@@ -111,6 +122,7 @@ export function mergedScannerFiltersActive(m: MergedScannerFilters): boolean {
     (m.underlyingAllowlist !== null && m.underlyingAllowlist.size > 0) ||
     m.minDte !== null ||
     m.maxDte !== null ||
+    m.minIvRankPct !== null ||
     (m.optionTypes !== null && m.optionTypes.size > 0) ||
     (m.sources !== null && m.sources.size > 0)
   );

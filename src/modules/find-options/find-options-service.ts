@@ -20,6 +20,7 @@ import {
     type AccountOutlook,
     type Portfolio
 } from "@/modules/core-admin/types";
+import { optionsStrategyEngineConfigPayloadForApi } from "@/modules/strategy-options/tenant-options-strategy-engine-config";
 import { underlyingForYahooOptionsChain } from "@/modules/watchlist/option-expiration";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import {
@@ -86,6 +87,10 @@ export type FindOptionsContextPayload = {
   bookOutlook: AccountOutlook | null;
   bookRiskProfile: "conservative" | "balanced" | "growth" | null;
   scoringFactors: ReturnType<typeof scoringFactorsPayloadForAdminApi>["scoringFactors"];
+  optionsStrategyEngine: ReturnType<typeof optionsStrategyEngineConfigPayloadForApi>["effective"] & {
+    overrideEnabled: boolean;
+    complianceNote: string;
+  };
 };
 
 export function resolveAccountOptionsApproved(account: Account, assumeAllApproved: boolean): boolean {
@@ -162,7 +167,12 @@ export async function getFindOptionsContext(
       },
       bookOutlook: null,
       bookRiskProfile: null,
-      scoringFactors: scoringFactorsPayloadForAdminApi(undefined).scoringFactors
+      scoringFactors: scoringFactorsPayloadForAdminApi(undefined).scoringFactors,
+      optionsStrategyEngine: {
+        ...optionsStrategyEngineConfigPayloadForApi(null).effective,
+        overrideEnabled: false,
+        complianceNote: optionsStrategyEngineConfigPayloadForApi(null).complianceNote
+      }
     };
   }
 
@@ -188,6 +198,8 @@ export async function getFindOptionsContext(
     : undefined;
   const optionsApprovedDefault = workspaceRow?.optionsApproved ?? false;
 
+  const optionsEnginePayload = optionsStrategyEngineConfigPayloadForApi(tenantRow);
+
   return {
     portfolio: {
       id: portfolio._id.toHexString(),
@@ -207,7 +219,12 @@ export async function getFindOptionsContext(
     },
     bookOutlook: parseAccountOutlook(workspaceAccount?.outlook ?? null),
     bookRiskProfile: workspaceAccount?.riskProfile ?? null,
-    scoringFactors
+    scoringFactors,
+    optionsStrategyEngine: {
+      ...optionsEnginePayload.effective,
+      overrideEnabled: optionsEnginePayload.overrideEnabled,
+      complianceNote: optionsEnginePayload.complianceNote
+    }
   };
 }
 
@@ -400,7 +417,6 @@ export type HotWatchlistRow = {
   contractType: "call" | "put";
 };
 
-const DEFAULT_HOT_IV_MIN = 50;
 const DEFAULT_HOT_OI_MIN = 50;
 const MAX_WATCHLIST_SCAN = 18;
 
@@ -410,6 +426,9 @@ export async function getHotWatchlistSymbols(
   opts?: { portfolioId?: string | null }
 ): Promise<{ rows: HotWatchlistRow[]; scanned: number }> {
   void opts;
+  const tenantRow = await getTenantByHexIdCached(session.tenantId);
+  const minIvRankPct =
+    optionsStrategyEngineConfigPayloadForApi(tenantRow).effective.scanner.minIvRankPct;
   /** Tenant-scoped user watchlist (one doc per user) — same symbols on /portfolios, /portfolio, /watchlist. */
   const watchlist = await ensureUserWatchlistForSessionUser({
     userId: session.userId,
@@ -432,7 +451,7 @@ export async function getHotWatchlistSymbols(
     if (!r) {
       r = await scanUnderlyingForHotOptions({
         symbol: chainSym,
-        ivMinPct: DEFAULT_HOT_IV_MIN,
+        minIvRankPct,
         minOi: DEFAULT_HOT_OI_MIN
       });
       chainScanByUnderlying.set(chainSym, r);

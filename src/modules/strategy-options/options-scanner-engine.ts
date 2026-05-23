@@ -25,6 +25,11 @@ import {
 import type { PortfolioAlert, PositionOptionType, WatchlistSymbolImportEntry } from "@/modules/core-admin/types";
 import { quoteUnderlyingForScanner } from "@/modules/scanner/scanner-yahoo-quote";
 import { fetchYahooOptionChainForScanner } from "@/modules/scanner/yahoo-option-chain-scanner";
+import {
+    applyIVRankFilter,
+    estimateIvRankPercentFromOptionChain,
+    OPTIONS_SCANNER_DEFAULT_MIN_IV_RANK_PCT
+} from "@/modules/strategy-options/iv-rank-filter";
 import type { OptionContractData } from "@/modules/strategy-options/options-chain";
 import {
     createOptionsScannerToolExecutor,
@@ -70,6 +75,8 @@ export type OptionsScannerPassResult = {
   fromWatchlist: number;
   /** Unique underlying|expiration chain batches processed (after target grouping). */
   chainBatches: number;
+  /** Underlying|expiry batches skipped by IV rank floor. */
+  ivRankFilteredBatches: number;
   /** Desk rule/Grok confidence, highest first (trimmed for task output / audit). */
   rankedSignals: ScannerRankedSignal[];
   /** User-global watchlist symbol rows merged via {@link mutateUserWatchlistSymbols}. */
@@ -488,7 +495,10 @@ export async function processOptionRecommendationsPass(input: {
   targets: OptionScanTarget[];
   /** Tenant scope for option-chain cache + Yahoo circuit breaker (scheduled scanners). */
   tenantId?: ObjectId;
+  /** IV rank floor for premium-selling scans; defaults to {@link OPTIONS_SCANNER_DEFAULT_MIN_IV_RANK_PCT}. */
+  minIvRankPct?: number;
 }): Promise<OptionsScannerPassResult> {
+  const minIvRankPct = input.minIvRankPct ?? OPTIONS_SCANNER_DEFAULT_MIN_IV_RANK_PCT;
   const env = scannerEnv();
   const scannerPersonaCtx =
     env.grokEnabled && process.env.OPTIONS_SCANNER_PERSONA_DISABLE !== "1"
@@ -516,6 +526,7 @@ export async function processOptionRecommendationsPass(input: {
     fromPositions: 0,
     fromWatchlist: 0,
     chainBatches: 0,
+    ivRankFilteredBatches: 0,
     rankedSignals: [],
     watchlistRowsAdded: 0,
     watchlistRowsUpdated: 0
@@ -596,6 +607,13 @@ export async function processOptionRecommendationsPass(input: {
     );
     if (!chainResult?.optionChain?.length) {
       result.chainFailures += group.length;
+      continue;
+    }
+
+    const ivRankPct = estimateIvRankPercentFromOptionChain(chainResult.optionChain, stockPrice);
+    const ivGate = applyIVRankFilter(ivRankPct, { minIvRankPct });
+    if (!ivGate.passes) {
+      result.ivRankFilteredBatches += 1;
       continue;
     }
 

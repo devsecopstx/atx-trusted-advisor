@@ -15,6 +15,7 @@ import com.atxfinance.backend.strategy.OptionsStrategyEngine.UserOptionsContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import kotlin.math.abs
 
 class OptionsStrategyEngineTest {
 
@@ -104,6 +105,54 @@ class OptionsStrategyEngineTest {
         val out = engine.scheduledTaskDryRunOutput("t1")
         assertTrue(out.contains("OptionsStrategyEngine"))
         assertTrue(out.contains("recommendations="))
+    }
+
+    @Test
+    fun `straddle legs prefer delta band 0_15 to 0_30`() {
+        val chain = straddleBandChain()
+        val ctx = UserOptionsContext(RiskTolerance.MODERATE, MarketOutlook.NEUTRAL)
+        val recs = engine.generateRecommendations(
+            ctx,
+            mapOf("VOL" to chain),
+            OptionsScanPrompt(minScore = 0, preferredStrategies = setOf(StrategyKind.LONG_STRADDLE)),
+        )
+        val straddle = recs.firstOrNull { it.strategy == StrategyKind.LONG_STRADDLE }
+        assertTrue(straddle != null)
+        val callLeg = straddle!!.legs.first { it.right == "call" }
+        val putLeg = straddle.legs.first { it.right == "put" }
+        val callDelta = chain.calls.first { abs(it.strike - callLeg.strike) < 0.02 }.delta
+        val putDelta = chain.puts.first { abs(it.strike - putLeg.strike) < 0.02 }.delta
+        assertTrue(abs(callDelta) in OptionsStrategyEngine.STRADDLE_DELTA_MIN..OptionsStrategyEngine.STRADDLE_DELTA_MAX)
+        assertTrue(abs(putDelta) in OptionsStrategyEngine.STRADDLE_DELTA_MIN..OptionsStrategyEngine.STRADDLE_DELTA_MAX)
+    }
+
+    private fun straddleBandChain(): OptionChainSnapshot {
+        val spot = 100.0
+        fun leg(strike: Double, delta: Double, call: Boolean) = OptionContractSnapshot(
+            strike = strike,
+            impliedVol = 0.35,
+            openInterest = 800L,
+            volume = 200L,
+            bid = 1.5,
+            ask = 1.7,
+            delta = delta,
+            isCall = call,
+        )
+        return OptionChainSnapshot(
+            underlying = "VOL",
+            expirationYmd = "2030-06-20",
+            spot = spot,
+            calls = listOf(
+                leg(95.0, 0.62, true),
+                leg(100.0, 0.52, true),
+                leg(105.0, 0.22, true),
+            ),
+            puts = listOf(
+                leg(95.0, -0.22, false),
+                leg(100.0, -0.48, false),
+                leg(105.0, -0.62, false),
+            ),
+        )
     }
 
     private fun sampleChain(): OptionChainSnapshot {

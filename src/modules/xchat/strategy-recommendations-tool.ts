@@ -13,6 +13,7 @@ const STRATEGY_KINDS = new Set([
   "cash_secured_put",
   "protective_put",
   "long_straddle",
+  "wheel_protective_collar",
   "iron_condor",
   "bull_put_spread",
   "bear_call_spread",

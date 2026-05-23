@@ -6,14 +6,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityPulseIcon, DeleteIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import {
+    computeHoldingsRowGreeks,
     computeHoldingsRowMetrics,
+    computeIvRankPercentFromChainGlance,
+    formatHoldingsGreekUsd,
+    greekHeatClass,
+    ivRankBadgeToneClass,
     optionQuoteLookupKey,
     underlyingQuoteLookupKey
 } from "@/app/portfolio/lib/holdings-row-metrics";
 import { isPositionOptionsChainEligible } from "@/app/portfolio/lib/portfolio-position-options-chain";
 import { HoldingsFiftyTwoWeekRange } from "@/app/portfolio/ui/holdings-fifty-two-week-range";
+import { HoldingsScannerAlertToggle } from "@/app/portfolio/ui/holdings-scanner-alert-toggle";
 import { PortfolioSymbolMark } from "@/app/portfolio/ui/portfolio-symbol-mark";
 import { PositionOptionsChainDrawer } from "@/app/portfolio/ui/position-options-chain-drawer";
+import { useHoldingsChainGlance } from "@/app/portfolio/ui/use-holdings-chain-glance";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
 import { XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
@@ -273,7 +280,20 @@ export function AccountConsolidatedHoldingsTable({
     return [...s];
   }, [positions]);
 
-  const { quotes, loading } = useSymbolQuotes(quoteSymbols, { portfolioIdHex });
+  const chainGlanceSymbols = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of positions) {
+      const u = underlyingQuoteLookupKey(p);
+      if (u) s.add(u);
+    }
+    return [...s];
+  }, [positions]);
+
+  const { quotes, loading } = useSymbolQuotes(quoteSymbols, {
+    portfolioIdHex,
+    refreshMs: 60_000
+  });
+  const { chainGlance, loading: chainGlanceLoading } = useHoldingsChainGlance(chainGlanceSymbols);
 
   const [sort, setSort] = useState<HoldingsSortState | null>(null);
 
@@ -453,6 +473,13 @@ export function AccountConsolidatedHoldingsTable({
               <th scope="col" className="portfolio-consolidated-holdings__num">
                 Today %
               </th>
+              <th scope="col" className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__iv-col">
+                IV / rank
+              </th>
+              <th scope="col" className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__greeks-col">
+                Greeks
+                <span className="portfolio-consolidated-holdings__th-sub">Δ · Θ/day</span>
+              </th>
               <th scope="col" className="portfolio-consolidated-holdings__num">
                 Total $
               </th>
@@ -478,7 +505,7 @@ export function AccountConsolidatedHoldingsTable({
               {showDeskActionsCol ? (
                 <th scope="col" className="portfolio-consolidated-holdings__th-desk">
                   Desk
-                  <span className="portfolio-consolidated-holdings__th-sub">alert · xOptions · xChat</span>
+                  <span className="portfolio-consolidated-holdings__th-sub">scan · alert · xOptions · xChat</span>
                 </th>
               ) : null}
               <th scope="col" aria-label="Remove" />
@@ -488,7 +515,10 @@ export function AccountConsolidatedHoldingsTable({
             {sortedPositions.map((p) => {
               const u = underlyingQuoteLookupKey(p);
               const q = u ? quotes[u] ?? null : null;
+              const glance = u ? chainGlance[u] ?? null : null;
+              const ivRank = computeIvRankPercentFromChainGlance(glance);
               const metrics = computeHoldingsRowMetrics(p, quotes);
+              const greeks = computeHoldingsRowGreeks(p, quotes, glance);
               const isRealEstate = p.type === "real_estate";
               const showQuote = !isRealEstate && (p.type === "stock" || p.type === "option");
               const pct =
@@ -542,6 +572,23 @@ export function AccountConsolidatedHoldingsTable({
                     ) : (
                       <span className="portfolio-consolidated-holdings__sym-sub">{q?.companyName ?? "—"}</span>
                     )}
+                    {showQuote && u ? (
+                      <span className="portfolio-consolidated-holdings__sym-meta">
+                        {glance?.impliedVolatilityPercent != null ? (
+                          <span className="portfolio-consolidated-holdings__sym-iv">
+                            {glance.impliedVolatilityPercent.toFixed(1)}% IV
+                          </span>
+                        ) : chainGlanceLoading ? (
+                          <span className="portfolio-consolidated-holdings__muted">IV …</span>
+                        ) : null}
+                        <span
+                          className={`portfolio-consolidated-holdings__iv-rank-badge${ivRankBadgeToneClass(ivRank) ? ` ${ivRankBadgeToneClass(ivRank)}` : ""}`}
+                          title="Heuristic IV rank percentile (nearest expiry)"
+                        >
+                          {ivRank != null ? `Rank ${ivRank}%` : "—"}
+                        </span>
+                      </span>
+                    ) : null}
                   </div>
                 ) : (
                   <span className="portfolio-consolidated-holdings__mono">{p.symbol}</span>
@@ -580,6 +627,49 @@ export function AccountConsolidatedHoldingsTable({
                   <td className="portfolio-consolidated-holdings__num">
                     {metrics.dayGainPct != null ? (
                       <span className={gainLossClass(metrics.dayGainPct)}>{fmtPct(metrics.dayGainPct)}</span>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__iv-col">
+                    {showQuote && u ? (
+                      <div className="portfolio-consolidated-holdings__iv-stack">
+                        <span className="portfolio-consolidated-holdings__mono">
+                          {chainGlanceLoading && glance == null ? (
+                            <span className="portfolio-consolidated-holdings__muted">…</span>
+                          ) : glance?.impliedVolatilityPercent != null ? (
+                            `${glance.impliedVolatilityPercent.toFixed(1)}%`
+                          ) : (
+                            "—"
+                          )}
+                        </span>
+                        <span
+                          className={`portfolio-consolidated-holdings__iv-rank-badge${ivRankBadgeToneClass(ivRank) ? ` ${ivRankBadgeToneClass(ivRank)}` : ""}`}
+                          title="Heuristic IV rank percentile"
+                        >
+                          {ivRank != null ? `Rank ${ivRank}%` : "—"}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="portfolio-consolidated-holdings__muted">—</span>
+                    )}
+                  </td>
+                  <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__greeks-col">
+                    {showQuote ? (
+                      <div className="portfolio-consolidated-holdings__greeks-stack">
+                        <span
+                          className={`portfolio-consolidated-holdings__mono portfolio-consolidated-holdings__greek-line ${greekHeatClass(greeks.deltaNotionalUsd, "delta")}`}
+                          title="Delta notional (USD)"
+                        >
+                          Δ {formatHoldingsGreekUsd(greeks.deltaNotionalUsd)}
+                        </span>
+                        <span
+                          className={`portfolio-consolidated-holdings__mono portfolio-consolidated-holdings__greek-line ${greekHeatClass(greeks.thetaDailyUsd, "theta")}`}
+                          title="Theta per day (USD)"
+                        >
+                          Θ {formatHoldingsGreekUsd(greeks.thetaDailyUsd)}
+                        </span>
+                      </div>
                     ) : (
                       <span className="portfolio-consolidated-holdings__muted">—</span>
                     )}
@@ -639,6 +729,11 @@ export function AccountConsolidatedHoldingsTable({
                     <td className="portfolio-consolidated-holdings__desk">
                       {showQuote && u && portfolioIdHex && accountIdHex ? (
                         <div className="portfolio-consolidated-holdings__desk-actions">
+                          <HoldingsScannerAlertToggle
+                            portfolioIdHex={portfolioIdHex}
+                            symbol={u}
+                            disabled={pending}
+                          />
                           <button
                             type="button"
                             className="cta cta-secondary portfolio-consolidated-holdings__desk-btn"
@@ -734,6 +829,7 @@ export function AccountConsolidatedHoldingsTable({
                   {fmtUsd(accountTotals.currentValueUsd)}
                 </td>
                 <td className="portfolio-consolidated-holdings__num portfolio-consolidated-holdings__mono">100%</td>
+                <td colSpan={2} />
                 <td colSpan={showDeskActionsCol ? 6 : 5} />
               </tr>
             </tfoot>

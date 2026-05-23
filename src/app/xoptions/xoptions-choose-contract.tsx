@@ -259,6 +259,7 @@ function strategyDefaults(input: StrategyChoiceId | null | undefined): {
       return { side: "call", openingAction: "sell_to_open" };
     case "cash-secured-put":
     case "short-put-spread":
+    case "wheel-protective-collar":
       return { side: "put", openingAction: "sell_to_open" };
     case "long-call":
     case "long-call-spread":

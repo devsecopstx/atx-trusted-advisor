@@ -216,6 +216,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "tenant"
   },
   {
+    path: "/api/app-user/tenant/options-strategy-engine-config",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "tenant"
+  },
+  {
     path: "/api/app-user/xchat/history/export",
     operations: [{ method: "GET", auth: "session" }],
     tag: "xchat"
@@ -1003,6 +1008,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/admin/tenants/{tenantId}/portfolio-scoring-defaults",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-tenants"
+  },
+  {
+    path: "/api/admin/tenants/{tenantId}/options-strategy-engine-config",
     operations: [
       { method: "GET", auth: "admin" },
       { method: "PATCH", auth: "admin", hasRequestBody: true }

@@ -33,6 +33,7 @@ class OptionsStrategyEngine {
         BEAR_CALL_SPREAD,
         LONG_CALL,
         LONG_PUT,
+        WHEEL_PROTECTIVE_COLLAR,
     }
 
     data class OptionsScanPrompt(
@@ -95,6 +96,7 @@ class OptionsStrategyEngine {
                 StrategyKind.CASH_SECURED_PUT,
                 StrategyKind.BULL_PUT_SPREAD,
                 StrategyKind.LONG_CALL,
+                StrategyKind.WHEEL_PROTECTIVE_COLLAR,
             )
             MarketOutlook.BEARISH -> listOf(
                 StrategyKind.PROTECTIVE_PUT,
@@ -104,6 +106,7 @@ class OptionsStrategyEngine {
             MarketOutlook.NEUTRAL -> listOf(
                 StrategyKind.IRON_CONDOR,
                 StrategyKind.LONG_STRADDLE,
+                StrategyKind.WHEEL_PROTECTIVE_COLLAR,
             )
         }
         val gated = when (context.risk) {
@@ -194,10 +197,25 @@ class OptionsStrategyEngine {
                     OptionLeg("buy", "call", call.strike, exp, 1),
                 )
             }
-            StrategyKind.IRON_CONDOR, StrategyKind.LONG_STRADDLE -> listOf(
+            StrategyKind.LONG_STRADDLE -> {
+                val callLeg = Companion.pickStraddleLeg(chain.calls, chain.spot)
+                val putLeg = Companion.pickStraddleLeg(chain.puts, chain.spot)
+                listOf(
+                    OptionLeg("buy", "call", callLeg?.strike ?: primary.strike, exp, 1),
+                    OptionLeg("buy", "put", putLeg?.strike ?: primary.strike, exp, 1),
+                )
+            }
+            StrategyKind.IRON_CONDOR -> listOf(
                 OptionLeg("buy", "call", chain.calls.minByOrNull { abs(it.strike - chain.spot) }?.strike ?: primary.strike, exp, 1),
                 OptionLeg("buy", "put", chain.puts.minByOrNull { abs(it.strike - chain.spot) }?.strike ?: primary.strike, exp, 1),
             )
+            StrategyKind.WHEEL_PROTECTIVE_COLLAR -> {
+                val floorPut = nearestPut(chain, primary.strike - 10.0) ?: primary
+                listOf(
+                    OptionLeg("sell", "put", primary.strike, exp, 1),
+                    OptionLeg("buy", "put", floorPut.strike, exp, 1),
+                )
+            }
         }
     }
 
@@ -289,6 +307,9 @@ class OptionsStrategyEngine {
 
     companion object {
         const val DEFAULT_MIN_SCORE = 70
+        /** Long straddle leg selection — absolute delta band (May 2026 desk refresh). */
+        const val STRADDLE_DELTA_MIN = 0.15
+        const val STRADDLE_DELTA_MAX = 0.30
         private const val W_IV = 0.30
         private const val W_OI = 0.20
         private const val W_VOL = 0.15
@@ -324,7 +345,7 @@ class OptionsStrategyEngine {
             val d = contract.delta
             val hint = context.portfolioDeltaHint.coerceIn(-1.0, 1.0)
             val want: Double = when (strategy) {
-                StrategyKind.COVERED_CALL, StrategyKind.CASH_SECURED_PUT -> -0.15
+                StrategyKind.COVERED_CALL, StrategyKind.CASH_SECURED_PUT, StrategyKind.WHEEL_PROTECTIVE_COLLAR -> -0.15
                 StrategyKind.PROTECTIVE_PUT, StrategyKind.LONG_PUT -> -0.35
                 StrategyKind.LONG_CALL -> 0.45
                 else -> 0.0
@@ -338,6 +359,7 @@ class OptionsStrategyEngine {
             MarketOutlook.BULLISH -> when (strategy) {
                 StrategyKind.COVERED_CALL, StrategyKind.CASH_SECURED_PUT,
                 StrategyKind.BULL_PUT_SPREAD, StrategyKind.LONG_CALL,
+                StrategyKind.WHEEL_PROTECTIVE_COLLAR,
                 -> 1.0
                 else -> 0.45
             }
@@ -347,6 +369,7 @@ class OptionsStrategyEngine {
             }
             MarketOutlook.NEUTRAL -> when (strategy) {
                 StrategyKind.IRON_CONDOR, StrategyKind.LONG_STRADDLE -> 1.0
+                StrategyKind.WHEEL_PROTECTIVE_COLLAR -> 0.85
                 else -> 0.55
             }
         }
@@ -357,6 +380,17 @@ class OptionsStrategyEngine {
         private fun nearestCall(chain: OptionChainSnapshot, strike: Double): OptionContractSnapshot? =
             chain.calls.minByOrNull { abs(it.strike - strike) }
 
+        private fun pickStraddleLeg(
+            legs: List<OptionContractSnapshot>,
+            spot: Double,
+        ): OptionContractSnapshot? {
+            val inBand = legs.filter { abs(it.delta) in STRADDLE_DELTA_MIN..STRADDLE_DELTA_MAX }
+            if (inBand.isNotEmpty()) {
+                return inBand.minByOrNull { abs(abs(it.delta) - 0.225) }
+            }
+            return legs.minByOrNull { abs(it.strike - spot) }
+        }
+
         private fun pickContractsForChain(
             chain: OptionChainSnapshot,
             strategies: List<StrategyKind>,
@@ -364,14 +398,22 @@ class OptionsStrategyEngine {
             val out = ArrayList<Pair<StrategyKind, OptionContractSnapshot>>()
             val atmC = chain.calls.minByOrNull { abs(it.strike - chain.spot) }
             val atmP = chain.puts.minByOrNull { abs(it.strike - chain.spot) }
+            val straddleC = pickStraddleLeg(chain.calls, chain.spot)
+            val straddleP = pickStraddleLeg(chain.puts, chain.spot)
             for (s in strategies) {
                 when (s) {
                     StrategyKind.COVERED_CALL, StrategyKind.BEAR_CALL_SPREAD, StrategyKind.LONG_CALL ->
                         atmC?.let { out.add(s to it) }
-                    StrategyKind.CASH_SECURED_PUT, StrategyKind.BULL_PUT_SPREAD, StrategyKind.PROTECTIVE_PUT, StrategyKind.LONG_PUT ->
+                    StrategyKind.CASH_SECURED_PUT, StrategyKind.BULL_PUT_SPREAD, StrategyKind.PROTECTIVE_PUT, StrategyKind.LONG_PUT,
+                    StrategyKind.WHEEL_PROTECTIVE_COLLAR,
+                    ->
                         atmP?.let { out.add(s to it) }
-                    StrategyKind.IRON_CONDOR, StrategyKind.LONG_STRADDLE ->
+                    StrategyKind.IRON_CONDOR ->
                         atmC?.let { out.add(s to it) }
+                    StrategyKind.LONG_STRADDLE -> {
+                        val leg = straddleC ?: straddleP ?: atmC
+                        leg?.let { out.add(s to it) }
+                    }
                 }
             }
             return out

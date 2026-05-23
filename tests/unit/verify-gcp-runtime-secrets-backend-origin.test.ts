@@ -14,6 +14,9 @@ function resolveBackendOrigin(opts: {
   repoRoot: string;
   shellExports?: string;
 }): string {
+  // Use a PATH that guarantees `gcloud` is not found (important for the "no gcloud" test path)
+  const safePath = "/nonexistent-gcloud-bin:/usr/bin:/bin:/usr/sbin:/sbin";
+
   const script = `
     set -euo pipefail
     PROJECT=${JSON.stringify(opts.project)}
@@ -28,7 +31,10 @@ function resolveBackendOrigin(opts: {
     encoding: "utf8",
     env: {
       ...process.env,
-      PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+      PATH: safePath,
+      // Extra defense-in-depth to disable any Google auth discovery
+      GOOGLE_APPLICATION_CREDENTIALS: "",
+      CLOUDSDK_CONFIG: "/dev/null",
     },
   }).trim();
 }
@@ -46,12 +52,17 @@ function expectResolveFails(opts: {
     source ${JSON.stringify(resolveInc)}
     resolve_backend_origin_for_verify
   `;
+  // Use a PATH that guarantees `gcloud` is not found so we reliably hit the "return 1" path
+  const safePath = "/nonexistent-gcloud-bin:/usr/bin:/bin:/usr/sbin:/sbin";
+
   expect(() =>
     execFileSync("bash", ["-c", script], {
       encoding: "utf8",
       env: {
         ...process.env,
-        PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+        PATH: safePath,
+        GOOGLE_APPLICATION_CREDENTIALS: "",
+        CLOUDSDK_CONFIG: "/dev/null",
       },
     }),
   ).toThrow();
@@ -94,7 +105,7 @@ describe("verify-backend-origin-resolve", () => {
     expect(origin).toBe("https://from-env-stage.run.app");
   });
 
-  it("fails when origin cannot be resolved", () => {
+  it("fails when origin cannot be resolved", { timeout: 15000 }, () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "atx-verify-origin-"));
     expectResolveFails({
       project: "fintech-advisor-prod",

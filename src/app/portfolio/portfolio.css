@@ -1951,7 +1951,7 @@
 
 .portfolio-consolidated-holdings__th-desk {
   text-align: center;
-  min-width: 6.5rem;
+  min-width: 9.5rem;
 }
 
 .portfolio-consolidated-holdings__desk {
@@ -1994,6 +1994,108 @@
   width: 0.875rem;
   height: 0.875rem;
   color: var(--xf-lightning-yellow);
+}
+
+.portfolio-consolidated-holdings__sym-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.12rem;
+}
+
+.portfolio-consolidated-holdings__sym-iv {
+  font-size: 0.68rem;
+  color: var(--xf-text-400);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.portfolio-consolidated-holdings__iv-col,
+.portfolio-consolidated-holdings__greeks-col {
+  min-width: 4.75rem;
+}
+
+.portfolio-consolidated-holdings__iv-stack,
+.portfolio-consolidated-holdings__greeks-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+}
+
+.portfolio-consolidated-holdings__iv-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.85rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  padding: 0.08rem 0.38rem;
+  font-size: 0.68rem;
+  color: var(--xf-text-200);
+  background: color-mix(in srgb, var(--xf-surface-600) 84%, transparent);
+}
+
+.portfolio-consolidated-holdings__iv-rank-badge--elevated {
+  border-color: color-mix(in srgb, var(--xf-warning-400) 45%, transparent);
+  color: var(--xf-warning-400);
+  background: color-mix(in srgb, var(--xf-warning-400) 13%, transparent);
+}
+
+.portfolio-consolidated-holdings__iv-rank-badge--hot {
+  border-color: color-mix(in srgb, var(--xf-danger-400) 54%, transparent);
+  color: var(--xf-danger-400);
+  background: color-mix(in srgb, var(--xf-danger-400) 18%, transparent);
+}
+
+.portfolio-consolidated-holdings__greek-line {
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.portfolio-consolidated-holdings__greek--pos {
+  color: var(--xf-gain-green);
+}
+
+.portfolio-consolidated-holdings__greek--neg {
+  color: var(--xf-danger-400);
+}
+
+.portfolio-consolidated-holdings__greek--neutral {
+  color: var(--xf-text-400);
+}
+
+.portfolio-consolidated-holdings__scanner-alert-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.32rem 0.45rem;
+  min-height: 0;
+  border-radius: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-300);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.portfolio-consolidated-holdings__scanner-alert-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 35%, transparent);
+  color: var(--xf-text-100);
+}
+
+.portfolio-consolidated-holdings__scanner-alert-btn--on {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
+  color: var(--xf-gain-green);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+}
+
+.portfolio-consolidated-holdings__scanner-alert-btn__label {
+  line-height: 1;
 }
 
 .portfolio-consolidated-holdings__dialog-field {

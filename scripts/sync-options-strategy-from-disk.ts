@@ -27,6 +27,18 @@ const COLLECTION = "options_strategy";
 
 const SLUG_RE = /^[a-z][a-z0-9-]{0,62}$/;
 
+/** Default Mongo `filters` on first insert (admin catalog + scanner merge). */
+const DEFAULT_FILTERS_BY_SLUG: Record<string, Record<string, unknown>> = {
+  "iv-rank-strategy-selection-and-filtering": { minIvRankPct: 45 },
+  "wheel-protective-collar": {
+    minIvRankPct: 45,
+    minDte: 21,
+    maxDte: 45,
+    optionTypes: ["put"],
+    sources: ["position", "watchlist"]
+  }
+};
+
 type StrategyDiskRow = {
   slug: string;
   name: string;
@@ -100,10 +112,11 @@ async function main(): Promise<void> {
     await col.createIndex({ slug: 1 }, { name: "uniq_options_strategy_slug", unique: true });
 
     for (const row of rows) {
+      const defaultFilters = DEFAULT_FILTERS_BY_SLUG[row.slug] ?? {};
       await col.updateOne(
         { slug: row.slug },
         {
-          $setOnInsert: { createdAt: now, filters: {} },
+          $setOnInsert: { createdAt: now, filters: defaultFilters },
           $set: {
             name: row.name,
             description: row.description,

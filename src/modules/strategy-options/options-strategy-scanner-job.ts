@@ -9,7 +9,8 @@ import {
     getDefaultPortfolio
 } from "@/modules/core-admin/repository";
 import type { Position, Watchlist } from "@/modules/core-admin/types";
-import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
+import { getTenantByHexId, normalizeMongoUserIdHex } from "@/modules/identity/repository";
+import type { Tenant } from "@/modules/identity/types";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
     resolveUsMarketDayContext,
@@ -31,6 +32,10 @@ import {
     positionsToOptionScanTargets,
     watchlistsToOptionScanTargets
 } from "@/modules/strategy-options/options-scanner-targets";
+import {
+    resolveScannerMergedFiltersForTenant,
+    type EffectiveOptionsStrategyEngineConfig
+} from "@/modules/strategy-options/tenant-options-strategy-engine-config";
 
 /** Logical service id for `options_scanner` scheduled tasks. */
 export const OPTIONS_STRATEGY_SCANNER_SERVICE_ID = "options-strategy-scanner";
@@ -122,14 +127,31 @@ function formatRankTop(signals: ScannerRankedSignal[]): string {
     .join("|");
 }
 
+function engineConfigAuditSnippet(config: EffectiveOptionsStrategyEngineConfig): string {
+  return `tenant_engine_override=${config.overrideEnabled} straddle_delta=${config.engine.straddleDeltaMin}-${config.engine.straddleDeltaMax} min_fit=${config.engine.minFitScore}`;
+}
+
 function applyPrefsFiltersToTargets(
   merged: OptionScanTarget[],
-  strategyFilterRows: Awaited<ReturnType<typeof adminListOptionsStrategyFilterRows>>
-): { filtered: OptionScanTarget[]; prefsActive: boolean } {
-  const mergedFilters = mergeOptionsStrategyFilters(strategyFilterRows);
-  const prefsActive = mergedScannerFiltersActive(mergedFilters);
-  const filtered = filterOptionScanTargetsByMergedPrefs(merged, mergedFilters);
-  return { filtered, prefsActive };
+  strategyFilterRows: Awaited<ReturnType<typeof adminListOptionsStrategyFilterRows>>,
+  tenant?: Pick<Tenant, "tenantPreferences"> | null
+): {
+  filtered: OptionScanTarget[];
+  prefsActive: boolean;
+  minIvRankPct: number;
+  engineConfig: EffectiveOptionsStrategyEngineConfig;
+} {
+  const catalogMerged = mergeOptionsStrategyFilters(strategyFilterRows);
+  const resolved = resolveScannerMergedFiltersForTenant({ catalogMerged, tenant });
+  const prefsActive =
+    mergedScannerFiltersActive(resolved.merged) || resolved.effective.overrideEnabled;
+  const filtered = filterOptionScanTargetsByMergedPrefs(merged, resolved.merged);
+  return {
+    filtered,
+    prefsActive,
+    minIvRankPct: resolved.minIvRankPct,
+    engineConfig: resolved.effective
+  };
 }
 
 /**
@@ -330,10 +352,13 @@ export async function executeOptionsExpirationRollJob(
       };
     }
 
+    const tenantDoc = await getTenantByHexId(tenantId.toHexString());
+
     const built = await buildMergedOptionScanTargets({ tenantId });
-    const { filtered: afterPrefs, prefsActive } = applyPrefsFiltersToTargets(
+    const { filtered: afterPrefs, prefsActive, minIvRankPct, engineConfig } = applyPrefsFiltersToTargets(
       built.merged,
-      strategyFilterRows
+      strategyFilterRows,
+      tenantDoc
     );
     const filtered = afterPrefs.filter((t) => {
       const dte = daysToExpirationFromYmd(t.expYmd);
@@ -342,7 +367,8 @@ export async function executeOptionsExpirationRollJob(
 
     const recPassRaw = await processOptionRecommendationsPass({
       targets: filtered,
-      tenantId
+      tenantId,
+      minIvRankPct
     });
     const recPass = recPassRaw ?? {
       examined: 0,
@@ -357,6 +383,7 @@ export async function executeOptionsExpirationRollJob(
       fromPositions: 0,
       fromWatchlist: 0,
       chainBatches: 0,
+      ivRankFilteredBatches: 0,
       rankedSignals: [],
       watchlistRowsAdded: 0,
       watchlistRowsUpdated: 0
@@ -376,7 +403,7 @@ export async function executeOptionsExpirationRollJob(
 
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
     const rankTop = formatRankTop(recPass.rankedSignals);
-    const recSummary = `scan_targets=${built.merged.length} prefs_after=${afterPrefs.length} prefs_active=${prefsActive} targets_roll_window=${filtered.length} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_stored=${recPass.stored} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated}`;
+    const recSummary = `scan_targets=${built.merged.length} prefs_after=${afterPrefs.length} prefs_active=${prefsActive} iv_rank_min=${minIvRankPct} ${engineConfigAuditSnippet(engineConfig)} targets_roll_window=${filtered.length} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_stored=${recPass.stored} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated}`;
     const rollMarketLabel = input.bypassMarketWindow ? "admin_bypass_desk_window" : "open";
     return {
       status: "success",
@@ -400,6 +427,11 @@ export async function executeOptionsExpirationRollJob(
         scanTargetsPrePrefs: built.merged.length,
         scanTargetsPostPrefs: afterPrefs.length,
         prefsFilterActive: prefsActive,
+        minIvRankPct,
+        tenantEngineOverride: engineConfig.overrideEnabled,
+        straddleDeltaMin: engineConfig.engine.straddleDeltaMin,
+        straddleDeltaMax: engineConfig.engine.straddleDeltaMax,
+        minFitScore: engineConfig.engine.minFitScore,
         rankTopPreview: rankTop || null,
         chainBatches: recPass.chainBatches,
         recommendationsExamined: recPass.examined,
@@ -507,11 +539,21 @@ export async function executeOptionsStrategyScannerJob(
       };
     }
 
+    const tenantDoc = await getTenantByHexId(tenantId.toHexString());
+
     const built = await buildMergedOptionScanTargets({ tenantId });
     const { merged, optionPositions, uniqueUnderlyings, wlTargetsLength: wlTargetsLen } = built;
-    const { filtered: scanTargets, prefsActive } = applyPrefsFiltersToTargets(merged, strategyFilterRows);
+    const { filtered: scanTargets, prefsActive, minIvRankPct, engineConfig } = applyPrefsFiltersToTargets(
+      merged,
+      strategyFilterRows,
+      tenantDoc
+    );
 
-    const recPassRaw = await processOptionRecommendationsPass({ targets: scanTargets, tenantId });
+    const recPassRaw = await processOptionRecommendationsPass({
+      targets: scanTargets,
+      tenantId,
+      minIvRankPct
+    });
     const recPass = recPassRaw ?? {
       examined: 0,
       stored: 0,
@@ -525,6 +567,7 @@ export async function executeOptionsStrategyScannerJob(
       fromPositions: 0,
       fromWatchlist: 0,
       chainBatches: 0,
+      ivRankFilteredBatches: 0,
       rankedSignals: [],
       watchlistRowsAdded: 0,
       watchlistRowsUpdated: 0
@@ -544,7 +587,7 @@ export async function executeOptionsStrategyScannerJob(
 
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
     const rankTop = formatRankTop(recPass.rankedSignals);
-    const recSummary = `scan_targets=${merged.length} prefs_after=${scanTargets.length} prefs_active=${prefsActive} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_from_pos=${recPass.fromPositions} rec_from_wl=${recPass.fromWatchlist} rec_stored=${recPass.stored} rec_updated=${recPass.updated} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated} alert_dedupe=${recPass.alertsSuppressedDeduped} hold_dismiss=${recPass.alertsDismissedOnHold} skipped_bad=${recPass.skippedBadRow} wl_rows_added=${recPass.watchlistRowsAdded} wl_rows_updated=${recPass.watchlistRowsUpdated}`;
+    const recSummary = `scan_targets=${merged.length} prefs_after=${scanTargets.length} prefs_active=${prefsActive} iv_rank_min=${minIvRankPct} ${engineConfigAuditSnippet(engineConfig)} chain_batches=${recPass.chainBatches} iv_rank_filtered=${recPass.ivRankFilteredBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_from_pos=${recPass.fromPositions} rec_from_wl=${recPass.fromWatchlist} rec_stored=${recPass.stored} rec_updated=${recPass.updated} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated} alert_dedupe=${recPass.alertsSuppressedDeduped} hold_dismiss=${recPass.alertsDismissedOnHold} skipped_bad=${recPass.skippedBadRow} wl_rows_added=${recPass.watchlistRowsAdded} wl_rows_updated=${recPass.watchlistRowsUpdated}`;
     const marketRunLabel = input.bypassMarketWindow ? "admin_bypass_desk_window" : "open";
     return {
       status: "success",
@@ -578,6 +621,11 @@ export async function executeOptionsStrategyScannerJob(
         scanTargetsPrePrefs: merged.length,
         scanTargetsPostPrefs: scanTargets.length,
         prefsFilterActive: prefsActive,
+        minIvRankPct,
+        tenantEngineOverride: engineConfig.overrideEnabled,
+        straddleDeltaMin: engineConfig.engine.straddleDeltaMin,
+        straddleDeltaMax: engineConfig.engine.straddleDeltaMax,
+        minFitScore: engineConfig.engine.minFitScore,
         rankTopPreview: rankTop || null,
         chainBatches: recPass.chainBatches,
         durationSeconds,

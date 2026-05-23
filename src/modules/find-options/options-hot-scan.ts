@@ -1,3 +1,4 @@
+import { estimateIvRankPercentFromAtmIv } from "@/modules/strategy-options/iv-rank-filter";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
@@ -21,7 +22,7 @@ export type SymbolHotScanResult = {
   symbol: string;
   /** Best contract matching IV&gt;threshold and OI&gt;minOI (nearest expiration group). */
   best: HotOptionContractSnapshot | null;
-  /** True if any contract in the scanned group meets IV &gt; ivMinPct and OI &gt; minOi. */
+  /** True if any contract in the scanned group meets IV rank &gt; minIvRankPct and OI &gt; minOi. */
   meetsHotCriteria: boolean;
   /** Underlying regular market price from Yahoo quote (same request pass as options scan). */
   underlyingSpot: number | null;
@@ -42,12 +43,12 @@ type YahooOptionGroup = {
 };
 
 /**
- * Scans the nearest Yahoo options expiration for contracts with IV &gt; ivMinPct and OI &gt; minOi.
+ * Scans the nearest Yahoo options expiration for contracts with IV rank &gt; minIvRankPct and OI &gt; minOi.
  * Picks the highest IV among qualifying contracts.
  */
 export async function scanUnderlyingForHotOptions(input: {
   symbol: string;
-  ivMinPct: number;
+  minIvRankPct: number;
   minOi: number;
 }): Promise<SymbolHotScanResult> {
   const sym = input.symbol.trim().toUpperCase();
@@ -89,8 +90,9 @@ export async function scanUnderlyingForHotOptions(input: {
     const consider = (c: YahooCallOrPut, contractType: "call" | "put") => {
       const strike = typeof c.strike === "number" && Number.isFinite(c.strike) ? c.strike : 0;
       const ivPct = impliedVolatilityPercent(c.impliedVolatility);
+      const ivRank = estimateIvRankPercentFromAtmIv(c.impliedVolatility);
       const oi = typeof c.openInterest === "number" && Number.isFinite(c.openInterest) ? c.openInterest : 0;
-      if (ivPct > input.ivMinPct && oi > input.minOi) {
+      if (ivRank != null && ivRank > input.minIvRankPct && oi > input.minOi) {
         meetsHotCriteria = true;
         const cand: HotOptionContractSnapshot = {
           impliedVolatilityPercent: Math.round(ivPct * 10) / 10,

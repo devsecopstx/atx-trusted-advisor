@@ -8,6 +8,9 @@ import {
 } from "@/modules/compliance/repository";
 import { isAdvisorPlatformRole } from "@/modules/identity/authorization";
 import type { Tenant } from "@/modules/identity/types";
+import {
+    optionsStrategyEngineConfigPayloadForApi
+} from "@/modules/strategy-options/tenant-options-strategy-engine-config";
 
 export type AdvisorComplianceReportExport = {
   exportedAt: string;
@@ -37,6 +40,7 @@ export type AdvisorComplianceReportExport = {
     short: string;
     attestationText: string;
   };
+  optionsStrategyEngine: ReturnType<typeof optionsStrategyEngineConfigPayloadForApi>;
 };
 
 export async function buildAdvisorComplianceReportExport(input: {
@@ -94,6 +98,7 @@ export async function buildAdvisorComplianceReportExport(input: {
       version: bundle.version,
       short: bundle.short,
       attestationText: bundle.attestationText
-    }
+    },
+    optionsStrategyEngine: optionsStrategyEngineConfigPayloadForApi(input.tenant)
   };
 }

@@ -19,7 +19,7 @@ tags: [iv_rank, iv_percentile, term_structure, earnings, wheel, monte_carlo, fil
 | User language | Tool arg | Engine behavior |
 |---------------|----------|-----------------|
 | "IV rank > 60%" | `minIvRankPct: 60` | Estimate IV rank from Yahoo chain ATM IV vs desk heuristic; **drop** symbols below floor |
-| "high IV names only" | `minIvRankPct: 50` (default desk unless user specifies) | Same filter |
+| "high IV names only" | `minIvRankPct: 45` (default desk unless user specifies) | Same filter |
 | No IV mention | omit `minIvRankPct` | All equity holdings in book |
 
 **Empty book after filter:** Report per portfolio — do not substitute watchlist symbols unless user pivots to **strategy_recommendations**.

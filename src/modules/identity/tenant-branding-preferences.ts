@@ -1,4 +1,5 @@
 import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
+import type { TenantOptionsStrategyEngineConfigStored } from "@/modules/strategy-options/tenant-options-strategy-engine-config";
 
 /**
  * Optional tenant-level branding aliases (admin-set once).
@@ -90,6 +91,12 @@ export type TenantPreferences = TenantBrandingPreferences & {
    * Admin: `/admin/tenant-preferences` → Feature Flags section.
    */
   featureFlags?: Record<string, boolean | number | string>;
+  /**
+   * Per-tenant OptionsStrategyEngine / scanner policy overrides (compliance-auditable).
+   * Admin: `/admin/tenant-preferences` → Strategy engine. App users: read-only GET.
+   * @see `tenant-options-strategy-engine-config.ts`
+   */
+  options_strategy_engine?: TenantOptionsStrategyEngineConfigStored;
 };
 
 /**

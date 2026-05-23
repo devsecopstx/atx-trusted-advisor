@@ -67,6 +67,11 @@ vi.mock("@/modules/core-admin/repository", () => ({
   getDefaultPortfolio: vi.fn().mockResolvedValue(null)
 }));
 
+vi.mock("@/modules/identity/repository", () => ({
+  getTenantByHexId: vi.fn().mockResolvedValue({ tenantPreferences: {} }),
+  normalizeMongoUserIdHex: (v: unknown) => (typeof v === "string" ? v : "")
+}));
+
 import { processOptionRecommendationsPass } from "@/modules/strategy-options/options-scanner-engine";
 import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-strategy-scanner";
 
@@ -83,6 +88,7 @@ const emptyRecPass = {
   fromPositions: 0,
   fromWatchlist: 0,
   chainBatches: 0,
+  ivRankFilteredBatches: 0,
   rankedSignals: [],
   watchlistRowsAdded: 0,
   watchlistRowsUpdated: 0
@@ -142,7 +148,8 @@ describe("runOptionsStrategyScanner", () => {
     expect(r.output).toContain("unique_underlyings=2");
     expect(r.output).toContain("strategy_filter_rows=0");
     expect(r.output).toContain("scan_targets=");
-    expect(r.output).toContain("prefs_active=false");
+    expect(r.output).toContain("prefs_active=true");
+    expect(r.output).toContain("iv_rank_min=45");
     expect(r.output).toContain("rec_examined=0");
     expect(r.output).toContain("rec_from_pos=0");
     expect(r.output).toMatch(/pmcc|wheel/);
@@ -174,7 +181,12 @@ describe("runOptionsStrategyScanner", () => {
       strategyFilterRowCount: 0,
       scanTargetsPrePrefs: 0,
       scanTargetsPostPrefs: 0,
-      prefsFilterActive: false,
+      prefsFilterActive: true,
+      minIvRankPct: 45,
+      tenantEngineOverride: false,
+      straddleDeltaMin: 0.15,
+      straddleDeltaMax: 0.3,
+      minFitScore: 70,
       rankTopPreview: null,
       chainBatches: 0,
       durationSeconds: expect.any(Number),

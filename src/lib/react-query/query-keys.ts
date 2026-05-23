@@ -15,6 +15,11 @@ export const symbolQuotesQueryKeys = {
     [...symbolQuotesQueryKeys.all, symbolsKey, portfolioIdHex] as const
 };
 
+export const chainGlanceQueryKeys = {
+  all: ["chain-glance"] as const,
+  list: (symbolsKey: string) => [...chainGlanceQueryKeys.all, symbolsKey] as const
+};
+
 export const watchlistHotQueryKeys = {
   all: ["watchlist-hot"] as const,
   compact: (portfolioId: string | null, limit: number) =>

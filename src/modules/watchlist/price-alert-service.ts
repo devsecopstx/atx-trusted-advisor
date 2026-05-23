@@ -8,17 +8,20 @@ import {
 } from "@/modules/core-admin/repository";
 import type { WatchlistSymbol } from "@/modules/core-admin/types";
 import { dispatchPortfolioDeskEvents } from "@/modules/notifications/portfolio-notification-service";
+import {
+    DEFAULT_MIN_ABS_MOVE_PERCENT,
+    DEFAULT_PRICE_ALERT_COOLDOWN_MS,
+    MAX_USER_MOVE_PERCENT,
+    MIN_USER_MOVE_PERCENT
+} from "@/modules/watchlist/price-alert-constants";
 import { symbolFromRawWatchlistEntry } from "@/modules/watchlist/watchlist-row-raw";
 
-/** Default minimum absolute % move vs prior `lastPrice` before creating a portfolio alert. */
-export const DEFAULT_MIN_ABS_MOVE_PERCENT = 5;
-
-/** Default cooldown: skip a new alert if one for the same symbol was created within this window. */
-export const DEFAULT_PRICE_ALERT_COOLDOWN_MS = 4 * 60 * 60 * 1000;
-
-/** Clamp per-row minimum move % to a sane range (0.1% – 100%). */
-export const MIN_USER_MOVE_PERCENT = 0.1;
-export const MAX_USER_MOVE_PERCENT = 100;
+export {
+    DEFAULT_MIN_ABS_MOVE_PERCENT,
+    DEFAULT_PRICE_ALERT_COOLDOWN_MS,
+    MAX_USER_MOVE_PERCENT,
+    MIN_USER_MOVE_PERCENT
+} from "@/modules/watchlist/price-alert-constants";
 
 export type WatchlistPriceTick = {
   symbol: string;

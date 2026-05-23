@@ -30,7 +30,7 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     displayName: "Options strategy scanner (hourly Mon–Fri 14–21 UTC)",
     defaultJobName: "options-scanner-job",
     description:
-      "Runs the unified options strategy scanner: strategy/prefs inventory, option positions and watchlist targets, Yahoo chain passes, portfolio_recommendations upserts, and SELL-signal alerts (Next.js executor; JVM tick is engine dry-run only when scheduled on Kotlin)."
+      "Runs the unified options strategy scanner: strategy/prefs inventory, option positions and watchlist targets, Yahoo chain passes with IV rank floor ≥45% (IVRankFilter), portfolio_recommendations upserts, and SELL-signal alerts (Next.js executor; JVM tick is engine dry-run only when scheduled on Kotlin)."
   },
   user_access_requests: {
     displayName: "User access requests (hourly Mon–Fri 14–21 UTC)",

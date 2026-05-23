@@ -42,6 +42,7 @@ import type {
     TenantRole
 } from "@/modules/identity/types";
 import { deleteTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
+import type { TenantOptionsStrategyEngineConfigStored } from "@/modules/strategy-options/tenant-options-strategy-engine-config";
 
 const collections = {
   users: "core_users",
@@ -2508,6 +2509,31 @@ export async function updateTenantFeatureFlags(
     { _id: id },
     { $set: { "tenantPreferences.featureFlags": flags, updatedAt: now } }
   );
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+}
+
+export async function updateTenantOptionsStrategyEngineConfig(
+  tenantIdHex: string,
+  config: TenantOptionsStrategyEngineConfigStored | null
+): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const now = new Date();
+  if (config === null) {
+    await db.collection<Tenant>(collections.tenants).updateOne(
+      { _id: id },
+      { $unset: { "tenantPreferences.options_strategy_engine": "" }, $set: { updatedAt: now } }
+    );
+  } else {
+    await db.collection<Tenant>(collections.tenants).updateOne(
+      { _id: id },
+      { $set: { "tenantPreferences.options_strategy_engine": config, updatedAt: now } }
+    );
+  }
   return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
 }
 
