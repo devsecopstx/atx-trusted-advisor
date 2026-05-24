@@ -544,6 +544,46 @@ html[data-xf-ui="soft"] .app-hero-icon-img {
   pointer-events: none;
 }
 
+/* Column / metric headings: label + circular info (Hot Picks, desks, admin tables) */
+.xf-column-header-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  max-width: 100%;
+}
+
+.xf-column-header-hint__label {
+  line-height: 1.2;
+}
+
+.xf-column-header-hint__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--xf-text-400);
+  cursor: help;
+  line-height: 0;
+  border-radius: 999px;
+}
+
+.xf-column-header-hint__trigger:hover,
+.xf-column-header-hint__trigger:focus-visible {
+  color: var(--xf-text-200);
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-gain-green)) 35%, transparent);
+}
+
+.xf-column-header-hint__icon {
+  width: 0.82rem;
+  height: 0.82rem;
+  display: block;
+}
+
 .xf-hover-hint__bubble {
   position: fixed;
   z-index: 10050;

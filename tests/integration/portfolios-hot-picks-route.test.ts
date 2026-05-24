@@ -73,13 +73,30 @@ describe("GET /api/portfolios/hot-picks", () => {
     expect(res.status).toBe(403);
   });
 
-  it("proxies to backend when BFF returns a response", async () => {
+  it("proxies to backend when BFF returns picks", async () => {
+    mockProxyPortfolioRequestToBackend.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            picks: [{ id: "SPY:2026-06-19:covered_call:500", symbol: "SPY", edgeScore: 72 }],
+            meta: {}
+          }
+        }),
+        { status: 200 }
+      )
+    );
+    const res = await getHotPicks(new Request("http://test/api/portfolios/hot-picks?scope=watchlist"));
+    expect(res.status).toBe(200);
+    expect(mockRunHotPicksScanNextFallback).not.toHaveBeenCalled();
+  });
+
+  it("falls back when BFF returns 200 with empty picks", async () => {
     mockProxyPortfolioRequestToBackend.mockResolvedValue(
       new Response(JSON.stringify({ data: { picks: [], meta: {} } }), { status: 200 })
     );
     const res = await getHotPicks(new Request("http://test/api/portfolios/hot-picks?scope=watchlist"));
     expect(res.status).toBe(200);
-    expect(mockRunHotPicksScanNextFallback).not.toHaveBeenCalled();
+    expect(mockRunHotPicksScanNextFallback).toHaveBeenCalled();
   });
 
   it("falls back to Next scan when BFF is off", async () => {
@@ -88,6 +105,15 @@ describe("GET /api/portfolios/hot-picks", () => {
     expect(mockRunHotPicksScanNextFallback).toHaveBeenCalled();
     const body = (await res.json()) as { data?: { meta?: { scope?: string } } };
     expect(body.data?.meta?.scope).toBe("watchlist");
+  });
+
+  it("falls back to Next scan when BFF returns 503", async () => {
+    mockProxyPortfolioRequestToBackend.mockResolvedValue(
+      new Response(JSON.stringify({ error: "chain_unavailable" }), { status: 503 })
+    );
+    const res = await getHotPicks(new Request("http://test/api/portfolios/hot-picks?scope=watchlist"));
+    expect(res.status).toBe(200);
+    expect(mockRunHotPicksScanNextFallback).toHaveBeenCalled();
   });
 
   it("returns 400 for invalid query", async () => {

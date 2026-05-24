@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { XfColumnHeaderHint } from "@/app/ui/xf-column-header-hint";
 import { buildXoptionsStrategyBuilderHref } from "@/lib/xoptions/xoptions-desk-deep-link";
 import type { HotPickCard } from "@/modules/portfolios/hot-picks-types";
 
+import { HOT_PICKS_METRIC_HINTS } from "./hot-picks-metric-hints";
 import { PortfoliosHotPicksSparkline } from "./portfolios-hot-picks-sparkline";
 
 type Props = {
@@ -63,12 +65,16 @@ export function PortfoliosHotPicksCard({
           <p className="portfolios-hot-picks-card__strategy">{pick.strategyLabel}</p>
         </div>
         <span className={outlookBadgeClass(pick.outlook)}>{pick.outlook}</span>
-        <div
-          aria-label={`Edge score ${pick.edgeScore}`}
-          className="portfolios-hot-picks-card__edge"
-          title="Edge score (engine fit)"
-        >
-          <span className="portfolios-hot-picks-card__edge-value">{pick.edgeScore}</span>
+        <div className="portfolios-hot-picks-card__edge-block">
+          <div aria-label={`Edge score ${pick.edgeScore}`} className="portfolios-hot-picks-card__edge">
+            <span className="portfolios-hot-picks-card__edge-value">{pick.edgeScore}</span>
+          </div>
+          <XfColumnHeaderHint
+            showLabel={false}
+            className="portfolios-hot-picks-card__edge-hint"
+            hint={HOT_PICKS_METRIC_HINTS.edgeScore}
+            label="Edge score"
+          />
         </div>
       </header>
 
@@ -86,23 +92,33 @@ export function PortfoliosHotPicksCard({
 
       <dl className="portfolios-hot-picks-card__metrics">
         <div>
-          <dt>Entry</dt>
+          <dt>
+            <XfColumnHeaderHint hint={HOT_PICKS_METRIC_HINTS.entry} label="Entry" />
+          </dt>
           <dd className="font-mono tabular-nums">{formatUsd(pick.entry)}</dd>
         </div>
         <div>
-          <dt>Breakeven</dt>
+          <dt>
+            <XfColumnHeaderHint hint={HOT_PICKS_METRIC_HINTS.breakeven} label="Breakeven" />
+          </dt>
           <dd className="font-mono tabular-nums">{formatUsd(pick.breakeven)}</dd>
         </div>
         <div>
-          <dt>POP</dt>
+          <dt>
+            <XfColumnHeaderHint hint={HOT_PICKS_METRIC_HINTS.pop} label="POP" />
+          </dt>
           <dd className="font-mono tabular-nums">{pick.popPercent.toFixed(0)}%</dd>
         </div>
         <div>
-          <dt>Est. ROI</dt>
+          <dt>
+            <XfColumnHeaderHint hint={HOT_PICKS_METRIC_HINTS.estRoi} label="Est. ROI" />
+          </dt>
           <dd className="font-mono tabular-nums">{formatPct(pick.estRoiPercent)}</dd>
         </div>
         <div>
-          <dt>IV rank</dt>
+          <dt>
+            <XfColumnHeaderHint hint={HOT_PICKS_METRIC_HINTS.ivRank} label="IV rank" />
+          </dt>
           <dd className="font-mono tabular-nums">{pick.ivRankPercent.toFixed(0)}%</dd>
         </div>
       </dl>

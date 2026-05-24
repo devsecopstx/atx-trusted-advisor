@@ -65,6 +65,9 @@ export type HotPicksMeta = {
   cachedAt: string;
   cacheTtlSeconds: number;
   cacheHit: boolean;
+  chainsAttempted?: number;
+  chainsLoaded?: number;
+  statusNote?: string | null;
 };
 
 export type HotPicksPayload = {

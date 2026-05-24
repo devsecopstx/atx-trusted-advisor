@@ -20,6 +20,11 @@ if [ -z "${SPRING_DATA_MONGODB_DATABASE:-}" ] && [ -n "${MONGODB_DB_NAME:-}" ]; 
 fi
 set +a
 
+# Local Hot Picks / strategy_recommendations synthetic chains when Yahoo is down (see StrategyRecommendationService).
+if [ -z "${SPRING_PROFILES_ACTIVE:-}" ] && [ "${ATX_DEPLOY_TARGET:-}" = "dev" ]; then
+  export SPRING_PROFILES_ACTIVE=dev
+fi
+
 # Spring Boot default / SERVER_PORT from .env — free listener before bootRun (stale Gradle, Docker backend, etc.).
 free_backend_listen_port() {
   local port="${1:?port required}"

@@ -119,16 +119,35 @@ class HotPicksService(
 
         val chains = LinkedHashMap<String, OptionsStrategyEngine.OptionChainSnapshot>()
         val skewBySymbol = LinkedHashMap<String, List<Map<String, Any?>>>()
+        var chainsAttempted = 0
+        val dteMid = (query.dteMin + query.dteMax) / 2
+        val devSynthetic = OptionsDevChainFallback.isDevOrTestProfile()
         for (symbol in symbols) {
-            val chain = loadChainInDteWindow(symbol, query.dteMin, query.dteMax) ?: continue
+            chainsAttempted += 1
+            var chain = loadChainInDteWindow(symbol, query.dteMin, query.dteMax)
+            if (chain == null && devSynthetic) {
+                chain = OptionsDevChainFallback.syntheticChain(symbol, dteMid)
+            }
+            if (chain == null) {
+                continue
+            }
             chains[symbol] = chain
             skewBySymbol[symbol] = buildIvSkewPanel(chain)
         }
         if (chains.isEmpty()) {
-            return HotPicksOutcome.Unavailable(
-                mapOf(
-                    "error" to "chain_unavailable",
-                    "message" to "No option chains in the ${query.dteMin}–${query.dteMax} DTE window for the selected universe",
+            val generatedAt = Instant.now().toString()
+            return HotPicksOutcome.Ok(
+                emptyPayload(
+                    query,
+                    symbols = symbols,
+                    picks = emptyList(),
+                    cachedAt = generatedAt,
+                    cacheHit = false,
+                    chainsAttempted = chainsAttempted,
+                    chainsLoaded = 0,
+                    statusNote =
+                        "No liquid option chains in the ${query.dteMin}–${query.dteMax} DTE window for this universe. " +
+                            "Try All market scope, lower the edge floor, or refresh after the next weekly expiry posts.",
                 ),
             )
         }
@@ -242,6 +261,13 @@ class HotPicksService(
                 picks = picks,
                 cachedAt = generatedAt,
                 cacheHit = false,
+                chainsAttempted = chainsAttempted,
+                chainsLoaded = chains.size,
+                statusNote = if (picks.isEmpty()) {
+                    "No structures met edge score ${query.minEdgeScore}–${query.maxEdgeScore} and bias filters for ${chains.size} loaded chain(s)."
+                } else {
+                    null
+                },
             )
         writeCache(cacheKey, body)
         return HotPicksOutcome.Ok(body)
@@ -253,28 +279,58 @@ class HotPicksService(
         picks: List<Map<String, Any?>>,
         cachedAt: String,
         cacheHit: Boolean,
+        chainsAttempted: Int = 0,
+        chainsLoaded: Int = 0,
+        statusNote: String? = null,
     ): Map<String, Any?> =
         mapOf(
             "data" to
                 mapOf(
                     "picks" to picks,
                     "meta" to
-                        mapOf(
-                            "scope" to query.scope.name.lowercase(),
-                            "bias" to query.bias.name.lowercase(),
-                            "portfolioId" to query.portfolioId,
-                            "minEdgeScore" to query.minEdgeScore,
-                            "maxEdgeScore" to query.maxEdgeScore,
-                            "dteMin" to query.dteMin,
-                            "dteMax" to query.dteMax,
-                            "symbolCount" to symbols.size,
-                            "symbols" to symbols,
-                            "cachedAt" to cachedAt,
-                            "cacheTtlSeconds" to CACHE_TTL_SECONDS,
-                            "cacheHit" to cacheHit,
+                        buildMetaMap(
+                            query = query,
+                            symbols = symbols,
+                            cachedAt = cachedAt,
+                            cacheHit = cacheHit,
+                            chainsAttempted = chainsAttempted,
+                            chainsLoaded = chainsLoaded,
+                            statusNote = statusNote,
                         ),
                 ),
         )
+
+    private fun buildMetaMap(
+        query: HotPicksQuery,
+        symbols: List<String>,
+        cachedAt: String,
+        cacheHit: Boolean,
+        chainsAttempted: Int,
+        chainsLoaded: Int,
+        statusNote: String?,
+    ): Map<String, Any?> {
+        val meta =
+            linkedMapOf<String, Any?>(
+                "scope" to query.scope.name.lowercase(),
+                "bias" to query.bias.name.lowercase(),
+                "portfolioId" to query.portfolioId,
+                "minEdgeScore" to query.minEdgeScore,
+                "maxEdgeScore" to query.maxEdgeScore,
+                "dteMin" to query.dteMin,
+                "dteMax" to query.dteMax,
+                "symbolCount" to symbols.size,
+                "symbols" to symbols,
+                "chainsAttempted" to chainsAttempted,
+                "chainsLoaded" to chainsLoaded,
+                "cachedAt" to cachedAt,
+                "cacheTtlSeconds" to CACHE_TTL_SECONDS,
+                "cacheHit" to cacheHit,
+            )
+        if (!statusNote.isNullOrBlank()) {
+            meta["statusNote"] = statusNote
+        }
+        return meta
+    }
 
     private fun resolveSymbols(session: ResolvedSession, query: HotPicksQuery): List<String> {
         return when (query.scope) {
@@ -355,15 +411,25 @@ class HotPicksService(
 
     private fun chooseExpirationInDteRange(expirations: List<String>, dteMin: Int, dteMax: Int): String? {
         val today = LocalDate.now(ZoneOffset.UTC)
-        return expirations
-            .mapNotNull { raw ->
-                val d = runCatching { LocalDate.parse(raw, DateTimeFormatter.ISO_LOCAL_DATE) }.getOrNull() ?: return@mapNotNull null
+        val targetMid = (dteMin + dteMax) / 2
+        val future =
+            expirations.mapNotNull { raw ->
+                val d =
+                    runCatching { LocalDate.parse(raw, DateTimeFormatter.ISO_LOCAL_DATE) }.getOrNull()
+                        ?: return@mapNotNull null
                 val dte = ChronoUnit.DAYS.between(today, d).toInt()
-                if (dte in dteMin..dteMax) d to dte else null
+                if (dte < 1) return@mapNotNull null
+                d to dte
             }
-            .minByOrNull { abs(it.second - (dteMin + dteMax) / 2) }
-            ?.first
-            ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        if (future.isEmpty()) return null
+        fun pick(candidates: List<Pair<LocalDate, Int>>): String? =
+            candidates
+                .minByOrNull { abs(it.second - targetMid) }
+                ?.first
+                ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        pick(future.filter { it.second in dteMin..dteMax })?.let { return it }
+        pick(future.filter { it.second in dteMin..(dteMax + 14) })?.let { return it }
+        return pick(future)
     }
 
     private fun mapYahooChain(
@@ -416,14 +482,16 @@ class HotPicksService(
                 }
             val quoteBid = if (bid > 0) bid else premium
             val quoteAsk = if (ask > 0) ask else premium
-            if (quoteBid <= 0 || quoteAsk <= 0) return@mapNotNull null
+            if (quoteBid <= 0 && quoteAsk <= 0) return@mapNotNull null
+            val effectiveBid = if (quoteBid > 0) quoteBid else quoteAsk
+            val effectiveAsk = if (quoteAsk > 0) quoteAsk else quoteBid
             OptionsStrategyEngine.OptionContractSnapshot(
                 strike = strike,
                 impliedVol = node.path("impliedVolatility").asDouble(0.0).coerceIn(0.0, 5.0),
                 openInterest = node.path("openInterest").asLong(0L).coerceAtLeast(0L),
                 volume = node.path("volume").asLong(0L).coerceAtLeast(0L),
-                bid = quoteBid,
-                ask = quoteAsk,
+                bid = effectiveBid,
+                ask = effectiveAsk,
                 delta = estimateDelta(spot, strike, isCall),
                 isCall = isCall,
             )
@@ -453,9 +521,14 @@ class HotPicksService(
                 HotPicksBias.BALANCED -> OptionsStrategyEngine.RiskTolerance.MODERATE
                 HotPicksBias.AGGRESSIVE -> OptionsStrategyEngine.RiskTolerance.AGGRESSIVE
             }
+        val outlook =
+            when (bias) {
+                HotPicksBias.AGGRESSIVE -> OptionsStrategyEngine.MarketOutlook.NEUTRAL
+                else -> OptionsStrategyEngine.MarketOutlook.BULLISH
+            }
         return OptionsStrategyEngine.UserOptionsContext(
             risk = risk,
-            outlook = OptionsStrategyEngine.MarketOutlook.NEUTRAL,
+            outlook = outlook,
             portfolioDeltaHint = 0.0,
             marginAccount = bias != HotPicksBias.CONSERVATIVE,
         )

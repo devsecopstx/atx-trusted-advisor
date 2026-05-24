@@ -18,8 +18,22 @@ export async function GET(request: Request) {
   }
 
   const proxied = await proxyPortfolioRequestToBackend(request);
-  if (proxied) {
-    return proxied;
+  if (proxied && proxied.status < 500) {
+    try {
+      const peek = (await proxied.clone().json()) as { data?: { picks?: unknown[] } };
+      if ((peek.data?.picks?.length ?? 0) > 0) {
+        return proxied;
+      }
+    } catch {
+      return proxied;
+    }
+    console.warn("[portfolios/hot-picks] BFF returned empty picks — using Next strategy engine");
+  } else if (proxied) {
+    console.warn(
+      "[portfolios/hot-picks] BFF returned",
+      proxied.status,
+      "— using Next strategy engine"
+    );
   }
 
   const url = new URL(request.url);
@@ -31,7 +45,10 @@ export async function GET(request: Request) {
     );
   }
 
-  const data = await runHotPicksScanNextFallback(session, parsed);
+  const data = await runHotPicksScanNextFallback(session, parsed, {
+    skipDedicatedHotPicks: proxied != null && proxied.status < 500,
+    cookieHeader: request.headers.get("cookie") ?? undefined
+  });
   const res = NextResponse.json({ data });
   res.headers.set("x-cache-hit", data.meta.cacheHit ? "1" : "0");
   res.headers.set("Cache-Control", "private, max-age=60");

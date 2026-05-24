@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
+import { XfColumnHeaderHint } from "@/app/ui/xf-column-header-hint";
 import { fetchHotPicks } from "@/lib/react-query/hot-picks-api";
 import { hotPicksQueryKeys } from "@/lib/react-query/query-keys";
 import type { HotPicksBias, HotPicksScope } from "@/modules/portfolios/hot-picks-types";
@@ -147,7 +148,10 @@ export function PortfoliosHotPicksView({ portfolioId, defaultPortfolioId }: Prop
           ))}
         </div>
         <label className="portfolios-hot-picks__edge">
-          <span>Edge score ≥ {minEdgeScore}</span>
+          <XfColumnHeaderHint
+            hint="Minimum strategy fit score (0–100) from the scan engine. Lower the slider to see more structures; raise it to tighten quality."
+            label={`Edge score ≥ ${minEdgeScore}`}
+          />
           <input
             aria-label="Minimum edge score"
             max={90}
@@ -159,22 +163,36 @@ export function PortfoliosHotPicksView({ portfolioId, defaultPortfolioId }: Prop
           />
         </label>
         <div className="portfolios-hot-picks__toggles">
-          <button
-            aria-pressed={showGreeks}
-            className={`portfolios-hot-picks__seg${showGreeks ? " portfolios-hot-picks__seg--active" : ""}`}
-            type="button"
-            onClick={() => setShowGreeks((v) => !v)}
-          >
-            Greeks
-          </button>
-          <button
-            aria-pressed={showIvSkew}
-            className={`portfolios-hot-picks__seg${showIvSkew ? " portfolios-hot-picks__seg--active" : ""}`}
-            type="button"
-            onClick={() => setShowIvSkew((v) => !v)}
-          >
-            IV skew
-          </button>
+          <div className="portfolios-hot-picks__toggle">
+            <button
+              aria-pressed={showGreeks}
+              className={`portfolios-hot-picks__seg${showGreeks ? " portfolios-hot-picks__seg--active" : ""}`}
+              type="button"
+              onClick={() => setShowGreeks((v) => !v)}
+            >
+              Greeks
+            </button>
+            <XfColumnHeaderHint
+              showLabel={false}
+              hint="Show model Greeks (delta, gamma, theta, vega) on each card when the engine supplies them."
+              label="Greeks"
+            />
+          </div>
+          <div className="portfolios-hot-picks__toggle">
+            <button
+              aria-pressed={showIvSkew}
+              className={`portfolios-hot-picks__seg${showIvSkew ? " portfolios-hot-picks__seg--active" : ""}`}
+              type="button"
+              onClick={() => setShowIvSkew((v) => !v)}
+            >
+              IV skew
+            </button>
+            <XfColumnHeaderHint
+              showLabel={false}
+              hint="Show put/call IV skew bars and a short desk insight when chain skew data is available."
+              label="IV skew"
+            />
+          </div>
         </div>
       </div>
 
@@ -184,9 +202,16 @@ export function PortfoliosHotPicksView({ portfolioId, defaultPortfolioId }: Prop
         </p>
       ) : null}
 
+      {meta?.statusNote ? (
+        <p className="portfolios-hot-picks__meta text-sm text-[var(--xf-text-300)]" role="status">
+          {meta.statusNote}
+        </p>
+      ) : null}
+
       {meta ? (
         <p className="portfolios-hot-picks__meta text-xs text-[var(--xf-text-400)]">
-          {picks.length} pick{picks.length === 1 ? "" : "s"} · {meta.symbolCount} symbols scanned
+          {picks.length} pick{picks.length === 1 ? "" : "s"} · {meta.symbolCount} symbols
+          {typeof meta.chainsLoaded === "number" ? ` · ${meta.chainsLoaded} chains` : ""}
           {meta.cacheHit ? " · cached" : ""}
           {meta.cachedAt ? ` · ${new Date(meta.cachedAt).toLocaleTimeString()}` : ""}
         </p>
@@ -196,7 +221,10 @@ export function PortfoliosHotPicksView({ portfolioId, defaultPortfolioId }: Prop
         <p className="portfolios-hot-picks__loading">Scanning forward expirations…</p>
       ) : picks.length === 0 ? (
         <div className="portfolios-hot-picks__empty">
-          <p>No structures met your filters for this universe. Try Balanced bias, lower edge floor, or Watchlist scope.</p>
+          <p>
+            No structures met your filters for this universe. Try Balanced bias, lower edge floor, All market scope, or
+            add symbols to your watchlist.
+          </p>
           <Link className="portfolios-hot-picks__link" href="/watchlist">
             Open watchlist
           </Link>

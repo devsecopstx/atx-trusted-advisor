@@ -2,15 +2,19 @@ import { ObjectId } from "mongodb";
 import { cookies } from "next/headers";
 
 import type { SessionUser } from "@/lib/auth";
+import { formatBackendSessionCookieHeader } from "@/lib/backend-session-cookie";
 import { getAtxfinanceBackendOrigin } from "@/lib/env";
-import { getDb } from "@/lib/mongodb";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import {
     ensureUserWatchlistForSessionUser,
+    listPortfolioAccounts,
+    listPortfolioPositionsByAccount,
     listPortfoliosForSessionUser
 } from "@/modules/core-admin/repository";
+import { normalizePositionType } from "@/modules/core-admin/types";
 import { getCoreUserById } from "@/modules/identity/repository";
 
+import { runHotPicksScanNextEngine } from "./hot-picks-scan-next-engine";
 import type { HotPicksPayload, HotPicksQueryInput } from "./hot-picks-types";
 
 const PORTFOLIO_ID_PATTERN = /^[a-fA-F0-9]{24}$/;
@@ -108,28 +112,48 @@ export async function fetchHotPicksDirectFromBackend(
   const body = (await response.json().catch(() => ({}))) as {
     data?: HotPicksPayload;
     error?: string;
+    message?: string;
   };
-  if (!response.ok || !body.data) {
+  if (response.ok && body.data) {
+    return body.data;
+  }
+  if (response.status === 503) {
     return null;
   }
-  return body.data;
+  return null;
 }
 
-/** Next-local fallback when JVM BFF proxy is off but origin is set, or for symbol preflight. */
+export type HotPicksFallbackOptions = {
+  /** When BFF already returned 200 with zero picks, skip a second JVM hot-picks fetch. */
+  skipDedicatedHotPicks?: boolean;
+  /** Prefer the inbound request Cookie header (xChat-style); else use Next cookies(). */
+  cookieHeader?: string;
+};
+
+/** Next fallback: dedicated hot-picks JVM route, else strategy-recommendations engine. */
 export async function runHotPicksScanNextFallback(
   session: SessionUser,
-  query: HotPicksQueryInput
+  query: HotPicksQueryInput,
+  opts?: HotPicksFallbackOptions
 ): Promise<HotPicksPayload> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  if (sessionCookie) {
-    const fromBackend = await fetchHotPicksDirectFromBackend(query, sessionCookie);
-    if (fromBackend) {
+  const sessionCookie = formatBackendSessionCookieHeader(
+    opts?.cookieHeader ?? cookieStore.get(SESSION_COOKIE_NAME)?.value ?? ""
+  );
+  const symbols = await resolveHotPicksSymbols(session, query);
+
+  if (sessionCookie && !opts?.skipDedicatedHotPicks) {
+    const rawValue = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? "";
+    const fromBackend = await fetchHotPicksDirectFromBackend(query, rawValue);
+    if (fromBackend && fromBackend.picks.length > 0) {
       return fromBackend;
     }
   }
 
-  const symbols = await resolveHotPicksSymbols(session, query);
+  if (sessionCookie) {
+    return runHotPicksScanNextEngine(session, query, sessionCookie, symbols);
+  }
+
   const cachedAt = new Date().toISOString();
   return {
     picks: [],
@@ -145,7 +169,8 @@ export async function runHotPicksScanNextFallback(
       symbols,
       cachedAt,
       cacheTtlSeconds: 3600,
-      cacheHit: false
+      cacheHit: false,
+      statusNote: "Missing session cookie for strategy engine."
     }
   };
 }
@@ -178,30 +203,41 @@ async function resolveHotPicksSymbols(
   if (!owned) {
     return [];
   }
-  const db = await getDb();
-  const accounts = await db
-    .collection("portfolio_accounts")
-    .find({
-      portfolioId: new ObjectId(portfolioId),
-      tenantId: session.tenantId,
-      userId: session.userId
-    })
-    .project({ _id: 1 })
-    .toArray();
-  const accountIds = accounts.map((a) => a._id).filter((id): id is ObjectId => id instanceof ObjectId);
+  const accounts = await listPortfolioAccounts({
+    userId: session.userId,
+    portfolioId,
+    tenantId: session.tenantId
+  });
+  const accountIds = accounts.flatMap((a) => (a._id ? [a._id] : []));
   if (accountIds.length === 0) {
     return [];
   }
-  const positions = await db
-    .collection("portfolio_positions")
-    .find({ accountId: { $in: accountIds }, tenantId: session.tenantId })
-    .project({ symbol: 1 })
-    .toArray();
+  const positions = await listPortfolioPositionsByAccount({
+    userId: session.userId,
+    portfolioId,
+    accountIds,
+    tenantId: session.tenantId
+  });
   const out = new Set<string>();
   for (const row of positions) {
+    if (normalizePositionType(row.type) !== "stock") {
+      continue;
+    }
     const sym = typeof row.symbol === "string" ? row.symbol.trim().toUpperCase() : "";
-    if (sym && /^[A-Z0-9.\-]{1,12}$/.test(sym)) {
+    if (sym && sym !== "CASH" && sym !== "USD" && /^[A-Z0-9.\-]{1,12}$/.test(sym)) {
       out.add(sym);
+    }
+  }
+  if (out.size === 0) {
+    const wl = await ensureUserWatchlistForSessionUser({
+      userId: session.userId,
+      tenantId: session.tenantId
+    });
+    for (const s of wl?.symbols ?? []) {
+      const sym = (typeof s === "string" ? s : s.symbol)?.trim().toUpperCase();
+      if (sym && /^[A-Z0-9.\-]{1,12}$/.test(sym)) {
+        out.add(sym);
+      }
     }
   }
   return [...out];

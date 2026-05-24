@@ -22,6 +22,8 @@ data class GenerateStrategyRecommendationsRequest(
     val preferredStrategies: List<String>? = null,
     val maxResults: Int? = null,
     val allowSyntheticFallback: Boolean? = null,
+    /** Minimum engine fit score (0–100). Hot Picks passes the UI edge floor; default 70 when omitted. */
+    val minScore: Int? = null,
 )
 
 sealed class StrategyRecommendationGenerateOutcome {
@@ -57,8 +59,8 @@ class StrategyRecommendationService(
                 chainSources[symbol] = "yahoo"
                 continue
             }
-            if (parsed.allowSyntheticFallback && isDevOrTestProfile()) {
-                chains[symbol] = syntheticChain(symbol, parsed.horizonDays)
+            if (parsed.allowSyntheticFallback && OptionsDevChainFallback.isDevOrTestProfile(environment)) {
+                chains[symbol] = OptionsDevChainFallback.syntheticChain(symbol, parsed.horizonDays)
                 chainSources[symbol] = "synthetic"
             }
         }
@@ -79,10 +81,18 @@ class StrategyRecommendationService(
             portfolioDeltaHint = 0.0,
             marginAccount = parsed.risk != OptionsStrategyEngine.RiskTolerance.CONSERVATIVE,
         )
-        val prompt = OptionsStrategyEngine.OptionsScanPrompt(
-            minScore = OptionsStrategyEngine.DEFAULT_MIN_SCORE,
-            preferredStrategies = parsed.preferredStrategies,
-        )
+        val allSynthetic = chainSources.isNotEmpty() && chainSources.values.all { it == "synthetic" }
+        val promptMinScore =
+            if (allSynthetic) {
+                min(parsed.minScore, 50)
+            } else {
+                parsed.minScore
+            }
+        val prompt =
+            OptionsStrategyEngine.OptionsScanPrompt(
+                minScore = promptMinScore,
+                preferredStrategies = parsed.preferredStrategies,
+            )
         val recommendations = engine.generateRecommendations(context, chains, prompt)
             .take(parsed.maxResults)
             .map { it.toTransportMap() }
@@ -133,6 +143,8 @@ class StrategyRecommendationService(
             ?.toSet()
             ?.takeIf { it.isNotEmpty() }
         val maxResults = (request.maxResults ?: DEFAULT_MAX_RESULTS).coerceIn(1, MAX_RESULTS)
+        val minScore =
+            request.minScore?.coerceIn(0, 100) ?: OptionsStrategyEngine.DEFAULT_MIN_SCORE
         return ParsedStrategyRecommendationRequest(
             portfolioId = portfolioId,
             symbols = symbols,
@@ -142,6 +154,7 @@ class StrategyRecommendationService(
             preferredStrategies = preferred,
             maxResults = maxResults,
             allowSyntheticFallback = request.allowSyntheticFallback == true,
+            minScore = minScore,
         )
     }
 
@@ -250,36 +263,6 @@ class StrategyRecommendationService(
         }
     }
 
-    private fun syntheticChain(symbol: String, horizonDays: Int): OptionsStrategyEngine.OptionChainSnapshot {
-        val spot = 100.0
-        val expiration = LocalDate.now(ZoneOffset.UTC)
-            .plusDays(horizonDays.toLong())
-            .format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val strikes = listOf(90.0, 95.0, 100.0, 105.0, 110.0)
-        fun contract(strike: Double, isCall: Boolean) = OptionsStrategyEngine.OptionContractSnapshot(
-            strike = strike,
-            impliedVol = 0.42,
-            openInterest = 1200L,
-            volume = 400L,
-            bid = 1.9,
-            ask = 2.1,
-            delta = estimateDelta(spot, strike, isCall),
-            isCall = isCall,
-        )
-        return OptionsStrategyEngine.OptionChainSnapshot(
-            underlying = symbol,
-            expirationYmd = expiration,
-            spot = spot,
-            calls = strikes.map { contract(it, true) },
-            puts = strikes.map { contract(it, false) },
-        )
-    }
-
-    private fun isDevOrTestProfile(): Boolean {
-        val profiles = environment.activeProfiles.map { it.lowercase() }.toSet()
-        return profiles.contains("dev") || profiles.contains("development") || profiles.contains("test")
-    }
-
     private fun OptionsStrategyEngine.StrategyRecommendation.toTransportMap(): Map<String, Any?> =
         mapOf(
             "strategy" to strategy.name.lowercase(),
@@ -315,6 +298,7 @@ class StrategyRecommendationService(
         val preferredStrategies: Set<OptionsStrategyEngine.StrategyKind>?,
         val maxResults: Int,
         val allowSyntheticFallback: Boolean,
+        val minScore: Int,
     )
 
     private companion object {

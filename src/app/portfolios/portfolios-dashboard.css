@@ -2274,7 +2274,14 @@ html[data-xf-ui="soft"] .sidebar-destructive-action__desc {
 
 .portfolios-hot-picks__toggles {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
+}
+
+.portfolios-hot-picks__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
 }
 
 .portfolios-hot-picks__grid {
@@ -2339,6 +2346,13 @@ html[data-xf-ui="soft"] .sidebar-destructive-action__desc {
   color: var(--xf-lightning-yellow);
 }
 
+.portfolios-hot-picks-card__edge-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+}
+
 .portfolios-hot-picks-card__edge {
   width: 2.4rem;
   height: 2.4rem;
@@ -2349,6 +2363,23 @@ html[data-xf-ui="soft"] .sidebar-destructive-action__desc {
   font-weight: 800;
   font-size: 0.8rem;
   color: var(--xf-text-100);
+}
+
+.portfolios-hot-picks-card__edge-hint {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.portfolios-hot-picks-card__edge-hint .xf-column-header-hint__icon {
+  width: 0.68rem;
+  height: 0.68rem;
+}
+
+.portfolios-hot-picks-card__metrics dt {
+  margin: 0 0 0.08rem;
 }
 
 .portfolios-hot-picks-card__viz {
