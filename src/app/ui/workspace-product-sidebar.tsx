@@ -912,6 +912,11 @@ export function WorkspaceProductSidebar({
             Books Overview
           </SidebarLink>
           ) : null}
+          {isPathVisible("/portfolios") ? (
+          <SidebarLink href="/portfolios/hot-picks" nested title="Hot Picks — forward DTE scanner">
+            Hot Picks
+          </SidebarLink>
+          ) : null}
           {isPathVisible("/watchlist") ? (
           <SidebarLink href={watchlistHref} nested title="Watchlist workspace">
             Watchlist

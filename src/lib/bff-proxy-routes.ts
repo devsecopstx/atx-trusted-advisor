@@ -46,6 +46,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "GET", path: "/api/portfolios/default" },
   { method: "POST", path: "/api/portfolios/default" },
   { method: "GET", path: "/api/portfolios/current" },
+  { method: "GET", path: "/api/portfolios/hot-picks" },
   { method: "GET", path: "/api/portfolios/{portfolioId}/accounts" },
   { method: "POST", path: "/api/portfolios/{portfolioId}/accounts" },
   { method: "PATCH", path: "/api/portfolios/{portfolioId}/accounts/{accountId}" },

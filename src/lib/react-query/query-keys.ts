@@ -26,6 +26,23 @@ export const watchlistHotQueryKeys = {
     [...watchlistHotQueryKeys.all, portfolioId ?? "", String(limit)] as const
 };
 
+export const hotPicksQueryKeys = {
+  all: ["hot-picks"] as const,
+  list: (input: {
+    scope: string;
+    bias: string;
+    portfolioId: string | null;
+    minEdgeScore: number;
+  }) =>
+    [
+      ...hotPicksQueryKeys.all,
+      input.scope,
+      input.bias,
+      input.portfolioId ?? "",
+      String(input.minEdgeScore)
+    ] as const
+};
+
 export const workspacePulseQueryKeys = {
   all: ["workspace-pulse"] as const,
   pulse: (holdingsKey: string) => [...workspacePulseQueryKeys.all, holdingsKey] as const

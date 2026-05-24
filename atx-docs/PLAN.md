@@ -16,6 +16,8 @@ Visual asset refresh **v2** shipped with scanner tightening — proof captures i
 
 ## Shipped (May 2026 — platform / SRE)
 
+- **Hot Picks (portfolios workspace — track 12):** **`/portfolios/hot-picks`** — forward **7–21 DTE** scanner UI (bias, edge score, Greeks/IV skew toggles, glass cards, xOptions/alert/watchlist actions). **`GET /api/portfolios/hot-picks`** → Spring **`HotPicksService`** + **`OptionsStrategyEngine`** (conservative POP gate, no naked aggressive without **`optionsTradingEnabled`**); **60m** Redis cache; Next BFF + fallback. See **`current-state-features.md`** · **`release-notes.md`** **3.25.8**.
+
 - **JVM internal scheduler daemon observability:** **`GET /api/backend/health`** returns a **`scheduler`** object (`lastPollAt`, `lastSuccessfulRun`, `tasksEnqueuedLastPoll`, `status`, …) so operators can confirm the admin-scheduler poller / Quartz path without relying on logs alone — [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md). (Earlier “today’s delivery focus” notes for the Spring internal admin scheduler lived in [release-notes.md](./sre-ops/release-notes.md) around **3.5.2**; capability is **shipped** in current worker images.)
 
 ### Hotfixes / incidents (May 2026)
@@ -38,6 +40,7 @@ Visual asset refresh **v2** shipped with scanner tightening — proof captures i
 | **709** | **HNWI prompt_templates (admin)** | Low | Tenant-visible editor + audit for Mongo **`prompt_templates`** overrides (bodies ship via seed/API today): [#xchat-harden](#xchat-harden) |
 | **708** | **Monte Carlo tail-risk** (`MonteCarloTailRiskEngine`) | High | **Open** — fat-tail sims, VaR/CVaR/drawdown stress, **`UserOptionsContext`** tier gates, Redis cache + quote circuit-break; companion to **`OptionsStrategyEngine`**: [#monte-carlo-tail-risk](#monte-carlo-tail-risk) · [strategy-engine.md](./design-system/xoptions/strategy-engine.md) |
 | **710** | **Advisor compliance program** | High | **Phase 1 shipped** — advisor profile + AI disclosure ack + client profiles + API gates: [#advisor-compliance-program](#advisor-compliance-program) |
+| **12** | **Portfolios Hot Picks** | High | **Shipped (May 2026)** — **`/portfolios/hot-picks`**, **`GET /api/portfolios/hot-picks`**, Kotlin **`HotPicksService`** — see [Shipped (May 2026 — platform / SRE)](#shipped-platform-may-2026) |
 | **15** | **Quant Trader surface (xOptions)** | High | **Shipped (May 2026)** — `/xoptions?tab=quant`, `/xoptions/quant-trader`, step-4 sidebar toggle **Enable Quant Trader**, APIs **`GET /api/app-user/xoptions/quant-trader/context`** + **`POST …/run`**, strategy jobs **`jobType: monte-carlo-run`**, xChat handoff to **`quant-trader`** persona: [product-ux-spec.md](./design-system/xoptions/product-ux-spec.md) § Quant Trader · [xoptions-product-brief.md](./product/xoptions-product-brief.md) |
 | **900** | Automated trades w/ verify | Low | After **200** + custodian execution maturity; until then alerts / manual |
 

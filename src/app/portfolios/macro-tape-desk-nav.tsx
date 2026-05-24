@@ -17,6 +17,9 @@ export function MacroTapeDeskNav({ visiblePathPrefixes, deskPortfolioId }: Macro
     !visiblePathPrefixes || isPathAllowedByTenantUxRoutes(href, visiblePathPrefixes);
 
   const navItems: Array<{ href: string; label: string }> = [];
+  if (canNavigate("/portfolios")) {
+    navItems.push({ href: "/portfolios/hot-picks", label: "Hot Picks" });
+  }
   if (canNavigate("/watchlist")) {
     navItems.push({ href: q("/watchlist"), label: "Watchlist" });
   }
