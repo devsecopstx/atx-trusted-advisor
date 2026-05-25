@@ -115,6 +115,49 @@ export function sliceStrikesAroundSpot<T extends { strike: number }>(
   return sorted.slice(start, end);
 }
 
+export type ResolveChainTableRowsOptions = {
+  showAllStrikes: boolean;
+  maxVisibleRows: number;
+  spot: number;
+};
+
+/**
+ * Rows shown in the xOptions / portfolio option chain table.
+ * Default: ±15% spot band, then a small ATM window (`sliceStrikesAroundSpot`).
+ * **Show all strike prices:** full loaded chain, sorted by strike (scrollable panel).
+ */
+export function resolveChainTableRows<T extends { strike: number }>(
+  baseRows: T[],
+  spotBandRows: T[],
+  options: ResolveChainTableRowsOptions
+): T[] {
+  if (baseRows.length === 0) {
+    return [];
+  }
+  const source = options.showAllStrikes
+    ? baseRows
+    : spotBandRows.length > 0
+      ? spotBandRows
+      : baseRows;
+  if (options.showAllStrikes) {
+    return [...source].sort((a, b) => a.strike - b.strike);
+  }
+  return sliceStrikesAroundSpot(source, options.spot, options.maxVisibleRows);
+}
+
+/** True when the compact ATM window hides strikes (not when show-all is on). */
+export function chainTableRowsTruncated<T extends { strike: number }>(
+  baseRows: T[],
+  spotBandRows: T[],
+  options: Pick<ResolveChainTableRowsOptions, "showAllStrikes" | "maxVisibleRows">
+): boolean {
+  if (options.showAllStrikes) {
+    return false;
+  }
+  const source = spotBandRows.length > 0 ? spotBandRows : baseRows;
+  return source.length > options.maxVisibleRows;
+}
+
 /** Default strike band vs spot for xOptions contract picker (±15%). */
 export const STRIKE_SPOT_BAND_PCT = 0.15;
 

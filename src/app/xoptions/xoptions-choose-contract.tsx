@@ -36,11 +36,12 @@ import {
     chainRowMoneynessClass,
     closestStrikeToSpot,
     filterOptionChainRowsByLiquidity,
+    chainTableRowsTruncated,
     filterStrikesBySpotBand,
     formatImpliedVolatilityDisplay,
     legHasQuotableLastQuote,
     maxVolumeAndOpenInterestForSide,
-    sliceStrikesAroundSpot,
+    resolveChainTableRows,
     STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
 import {
@@ -650,18 +651,14 @@ export function XoptionsChooseContract({
   }, [baseRowsInSpotBand, baseRows, selectedStrike, showAllStrikes]);
 
   const tableRows = useMemo(() => {
-    if (!chain || baseRows.length === 0) {
+    if (!chain) {
       return [];
     }
-    const source = showAllStrikes
-      ? baseRows
-      : baseRowsInSpotBand.length > 0
-        ? baseRowsInSpotBand
-        : baseRows;
-    if (showAllStrikes) {
-      return [...source].sort((a, b) => a.strike - b.strike);
-    }
-    return sliceStrikesAroundSpot(source, chain.stockPrice, CHAIN_TABLE_VISIBLE_ROWS);
+    return resolveChainTableRows(baseRows, baseRowsInSpotBand, {
+      showAllStrikes,
+      maxVisibleRows: CHAIN_TABLE_VISIBLE_ROWS,
+      spot: chain.stockPrice
+    });
   }, [chain, baseRows, baseRowsInSpotBand, showAllStrikes]);
 
   const tableRowsForDisplay = useMemo(() => {
@@ -736,14 +733,16 @@ export function XoptionsChooseContract({
     [visibleChainDataCols]
   );
 
-  const truncated = useMemo(() => {
-    if (!chain || showAllStrikes) {
-      return false;
-    }
-    const source =
-      baseRowsInSpotBand.length > 0 ? baseRowsInSpotBand : baseRows;
-    return source.length > CHAIN_TABLE_VISIBLE_ROWS;
-  }, [chain, baseRows, baseRowsInSpotBand, showAllStrikes]);
+  const truncated = useMemo(
+    () =>
+      chain
+        ? chainTableRowsTruncated(baseRows, baseRowsInSpotBand, {
+            showAllStrikes,
+            maxVisibleRows: CHAIN_TABLE_VISIBLE_ROWS
+          })
+        : false,
+    [chain, baseRows, baseRowsInSpotBand, showAllStrikes]
+  );
 
   const selectedRow = useMemo(() => {
     if (!chain || selectedStrike == null) return null;

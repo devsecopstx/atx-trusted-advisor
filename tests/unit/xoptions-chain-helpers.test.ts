@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     chainHeatMixPercent,
     chainRowMoneynessClass,
+    chainTableRowsTruncated,
     closestStrikeToSpot,
     filterOptionChainRowsByLiquidity,
     filterStrikesBySpotBand,
@@ -10,6 +11,7 @@ import {
     legHasLiquiditySignal,
     legHasQuotableLastQuote,
     maxVolumeAndOpenInterestForSide,
+    resolveChainTableRows,
     sliceStrikesAroundSpot
 } from "@/lib/xoptions/xoptions-chain-helpers";
 
@@ -188,5 +190,56 @@ describe("filterStrikesBySpotBand", () => {
     const rows = [{ strike: 200 }, { strike: 210 }];
     const out = filterStrikesBySpotBand(rows, 100, 0.15);
     expect(out).toEqual(rows);
+  });
+});
+
+describe("resolveChainTableRows", () => {
+  const base = [80, 90, 95, 100, 105, 110, 120, 130].map((strike) => ({ strike }));
+  const band = filterStrikesBySpotBand(base, 100);
+
+  it("returns full sorted chain when showAllStrikes is true", () => {
+    const out = resolveChainTableRows(base, band, {
+      showAllStrikes: true,
+      maxVisibleRows: 5,
+      spot: 100
+    });
+    expect(out.map((r) => r.strike)).toEqual([80, 90, 95, 100, 105, 110, 120, 130]);
+  });
+
+  it("slices around spot when showAllStrikes is false", () => {
+    const out = resolveChainTableRows(base, band, {
+      showAllStrikes: false,
+      maxVisibleRows: 5,
+      spot: 100
+    });
+    expect(out).toHaveLength(5);
+    expect(out.map((r) => r.strike)).toContain(100);
+  });
+
+  it("returns empty when base rows are empty", () => {
+    expect(
+      resolveChainTableRows([], [], {
+        showAllStrikes: false,
+        maxVisibleRows: 5,
+        spot: 100
+      })
+    ).toEqual([]);
+  });
+});
+
+describe("chainTableRowsTruncated", () => {
+  const base = [90, 95, 100, 105, 110, 115, 120].map((strike) => ({ strike }));
+  const band = filterStrikesBySpotBand(base, 100);
+
+  it("is false when show all strikes is on", () => {
+    expect(
+      chainTableRowsTruncated(base, band, { showAllStrikes: true, maxVisibleRows: 5 })
+    ).toBe(false);
+  });
+
+  it("is true when compact window hides rows", () => {
+    expect(
+      chainTableRowsTruncated(base, band, { showAllStrikes: false, maxVisibleRows: 5 })
+    ).toBe(true);
   });
 });

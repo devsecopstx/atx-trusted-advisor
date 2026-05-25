@@ -19,7 +19,7 @@ import {
     formatImpliedVolatilityDisplay,
     legHasQuotableLastQuote,
     maxVolumeAndOpenInterestForSide,
-    sliceStrikesAroundSpot,
+    resolveChainTableRows,
     STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
 import type { XoptionsChainLeg, XoptionsChainPayload, XoptionsChainRow } from "@/lib/xoptions/xoptions-chain-types";
@@ -153,20 +153,15 @@ export function OptionChainTable({
     return filterStrikesBySpotBand(baseRows, chain.stockPrice, STRIKE_SPOT_BAND_PCT);
   }, [baseRows, chain.stockPrice]);
 
-  const tableRows = useMemo(() => {
-    if (baseRows.length === 0) {
-      return [];
-    }
-    const source = showAllStrikes
-      ? baseRows
-      : baseRowsInSpotBand.length > 0
-        ? baseRowsInSpotBand
-        : baseRows;
-    if (showAllStrikes) {
-      return [...source].sort((a, b) => a.strike - b.strike);
-    }
-    return sliceStrikesAroundSpot(source, chain.stockPrice, maxVisibleRows);
-  }, [baseRows, baseRowsInSpotBand, chain.stockPrice, maxVisibleRows, showAllStrikes]);
+  const tableRows = useMemo(
+    () =>
+      resolveChainTableRows(baseRows, baseRowsInSpotBand, {
+        showAllStrikes,
+        maxVisibleRows,
+        spot: chain.stockPrice
+      }),
+    [baseRows, baseRowsInSpotBand, chain.stockPrice, maxVisibleRows, showAllStrikes]
+  );
 
   const tableRowsForDisplay = useMemo(() => {
     if (selectedStrike == null) {
