@@ -100,7 +100,35 @@ const createWheelShareSchema = z.object({
             estimatedWheelYieldPct: z.number(),
             momentum30dPct: z.number(),
             score: z.number(),
-            rationale: z.string()
+            rationale: z.string(),
+            research: z
+              .object({
+                summary: z.string(),
+                quote: z.object({
+                  price: z.number(),
+                  change: z.number().optional(),
+                  changePercent: z.number().optional(),
+                  bid: z.number().optional(),
+                  ask: z.number().optional(),
+                  volume: z.number().optional(),
+                  dayLow: z.number().optional(),
+                  dayHigh: z.number().optional(),
+                  fiftyTwoWeekLow: z.number().optional(),
+                  fiftyTwoWeekHigh: z.number().optional(),
+                  trailingPe: z.number().optional(),
+                  asOfIso: z.string()
+                }),
+                headlines: z.array(
+                  z.object({
+                    title: z.string(),
+                    link: z.string(),
+                    publisher: z.string().optional(),
+                    publishedAtLabel: z.string().optional()
+                  })
+                )
+              })
+              .nullable()
+              .optional()
           })
         )
         .min(3)

@@ -8,7 +8,12 @@ import { useId, useMemo, useState } from "react";
 
 import { resolveDesignTokenColor } from "@/lib/resolve-design-token-color";
 import { yieldPerCyclePctOfCapital } from "@/modules/xoptions/wheel-metrics";
-import type { WheelGeneratedPayload, WheelIdea } from "@/modules/xoptions/wheel-types";
+import type {
+    WheelGeneratedPayload,
+    WheelIdea,
+    WheelRelatedSupplierCandidate,
+    WheelSupplierQuoteSnapshot
+} from "@/modules/xoptions/wheel-types";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -36,6 +41,135 @@ function currency(value: number): string {
 
 function percent(value: number, digits = 1): string {
   return `${value.toFixed(digits)}%`;
+}
+
+function formatUsdDetail(value: number | undefined, digits = 2): string {
+  if (value == null || !Number.isFinite(value)) {
+    return "—";
+  }
+  return value.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  });
+}
+
+function formatIntDetail(value: number | undefined): string {
+  if (value == null || !Number.isFinite(value)) {
+    return "—";
+  }
+  return Math.round(value).toLocaleString();
+}
+
+function supplierSpotQuote(supplier: WheelRelatedSupplierCandidate): WheelSupplierQuoteSnapshot | null {
+  if (supplier.research?.quote) {
+    return supplier.research.quote;
+  }
+  if (supplier.spotPrice > 0) {
+    return { price: supplier.spotPrice, asOfIso: "" };
+  }
+  return null;
+}
+
+function formatSupplierQuoteLine(supplier: WheelRelatedSupplierCandidate): string {
+  const q = supplierSpotQuote(supplier);
+  if (!q) {
+    return "Spot n/a";
+  }
+  const parts = [`Spot ${formatUsdDetail(q.price)}`];
+  if (q.changePercent != null && Number.isFinite(q.changePercent)) {
+    const sign = q.changePercent >= 0 ? "+" : "";
+    parts.push(`${sign}${q.changePercent.toFixed(2)}%`);
+  }
+  if (q.bid != null && q.ask != null) {
+    parts.push(`Bid ${formatUsdDetail(q.bid)} / Ask ${formatUsdDetail(q.ask)}`);
+  }
+  if (q.trailingPe != null && Number.isFinite(q.trailingPe)) {
+    parts.push(`P/E ${q.trailingPe.toFixed(1)}`);
+  }
+  return parts.join(" · ");
+}
+
+function appendInstitutionalSupplierResearchPdf(
+  doc: jsPDF,
+  report: WheelGeneratedPayload,
+  margin: number,
+  contentW: number
+): void {
+  doc.addPage();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(14, 23, 42);
+  doc.text("Related supplier spot quotes & research", margin, 56);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(report.relatedSuppliers.selectionRule, margin, 72, { maxWidth: contentW });
+
+  let y = 92;
+  const pageH = doc.internal.pageSize.getHeight();
+
+  for (const supplier of report.relatedSuppliers.topCandidates) {
+    if (y > pageH - 120) {
+      doc.addPage();
+      y = 56;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(14, 23, 42);
+    doc.text(
+      `${supplier.symbol} — ${supplier.companyName} (${supplier.relationship})`,
+      margin,
+      y,
+      { maxWidth: contentW }
+    );
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(formatSupplierQuoteLine(supplier), margin, y, { maxWidth: contentW });
+    y += 12;
+    const q = supplierSpotQuote(supplier);
+    if (q) {
+      doc.text(
+        `Day ${formatUsdDetail(q.dayLow)}–${formatUsdDetail(q.dayHigh)} · 52w ${formatUsdDetail(q.fiftyTwoWeekLow)}–${formatUsdDetail(q.fiftyTwoWeekHigh)} · Vol ${formatIntDetail(q.volume)}`,
+        margin,
+        y,
+        { maxWidth: contentW }
+      );
+      y += 12;
+    }
+    doc.text(
+      `Wheel metrics: Avg IV ${supplier.avgImpliedVolatilityPct.toFixed(1)}% · Est. yield ${supplier.estimatedWheelYieldPct.toFixed(1)}% · Score ${supplier.score.toFixed(1)}`,
+      margin,
+      y,
+      { maxWidth: contentW }
+    );
+    y += 12;
+    doc.text(supplier.research?.summary ?? supplier.rationale, margin, y, { maxWidth: contentW });
+    y += 14;
+    const headlines = supplier.research?.headlines ?? [];
+    if (headlines.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.text("Headlines", margin, y);
+      y += 10;
+      doc.setFont("helvetica", "normal");
+      for (const item of headlines.slice(0, 3)) {
+        if (y > pageH - 48) {
+          doc.addPage();
+          y = 56;
+        }
+        const line = item.publisher
+          ? `• ${item.title} (${item.publisher})`
+          : `• ${item.title}`;
+        const wrapped = doc.splitTextToSize(line, contentW) as string[];
+        doc.text(wrapped, margin, y);
+        y += wrapped.length * 10 + 4;
+      }
+    }
+    y += 8;
+  }
 }
 
 export type WheelPdfChartAssets = {
@@ -150,10 +284,11 @@ function exportWheelPdf(
   const yAfterBreakdown = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 620) + 12;
   autoTable(doc, {
     startY: yAfterBreakdown,
-    head: [["Related Supplier Candidates (ranked)", "Relationship", "Avg IV", "Est. Wheel Yield"]],
+    head: [["Related Supplier Candidates (ranked)", "Relationship", "Spot", "Avg IV", "Est. Wheel Yield"]],
     body: report.relatedSuppliers.topCandidates.map((supplier) => [
       `${supplier.symbol} (${supplier.companyName})`,
       supplier.relationship,
+      formatSupplierQuoteLine(supplier),
       `${supplier.avgImpliedVolatilityPct.toFixed(1)}%`,
       `${supplier.estimatedWheelYieldPct.toFixed(1)}%`
     ]),
@@ -161,6 +296,10 @@ function exportWheelPdf(
     headStyles: { fillColor: [2, 44, 34], textColor: [236, 253, 245], fontSize: 9 },
     styles: { fontSize: 8, overflow: "linebreak" }
   });
+
+  if (report.input.reportStyle === "institutional") {
+    appendInstitutionalSupplierResearchPdf(doc, report, margin, contentW);
+  }
 
   const footerY = Math.min(
     ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 700) + 18,
@@ -204,6 +343,8 @@ export function WheelReportView({
     () => report.ideas.find((idea) => idea.ideaId === activeIdeaId) ?? bestIdea(report.ideas),
     [activeIdeaId, report.ideas]
   );
+
+  const institutionalReport = report.input.reportStyle === "institutional";
 
   const chartSeries = useMemo(
     () => [
@@ -428,6 +569,11 @@ export function WheelReportView({
           <span className="rounded-full border border-[color-mix(in_srgb,var(--xf-gain-green)_34%,transparent)] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[var(--xf-gain-green)]">
             Prepared for {generatedByName}
           </span>
+          {institutionalReport ? (
+            <span className="rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[var(--xf-text-300)]">
+              Full institutional
+            </span>
+          ) : null}
         </div>
         <p className="mt-2 text-sm text-[var(--xf-text-200)]">{report.executiveSummary}</p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -595,28 +741,36 @@ export function WheelReportView({
             {relatedWlErr}
           </p>
         ) : null}
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-          {report.relatedSuppliers.topCandidates.map((supplier) => (
-            <article
-              className="rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-2.5"
-              key={supplier.symbol}
-            >
-              <p className="text-sm font-semibold text-[var(--xf-text-100)]">
-                {supplier.symbol}{" "}
-                <span className="text-[0.68rem] font-normal text-[var(--xf-text-400)]">{supplier.companyName}</span>
-              </p>
-              <p className="mt-1 text-[0.7rem] text-[var(--xf-text-300)]">{supplier.relationship}</p>
-              <p className="mt-1 text-xs text-[var(--xf-text-200)]">
-                Avg IV <strong className="font-semibold text-[var(--xf-gain-green)]">{percent(supplier.avgImpliedVolatilityPct)}</strong>
-              </p>
-              <p className="text-xs text-[var(--xf-text-200)]">
-                Est. wheel yield{" "}
-                <strong className="font-semibold text-[var(--xf-gain-green)]">{percent(supplier.estimatedWheelYieldPct)}</strong>
-              </p>
-              <p className="text-[0.68rem] text-[var(--xf-text-400)]">{supplier.rationale}</p>
-            </article>
-          ))}
-        </div>
+        {institutionalReport ? (
+          <div className="mt-3 space-y-3">
+            {report.relatedSuppliers.topCandidates.map((supplier, index) => (
+              <WheelSupplierInstitutionalCard key={supplier.symbol} rank={index + 1} supplier={supplier} />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+            {report.relatedSuppliers.topCandidates.map((supplier) => (
+              <article
+                className="rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-2.5"
+                key={supplier.symbol}
+              >
+                <p className="text-sm font-semibold text-[var(--xf-text-100)]">
+                  {supplier.symbol}{" "}
+                  <span className="text-[0.68rem] font-normal text-[var(--xf-text-400)]">{supplier.companyName}</span>
+                </p>
+                <p className="mt-1 text-[0.7rem] text-[var(--xf-text-300)]">{supplier.relationship}</p>
+                <p className="mt-1 text-xs text-[var(--xf-text-200)]">
+                  Avg IV <strong className="font-semibold text-[var(--xf-gain-green)]">{percent(supplier.avgImpliedVolatilityPct)}</strong>
+                </p>
+                <p className="text-xs text-[var(--xf-text-200)]">
+                  Est. wheel yield{" "}
+                  <strong className="font-semibold text-[var(--xf-gain-green)]">{percent(supplier.estimatedWheelYieldPct)}</strong>
+                </p>
+                <p className="text-[0.68rem] text-[var(--xf-text-400)]">{supplier.rationale}</p>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <footer className="mt-4 rounded-md border border-[color-mix(in_srgb,var(--xf-warning-400)_22%,transparent)] bg-[color-mix(in_srgb,var(--xf-warning-400)_10%,transparent)] p-2 text-[0.72rem] text-[var(--xf-text-200)]">
@@ -644,6 +798,111 @@ function StatRow(props: { label: string; value: string }) {
     <div className="rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_3%,transparent)] px-2 py-1.5">
       <p className="text-[0.62rem] uppercase tracking-[0.08em] text-[var(--xf-text-400)]">{props.label}</p>
       <p className="text-xs font-semibold text-[var(--xf-text-100)]">{props.value}</p>
+    </div>
+  );
+}
+
+function WheelSupplierInstitutionalCard(props: { rank: number; supplier: WheelRelatedSupplierCandidate }) {
+  const { rank, supplier } = props;
+  const quote = supplierSpotQuote(supplier);
+  const changePct = quote?.changePercent;
+  const changeClass =
+    changePct != null && Number.isFinite(changePct)
+      ? changePct > 0
+        ? "text-[var(--xf-gain-green)]"
+        : changePct < 0
+          ? "text-[var(--xf-danger-400)]"
+          : "text-[var(--xf-text-200)]"
+      : "text-[var(--xf-text-200)]";
+
+  return (
+    <article className="rounded-xl border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-bg-900)_40%,transparent)] p-3 sm:p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold text-[var(--xf-text-100)]">
+          <span className="mr-2 font-mono text-[0.65rem] text-[var(--xf-text-400)]">#{rank}</span>
+          {supplier.symbol}{" "}
+          <span className="font-normal text-[var(--xf-text-300)]">{supplier.companyName}</span>
+        </p>
+        {quote ? (
+          <p className="font-mono text-sm font-bold text-[var(--xf-text-100)]">
+            {formatUsdDetail(quote.price)}
+            {changePct != null && Number.isFinite(changePct) ? (
+              <span className={`ml-2 text-xs font-semibold ${changeClass}`}>
+                {changePct >= 0 ? "+" : ""}
+                {changePct.toFixed(2)}%
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+      </div>
+      <p className="mt-1 text-[0.72rem] text-[var(--xf-text-300)]">{supplier.relationship}</p>
+      {quote ? (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <SupplierQuoteStat label="Bid / Ask" value={`${formatUsdDetail(quote.bid)} / ${formatUsdDetail(quote.ask)}`} />
+          <SupplierQuoteStat
+            label="Day range"
+            value={`${formatUsdDetail(quote.dayLow)} – ${formatUsdDetail(quote.dayHigh)}`}
+          />
+          <SupplierQuoteStat
+            label="52-week"
+            value={`${formatUsdDetail(quote.fiftyTwoWeekLow)} – ${formatUsdDetail(quote.fiftyTwoWeekHigh)}`}
+          />
+          <SupplierQuoteStat label="Volume" value={formatIntDetail(quote.volume)} />
+          <SupplierQuoteStat
+            label="Avg IV / Est. yield"
+            value={`${percent(supplier.avgImpliedVolatilityPct)} / ${percent(supplier.estimatedWheelYieldPct)}`}
+          />
+          <SupplierQuoteStat
+            label="P/E"
+            value={quote.trailingPe != null && Number.isFinite(quote.trailingPe) ? quote.trailingPe.toFixed(1) : "—"}
+          />
+          <SupplierQuoteStat label="Wheel score" value={supplier.score.toFixed(1)} />
+          <SupplierQuoteStat
+            label="Quote as of"
+            value={
+              quote.asOfIso
+                ? new Date(quote.asOfIso).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })
+                : "Delayed"
+            }
+          />
+        </div>
+      ) : (
+        <p className="mt-2 text-xs text-[var(--xf-text-400)]">Live quote unavailable — wheel metrics only.</p>
+      )}
+      <p className="mt-2 text-xs leading-relaxed text-[var(--xf-text-200)]">
+        {supplier.research?.summary ?? supplier.rationale}
+      </p>
+      {supplier.research?.headlines && supplier.research.headlines.length > 0 ? (
+        <ul className="mt-2 space-y-1.5 border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] pt-2">
+          {supplier.research.headlines.map((item) => (
+            <li key={`${supplier.symbol}-${item.link}`} className="text-[0.72rem] leading-snug">
+              <a
+                className="font-medium text-[var(--xf-gain-green)] hover:underline"
+                href={item.link}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {item.title}
+              </a>
+              {item.publisher || item.publishedAtLabel ? (
+                <span className="text-[var(--xf-text-400)]">
+                  {" "}
+                  — {[item.publisher, item.publishedAtLabel].filter(Boolean).join(" · ")}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </article>
+  );
+}
+
+function SupplierQuoteStat(props: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] px-2 py-1">
+      <p className="text-[0.58rem] uppercase tracking-[0.07em] text-[var(--xf-text-500)]">{props.label}</p>
+      <p className="font-mono text-[0.7rem] font-semibold text-[var(--xf-text-100)]">{props.value}</p>
     </div>
   );
 }

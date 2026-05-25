@@ -89,6 +89,34 @@ export type WheelPortfolioFit = {
   note: string;
 };
 
+export type WheelSupplierQuoteSnapshot = {
+  price: number;
+  change?: number;
+  changePercent?: number;
+  bid?: number;
+  ask?: number;
+  volume?: number;
+  dayLow?: number;
+  dayHigh?: number;
+  fiftyTwoWeekLow?: number;
+  fiftyTwoWeekHigh?: number;
+  trailingPe?: number;
+  asOfIso: string;
+};
+
+export type WheelSupplierResearchHeadline = {
+  title: string;
+  link: string;
+  publisher?: string;
+  publishedAtLabel?: string;
+};
+
+export type WheelSupplierResearch = {
+  quote: WheelSupplierQuoteSnapshot;
+  headlines: WheelSupplierResearchHeadline[];
+  summary: string;
+};
+
 export type WheelRelatedSupplierCandidate = {
   symbol: string;
   companyName: string;
@@ -99,6 +127,8 @@ export type WheelRelatedSupplierCandidate = {
   momentum30dPct: number;
   score: number;
   rationale: string;
+  /** Populated for institutional reports — delayed Yahoo quote + news headlines. */
+  research?: WheelSupplierResearch | null;
 };
 
 export type WheelRelatedSuppliers = {

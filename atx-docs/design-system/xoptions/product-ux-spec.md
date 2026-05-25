@@ -33,6 +33,8 @@ Steps **unlock in order** (horizontal stepper + vertical sections). Clearing the
 
 HNWI-oriented **wheel** screener: user enters ticker, capital, risk, delta/yield filters → **`POST /api/xoptions/wheel/generate`** builds several **`WheelIdea`** variants from live Yahoo chains (`src/modules/xoptions/wheel-generator.ts`). UI: **`WheelIdeaGenerator`** → **`WheelReportView`**.
 
+**Report style:** **Executive** (compact supplier cards) vs **Full institutional** (multi-section report). Institutional runs enrich the **top 10 related suppliers** with delayed **spot quote** (bid/ask, day range, 52-week, volume, P/E) and up to **five Yahoo headlines** per name via **`fetchSymbolResearch`** (`wheel-supplier-research.ts`). On-screen cards and the exported PDF add a **Related supplier spot quotes & research** appendix.
+
 **Per-scenario economics shown in the report and PDF**
 
 | Field | Meaning |

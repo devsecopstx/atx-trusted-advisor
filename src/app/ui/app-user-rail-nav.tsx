@@ -157,11 +157,15 @@ export type AppUserAccountPublicRailProps = AppUserRailNavProps & {
   railContext: AppUserPublicRailContext;
 };
 
+export type AppUserResourcesRailSectionProps = Pick<
+  AppUserRailNavProps,
+  "railDisclosureDefaultOpen" | "workspacePortfolioId"
+>;
+
 export function AppUserResourcesRailSection({
-  isGlobalAdmin: _isGlobalAdmin,
   railDisclosureDefaultOpen = false,
   workspacePortfolioId = null
-}: AppUserRailNavProps) {
+}: AppUserResourcesRailSectionProps) {
   const pid = workspacePortfolioId?.trim() ?? "";
   const importHref =
     pid.length > 0 ? `/import-activity?portfolioId=${encodeURIComponent(pid)}` : "/import-activity";
@@ -375,7 +379,6 @@ export function AppUserAccountPublicRail({
         railContext={railContext}
       />
       <AppUserResourcesRailSection
-        isGlobalAdmin={isGlobalAdmin}
         workspacePortfolioId={railContext.book?.portfolioId ?? null}
       />
       <AppUserAccountRailSection

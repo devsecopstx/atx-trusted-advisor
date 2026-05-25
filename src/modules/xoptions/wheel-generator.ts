@@ -8,6 +8,7 @@ import {
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 import { yahooQuoteWithValidationFallback } from "@/modules/yahoo/yahoo-quote-validation-fallback";
 
+import { enrichWheelSupplierCandidates } from "./wheel-supplier-research";
 import type {
     WheelContractLeg,
     WheelGeneratedPayload,
@@ -405,7 +406,10 @@ async function evaluateSupplierCandidate(input: {
   };
 }
 
-async function buildRelatedSuppliers(rootTicker: string): Promise<WheelRelatedSuppliers> {
+async function buildRelatedSuppliers(
+  rootTicker: string,
+  reportStyle: WheelGeneratorInput["reportStyle"]
+): Promise<WheelRelatedSuppliers> {
   const supplierUniverse = defaultSupplierUniverse(rootTicker);
   const evaluated = await Promise.all(
     supplierUniverse.map((supplier) =>
@@ -437,12 +441,18 @@ async function buildRelatedSuppliers(rootTicker: string): Promise<WheelRelatedSu
       }));
     topCandidates.push(...fallback);
   }
+  const enrichedTop =
+    reportStyle === "institutional"
+      ? await enrichWheelSupplierCandidates(topCandidates)
+      : topCandidates;
   return {
     rootTicker,
     universeScanned: supplierUniverse.length,
-    topCandidates,
+    topCandidates: enrichedTop,
     selectionRule:
-      "Top candidates selected from a 10-name related supplier universe using highest blended IV + estimated wheel yield score."
+      reportStyle === "institutional"
+        ? "Top 10 related suppliers ranked by IV + wheel yield; each includes delayed spot quote and Yahoo headline research."
+        : "Top candidates selected from a 10-name related supplier universe using highest blended IV + estimated wheel yield score."
   };
 }
 
@@ -596,7 +606,7 @@ export async function generateWheelPayload(
     sector: typeof quote["sectorDisp"] === "string" ? (quote["sectorDisp"] as string) : null
   };
 
-  const relatedSuppliers = await buildRelatedSuppliers(ticker);
+  const relatedSuppliers = await buildRelatedSuppliers(ticker, input.reportStyle);
 
   const executiveSummary = `${ticker} wheel screen produced ${ideas.length} candidate cycle${
     ideas.length > 1 ? "s" : ""
@@ -606,7 +616,11 @@ export async function generateWheelPayload(
     0
   )}% initial assignment probability. Related supplier scan evaluated ${
     relatedSuppliers.universeScanned
-  } names and ranked ${relatedSuppliers.topCandidates.length} high-IV wheel candidates.`;
+  } names and ranked ${relatedSuppliers.topCandidates.length} high-IV wheel candidates.${
+    input.reportStyle === "institutional"
+      ? " Institutional report includes delayed spot quotes and headline research for each related supplier."
+      : ""
+  }`;
 
   return {
     generatedAtIso: new Date().toISOString(),
