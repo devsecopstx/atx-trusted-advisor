@@ -162,6 +162,9 @@ export function OptionChainTable({
       : baseRowsInSpotBand.length > 0
         ? baseRowsInSpotBand
         : baseRows;
+    if (showAllStrikes) {
+      return [...source].sort((a, b) => a.strike - b.strike);
+    }
     return sliceStrikesAroundSpot(source, chain.stockPrice, maxVisibleRows);
   }, [baseRows, baseRowsInSpotBand, chain.stockPrice, maxVisibleRows, showAllStrikes]);
 

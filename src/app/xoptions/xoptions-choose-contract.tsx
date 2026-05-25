@@ -658,6 +658,9 @@ export function XoptionsChooseContract({
       : baseRowsInSpotBand.length > 0
         ? baseRowsInSpotBand
         : baseRows;
+    if (showAllStrikes) {
+      return [...source].sort((a, b) => a.strike - b.strike);
+    }
     return sliceStrikesAroundSpot(source, chain.stockPrice, CHAIN_TABLE_VISIBLE_ROWS);
   }, [chain, baseRows, baseRowsInSpotBand, showAllStrikes]);
 
@@ -734,14 +737,11 @@ export function XoptionsChooseContract({
   );
 
   const truncated = useMemo(() => {
-    if (!chain) {
+    if (!chain || showAllStrikes) {
       return false;
     }
-    const source = showAllStrikes
-      ? baseRows
-      : baseRowsInSpotBand.length > 0
-        ? baseRowsInSpotBand
-        : baseRows;
+    const source =
+      baseRowsInSpotBand.length > 0 ? baseRowsInSpotBand : baseRows;
     return source.length > CHAIN_TABLE_VISIBLE_ROWS;
   }, [chain, baseRows, baseRowsInSpotBand, showAllStrikes]);
 
@@ -1243,7 +1243,12 @@ export function XoptionsChooseContract({
                         <XoptionsGreekCalcExplainer />
                       </div>
                     ) : null}
-                    <div ref={chainTableScrollRef} className="xoptions-contract__table-scroll xoptions-contract__table-scroll--five-rows min-w-0">
+                    <div
+                      ref={chainTableScrollRef}
+                      className={`xoptions-contract__table-scroll min-w-0${
+                        showAllStrikes ? "" : " xoptions-contract__table-scroll--five-rows"
+                      }`}
+                    >
                     <div className="xoptions-chain-table__viewport">
                     <table
                       className="xoptions-chain-table xoptions-chain-table--compact xoptions-chain-table--contract-chooser xoptions-chain-table--hnwi w-full border-collapse text-left"
