@@ -19,6 +19,8 @@ import {
 } from "@/lib/workspace-account-selection";
 import { WORKSPACE_PORTFOLIO_CHANGED_EVENT } from "@/lib/workspace-portfolio-selection";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
+import { parseXoptionsBuilderDeskDeepLinkStep } from "@/lib/xoptions/xoptions-builder-url";
+import { parseStrategyChoiceIdFromUrlParam } from "@/lib/xoptions/xoptions-strategy-choice-url";
 import { isValidXoptionsUnderlyingSymbol, normalizeXoptionsUnderlyingSymbol } from "@/lib/xoptions/xoptions-desk-deep-link";
 import { setQuantTraderEnabled } from "@/lib/xoptions/xoptions-education-preferences";
 import type { XoptionsOrderReview } from "@/lib/xoptions/xoptions-order-preview";
@@ -493,13 +495,28 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
     return parseContractPrefillFromUrl();
   }, [pathname, searchParamsKey]);
 
+  const urlDeskStep = useMemo(() => {
+    void pathname;
+    void searchParamsKey;
+    return parseXoptionsBuilderDeskDeepLinkStep(readXoptionsUrlSearchParams());
+  }, [pathname, searchParamsKey]);
+
+  const urlStrategyChoiceId = useMemo(() => {
+    void pathname;
+    void searchParamsKey;
+    return parseStrategyChoiceIdFromUrlParam(readXoptionsUrlSearchParams().get("strategy"));
+  }, [pathname, searchParamsKey]);
+
   useLayoutEffect(() => {
     const q = readXoptionsUrlSearchParams();
     const symRaw = normalizeXoptionsUnderlyingSymbol(q.get("symbol") ?? "");
     if (symRaw && isValidXoptionsUnderlyingSymbol(symRaw)) {
       setSymbol(symRaw);
     }
-  }, [pathname, searchParamsKey]);
+    if (urlStrategyChoiceId) {
+      setStrategyChoiceId(urlStrategyChoiceId);
+    }
+  }, [pathname, searchParamsKey, urlStrategyChoiceId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -575,25 +592,6 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
     }
     setUnlockedStep((u) => Math.max(u, 4));
     setActiveStep(4);
-  }, [symbol, snapLoading, searchParamsKey]);
-
-  /** Alerts desk deep-link: `/xoptions?symbol=…&step=4|5&portfolioId=…` opens contract or review. */
-  useEffect(() => {
-    const q = readXoptionsUrlSearchParams();
-    const stepRaw = q.get("step");
-    if (stepRaw !== "4" && stepRaw !== "5") {
-      return;
-    }
-    const sym = normalizeXoptionsUnderlyingSymbol(symbol);
-    if (!isValidXoptionsUnderlyingSymbol(sym)) {
-      return;
-    }
-    if (snapLoading) {
-      return;
-    }
-    const step = stepRaw === "5" ? 5 : 4;
-    setUnlockedStep((u) => Math.max(u, step));
-    setActiveStep(step);
   }, [symbol, snapLoading, searchParamsKey]);
 
   useEffect(() => {
@@ -892,14 +890,63 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
 
   const step1Complete = symbolUpper.length >= 1 && !snapLoading;
   const canGoStep2 = step1Complete;
+  const deskDeepLinkSymbolReady =
+    urlDeskStep != null && symbolUpper.length >= 1 && isValidXoptionsUnderlyingSymbol(symbolUpper);
+  const showStep3Body = activeStep === 3 && (canGoStep2 || urlDeskStep === 3);
+  const showStep4Body = activeStep === 4 && (canGoStep2 || urlDeskStep === 4);
+
+  /** Desk deep-link (`?step=3|4|5`) — keep step during snapshot load; do not reset to step 1 while quotes fetch. */
+  useEffect(() => {
+    const sym = normalizeXoptionsUnderlyingSymbol(symbol);
+    if (!isValidXoptionsUnderlyingSymbol(sym)) {
+      return;
+    }
+    if (urlDeskStep == null) {
+      return;
+    }
+    const unlockThrough = urlStrategyChoiceId && urlDeskStep != null ? Math.max(urlDeskStep, 3) : urlDeskStep;
+    setUnlockedStep((u) => Math.max(u, unlockThrough));
+    setActiveStep(urlDeskStep);
+    if (urlStrategyChoiceId) {
+      setStrategyChoiceId(urlStrategyChoiceId);
+    }
+  }, [symbol, urlDeskStep, urlStrategyChoiceId, searchParamsKey]);
 
   useEffect(() => {
     if (!canGoStep2) {
+      if (deskDeepLinkSymbolReady && urlDeskStep != null) {
+        const unlockThrough = urlStrategyChoiceId ? Math.max(urlDeskStep, 3) : urlDeskStep;
+        setUnlockedStep((u) => Math.max(u, unlockThrough));
+        setActiveStep(urlDeskStep);
+        if (urlStrategyChoiceId) {
+          setStrategyChoiceId(urlStrategyChoiceId);
+        }
+        return;
+      }
       setUnlockedStep(1);
       setActiveStep((s) => (s > 1 ? 1 : s));
-      setStrategyChoiceId(null);
+      if (!urlStrategyChoiceId) {
+        setStrategyChoiceId(null);
+      }
+      return;
     }
-  }, [canGoStep2]);
+    if (urlDeskStep != null && isValidXoptionsUnderlyingSymbol(symbolUpper)) {
+      const unlockThrough = urlStrategyChoiceId ? Math.max(urlDeskStep, 3) : urlDeskStep;
+      setUnlockedStep((u) => Math.max(u, unlockThrough));
+      setActiveStep(urlDeskStep);
+      if (urlStrategyChoiceId) {
+        setStrategyChoiceId(urlStrategyChoiceId);
+      }
+    }
+  }, [canGoStep2, deskDeepLinkSymbolReady, symbolUpper, urlDeskStep, urlStrategyChoiceId]);
+
+  useEffect(() => {
+    if (urlDeskStep !== activeStep || (urlDeskStep !== 3 && urlDeskStep !== 4)) {
+      return;
+    }
+    const anchorId = urlDeskStep === 3 ? "xo-step-3-title" : "xo-step-4-title";
+    document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [urlDeskStep, activeStep]);
 
   function resetDeskToPortfolio() {
     setOutlookOverride("");
@@ -1456,7 +1503,7 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
               </span>
             ) : null}
           </button>
-          {activeStep === 3 && canGoStep2 ? (
+          {showStep3Body ? (
             <div className="xoptions-step__body space-y-4">
               <StrategyChoicePanels
                 selectedId={strategyChoiceId}
@@ -1488,7 +1535,7 @@ export function XoptionsStrategyBuilderWorkspace({ workspaceBook }: XoptionsStra
             <span className="xoptions-step__num">4</span>
             <span className="xoptions-step__title">{STEPS[3]?.title}</span>
           </button>
-          {activeStep === 4 && canGoStep2 ? (
+          {showStep4Body ? (
             <div className="xoptions-step__body space-y-3 md:space-y-2">
               <XoptionsErrorBoundary>
               <XoptionsChooseContract

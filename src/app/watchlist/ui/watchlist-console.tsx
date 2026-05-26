@@ -746,9 +746,9 @@ function WatchlistRowActionsInner(
         <ActivityPulseIcon className="crud-icon" />
       </button>
       <button
-        aria-label={`Open ${row.symbol} in xOptions preflight`}
+        aria-label={`Open ${row.symbol} in xOptions — choose contract`}
         className="xf-watchlist-row-action-link"
-        title="Add to xOptions preflight"
+        title="Open in xOptions — choose contract"
         type="button"
         onClick={() => {
           const params = new URLSearchParams({

@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { XfColumnHeaderHint } from "@/app/ui/xf-column-header-hint";
 import { buildHotPickXchatPrompt } from "@/lib/portfolio/hot-picks-xchat-prompt";
 import { writePortfolioDeskXchatHandoff } from "@/lib/portfolio/portfolio-desk-xchat-handoff";
-import { buildXoptionsStrategyBuilderHref } from "@/lib/xoptions/xoptions-desk-deep-link";
+import { buildHotPickXoptionsStrategyBuilderHref } from "@/lib/portfolio/hot-picks-xoptions-link";
 import type { HotPickCard } from "@/modules/portfolios/hot-picks-types";
 
 import { HOT_PICKS_METRIC_HINTS } from "./hot-picks-metric-hints";
@@ -58,7 +58,7 @@ export function PortfoliosHotPicksCard({
   const router = useRouter();
   const [watchBusy, setWatchBusy] = useState(false);
   const [watchMsg, setWatchMsg] = useState<string | null>(null);
-  const xoptionsHref = buildXoptionsStrategyBuilderHref(portfolioId, pick.symbol);
+  const xoptionsHref = buildHotPickXoptionsStrategyBuilderHref(portfolioId, pick);
   const rationaleLines = pick.rationale.split(/(?<=\.)\s+/).slice(0, 2);
 
   const askInXchat = useCallback(() => {

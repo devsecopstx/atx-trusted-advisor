@@ -1,5 +1,8 @@
 export type XoptionsBuilderStep = 1 | 2 | 3 | 4 | 5;
 
+/** Desk deep-links from watchlist, alerts, etc. (`?step=3|4|5`). */
+export type XoptionsBuilderDeskDeepLinkStep = 3 | 4 | 5;
+
 export type XoptionsBuilderUrlState = {
   step: XoptionsBuilderStep;
   symbol: string | null;
@@ -9,6 +12,22 @@ export type XoptionsBuilderUrlState = {
 };
 
 export const XOPTIONS_BUILDER_SESSION_KEY = "xf_xoptions_builder_state_v1";
+
+export function parseXoptionsBuilderDeskDeepLinkStep(
+  searchParams: URLSearchParams
+): XoptionsBuilderDeskDeepLinkStep | null {
+  const raw = searchParams.get("step")?.trim();
+  if (raw === "3") {
+    return 3;
+  }
+  if (raw === "4") {
+    return 4;
+  }
+  if (raw === "5") {
+    return 5;
+  }
+  return null;
+}
 
 export function readXoptionsBuilderUrlState(searchParams: URLSearchParams): XoptionsBuilderUrlState {
   const stepRaw = Number.parseInt(searchParams.get("step") ?? "1", 10);
