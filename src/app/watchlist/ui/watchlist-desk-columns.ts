@@ -83,7 +83,7 @@ export const WATCHLIST_DESK_COLUMN_HIDEABLE: Record<WatchlistDeskColumnId, boole
 
 export const WATCHLIST_DESK_COLUMN_LABELS: Record<WatchlistDeskColumnId, string> = {
   icon: "Icon",
-  symbolLeg: "Symbol + leg",
+  symbolLeg: "Symbol",
   spot: "Spot",
   dayPct: "Day %",
   ivRank: "IV · rank",

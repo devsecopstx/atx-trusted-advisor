@@ -71,9 +71,21 @@ import {
     type WatchlistDeskColumnId
 } from "@/app/watchlist/ui/watchlist-desk-columns";
 import {
+    applyWatchlistDeskSort,
+    getWatchlistIvRankSortValue,
+    getWatchlistOptionVolumeSortValue,
+    getWatchlistTargetEntryNumeric,
+    toggleWatchlistDeskSort,
+    watchlistDistToTargetPct,
+    watchlistQuickScore,
+    WATCHLIST_DESK_DEFAULT_SORT,
+    WATCHLIST_DESK_PRIMARY_SORT_OPTIONS,
+    type WatchlistDeskSortColumn,
+    type WatchlistDeskSortState
+} from "@/app/watchlist/ui/watchlist-desk-sort";
+import {
     computeExecutiveMetrics,
     formatWatchlistDayChangePercent,
-    heuristicIvPercentile,
     watchlistDayPctToneClass,
     watchlistMobileLegAccentClass,
     watchlistRsiToneClass,
@@ -222,80 +234,13 @@ function buildDirtyAddEntries(baseline: WatchlistRow[], draft: WatchlistRow[]): 
   return out;
 }
 
-type WatchlistSortColumn =
-  | "instrument"
-  | "targetEntry"
-  | "iv"
-  | "ivRank"
-  | "optionsVolume"
-  | "oi"
-  | "dayPct"
-  | "distToTarget"
-  | "quickScore";
-
-/** Whole-dollar notional: round(100× live quote) for sort and display. */
-function getTargetEntryNumeric(row: WatchlistRow): number | null {
-  const entry = row.entryPrice;
-  if (typeof entry === "number" && Number.isFinite(entry) && entry > 0) {
-    return Math.round(100 * entry);
-  }
-  const px = row.quote?.price;
-  if (typeof px === "number" && Number.isFinite(px)) {
-    return Math.round(100 * px);
-  }
-  return null;
-}
-
 /** Notional dollars at 100× current quote, rounded to nearest whole dollar. */
 function formatTargetEntryCell(row: WatchlistRow): string {
-  const v = getTargetEntryNumeric(row);
+  const v = getWatchlistTargetEntryNumeric(row);
   if (v !== null) {
     return v.toLocaleString(undefined, { maximumFractionDigits: 0, minimumFractionDigits: 0 });
   }
   return "—";
-}
-
-function getIvSortValue(row: WatchlistRow): number | null {
-  const iv = row.chainGlance?.impliedVolatilityPercent;
-  return iv != null && Number.isFinite(iv) ? iv : null;
-}
-
-function getOiSortValue(row: WatchlistRow): number | null {
-  const oi = row.chainGlance?.openInterest;
-  return oi != null && Number.isFinite(oi) ? oi : null;
-}
-
-function getDayPctSortValue(row: WatchlistRow): number | null {
-  const p = row.quote?.changePercent;
-  return p != null && Number.isFinite(p) ? p : null;
-}
-
-function tieSymbol(a: WatchlistRow, b: WatchlistRow): number {
-  return a.symbol.localeCompare(b.symbol, undefined, { sensitivity: "base" });
-}
-
-/** Sort numeric column; nulls last; tie-break by symbol. */
-function compareNumericColumn(
-  mult: number,
-  va: number | null,
-  vb: number | null,
-  a: WatchlistRow,
-  b: WatchlistRow
-): number {
-  if (va === null && vb === null) {
-    return tieSymbol(a, b);
-  }
-  if (va === null) {
-    return 1;
-  }
-  if (vb === null) {
-    return -1;
-  }
-  const cmp = va - vb;
-  if (cmp !== 0) {
-    return mult * cmp;
-  }
-  return tieSymbol(a, b);
 }
 
 function truncateCompanyBlurb(name: string, maxLen: number): string {
@@ -309,46 +254,6 @@ function truncateCompanyBlurb(name: string, maxLen: number): string {
 
 function formatUsd2(n: number): string {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
-}
-
-function applyWatchlistSort(
-  list: WatchlistRow[],
-  sortColumn: WatchlistSortColumn,
-  sortDir: "asc" | "desc"
-): WatchlistRow[] {
-  const mult = sortDir === "asc" ? 1 : -1;
-  const out = [...list];
-  out.sort((a, b) => {
-    if (sortColumn === "instrument") {
-      return mult * tieSymbol(a, b);
-    }
-    if (sortColumn === "targetEntry") {
-      return compareNumericColumn(mult, getTargetEntryNumeric(a), getTargetEntryNumeric(b), a, b);
-    }
-    if (sortColumn === "iv") {
-      return compareNumericColumn(mult, getIvSortValue(a), getIvSortValue(b), a, b);
-    }
-    if (sortColumn === "ivRank") {
-      return compareNumericColumn(mult, getIvRankSortValue(a), getIvRankSortValue(b), a, b);
-    }
-    if (sortColumn === "optionsVolume") {
-      return compareNumericColumn(mult, getOptionVolumeSortValue(a), getOptionVolumeSortValue(b), a, b);
-    }
-    if (sortColumn === "oi") {
-      return compareNumericColumn(mult, getOiSortValue(a), getOiSortValue(b), a, b);
-    }
-    if (sortColumn === "dayPct") {
-      return compareNumericColumn(mult, getDayPctSortValue(a), getDayPctSortValue(b), a, b);
-    }
-    if (sortColumn === "distToTarget") {
-      return compareNumericColumn(mult, distToTargetPct(a), distToTargetPct(b), a, b);
-    }
-    if (sortColumn === "quickScore") {
-      return compareNumericColumn(mult, quickScore(a), quickScore(b), a, b);
-    }
-    return tieSymbol(a, b);
-  });
-  return out;
 }
 
 function formatSpotCell(row: WatchlistRow): string {
@@ -391,66 +296,13 @@ function formatRsiCell(row: WatchlistRow): string {
   return rsi.toFixed(1);
 }
 
-function distToTargetPct(row: WatchlistRow): number | null {
-  const spot = row.quote?.price;
-  const target = row.entryPrice;
-  if (
-    spot == null ||
-    target == null ||
-    !Number.isFinite(spot) ||
-    !Number.isFinite(target) ||
-    spot <= 0 ||
-    target <= 0
-  ) {
-    return null;
-  }
-  return ((target - spot) / spot) * 100;
-}
-
 function formatDistToTarget(row: WatchlistRow): string {
-  const pct = distToTargetPct(row);
+  const pct = watchlistDistToTargetPct(row);
   if (pct == null) {
     return "—";
   }
   const sign = pct > 0 ? "+" : "";
   return `${sign}${pct.toFixed(1)}%`;
-}
-
-function getOptionVolumeSortValue(row: WatchlistRow): number | null {
-  const vol = row.chainGlance?.optionVolume;
-  return vol != null && Number.isFinite(vol) ? vol : null;
-}
-
-function getIvRankSortValue(row: WatchlistRow): number | null {
-  const iv = row.chainGlance?.impliedVolatilityPercent;
-  if (iv == null || !Number.isFinite(iv)) {
-    return null;
-  }
-  return heuristicIvPercentile(iv);
-}
-
-function quickScore(row: WatchlistRow): number | null {
-  const ivRank = getIvRankSortValue(row);
-  const oi = row.chainGlance?.openInterest;
-  const volume = row.chainGlance?.optionVolume;
-  if (ivRank == null || oi == null || volume == null || !Number.isFinite(oi) || !Number.isFinite(volume)) {
-    return null;
-  }
-  const dist = distToTargetPct(row);
-  const targetProximity = dist == null ? 0.5 : Math.max(0, 1 - Math.min(Math.abs(dist), 25) / 25);
-  const rsi = row.technicals?.rsi14;
-  const rsiSignal =
-    rsi == null || !Number.isFinite(rsi) ? 0.35 : rsi < 30 || rsi > 70 ? 1 : Math.abs(rsi - 50) / 25;
-  const catalyst = row.chainGlance?.expirationDate;
-  const catalystScore = catalyst ? 1 : 0.35;
-  const liquidity = Math.min(1, Math.log1p(Math.max(0, oi) + Math.max(0, volume)) / Math.log1p(250_000));
-  const score01 =
-    (ivRank / 100) * 0.28 +
-    liquidity * 0.3 +
-    targetProximity * 0.2 +
-    rsiSignal * 0.12 +
-    catalystScore * 0.1;
-  return Math.round(score01 * 100);
 }
 
 const WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX = 76;
@@ -516,8 +368,8 @@ type WatchlistRowTrProps = {
 
 function WatchlistDeskHeaderRow(props: {
   visibleIds: readonly WatchlistDeskColumnId[];
-  sort: { column: WatchlistSortColumn; dir: "asc" | "desc" };
-  onToggleSort: (column: WatchlistSortColumn) => void;
+  sort: WatchlistDeskSortState;
+  onToggleSort: (column: WatchlistDeskSortColumn) => void;
 }) {
   const { visibleIds, sort, onToggleSort } = props;
   return (
@@ -535,7 +387,7 @@ function WatchlistDeskHeaderRow(props: {
               <th
                 key={colId}
                 aria-sort={
-                  sort.column === "instrument"
+                  sort.column === "symbol"
                     ? sort.dir === "asc"
                       ? "ascending"
                       : "descending"
@@ -543,18 +395,33 @@ function WatchlistDeskHeaderRow(props: {
                 }
                 scope="col"
               >
-                <button className="xf-watchlist-sort-btn" type="button" onClick={() => onToggleSort("instrument")}>
-                  Symbol + leg
+                <button className="xf-watchlist-sort-btn" type="button" onClick={() => onToggleSort("symbol")}>
+                  Symbol
                   <span aria-hidden className="xf-watchlist-sort-indicator">
-                    {sort.column === "instrument" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                    {sort.column === "symbol" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
                   </span>
                 </button>
               </th>
             );
           case "spot":
             return (
-              <th key={colId} scope="col">
-                Spot
+              <th
+                key={colId}
+                aria-sort={
+                  sort.column === "spot"
+                    ? sort.dir === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+                scope="col"
+              >
+                <button className="xf-watchlist-sort-btn" type="button" onClick={() => onToggleSort("spot")}>
+                  Spot
+                  <span aria-hidden className="xf-watchlist-sort-indicator">
+                    {sort.column === "spot" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                  </span>
+                </button>
               </th>
             );
           case "dayPct":
@@ -821,10 +688,10 @@ const WatchlistRowTr = memo(function WatchlistRowTr(props: WatchlistRowTrProps) 
     visibleDeskColumnIds: visibleColsProp
   } = props;
   const visibleDeskColumnIds = visibleColsProp ?? WATCHLIST_DESK_COLUMN_ORDER;
-  const ivRank = getIvRankSortValue(row);
-  const optionsVolume = getOptionVolumeSortValue(row);
+  const ivRank = getWatchlistIvRankSortValue(row);
+  const optionsVolume = getWatchlistOptionVolumeSortValue(row);
   const distToTargetDisplay = formatDistToTarget(row);
-  const quickScoreValue = quickScore(row);
+  const quickScoreValue = watchlistQuickScore(row);
   const companyFull = row.quote?.companyName?.trim() ?? "";
   const companyBlurb = companyFull ? truncateCompanyBlurb(companyFull, 32) : "";
   const wkLo = row.quote?.fiftyTwoWeekLow;
@@ -1026,10 +893,10 @@ const WatchlistMobileCard = memo(function WatchlistMobileCard(props: WatchlistRo
     onShowQuote,
     onXchatPreflight
   } = props;
-  const ivRank = getIvRankSortValue(row);
-  const optionsVolume = getOptionVolumeSortValue(row);
+  const ivRank = getWatchlistIvRankSortValue(row);
+  const optionsVolume = getWatchlistOptionVolumeSortValue(row);
   const distToTargetDisplay = formatDistToTarget(row);
-  const quickScoreValue = quickScore(row);
+  const quickScoreValue = watchlistQuickScore(row);
   const companyFull = row.quote?.companyName?.trim() ?? "";
 
   return (
@@ -1233,7 +1100,7 @@ function toCsv(rows: WatchlistRow[]): string {
   const lines = rows.map((r) => {
     const q = r.quote;
     const company = (q?.companyName ?? r.symbol).replaceAll('"', '""');
-    const te = getTargetEntryNumeric(r);
+    const te = getWatchlistTargetEntryNumeric(r);
     const target100 = te !== null ? String(te) : "";
     let lastUp = "";
     if (r.lastUpdatedAt) {
@@ -1351,10 +1218,7 @@ export function WatchlistConsole({
     Array<{ id: string; name: string; symbolCount: number; isDefault: boolean }>
   >([]);
   const [creatingWatchlist, setCreatingWatchlist] = useState(false);
-  const [sort, setSort] = useState<{ column: WatchlistSortColumn; dir: "asc" | "desc" }>({
-    column: "instrument",
-    dir: "asc"
-  });
+  const [sort, setSort] = useState<WatchlistDeskSortState>(WATCHLIST_DESK_DEFAULT_SORT);
   const [, startTransition] = useTransition();
   const tableScrollParentRef = useRef<HTMLDivElement>(null);
 
@@ -1403,13 +1267,16 @@ export function WatchlistConsole({
     return params.toString();
   }, [selectedWatchlistId]);
 
-  const toggleWatchlistSort = useCallback((column: WatchlistSortColumn) => {
-    setSort((prev) =>
-      prev.column === column
-        ? { column, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { column, dir: column === "instrument" ? "asc" : "desc" }
-    );
+  const toggleWatchlistSort = useCallback((column: WatchlistDeskSortColumn) => {
+    setSort((prev) => toggleWatchlistDeskSort(prev, column));
   }, []);
+
+  const mobileDeskSortValue = useMemo(() => {
+    if (sort.column === "symbol" || sort.column === "spot" || sort.column === "quickScore") {
+      return `${sort.column}:${sort.dir}`;
+    }
+    return "";
+  }, [sort.column, sort.dir]);
 
   const watchlistQueryKey = watchlistQueryKeys.detail(portfolioId, watchlistFetchQuery);
 
@@ -1668,7 +1535,7 @@ export function WatchlistConsole({
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     const bodyRows = rows
       .map((r) => {
-        const te = getTargetEntryNumeric(r);
+        const te = getWatchlistTargetEntryNumeric(r);
         const iv = r.chainGlance?.impliedVolatilityPercent;
         return `<tr><td>${esc(r.symbol)}</td><td>${r.quote?.price ?? ""}</td><td>${iv ?? ""}</td><td>${te ?? ""}</td><td>${esc(r.rationale ?? "")}</td></tr>`;
       })
@@ -1875,7 +1742,7 @@ ${bodyRows}
     if (rows.length === 0) {
       return;
     }
-    const sorted = applyWatchlistSort(rows, sort.column, sort.dir);
+    const sorted = applyWatchlistDeskSort(rows, sort.column, sort.dir);
     const blob = new Blob([toCsv(sorted)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2019,7 +1886,7 @@ ${bodyRows}
   }, [portfolioTotalInput]);
 
   const sortedDisplayRows = useMemo(
-    () => applyWatchlistSort(displayRows, sort.column, sort.dir),
+    () => applyWatchlistDeskSort(displayRows, sort.column, sort.dir),
     [displayRows, sort.column, sort.dir]
   );
 
@@ -2035,7 +1902,7 @@ ${bodyRows}
     () =>
       displayRows.map((r) => ({
         symbol: r.symbol,
-        targetEntryNotional: getTargetEntryNumeric(r),
+        targetEntryNotional: getWatchlistTargetEntryNumeric(r),
         ivPercent: r.chainGlance?.impliedVolatilityPercent ?? null
       })),
     [displayRows]
@@ -2260,6 +2127,42 @@ ${bodyRows}
                   onChange={(e) => setPortfolioTotalInput(e.target.value)}
                 />
               </label>
+              {!loading && rows.length > 0 ? (
+                <label className="xf-watchlist-desk-sort-mobile">
+                  <span className="xf-watchlist-desk-sort-mobile__label">
+                    {mobileDeskSortValue ? "Sort" : `Sort (${sort.column})`}
+                  </span>
+                  <select
+                    aria-label="Sort watchlist by symbol, spot, or quick score"
+                    className="xf-watchlist-desk-sort-mobile__select"
+                    value={mobileDeskSortValue || "symbol:asc"}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      const sep = raw.indexOf(":");
+                      if (sep < 0) {
+                        return;
+                      }
+                      const column = raw.slice(0, sep) as WatchlistDeskSortColumn;
+                      const dir = raw.slice(sep + 1) as "asc" | "desc";
+                      if (
+                        (column === "symbol" || column === "spot" || column === "quickScore") &&
+                        (dir === "asc" || dir === "desc")
+                      ) {
+                        setSort({ column, dir });
+                      }
+                    }}
+                  >
+                    {WATCHLIST_DESK_PRIMARY_SORT_OPTIONS.flatMap((opt) => [
+                      <option key={`${opt.column}:asc`} value={`${opt.column}:asc`}>
+                        {opt.ascLabel}
+                      </option>,
+                      <option key={`${opt.column}:desc`} value={`${opt.column}:desc`}>
+                        {opt.descLabel}
+                      </option>
+                    ])}
+                  </select>
+                </label>
+              ) : null}
               {!editMode ? (
                 <details className="xf-watchlist-columns-picker">
                   <summary>Desk columns</summary>

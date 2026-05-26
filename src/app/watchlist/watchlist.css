@@ -609,6 +609,37 @@ button.xf-watchlist-sort-btn:hover {
   opacity: 0.85;
 }
 
+.xf-watchlist-desk-sort-mobile {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 10.5rem;
+}
+
+.xf-watchlist-desk-sort-mobile__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xf-watchlist-desk-sort-mobile__select {
+  min-height: 2rem;
+  border-radius: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: var(--xf-bg-800);
+  color: var(--xf-text-200);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.45rem;
+}
+
+@media (min-width: 640px) {
+  .xf-watchlist-desk-sort-mobile {
+    display: none;
+  }
+}
+
 .xf-watchlist-table td {
   padding: 0.5rem 0.65rem;
   vertical-align: top;
