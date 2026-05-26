@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { xchatWorkspaceHandoffHref } from "@/lib/xchat/xchat-workspace-handoff-href";
+import {
+  xchatWorkspaceHandoffAppendPortfolio,
+  xchatWorkspaceHandoffHref
+} from "@/lib/xchat/xchat-workspace-handoff-href";
 
 describe("xchatWorkspaceHandoffHref", () => {
   it("returns base path without portfolio", () => {
@@ -12,5 +15,14 @@ describe("xchatWorkspaceHandoffHref", () => {
     expect(xchatWorkspaceHandoffHref("/xoptions", "507f1f77bcf86cd799439011")).toBe(
       "/xoptions?portfolioId=507f1f77bcf86cd799439011"
     );
+  });
+
+  it("appends portfolioId to existing query strings", () => {
+    expect(
+      xchatWorkspaceHandoffAppendPortfolio(
+        "/xstrategybuilder?jobId=abc&from=xchat",
+        "507f1f77bcf86cd799439011"
+      )
+    ).toBe("/xstrategybuilder?jobId=abc&from=xchat&portfolioId=507f1f77bcf86cd799439011");
   });
 });

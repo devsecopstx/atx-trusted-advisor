@@ -1460,6 +1460,61 @@ html[data-xf-ui="soft"] .workspace-product-sidebar--rail-glass .workspace-produc
   white-space: nowrap;
 }
 
+.workspace-product-sidebar__brand--tenant {
+  align-items: flex-start;
+  gap: 0.42rem;
+  max-width: 100%;
+}
+
+.workspace-product-sidebar__tenant-logo {
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: contain;
+  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
+}
+
+.workspace-product-sidebar__tenant-initials {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--xf-text-200);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 14%, var(--xf-bg-900));
+  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 24%, transparent);
+}
+
+.workspace-product-sidebar__tenant-desk {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.workspace-product-sidebar__tenant-desk-name {
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-text-100)) 88%, var(--xf-text-100));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-product-sidebar__tenant-desk-tagline {
+  font-size: 0.58rem;
+  line-height: 1.25;
+  color: var(--xf-text-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workspace-product-sidebar__collapse-toggle {
   flex-shrink: 0;
   display: inline-flex;

@@ -1,9 +1,11 @@
 import { sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import {
+    getTenantByHexId,
     listTenantUsersEligibleForOptionsScan,
     updateCoreUserOptionsScanPreferences
 } from "@/modules/identity/repository";
+import { parseTenantShellBrandingFromTenant } from "@/modules/identity/tenant-shell-appearance";
 import { createOptionsScanReport } from "@/modules/xchat/options-action-report-repository";
 import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
 
@@ -38,6 +40,12 @@ export async function runOptionsActionScheduledDigest(
     };
   }
   const tenantId = task.tenantId;
+  const tenantRow = await getTenantByHexId(tenantId.toHexString());
+  const tenantDeskName =
+    parseTenantShellBrandingFromTenant(tenantRow)?.displayName?.trim() ||
+    tenantRow?.name?.trim() ||
+    "Workspace";
+  const emailSubject = `${tenantDeskName} — options action scan`;
   const users = await listTenantUsersEligibleForOptionsScan(tenantId);
   const now = new Date();
   let processed = 0;
@@ -84,7 +92,7 @@ export async function runOptionsActionScheduledDigest(
       if (prefs.deliveryChannel === "email") {
         const sent = await sendDeskPlainEmailWithRetry(
           user.email,
-          "aTx Finance — options action scan",
+          emailSubject,
           report.asMarkdown
         );
         if (sent) {

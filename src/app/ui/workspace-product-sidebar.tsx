@@ -18,7 +18,8 @@ import {
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
-import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
+import { AtxFinanceMark } from "@/app/ui/atxfinance-logo";
+import { WorkspaceTenantRailBrand } from "@/app/ui/workspace-tenant-rail-brand";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import {
     LucideBookOpenIcon,
@@ -834,20 +835,7 @@ export function WorkspaceProductSidebar({
       <div
         className={`workspace-product-sidebar__header-inner${showWideSidebarChrome ? "" : " workspace-product-sidebar__header-inner--collapsed"}`}
       >
-        <Link
-          aria-label={showWideSidebarChrome ? "Workspace home" : "aTx Finance — workspace home"}
-          className="workspace-product-sidebar__brand"
-          href={workspaceBrandHref}
-          title="Workspace home"
-        >
-          <AtxFinanceMark className="shrink-0" size={showWideSidebarChrome ? 22 : 20} />
-          {showWideSidebarChrome ? (
-            <>
-              <LightningBolt size={16} />
-              <span className="workspace-product-sidebar__brand-finance">Finance</span>
-            </>
-          ) : null}
-        </Link>
+        <WorkspaceTenantRailBrand expanded={showWideSidebarChrome} href={workspaceBrandHref} />
         {belowLg ? (
           <button
             aria-label="Close workspace navigation"

@@ -98,8 +98,8 @@
 }
 
 .xchat-header-tenant-under-brand__name {
-  color: var(--xf-text-300);
-  font-weight: 500;
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-text-300)) 75%, var(--xf-text-300));
+  font-weight: 600;
 }
 
 .xchat-header-tenant-under-brand__tagline {
@@ -130,6 +130,21 @@
 .xchat-header-tenant-logo--header-compact {
   width: 28px;
   height: 28px;
+}
+
+.xchat-header-tenant-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--xf-text-200);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 14%, var(--xf-bg-900));
+  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
 }
 
 /** Approved header: appearance controls + tenant card on one row (right-aligned). */

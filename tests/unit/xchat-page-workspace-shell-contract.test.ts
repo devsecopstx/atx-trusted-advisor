@@ -23,6 +23,12 @@ describe("/xchat workspace shell contract", () => {
     expect(pageSrc).not.toContain("WorkspaceProductLegalFooter");
   });
 
+  it("scopes main chat column with tenant chrome classes", () => {
+    expect(conversationSrc).toContain("portfolios-workspace-tenant-chrome");
+    expect(conversationSrc).toContain("xchat-tenant-chrome");
+    expect(conversationSrc).toContain("resolveTenantDeskDisplayLabel");
+  });
+
   it("seeds desk outlook through the approved shell into the welcome header row", () => {
     expect(approvedShellSrc).toContain("initialOutlookDesk={initialOutlookDesk}");
     expect(approvedShellSrc).not.toContain("<XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} />");

@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
+import { resolveTenantDeskDisplayLabel } from "@/lib/tenant-desk-display-label";
+import { xchatWorkspaceHandoffAppendPortfolio } from "@/lib/xchat/xchat-workspace-handoff-href";
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
 import { BillingAccessStateBanner } from "@/app/ui/billing-access-state-banner";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
@@ -374,6 +376,10 @@ export function XchatConversation({
   mainFooter = null
 }: XchatConversationProps) {
   const tenantShellBranding = useTenantShellBranding();
+  const tenantDeskLabel = resolveTenantDeskDisplayLabel(
+    tenantShellBranding,
+    tenantWorkspaceSessionLabel
+  );
   const initialComposerHandoffRef = useRef<ReturnType<typeof consumeXchatPendingComposerHandoff> | null>(null);
   if (!initialComposerHandoffRef.current) {
     initialComposerHandoffRef.current = consumeXchatPendingComposerHandoff();
@@ -1577,7 +1583,12 @@ export function XchatConversation({
           const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
           return next;
         });
-        router.push(`/xstrategybuilder?jobId=${encodeURIComponent(jobId)}&from=xchat`);
+        router.push(
+          xchatWorkspaceHandoffAppendPortfolio(
+            `/xstrategybuilder?jobId=${encodeURIComponent(jobId)}&from=xchat`,
+            workspacePortfolioId?.trim() || null
+          )
+        );
         return;
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
@@ -2298,23 +2309,19 @@ export function XchatConversation({
         </div>
       </aside>
 
-      <div className="xchat-main">
+      <div className="xchat-main portfolios-workspace-tenant-chrome xchat-tenant-chrome">
         <div ref={mainChatScrollRef} className="xchat-main__chat-scroll">
           <header className="xchat-welcome-header xchat-welcome-header--compact">
             <div className="xchat-welcome-header__row">
               <div className="xchat-welcome-header__lead">
                 <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
-                {tenantShellBranding?.displayName?.trim() ||
-                tenantWorkspaceSessionLabel ||
-                tenantShellBranding?.xchatBrandName?.trim() ? (
+                {tenantDeskLabel ? (
                   <p className="xchat-welcome-tenant font-medium text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]">
-                    {tenantShellBranding?.xchatBrandName?.trim() ||
-                      tenantShellBranding?.displayName?.trim() ||
-                      tenantWorkspaceSessionLabel}
+                    {tenantDeskLabel.primary}
                   </p>
                 ) : null}
-                {tenantShellBranding?.tagline?.trim() ? (
-                  <p className="xchat-welcome-tagline">{tenantShellBranding.tagline.trim()}</p>
+                {tenantDeskLabel?.tagline ? (
+                  <p className="xchat-welcome-tagline">{tenantDeskLabel.tagline}</p>
                 ) : null}
               </div>
               <XchatOutlookFreshnessBadge

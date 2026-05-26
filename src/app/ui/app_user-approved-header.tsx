@@ -14,6 +14,8 @@ import {
     LucideSettingsIcon,
     LucideUploadIcon
 } from "./lucide-product-icons";
+import { resolveTenantDeskDisplayLabel } from "@/lib/tenant-desk-display-label";
+
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "./product-brand-constants";
 import { useTenantShellBranding } from "./tenant-branding-context";
 import { isPathAllowedByTenantUxRoutes } from "./tenant-ux-nav-visibility";
@@ -53,7 +55,8 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
     return defaultLanding.startsWith("/") ? defaultLanding : "/xchat";
   }, [allowedRoutes, defaultLanding]);
 
-  const showTenantCard = Boolean(branding?.tagline);
+  const tenantDesk = resolveTenantDeskDisplayLabel(branding, props.workspaceTenant?.name);
+  const showTenantCard = Boolean(tenantDesk?.tagline);
   const showResourcesNav = isPathVisible("/resources");
   const showBrokerImportNav = isPathVisible("/import-activity");
   const showTasksNav = isAccountTasksVisible();
@@ -62,21 +65,39 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
     showResourcesNav || showBrokerImportNav || showTasksNav || showAdminHubNav;
 
   return (
-    <header className="xchat-header">
-      <Link aria-label={USER_PRODUCT_HOME_ARIA_LABEL} className="xchat-header-brand" href={brandHref}>
-        {branding?.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data URLs + arbitrary tenant CDNs
-          <img
-            alt=""
-            className="xchat-header-tenant-logo xchat-header-tenant-logo--header-compact"
-            height={28}
-            src={branding.logoUrl}
-            width={28}
-          />
-        ) : (
-          <XchatHeaderBrand compact />
-        )}
-      </Link>
+    <header className="xchat-header xchat-header--tenant-workspace">
+      <div className="xchat-header-brand-stack">
+        <Link
+          aria-label={tenantDesk?.primary ? `${tenantDesk.primary} — workspace` : USER_PRODUCT_HOME_ARIA_LABEL}
+          className="xchat-header-brand"
+          href={brandHref}
+        >
+          {tenantDesk?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data URLs + arbitrary tenant CDNs
+            <img
+              alt=""
+              className="xchat-header-tenant-logo xchat-header-tenant-logo--header-compact"
+              height={28}
+              src={tenantDesk.logoUrl}
+              width={28}
+            />
+          ) : tenantDesk ? (
+            <span aria-hidden className="xchat-header-tenant-initials">
+              {tenantDesk.primary.slice(0, 2).toUpperCase()}
+            </span>
+          ) : (
+            <XchatHeaderBrand compact />
+          )}
+        </Link>
+        {tenantDesk ? (
+          <div className="xchat-header-tenant-under-brand">
+            <span className="xchat-header-tenant-under-brand__name">{tenantDesk.primary}</span>
+            {tenantDesk.tagline ? (
+              <span className="xchat-header-tenant-under-brand__tagline">{tenantDesk.tagline}</span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       <div className="xchat-header-main">
         <div className="xchat-header-trailing xchat-header-trailing--approved-meta">
           <div className="xchat-header-approved-meta-row">
@@ -124,9 +145,10 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
             ) : null}
             <WorkspaceRailAppearance variant="header" />
             {props.trailingExtras}
-            {showTenantCard ? (
+            {showTenantCard && tenantDesk?.tagline ? (
               <div className="xchat-header-tenant-card">
-                <span className="xchat-header-tenant-card__tagline">{branding?.tagline}</span>
+                <span className="xchat-header-tenant-card__name">{tenantDesk.primary}</span>
+                <span className="xchat-header-tenant-card__tagline">{tenantDesk.tagline}</span>
               </div>
             ) : null}
           </div>

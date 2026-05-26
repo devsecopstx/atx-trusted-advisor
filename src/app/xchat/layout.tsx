@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-/** Rail + desk chrome (import before route CSS so composer/thread rules paint earlier). */
+/** Workspace rail + tenant chrome tokens (`TenantBrandingProvider` on root layout). */
 import "@/app/portfolios/portfolios-dashboard.css";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 

@@ -7682,3 +7682,14 @@ html[data-xf-ui="soft"] .xchat-composer--grok {
 html[data-xf-ui="soft"] .xchat-msg-ai {
   background: var(--xf-bg-900);
 }
+
+/* Tenant accent scoping on xChat desk (matches portfolios-workspace-tenant-chrome) */
+.xchat-tenant-chrome .xchat-rail-link:hover,
+.xchat-tenant-chrome .app-user-rail-sublink:hover {
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 88%, var(--xf-text-200));
+}
+
+.xchat-tenant-chrome .xchat-composer-quote-row__seg--active {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-gain-green)) 45%, transparent);
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-text-100)) 90%, var(--xf-text-100));
+}
