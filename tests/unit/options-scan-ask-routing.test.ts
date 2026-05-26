@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import { buildHotPickXchatPrompt } from "@/lib/portfolio/hot-picks-xchat-prompt";
 import {
   buildOptionsScanArgsFromMessage,
   extractOptionsScanSymbol,
   parseDteRangeFromMessage,
   shouldRunDirectOptionsScan
 } from "@/modules/xchat/options-scan-ask-routing";
+import type { HotPickCard } from "@/modules/portfolios/hot-picks-types";
 import { shouldOfferStrategyJobPreflight } from "@/modules/xchat/xchat-ask-routing";
 
 describe("options-scan-ask-routing", () => {
@@ -34,5 +36,32 @@ describe("options-scan-ask-routing", () => {
     const msg = "covered call ideas for RDW";
     expect(shouldRunDirectOptionsScan(msg)).toBe(false);
     expect(shouldOfferStrategyJobPreflight(msg)).toBe(true);
+  });
+
+  it("does not hijack Hot Picks xChat composer handoffs", () => {
+    const pick: HotPickCard = {
+      id: "TSLA:2026-06-20:bull_put_spread:420",
+      symbol: "TSLA",
+      expirationYmd: "2026-06-20",
+      strategy: "bull_put_spread",
+      strategyLabel: "bull put spread",
+      contractLabel: "TSLA 06/20 420P",
+      outlook: "bullish",
+      edgeScore: 72,
+      entry: 1.25,
+      breakeven: 418.75,
+      popPercent: 68,
+      estRoiPercent: 24,
+      ivRankPercent: 42,
+      maxGainPercent: 18,
+      maxLossPercent: -32,
+      rationale: "Premium is rich vs realized.",
+      legs: [],
+      greeks: null,
+      ivSkew: null
+    };
+    const msg = buildHotPickXchatPrompt(pick);
+    expect(shouldRunDirectOptionsScan(msg)).toBe(false);
+    expect(buildOptionsScanArgsFromMessage(msg)).toBeNull();
   });
 });

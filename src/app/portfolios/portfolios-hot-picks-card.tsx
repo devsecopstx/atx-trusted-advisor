@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 
 import { XfColumnHeaderHint } from "@/app/ui/xf-column-header-hint";
+import { buildHotPickXchatPrompt } from "@/lib/portfolio/hot-picks-xchat-prompt";
+import { writePortfolioDeskXchatHandoff } from "@/lib/portfolio/portfolio-desk-xchat-handoff";
 import { buildXoptionsStrategyBuilderHref } from "@/lib/xoptions/xoptions-desk-deep-link";
 import type { HotPickCard } from "@/modules/portfolios/hot-picks-types";
 
@@ -52,10 +55,20 @@ export function PortfoliosHotPicksCard({
   onAddToWatchlist,
   onAddAlert
 }: Props) {
+  const router = useRouter();
   const [watchBusy, setWatchBusy] = useState(false);
   const [watchMsg, setWatchMsg] = useState<string | null>(null);
   const xoptionsHref = buildXoptionsStrategyBuilderHref(portfolioId, pick.symbol);
   const rationaleLines = pick.rationale.split(/(?<=\.)\s+/).slice(0, 2);
+
+  const askInXchat = useCallback(() => {
+    writePortfolioDeskXchatHandoff(buildHotPickXchatPrompt(pick));
+    const q = new URLSearchParams({ rail: "xchat", item: "composer", symbol: pick.symbol });
+    if (portfolioId?.trim()) {
+      q.set("portfolioId", portfolioId.trim());
+    }
+    router.push(`/xchat?${q.toString()}`);
+  }, [pick, portfolioId, router]);
 
   return (
     <article className="portfolios-hot-picks-card">
@@ -162,6 +175,14 @@ export function PortfoliosHotPicksCard({
         <Link className="portfolios-hot-picks-card__action portfolios-hot-picks-card__action--primary" href={xoptionsHref}>
           Build in xOptions
         </Link>
+        <button
+          className="portfolios-hot-picks-card__action portfolios-hot-picks-card__action--xchat"
+          type="button"
+          title="Open xChat with this Hot Pick in the composer"
+          onClick={askInXchat}
+        >
+          Ask in xChat
+        </button>
         <button
           className="portfolios-hot-picks-card__action"
           type="button"

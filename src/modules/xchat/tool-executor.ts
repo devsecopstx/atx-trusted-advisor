@@ -93,6 +93,7 @@ const CACHEABLE_OPERATIONS = new Set(["account_health"]);
  */
 const NO_TRUNCATE_JSON_OPERATIONS = new Set([
   "options_action_scan",
+  "options_scan",
   "monte_carlo_tail_risk",
   "watchlist_snapshot"
 ]);

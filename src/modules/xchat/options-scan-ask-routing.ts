@@ -123,9 +123,16 @@ function hasCoveredCallIdeasIntent(normalized: string): boolean {
  * Direct `options_scan` when the user names a symbol and CSP/CC scan intent (incl. xOptions phrasing).
  * Excludes generic education ("what is a CSP") and portfolio-wide action scan templates.
  */
+function isHotPicksXchatHandoff(normalized: string): boolean {
+  return /\bhot\s+picks?\b/.test(normalized);
+}
+
 export function shouldRunDirectOptionsScan(message: string): boolean {
   const normalized = normalizeMessage(message);
   if (normalized.length < 8) {
+    return false;
+  }
+  if (isHotPicksXchatHandoff(normalized)) {
     return false;
   }
   if (shouldRunOptionsActionScanTemplate(normalized)) {

@@ -2543,6 +2543,16 @@ html[data-xf-ui="soft"] .sidebar-destructive-action__desc {
   color: var(--xf-tenant-accent, var(--xf-gain-green));
 }
 
+.portfolios-hot-picks-card__action--xchat {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 32%, transparent);
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 88%, var(--xf-text-100));
+}
+
+.portfolios-hot-picks-card__action--xchat:hover {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 48%, transparent);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+}
+
 .portfolios-hot-picks-card__status {
   margin: 0;
   font-size: 0.65rem;
