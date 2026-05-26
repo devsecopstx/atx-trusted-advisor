@@ -1,5 +1,5 @@
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
-import { isGuestTrialActive } from "@/modules/identity/guest-trial";
+import { isGuestTrialActive } from "@/modules/identity/guest-trial-constants";
 import type { CoreUserBilling } from "@/modules/identity/types";
 
 export type AppUserBillingAccessState =
@@ -73,7 +73,7 @@ export function resolveAppUserBillingAccessState(input: {
     if (ends.getTime() > now.getTime()) {
       return "trial_active";
     }
-    if (base !== "active" && base !== "override_active") {
+    if (base !== "active") {
       return "trial_expired";
     }
   }

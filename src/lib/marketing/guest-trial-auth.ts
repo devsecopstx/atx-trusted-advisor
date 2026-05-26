@@ -1,6 +1,5 @@
+import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
-  GUEST_TRIAL_INTENT_COOKIE,
-  GUEST_TRIAL_INTENT_QUERY,
   isGuestTrialIntentCookieValue,
   parseGuestTrialIntentParam,
   provisionGuestTrialOperatorAccess
@@ -24,15 +23,9 @@ export function resolveGuestTrialAuthContext(input: {
   };
 }
 
-export function buildGuestTrialXOAuthLoginHref(nextPath = "/xchat"): string {
-  const params = new URLSearchParams();
-  params.set("next", nextPath);
-  params.set(GUEST_TRIAL_INTENT_QUERY, "1");
-  return `/api/auth/x/login?${params.toString()}`;
-}
-
 /**
  * When the user started from the guest trial CTA, grant operator + basic + 30d trial before access gates run.
+ * Server-only — import from API routes / OAuth callbacks only.
  */
 export async function tryProvisionGuestTrialFromIntent(input: {
   user: CoreUser;
@@ -42,8 +35,7 @@ export async function tryProvisionGuestTrialFromIntent(input: {
     return input.user;
   }
   const hasRealEmail =
-    Boolean(input.ctx.emailFromProvider?.trim()) &&
-    !input.user.email.includes("@users.xfinance.local");
+    Boolean(input.ctx.emailFromProvider?.trim()) && !isXIdentityPlaceholderEmail(input.user.email);
   const result = await provisionGuestTrialOperatorAccess({
     user: input.user,
     markEmailVerified: hasRealEmail
@@ -56,5 +48,3 @@ export async function tryProvisionGuestTrialFromIntent(input: {
   }
   return input.user;
 }
-
-export { GUEST_TRIAL_INTENT_COOKIE, GUEST_TRIAL_INTENT_QUERY };

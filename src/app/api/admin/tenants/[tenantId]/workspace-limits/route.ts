@@ -18,11 +18,13 @@ import {
     updateTenantBrandingPreferencesOneTime,
     updateTenantFeatureFlags,
     updateTenantWorkspaceLimits,
+    updateTenantGuestLandingAudience,
     updateTenantXchatDebugEnabled,
     updateTenantXfUiThemePreference
 } from "@/modules/identity/repository";
 import {
     parseFeatureFlagsPayload,
+    parseGuestLandingAudiencePreference,
     parseTenantAmbientMarketVeil,
     parseTenantBrandingPreferencesPayload,
     parseTenantXchatDebugEnabled
@@ -242,6 +244,27 @@ export async function PATCH(request: Request, context: RouteContext) {
     const afterVeil = await updateTenantAmbientMarketVeil(effectiveTenantHex, veilToggle);
     if (afterVeil?._id) {
       updated = afterVeil;
+    }
+  }
+
+  if (
+    tpBody &&
+    typeof tpBody === "object" &&
+    !Array.isArray(tpBody) &&
+    "guest_landing_audience" in (tpBody as Record<string, unknown>)
+  ) {
+    const audienceToggle = parseGuestLandingAudiencePreference(
+      (tpBody as Record<string, unknown>).guest_landing_audience
+    );
+    if (audienceToggle === undefined) {
+      return NextResponse.json(
+        { error: "Invalid guest_landing_audience — use hnwi, advisor, or null" },
+        { status: 400 }
+      );
+    }
+    const afterAudience = await updateTenantGuestLandingAudience(effectiveTenantHex, audienceToggle);
+    if (afterAudience?._id) {
+      updated = afterAudience;
     }
   }
 

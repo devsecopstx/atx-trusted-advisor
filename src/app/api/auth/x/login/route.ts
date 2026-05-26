@@ -10,6 +10,11 @@ import {
 } from "@/lib/auth";
 import { getEnv, getXOauthClientId } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
+import {
+  GUEST_TRIAL_INTENT_COOKIE,
+  GUEST_TRIAL_INTENT_QUERY,
+  parseGuestTrialIntentParam
+} from "@/modules/identity/guest-trial";
 import { resolveXOAuthRedirectUri } from "@/lib/x-oauth-redirect-uri";
 
 export async function GET(request: Request) {
@@ -65,5 +70,14 @@ export async function GET(request: Request) {
     nextParam && isSafeOAuthReturnPath(nextParam) ? nextParam : null
   );
   applyOAuthFlowCookiesToRedirect(response, state, codeVerifier);
+  if (parseGuestTrialIntentParam(requestUrl.searchParams.get(GUEST_TRIAL_INTENT_QUERY))) {
+    response.cookies.set(GUEST_TRIAL_INTENT_COOKIE, "1", {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+  }
   return response;
 }

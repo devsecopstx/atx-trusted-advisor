@@ -2243,6 +2243,43 @@ export async function getTenantShellBrandingForHex(tenantIdHex: string): Promise
   return parseTenantShellBrandingFromTenant(tenant);
 }
 
+export async function getPlatformDefaultTenant(): Promise<Tenant | null> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const byDefault = await db
+    .collection<Tenant>(collections.tenants)
+    .findOne({ isDefault: true }, { sort: { _id: 1 } });
+  if (byDefault?._id) {
+    return byDefault;
+  }
+  return db.collection<Tenant>(collections.tenants).findOne({ slug: SEED_DEFAULT_TENANT_SLUG });
+}
+
+export async function updateTenantGuestLandingAudience(
+  tenantIdHex: string,
+  audience: "hnwi" | "advisor" | null
+): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const now = new Date();
+  if (audience === null) {
+    await db.collection<Tenant>(collections.tenants).updateOne(
+      { _id: id },
+      { $unset: { "tenantPreferences.guest_landing_audience": "" }, $set: { updatedAt: now } }
+    );
+  } else {
+    await db.collection<Tenant>(collections.tenants).updateOne(
+      { _id: id },
+      { $set: { "tenantPreferences.guest_landing_audience": audience, updatedAt: now } }
+    );
+  }
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+}
+
 export async function updateTenantXfUiThemePreference(
   tenantIdHex: string,
   theme: XfUiThemePreference | null

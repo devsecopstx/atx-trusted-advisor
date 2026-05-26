@@ -30,6 +30,7 @@ export default async function AdminTenantPreferencesPage({ searchParams }: PageP
   const tabRaw = typeof sp.tab === "string" ? sp.tab.trim() : "";
   const initialTab =
     tabRaw === "workspace-limits" ||
+    tabRaw === "guest-landing" ||
     tabRaw === "strategy-engine" ||
     tabRaw === "ambient" ||
     tabRaw === "persona" ||
@@ -50,8 +51,8 @@ export default async function AdminTenantPreferencesPage({ searchParams }: PageP
         <p className="admin-session-popover__eyebrow">Tenant preferences</p>
         <h1 className="admin-page-title">Tenant preferences</h1>
         <p className="admin-muted" style={{ maxWidth: 720 }}>
-          Unified configuration for workspace limits, options strategy engine, ambient experience, default xChat
-          persona, and feature flags. Select a tenant, edit sections, then save.
+          Unified configuration for workspace limits, guest landing audience, options strategy engine, ambient
+          experience, default xChat persona, and feature flags. Select a tenant, edit sections, then save.
         </p>
       </header>
       <UnifiedTenantPreferencesClient

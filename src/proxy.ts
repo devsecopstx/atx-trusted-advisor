@@ -11,7 +11,7 @@ import {
   GUEST_TRIAL_INTENT_COOKIE,
   GUEST_TRIAL_INTENT_QUERY,
   parseGuestTrialIntentParam
-} from "@/modules/identity/guest-trial";
+} from "@/modules/identity/guest-trial-constants";
 import { isSafeOAuthReturnPath } from "@/lib/oauth-return-path";
 import { parseProxyEdgeCacheTtlMs } from "@/lib/proxy-edge-cache-ttl";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
@@ -231,17 +231,31 @@ function applyGuestLandingAudienceCookie(
     return null;
   }
   const audience = parseGuestLandingForParam(request.nextUrl.searchParams.get(GUEST_LANDING_FOR_QUERY));
-  if (!audience) {
+  const trialIntent = parseGuestTrialIntentParam(
+    request.nextUrl.searchParams.get(GUEST_TRIAL_INTENT_QUERY)
+  );
+  if (!audience && !trialIntent) {
     return null;
   }
   const res = NextResponse.next();
-  res.cookies.set(GUEST_LANDING_COOKIE, audience, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 90
-  });
+  if (audience) {
+    res.cookies.set(GUEST_LANDING_COOKIE, audience, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 90
+    });
+  }
+  if (trialIntent) {
+    res.cookies.set(GUEST_TRIAL_INTENT_COOKIE, "1", {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+  }
   return res;
 }
 

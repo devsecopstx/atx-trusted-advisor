@@ -1,4 +1,4 @@
-import { buildGuestTrialXOAuthLoginHref } from "@/lib/marketing/guest-trial-auth";
+import { buildGuestTrialXOAuthLoginHref } from "@/lib/marketing/guest-trial-login";
 import type { GuestLandingVariant } from "@/lib/marketing/guest-landing-variant";
 
 export type GuestLandingHeroCopy = {

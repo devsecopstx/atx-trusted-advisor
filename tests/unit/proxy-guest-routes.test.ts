@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { GUEST_LANDING_COOKIE } from "@/lib/marketing/guest-landing-variant";
+import { GUEST_TRIAL_INTENT_COOKIE } from "@/modules/identity/guest-trial";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { proxy } from "@/proxy";
 
@@ -35,6 +36,13 @@ describe("proxy (middleware) guest HTML routes", () => {
     expect(res.headers.get("location")).toBeNull();
     const setCookie = res.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain(`${GUEST_LANDING_COOKIE}=advisor`);
+  });
+
+  it("persists ?trial=1 on /home as guest trial intent cookie", async () => {
+    const res = await proxy(request("/home?trial=1"));
+    expect(res.headers.get("location")).toBeNull();
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain(`${GUEST_TRIAL_INTENT_COOKIE}=1`);
   });
 
 

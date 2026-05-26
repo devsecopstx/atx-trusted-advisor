@@ -18,6 +18,10 @@ import {
 } from "@/lib/env";
 import { googleLinkedId } from "@/lib/google-oauth-identity";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
+import {
+  resolveGuestTrialAuthContext,
+  tryProvisionGuestTrialFromIntent
+} from "@/lib/marketing/guest-trial-auth";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
@@ -38,6 +42,7 @@ import {
     linkGoogleAccountToUser,
     unlinkGoogleIdentityFromUser
 } from "@/modules/identity/repository";
+import { readGuestTrialIntentFromRequest } from "@/modules/identity/guest-trial-constants";
 import type { CoreUser } from "@/modules/identity/types";
 
 type GoogleTokenResponse = {
@@ -310,12 +315,25 @@ export async function GET(request: Request) {
     return redirectWithLoginAudit("access_request_pending", { email: emailNormalized });
   }
 
+  const trialCtx = resolveGuestTrialAuthContext({
+    trialCookie: readGuestTrialIntentFromRequest(request)
+  });
+  user = await tryProvisionGuestTrialFromIntent({
+    user,
+    ctx: { ...trialCtx, emailFromProvider: emailNormalized }
+  });
+
+  if (!user._id) {
+    return redirectWithLoginAudit("access_request_pending", { email: emailNormalized });
+  }
+  const userIdHex = user._id.toHexString();
+
   const hasLoginRole = canUserLogin(user.roles);
 
   if (!hasLoginRole) {
     await ensurePendingOperatorAccessRequestAfterGoogleOAuth(user);
     return redirectWithLoginAudit("access_request_pending", {
-      userId: user._id.toHexString(),
+      userId: userIdHex,
       xUserId: identity.xUserId,
       username: identity.username,
       email: user.email
@@ -329,7 +347,7 @@ export async function GET(request: Request) {
     const err =
       user.accountStatus === "rejected" ? "account_rejected" : "account_pending_approval";
     return redirectWithLoginAudit(err, {
-      userId: user._id.toHexString(),
+      userId: userIdHex,
       xUserId: identity.xUserId,
       username: identity.username,
       email: user.email
@@ -339,7 +357,7 @@ export async function GET(request: Request) {
   if (!user.emailVerifiedAt && !isGlobalAdmin(user.roles)) {
     let verificationSent = false;
     try {
-      const issued = await issueEmailVerificationForUser(user._id);
+      const issued = await issueEmailVerificationForUser(user._id!);
       if (issued?.rawToken) {
         verificationSent = await sendEmailVerificationEmail({
           request,
@@ -354,7 +372,7 @@ export async function GET(request: Request) {
     return redirectWithLoginAudit(
       "email_unverified",
       {
-        userId: user._id.toHexString(),
+        userId: userIdHex,
         xUserId: identity.xUserId,
         username: identity.username,
         email: user.email

@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { AmbientExperiencePanel } from "@/app/admin/tenant-preferences/ui/ambient-experience-panel";
+import { GuestLandingAudiencePanel } from "@/app/admin/tenant-preferences/ui/guest-landing-audience-panel";
 import { FeatureFlagsPanel } from "@/app/admin/tenant-preferences/ui/feature-flags-panel";
 import { OptionsStrategyEnginePanel } from "@/app/admin/tenant-preferences/ui/options-strategy-engine-panel";
 import { TenantWorkspaceLimitsPanel } from "@/app/admin/tenant-preferences/ui/tenant-workspace-limits-panel";
@@ -29,6 +30,7 @@ type TenantRegisterResponse = {
 
 const TABS = [
   { id: "workspace-limits", label: "Workspace limits" },
+  { id: "guest-landing", label: "Guest landing" },
   { id: "strategy-engine", label: "Strategy engine" },
   { id: "ambient", label: "Ambient experience" },
   { id: "persona", label: "Default persona" },
@@ -209,6 +211,9 @@ export function UnifiedTenantPreferencesClient({
           <>
             {activeTab === "workspace-limits" && (
               <TenantWorkspaceLimitsPanel tenantId={selectedTenantId} />
+            )}
+            {activeTab === "guest-landing" && (
+              <GuestLandingAudiencePanel tenantId={selectedTenantId} />
             )}
             {activeTab === "strategy-engine" && (
               <OptionsStrategyEnginePanel tenantId={selectedTenantId} />

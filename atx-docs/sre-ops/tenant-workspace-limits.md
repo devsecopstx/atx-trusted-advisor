@@ -40,6 +40,13 @@ Indexes are created best-effort on first use (same pattern as other identity usa
 - `GET/PATCH /api/admin/tenants/{tenantId}/workspace-limits` — `global_admin` only; **GET** may persist default `workspaceLimits` once when scalars are missing (lazy backfill).
 - UI: `/admin/tenant-preferences/workspace-limits` — **session tenant** only. **`/admin/tenant-register/{tenantId}/workspace-limits`** — same panel for **any** tenant id (links from **Edit tenant** / post-create).
 
+## Guest 30-day trial (May 2026)
+
+- **Trigger:** Guest lands on **`/`** or **`/home`** with **`?trial=1`** or clicks **Start 30-Day Free Trial** (sets cookie **`xf_guest_trial_intent`**). X/Google OAuth callbacks call **`provisionGuestTrialOperatorAccess`** (`src/modules/identity/guest-trial.ts`).
+- **Grant (first time only):** **`core_users.trialEndsAt`** (+ **`guestTrialStartedAt`**), **`roles`** includes **`operator`**, **`subscriptionPlan: basic`**, **`accountStatus: approved`**, default tenant membership on **`atxfinance-core`** (or session tenant when already assigned).
+- **Limits during trial:** **`getPlanLimits('basic')`** + tenant **`workspaceLimits`** / **`planOverrides.basic`** via **`effectiveWorkspaceLimitsForTenantAndPlan`** — same caps as a paying Basic subscriber (xChat day/hr, xOptions desk, portfolio counts per tenant row).
+- **Billing gate:** **`trial_active`** → product surfaces allowed without Stripe; after **`trialEndsAt`** → **`trial_expired`** → edge proxy **`requiresBilling`** → **`/account/billing`** (user stays on **basic** plan until Checkout upgrades tier).
+
 ## App user surfacing
 
 - `/account/billing` (see `src/app/account/billing/page.tsx`, `billing-plan-grid.tsx`) resolves each retail tier with **`billingCardWorkspaceDisplay`** in `src/lib/billing-plan-workspace-display.ts`:

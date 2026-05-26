@@ -25,8 +25,8 @@ describe("PublicMarketingHeader", () => {
 
   it("lists marketing nav helpers", () => {
     expect(source).toContain("Educational hub");
-    expect(source).toContain("For Investment Advisors & teams");
-    // Note: Nav was intentionally slimmed in 2026 landing cleanup (removed Developers, Desk series, Top 10 HNWI prompts)
+    expect(source).toContain("White-label platform");
+    expect(source).toContain("marketingNavLinks(variant)");
   });
 });
 

@@ -12,6 +12,7 @@ const identityRepoMocks = vi.hoisted(() => ({
   updateTenantWorkspaceLimits: vi.fn(),
   updateTenantBrandingPreferencesOneTime: vi.fn(),
   updateTenantXchatDebugEnabled: vi.fn(),
+  updateTenantGuestLandingAudience: vi.fn(),
   tenantHasAdminMembership: vi.fn(),
   listTenantMembershipsForAdmin: vi.fn()
 }));
@@ -30,6 +31,7 @@ vi.mock("@/modules/identity/repository", async (importOriginal) => {
     updateTenantWorkspaceLimits: identityRepoMocks.updateTenantWorkspaceLimits,
     updateTenantBrandingPreferencesOneTime: identityRepoMocks.updateTenantBrandingPreferencesOneTime,
     updateTenantXchatDebugEnabled: identityRepoMocks.updateTenantXchatDebugEnabled,
+    updateTenantGuestLandingAudience: identityRepoMocks.updateTenantGuestLandingAudience,
     tenantHasAdminMembership: identityRepoMocks.tenantHasAdminMembership,
     listTenantMembershipsForAdmin: identityRepoMocks.listTenantMembershipsForAdmin
   };
@@ -257,6 +259,33 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     expect(res.status).toBe(409);
     const json = (await res.json()) as { error: string };
     expect(json.error).toContain("xchat_brandname");
+  });
+
+  it("PATCH sets tenantPreferences.guest_landing_audience", async () => {
+    identityRepoMocks.getTenantByHexId.mockResolvedValue(baseTenant());
+    identityRepoMocks.updateTenantWorkspaceLimits.mockResolvedValue(baseTenant());
+    identityRepoMocks.updateTenantBrandingPreferencesOneTime.mockResolvedValue({
+      tenant: baseTenant(),
+      conflictKeys: []
+    });
+    identityRepoMocks.updateTenantGuestLandingAudience.mockResolvedValue(
+      baseTenant({ tenantPreferences: { guest_landing_audience: "hnwi" } })
+    );
+
+    const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tenantPreferences: { guest_landing_audience: "hnwi" }
+      })
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ tenantId: TENANT_HEX }) });
+    expect(res.status).toBe(200);
+    expect(identityRepoMocks.updateTenantGuestLandingAudience).toHaveBeenCalledWith(TENANT_HEX, "hnwi");
+    const json = (await res.json()) as {
+      data: { tenantPreferences: Record<string, unknown> };
+    };
+    expect(json.data.tenantPreferences.guest_landing_audience).toBe("hnwi");
   });
 
   it("PATCH sets tenantPreferences.xchat_debug_enabled", async () => {

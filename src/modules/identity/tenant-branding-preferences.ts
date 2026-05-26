@@ -184,6 +184,31 @@ export function isTenantXchatDebugPreferenceEnabled(
   return tenant?.tenantPreferences?.xchat_debug_enabled === true;
 }
 
+export type GuestLandingAudiencePreference = "hnwi" | "advisor";
+
+/** Parse admin PATCH for `tenantPreferences.guest_landing_audience`. */
+export function parseGuestLandingAudiencePreference(
+  raw: unknown
+): GuestLandingAudiencePreference | null | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  if (raw === null || raw === "") {
+    return null;
+  }
+  if (typeof raw !== "string") {
+    return undefined;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "hnwi" || normalized === "retail") {
+    return "hnwi";
+  }
+  if (normalized === "advisor" || normalized === "ia" || normalized === "firm") {
+    return "advisor";
+  }
+  return undefined;
+}
+
 export function parseTenantXchatDebugEnabled(raw: unknown): boolean | undefined {
   if (raw === undefined) {
     return undefined;

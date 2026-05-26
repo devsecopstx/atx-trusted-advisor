@@ -16,6 +16,8 @@ Visual asset refresh **v2** shipped with scanner tightening — proof captures i
 
 ## Shipped (May 2026 — platform / SRE)
 
+- **Guest landing + 30-day trial (blast):** Role-aware **`/`** / **`/home`** (**`?for=hnwi|advisor`**) with **Start 30-Day Free Trial** → OAuth + **`xf_guest_trial_intent`**. First sign-in provisions **`operator`** + **`basic`** + **`trialEndsAt`** (30d) on **`core_users`**; limits = **basic** **`getPlanLimits()`** + tenant workspace row; post-trial **`trial_expired`** billing gate. **`src/modules/identity/guest-trial.ts`**, **`src/lib/marketing/guest-trial-auth.ts`**, **`src/proxy.ts`**. Docs: **`tenant-ux-plan.md`**, **`tenant-workspace-limits.md`**.
+
 - **Hot Picks (portfolios workspace — track 12):** **`/portfolios/hot-picks`** — forward **7–21 DTE** scanner UI (bias, edge score, Greeks/IV skew toggles, glass cards, xOptions/alert/watchlist actions). **`GET /api/portfolios/hot-picks`** → Spring **`HotPicksService`** + **`OptionsStrategyEngine`** (conservative POP gate, no naked aggressive without **`optionsTradingEnabled`**); **60m** Redis cache; Next BFF + fallback. See **`current-state-features.md`** · **`release-notes.md`** **3.25.8**.
 
 - **JVM internal scheduler daemon observability:** **`GET /api/backend/health`** returns a **`scheduler`** object (`lastPollAt`, `lastSuccessfulRun`, `tasksEnqueuedLastPoll`, `status`, …) so operators can confirm the admin-scheduler poller / Quartz path without relying on logs alone — [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md). (Earlier “today’s delivery focus” notes for the Spring internal admin scheduler lived in [release-notes.md](./sre-ops/release-notes.md) around **3.5.2**; capability is **shipped** in current worker images.)

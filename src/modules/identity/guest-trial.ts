@@ -1,5 +1,9 @@
-import { ObjectId } from "mongodb";
-
+import {
+  GUEST_TRIAL_DEFAULT_PLAN,
+  GUEST_TRIAL_DEFAULT_ROLE,
+  GUEST_TRIAL_DURATION_MS,
+  isGuestTrialActive
+} from "@/modules/identity/guest-trial-constants";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
   addRoleToCoreUser,
@@ -11,39 +15,9 @@ import {
 import { getDb } from "@/lib/mongodb";
 import type { CoreUser } from "@/modules/identity/types";
 
+export * from "@/modules/identity/guest-trial-constants";
+
 const CORE_USERS = "core_users";
-
-/** Cookie / query flag: user started OAuth from guest trial CTA. */
-export const GUEST_TRIAL_INTENT_COOKIE = "xf_guest_trial_intent";
-export const GUEST_TRIAL_INTENT_QUERY = "trial";
-
-/** Default guest blast: basic tier + operator platform role. */
-export const GUEST_TRIAL_DEFAULT_ROLE = "operator" as const;
-export const GUEST_TRIAL_DEFAULT_PLAN = "basic" as const;
-
-export const GUEST_TRIAL_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
-
-export function parseGuestTrialIntentParam(raw: string | null | undefined): boolean {
-  if (!raw) {
-    return false;
-  }
-  const n = raw.trim().toLowerCase();
-  return n === "1" || n === "true" || n === "yes";
-}
-
-export function isGuestTrialIntentCookieValue(raw: string | undefined): boolean {
-  return parseGuestTrialIntentParam(raw);
-}
-
-export function isGuestTrialActive(user: Pick<CoreUser, "trialEndsAt">, now: Date = new Date()): boolean {
-  const ends = user.trialEndsAt;
-  return ends instanceof Date && ends.getTime() > now.getTime();
-}
-
-export function isGuestTrialExpired(user: Pick<CoreUser, "trialEndsAt">, now: Date = new Date()): boolean {
-  const ends = user.trialEndsAt;
-  return ends instanceof Date && ends.getTime() <= now.getTime();
-}
 
 export type ProvisionGuestTrialResult =
   | { ok: true; user: CoreUser; newlyProvisioned: boolean }
@@ -52,6 +26,7 @@ export type ProvisionGuestTrialResult =
 /**
  * First sign-in from guest trial CTA: operator + basic plan + 30-day trial window + default tenant membership.
  * Idempotent while trial is active; does not extend expired trials automatically.
+ * Server-only — do not import from client components.
  */
 export async function provisionGuestTrialOperatorAccess(input: {
   user: CoreUser;
@@ -73,7 +48,7 @@ export async function provisionGuestTrialOperatorAccess(input: {
 
   if (!isGuestTrialActive(current, now) && !current.trialEndsAt) {
     const trialEndsAt = new Date(now.getTime() + GUEST_TRIAL_DURATION_MS);
-    await getDb().collection<CoreUser>(CORE_USERS).updateOne(
+    await (await getDb()).collection<CoreUser>(CORE_USERS).updateOne(
       { _id: userId },
       {
         $set: {
@@ -92,7 +67,8 @@ export async function provisionGuestTrialOperatorAccess(input: {
   }
 
   if (current.accountStatus !== "approved") {
-    current = await updateCoreUserAccountStatus({ userId, accountStatus: "approved" });
+    await updateCoreUserAccountStatus({ userId, accountStatus: "approved" });
+    current = { ...current, accountStatus: "approved" };
   }
 
   const plan = current.subscriptionPlan ?? GUEST_TRIAL_DEFAULT_PLAN;
@@ -119,7 +95,7 @@ export async function provisionGuestTrialOperatorAccess(input: {
   }
 
   if (input.markEmailVerified && !(current.emailVerifiedAt instanceof Date)) {
-    await getDb().collection<CoreUser>(CORE_USERS).updateOne(
+    await (await getDb()).collection<CoreUser>(CORE_USERS).updateOne(
       { _id: userId },
       { $set: { emailVerifiedAt: now, updatedAt: now } }
     );

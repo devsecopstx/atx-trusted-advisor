@@ -24,8 +24,8 @@ describe("public marketing landing hero v2", () => {
     const copySource = readFileSync(copyPath, "utf8");
     expect(landingSource).toContain("GUEST_LANDING_HERO_COPY");
     expect(landingSource).toContain("data-guest-landing");
-    expect(copySource).toContain("Sign in with X");
-    expect(copySource).toContain("Request advisor access");
+    expect(copySource).toContain("Start 30-Day Free Trial");
+    expect(copySource).toContain("guest-trial-login");
     expect(MARKETING_LANDING_XOPTIONS_HREF).toBe("/xoptions");
     expect(MARKETING_LANDING_BILLING_REGISTER_HREF).toBe("/account/billing?register=1&plan=basic");
     expect(MARKETING_LANDING_BILLING_PLANS_HREF).toBe("/account/billing");
