@@ -40,6 +40,11 @@ export type TenantPreferences = TenantBrandingPreferences & {
   /** Subtitle under tenant display name in shell (max 60 chars). */
   xf_tenant_tagline?: string;
   /**
+   * Default guest marketing landing at `/` and `/home` when no `?for=` query or cookie (`hnwi` | `advisor`).
+   * Display-only; does not change auth or compliance posture.
+   */
+  guest_landing_audience?: "hnwi" | "advisor";
+  /**
    * xAI Management team collection id for this tenant’s xChat attachment uploads (provisioned on tenant create when
    * `XAI_TEAM_ID` + `XAI_MANAGEMENT_API_KEY` are set). Stable name: `xfinance-tenant-<slug>-xchat-attachments`.
    */

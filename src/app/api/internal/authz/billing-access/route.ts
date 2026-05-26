@@ -47,7 +47,8 @@ export async function GET() {
 
   const billingState = resolveAppUserBillingAccessState({
     roles: session.roles,
-    billing: coreUser?.billing
+    billing: coreUser?.billing,
+    trialEndsAt: coreUser?.trialEndsAt
   });
   const subscriptionActive = isBillingEntitledAccessState(billingState);
   const productAccessAllowed = isAppUserProductAccessAllowedState(billingState);

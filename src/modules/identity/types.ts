@@ -129,6 +129,13 @@ export type CoreUser = {
   /** Advisor-role compliance onboarding (firm profile + AI disclosure ack). */
   advisorComplianceProfile?: AdvisorComplianceProfile;
   /**
+   * Guest marketing 30-day trial window end (UTC). While active, product access uses basic plan limits
+   * without Stripe (`trial_active` billing state). After expiry, surfaces prompt upgrade unless subscribed.
+   */
+  trialEndsAt?: Date;
+  /** First grant of {@link trialEndsAt} (audit / support). */
+  guestTrialStartedAt?: Date;
+  /**
    * Denormalized from `core_tenant_memberships.role === "tenant_admin"` (any tenant).
    * Updated when membership role changes — source of truth remains membership.
    */

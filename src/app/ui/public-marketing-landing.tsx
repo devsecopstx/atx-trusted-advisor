@@ -16,11 +16,12 @@ import {
 } from "@/app/ui/public-marketing-header";
 import { PoweredByXai } from "@/app/ui/xai-brand-mark";
 import { XfinancePremiumValueBlock } from "@/app/ui/xfinance-premium-value-block";
+import { GUEST_LANDING_HERO_COPY } from "@/lib/marketing/guest-landing-copy";
+import type { GuestLandingVariant } from "@/lib/marketing/guest-landing-variant";
 import {
   MARKETING_LANDING_BILLING_PLANS_CTA_LABEL,
   MARKETING_LANDING_BILLING_PLANS_HREF,
   MARKETING_LANDING_BILLING_REGISTER_HREF,
-  MARKETING_LANDING_XOPTIONS_CTA_LABEL,
   MARKETING_LANDING_XOPTIONS_HREF
 } from "@/lib/marketing/landing-cta";
 import { withUtmParams } from "@/lib/marketing/utm";
@@ -35,21 +36,33 @@ const LANDING_PRODUCT_SHOTS = {
   xoptions: "/landing/xoptions.png"
 } as const;
 
-export function PublicMarketingLanding() {
-  const xoptionsHref = withUtmParams(MARKETING_LANDING_XOPTIONS_HREF, MARKETING_UTM);
-  const registerTrialHref = withUtmParams(MARKETING_LANDING_BILLING_REGISTER_HREF, MARKETING_UTM);
+type PublicMarketingLandingProps = {
+  variant?: GuestLandingVariant;
+};
+
+export function PublicMarketingLanding({ variant = "hnwi" }: PublicMarketingLandingProps) {
+  const hero = GUEST_LANDING_HERO_COPY[variant];
+  const utmContent = variant === "advisor" ? "advisor-landing" : "hnwi-landing";
+  const utm = { ...MARKETING_UTM, utm_content: utmContent } as const;
+
+  const xoptionsHref = withUtmParams(MARKETING_LANDING_XOPTIONS_HREF, utm);
+  const registerTrialHref = withUtmParams(MARKETING_LANDING_BILLING_REGISTER_HREF, utm);
   const iaPilotHref = withUtmParams(MARKETING_LANDING_BILLING_REGISTER_HREF, {
-    ...MARKETING_UTM,
+    ...utm,
     utm_content: "ia-pilot"
   });
-  const plansHref = withUtmParams(MARKETING_LANDING_BILLING_PLANS_HREF, MARKETING_UTM);
+  const plansHref = withUtmParams(MARKETING_LANDING_BILLING_PLANS_HREF, utm);
+  const primaryHref = withUtmParams(hero.primaryCtaHref, utm);
+  const secondaryHref = withUtmParams(hero.secondaryCtaHref, utm);
+  const tertiaryHref = hero.tertiaryCtaHref ? withUtmParams(hero.tertiaryCtaHref, utm) : xoptionsHref;
 
   return (
-    <div className="min-h-screen bg-transparent text-[var(--xf-text-100)]">
+    <div className="min-h-screen bg-transparent text-[var(--xf-text-100)]" data-guest-landing={variant}>
       <PublicMarketingHeader
         xoptionsHref={xoptionsHref}
-        registerTrialHref={registerTrialHref}
-        trialCtaLabel={TRIAL_CTA_LABEL}
+        registerTrialHref={variant === "advisor" ? primaryHref : registerTrialHref}
+        trialCtaLabel={variant === "advisor" ? hero.primaryCtaLabel : TRIAL_CTA_LABEL}
+        variant={variant}
       />
 
       <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 flex justify-end">
@@ -79,36 +92,39 @@ export function PublicMarketingLanding() {
             </div>
 
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--xf-gain-green)] sm:text-sm">
-              aTx Trusted Advisory
+              {hero.eyebrow}
             </p>
 
             <h1 className="mt-3 text-4xl font-bold leading-[1.08] tracking-tighter text-[var(--xf-text-100)] sm:text-5xl md:text-6xl">
-              {XFINANCE_BRAND_SUBLINE}
+              {hero.headline}
             </h1>
+
+            <p className="mt-2 text-sm font-medium uppercase tracking-[0.16em] text-[var(--xf-text-400)]">
+              {XFINANCE_BRAND_SUBLINE}
+            </p>
 
             <div className="mt-4">
               <PoweredByXai logoClassName="h-5 w-auto sm:h-6" />
             </div>
 
             <p className="mt-4 max-w-2xl text-lg font-semibold leading-snug text-[var(--xf-text-200)] sm:text-xl md:text-2xl">
-              Austin-built for HNWI retail investors and Investment Advisors — one workspace that combines
-              book-aware Grok, production xOptions, and audit-ready portfolio desk tools.
+              {hero.lead}
             </p>
 
             <div className="mt-6 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
               <p className="mb-2">
-                <span className="font-semibold text-[var(--xf-text-100)]">xChat + RAG</span> — multi-agent orchestration
-                with conservative, balanced, and aggressive income playbooks grounded in your holdings.
+                <span className="font-semibold text-[var(--xf-text-100)]">{hero.bulletOneLabel}</span> —{" "}
+                {hero.bulletOneBody}
               </p>
               <p>
-                <span className="font-semibold text-[var(--xf-text-100)]">xOptions + desk</span> — chains, payoff
-                previews, strategy jobs, alerts, and scanners with an IBKR integration path and full audit lineage.
+                <span className="font-semibold text-[var(--xf-text-100)]">{hero.bulletTwoLabel}</span> —{" "}
+                {hero.bulletTwoBody}
               </p>
             </div>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-              <Link href={xoptionsHref} className={MARKETING_HEADER_BTN_PRIMARY}>
-                {MARKETING_LANDING_XOPTIONS_CTA_LABEL}
+              <Link href={primaryHref} className={MARKETING_HEADER_BTN_PRIMARY}>
+                {hero.primaryCtaLabel}
                 <span
                   aria-hidden
                   className="rounded-xl bg-[color-mix(in_srgb,var(--xf-bg-900)_12%,transparent)] px-2 py-0.5 text-xs font-semibold"
@@ -116,24 +132,30 @@ export function PublicMarketingLanding() {
                   →
                 </span>
               </Link>
-              <Link href={registerTrialHref} className={MARKETING_HEADER_BTN_SECONDARY}>
-                {TRIAL_CTA_LABEL}
+              <Link href={secondaryHref} className={MARKETING_HEADER_BTN_SECONDARY}>
+                {hero.secondaryCtaLabel}
               </Link>
 
-              <Link
-                href={plansHref}
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                {MARKETING_LANDING_BILLING_PLANS_CTA_LABEL}
-              </Link>
+              {variant === "hnwi" ? (
+                <Link
+                  href={plansHref}
+                  className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {MARKETING_LANDING_BILLING_PLANS_CTA_LABEL}
+                </Link>
+              ) : (
+                <Link
+                  href={tertiaryHref}
+                  className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {hero.tertiaryCtaLabel}
+                </Link>
+              )}
             </div>
 
             <EducationalDisclaimerBanner className="mt-6 max-w-2xl" />
 
-            <p className="mt-4 text-sm text-[var(--xf-text-400)] sm:mt-6">
-              <span className="font-medium text-[var(--xf-text-300)]">One workspace:</span> portfolio sync &amp;
-              watchlist · desk alerts · scanners · strategy jobs · xChat (Grok) · xOptions · tenant branding when enabled
-            </p>
+            <p className="mt-4 text-sm text-[var(--xf-text-400)] sm:mt-6">{hero.footerLine}</p>
           </div>
 
           <div className="hidden md:block md:self-start">
@@ -343,33 +365,45 @@ export function PublicMarketingLanding() {
       <section className="border-t border-white/10 py-14 sm:py-20" id="access-cta">
         <div className="mx-auto max-w-screen-2xl px-4 text-center sm:px-8">
           <p className="text-xs font-semibold uppercase tracking-[2px] text-[var(--xf-gain-green)]">
-            GET STARTED
+            {variant === "advisor" ? "FIRM ACCESS" : "GET STARTED"}
           </p>
           <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">
-            Start earning with guardrails today
+            {variant === "advisor"
+              ? "Provision a governed desk workspace"
+              : "Start earning with guardrails today"}
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-[var(--xf-text-300)]">
-            Basic trial. No card required. Connect your portfolios or explore with sample data. Roles and limits apply after sign-in.
+            {variant === "advisor"
+              ? "Request advisor access for your team. Admin approval assigns roles, tenant route policy, and branding before first sign-in."
+              : "Basic trial. No card required. Connect your portfolios or explore with sample data. Roles and limits apply after sign-in."}
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href={xoptionsHref} className={MARKETING_HEADER_BTN_PRIMARY}>
-              {MARKETING_LANDING_XOPTIONS_CTA_LABEL}
+            <Link href={primaryHref} className={MARKETING_HEADER_BTN_PRIMARY}>
+              {hero.primaryCtaLabel}
               <span aria-hidden className="ml-2">→</span>
             </Link>
-            <Link href={registerTrialHref} className={MARKETING_HEADER_BTN_SECONDARY}>
-              {TRIAL_CTA_LABEL}
+            <Link href={secondaryHref} className={MARKETING_HEADER_BTN_SECONDARY}>
+              {hero.secondaryCtaLabel}
             </Link>
           </div>
 
           <div className="mt-6 text-sm">
-            <Link href={iaPilotHref} className="text-[var(--xf-lightning-yellow)] hover:underline">
-              Request IA / team pilot
-            </Link>
-            <span className="mx-2 text-[var(--xf-text-400)]">·</span>
-            <Link href={plansHref} className="text-[var(--xf-gain-green)] hover:underline">
-              See all plans
-            </Link>
+            {variant === "hnwi" ? (
+              <>
+                <Link href={iaPilotHref} className="text-[var(--xf-lightning-yellow)] hover:underline">
+                  Request IA / team pilot
+                </Link>
+                <span className="mx-2 text-[var(--xf-text-400)]">·</span>
+                <Link href={plansHref} className="text-[var(--xf-gain-green)] hover:underline">
+                  See all plans
+                </Link>
+              </>
+            ) : (
+              <Link href={tertiaryHref} className="text-[var(--xf-gain-green)] hover:underline">
+                {hero.tertiaryCtaLabel} →
+              </Link>
+            )}
           </div>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { isGuestTrialActive } from "@/modules/identity/guest-trial";
 import type { CoreUserBilling } from "@/modules/identity/types";
 
 export type AppUserBillingAccessState =
@@ -7,7 +8,9 @@ export type AppUserBillingAccessState =
   | "active"
   | "past_due"
   | "canceled"
-  | "override_active";
+  | "override_active"
+  | "trial_active"
+  | "trial_expired";
 
 function isOverrideCurrentlyActive(
   override: CoreUserBilling["override"] | undefined,
@@ -30,6 +33,7 @@ function normalizeStripeStatus(status: CoreUserBilling["stripeSubscriptionStatus
 export function resolveAppUserBillingAccessState(input: {
   roles: string[];
   billing: CoreUserBilling | null | undefined;
+  trialEndsAt?: Date | null;
   now?: Date;
 }): AppUserBillingAccessState {
   if (!canUserLogin(input.roles)) {
@@ -39,37 +43,46 @@ export function resolveAppUserBillingAccessState(input: {
     return "active";
   }
 
-  const nowMs = (input.now ?? new Date()).getTime();
+  const now = input.now ?? new Date();
+  const nowMs = now.getTime();
   if (isOverrideCurrentlyActive(input.billing?.override, nowMs)) {
     return "override_active";
   }
 
   const stripeStatus = normalizeStripeStatus(input.billing?.stripeSubscriptionStatus);
+  let base: AppUserBillingAccessState = "approved_unpaid";
   if (stripeStatus === "trialing" || stripeStatus === "active") {
-    return "active";
-  }
-  if (stripeStatus === "past_due" || stripeStatus === "unpaid") {
-    return "past_due";
-  }
-  if (
+    base = "active";
+  } else if (stripeStatus === "past_due" || stripeStatus === "unpaid") {
+    base = "past_due";
+  } else if (
     stripeStatus === "canceled" ||
     stripeStatus === "incomplete" ||
     stripeStatus === "incomplete_expired"
   ) {
-    return "canceled";
-  }
-  if (
+    base = "canceled";
+  } else if (
     stripeStatus === "paused" ||
     (input.billing?.canceledAt instanceof Date && input.billing.canceledAt.getTime() <= nowMs)
   ) {
-    return "canceled";
+    base = "canceled";
   }
-  return "approved_unpaid";
+
+  const ends = input.trialEndsAt;
+  if (ends instanceof Date) {
+    if (ends.getTime() > now.getTime()) {
+      return "trial_active";
+    }
+    if (base !== "active" && base !== "override_active") {
+      return "trial_expired";
+    }
+  }
+  return base;
 }
 
-/** Stripe-paid or admin override — subscription revenue / “active plan” semantics. */
+/** Stripe-paid, admin override, or in-app guest trial window. */
 export function isBillingEntitledAccessState(state: AppUserBillingAccessState): boolean {
-  return state === "active" || state === "override_active";
+  return state === "active" || state === "override_active" || state === "trial_active";
 }
 
 /**
@@ -78,5 +91,17 @@ export function isBillingEntitledAccessState(state: AppUserBillingAccessState): 
  */
 export function isAppUserProductAccessAllowedState(state: AppUserBillingAccessState): boolean {
   return isBillingEntitledAccessState(state) || state === "approved_unpaid";
+}
+
+export function isGuestTrialBillingState(state: AppUserBillingAccessState): boolean {
+  return state === "trial_active" || state === "trial_expired";
+}
+
+export function guestTrialDaysRemaining(trialEndsAt: Date | undefined, now: Date = new Date()): number {
+  if (!isGuestTrialActive({ trialEndsAt }, now)) {
+    return 0;
+  }
+  const ms = trialEndsAt!.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
 }
 

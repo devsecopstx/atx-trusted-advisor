@@ -19,10 +19,13 @@ describe("public marketing landing hero v2", () => {
     expect(landingSource).not.toContain("Real-Money Options Income.");
   });
 
-  it("routes hero CTAs to xOptions and billing only", () => {
-    expect(landingSource).toContain("MARKETING_LANDING_XOPTIONS_HREF");
-    expect(landingSource).toContain("MARKETING_LANDING_BILLING_REGISTER_HREF");
-    expect(landingSource).toContain("MARKETING_LANDING_BILLING_PLANS_HREF");
+  it("routes variant hero copy through guest landing modules", () => {
+    const copyPath = path.join(process.cwd(), "src/lib/marketing/guest-landing-copy.ts");
+    const copySource = readFileSync(copyPath, "utf8");
+    expect(landingSource).toContain("GUEST_LANDING_HERO_COPY");
+    expect(landingSource).toContain("data-guest-landing");
+    expect(copySource).toContain("Sign in with X");
+    expect(copySource).toContain("Request advisor access");
     expect(MARKETING_LANDING_XOPTIONS_HREF).toBe("/xoptions");
     expect(MARKETING_LANDING_BILLING_REGISTER_HREF).toBe("/account/billing?register=1&plan=basic");
     expect(MARKETING_LANDING_BILLING_PLANS_HREF).toBe("/account/billing");

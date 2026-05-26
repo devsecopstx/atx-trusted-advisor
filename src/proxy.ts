@@ -1,6 +1,17 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import {
+  GUEST_LANDING_COOKIE,
+  GUEST_LANDING_FOR_QUERY,
+  parseGuestLandingForParam,
+  resolveGuestProtectedLoginNext
+} from "@/lib/marketing/guest-landing-variant";
+import {
+  GUEST_TRIAL_INTENT_COOKIE,
+  GUEST_TRIAL_INTENT_QUERY,
+  parseGuestTrialIntentParam
+} from "@/modules/identity/guest-trial";
 import { isSafeOAuthReturnPath } from "@/lib/oauth-return-path";
 import { parseProxyEdgeCacheTtlMs } from "@/lib/proxy-edge-cache-ttl";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
@@ -33,6 +44,7 @@ const protectedPathPrefixes = [
   "/workspace",
   "/xfinance",
   "/xcoach",
+  "/xchat",
   "/xoptions"
 ];
 
@@ -199,6 +211,38 @@ function isPublicGuestReadablePath(pathname: string): boolean {
   return publicGuestReadablePaths.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
+}
+
+function isGuestMarketingLandingPath(pathname: string): boolean {
+  return pathname === "/" || pathname === "/home";
+}
+
+/**
+ * Persist `?for=hnwi|advisor` on guest marketing landings (90d) for blast links without repeating the query param.
+ */
+function applyGuestLandingAudienceCookie(
+  request: NextRequest,
+  pathname: string
+): NextResponse | null {
+  if (!isGuestMarketingLandingPath(pathname)) {
+    return null;
+  }
+  if (request.cookies.get(SESSION_COOKIE_NAME)?.value) {
+    return null;
+  }
+  const audience = parseGuestLandingForParam(request.nextUrl.searchParams.get(GUEST_LANDING_FOR_QUERY));
+  if (!audience) {
+    return null;
+  }
+  const res = NextResponse.next();
+  res.cookies.set(GUEST_LANDING_COOKIE, audience, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 90
+  });
+  return res;
 }
 
 function isProtectedPath(pathname: string): boolean {
@@ -548,6 +592,9 @@ async function enforceBillingAccess(request: NextRequest, pathname: string): Pro
  * APIs under these areas stay protected (401) when unauthenticated.
  */
 function allowsGuestHtmlRender(pathname: string): boolean {
+  if (pathname === "/xchat" || pathname.startsWith("/xchat/")) {
+    return true;
+  }
   if (pathname === "/portfolio" || pathname === "/portfolios" || pathname === "/xoptions") {
     return true;
   }
@@ -575,6 +622,10 @@ function nextResponseContinuing(request: NextRequest, pathname: string): NextRes
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const guestLandingCookie = applyGuestLandingAudienceCookie(request, pathname);
+  if (guestLandingCookie) {
+    return guestLandingCookie;
+  }
   if (!isProtectedPath(pathname)) {
     return NextResponse.next();
   }
@@ -606,7 +657,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const nextCandidate = `${pathname}${request.nextUrl.search}`;
+  const nextCandidate = resolveGuestProtectedLoginNext(pathname, request.nextUrl.search);
   const next = isSafeOAuthReturnPath(nextCandidate) ? nextCandidate : "/xchat";
   const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("next", next);
@@ -615,6 +666,10 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
+    "/home",
+    "/xchat",
+    "/xchat/:path*",
     "/resources",
     "/resources/:path*",
     "/admin/:path*",

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "catalogKind": "app_user_route_catalog",
-  "updated": "2026-05-04",
+  "updated": "2026-05-25",
   "description": "Canonical route metadata for platform/compliance: import into Mongo (or your store) to drive per-tenant role visibility and default landing paths. defaultVisibleForRoles are suggested seeds only — runtime policy may override per tenant.",
   "platformRoles": ["global_admin", "advisor", "operator", "viewer"],
   "tenantAssignableRoles": ["advisor", "operator", "viewer"],
@@ -216,7 +216,18 @@
       "groupId": "public",
       "inWorkspaceProductShell": false,
       "guestHtmlShell": true,
-      "complianceSummary": "Marketing landing; optional waitlist CTA.",
+      "complianceSummary": "Marketing landing; role-aware guest variants via ?for=hnwi|advisor and tenant guest_landing_audience.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "home_alias",
+      "pathPattern": "/home",
+      "pathMatch": "exact",
+      "label": "Home alias",
+      "groupId": "public",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": true,
+      "complianceSummary": "Alias of / for blast links; same guest landing resolution as root.",
       "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
     },
     {

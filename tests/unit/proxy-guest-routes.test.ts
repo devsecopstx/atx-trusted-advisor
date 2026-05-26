@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { GUEST_LANDING_COOKIE } from "@/lib/marketing/guest-landing-variant";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { proxy } from "@/proxy";
 
@@ -23,6 +24,19 @@ describe("proxy (middleware) guest HTML routes", () => {
     const res = await proxy(request("/xoptions"));
     expect(res.headers.get("location")).toBeNull();
   });
+
+  it("does not redirect unauthenticated /xchat (guest shell at URL)", async () => {
+    const res = await proxy(request("/xchat"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("persists ?for=advisor on / as guest landing cookie", async () => {
+    const res = await proxy(request("/?for=advisor"));
+    expect(res.headers.get("location")).toBeNull();
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain(`${GUEST_LANDING_COOKIE}=advisor`);
+  });
+
 
   it("does not redirect unauthenticated /portfolio or /portfolios", async () => {
     expect((await proxy(request("/portfolio"))).headers.get("location")).toBeNull();

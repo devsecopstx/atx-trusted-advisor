@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { LucideMenuIcon, LucideXIcon } from "@/app/ui/lucide-product-icons";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
+import type { GuestLandingVariant } from "@/lib/marketing/guest-landing-variant";
 import { MARKETING_LANDING_XOPTIONS_CTA_LABEL } from "@/lib/marketing/landing-cta";
 
 export const MARKETING_TRIAL_CTA_LABEL = "Start Basic Trial — No Card";
@@ -16,10 +17,18 @@ export const MARKETING_HEADER_BTN_SECONDARY =
 export const MARKETING_HEADER_BTN_PRIMARY =
   "inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--xf-gain-green)] px-6 text-sm font-semibold text-[var(--xf-bg-900)] shadow-[0_0_24px_-4px_color-mix(in_srgb,var(--xf-gain-green)_45%,transparent)] transition-all duration-200 hover:scale-[1.02] hover:opacity-95 active:scale-[0.98] sm:text-base";
 
-const MARKETING_NAV_LINKS: { href: string; label: string }[] = [
-  { href: "/resources", label: "Educational hub" },
-  { href: "/#ia-family-office", label: "For Investment Advisors & teams" }
-];
+function marketingNavLinks(variant: GuestLandingVariant): { href: string; label: string }[] {
+  if (variant === "advisor") {
+    return [
+      { href: "/ia-white-label-platform", label: "White-label platform" },
+      { href: "/growth", label: "Book demo" }
+    ];
+  }
+  return [
+    { href: "/resources", label: "Educational hub" },
+    { href: "/xoptions", label: "xOptions demo" }
+  ];
+}
 
 type MarketingHeaderCtasProps = {
   xoptionsHref: string;
@@ -72,12 +81,14 @@ type PublicMarketingHeaderProps = {
   xoptionsHref: string;
   registerTrialHref: string;
   trialCtaLabel?: string;
+  variant?: GuestLandingVariant;
 };
 
 export function PublicMarketingHeader({
   xoptionsHref,
   registerTrialHref,
-  trialCtaLabel = MARKETING_TRIAL_CTA_LABEL
+  trialCtaLabel = MARKETING_TRIAL_CTA_LABEL,
+  variant = "hnwi"
 }: PublicMarketingHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const drawerId = useId();
@@ -117,7 +128,7 @@ export function PublicMarketingHeader({
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
-          {MARKETING_NAV_LINKS.map((item) => (
+          {marketingNavLinks(variant).map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -163,7 +174,7 @@ export function PublicMarketingHeader({
             onClick={closeMobile}
           />
           <div className="flex flex-col gap-1">
-            {MARKETING_NAV_LINKS.map((item) => (
+            {marketingNavLinks(variant).map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

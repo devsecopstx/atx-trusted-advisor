@@ -5,6 +5,7 @@ import { PublicMarketingLanding } from "@/app/ui/public-marketing-landing";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSessionLandingPath } from "@/lib/default-landing-path";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
+import { resolveGuestLandingVariantForRequest } from "@/lib/marketing/guest-landing-page";
 import { XFINANCE_BRAND_SUBLINE } from "@/lib/xfinance-brand";
 
 export const dynamic = "force-dynamic";
@@ -38,12 +39,20 @@ export const metadata: Metadata = {
   }
 };
 
-export default async function HomePage() {
+type HomePageProps = {
+  searchParams: Promise<{ for?: string | string[] }>;
+};
+
+export default async function HomePage({ searchParams }: HomePageProps) {
   const session = await getSessionUser();
   if (session) {
     const landing = await resolveSessionLandingPath(session);
     redirect(landing);
   }
 
-  return <PublicMarketingLanding />;
+  const sp = await searchParams;
+  const forRaw = typeof sp.for === "string" ? sp.for : Array.isArray(sp.for) ? sp.for[0] : undefined;
+  const variant = await resolveGuestLandingVariantForRequest({ session: null, forQuery: forRaw });
+
+  return <PublicMarketingLanding variant={variant} />;
 }

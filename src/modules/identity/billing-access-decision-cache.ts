@@ -76,6 +76,19 @@ export async function readBillingAccessDecisionCached(
   }
 }
 
+export async function bustBillingAccessDecisionCache(userId: string): Promise<void> {
+  memoryCache.delete(cacheKey(userId));
+  const redis = await getRedisClientForPlane("control");
+  if (!redis) {
+    return;
+  }
+  try {
+    await redis.del(cacheKey(userId));
+  } catch {
+    // non-fatal
+  }
+}
+
 export async function writeBillingAccessDecisionCached(
   userId: string,
   value: CachedBillingAccessDecision
