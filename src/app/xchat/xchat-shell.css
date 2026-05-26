@@ -164,6 +164,56 @@
   gap: 0.45rem;
 }
 
+.xchat-header-desk-greeting {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.35rem;
+  min-width: 0;
+  max-width: min(100%, 22rem);
+  margin-right: 0.15rem;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: var(--xf-text-300);
+}
+
+.xchat-header-desk-greeting__welcome {
+  font-weight: 500;
+  color: var(--xf-text-200);
+  white-space: nowrap;
+}
+
+.xchat-header-desk-greeting__name {
+  font-weight: 650;
+  color: var(--xf-text-100);
+}
+
+.xchat-header-desk-greeting__sep {
+  color: var(--xf-text-500);
+  font-weight: 400;
+}
+
+.xchat-header-desk-greeting__tenant {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 88%, var(--xf-text-100));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .xchat-header-desk-greeting {
+    max-width: min(100%, 11rem);
+    font-size: 0.62rem;
+  }
+
+  .xchat-header-desk-greeting__welcome {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+}
+
 .xchat-header-workspace-quick-nav {
   display: flex;
   flex-wrap: wrap;

@@ -35,6 +35,8 @@ type AppUserApprovedHeaderProps = {
   workspaceTenant?: WorkspaceTenantHeaderContext | null;
   /** Optional trailing chrome (e.g. Hub session panel) rendered after appearance controls. */
   trailingExtras?: ReactNode;
+  /** When set (e.g. `/xchat`), welcome + tenant desk label render in the top meta row with Resources. */
+  welcomeName?: string | null;
 };
 
 export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
@@ -56,7 +58,8 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
   }, [allowedRoutes, defaultLanding]);
 
   const tenantDesk = resolveTenantDeskDisplayLabel(branding, props.workspaceTenant?.name);
-  const showTenantCard = Boolean(tenantDesk?.tagline);
+  const welcomeNameTrimmed = props.welcomeName?.trim() ?? "";
+  const showDeskGreetingInMetaRow = welcomeNameTrimmed.length > 0;
   const showResourcesNav = isPathVisible("/resources");
   const showBrokerImportNav = isPathVisible("/import-activity");
   const showTasksNav = isAccountTasksVisible();
@@ -89,7 +92,7 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
             <XchatHeaderBrand compact />
           )}
         </Link>
-        {tenantDesk ? (
+        {tenantDesk && !showDeskGreetingInMetaRow ? (
           <div className="xchat-header-tenant-under-brand">
             <span className="xchat-header-tenant-under-brand__name">{tenantDesk.primary}</span>
             {tenantDesk.tagline ? (
@@ -101,6 +104,21 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
       <div className="xchat-header-main">
         <div className="xchat-header-trailing xchat-header-trailing--approved-meta">
           <div className="xchat-header-approved-meta-row">
+            {showDeskGreetingInMetaRow ? (
+              <div className="xchat-header-desk-greeting" aria-label="Workspace greeting">
+                <span className="xchat-header-desk-greeting__welcome">
+                  Welcome, <span className="xchat-header-desk-greeting__name">{welcomeNameTrimmed}</span>
+                </span>
+                {tenantDesk ? (
+                  <>
+                    <span aria-hidden className="xchat-header-desk-greeting__sep">
+                      ·
+                    </span>
+                    <span className="xchat-header-desk-greeting__tenant">{tenantDesk.primary}</span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
             {showWorkspaceQuickNav ? (
               <nav className="xchat-header-workspace-quick-nav" aria-label="Workspace shortcuts">
                 {showResourcesNav ? (
@@ -145,12 +163,6 @@ export function AppUserApprovedHeader(props: AppUserApprovedHeaderProps) {
             ) : null}
             <WorkspaceRailAppearance variant="header" />
             {props.trailingExtras}
-            {showTenantCard && tenantDesk?.tagline ? (
-              <div className="xchat-header-tenant-card">
-                <span className="xchat-header-tenant-card__name">{tenantDesk.primary}</span>
-                <span className="xchat-header-tenant-card__tagline">{tenantDesk.tagline}</span>
-              </div>
-            ) : null}
           </div>
         </div>
       </div>

@@ -7660,6 +7660,23 @@ html[data-xf-ui="soft"] .xchat-disclaimer-modal__confirm {
   max-width: 28rem;
 }
 
+.xchat-desk-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem 0.55rem;
+  padding: 0.2rem 0.65rem 0.35rem;
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .xchat-desk-meta-bar {
+    justify-content: flex-start;
+    padding: 0.15rem 0.5rem 0.28rem;
+  }
+}
+
 .xchat-md-table {
   font-variant-numeric: tabular-nums;
 }

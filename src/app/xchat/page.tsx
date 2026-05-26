@@ -7,6 +7,7 @@ import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { oauthAuthErrorMessages } from "@/lib/oauth-auth-error-messages";
+import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import { canUserLogin } from "@/modules/identity/authorization";
 
@@ -143,6 +144,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
               current="xchat"
               feedbackPageLabel="xChat"
               session={session}
+              welcomeName={appUserPrimaryDisplayName(session)}
               workspaceTenant={workspaceTenant}
             />
           </div>

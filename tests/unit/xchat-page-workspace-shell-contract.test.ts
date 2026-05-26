@@ -26,16 +26,14 @@ describe("/xchat workspace shell contract", () => {
   it("scopes main chat column with tenant chrome classes", () => {
     expect(conversationSrc).toContain("portfolios-workspace-tenant-chrome");
     expect(conversationSrc).toContain("xchat-tenant-chrome");
-    expect(conversationSrc).toContain("resolveTenantDeskDisplayLabel");
   });
 
-  it("seeds desk outlook through the approved shell into the welcome header row", () => {
+  it("puts welcome + tenant in sticky approved header; desk meta bar holds outlook + usage", () => {
+    expect(pageSrc).toContain("welcomeName={appUserPrimaryDisplayName(session)}");
+    expect(conversationSrc).toContain("xchat-desk-meta-bar");
+    expect(conversationSrc).not.toContain("xchat-welcome-header--compact");
     expect(approvedShellSrc).toContain("initialOutlookDesk={initialOutlookDesk}");
-    expect(approvedShellSrc).not.toContain("<XchatOutlookDeskFreshnessLabel desk={initialOutlookDesk} />");
-    expect(conversationSrc).toContain("initialOutlookDesk?: XchatInitialOutlookDesk | null");
-    expect(conversationSrc).toContain('className="xchat-welcome-header__row"');
     expect(conversationSrc).toContain("<XchatOutlookFreshnessBadge");
-    expect(conversationSrc).toContain("workspaceBook={workspaceBook}");
-    expect(conversationSrc).toContain("workspacePortfolioId={workspacePortfolioId}");
+    expect(conversationSrc).toContain("<XchatUsageMeter");
   });
 });
