@@ -32,14 +32,16 @@ describe("tenant-shell-appearance parsers", () => {
       tenantPreferences: {
         xf_accent_color: "#22c55e",
         xf_tenant_logo_url: "https://cdn.example.com/logo.png",
-        xf_tenant_tagline: "Desk tagline"
+        xf_tenant_tagline: "Desk tagline",
+        xchat_brandname: "Acme xChat"
       }
     });
     expect(parseTenantShellBrandingFromTenant(tenant)).toEqual({
       displayName: "Acme Advisory",
       accentColor: "#22c55e",
       logoUrl: "https://cdn.example.com/logo.png",
-      tagline: "Desk tagline"
+      tagline: "Desk tagline",
+      xchatBrandName: "Acme xChat"
     });
   });
 });

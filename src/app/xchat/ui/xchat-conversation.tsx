@@ -16,6 +16,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
+import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
 import { BillingAccessStateBanner } from "@/app/ui/billing-access-state-banner";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
@@ -372,6 +373,7 @@ export function XchatConversation({
   initialOutlookDesk = null,
   mainFooter = null
 }: XchatConversationProps) {
+  const tenantShellBranding = useTenantShellBranding();
   const initialComposerHandoffRef = useRef<ReturnType<typeof consumeXchatPendingComposerHandoff> | null>(null);
   if (!initialComposerHandoffRef.current) {
     initialComposerHandoffRef.current = consumeXchatPendingComposerHandoff();
@@ -2302,10 +2304,17 @@ export function XchatConversation({
             <div className="xchat-welcome-header__row">
               <div className="xchat-welcome-header__lead">
                 <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
-                {tenantWorkspaceSessionLabel ? (
-                  <p className="xchat-welcome-tenant font-medium text-[var(--xf-text-200)]">
-                    · {tenantWorkspaceSessionLabel}
+                {tenantShellBranding?.displayName?.trim() ||
+                tenantWorkspaceSessionLabel ||
+                tenantShellBranding?.xchatBrandName?.trim() ? (
+                  <p className="xchat-welcome-tenant font-medium text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]">
+                    {tenantShellBranding?.xchatBrandName?.trim() ||
+                      tenantShellBranding?.displayName?.trim() ||
+                      tenantWorkspaceSessionLabel}
                   </p>
+                ) : null}
+                {tenantShellBranding?.tagline?.trim() ? (
+                  <p className="xchat-welcome-tagline">{tenantShellBranding.tagline.trim()}</p>
                 ) : null}
               </div>
               <XchatOutlookFreshnessBadge
@@ -2359,6 +2368,13 @@ export function XchatConversation({
               threadVirtualizer={threadVirtualizer}
               visibleThreadMessages={visibleThreadMessages}
               workspacePortfolioId={workspacePortfolioId?.trim() ? workspacePortfolioId.trim() : null}
+              userAvatarUrl={accountDetails.avatarUrl}
+              userDisplayName={
+                accountDetails.displayName?.trim() ||
+                accountDetails.username?.trim() ||
+                accountDetails.email?.trim() ||
+                null
+              }
             />
           </Suspense>
         </div>

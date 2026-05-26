@@ -49,6 +49,13 @@ import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
 
 const EXAMPLE_PLACEHOLDER_INTERVAL_MS = 10_000;
 
+/** Rotating income/options hints under the composer (subset of rail examples). */
+const COMPOSER_CONTEXT_HINTS = [
+  "Covered calls & wheel income on your book",
+  "Greeks, rolls, and expiration risk",
+  "Open xOptions from a strategy answer"
+] as const;
+
 export type XchatPendingPasteImage = {
   mediaType: "image/png" | "image/jpeg";
   dataBase64: string;
@@ -147,6 +154,7 @@ export function XchatComposerPanel({
   /** Rotating example placeholders stop while the textarea itself is focused (user can type freely). */
   const [textareaFocused, setTextareaFocused] = useState(false);
   const [examplePlaceholderIx, setExamplePlaceholderIx] = useState(0);
+  const [contextHintIx, setContextHintIx] = useState(0);
   const [dictationActive, setDictationActive] = useState(false);
   const [dictationSupported, setDictationSupported] = useState(false);
   const [dictationError, setDictationError] = useState<string | null>(null);
@@ -184,9 +192,19 @@ export function XchatComposerPanel({
     return () => window.clearInterval(id);
   }, [allowExamplePlaceholderCycle]);
 
+  useEffect(() => {
+    if (loading || dictationActive || reduceMotion === true) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      setContextHintIx((i) => (i + 1) % COMPOSER_CONTEXT_HINTS.length);
+    }, EXAMPLE_PLACEHOLDER_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [loading, dictationActive, reduceMotion]);
+
   const composerPlaceholder =
     loading
-      ? "Wait for reply…"
+      ? "Advisor working…"
       : dictationActive
         ? "Listening… tap mic to stop"
         : pendingPasteImages.length > 0
@@ -429,7 +447,7 @@ export function XchatComposerPanel({
               <label className="xchat-composer-paste-preview__portfolio flex cursor-pointer items-center gap-2 text-sm text-[color:var(--xf-text-200)]">
                 <input
                   checked={visionUseWorkspace}
-                  className="accent-[color:var(--xf-gain-green)]"
+                  className="accent-[color:var(--xf-tenant-accent,var(--xf-gain-green))]"
                   disabled={loading}
                   type="checkbox"
                   onChange={(ev) => {
@@ -545,7 +563,7 @@ export function XchatComposerPanel({
                   ref={composerRef}
                   aria-busy={loading}
                   aria-label="xChat message composer"
-                  className="xchat-composer__field xchat-composer__textarea xchat-composer__textarea--grok xchat-composer__textarea--singleline text-[14.5px] leading-[1.35] pt-[1px]"
+                  className="xchat-composer__field xchat-composer__textarea xchat-composer__textarea--grok xchat-composer__textarea--singleline xchat-composer__textarea--hnwi"
                   maxLength={4000}
                   onBlur={() => {
                     setTextareaFocused(false);
@@ -646,11 +664,13 @@ export function XchatComposerPanel({
               </button>
             ) : (
               <button
+                aria-busy={loading}
                 aria-label="Send message"
-                className="xchat-composer__send-circle xchat-composer__send-circle--toolbar xchat-composer__send-circle--primary"
+                className="xchat-composer__send-pill xchat-composer__send-pill--toolbar xchat-composer__send-pill--primary"
                 disabled={loading || !canSend}
                 type="submit"
               >
+                <span className="xchat-composer__send-pill-label">Send</span>
                 <XchatComposerArrowUpIcon />
               </button>
             )}
@@ -715,6 +735,9 @@ export function XchatComposerPanel({
         {attachNote ? (
           <p className="status-text xchat-composer-attach-note xchat-composer-inline-msg">{attachNote}</p>
         ) : null}
+        <p className="xchat-composer-context-hint" role="note">
+          {COMPOSER_CONTEXT_HINTS[contextHintIx]}
+        </p>
       </motion.form>
 
       <VoiceModeSession

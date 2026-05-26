@@ -138,7 +138,7 @@ export function PlansLanding({ userEmail, username }: PlansLandingProps) {
           <h1>Choose Your Plan</h1>
           <p>
             {username ? `Hey @${username}` : `Hey ${userEmail}`} — you&#39;re authenticated but don&#39;t
-            have aTx Trusted Advisory access yet. Pick a plan and request access below.
+            do not have approved workspace access yet. Pick a plan and request access below.
           </p>
         </div>
 

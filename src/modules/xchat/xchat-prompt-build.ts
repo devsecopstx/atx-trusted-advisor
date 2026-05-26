@@ -92,7 +92,7 @@ export function classifyXchatSessionToolCopyMode(message: string): XchatSessionT
   return fullIntent ? "full" : "slim";
 }
 
-export const XCHAT_SERVER_ROUTING_POLICY_BLOCK = `**Server routing policy (TEAM KB + tools):** Snippets from team xAI collections are injected above when available—prefer them first for policy, playbooks, and static docs. **Live portfolio** state: **atx_function** on demand (not bulk-injected each turn). **Quotes:** yahoo_finance or atx_function \`market_quote\`—never invent prices from web prose. **Breaking news / sentiment:** web_search / x_search after KB when freshness matters. **Heavy multi-source synthesis** uses parallel multi-agent only when the user explicitly raises effort or the question clearly requires cross-source reconciliation—the default path is one model pass plus retrieval and selective tools.`;
+export const XCHAT_SERVER_ROUTING_POLICY_BLOCK = `**Server routing policy (tenant KB + tools):** Snippets from this workspace's linked xAI collections are injected above when available—prefer them first for policy, playbooks, and static docs. **Live portfolio** state: **atx_function** on demand (not bulk-injected each turn). **Quotes:** yahoo_finance or atx_function \`market_quote\`—never invent prices from web prose. **Breaking news / sentiment:** web_search / x_search after KB when freshness matters. **Heavy multi-source synthesis** uses parallel multi-agent only when the user explicitly raises effort or the question clearly requires cross-source reconciliation—the default path is one model pass plus retrieval and selective tools.`;
 
 export type SessionToolFlags = {
   /** Effective persona tools include `web_search` and/or `x_search` (after `mergeXchatHostedToolBaseline` on ask, this is usually true). */

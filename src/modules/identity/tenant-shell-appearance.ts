@@ -46,6 +46,10 @@ export function parseTenantShellBrandingFromTenant(
     p && typeof p === "object" && p !== null
       ? String((p as Record<string, unknown>).xf_tenant_tagline ?? "").trim().slice(0, 60) || undefined
       : undefined;
+  const xchatBrandName =
+    p && typeof p === "object" && p !== null
+      ? String((p as Record<string, unknown>).xchat_brandname ?? "").trim().slice(0, 80) || undefined
+      : undefined;
   const displayName = String(tenant.name ?? "").trim() || tenant.slug;
-  return { displayName, accentColor, logoUrl, tagline };
+  return { displayName, accentColor, logoUrl, tagline, xchatBrandName };
 }

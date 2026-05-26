@@ -74,7 +74,8 @@
   /**
    * Tenant white-label (display accent + derived chrome). Server sets `--xf-tenant-accent` on `<html>` when
    * `tenantPreferences.xf_accent_color` is present; `TenantBrandingProvider` mirrors primary/secondary on the client.
-   * Logo + tagline are delivered via React context / `TenantShellBranding`, not text in CSS.
+   * Logo + tagline + optional `xchat_brandname` are delivered via React context / `TenantShellBranding`, not text in CSS.
+   * xChat composer Send CTA and welcome tenant line read `--xf-tenant-accent` (fallback `--xf-xoptions-accent`).
    */
   --xf-tenant-primary: var(--xf-tenant-accent, var(--xf-xoptions-accent));
   --xf-tenant-secondary: color-mix(in srgb, var(--xf-tenant-primary) 55%, var(--xf-text-300));

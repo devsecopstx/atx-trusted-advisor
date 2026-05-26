@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useId, useState } from "react";
 
 import { XCHAT_SJP_LAST_CHOICE_KEY, type XchatSjpLastChoice } from "@/lib/xchat-strategy-job-handoff";
+import { xchatWorkspaceHandoffHref } from "@/lib/xchat/xchat-workspace-handoff-href";
 
 const FULL_DISCLAIMER_VERBATIM =
   "Not investment advice. Options involve substantial risk; review suitability, liquidity, assignment risk, and tax impact before execution.";
@@ -15,6 +16,7 @@ export type XchatStrategyJobPreflightProps = {
   loading: boolean;
   launchBusy: boolean;
   emphasizePrimary: boolean;
+  workspacePortfolioId?: string | null;
   onLaunch: () => void;
   onStayInChat: () => void;
 };
@@ -23,9 +25,12 @@ export function XchatStrategyJobPreflightCards({
   loading,
   launchBusy,
   emphasizePrimary,
+  workspacePortfolioId = null,
   onLaunch,
   onStayInChat
 }: XchatStrategyJobPreflightProps) {
+  const xoptionsHref = xchatWorkspaceHandoffHref("/xoptions", workspacePortfolioId);
+  const xstrategyHref = xchatWorkspaceHandoffHref("/xstrategybuilder", workspacePortfolioId);
   const headingId = useId();
   const [lastChoice, setLastChoice] = useState<XchatSjpLastChoice | null>(() => {
     if (typeof window === "undefined") {
@@ -106,8 +111,12 @@ export function XchatStrategyJobPreflightCards({
             {launchBusy ? "Starting…" : "Launch Strategy Job →"}
           </button>
           <p className="xchat-sjp__advanced-link-wrap">
-            <Link className="xchat-sjp__advanced-link" href="/xstrategybuilder" prefetch={false}>
+            <Link className="xchat-sjp__advanced-link" href={xstrategyHref} prefetch={false}>
               Open in xStrategyBuilder (advanced)
+            </Link>
+            {" · "}
+            <Link className="xchat-sjp__advanced-link" href={xoptionsHref} prefetch={false}>
+              xOptions desk
             </Link>
           </p>
         </article>

@@ -6,6 +6,7 @@ import { memo, useState } from "react";
 import { XchatAiResponseChrome } from "@/app/xchat/ui/xchat-ai-response-chrome";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XchatStrategyJobPreflightCards } from "@/app/xchat/ui/xchat-strategy-job-preflight";
+import { XchatThreadAvatar } from "@/app/xchat/ui/xchat-thread-avatar";
 
 import type { Message } from "./xchat-conversation-types";
 
@@ -68,6 +69,8 @@ export type XchatThreadMessageBubbleProps = {
   onStrategyStay: () => void;
   threadId: string;
   workspacePortfolioId?: string | null;
+  userAvatarUrl?: string | null;
+  userDisplayName?: string | null;
   onMessageFeedback?: (messageId: string, vote: "up" | "down") => void;
   onRegeneratePrompt?: (pairedPrompt: string) => void;
 };
@@ -82,6 +85,8 @@ export const XchatThreadMessageBubble = memo(
     onStrategyStay,
     threadId,
     workspacePortfolioId = null,
+    userAvatarUrl = null,
+    userDisplayName = null,
     onMessageFeedback,
     onRegeneratePrompt
   }: XchatThreadMessageBubbleProps) {
@@ -99,8 +104,18 @@ export const XchatThreadMessageBubble = memo(
         <XchatMarkdownBody content={content} />
       );
 
+    const avatarRole = msg.role === "user" ? "user" : "ai";
+
     return (
-      <div className={`xchat-msg xchat-msg-${msg.role}`}>
+      <div className={`xchat-msg xchat-msg-${msg.role} xchat-msg--with-avatar`}>
+        {msg.role !== "error" ? (
+          <XchatThreadAvatar
+            role={avatarRole}
+            userAvatarUrl={userAvatarUrl}
+            userDisplayName={userDisplayName}
+          />
+        ) : null}
+        <div className="xchat-msg__body-col">
         {msg.role === "error" ? (
           <div className="xchat-msg-error-body xchat-msg-ai-body--markdown">
             <XchatMarkdownBody content={msg.content} />
@@ -133,6 +148,7 @@ export const XchatThreadMessageBubble = memo(
                   emphasizePrimary={emphasizeStrategyJobPrimary}
                   launchBusy={strategyJobLaunchBusy}
                   loading={loading}
+                  workspacePortfolioId={workspacePortfolioId}
                   onLaunch={onStrategyLaunch}
                   onStayInChat={onStrategyStay}
                 />
@@ -195,6 +211,7 @@ export const XchatThreadMessageBubble = memo(
             ) : null}
           </div>
         )}
+        </div>
       </div>
     );
   },
@@ -213,6 +230,8 @@ export const XchatThreadMessageBubble = memo(
     prev.msg.serverLogId === next.msg.serverLogId &&
     prev.threadId === next.threadId &&
     prev.workspacePortfolioId === next.workspacePortfolioId &&
+    prev.userAvatarUrl === next.userAvatarUrl &&
+    prev.userDisplayName === next.userDisplayName &&
     prev.emphasizeStrategyJobPrimary === next.emphasizeStrategyJobPrimary &&
     prev.strategyJobLaunchBusy === next.strategyJobLaunchBusy &&
     prev.loading === next.loading &&

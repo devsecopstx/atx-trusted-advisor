@@ -4,4 +4,6 @@ export type TenantShellBranding = {
   accentColor: string;
   logoUrl?: string;
   tagline?: string;
+  /** Optional xChat product label (`tenantPreferences.xchat_brandname`). */
+  xchatBrandName?: string;
 };

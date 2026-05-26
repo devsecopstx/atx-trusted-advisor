@@ -77,6 +77,8 @@ export type XchatThreadPanelProps = {
   onExpandEarlierMessages?: () => void;
   /** Workspace portfolio for `/xoptions` links inside embedded scan cards. */
   workspacePortfolioId?: string | null;
+  userAvatarUrl?: string | null;
+  userDisplayName?: string | null;
   /** Usage / throttle copy rendered outside the scrollable transcript. */
   threadSystemBanner?: string | null;
   onDismissThreadSystemBanner?: () => void;
@@ -106,6 +108,8 @@ export function XchatThreadPanel({
   hiddenEarlierMessageCount = 0,
   onExpandEarlierMessages,
   workspacePortfolioId = null,
+  userAvatarUrl = null,
+  userDisplayName = null,
   threadSystemBanner = null,
   onDismissThreadSystemBanner
 }: XchatThreadPanelProps) {
@@ -342,6 +346,8 @@ export function XchatThreadPanel({
                             strategyJobLaunchBusy={strategyJobLaunchBusy}
                             threadId={threadId}
                             workspacePortfolioId={workspacePortfolioId}
+                            userAvatarUrl={userAvatarUrl}
+                            userDisplayName={userDisplayName}
                             onStrategyLaunch={onStrategyJobLaunch}
                             onStrategyStay={onStrategyJobStay}
                           />
@@ -364,6 +370,8 @@ export function XchatThreadPanel({
                       strategyJobLaunchBusy={strategyJobLaunchBusy}
                       threadId={threadId}
                       workspacePortfolioId={workspacePortfolioId}
+                      userAvatarUrl={userAvatarUrl}
+                      userDisplayName={userDisplayName}
                       onStrategyLaunch={onStrategyJobLaunch}
                       onStrategyStay={onStrategyJobStay}
                     />

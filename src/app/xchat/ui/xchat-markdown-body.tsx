@@ -86,9 +86,12 @@ function createMarkdownComponents(xfSoft: boolean): Components {
       );
     },
     table({ children, ...rest }: TableHTMLAttributes<HTMLTableElement>) {
+      const mergedClass = [rest.className, "xchat-md-table"].filter(Boolean).join(" ");
       return (
         <div className="xchat-md-table-wrap">
-          <table {...rest}>{children}</table>
+          <table {...rest} className={mergedClass}>
+            {children}
+          </table>
         </div>
       );
     },

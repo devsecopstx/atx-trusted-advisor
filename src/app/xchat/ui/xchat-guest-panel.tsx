@@ -220,7 +220,7 @@ export function XchatGuestPanel({
             <span style={{ whiteSpace: "pre-wrap" }}>
               {pendingApproval
                 ? `Your account${userEmail ? ` (${userEmail})` : ""} is signed in but not approved yet. Request access and we will review it.`
-                : "Welcome to aTx Trusted Advisory xChat. Start a trial or subscribe for full access. Sign in or register to continue."}
+                : "Welcome to xFinance xChat. Start a trial or subscribe for full access. Sign in or register to continue."}
             </span>
           </div>
         )}
@@ -256,7 +256,7 @@ export function XchatGuestPanel({
                 <form className="xchat-guest-register-form" onSubmit={handleRegister}>
                   {!registerSuccess ? (
                     <>
-                      <p className="xchat-guest-register-form__eyebrow">Welcome to aTx Trusted Advisory</p>
+                      <p className="xchat-guest-register-form__eyebrow">Welcome to your advisory workspace</p>
                       <h3 className="xchat-guest-register-form__title xchat-guest-register-form__title--hero">
                         Let&apos;s get started
                       </h3>

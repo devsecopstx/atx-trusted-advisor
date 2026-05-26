@@ -40,16 +40,17 @@ describe("user surfaces: aTx Trusted Advisory brand", () => {
     expect(src).not.toContain('name="xFinance"');
   });
 
-  it("guest xChat welcome and plans copy avoid legacy atxFinance product string", () => {
+  it("guest xChat welcome and plans copy avoid legacy atxFinance slug and hard-coded tenant names", () => {
     const guest = readFileSync(
       path.join(process.cwd(), "src/app/xchat/ui/xchat-guest-panel.tsx"),
       "utf8"
     );
-    expect(guest).toContain("aTx Trusted Advisory");
+    expect(guest).toContain("xFinance xChat");
     expect(guest).not.toMatch(/Welcome to atxFinance/);
+    expect(guest).not.toMatch(/Welcome to aTx Trusted Advisory/);
 
     const plans = readFileSync(path.join(process.cwd(), "src/app/xchat/ui/plans-landing.tsx"), "utf8");
-    expect(plans).toContain("aTx Trusted Advisory access yet");
+    expect(plans).toContain("approved workspace access");
     expect(plans).not.toMatch(/slug xFinance/);
   });
 });

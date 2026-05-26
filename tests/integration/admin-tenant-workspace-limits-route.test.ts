@@ -48,6 +48,7 @@ function baseTenant(
       xchat_brandname?: string;
       xstrategybuilder_brandname?: string;
       xchat_debug_enabled?: boolean;
+      guest_landing_audience?: "hnwi" | "advisor";
     } | null;
   } = {}
 ) {
