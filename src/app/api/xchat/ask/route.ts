@@ -151,7 +151,8 @@ import {
 import {
     buildWorkspacePreloadHintForSystemPrompt,
     formatWorkspaceServerSnapshotBlock,
-    loadWorkspaceSnapshotPreload
+    loadWorkspaceSnapshotPreload,
+    measureJsonBytes
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import { isKnownPersonaChatModelId } from "@/modules/xchat/xai-persona-chat-models";
@@ -2441,14 +2442,54 @@ export async function POST(request: Request) {
             buildIncomeIdeasCompactPayload(eagerWorkspacePreload, incomeIdeasQuoteMap)
           )
         : quantTraderDesk
-          ? formatWorkspaceServerSnapshotBlock(eagerWorkspacePreload)
+          ? formatWorkspaceServerSnapshotBlock(eagerWorkspacePreload, { includeHeavyAnalytics: true })
           : buildWorkspacePreloadHintForSystemPrompt(eagerWorkspacePreload)
       : null;
+
+  // Hint preference (high-impact for prompt tokens / latency): most paths use the compact
+  // buildWorkspacePreloadHintForSystemPrompt (or income-ideas compact). Only quantTraderDesk
+  // gets the full (but now prompt-slimmed) snapshot block + heavy analytics, per its
+  // instructions requiring authoritative bookTailRisk / investmentOutlook in the JSON.
 
   const userWorkspaceSummaryBlock =
     hasXfinanceTool && userWorkspaceSummaryJson
       ? formatUserWorkspaceSummaryBlock(userWorkspaceSummaryJson, { quantTraderDesk })
       : null;
+
+  // Phase 0 observability: snapshot / context block sizes (prompt bloat, tool context).
+  // Captured before slimming changes; will show delta after prompt-only view + conditional tail/outlook + reduced MAX.
+  const workspaceSnapshotForPromptBytes = workspaceSnapshotForPrompt ? workspaceSnapshotForPrompt.length : 0;
+  const userWorkspaceSummaryBlockBytes = userWorkspaceSummaryBlock ? userWorkspaceSummaryBlock.length : 0;
+  let eagerPreloadPromptJsonBytes = 0;
+  let eagerPreloadFullBytes = 0;
+  let eagerPositionsPreviewCount = 0;
+  let eagerPositionsFullCount = 0;
+  let eagerWatchlistSymbolCount = 0;
+  if (eagerWorkspacePreload) {
+    eagerPreloadPromptJsonBytes = measureJsonBytes(eagerWorkspacePreload.promptJson);
+    eagerPreloadFullBytes = measureJsonBytes(eagerWorkspacePreload);
+    eagerPositionsPreviewCount = eagerWorkspacePreload.promptJson.positionsPreview?.length ?? 0;
+    eagerPositionsFullCount = eagerWorkspacePreload.positionsFull?.length ?? 0;
+    const wl = eagerWorkspacePreload.promptJson.watchlist;
+    eagerWatchlistSymbolCount = "error" in wl ? 0 : wl.symbols.length;
+  }
+
+  const usedFullWorkspaceSnapshotBlock =
+    Boolean(shouldEagerWorkspacePreload && eagerWorkspacePreload && (incomeIdeasOptimization || quantTraderDesk));
+
+  const blocksPrepAt = Date.now();
+  markPerf("workspace_blocks_prepared", blocksPrepAt, {
+    workspaceSnapshotForPromptBytes,
+    userWorkspaceSummaryBlockBytes,
+    eagerPreloadPromptJsonBytes,
+    eagerPreloadFullBytes,
+    eagerPositionsPreviewCount,
+    eagerPositionsFullCount,
+    eagerWatchlistSymbolCount,
+    hasEagerPreload: Boolean(eagerWorkspacePreload),
+    usedFullWorkspaceSnapshotBlock,
+    usedHintForSnapshot: Boolean(workspaceSnapshotForPrompt && !usedFullWorkspaceSnapshotBlock && !incomeIdeasOptimization)
+  });
 
   const builtSystemPrompt = buildXchatSystemPrompt({
     tenantWorkspaceContextBlock:

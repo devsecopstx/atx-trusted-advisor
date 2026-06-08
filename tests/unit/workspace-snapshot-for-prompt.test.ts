@@ -185,10 +185,13 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
       name: "WL",
       symbols: []
     });
-    const r = await buildWorkspaceServerSnapshotBlock({
-      userId: "507f1f77bcf86cd799439011",
-      tenantId: "507f1f77bcf86cd799439022"
-    });
+    const r = await buildWorkspaceServerSnapshotBlock(
+      {
+        userId: "507f1f77bcf86cd799439011",
+        tenantId: "507f1f77bcf86cd799439022"
+      },
+      { includeHeavyAnalytics: true }
+    );
     expect(r).toContain('"investmentOutlook"');
     expect(r).toContain('"expirationYmd":"2026-06-19"');
     const jsonStr = (r ?? "").split("```json")[1]?.split("```")[0]?.trim() ?? "{}";
