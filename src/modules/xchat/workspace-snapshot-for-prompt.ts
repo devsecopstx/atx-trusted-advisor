@@ -115,6 +115,19 @@ function logWorkspaceSnapshotDebug(payload: Record<string, unknown>): void {
   );
 }
 
+/**
+ * Safe UTF-8 byte length of JSON.stringify for observability (payload sizes, prompt block bloat).
+ * Never throws; returns 0 on failure. Used for xchat perf/debug metrics before/after slimming.
+ */
+export function measureJsonBytes(obj: unknown): number {
+  try {
+    const s = JSON.stringify(obj ?? null);
+    return Buffer.byteLength(s, "utf8");
+  } catch {
+    return 0;
+  }
+}
+
 export type WorkspaceSnapshotContext = {
   userId: string;
   tenantId?: string;
@@ -134,8 +147,11 @@ export type LoadWorkspaceSnapshotPreloadOptions = {
   coordinatingRequest?: Request;
 };
 
-/** Keep prompt size bounded; full book via atxfinance positions_snapshot. */
-export const MAX_POSITION_ROWS_IN_SNAPSHOT = 120;
+/** Keep prompt size bounded; full book via atxfinance positions_snapshot.
+ * Reduced from 120 → 40 as high-impact slim for model context tokens + cache payloads.
+ * Previews are hints only; model should call positions_snapshot for depth.
+ */
+export const MAX_POSITION_ROWS_IN_SNAPSHOT = 40;
 
 /** Unique symbols in first-seen order (for preload hints / options-desk universe). */
 export function dedupeSymbolsPreservingOrder(symbols: readonly string[], max?: number): string[] {
@@ -423,6 +439,16 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
   }));
 
   const elapsedMs = Math.round(performance.now() - t0);
+
+  // Observability: payload sizes (prompt bloat, cache/Mongo materialization cost, tool context).
+  // These will be used to measure impact of prompt-only slim view + conditional analytics.
+  const promptJsonBytes = measureJsonBytes(promptJson);
+  const positionsFullCount = positionsFull.length;
+  const preloadBytes = measureJsonBytes({ promptJson, positionsFull });
+  const watchlistSymbolCount =
+    "error" in promptJson.watchlist ? 0 : promptJson.watchlist.symbols.length;
+  const positionsPreviewCount = promptJson.positionsPreview.length;
+
   if (isXchatStructuredDebugEnabled()) {
     logWorkspaceSnapshotDebug({
       type: "workspace_snapshot_build",
@@ -430,7 +456,14 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
       elapsedMs,
       portfolioId,
       workspaceContentRev: rev,
-      positionCount: positions.length
+      positionCount: positions.length,
+      promptJsonBytes,
+      positionsPreviewCount,
+      positionsFullCount,
+      preloadBytes,
+      watchlistSymbolCount,
+      hasBookTailRisk: !!promptJson.bookTailRisk,
+      hasInvestmentOutlook: !!promptJson.investmentOutlook
     });
   }
 
@@ -475,12 +508,26 @@ export async function loadWorkspaceSnapshotPreload(
       if (isValidWorkspacePreloadPayload(parsed, portfolioId, rev)) {
         const elapsedMs = Math.round(performance.now() - tStart);
         if (isXchatStructuredDebugEnabled()) {
+          const p = parsed as WorkspaceSnapshotPreload;
+          const promptJsonBytes = measureJsonBytes(p.promptJson);
+          const positionsFullCount = p.positionsFull?.length ?? 0;
+          const preloadBytes = measureJsonBytes(p);
+          const watchlistSymbolCount =
+            "error" in p.promptJson.watchlist ? 0 : p.promptJson.watchlist.symbols.length;
+          const positionsPreviewCount = p.promptJson.positionsPreview?.length ?? 0;
           logWorkspaceSnapshotDebug({
             type: "workspace_snapshot_load",
             source: "cache",
             elapsedMs,
             portfolioId,
-            workspaceContentRev: rev
+            workspaceContentRev: rev,
+            promptJsonBytes,
+            positionsPreviewCount,
+            positionsFullCount,
+            preloadBytes,
+            watchlistSymbolCount,
+            hasBookTailRisk: !!p.promptJson.bookTailRisk,
+            hasInvestmentOutlook: !!p.promptJson.investmentOutlook
           });
         }
         return parsed;
@@ -507,13 +554,27 @@ export async function loadWorkspaceSnapshotPreload(
       const elapsedMs = Math.round(performance.now() - tStart);
       const backendFetchMs = Math.round(performance.now() - tJvm);
       if (isXchatStructuredDebugEnabled()) {
+        const p = fromJvm as WorkspaceSnapshotPreload;
+        const promptJsonBytes = measureJsonBytes(p.promptJson);
+        const positionsFullCount = p.positionsFull?.length ?? 0;
+        const preloadBytes = measureJsonBytes(p);
+        const watchlistSymbolCount =
+          "error" in p.promptJson.watchlist ? 0 : p.promptJson.watchlist.symbols.length;
+        const positionsPreviewCount = p.promptJson.positionsPreview?.length ?? 0;
         logWorkspaceSnapshotDebug({
           type: "workspace_snapshot_backend",
           source: "jvm_snapshot",
           elapsedMs,
           backendFetchMs,
           portfolioId,
-          workspaceContentRev: rev
+          workspaceContentRev: rev,
+          promptJsonBytes,
+          positionsPreviewCount,
+          positionsFullCount,
+          preloadBytes,
+          watchlistSymbolCount,
+          hasBookTailRisk: !!p.promptJson.bookTailRisk,
+          hasInvestmentOutlook: !!p.promptJson.investmentOutlook
         });
       }
       return fromJvm;
@@ -533,12 +594,26 @@ export async function loadWorkspaceSnapshotPreload(
     }
     const elapsedMs = Math.round(performance.now() - tStart);
     if (isXchatStructuredDebugEnabled()) {
+      const p = materialized as WorkspaceSnapshotPreload;
+      const promptJsonBytes = measureJsonBytes(p.promptJson);
+      const positionsFullCount = p.positionsFull?.length ?? 0;
+      const preloadBytes = measureJsonBytes(p);
+      const watchlistSymbolCount =
+        "error" in p.promptJson.watchlist ? 0 : p.promptJson.watchlist.symbols.length;
+      const positionsPreviewCount = p.promptJson.positionsPreview?.length ?? 0;
       logWorkspaceSnapshotDebug({
         type: "workspace_snapshot_load",
         source: "materialized",
         elapsedMs,
         portfolioId,
-        workspaceContentRev: rev
+        workspaceContentRev: rev,
+        promptJsonBytes,
+        positionsPreviewCount,
+        positionsFullCount,
+        preloadBytes,
+        watchlistSymbolCount,
+        hasBookTailRisk: !!p.promptJson.bookTailRisk,
+        hasInvestmentOutlook: !!p.promptJson.investmentOutlook
       });
     }
     return materialized;
@@ -569,19 +644,72 @@ export async function loadWorkspaceSnapshotPreload(
   }
   const elapsedMs = Math.round(performance.now() - tStart);
   if (isXchatStructuredDebugEnabled()) {
-    logWorkspaceSnapshotDebug({
-      type: "workspace_snapshot_load",
-      source: built ? "mongo" : "null",
-      elapsedMs,
-      portfolioId,
-      workspaceContentRev: rev
-    });
+    if (built) {
+      const p = built;
+      const promptJsonBytes = measureJsonBytes(p.promptJson);
+      const positionsFullCount = p.positionsFull?.length ?? 0;
+      const preloadBytes = measureJsonBytes(p);
+      const watchlistSymbolCount =
+        "error" in p.promptJson.watchlist ? 0 : p.promptJson.watchlist.symbols.length;
+      const positionsPreviewCount = p.promptJson.positionsPreview?.length ?? 0;
+      logWorkspaceSnapshotDebug({
+        type: "workspace_snapshot_load",
+        source: "mongo",
+        elapsedMs,
+        portfolioId,
+        workspaceContentRev: rev,
+        promptJsonBytes,
+        positionsPreviewCount,
+        positionsFullCount,
+        preloadBytes,
+        watchlistSymbolCount,
+        hasBookTailRisk: !!p.promptJson.bookTailRisk,
+        hasInvestmentOutlook: !!p.promptJson.investmentOutlook
+      });
+    } else {
+      logWorkspaceSnapshotDebug({
+        type: "workspace_snapshot_load",
+        source: "null",
+        elapsedMs,
+        portfolioId,
+        workspaceContentRev: rev
+      });
+    }
   }
   return built;
 }
 
-export function formatWorkspaceServerSnapshotBlock(preload: WorkspaceSnapshotPreload): string {
-  const json = JSON.stringify(preload.promptJson);
+/** Slim projection for the model system prompt block only (prompt-only view).
+ * Strips heavy analytics (bookTailRisk, investmentOutlook) unless explicitly for quant/desk.
+ * This is the main token win (MC objects and outlook data can be large).
+ * Watchlist symbols and other preview fields are kept as built (rich but bounded by MAX).
+ * Keeps full rich shape in the preload object for tool short-circuits etc.
+ */
+function getPromptSlimSnapshotJson(
+  preload: WorkspaceSnapshotPreload,
+  includeHeavyAnalytics = false
+): WorkspaceSnapshotPromptJson {
+  const j = preload.promptJson;
+  const base: WorkspaceSnapshotPromptJson = {
+    ...j,
+    positionsPreview: j.positionsPreview.slice(0, MAX_POSITION_ROWS_IN_SNAPSHOT)
+  };
+
+  if (!includeHeavyAnalytics) {
+    // Conditional tail/outlook: omit from prompt block (model gets via tools or quant-specific full block)
+    (base as any).bookTailRisk = undefined;
+    (base as any).investmentOutlook = undefined;
+  }
+
+  return base;
+}
+
+export function formatWorkspaceServerSnapshotBlock(
+  preload: WorkspaceSnapshotPreload,
+  options?: { includeHeavyAnalytics?: boolean }
+): string {
+  const slim = getPromptSlimSnapshotJson(preload, options?.includeHeavyAnalytics ?? false);
+  const json = JSON.stringify(slim);
   return [
     "Workspace snapshot (loaded server-side for this request; data is current as of loadedAt — use the atxfinance tool for a full positions book refresh, market_quote, or task_status if needed):",
     "```json",
@@ -654,10 +782,11 @@ export function buildWorkspacePreloadHintForSystemPrompt(preload: WorkspaceSnaps
  * for refresh, full positions, quotes, and tasks.
  */
 export async function buildWorkspaceServerSnapshotBlock(
-  ctx: WorkspaceSnapshotContext
+  ctx: WorkspaceSnapshotContext,
+  options?: { includeHeavyAnalytics?: boolean }
 ): Promise<string | null> {
   const preload = await loadWorkspaceSnapshotPreload(ctx);
-  return preload ? formatWorkspaceServerSnapshotBlock(preload) : null;
+  return preload ? formatWorkspaceServerSnapshotBlock(preload, options) : null;
 }
 
 /** atx_function portfolio_summary from same-request preload (watchlist summary shape). */

@@ -34,8 +34,9 @@ export type UserWorkspaceSummaryJson = {
 };
 
 const MAX_PORTFOLIOS = 12;
-const MAX_POSITION_LINES = 48;
-const MAX_HOLDINGS_CHARS = 520;
+/** Slimmed for prompt token reduction in multi-portfolio NL preflight block. */
+const MAX_POSITION_LINES = 24;
+const MAX_HOLDINGS_CHARS = 320;
 
 export type UserWorkspaceSummaryContext = {
   userId: string;
@@ -165,13 +166,14 @@ export async function loadUserWorkspaceSummaryForPrompt(
 
   for (const p of capped) {
     const portfolioId = p._id!.toHexString();
+    const isActiveBook = portfolioId === activeId;
     const accounts = await listPortfolioAccounts({
       userId: ctx.userId,
       portfolioId,
       tenantId: ctx.tenantId
     });
     const accountIds = accounts.map((a) => a._id).filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
-    const positions =
+    let positions =
       accountIds.length > 0
         ? await listPortfolioPositionsByAccount({
             userId: ctx.userId,
@@ -180,6 +182,15 @@ export async function loadUserWorkspaceSummaryForPrompt(
             tenantId: ctx.tenantId
           })
         : [];
+    // For non-active books in the multi-portfolio summary, feed capped positions to the formatter.
+    // This reduces the serialized holdings string size in the prompt block (prompt token win)
+    // while the active book gets full detail. Query cost unchanged (future: add limit to repo for non-active).
+    if (!isActiveBook && positions.length > 30) {
+      // Sort by notional desc for "top" before cap (formatter re-sorts but this gives representative)
+      positions = [...positions].sort(
+        (a, b) => Math.abs(b.qty * b.avgCost) - Math.abs(a.qty * a.avgCost)
+      ).slice(0, 30);
+    }
     const acctRows = accounts.map((a) => ({
       name: a.name?.trim() || "Account",
       cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
@@ -224,10 +235,10 @@ Map user risk language to MC tiers: conservative → \`conservative\`; balanced/
 Only call **user_workspace_summary** mid-thread when the user changed portfolios, imported holdings, or you need a refresh after a mutation — not on every turn when preflight JSON is already in context.
 **Never ask portfolio-scope clarification** when the user says "all portfolios", "across my portfolios", "my three portfolios", or similar — run **monte_carlo_tail_risk** with \`portfolioScope: "all"\` on every book in the workspace summary (even if the count differs from what they said). Note the count mismatch in the reply after results.`;
 
-export const XCHAT_USER_WORKSPACE_SUMMARY_INSTRUCTION = `You are always given the user's current workspace context in the JSON block below (server preflight).
+export const XCHAT_USER_WORKSPACE_SUMMARY_INSTRUCTION = `You are always given the user's current workspace context in the JSON block below (server preflight; compact per-book holdings/cash for token efficiency).
 When the user refers to portfolio names, nicknames, or account labels that match this summary (for example "Rollover IRA", "ROTH IRA", "my growth book"), you must anchor answers to the exact named portfolio id from that JSON.
 If \`nlPriceAlerts\` is present, use \`activeNlAlertCount\` and \`alertsDeepLink\` for NL price-rule context; use \`price_alert_manage\` to list/add/remove rules (Premium+ advisor path).
-Never give generic multi-account answers unless the user explicitly asks for an overview of all accounts or compares books.`;
+Never give generic multi-account answers unless the user explicitly asks for an overview of all accounts or compares books. For full position rows on any book use the atx_function positions_snapshot tool.`;
 
 export function formatUserWorkspaceSummaryBlock(
   summary: UserWorkspaceSummaryJson,
