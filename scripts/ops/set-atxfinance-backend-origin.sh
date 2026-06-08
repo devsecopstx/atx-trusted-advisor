@@ -33,7 +33,7 @@ case "$ENV" in
     ;;
   prod)
     PROJECT="${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}"
-    SVC="${CLOUD_RUN_SERVICE_PROD:-xfinance-core-prod}"
+    SVC="${CLOUD_RUN_SERVICE_PROD:-fintech-advisor-prod}"
     ;;
   *)
     echo "first arg must be staging or prod" >&2

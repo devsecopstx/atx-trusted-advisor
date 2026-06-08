@@ -1,6 +1,6 @@
 # GCP production — two-service model (mirror staging)
 
-**Goal:** One **Next.js** Cloud Run service and one **Spring (`atxfinance-backend`)** Cloud Run service in **`fintech-advisor-prod`**, same pattern as staging.
+**Goal:** One **Next.js** Cloud Run service and one **Spring (`atxfinance-backend`)** Cloud Run service in GCP project **`fintech-advisor-prod`**, same pattern as staging.
 
 **Primary deploy path:** **`gcloud` + repo root `.env.prod`** — **`scripts/ops/deploy-cloud-run-from-env.sh`** (see **`atx-docs/guides/deploy-and-ops.md`**). You do **not** need GitHub Actions or GitHub repository variables to ship prod if you use this script.
 
@@ -8,12 +8,15 @@
 
 | Layer | Staging | Production |
 |--------|---------|------------|
-| Next (CLI: **`deploy-cloud-run-from-env.sh`**) | `xfinance-core-staging` | **`xfinance-core-prod`** |
-| Spring (BFF / strategy jobs) | `atxfinance-backend-staging` | **`atxfinance-backend-prod`** |
+| **GCP project** | `fintech-advisor-staging` | **`fintech-advisor-prod`** |
+| **Next.js frontend** (CLI: **`deploy-cloud-run-from-env.sh`**) | `xfinance-core-staging` | **`fintech-advisor-prod`** |
+| **Spring backend** (BFF / strategy jobs) | `atxfinance-backend-staging` | **`atxfinance-backend-prod`** |
+
+**Naming note:** In production, the **GCP project id** and the **Next Cloud Run service name** are both **`fintech-advisor-prod`** — different resource types, same string. **`fintech-advisor-prod`** is the live **frontend Next.js** app (serves **`PROD_BASE_URL`** / custom domain). Do not confuse it with the Spring service **`atxfinance-backend-prod`**.
 
 **Do not** point **`ATXFINANCE_BACKEND_ORIGIN`** at the Next public URL (`PROD_BASE_URL` / custom domain). It must be the **Spring** service `https://…run.app` origin. The deploy script **fails** if backend origin equals **`PROD_BASE_URL`**.
 
-Legacy duplicate Next services (`fintech-advisor-prod`, etc.) should receive **no** traffic after cutover.
+**Doc drift:** Older runbooks referenced **`xfinance-core-prod`** as the prod Next service name. That service is **not** deployed in **`fintech-advisor-prod`** today (only **`fintech-advisor-prod`** + **`atxfinance-backend-prod`**). Set **`CLOUD_RUN_SERVICE_PROD=fintech-advisor-prod`** in **`.env.prod`** and GitHub vars.
 
 ---
 
@@ -21,9 +24,7 @@ Legacy duplicate Next services (`fintech-advisor-prod`, etc.) should receive **n
 
 Operator-chosen defaults for **prod** (May 2026, Redis-budget profile). Apply in **GCP Console → Cloud Run → service → Edit & deploy new revision**, or mirror with `gcloud run deploy` / `gcloud run services update`. **Production** Next deploys (**`deploy-cloud-run-from-env.sh`**, **`Deploy Cloud Run`**, **`Deploy Cloud Run Production`**) now default to **`--min-instances=1`** and **`--max-instances=12`**; **`deploy-atxfinance-backend-production.sh`** now defaults to **`--min-instances=1`** and **`--max-instances=8`**. CPU, memory, concurrency, and CPU boost are still **not** set by those commands unless you add flags — a deploy that omits them **leaves existing values**; set capacity in Console when you need explicit control.
 
-Use the **Next.js** row for whichever service serves **`PROD_BASE_URL`** today (**`fintech-advisor-prod`** until cutover to **`xfinance-core-prod`**, per §3–§4).
-
-### Frontend — Next.js (`fintech-advisor-prod` or `xfinance-core-prod`)
+### Frontend — Next.js (`fintech-advisor-prod`)
 
 | Setting | Value | Notes |
 |---------|-------|--------|
@@ -35,7 +36,7 @@ Use the **Next.js** row for whichever service serves **`PROD_BASE_URL`** today (
 | CPU boost | **On** | `gcloud … --cpu-boost` — extra CPU during **container startup** (cold starts) |
 | Startup CPU boost | **On** | Same capability in Console wording; align with **CPU boost** / `--cpu-boost` |
 
-**Example `gcloud` (adjust service name and project):**
+**Example `gcloud`:**
 
 ```bash
 gcloud run services update fintech-advisor-prod \
@@ -44,6 +45,16 @@ gcloud run services update fintech-advisor-prod \
   --min-instances=1 --max-instances=12 \
   --cpu-boost --quiet
 ```
+
+**Confirm live capacity (prod Next frontend):**
+
+```bash
+gcloud run services describe fintech-advisor-prod \
+  --project fintech-advisor-prod --region us-central1 \
+  --format='yaml(spec.template.spec.containers[0].resources,spec.template.spec.containerConcurrency,spec.template.metadata.annotations)'
+```
+
+**Expected (verified Jun 2026):** `cpu: '1'`, `memory: 1Gi`, `containerConcurrency: 100`, annotations `autoscaling.knative.dev/minScale: "1"`, `autoscaling.knative.dev/maxScale: "12"`, `run.googleapis.com/startup-cpu-boost: "true"`.
 
 ### Backend — Spring (`atxfinance-backend-prod`)
 
@@ -67,11 +78,12 @@ gcloud run services update atxfinance-backend-prod \
   --cpu-boost --quiet
 ```
 
-**Inspect current revision:**
+**Inspect any service:**
 
 ```bash
 gcloud run services describe SERVICE_NAME \
-  --region us-central1 --format='yaml(spec.template.spec.containers[0].resources,spec.template.spec.containerConcurrency,spec.template.spec.maxScale,spec.template.spec.minScale)'
+  --project fintech-advisor-prod --region us-central1 \
+  --format='yaml(spec.template.spec.containers[0].resources,spec.template.spec.containerConcurrency,spec.template.metadata.annotations)'
 ```
 
 ---
@@ -84,7 +96,7 @@ Keep **`.env.prod` gitignored**; set at least:
 |----------|----------------|
 | **`GCP_PROJECT_ID`** or **`GOOGLE_PROJECT_ID`** | `fintech-advisor-prod` |
 | **`CLOUD_RUN_REGION`** | `us-central1` |
-| **`CLOUD_RUN_SERVICE_PROD`** | **`xfinance-core-prod`** |
+| **`CLOUD_RUN_SERVICE_PROD`** | **`fintech-advisor-prod`** (Next frontend) |
 | **`PROD_BASE_URL`** | `https://fintech-advisor.ai` (no trailing slash) |
 | **`ATXFINANCE_BACKEND_ORIGIN`** | **`https://atxfinance-backend-prod-….us-central1.run.app`** (Spring only) |
 
@@ -102,7 +114,7 @@ bash scripts/ops/deploy-cloud-run-from-env.sh --production
 
 ```bash
 export GCP_PROJECT_ID_PROD=fintech-advisor-prod
-export CLOUD_RUN_SERVICE_PROD=xfinance-core-prod
+export CLOUD_RUN_SERVICE_PROD=fintech-advisor-prod
 export CLOUD_RUN_REGION=us-central1
 bash scripts/ops/set-atxfinance-backend-origin.sh prod "https://atxfinance-backend-prod-….us-central1.run.app"
 ```
@@ -169,17 +181,17 @@ Replicate **secret names** (and prod values) on **`atxfinance-backend-prod`**.
 
 ---
 
-## 3. Custom domain → **`xfinance-core-prod`**
+## 3. Custom domain → **`fintech-advisor-prod`** (Next frontend)
 
 In **GCP Console → Cloud Run → Domain mappings** (or your HTTPS load balancer):
 
-- **`PROD_BASE_URL`** must route to **`xfinance-core-prod`**, not `fintech-advisor-prod`.
+- **`PROD_BASE_URL`** must route to **`fintech-advisor-prod`** (the Next.js Cloud Run service).
 
 Verify:
 
 ```bash
 curl -sS "$PROD_BASE_URL/api/health" | jq .version
-curl -sS "$(gcloud run services describe xfinance-core-prod --project fintech-advisor-prod --region us-central1 --format='value(status.url)')/api/health" | jq .version
+curl -sS "$(gcloud run services describe fintech-advisor-prod --project fintech-advisor-prod --region us-central1 --format='value(status.url)')/api/health" | jq .version
 ```
 
 The **`version`** values should match after DNS/LB propagation.
@@ -188,31 +200,21 @@ See also **`.cursor/agents/sre.md`** (routing / wrong service).
 
 ---
 
-## 4. Retire **`fintech-advisor-prod`** (duplicate Next)
+## 4. Staging cleanup (optional)
 
-1. Confirm **no** domain mapping and **no** load balancer backend points to it.
-2. Confirm traffic is zero (metrics / logs).
-3. Delete the service or stop deploying to it:
-
-```bash
-gcloud run services delete fintech-advisor-prod --project fintech-advisor-prod --region us-central1
-```
-
-(Only after you are sure nothing uses it.)
-
----
-
-## 5. Staging cleanup (optional)
-
-Same idea: keep **`xfinance-core-staging`** + **`atxfinance-backend-staging`**; retire unused **`fintech-advisor-staging`** / **`xfinance`** when nothing points at them.
+Same idea: keep **`xfinance-core-staging`** + **`atxfinance-backend-staging`**; retire unused duplicate Next services when nothing points at them.
 
 ---
 
 ## Optional: GitHub Actions
 
-If you **also** run **Deploy Cloud Run Production** in GitHub, keep **repository or environment variables** aligned with **`.env.prod`** (`CLOUD_RUN_SERVICE_PROD`, `PROD_BASE_URL`, `ATXFINANCE_BACKEND_ORIGIN`) so CI deploys do not fight manual CLI deploys. **CLI-only operators can ignore GitHub vars** as long as they do not use those workflows.
+If you **also** run **Deploy Cloud Run Production** in GitHub, keep **repository or environment variables** aligned with **`.env.prod`** (`CLOUD_RUN_SERVICE_PROD=fintech-advisor-prod`, `PROD_BASE_URL`, `ATXFINANCE_BACKEND_ORIGIN`) so CI deploys do not fight manual CLI deploys. **CLI-only operators can ignore GitHub vars** as long as they do not use those workflows.
 
 ---
+
+## Code reference (canonical names)
+
+TypeScript constants (guarded by **`tests/unit/gcp-prod-cloud-run-names.test.ts`**): **`src/lib/gcp-prod-cloud-run-names.ts`** — **`GCP_PROD_NEXT_SERVICE_NAME`** = **`fintech-advisor-prod`**.
 
 ## Related
 

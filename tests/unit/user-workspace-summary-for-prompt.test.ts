@@ -35,6 +35,16 @@ describe("formatHoldingsSummaryFromPositions", () => {
     expect(s).toContain("$252.13");
   });
 
+  it("truncates long holdings at line and char caps", () => {
+    const positions = Array.from({ length: 30 }, (_, i) =>
+      pos({ symbol: `SYM${i}`, qty: 100, avgCost: 250.5 + i, type: "stock" })
+    );
+    const s = formatHoldingsSummaryFromPositions(positions);
+    expect(s).toContain("+");
+    expect(s).toContain("more position row(s)");
+    expect(s.length).toBeLessThanOrEqual(420);
+  });
+
   it("formats short option leg", () => {
     const s = formatHoldingsSummaryFromPositions([
       pos({

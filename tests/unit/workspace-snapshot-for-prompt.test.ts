@@ -64,7 +64,10 @@ import {
     buildWorkspacePreloadHintForSystemPrompt,
     buildWorkspaceServerSnapshotBlock,
     dedupeSymbolsPreservingOrder,
+    formatWorkspaceServerSnapshotBlock,
     loadWorkspaceSnapshotPreload,
+    MAX_POSITION_ROWS_IN_SNAPSHOT,
+    type WorkspaceSnapshotPreload,
     type WorkspaceSnapshotPromptJson
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
@@ -237,6 +240,86 @@ describe("dedupeSymbolsPreservingOrder", () => {
       "TSLA",
       "CIFR"
     ]);
+  });
+});
+
+function minimalPreload(
+  overrides?: Partial<WorkspaceSnapshotPromptJson>
+): WorkspaceSnapshotPreload {
+  const promptJson: WorkspaceSnapshotPromptJson = {
+    loadedAt: new Date().toISOString(),
+    workspaceContentRev: 1,
+    portfolio: {
+      id: "507f1f77bcf86cd799439001",
+      name: "Main",
+      isDefault: true,
+      totalPositionCount: 1
+    },
+    accounts: [],
+    positionsPreview: [{ symbol: "TSLA", qty: 10, avgCost: 200, accountId: "acc1" }],
+    positionsPreviewTruncated: false,
+    positionsOmittedCount: 0,
+    watchlist: { name: "Hot", riskProfile: null, outlook: null, symbols: [] },
+    investmentOutlook: {
+      updatedAt: "2026-05-10T12:00:00.000Z",
+      expiresAt: "2026-05-12T12:00:00.000Z",
+      symbols: [
+        {
+          symbol: "TSLA",
+          spot: 250,
+          expirationYmd: "2026-06-19",
+          coveredCall: {
+            conservative: { strike: 280, probabilityCalledAway: 0.15, premium: 2 },
+            aggressive: { strike: 252, probabilityCalledAway: 0.42, premium: 5 }
+          },
+          cashSecuredPut: {
+            conservative: { strike: 220, probabilityExpireOtm: 0.7, premium: 3 },
+            aggressive: { strike: 248, probabilityExpireOtm: 0.45, premium: 4 }
+          }
+        }
+      ]
+    },
+    ...overrides
+  };
+  return { promptJson, positionsFull: [] };
+}
+
+describe("formatWorkspaceServerSnapshotBlock", () => {
+  it("omits heavy analytics from the prompt JSON by default", () => {
+    const block = formatWorkspaceServerSnapshotBlock(minimalPreload());
+    expect(block).toContain("```json");
+    expect(block).not.toContain("investmentOutlook");
+    expect(block).not.toContain("bookTailRisk");
+  });
+
+  it("includes investmentOutlook when includeHeavyAnalytics is true", () => {
+    const block = formatWorkspaceServerSnapshotBlock(minimalPreload(), { includeHeavyAnalytics: true });
+    expect(block).toContain("investmentOutlook");
+  });
+
+  it("caps positionsPreview rows at MAX_POSITION_ROWS_IN_SNAPSHOT", () => {
+    const many = Array.from({ length: MAX_POSITION_ROWS_IN_SNAPSHOT + 5 }, (_, i) => ({
+      symbol: `SYM${i}`,
+      qty: 1,
+      avgCost: 1,
+      accountId: "acc1"
+    }));
+    const block = formatWorkspaceServerSnapshotBlock(
+      minimalPreload({
+        positionsPreview: many,
+        positionsPreviewTruncated: true,
+        positionsOmittedCount: 5,
+        portfolio: {
+          id: "507f1f77bcf86cd799439001",
+          name: "Main",
+          isDefault: true,
+          totalPositionCount: many.length
+        }
+      })
+    );
+    const jsonStr = block.split("```json")[1]?.split("```")[0]?.trim() ?? "{}";
+    const parsed = JSON.parse(jsonStr) as { positionsPreview: unknown[] };
+    expect(parsed.positionsPreview).toHaveLength(MAX_POSITION_ROWS_IN_SNAPSHOT);
   });
 });
 

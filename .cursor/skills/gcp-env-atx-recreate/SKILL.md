@@ -51,7 +51,7 @@ STAGING_PROJECT="fintech-advisor-staging"
 PROD_PROJECT="fintech-advisor-prod"
 REGION="us-central1"
 SERVICE_STAGING="atxfinance-core-staging"
-SERVICE_PROD="atxfinance-core-prod"
+SERVICE_PROD="fintech-advisor-prod"
 ```
 
 ---

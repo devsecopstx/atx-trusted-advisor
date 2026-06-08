@@ -21,12 +21,12 @@ Use these defaults unless the user explicitly overrides:
 
 - Production app URL: `https://atx.<domain>`
 - Staging URL: `https://staging.atx.<domain>`
-- One Cloud Run service per environment:
-  - `atxfinance-core-staging`
-  - `atxfinance-core-prod`
-- Separate GCP projects per environment:
-  - `atxfinance-staging`
-  - `atxfinance-prod`
+- Cloud Run services (Next + Spring per env):
+  - Staging Next: `xfinance-core-staging` · Spring: `atxfinance-backend-staging`
+  - Prod Next: **`fintech-advisor-prod`** · Spring: `atxfinance-backend-prod`
+- GCP projects:
+  - `fintech-advisor-staging`
+  - **`fintech-advisor-prod`** (prod Next service name matches project id)
 - Region: `us-central1`
 - Single global external HTTPS load balancer with host rules per environment
 - Secrets in Secret Manager, not plain env values in CI logs
@@ -67,8 +67,8 @@ Do not cut traffic until certificate state is `ACTIVE`.
 
 Create URL map host routing:
 
-- Host `staging.atx.<domain>` -> backend `atxfinance-core-staging`
-- Host `atx.<domain>` -> backend `atxfinance-core-prod`
+- Host `staging.atx.<domain>` -> backend `xfinance-core-staging`
+- Host `atx.<domain>` -> backend **`fintech-advisor-prod`** (prod Next)
 
 Default backend can point to staging only during setup; move to explicit hosts for final state.
 
@@ -76,8 +76,8 @@ Default backend can point to staging only during setup; move to explicit hosts f
 
 Map each backend service to one Cloud Run service:
 
-- `atxfinance-core-staging` backend -> Cloud Run `atxfinance-core-staging`
-- `atxfinance-core-prod` backend -> Cloud Run `atxfinance-core-prod`
+- `xfinance-core-staging` backend -> Cloud Run `xfinance-core-staging`
+- **`fintech-advisor-prod`** backend -> Cloud Run **`fintech-advisor-prod`** (Next frontend)
 
 Use serverless NEGs for Cloud Run attachment.
 

@@ -77,7 +77,7 @@ These are **vertical migration tracks**: same Mongo collections and contracts as
    `bash scripts/ops/set-atxfinance-backend-origin.sh staging https://<your-backend>-run.app`  
    Requires `gcloud` auth and defaults: project `fintech-advisor-staging`, service `xfinance-core-staging`, region `us-central1` (override with `GCP_PROJECT_ID`, `CLOUD_RUN_SERVICE_STAGING`, `CLOUD_RUN_REGION`).
 3. **Soak staging:** exercise **Admin → Tasks** (list/create/patch/delete, run, task runs, scheduler tick) and spot-check another BFF surface (e.g. portfolios). Monitor Cloud Run logs and latency. Confirm **`GET /api/admin/task-runs`** query contract vs Next if the UI relies on **`window`** / **`meta`** (Spring may differ — align clients or JVM before prod).
-4. **Production:** repeat after soak; set origin on prod Cloud Run (`bash scripts/ops/set-atxfinance-backend-origin.sh prod https://…`) or mirror the same `gcloud run services update … --update-env-vars`. **Operator layout:** see **`./gcp-prod-two-service-model.md`** (`xfinance-core-prod` + `atxfinance-backend-prod`).
+4. **Production:** repeat after soak; set origin on prod Cloud Run (`bash scripts/ops/set-atxfinance-backend-origin.sh prod https://…`) or mirror the same `gcloud run services update … --update-env-vars`. **Operator layout:** see **`./gcp-prod-two-service-model.md`** (`fintech-advisor-prod` Next + `atxfinance-backend-prod` Spring).
 5. **Rollback:** remove **`ATXFINANCE_BACKEND_ORIGIN`** — Next route handlers execute Mongo again. Example:  
    `gcloud run services update xfinance-core-staging --project fintech-advisor-staging --region us-central1 --remove-env-vars ATXFINANCE_BACKEND_ORIGIN`
 

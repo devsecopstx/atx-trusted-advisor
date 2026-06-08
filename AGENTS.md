@@ -135,7 +135,7 @@ echo "latest_staging_deploy:" && gh run list --workflow "Deploy Cloud Run" --lim
 echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 5
 ```
 
-**Deploy:** use **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`) via **`workflow_dispatch`** with inputs: **`branch`**, **`target`** (`staging`/`production`), and **`confirm_manual_approval=yes`** (optional **`deployment_notes`**). Keep **Required reviewers** on both GitHub environments (`staging`, `production`) for manual approval gates. Slack deploy note posts when `SLACK_WEBHOOK_URL` is configured in Secret Manager.
+**Deploy:** use **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`) via **`workflow_dispatch`** with inputs: **`branch`**, **`target`** (`staging`/`production`), and **`confirm_manual_approval=yes`** (optional **`deployment_notes`**). Keep **Required reviewers** on both GitHub environments (`staging`, `production`) for manual approval gates. Slack deploy note posts when `SLACK_WEBHOOK_URL` is configured in Secret Manager. **Prod Next Cloud Run service:** **`fintech-advisor-prod`** (GCP project + service name; set **`CLOUD_RUN_SERVICE_PROD=fintech-advisor-prod`**). Spring: **`atxfinance-backend-prod`**. See **`atx-docs/sre-ops/gcp-prod-two-service-model.md`** and **`src/lib/gcp-prod-cloud-run-names.ts`**.
 
 ## Guardrails
 

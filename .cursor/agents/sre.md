@@ -72,6 +72,26 @@ Review format: (1) scope & risk (2) issues + file refs (3) mitigation (4) Approv
 test -f .cursor/agents/sre.md && npm install
 ```
 
+## Prod Cloud Run layout (canonical)
+
+| Resource | Name |
+|----------|------|
+| GCP project | **`fintech-advisor-prod`** |
+| Next.js frontend | **`fintech-advisor-prod`** (same string as project id — different resource) |
+| Spring backend | **`atxfinance-backend-prod`** |
+
+Set **`CLOUD_RUN_SERVICE_PROD=fintech-advisor-prod`** in **`.env.prod`**. Older docs used **`xfinance-core-prod`**; that service is not deployed in prod today.
+
+**Verify Next CPU + min instances:**
+
+```bash
+gcloud run services describe fintech-advisor-prod \
+  --project fintech-advisor-prod --region us-central1 \
+  --format='yaml(spec.template.spec.containers[0].resources,spec.template.metadata.annotations.autoscaling.knative.dev/minScale)'
+```
+
+Expect **`cpu: '1'`** and **`minScale: "1"`**. Full baseline: **`atx-docs/sre-ops/gcp-prod-two-service-model.md`**.
+
 ## Resources
 
 - **Release notes:** `atx-docs/sre-ops/release-notes.md` — append a **one-line** bullet (newest first) whenever you bump **`package.json`** version; keeps deploy/support aligned with `/api/health` `version` and Cloud Run revisions. Include a **`**Deploy:** …`** tag (**Next**, **Spring**, **Full** / `ops:deploy:full:production`, **Secrets**) per that doc’s *Deploy targets* section so ops can see whether backend, frontend, or both needed a roll.
@@ -227,4 +247,4 @@ Add `--with-ci-gate` for `npm run ci:gate` only; use `--no-health` only if you i
 
 **Version vs staging:** Manual deploy runs `gcloud run deploy --source .` on **whatever is in your working tree** — there is no separate “deploy vX.Y.Z from the cloud” selector. The built app’s `APP_VERSION` (see `src/lib/app-version.ts`) comes from **`package.json` at build time** on that checkout. To align prod with staging, deploy from the **same git commit (or tag)** as the staging revision (e.g. `git fetch && git checkout <sha-or-tag>`), then run the deploy command — avoid shipping an unpushed local version bump unless you intend to release it.
 
-**Custom domain shows old footer but deploy “succeeded”:** Compare `curl -sS "$PROD_BASE_URL/api/health" | jq .version` (or staging) with the direct Cloud Run `*.run.app` URL for `CLOUD_RUN_SERVICE_PROD` / `CLOUD_RUN_SERVICE_STAGING`. **`jq .version` is `null`** when the running image predates the health `version` field — redeploy from current `main` first. If **`PROD_BASE_URL`** (or staging) vs **`https://<CLOUD_RUN_SERVICE>-….run.app`** show **different** `version` / footer labels while **`*.run.app`** matches `package.json`, the problem is **routing**, not another deploy: **Cloud Run domain mapping** still points `atx.…` at a **legacy** service (e.g. `xfinance-core-prod`), or an **HTTPS LB** backend is wrong. **Not CDN / Route 53 alone** — fix **which service owns the custom domain** in GCP (`sre-gcp-deployment.md` §8).
+**Custom domain shows old footer but deploy “succeeded”:** Compare `curl -sS "$PROD_BASE_URL/api/health" | jq .version` (or staging) with the direct Cloud Run `*.run.app` URL for `CLOUD_RUN_SERVICE_PROD` / `CLOUD_RUN_SERVICE_STAGING`. **`jq .version` is `null`** when the running image predates the health `version` field — redeploy from current `main` first. If **`PROD_BASE_URL`** (or staging) vs **`https://<CLOUD_RUN_SERVICE>-….run.app`** show **different** `version` / footer labels while **`*.run.app`** matches `package.json`, the problem is **routing**, not another deploy: **Cloud Run domain mapping** points the custom domain at the **wrong** Cloud Run service (prod Next should be **`fintech-advisor-prod`**), or an **HTTPS LB** backend is wrong. **Not CDN / Route 53 alone** — fix **which service owns the custom domain** in GCP (`sre-gcp-deployment.md` §8).

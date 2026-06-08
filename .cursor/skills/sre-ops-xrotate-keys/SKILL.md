@@ -48,7 +48,7 @@ gcloud secrets create atxfinance-prod-x-oauth-client-secret --replication-policy
 printf '%s' "<NEW_X_OAUTH_CLIENT_SECRET>" | gcloud secrets versions add atxfinance-prod-x-oauth-client-secret --data-file=-
 
 # 3) Rotate Cloud Run service to latest secrets (example env vars)
-gcloud run services update atxfinance-core-prod \
+gcloud run services update fintech-advisor-prod \
   --region us-central1 \
   --update-secrets "X_OAUTH_CLIENT_ID=atxfinance-prod-x-oauth-client-id:latest,X_OAUTH_CLIENT_SECRET=atxfinance-prod-x-oauth-client-secret:latest"
 

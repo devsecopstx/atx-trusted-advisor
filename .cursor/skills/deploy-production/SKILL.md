@@ -50,7 +50,7 @@ Use this stable mapping:
 
 - Host: `atx.<domain>` (or apex if explicitly chosen)
 - LB host rule target: production backend service
-- Serverless NEG target: Cloud Run `atxfinance-core-prod`
+- Serverless NEG target: Cloud Run **`fintech-advisor-prod`** (prod Next frontend; set **`CLOUD_RUN_SERVICE_PROD=fintech-advisor-prod`** in GitHub vars / `.env.prod`)
 - App callback: `https://atx.<domain>/api/auth/x/callback` (or apex callback)
 
 ## Required Safety Rules

@@ -161,7 +161,7 @@ if [[ -z "${SVC//[[:space:]]/}" ]]; then
   exit 1
 fi
 if [[ "${SVC}" == *".run.app"* ]] || [[ "${SVC}" == http://* ]] || [[ "${SVC}" == https://* ]]; then
-  echo "deploy-cloud-run-from-env: CLOUD_RUN_SERVICE_* must be the Cloud Run service name (e.g. xfinance-core-prod), not a *.run.app URL." >&2
+  echo "deploy-cloud-run-from-env: CLOUD_RUN_SERVICE_* must be the Cloud Run service name (e.g. fintech-advisor-prod), not a *.run.app URL." >&2
   exit 1
 fi
 if [[ -z "${BASE_URL//[[:space:]]/}" ]]; then
