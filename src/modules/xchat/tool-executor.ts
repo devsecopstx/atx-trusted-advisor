@@ -30,7 +30,12 @@ import {
     listActivePortfolioPriceAlertsForUser,
     upsertActivePortfolioPriceAlert
 } from "@/modules/price-alerts/portfolio-price-alerts-repository";
-import { resolvePortfolioHintFromNl } from "@/modules/price-alerts/resolve-portfolio-hint";
+import {
+    parseAccountHintFromToolArgs,
+    parsePortfolioHintFromToolArgs,
+    resolvePortfolioHintFromNl
+} from "@/modules/price-alerts/resolve-portfolio-hint";
+import type { Portfolio } from "@/modules/core-admin/types";
 import { fetchYahooOptionChainForExpiration } from "@/modules/strategy-options/options-chain";
 import {
     WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
@@ -54,6 +59,7 @@ import {
     tryGetOptionsScanCache
 } from "@/modules/xchat/options-scan-redis-cache";
 import { canManageNlPriceAlerts } from "@/modules/xchat/plan-limits";
+import { runProfitFinderTool } from "@/modules/xchat/profit-finder-tool";
 import { runStrategyRecommendationsTool } from "@/modules/xchat/strategy-recommendations-tool";
 import {
     deleteCachedToolResult,
@@ -101,6 +107,7 @@ const NO_TRUNCATE_JSON_OPERATIONS = new Set([
   "options_action_scan",
   "options_scan",
   "monte_carlo_tail_risk",
+  "profit_finder",
   "watchlist_snapshot"
 ]);
 
@@ -563,6 +570,67 @@ export type XfinanceToolExecutorContext = {
 
 type ExecutorContext = XfinanceToolExecutorContext;
 
+type PortfolioForToolResolution =
+  | { ok: true; portfolio: Portfolio }
+  | {
+      ok: false;
+      error: "no_default_portfolio" | "portfolio_hint_ambiguous" | "portfolio_hint_not_found";
+      candidates?: Array<{ portfolioIdHex: string; label: string }>;
+    };
+
+async function resolvePortfolioForTool(
+  ctx: ExecutorContext,
+  args: Record<string, unknown>
+): Promise<PortfolioForToolResolution> {
+  const hintRaw = parsePortfolioHintFromToolArgs(args);
+  if (hintRaw) {
+    const resolved = await resolvePortfolioHintFromNl({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      portfolioHint: hintRaw,
+      workspacePortfolioId: ctx.workspacePortfolioId
+    });
+    if (!resolved.ok) {
+      return {
+        ok: false,
+        error:
+          resolved.error === "ambiguous" ? "portfolio_hint_ambiguous" : "portfolio_hint_not_found",
+        candidates: resolved.candidates
+      };
+    }
+    const portfolio = await getPortfolioByIdForSessionUser({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      portfolioId: resolved.portfolioIdHex
+    });
+    if (portfolio?._id) {
+      return { ok: true, portfolio };
+    }
+    return { ok: false, error: "portfolio_hint_not_found" };
+  }
+
+  const portfolio = await getDefaultPortfolioOrProvision(ctx);
+  if (!portfolio?._id) {
+    return { ok: false, error: "no_default_portfolio" };
+  }
+  return { ok: true, portfolio };
+}
+
+function filterAccountsByHint<T extends { name?: string | null }>(
+  accounts: T[],
+  accountHintRaw: string | undefined
+): T[] {
+  const hint = accountHintRaw?.trim().toLowerCase() ?? "";
+  if (!hint) {
+    return accounts;
+  }
+  const matched = accounts.filter((a) => {
+    const name = (a.name ?? "").trim().toLowerCase();
+    return name && (name.includes(hint) || hint.includes(name));
+  });
+  return matched.length > 0 ? matched : accounts;
+}
+
 async function getDefaultPortfolioOrProvision(
   ctx: ExecutorContext
 ): Promise<Awaited<ReturnType<typeof getDefaultPortfolio>>> {
@@ -614,9 +682,16 @@ function buildOperations(
   cacheScopeKey: string
 ): Record<string, OperationHandler> {
   return {
-    portfolio_summary: async (_args, ctx) => {
-      const portfolio = await getDefaultPortfolioOrProvision(ctx);
-      if (!portfolio?._id) {
+    portfolio_summary: async (args, ctx) => {
+      const resolvedPf = await resolvePortfolioForTool(ctx, args);
+      if (!resolvedPf.ok) {
+        return {
+          error: resolvedPf.error,
+          ...(resolvedPf.candidates ? { candidates: resolvedPf.candidates } : {})
+        };
+      }
+      const portfolio = resolvedPf.portfolio;
+      if (!portfolio._id) {
         return { error: "no_default_portfolio" };
       }
 
@@ -798,17 +873,27 @@ function buildOperations(
       };
     },
 
-    account_health: async (_args, ctx) => {
-      const portfolio = await getDefaultPortfolioOrProvision(ctx);
-      if (!portfolio?._id) {
+    account_health: async (args, ctx) => {
+      const resolvedPf = await resolvePortfolioForTool(ctx, args);
+      if (!resolvedPf.ok) {
+        return {
+          error: resolvedPf.error,
+          ...(resolvedPf.candidates ? { candidates: resolvedPf.candidates } : {})
+        };
+      }
+      const portfolio = resolvedPf.portfolio;
+      if (!portfolio._id) {
         return { error: "no_default_portfolio" };
       }
 
-      const accounts = await listPortfolioAccounts({
-        userId: ctx.userId,
-        portfolioId: portfolio._id.toHexString(),
-        tenantId: ctx.tenantId
-      });
+      const accounts = filterAccountsByHint(
+        await listPortfolioAccounts({
+          userId: ctx.userId,
+          portfolioId: portfolio._id.toHexString(),
+          tenantId: ctx.tenantId
+        }),
+        parseAccountHintFromToolArgs(args)
+      );
 
       const defaultAccount = accounts.find((a) => a.isDefault);
 
@@ -825,18 +910,28 @@ function buildOperations(
       };
     },
 
-    positions_snapshot: async (_args, ctx) => {
-      const portfolio = await getDefaultPortfolioOrProvision(ctx);
-      if (!portfolio?._id) {
+    positions_snapshot: async (args, ctx) => {
+      const resolvedPf = await resolvePortfolioForTool(ctx, args);
+      if (!resolvedPf.ok) {
+        return {
+          error: resolvedPf.error,
+          ...(resolvedPf.candidates ? { candidates: resolvedPf.candidates } : {})
+        };
+      }
+      const portfolio = resolvedPf.portfolio;
+      if (!portfolio._id) {
         return { error: "no_default_portfolio" };
       }
 
       const portfolioId = portfolio._id.toHexString();
-      const accounts = await listPortfolioAccounts({
-        userId: ctx.userId,
-        portfolioId,
-        tenantId: ctx.tenantId
-      });
+      const accounts = filterAccountsByHint(
+        await listPortfolioAccounts({
+          userId: ctx.userId,
+          portfolioId,
+          tenantId: ctx.tenantId
+        }),
+        parseAccountHintFromToolArgs(args)
+      );
       const accountIds = accounts
         .map((a) => a._id)
         .filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
@@ -1105,6 +1200,13 @@ function buildOperations(
       });
     },
 
+    profit_finder: async (args, ctx: ExecutorContext) => {
+      return runProfitFinderTool(args, {
+        sessionCookie: ctx.sessionCookie,
+        workspacePortfolioId: ctx.workspacePortfolioId
+      });
+    },
+
     monte_carlo_tail_risk: async (args, ctx: ExecutorContext) => {
       return runMonteCarloTailRiskTool(args, {
         userId: ctx.userId,
@@ -1187,16 +1289,10 @@ function buildOperations(
       }
 
       if (op === "add") {
-        const portfolioHintRaw =
-          (typeof args.portfolioHint === "string" && args.portfolioHint.trim()) ||
-          (typeof args.portfolioName === "string" && args.portfolioName.trim()) ||
-          (typeof args.inPortfolio === "string" && args.inPortfolio.trim()) ||
-          undefined;
-
         const resolvedPf = await resolvePortfolioHintFromNl({
           userId: ctx.userId,
           tenantId: ctx.tenantId,
-          portfolioHint: portfolioHintRaw,
+          portfolioHint: parsePortfolioHintFromToolArgs(args),
           workspacePortfolioId: ctx.workspacePortfolioId
         });
         if (!resolvedPf.ok) {
@@ -1416,12 +1512,25 @@ function truncateOutput(output: string): string {
   return truncated + "\n[truncated]";
 }
 
+function shouldBypassWorkspacePreloadShortCircuit(
+  operation: string,
+  args: Record<string, unknown>
+): boolean {
+  if (!PRELOAD_SHORT_CIRCUIT_OPS.has(operation)) {
+    return false;
+  }
+  return (
+    Boolean(parsePortfolioHintFromToolArgs(args)) || Boolean(parseAccountHintFromToolArgs(args))
+  );
+}
+
 function tryPreloadResult(
   operation: string,
   preload: WorkspaceSnapshotPreload,
-  preloadValid: boolean
+  preloadValid: boolean,
+  args: Record<string, unknown>
 ): string | null {
-  if (!preloadValid || !PRELOAD_SHORT_CIRCUIT_OPS.has(operation)) {
+  if (!preloadValid || shouldBypassWorkspacePreloadShortCircuit(operation, args)) {
     return null;
   }
   let data: Record<string, unknown>;
@@ -1563,7 +1672,7 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
     }
 
     if (resolvedPreload && preloadValid) {
-      const fromPreload = tryPreloadResult(operation, resolvedPreload, preloadValid);
+      const fromPreload = tryPreloadResult(operation, resolvedPreload, preloadValid, args);
       if (fromPreload !== null) {
         perRequestResults.set(perRequestKey, fromPreload);
         return { result: fromPreload };

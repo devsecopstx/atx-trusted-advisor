@@ -12,6 +12,7 @@ export type AuditEntityType =
   | "portfolio_price_alert"
   | "xchat_session"
   | "core_scanner"
+  | "profit_finder"
   | "rental_ai"
   | "user_task"
   | "email_template"

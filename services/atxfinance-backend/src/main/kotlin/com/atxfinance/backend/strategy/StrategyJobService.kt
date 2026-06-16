@@ -68,7 +68,8 @@ class StrategyJobService(
         val id = ObjectId()
         val correlationId = UUID.randomUUID().toString()
         val now = Date()
-        val firstKey = SLOT_ORDER.first()
+        val slotOrder = slotOrderFor(jobTypeRaw)
+        val firstKey = slotOrder.first()
         val doc = Document()
         doc["_id"] = id
         doc["userId"] = session.userId
@@ -88,7 +89,7 @@ class StrategyJobService(
         if (!idempotencyKey.isNullOrBlank()) {
             doc["idempotencyKey"] = idempotencyKey.trim()
         }
-        val jobType = jobTypeRaw?.trim()?.takeIf { it.isNotEmpty() } ?: JOB_TYPE_SLOT_COLLECTOR
+        val jobType = normalizeJobType(jobTypeRaw)
         doc["jobType"] = jobType
         try {
             mongoTemplate.insert(doc, props.strategyJobsCollection)
@@ -157,7 +158,8 @@ class StrategyJobService(
         val currentKey = doc.getString("currentSlotKey") ?: return PostTurnOutcome.BadRequest(
             mapOf("error" to "no_current_slot"),
         )
-        val def = slotByKey[currentKey] ?: return PostTurnOutcome.BadRequest(mapOf("error" to "unknown_slot"))
+        val jobType = doc.getString("jobType") ?: JOB_TYPE_SLOT_COLLECTOR
+        val def = slotByKey(jobType)[currentKey] ?: return PostTurnOutcome.BadRequest(mapOf("error" to "unknown_slot"))
         val slots = doc.get("slots", Document::class.java) ?: Document()
 
         val raw = resolveSlotValue(def, message, choiceIndex)
@@ -169,7 +171,7 @@ class StrategyJobService(
         turns.add(turn)
 
         slots[currentKey] = raw
-        val nextKey = SLOT_ORDER.firstOrNull { key -> !slots.containsKey(key) }
+        val nextKey = slotOrderFor(jobType).firstOrNull { key -> !slots.containsKey(key) }
         val now = Date()
         val newStatus = if (nextKey == null) STATUS_SLOTS_COMPLETE else STATUS_COLLECTING
 
@@ -217,8 +219,10 @@ class StrategyJobService(
         const val STATUS_SLOTS_COMPLETE = "slots_complete"
         const val JOB_TYPE_SLOT_COLLECTOR = "slot_collector"
         const val JOB_TYPE_MONTE_CARLO_RUN = "monte-carlo-run"
+        const val JOB_TYPE_PROFIT_FINDER = "profit-finder"
 
         private val SLOT_ORDER = listOf("outlook", "risk", "horizon", "underlying", "capital")
+        private val PROFIT_FINDER_SLOT_ORDER = listOf("mode", "focus", "symbol")
 
         private val SLOTS: List<SlotDef> = listOf(
             SlotDef(
@@ -248,7 +252,41 @@ class StrategyJobService(
             ),
         )
 
-        private val slotByKey: Map<String, SlotDef> = SLOTS.associateBy { it.key }
+        private val PROFIT_FINDER_SLOTS: List<SlotDef> = listOf(
+            SlotDef(
+                "mode",
+                "Profit Finder mode (conservative prioritizes income & capital preservation)?",
+                listOf("Conservative", "Balanced", "Aggressive"),
+            ),
+            SlotDef(
+                "focus",
+                "Primary goal for this scan?",
+                listOf("Income", "Protection", "Both"),
+            ),
+            SlotDef(
+                "symbol",
+                "Focus on one ticker (e.g. NVDA) or type All for entire portfolio?",
+                null,
+            ),
+        )
+
+        private val slotCollectorByKey: Map<String, SlotDef> = SLOTS.associateBy { it.key }
+        private val profitFinderByKey: Map<String, SlotDef> = PROFIT_FINDER_SLOTS.associateBy { it.key }
+
+        fun normalizeJobType(jobTypeRaw: String?): String =
+            jobTypeRaw?.trim()?.takeIf { it.isNotEmpty() } ?: JOB_TYPE_SLOT_COLLECTOR
+
+        fun slotOrderFor(jobTypeRaw: String?): List<String> =
+            when (normalizeJobType(jobTypeRaw)) {
+                JOB_TYPE_PROFIT_FINDER -> PROFIT_FINDER_SLOT_ORDER
+                else -> SLOT_ORDER
+            }
+
+        private fun slotByKey(jobType: String?): Map<String, SlotDef> =
+            when (normalizeJobType(jobType)) {
+                JOB_TYPE_PROFIT_FINDER -> profitFinderByKey
+                else -> slotCollectorByKey
+            }
 
         fun normalizeEmailAccountId(session: ResolvedSession, raw: String?): String {
             val trimmed = raw?.trim().orEmpty()
@@ -272,7 +310,8 @@ class StrategyJobService(
                     "currentSlotKey" to null,
                 )
                 currentKey != null -> {
-                    val def = slotByKey[currentKey]
+                    val jobType = doc.getString("jobType")
+                    val def = slotByKey(jobType)[currentKey]
                     mapOf(
                         "nextPrompt" to def?.prompt,
                         "nextChoices" to def?.choices,

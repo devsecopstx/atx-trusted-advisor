@@ -73,9 +73,13 @@ vi.mock("@/modules/price-alerts/ensure-user-alert-manager-task", () => ({
   ensureUserAlertManagerScheduledTaskForTenant: nlPriceAlertMocks.ensureUserAlertManagerScheduledTaskForTenant
 }));
 
-vi.mock("@/modules/price-alerts/resolve-portfolio-hint", () => ({
-  resolvePortfolioHintFromNl: resolvePortfolioHintMock
-}));
+vi.mock("@/modules/price-alerts/resolve-portfolio-hint", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/price-alerts/resolve-portfolio-hint")>();
+  return {
+    ...actual,
+    resolvePortfolioHintFromNl: resolvePortfolioHintMock
+  };
+});
 
 vi.mock("@/modules/audit/repository", () => ({
   createAuditEvent: vi.fn(() => Promise.resolve(undefined))
@@ -420,6 +424,61 @@ describe("atxfinance tool executor", () => {
     });
   });
 
+  it("positions_snapshot resolves named portfolio via portfolioHint", async () => {
+    const namedPortfolioId = new ObjectId();
+    resolvePortfolioHintMock.mockResolvedValueOnce({
+      ok: true,
+      portfolioIdHex: namedPortfolioId.toHexString(),
+      portfolioName: "myPortfolio"
+    });
+    repositoryMocks.getPortfolioByIdForSessionUser.mockResolvedValueOnce({
+      _id: namedPortfolioId,
+      name: "myPortfolio",
+      isDefault: false
+    });
+    repositoryMocks.listPortfolioAccounts.mockResolvedValueOnce([
+      {
+        _id: accountId,
+        name: "Individual TOD",
+        type: "fidelity",
+        isDefault: true,
+        cashBalance: 10_000
+      }
+    ]);
+    repositoryMocks.listPortfolioPositionsByAccount.mockResolvedValueOnce([
+      {
+        symbol: "ON",
+        qty: 100,
+        avgCost: 42.5,
+        accountId,
+        portfolioId: namedPortfolioId,
+        userId: "user_123"
+      }
+    ]);
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atx_function", {
+      operation: "positions_snapshot",
+      portfolioHint: "myPortfolio",
+      accountHint: "Individual TOD"
+    });
+    const data = JSON.parse(result.result);
+    expect(data.error).toBeUndefined();
+    expect(data.portfolioName).toBe("myPortfolio");
+    expect(data.accounts).toHaveLength(1);
+    expect(data.accounts[0].name).toBe("Individual TOD");
+    expect(data.accounts[0].positions[0]).toMatchObject({
+      symbol: "ON",
+      qty: 100,
+      avgCost: 42.5
+    });
+    expect(resolvePortfolioHintMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: ctx.userId,
+        portfolioHint: "myPortfolio"
+      })
+    );
+  });
+
   it("positions_snapshot truncates when over cap", async () => {
     const many = Array.from({ length: 250 }, (_, i) => ({
       symbol: `S${i}`,
@@ -511,6 +570,7 @@ describe("atxfinance tool executor", () => {
       "options_scan",
       "options_action_scan",
       "strategy_recommendations",
+      "profit_finder",
       "monte_carlo_tail_risk",
       "market_quote",
       "price_alert_manage"

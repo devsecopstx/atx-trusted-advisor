@@ -99,6 +99,14 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). This endpoint is the JVM-
 |--------|------|---------|
 | POST | `/api/strategy-recommendations/generate` | Body `{ symbols, outlook, risk, horizonDays, portfolioId?, preferredStrategies?, maxResults? }`. **200** `{ "data": { "recommendations", "source", "chainSources", "generatedAt", "correlationId", "input" } }`; **400** `invalid_strategy_context`; **503** `engine_unavailable` when no usable option chains are available. |
 
+## Profit Finder (portfolio-linked options profit discovery — MVP)
+
+Session cookie + **`viewer`+** roles (`canUserLogin`). Scans **owned** `portfolio_positions` (qty, avgCost, unrealized P&L via Yahoo spot), merges desk watchlist symbols, ranks income/protection overlays through **`OptionsStrategyEngine`**. Default mode **conservative** (income + capital preservation). Appends **`admin_audit_events`** (`entityType`: `profit_finder`, action `profit_finder_scan_completed`). **30m** Redis cache when configured. IBKR snapshot merge is **deferred** (consent flag surfaced; `ibkrSnapshotIncluded: false` until JVM IBKR bridge ships).
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/profit-finder/scan` | Body `{ portfolioId?, mode?, focus?, symbols?, dteMin?, dteMax?, maxResults?, includeWatchlist? }`. `portfolioId` defaults to workspace/default portfolio when omitted. **200** `{ "data": { "holdings", "opportunities", "meta" } }`; **400** `invalid_profit_finder_context` / `portfolio_not_found`; **503** `chain_unavailable`. xChat: `atx_function.profit_finder`. Strategy jobs: create with `jobType: "profit-finder"` for slot flow (`mode` → `focus` → `symbol`). |
+
 ## User feedback
 
 | Method | Path | Purpose |

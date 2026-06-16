@@ -116,6 +116,12 @@ export const nextBffApi = {
       methods: ["POST"]
     }
   },
+  profitFinder: {
+    scan: {
+      pathTemplate: "/api/profit-finder/scan",
+      methods: ["POST"]
+    }
+  },
   userFeedback: {
     post: {
       pathTemplate: "/api/user-feedback",

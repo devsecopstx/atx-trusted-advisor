@@ -73,6 +73,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "POST", path: "/api/strategy-jobs/{jobId}/turns" },
   { method: "GET", path: "/api/strategy-jobs/{jobId}/artifact" },
   { method: "POST", path: "/api/strategy-recommendations/generate" },
+  { method: "POST", path: "/api/profit-finder/scan" },
   { method: "POST", path: "/api/user-feedback" },
   { method: "POST", path: "/api/xchat/ask/stream" },
   { method: "GET", path: "/api/admin/bootstrap-status" },

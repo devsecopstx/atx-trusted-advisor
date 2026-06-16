@@ -4,7 +4,8 @@ import {
     getPortfolioByIdForSessionUser,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
-    listPortfoliosForSessionUser
+    listPortfoliosForSessionUser,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import type { Portfolio, Position } from "@/modules/core-admin/types";
 import { formatPositionUsd, normalizePositionType } from "@/modules/core-admin/types";
@@ -151,10 +152,27 @@ async function resolveActivePortfolio(input: UserWorkspaceSummaryContext): Promi
 export async function loadUserWorkspaceSummaryForPrompt(
   ctx: UserWorkspaceSummaryContext
 ): Promise<UserWorkspaceSummaryJson | null> {
-  const rows = await listPortfoliosForSessionUser({
+  let rows = await listPortfoliosForSessionUser({
     userId: ctx.userId,
     tenantId: ctx.tenantId
   });
+  if (rows.length === 0 && ctx.tenantId?.trim()) {
+    try {
+      const { portfolio } = await provisionDefaultPortfolioForUser({
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        watchlistSymbols: ["TSLA"]
+      });
+      if (portfolio?._id) {
+        rows = await listPortfoliosForSessionUser({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId
+        });
+      }
+    } catch {
+      /* non-fatal — tool path may still provision */
+    }
+  }
   if (rows.length === 0) {
     return null;
   }

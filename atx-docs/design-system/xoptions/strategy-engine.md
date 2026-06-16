@@ -18,6 +18,8 @@ The OptionsStrategyEngine is the intelligent brain of the scheduled `options_sca
 
 **Implementation (JVM):** `services/atxfinance-backend/.../strategy/OptionsStrategyEngine.kt` — `generateRecommendations`, weighted `calculateFitScore` (defaults match the table below), `scheduledTaskDryRunOutput` for Kotlin scheduled-task ticks. Full Yahoo chain + Mongo portfolio pass for app tenants remains in the Next.js task-runner (`src/modules/strategy-options/options-strategy-scanner-job.ts`) unless product moves execution to Spring-only.
 
+**Profit Finder (MVP):** `ProfitFinderService.kt` + `ProfitFinderPortfolioScanner.kt` — portfolio holdings scan (cost basis, unrealized P&L), watchlist merge, conservative-default ranking; **`POST /api/profit-finder/scan`**; xChat `profit_finder` operation; reuses the same engine fit-score contract below.
+
 ### Product umbrella (PLAN 280)
 
 Single narrative for **score/rank** work across surfaces:

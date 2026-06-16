@@ -127,6 +127,10 @@ import {
     getLatestXchatLogByThread,
     saveXChatLog
 } from "@/modules/xchat/repository";
+import {
+    extractPortfolioHintFromMessage,
+    resolvePortfolioHintFromNl
+} from "@/modules/price-alerts/resolve-portfolio-hint";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import {
     ensureSuperAgentDefaultTools,
@@ -544,6 +548,20 @@ export async function POST(request: Request) {
   });
   if (!workspacePortfolioId && watchlistPortfolioSlot.resolvedPortfolioId) {
     workspacePortfolioId = watchlistPortfolioSlot.resolvedPortfolioId;
+  }
+  if (!workspacePortfolioId) {
+    const portfolioHintFromMessage = extractPortfolioHintFromMessage(messageTrimmed);
+    if (portfolioHintFromMessage) {
+      const resolvedBook = await resolvePortfolioHintFromNl({
+        userId: session.userId,
+        tenantId: session.tenantId,
+        portfolioHint: portfolioHintFromMessage,
+        workspacePortfolioId: undefined
+      });
+      if (resolvedBook.ok) {
+        workspacePortfolioId = resolvedBook.portfolioIdHex;
+      }
+    }
   }
   let subscriptionPlan: SubscriptionPlan | undefined;
   if (!isAdminSession && ObjectId.isValid(session.userId)) {

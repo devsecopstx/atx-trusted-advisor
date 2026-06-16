@@ -1506,6 +1506,19 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "strategy-jobs"
   },
   {
+    path: "/api/profit-finder/scan",
+    operations: [
+      {
+        method: "POST",
+        auth: "session",
+        hasRequestBody: true,
+        summary:
+          "Portfolio-linked Profit Finder scan: holdings with unrealized P&L, watchlist merge, ranked income/protection option overlays via OptionsStrategyEngine. Audited to admin_audit_events."
+      }
+    ],
+    tag: "strategy-jobs"
+  },
+  {
     path: "/api/rag/files",
     operations: [
       { method: "GET", auth: "admin" },
