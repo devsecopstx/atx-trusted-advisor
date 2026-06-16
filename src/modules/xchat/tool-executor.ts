@@ -43,6 +43,12 @@ import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { runMonteCarloTailRiskTool } from "@/modules/xchat/monte-carlo-tail-risk-tool";
 import { buildOptionsActionReport } from "@/modules/xchat/options-action-scan";
 import {
+    filterOptionsScanLegsForDesk,
+    parseMaxCollateralUsdFromText,
+    rankOptionsScanLegsForDesk,
+    type OptionsScanDeskLeg
+} from "@/modules/xchat/options-scan-ranking";
+import {
     buildOptionsScanFingerprint,
     setOptionsScanCache,
     tryGetOptionsScanCache
@@ -276,21 +282,11 @@ type ToolOptionsScanFilters = {
   minIvPct: number | null;
   minOi: number | null;
   minBid: number | null;
+  maxCollateralUsd: number | null;
+  referencePrice: number | null;
 };
 
-type ToolOptionsScanLeg = {
-  expiration: string;
-  dte: number;
-  strike: number;
-  optionType: "call" | "put";
-  bid: number;
-  ask: number;
-  mid: number;
-  ivPct: number;
-  openInterest: number;
-  deltaAbs: number | null;
-  deltaRaw: number | null;
-};
+type ToolOptionsScanLeg = OptionsScanDeskLeg;
 
 function parseNumberArg(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) {
@@ -453,6 +449,17 @@ function buildOptionsScanFilters(args: Record<string, unknown>): ToolOptionsScan
     parsedFromQuery.minOi ??
     null;
   const minBid = parseNumberArg(args.minBid) ?? parsedFromQuery.minBid ?? null;
+  const queryText = typeof args.query === "string" ? args.query : "";
+  const maxCollateralUsd =
+    parseNumberArg(args.maxCollateralUsd) ??
+    parseNumberArg(args.maxCashUsd) ??
+    parseMaxCollateralUsdFromText(queryText) ??
+    null;
+  const referencePrice =
+    parseNumberArg(args.referencePrice) ??
+    parseNumberArg(args.costBasis) ??
+    parseNumberArg(args.entryPrice) ??
+    null;
   return {
     optionType,
     minDte: Math.min(minDte, maxDte),
@@ -461,8 +468,51 @@ function buildOptionsScanFilters(args: Record<string, unknown>): ToolOptionsScan
     maxAbsDelta: maxAbsDelta != null ? Math.max(0, Math.min(1, maxAbsDelta)) : null,
     minIvPct: minIvPct != null ? Math.max(0, minIvPct) : null,
     minOi: minOi != null ? Math.max(0, minOi) : null,
-    minBid: minBid != null ? Math.max(0, minBid) : null
+    minBid: minBid != null ? Math.max(0, minBid) : null,
+    maxCollateralUsd: maxCollateralUsd != null && maxCollateralUsd > 0 ? maxCollateralUsd : null,
+    referencePrice: referencePrice != null && referencePrice > 0 ? referencePrice : null
   };
+}
+
+async function resolveSymbolCostBasisForScan(
+  ctx: ExecutorContext,
+  symbol: string
+): Promise<number | null> {
+  const portfolio = await getDefaultPortfolioOrProvision(ctx);
+  if (!portfolio?._id) {
+    return null;
+  }
+  const portfolioId = portfolio._id.toHexString();
+  const accounts = await listPortfolioAccounts({
+    userId: ctx.userId,
+    portfolioId,
+    tenantId: ctx.tenantId
+  });
+  const accountIds = accounts
+    .map((a) => a._id)
+    .filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
+  if (accountIds.length === 0) {
+    return null;
+  }
+  const positions = await listPortfolioPositionsByAccount({
+    userId: ctx.userId,
+    portfolioId,
+    accountIds,
+    tenantId: ctx.tenantId
+  });
+  const sym = symbol.trim().toUpperCase();
+  for (const p of positions) {
+    if (p.symbol?.trim().toUpperCase() !== sym) {
+      continue;
+    }
+    if (p.optionType != null) {
+      continue;
+    }
+    if (typeof p.avgCost === "number" && Number.isFinite(p.avgCost) && p.avgCost > 0) {
+      return p.avgCost;
+    }
+  }
+  return null;
 }
 
 function legPassesToolScanFilters(leg: ToolOptionsScanLeg, filters: ToolOptionsScanFilters): boolean {
@@ -877,7 +927,6 @@ function buildOperations(
     },
 
     options_scan: async (args, ctx: ExecutorContext) => {
-      void ctx;
       const symbol =
         typeof args.underlying === "string"
           ? args.underlying.trim().toUpperCase()
@@ -994,24 +1043,37 @@ function buildOperations(
       }
 
       const matched = allLegs.filter((leg) => legPassesToolScanFilters(leg, filters));
-      matched.sort((a, b) => {
-        if (a.dte !== b.dte) return a.dte - b.dte;
-        if (b.openInterest !== a.openInterest) return b.openInterest - a.openInterest;
-        return b.bid - a.bid;
-      });
+      const costBasis =
+        filters.referencePrice ??
+        (await resolveSymbolCostBasisForScan(ctx, symbol).catch(() => null));
+      const deskContext = {
+        spot,
+        referencePrice: costBasis,
+        maxCollateralUsd: filters.maxCollateralUsd
+      };
+      const deskLegs = filterOptionsScanLegsForDesk(matched, filters.optionType, deskContext);
+      const ranked = rankOptionsScanLegsForDesk(deskLegs, filters.optionType, deskContext);
+      const rows = ranked.slice(0, 40);
+
+      let note: string | undefined;
+      if (rows.length === 0 && matched.length > 0) {
+        note =
+          "Contracts matched DTE/IV/OI filters but none were near spot/cost basis (or within collateral budget). Try widening OTM band or DTE.";
+      } else if (rows.length === 0) {
+        note = "No contracts matched all active filters. Loosen one threshold and retry.";
+      }
 
       const payload = {
         symbol,
         spot,
+        referencePrice: costBasis,
         criteria: filters,
         expirationsExamined: expInRange.map((x) => ({ expiration: x.exp, dte: x.dte })),
         examined: allLegs.length,
-        matched: matched.length,
-        rows: matched.slice(0, 40),
-        note:
-          matched.length === 0
-            ? "No contracts matched all active filters. Loosen one threshold and retry."
-            : undefined
+        matched: rows.length,
+        matchedBeforeDeskFilter: matched.length,
+        rows,
+        note
       };
       void setOptionsScanCache(fingerprint, JSON.stringify(payload)).catch(() => {
         /* non-fatal */

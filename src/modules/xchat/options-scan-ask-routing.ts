@@ -3,12 +3,19 @@
  * Mirrors narrow intent detection in `xchat-ask-routing.ts`; execution uses `atx_function` → `options_scan`.
  */
 
+import {
+  parseMaxCollateralUsdFromText,
+  pickOptionsScanTopIdeas,
+  type OptionsScanDeskLeg
+} from "@/modules/xchat/options-scan-ranking";
+
 export type ParsedOptionsScanDeskRequest = {
   symbol: string;
   optionType: "put" | "call";
   minDte: number;
   maxDte: number;
   query: string;
+  maxCollateralUsd: number | null;
 };
 
 const TICKER_RE = /\b([A-Z][A-Z0-9.-]{0,11})\b/g;
@@ -188,18 +195,15 @@ export function buildOptionsScanArgsFromMessage(message: string): ParsedOptionsS
     optionType,
     minDte: dte.minDte,
     maxDte: dte.maxDte,
-    query: message.trim()
+    query: message.trim(),
+    maxCollateralUsd: parseMaxCollateralUsdFromText(message)
   };
 }
 
-type OptionsScanRow = {
-  strike: number;
-  dte: number;
-  mid: number;
-  ivPct: number;
-  openInterest: number;
-  deltaAbs: number | null;
-};
+type OptionsScanRow = Pick<
+  OptionsScanDeskLeg,
+  "strike" | "dte" | "mid" | "ivPct" | "openInterest" | "deltaAbs"
+>;
 
 function formatUsd(value: number | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -223,16 +227,31 @@ function formatPct(value: number | undefined): string {
 export function formatOptionsScanDeskMarkdown(payload: {
   symbol: string;
   spot: number | null;
+  referencePrice?: number | null;
   optionType: "put" | "call";
-  criteria: { minDte: number; maxDte: number };
+  criteria: { minDte: number; maxDte: number; maxCollateralUsd?: number | null };
   rows: OptionsScanRow[];
   note?: string;
 }): string {
-  const { symbol, spot, optionType, criteria, rows, note } = payload;
+  const { symbol, spot, referencePrice, optionType, criteria, rows, note } = payload;
+  const ref =
+    typeof referencePrice === "number" && Number.isFinite(referencePrice) && referencePrice > 0
+      ? referencePrice
+      : spot;
+  const refNote =
+    ref != null &&
+    spot != null &&
+    Math.abs(ref - spot) / Math.max(spot, 1e-6) > 0.01
+      ? ` · desk anchor ${formatUsd(ref)} (cost basis/entry)`
+      : "";
+  const budgetNote =
+    criteria.maxCollateralUsd != null && criteria.maxCollateralUsd > 0
+      ? ` · max collateral ${formatUsd(criteria.maxCollateralUsd)}`
+      : "";
   const spotLine =
     typeof spot === "number" && Number.isFinite(spot)
-      ? `${symbol} spot ${formatUsd(spot)} — ${optionType === "put" ? "CSP" : "covered call"} scan · DTE ${criteria.minDte}–${criteria.maxDte}.`
-      : `${symbol} — ${optionType === "put" ? "CSP" : "covered call"} scan · DTE ${criteria.minDte}–${criteria.maxDte} (spot unavailable).`;
+      ? `${symbol} spot ${formatUsd(spot)}${refNote}${budgetNote} — ${optionType === "put" ? "CSP" : "covered call"} scan · DTE ${criteria.minDte}–${criteria.maxDte}.`
+      : `${symbol}${budgetNote} — ${optionType === "put" ? "CSP" : "covered call"} scan · DTE ${criteria.minDte}–${criteria.maxDte} (spot unavailable).`;
 
   if (rows.length === 0) {
     return [
@@ -248,6 +267,7 @@ export function formatOptionsScanDeskMarkdown(payload: {
 
   const top = rows.slice(0, 5);
   const isPut = optionType === "put";
+  const rocDenominator = (strike: number) => (isPut ? strike : (spot ?? strike));
   const header = isPut
     ? "| Strike | Premium | IV | OI | Delta | Breakeven | ROC (ann.) | Cash Req | Assignment Risk | Desk Note |"
     : "| Strike | Premium | IV | OI | Delta | Upside to Strike | ROC (ann.) | Notional (100sh) | Call-Away Risk | Desk Note |";
@@ -257,8 +277,8 @@ export function formatOptionsScanDeskMarkdown(payload: {
     const strike = row.strike;
     const dte = Math.max(1, row.dte);
     const roc =
-      typeof spot === "number" && spot > 0 && strike > 0
-        ? `${(((premium / (isPut ? strike : spot)) * (365 / dte)) * 100).toFixed(1)}%`
+      rocDenominator(strike) > 0
+        ? `${(((premium / rocDenominator(strike)) * (365 / dte)) * 100).toFixed(1)}%`
         : "—";
     const breakeven = isPut ? formatUsd(strike - premium) : "—";
     const cashReq = isPut ? formatUsd(strike * 100) : "—";
@@ -275,8 +295,26 @@ export function formatOptionsScanDeskMarkdown(payload: {
     return `| ${formatUsd(strike)} | ${formatUsd(premium)} | ${formatPct(row.ivPct)} | ${row.openInterest.toLocaleString("en-US")} | ${row.deltaAbs != null ? row.deltaAbs.toFixed(2) : "—"} | ${upside} | ${roc} | ${notional} | ${risk} | ${desk} |`;
   });
 
-  const tags = ["Best Yield", "Best Liquidity", "Best Risk/Reward"];
-  const ranked = top.slice(0, 3).map((row, i) => `- **${tags[i] ?? "Idea"}:** ${formatUsd(row.strike)} · ${formatUsd(row.mid)} premium · DTE ${row.dte}`);
+  const topIdeas = pickOptionsScanTopIdeas(
+    top.map((row) => ({
+      expiration: "",
+      dte: row.dte,
+      strike: row.strike,
+      optionType,
+      bid: row.mid,
+      ask: row.mid,
+      mid: row.mid,
+      ivPct: row.ivPct,
+      openInterest: row.openInterest,
+      deltaAbs: row.deltaAbs,
+      deltaRaw: row.deltaAbs == null ? null : optionType === "put" ? -row.deltaAbs : row.deltaAbs
+    })),
+    optionType
+  );
+  const ranked = topIdeas.map(
+    ({ tag, leg }) =>
+      `- **${tag}:** ${formatUsd(leg.strike)} · ${formatUsd(leg.mid)} premium · DTE ${leg.dte}`
+  );
 
   return [
     `### ${isPut ? "CSP" : "Covered call"} ideas — ${symbol}`,

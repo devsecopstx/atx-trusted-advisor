@@ -24,6 +24,12 @@ describe("options-scan-ask-routing", () => {
     expect(args?.maxDte).toBe(14);
   });
 
+  it("parses collateral budget from natural language", () => {
+    const msg = "CSP ideas for RDW 7-14 DTE that fits 15k";
+    const args = buildOptionsScanArgsFromMessage(msg);
+    expect(args?.maxCollateralUsd).toBe(15000);
+  });
+
   it("does not match generic education", () => {
     expect(shouldRunDirectOptionsScan("what is a cash secured put")).toBe(false);
   });

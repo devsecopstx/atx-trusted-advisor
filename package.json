@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.25.15",
+  "version": "3.25.16",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -155,7 +155,8 @@
     "picomatch@^4.0.0": "4.0.4",
     "vite": "^7.3.2",
     "protobufjs": "^7.6.0",
-    "uuid": "^11.1.1"
+    "uuid": "^11.1.1",
+    "tmp": ">=0.2.6"
   },
   "dependencies": {
     "@capacitor/cli": "^8.3.1",
@@ -207,6 +208,6 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.6"
   }
 }

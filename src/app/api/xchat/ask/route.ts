@@ -1744,7 +1744,8 @@ export async function POST(request: Request) {
       optionType: scanArgs?.optionType,
       minDte: scanArgs?.minDte,
       maxDte: scanArgs?.maxDte,
-      query: scanArgs?.query
+      query: scanArgs?.query,
+      maxCollateralUsd: scanArgs?.maxCollateralUsd ?? undefined
     });
     const scanDurationMs = Math.max(0, Date.now() - scanStartedAt);
     let responseMarkdown = "I could not run the options scan right now.";
@@ -1752,7 +1753,13 @@ export async function POST(request: Request) {
       const parsed = JSON.parse(scanResult.result) as {
         symbol?: string;
         spot?: number | null;
-        criteria?: { minDte?: number; maxDte?: number; optionType?: "put" | "call" };
+        referencePrice?: number | null;
+        criteria?: {
+          minDte?: number;
+          maxDte?: number;
+          optionType?: "put" | "call";
+          maxCollateralUsd?: number | null;
+        };
         rows?: Array<{
           strike: number;
           dte: number;
@@ -1771,11 +1778,14 @@ export async function POST(request: Request) {
         responseMarkdown = formatOptionsScanDeskMarkdown({
           symbol: parsed.symbol ?? scanArgs?.symbol ?? "—",
           spot: typeof parsed.spot === "number" ? parsed.spot : null,
+          referencePrice:
+            typeof parsed.referencePrice === "number" ? parsed.referencePrice : null,
           optionType:
             criteria.optionType === "call" || scanArgs?.optionType === "call" ? "call" : "put",
           criteria: {
             minDte: criteria.minDte ?? scanArgs?.minDte ?? 0,
-            maxDte: criteria.maxDte ?? scanArgs?.maxDte ?? 14
+            maxDte: criteria.maxDte ?? scanArgs?.maxDte ?? 14,
+            maxCollateralUsd: criteria.maxCollateralUsd ?? scanArgs?.maxCollateralUsd ?? null
           },
           rows: Array.isArray(parsed.rows) ? parsed.rows : [],
           note: parsed.note
