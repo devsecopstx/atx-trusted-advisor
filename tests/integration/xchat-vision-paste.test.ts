@@ -100,6 +100,10 @@ const imageAttachRepoMocks = vi.hoisted(() => ({
   insertXchatImageAttachmentRows: vi.fn()
 }));
 
+const portfolioHintMocks = vi.hoisted(() => ({
+  resolvePortfolioHintFromNl: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
@@ -149,6 +153,13 @@ vi.mock("@/modules/xchat/xchat-vision-auto-caption", () => ({
 vi.mock("@/modules/xchat/xchat-image-attachments-repository", () => ({
   insertXchatImageAttachmentRows: imageAttachRepoMocks.insertXchatImageAttachmentRows
 }));
+vi.mock("@/modules/price-alerts/resolve-portfolio-hint", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/price-alerts/resolve-portfolio-hint")>();
+  return {
+    ...actual,
+    resolvePortfolioHintFromNl: portfolioHintMocks.resolvePortfolioHintFromNl
+  };
+});
 
 vi.mock("@/lib/xai-default-persona-model", () => ({
   getDefaultPersonaChatModelId: () => "grok-4-1-fast-reasoning"
@@ -286,6 +297,10 @@ describe("xchat vision paste (POST /api/xchat/ask)", () => {
     );
     visionCaptionMocks.generateXchatVisionAutoCaption.mockResolvedValue("auto-caption");
     imageAttachRepoMocks.insertXchatImageAttachmentRows.mockResolvedValue(undefined);
+    portfolioHintMocks.resolvePortfolioHintFromNl.mockResolvedValue({
+      ok: false,
+      error: "not_found"
+    });
   });
 
   it("happy path: accepts imageAttachment and forwards a data URL to respondWithXaiToolLoop", async () => {
