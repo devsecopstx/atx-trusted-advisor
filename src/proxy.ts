@@ -14,6 +14,7 @@ import {
 } from "@/modules/identity/guest-trial-constants";
 import { isSafeOAuthReturnPath } from "@/lib/oauth-return-path";
 import { parseProxyEdgeCacheTtlMs } from "@/lib/proxy-edge-cache-ttl";
+import { resolveProxyInternalApiUrl } from "@/lib/proxy-internal-origin";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { TENANT_UX_FAIL_CLOSED_DRILL_COOKIE } from "@/modules/platform/tenant-ux-flags";
 import { resolvePolicyPathForRequest } from "@/modules/platform/tenant-ux-proxy-policy-path";
@@ -113,7 +114,7 @@ async function resolveSessionGroundingOk(request: NextRequest): Promise<boolean>
   if (inflight) {
     return await inflight;
   }
-  const url = new URL("/api/internal/authz/session-grounding", request.url);
+  const url = resolveProxyInternalApiUrl(request.url, "/api/internal/authz/session-grounding");
   const pending = (async (): Promise<boolean> => {
     try {
       const res = await fetch(url, {
@@ -340,7 +341,7 @@ async function resolveTenantUxPolicyDecision(
     return await existing;
   }
   const pending = (async (): Promise<TenantUxPolicyDecision> => {
-    const url = new URL("/api/internal/tenant-ux/policy", request.url);
+    const url = resolveProxyInternalApiUrl(request.url, "/api/internal/tenant-ux/policy");
     url.searchParams.set("pathname", policyPath);
     try {
       const fetchStarted = Date.now();
@@ -420,7 +421,8 @@ async function resolveTenantUxPolicyDecision(
       logTenantUxPolicyFetchError({
         policyPath,
         ok: false,
-        error: err instanceof Error ? err.message : String(err)
+        error: err instanceof Error ? err.message : String(err),
+        reason: "tenant_ux_policy_fetch_throw_or_timeout"
       });
       if (isTenantUxPolicyFailClosedEnabledForRequest(request)) {
         return {
@@ -528,7 +530,7 @@ async function resolveBillingDecision(
   if (inflight) {
     return await inflight;
   }
-  const url = new URL("/api/internal/authz/billing-access", request.url);
+  const url = resolveProxyInternalApiUrl(request.url, "/api/internal/authz/billing-access");
   const pending = (async (): Promise<BillingProxyDecision> => {
     try {
       const res = await fetch(url, {
