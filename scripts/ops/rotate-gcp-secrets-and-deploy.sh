@@ -210,6 +210,9 @@ rotate_project() {
     if [ "${EXECUTE}" = true ]; then
       printf '%s' "${!key}" | gcloud secrets versions add "${key}" --data-file=- --project "${project}" >/dev/null
       echo "rotated ${key} (new version added)"
+      if [ "${key}" = "XAI_API_KEY" ]; then
+        echo "  → Roll Cloud Run (Next + Spring) so deploy pins the new ENABLED GSM version — :latest alone does not remount keys on live revisions."
+      fi
     else
       echo "dry-run: would rotate ${key}"
     fi

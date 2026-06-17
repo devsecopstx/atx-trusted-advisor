@@ -18,6 +18,14 @@ const SET_BACKEND_ORIGIN_SH = resolve(
   "../../scripts/ops/set-atxfinance-backend-origin.sh"
 );
 const DEPLOY_CLOUD_RUN_SH = resolve(__dirname, "../../scripts/ops/deploy-cloud-run-from-env.sh");
+const XAI_SECRET_BINDING_INC = resolve(
+  __dirname,
+  "../../scripts/ops/cloud-run-xai-secret-binding.inc.sh"
+);
+const DEPLOY_BACKEND_PROD_SH = resolve(
+  __dirname,
+  "../../scripts/ops/deploy-atxfinance-backend-production.sh"
+);
 
 describe("gcp-prod-cloud-run-names", () => {
   it("uses fintech-advisor-prod for prod GCP project and Next frontend service", () => {
@@ -47,5 +55,24 @@ describe("prod Next deploy script defaults", () => {
   it("documents fintech-advisor-prod as the prod Next service name in deploy-cloud-run-from-env.sh", () => {
     expect(deployCloudRun).toContain("fintech-advisor-prod");
     expect(deployCloudRun).not.toContain("xfinance-core-prod");
+  });
+});
+
+describe("cloud-run XAI_API_KEY GSM pin", () => {
+  const xaiBindingInc = readFileSync(XAI_SECRET_BINDING_INC, "utf8");
+  const deployCloudRun = readFileSync(DEPLOY_CLOUD_RUN_SH, "utf8");
+  const deployBackendProd = readFileSync(DEPLOY_BACKEND_PROD_SH, "utf8");
+
+  it("defines resolve + prepend helpers for explicit GSM version binding", () => {
+    expect(xaiBindingInc).toContain("resolve_gcp_secret_enabled_version");
+    expect(xaiBindingInc).toContain("cloud_run_secrets_prepend_xai_api_key");
+  });
+
+  it("deploy scripts source the helper and avoid XAI_API_KEY:latest", () => {
+    expect(deployCloudRun).toContain("cloud-run-xai-secret-binding.inc.sh");
+    expect(deployCloudRun).toContain("cloud_run_secrets_prepend_xai_api_key");
+    expect(deployCloudRun).not.toMatch(/XAI_API_KEY=XAI_API_KEY:latest/);
+    expect(deployBackendProd).toContain("cloud_run_secrets_prepend_xai_api_key");
+    expect(deployBackendProd).not.toMatch(/XAI_API_KEY=XAI_API_KEY:latest/);
   });
 });

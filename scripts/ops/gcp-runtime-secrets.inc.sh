@@ -6,6 +6,7 @@
 #   - scripts/ops/sync-xai-team-id-secret-from-env.sh (optional XAI_TEAM_ID)
 #   - .github/workflows/deploy-cloud-run.yml (preflight loop)
 #   - .github/workflows/deploy-cloud-run-production.yml (preflight loop)
+#   - scripts/ops/cloud-run-xai-secret-binding.inc.sh (XAI_API_KEY explicit GSM version pin)
 # Optional secrets (export/diff with --include-optional): GCP_RUNTIME_SECRETS_OPTIONAL.
 
 GCP_RUNTIME_SECRETS_REQUIRED=(

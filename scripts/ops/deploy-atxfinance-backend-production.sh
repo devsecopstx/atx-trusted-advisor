@@ -17,6 +17,8 @@ SERVICE="${ATXFINANCE_BACKEND_CLOUD_RUN_SERVICE:-atxfinance-backend-prod}"
 BACKEND_MIN_INSTANCES_PROD="${BACKEND_MIN_INSTANCES_PROD:-1}"
 BACKEND_MAX_INSTANCES_PROD="${BACKEND_MAX_INSTANCES_PROD:-8}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=cloud-run-xai-secret-binding.inc.sh
+source "${ROOT}/scripts/ops/cloud-run-xai-secret-binding.inc.sh"
 TAG="${DEPLOY_TAG:-$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo manual)}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/atxfinance-backend-prod:${TAG}"
 
@@ -29,7 +31,8 @@ docker build --platform linux/amd64 -f "${ROOT}/Dockerfile.backend" -t "${IMAGE}
 echo "==> docker push ${IMAGE}"
 docker push "${IMAGE}"
 
-SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest"
+SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest"
+cloud_run_secrets_prepend_xai_api_key "${PROJECT}" SECRETS
 if gcloud secrets describe REDIS_URL --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
   SECRETS="${SECRETS},REDIS_URL=REDIS_URL:latest"
   echo "==> Binding REDIS_URL secret (present in project)"

@@ -35,6 +35,13 @@ health_check_with_retry() {
     if [ "${http_code}" = "200" ] && [[ "${response_body}" == *"\"status\":\"ok\""* ]]; then
       rm -f "${response_file}"
       echo "${label}:ok attempt=${attempt}"
+      if command -v jq >/dev/null 2>&1 && [[ "${response_body}" == *"\"xaiChatKey\""* ]]; then
+        local xai_suffix
+        xai_suffix="$(printf '%s' "${response_body}" | jq -r '.xaiChatKey.suffix // empty' 2>/dev/null || true)"
+        if [ -n "${xai_suffix}" ]; then
+          echo "${label}:xaiChatKey_suffix=${xai_suffix}"
+        fi
+      fi
       return 0
     fi
 
