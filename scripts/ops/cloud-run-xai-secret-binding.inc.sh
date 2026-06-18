@@ -43,13 +43,13 @@ cloud_run_xai_api_key_binding() {
   printf 'XAI_API_KEY=XAI_API_KEY:%s' "${version}"
 }
 
-# Prepend pinned XAI_API_KEY binding to a comma-separated SECRETS string (nameref).
+# Prepend pinned XAI_API_KEY binding to a comma-separated SECRETS string; prints result on stdout.
 cloud_run_secrets_prepend_xai_api_key() {
   local project="$1"
-  local -n _secrets_ref="$2"
+  local secrets="$2"
   local binding=""
 
   binding="$(cloud_run_xai_api_key_binding "${project}")"
-  _secrets_ref="${binding},${_secrets_ref}"
   echo "cloud-run-xai-secret-binding: pinned ${binding}" >&2
+  printf '%s,%s' "${binding}" "${secrets}"
 }

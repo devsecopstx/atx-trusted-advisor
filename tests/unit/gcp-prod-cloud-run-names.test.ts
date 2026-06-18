@@ -70,9 +70,9 @@ describe("cloud-run XAI_API_KEY GSM pin", () => {
 
   it("deploy scripts source the helper and avoid XAI_API_KEY:latest", () => {
     expect(deployCloudRun).toContain("cloud-run-xai-secret-binding.inc.sh");
-    expect(deployCloudRun).toContain("cloud_run_secrets_prepend_xai_api_key");
+    expect(deployCloudRun).toContain('SECRETS="$(cloud_run_secrets_prepend_xai_api_key');
     expect(deployCloudRun).not.toMatch(/XAI_API_KEY=XAI_API_KEY:latest/);
-    expect(deployBackendProd).toContain("cloud_run_secrets_prepend_xai_api_key");
+    expect(deployBackendProd).toContain('SECRETS="$(cloud_run_secrets_prepend_xai_api_key');
     expect(deployBackendProd).not.toMatch(/XAI_API_KEY=XAI_API_KEY:latest/);
   });
 });
