@@ -133,8 +133,8 @@
     "seed:email-templates": "node --env-file=.env --import tsx scripts/ops/seed-email-templates.ts"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Sam Perez",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "overrides": {
