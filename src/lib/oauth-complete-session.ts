@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 import {
     consumeOAuthReturnPathCookie,
     createSession,
+    consumeCapNativeOAuthCookie,
     isSafeOAuthReturnPath
 } from "@/lib/auth";
 import type { ClientLoginMeta } from "@/lib/client-request-meta";
+import { CAPACITOR_OAUTH_DONE_PATH } from "@/lib/capacitor-oauth";
 import { resolveSessionLandingPath } from "@/lib/default-landing-path";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
@@ -257,6 +259,7 @@ export async function finalizeOAuthSessionAndRedirect(options: {
     });
 
     const returnPath = await consumeOAuthReturnPathCookie();
+    const capNativeOAuth = await consumeCapNativeOAuthCookie();
     const fallback = await resolveSessionLandingPath({
       userId: authContext.userId.toHexString(),
       email: authContext.email,
@@ -269,6 +272,11 @@ export async function finalizeOAuthSessionAndRedirect(options: {
       avatarUrl: authContext.avatarUrl ?? identity.avatarUrl
     });
     const target = returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
+    if (capNativeOAuth) {
+      const doneUrl = new URL(CAPACITOR_OAUTH_DONE_PATH, origin);
+      doneUrl.searchParams.set("next", target);
+      return NextResponse.redirect(doneUrl);
+    }
     return NextResponse.redirect(new URL(target, origin));
   } catch (error) {
     if (isTenantMembershipCapExceededError(error)) {

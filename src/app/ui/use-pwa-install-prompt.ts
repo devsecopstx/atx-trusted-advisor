@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { isCapacitorNativePlatform } from "@/lib/capacitor-native";
 import { trackPwaInstallEvent } from "@/lib/pwa-install-analytics";
 
 const PWA_INSTALL_DISMISSED_KEY = "xf_pwa_install_dismissed_v1";
@@ -44,6 +45,7 @@ function writeBooleanStorage(key: string, value: boolean): void {
 }
 
 export function usePwaInstallPrompt() {
+  const isNativeShell = useMemo(() => isCapacitorNativePlatform(), []);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -53,11 +55,17 @@ export function usePwaInstallPrompt() {
   const isIos = useMemo(isIosBrowser, []);
 
   useEffect(() => {
+    if (isNativeShell) {
+      return;
+    }
     setIsInstalled(readBooleanStorage(PWA_INSTALL_INSTALLED_KEY) || isStandaloneMode());
     setIsDismissed(readBooleanStorage(PWA_INSTALL_DISMISSED_KEY));
-  }, []);
+  }, [isNativeShell]);
 
   useEffect(() => {
+    if (isNativeShell) {
+      return;
+    }
     function onBeforeInstallPrompt(event: Event) {
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
@@ -76,10 +84,10 @@ export function usePwaInstallPrompt() {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
-  }, []);
+  }, [isNativeShell]);
 
   useEffect(() => {
-    if (isInstalled || isDismissed) {
+    if (isNativeShell || isInstalled || isDismissed) {
       return;
     }
     const timer = window.setTimeout(() => {
@@ -94,10 +102,10 @@ export function usePwaInstallPrompt() {
       });
     }, 12000);
     return () => window.clearTimeout(timer);
-  }, [deferredPrompt, isDismissed, isInstalled, isIos]);
+  }, [deferredPrompt, isDismissed, isInstalled, isIos, isNativeShell]);
 
   const installLabel = isIos ? "Add to Home Screen" : "Install App";
-  const promptSupported = Boolean(deferredPrompt) || isIos;
+  const promptSupported = !isNativeShell && (Boolean(deferredPrompt) || isIos);
 
   const dismissPrompt = useCallback(() => {
     writeBooleanStorage(PWA_INSTALL_DISMISSED_KEY, true);
@@ -107,7 +115,7 @@ export function usePwaInstallPrompt() {
   }, []);
 
   const openInstallPrompt = useCallback(async () => {
-    if (isInstalled) {
+    if (isNativeShell || isInstalled) {
       return;
     }
     if (deferredPrompt) {
@@ -136,18 +144,19 @@ export function usePwaInstallPrompt() {
       return;
     }
     trackPwaInstallEvent("pwa_install_prompt_dismissed", { surface: "unsupported" });
-  }, [deferredPrompt, isInstalled, isIos]);
+  }, [deferredPrompt, isInstalled, isIos, isNativeShell]);
 
   return {
     dismissPrompt,
     installLabel,
-    isDismissed,
-    isInstalled,
+    isDismissed: isNativeShell || isDismissed,
+    isInstalled: isNativeShell || isInstalled,
+    isNativeShell,
     openInstallPrompt,
     promptBusy,
     promptSupported,
     setShowIosInstructions,
     showIosInstructions,
-    showNudge
+    showNudge: isNativeShell ? false : showNudge
   };
 }

@@ -9,6 +9,7 @@ export function PwaInstallAccountPrompt() {
     installLabel,
     isDismissed,
     isInstalled,
+    isNativeShell,
     openInstallPrompt,
     promptBusy,
     promptSupported,
@@ -16,6 +17,10 @@ export function PwaInstallAccountPrompt() {
     showIosInstructions,
     showNudge
   } = usePwaInstallPrompt();
+
+  if (isNativeShell) {
+    return null;
+  }
 
   return (
     <div className="app-user-pwa-install">

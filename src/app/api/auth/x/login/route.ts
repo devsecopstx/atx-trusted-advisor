@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
     applyOAuthFlowCookiesToRedirect,
+    applyCapNativeOAuthCookieToRedirect,
     applyOAuthReturnPathCookie,
     createCodeChallenge,
     createCodeVerifier,
@@ -16,6 +17,7 @@ import {
   parseGuestTrialIntentParam
 } from "@/modules/identity/guest-trial";
 import { resolveXOAuthRedirectUri } from "@/lib/x-oauth-redirect-uri";
+import { isCapNativeOAuthRequest } from "@/lib/capacitor-oauth";
 
 export async function GET(request: Request) {
   const env = getEnv();
@@ -70,6 +72,9 @@ export async function GET(request: Request) {
     nextParam && isSafeOAuthReturnPath(nextParam) ? nextParam : null
   );
   applyOAuthFlowCookiesToRedirect(response, state, codeVerifier);
+  if (isCapNativeOAuthRequest(requestUrl)) {
+    applyCapNativeOAuthCookieToRedirect(response);
+  }
   if (parseGuestTrialIntentParam(requestUrl.searchParams.get(GUEST_TRIAL_INTENT_QUERY))) {
     response.cookies.set(GUEST_TRIAL_INTENT_COOKIE, "1", {
       httpOnly: false,

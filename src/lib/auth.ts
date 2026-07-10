@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { cache } from "react";
 
 import { getEnv } from "@/lib/env";
+import { CAP_NATIVE_OAUTH_COOKIE } from "@/lib/capacitor-oauth";
 import { isSafeOAuthReturnPath } from "@/lib/oauth-return-path";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { normalizeCoreRoles } from "@/modules/identity/authorization";
@@ -234,6 +235,25 @@ export function applyOAuthReturnPathCookie(response: NextResponse, returnPath: s
     maxAge: OAUTH_FLOW_TTL_SECONDS
   };
   response.cookies.set(OAUTH_RETURN_PATH_COOKIE_NAME, returnPath, baseCookie);
+}
+
+/** Marks OAuth as started from Capacitor native shell (SFSafariViewController return bridge). */
+export function applyCapNativeOAuthCookieToRedirect(response: NextResponse): void {
+  const baseCookie = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: OAUTH_FLOW_TTL_SECONDS
+  };
+  response.cookies.set(CAP_NATIVE_OAUTH_COOKIE, "1", baseCookie);
+}
+
+export async function consumeCapNativeOAuthCookie(): Promise<boolean> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(CAP_NATIVE_OAUTH_COOKIE)?.value;
+  cookieStore.delete(CAP_NATIVE_OAUTH_COOKIE);
+  return raw === "1";
 }
 
 export async function consumeOAuthReturnPathCookie(): Promise<string | null> {

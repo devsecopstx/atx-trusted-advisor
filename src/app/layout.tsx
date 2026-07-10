@@ -1,4 +1,5 @@
 import { AppQueryProvider } from "@/app/ui/app-query-provider";
+import { CapacitorOAuthBootstrapClient } from "@/app/ui/capacitor-oauth-bootstrap-client";
 import { PwaBootstrapClient } from "@/app/ui/pwa-bootstrap-client";
 import { TenantBrandingProvider } from "@/app/ui/tenant-branding-context";
 import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
@@ -123,6 +124,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             {ga4MeasurementId ? <Ga4Analytics measurementId={ga4MeasurementId} /> : null}
             <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} userTheme={userUiTheme} />
             <PwaBootstrapClient />
+            <CapacitorOAuthBootstrapClient />
             {children}
           </TenantBrandingProvider>
         </AppQueryProvider>

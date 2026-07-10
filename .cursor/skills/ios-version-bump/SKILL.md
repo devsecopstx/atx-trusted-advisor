@@ -32,13 +32,16 @@ Source of truth for this repo: **`ios/App/App.xcodeproj/project.pbxproj`** — b
    - Set **`MARKETING_VERSION = X.Y`** (or `X.Y.Z`) to the desired store version.
    - Set **`CURRENT_PROJECT_VERSION`** to the next integer build number.
 2. Optional sanity check in Xcode: open **`ios/App/App.xcodeproj`** → target **App** → **General** — Version / Build should match.
-3. Sync web assets and Capacitor config into the iOS tree: **`npm run cap:sync:ios`** (or **`npx cap sync ios`**).
+3. Sync web assets and Capacitor config into the iOS tree:
+   - **TestFlight / App Store:** **`npm run cap:sync:ios:prod`** (reads local **`.env.prod`** — HTTPS required). See **`atx-docs/sre-ops/ios-deployment.md`**.
+   - **Local simulator:** **`npm run cap:sync:ios`** (default `http://127.0.0.1:3000`).
 4. Archive in Xcode (**Product → Archive**) and upload via Organizer.
 
 ## Related repo wiring
 
 - **`capacitor.config.ts`** — `appId`, `appName`, `server.url` for the WebView; not iOS build numbers.
-- **`npm run cap:sync:ios`** — Copies `public/` and regenerates **`ios/App/App/capacitor.config.json`**; run after changing Capacitor config or static assets before shipping.
+- **`npm run cap:sync:ios:prod`** — Production sync from **`.env.prod`**; regenerates **`ios/App/App/capacitor.config.json`**.
+- **`npm run cap:sync:ios`** — Dev/local sync; copies `public/` and regenerates **`capacitor.config.json`**.
 
 ## Release notes
 
@@ -46,4 +49,4 @@ If the bump ships with meaningful native or shell changes, add a **one-line** bu
 
 ## Output
 
-After edits: confirm **`MARKETING_VERSION`** / **`CURRENT_PROJECT_VERSION`** appear twice (Debug + Release), run **`npm run cap:sync:ios`**, then Xcode archive.
+After edits: confirm **`MARKETING_VERSION`** / **`CURRENT_PROJECT_VERSION`** appear twice (Debug + Release), run **`npm run cap:sync:ios:prod`**, then Xcode archive.

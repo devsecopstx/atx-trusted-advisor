@@ -8,10 +8,8 @@ import { describe, expect, it } from "vitest";
  * iOS WebView (and other long-lived clients) when pointed at a local Next.js
  * dev server:
  *
- *   1. `PwaBootstrapClient` skips registration in development AND actively
- *      unregisters any previously-installed worker + clears its caches —
- *      otherwise installed devices keep serving the cached old chunks
- *      forever (dev chunks have stable filenames).
+ *   1. `PwaBootstrapClient` skips registration in development AND in the
+ *      Capacitor native shell, actively unregistering workers + caches.
  *
  *   2. `public/sw.js` never SW-caches `/_next/**`. Those URLs are already
  *      content-hashed in production and served `cache-control: immutable`;
@@ -24,19 +22,29 @@ function readSource(relativePath: string): string {
   return readFileSync(resolve(ROOT, relativePath), "utf8");
 }
 
-describe("PwaBootstrapClient — dev unregister + prod register", () => {
+describe("PwaBootstrapClient — dev/native unregister + prod browser register", () => {
   const source = readSource("src/app/ui/pwa-bootstrap-client.tsx");
 
-  it("only registers /sw.js when NODE_ENV === 'production'", () => {
-    expect(source).toMatch(/process\.env\.NODE_ENV !== "production"/);
+  it("registers /sw.js only in production browsers (not dev, not Capacitor native)", () => {
+    expect(source).toMatch(/isCapacitorNativePlatform/);
+    expect(source).toMatch(/process\.env\.NODE_ENV !== "production" \|\| isNativeShell/);
     expect(source).toMatch(/navigator\.serviceWorker\.register\("\/sw\.js"\)/);
   });
 
-  it("in dev, unregisters existing service workers and clears caches", () => {
-    expect(source).toMatch(/navigator\.serviceWorker\.getRegistrations\(\)/);
-    expect(source).toMatch(/\.unregister\(\)/);
-    expect(source).toMatch(/caches\.keys\(\)/);
-    expect(source).toMatch(/caches\.delete\(/);
+  it("unregisters service workers and clears caches in dev and Capacitor native", () => {
+    expect(source).toMatch(/unregisterAllServiceWorkersAndCaches/);
+  });
+});
+
+describe("usePwaInstallPrompt — hides install UI in Capacitor native shell", () => {
+  const hookSource = readSource("src/app/ui/use-pwa-install-prompt.ts");
+  const promptSource = readSource("src/app/ui/pwa-install-account-prompt.tsx");
+
+  it("disables PWA install when Capacitor native platform is detected", () => {
+    expect(hookSource).toMatch(/isCapacitorNativePlatform/);
+    expect(hookSource).toMatch(/promptSupported = !isNativeShell/);
+    expect(promptSource).toMatch(/if \(isNativeShell\)/);
+    expect(promptSource).toMatch(/return null/);
   });
 });
 
@@ -49,5 +57,18 @@ describe("public/sw.js — never SW-caches Next.js build output", () => {
 
   it("bypasses /_next/** so the browser HTTP cache owns hashed chunks", () => {
     expect(source).toMatch(/url\.pathname\.startsWith\("\/_next\/"\)/);
+  });
+});
+
+describe("ios Info.plist — App Store native requirements", () => {
+  const plist = readSource("ios/App/App/Info.plist");
+
+  it("declares microphone usage for xChat voice", () => {
+    expect(plist).toMatch(/NSMicrophoneUsageDescription/);
+  });
+
+  it("requires arm64 (not legacy armv7)", () => {
+    expect(plist).toMatch(/<string>arm64<\/string>/);
+    expect(plist).not.toMatch(/armv7/);
   });
 });

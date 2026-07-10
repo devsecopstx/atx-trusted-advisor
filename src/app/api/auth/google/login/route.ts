@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
     applyOAuthFlowCookiesToRedirect,
+    applyCapNativeOAuthCookieToRedirect,
     applyOAuthReturnPathCookie,
     createCodeChallenge,
     createCodeVerifier,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/auth";
 import { getEnv, getGoogleClientId, isGoogleOAuthConfigured } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
+import { isCapNativeOAuthRequest } from "@/lib/capacitor-oauth";
 
 const GOOGLE_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 
@@ -77,5 +79,8 @@ export async function GET(request: Request) {
     nextParam && isSafeOAuthReturnPath(nextParam) ? nextParam : null
   );
   applyOAuthFlowCookiesToRedirect(response, state, codeVerifier);
+  if (isCapNativeOAuthRequest(requestUrl)) {
+    applyCapNativeOAuthCookieToRedirect(response);
+  }
   return response;
 }

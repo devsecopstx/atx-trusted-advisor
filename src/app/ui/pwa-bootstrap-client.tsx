@@ -2,9 +2,13 @@
 
 import { useEffect } from "react";
 
+import { isCapacitorNativePlatform } from "@/lib/capacitor-native";
+import { unregisterAllServiceWorkersAndCaches } from "@/lib/pwa-service-worker-cleanup";
+
 /**
- * Registers the PWA service worker in production and **actively unregisters**
- * any previously-installed worker (and clears its caches) in development.
+ * Registers the PWA service worker in production browsers and **actively unregisters**
+ * any previously-installed worker (and clears its caches) in development and in the
+ * Capacitor native shell.
  *
  * Why the dev unregister:
  *   `next dev` ships chunks with stable filenames (no content hash). The SW
@@ -13,9 +17,10 @@ import { useEffect } from "react";
  *   subsequent dev edits return the OLD chunk forever — symptom: code change
  *   on disk but UI never updates in the iOS shell.
  *
- *   The real fix here is to never let the SW touch dev builds; the unregister
- *   path also self-heals devices that already have the previous worker
- *   installed from an earlier session.
+ * Why skip SW in Capacitor native (prod):
+ *   The App Store shell loads the remote HTTPS app. SW-cached scripts/styles can
+ *   pin stale UI after a Cloud Run deploy; the native binary does not ship Next
+ *   chunks — let the browser HTTP cache + server headers own freshness.
  */
 export function PwaBootstrapClient() {
   useEffect(() => {
@@ -30,19 +35,10 @@ export function PwaBootstrapClient() {
       return;
     }
 
-    if (process.env.NODE_ENV !== "production") {
-      void (async () => {
-        try {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(regs.map((r) => r.unregister().catch(() => false)));
-          if (typeof caches !== "undefined") {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((key) => caches.delete(key).catch(() => false)));
-          }
-        } catch {
-          /* dev cleanup is best-effort */
-        }
-      })();
+    const isNativeShell = isCapacitorNativePlatform();
+
+    if (process.env.NODE_ENV !== "production" || isNativeShell) {
+      void unregisterAllServiceWorkersAndCaches();
       return;
     }
 
