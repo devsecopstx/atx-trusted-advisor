@@ -27,12 +27,11 @@
 #   PUBLIC_APP_BASE_URL — public origin for password-invite / reset links in email (no trailing slash).
 #     Defaults to STAGING_BASE_URL or PROD_BASE_URL when unset (after sourcing the env file).
 #   ACCESS_APPROVAL_EMAIL_SIGN_IN_ONLY — optional true/false; forwarded to Cloud Run when set in the env file.
-#   Desk SMTP — when SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM are all set in the env file,
-#     this script passes them (and SMTP_PORT, optional SMTP_SECURE) as literal Cloud Run env vars and
-#     skips GSM secret bindings for those keys. Override GSM-only SMTP by clearing those vars in the file.
-#     On deploy failure after removing prior secret bindings, best-effort restores the GSM bindings (if present)
-#     so a failed --source build does not leave the live service without desk SMTP config.
-#   ALLOW_ANY_X_USER_LOGIN, XAI_CHAT_MODEL,
+#   Desk SMTP — prefer Secret Manager when SMTP_HOST/PORT/USER/PASS + DESK_EMAIL_FROM exist in GSM.
+#     Plaintext env-file mounts only when DESK_SMTP_PREFER_ENV_FILE=true (not recommended for prod) or GSM is incomplete.
+#     Sync local .env into GSM with: bash scripts/ops/sync-desk-smtp-secrets-from-env.sh .env.prod
+#   CLOUD_RUN_RUNTIME_SA — optional runtime service account email (prod default: fintech-advisor-runtime@…).
+#   ALLOW_ANY_X_USER_LOGIN (default false), XAI_CHAT_MODEL,
 #   AUTH_CALLBACK_USE_SPRING, STRIPE_PRICE_BASIC_MONTHLY, STRIPE_PRICE_PREMIUM_MONTHLY,
 #   STRIPE_PRICE_PREMIUM_PLUS_MONTHLY, STRIPE_PRICE_PREMIUM_PLUS_YEARLY (legacy fallback)
 #   RENTAL_AI_PRODUCT_ID, RENTAL_BASE_PRICE_ID, ENABLE_RENTAL_AI_BILLING (Stripe rental SKU; plain env on Cloud Run)
@@ -246,10 +245,24 @@ if [[ "${SKIP_ADMIN_CLEAR}" != "true" ]]; then
   gcloud run services update "${SVC}" --region "${REGION}" --platform managed --remove-env-vars=ADMIN_SEED_EMAIL --quiet 2>/dev/null || true
 fi
 
-# Transactional email (desk SMTP): see src/lib/desk-smtp.ts — full set from sourced env mirrors local .env.prod without GSM SMTP_* secrets.
+# Transactional email (desk SMTP): prefer Secret Manager when all five SMTP_* / DESK_EMAIL_FROM
+# secrets exist. Plaintext env-file mounts are opt-in only (DESK_SMTP_PREFER_ENV_FILE=true) so
+# local .env.prod values used for sync scripts do not reintroduce SMTP_PASS as Cloud Run env.
 DESK_SMTP_FROM_ENV_FILE="false"
-if [[ -n "${SMTP_HOST:-}" && -n "${SMTP_USER:-}" && -n "${SMTP_PASS:-}" && -n "${DESK_EMAIL_FROM:-}" ]]; then
+DESK_SMTP_GSM_READY="false"
+if gcloud secrets describe SMTP_HOST --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe SMTP_PORT --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe SMTP_USER --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe SMTP_PASS --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe DESK_EMAIL_FROM --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  DESK_SMTP_GSM_READY="true"
+fi
+if [[ "${DESK_SMTP_PREFER_ENV_FILE:-}" == "true" && -n "${SMTP_HOST:-}" && -n "${SMTP_USER:-}" && -n "${SMTP_PASS:-}" && -n "${DESK_EMAIL_FROM:-}" ]]; then
   DESK_SMTP_FROM_ENV_FILE="true"
+  echo "deploy-cloud-run-from-env: DESK_SMTP_PREFER_ENV_FILE=true — mounting desk SMTP from env file (not recommended for prod)"
+elif [[ "${DESK_SMTP_GSM_READY}" != "true" && -n "${SMTP_HOST:-}" && -n "${SMTP_USER:-}" && -n "${SMTP_PASS:-}" && -n "${DESK_EMAIL_FROM:-}" ]]; then
+  DESK_SMTP_FROM_ENV_FILE="true"
+  echo "deploy-cloud-run-from-env: desk SMTP GSM incomplete — falling back to env file literals"
 fi
 DID_REMOVE_DESK_SMTP_SECRETS="false"
 
@@ -366,10 +379,16 @@ if [[ "${DESK_SMTP_FROM_ENV_FILE}" == "true" ]]; then
 fi
 
 DEPLOY_EXIT=0
+RUNTIME_SA_FLAGS=()
+if [[ -n "${CLOUD_RUN_RUNTIME_SA:-}" ]]; then
+  RUNTIME_SA_FLAGS=(--service-account="${CLOUD_RUN_RUNTIME_SA}")
+elif [[ "${TARGET}" == "production" && "${PROJECT}" == "fintech-advisor-prod" ]]; then
+  RUNTIME_SA_FLAGS=(--service-account="fintech-advisor-runtime@fintech-advisor-prod.iam.gserviceaccount.com")
+fi
 gcloud run deploy "${SVC}" --source . --clear-base-image --region "${REGION}" --platform managed --allow-unauthenticated \
   --port=8080 --cpu-boost --memory=1Gi \
   --startup-probe="${STARTUP_PROBE}" \
-  --set-env-vars "${ENV_VARS}" --set-secrets "${SECRETS}" "${SCALING_FLAGS[@]}" --quiet || DEPLOY_EXIT=$?
+  --set-env-vars "${ENV_VARS}" --set-secrets "${SECRETS}" "${SCALING_FLAGS[@]}" "${RUNTIME_SA_FLAGS[@]}" --quiet || DEPLOY_EXIT=$?
 
 if [[ "${DEPLOY_EXIT}" -ne 0 ]]; then
   echo "deploy-cloud-run-from-env: ERROR — gcloud run deploy failed with exit ${DEPLOY_EXIT}; check Cloud Build logs for build details" >&2

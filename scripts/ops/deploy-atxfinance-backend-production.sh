@@ -14,6 +14,7 @@ REGION="${CLOUD_RUN_REGION:-us-central1}"
 # Default matches .github/workflows/deploy-cloud-run-production.yml (atxfinance-core-app).
 REPO="${ARTIFACT_REGISTRY_REPO:-atxfinance-core-app}"
 SERVICE="${ATXFINANCE_BACKEND_CLOUD_RUN_SERVICE:-atxfinance-backend-prod}"
+BACKEND_RUNTIME_SA="${CLOUD_RUN_BACKEND_RUNTIME_SA:-atxfinance-backend-app@${PROJECT}.iam.gserviceaccount.com}"
 BACKEND_MIN_INSTANCES_PROD="${BACKEND_MIN_INSTANCES_PROD:-1}"
 BACKEND_MAX_INSTANCES_PROD="${BACKEND_MAX_INSTANCES_PROD:-8}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -67,6 +68,7 @@ gcloud run deploy "${SERVICE}" \
   --memory=1Gi \
   --min-instances="${BACKEND_MIN_INSTANCES_PROD}" \
   --max-instances="${BACKEND_MAX_INSTANCES_PROD}" \
+  --service-account="${BACKEND_RUNTIME_SA}" \
   --set-secrets="${SECRETS}" \
   --quiet
 

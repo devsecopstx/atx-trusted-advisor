@@ -16,6 +16,8 @@ Visual asset refresh **v2** shipped with scanner tightening — proof captures i
 
 ## Shipped (May 2026 — platform / SRE)
 
+- **Prod GCP security hardening (3.25.20):** `ALLOW_ANY_X_USER_LOGIN=false`; desk SMTP from Secret Manager; dedicated Cloud Run runtime SAs; WIF allows `atx-trusted-advisor`. Cutover steps for rotated `SMTP_PASS` in [gcp-prod-two-service-model.md](./sre-ops/gcp-prod-two-service-model.md). Follow-ups: Spring invoker lockdown, default-compute Editor reduction, GitHub Advanced Security / secret scanning.
+
 - **Guest landing + 30-day trial (blast):** Role-aware **`/`** / **`/home`** (**`?for=hnwi|advisor`**) with **Start 30-Day Free Trial** → OAuth + **`xf_guest_trial_intent`**. First sign-in provisions **`operator`** + **`basic`** + **`trialEndsAt`** (30d) on **`core_users`**; limits = **basic** **`getPlanLimits()`** + tenant workspace row; post-trial **`trial_expired`** billing gate. **`src/modules/identity/guest-trial.ts`**, **`src/lib/marketing/guest-trial-auth.ts`**, **`src/proxy.ts`**. Docs: **`tenant-ux-plan.md`**, **`tenant-workspace-limits.md`**.
 
 - **Hot Picks (portfolios workspace — track 12):** **`/portfolios/hot-picks`** — forward **7–21 DTE** scanner UI (bias, edge score, Greeks/IV skew toggles, glass cards, xOptions/alert/watchlist actions). **`GET /api/portfolios/hot-picks`** → Spring **`HotPicksService`** + **`OptionsStrategyEngine`** (conservative POP gate, no naked aggressive without **`optionsTradingEnabled`**); **60m** Redis cache; Next BFF + fallback. See **`current-state-features.md`** · **`release-notes.md`** **3.25.8**.

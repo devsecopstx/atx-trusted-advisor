@@ -1,21 +1,23 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Security fixes land on the current `main` semver (`package.json`). Production Cloud Run should track the latest released image from `atx-docs/sre-ops/release-notes.md`.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Email **support@atxtrustedadvisory.com** (or open a private GitHub security advisory if you have repo access). Do not file public issues for credential leaks or auth bypasses.
 
-Use this section to tell people how to report a vulnerability.
+Expect an initial response within **2 business days**. We will confirm severity, affected surfaces (Next / Spring / desk SMTP), and whether a Cloud Run roll or Secret Manager rotation is required.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+## Production hardening (ops)
+
+- Runtime secrets live in **GCP Secret Manager** (not GitHub Actions secrets for app keys).
+- Prod Next must keep **`ALLOW_ANY_X_USER_LOGIN=false`** (access-request gate).
+- Desk SMTP (`SMTP_*`) must mount from Secret Manager — do not pass `SMTP_PASS` as a Cloud Run plain env var.
+- Cloud Run runtime SAs: **`fintech-advisor-runtime@…`** (Next) and **`atxfinance-backend-app@…`** (Spring) — not the default compute Editor SA.
+- GitHub Actions OIDC WIF allows **`devsecopstx/atx-trusted-advisor`** (and legacy **`devsecopstx/xfinance`**).
+
+## Dependency alerts
+
+Track Dependabot on the private repo. Prefer `package.json` **overrides** + direct bumps (see release notes) over `npm audit fix --force`.

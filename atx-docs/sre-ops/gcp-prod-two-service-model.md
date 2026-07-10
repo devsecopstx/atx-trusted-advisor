@@ -56,6 +56,26 @@ gcloud run services describe fintech-advisor-prod \
 
 **Expected (verified Jun 2026):** `cpu: '1'`, `memory: 1Gi`, `containerConcurrency: 100`, annotations `autoscaling.knative.dev/minScale: "1"`, `autoscaling.knative.dev/maxScale: "12"`, `run.googleapis.com/startup-cpu-boost: "true"`.
 
+### Security posture (prod — Jul 2026)
+
+| Control | Expected |
+|---------|----------|
+| `ALLOW_ANY_X_USER_LOGIN` | **`false`** (plain env) — access-request gate |
+| Desk SMTP | **Secret Manager** mounts (`SMTP_*`, `DESK_EMAIL_FROM`) — never plaintext `SMTP_PASS` on the revision |
+| Next runtime SA | **`fintech-advisor-runtime@fintech-advisor-prod.iam.gserviceaccount.com`** (+ `roles/secretmanager.secretAccessor`) |
+| Spring runtime SA | **`atxfinance-backend-app@fintech-advisor-prod.iam.gserviceaccount.com`** (+ `roles/secretmanager.secretAccessor`) |
+| WIF OIDC condition | `devsecopstx/atx-trusted-advisor` **or** legacy `devsecopstx/xfinance` |
+| Deploy scripts | `deploy-cloud-run-from-env.sh` prefers GSM SMTP; prod defaults Next SA above; backend prod script sets Spring SA |
+
+**SMTP password rotation cutover (after plaintext exposure remediation):**
+
+1. Rotated password is in **`.env.prod`** (`SMTP_PASS`) and GSM version **4** (**disabled**). Live Cloud Run uses an enabled tip that still matches the **current** mail-host password (re-published after the disabled-latest trap).
+2. Update the password at **mail.b.hostedemail.com** (or your SMTP provider) to match `.env.prod`.
+3. Sync or enable: `bash scripts/ops/sync-desk-smtp-secrets-from-env.sh .env.prod` (preferred) **or** `gcloud secrets versions enable 4 --secret=SMTP_PASS --project=fintech-advisor-prod`.
+4. Remount: `gcloud run services update fintech-advisor-prod --region=us-central1 --project=fintech-advisor-prod --update-secrets=SMTP_PASS=SMTP_PASS:latest` (or redeploy Next).
+
+**Not yet done (follow-ups):** lock Spring to authenticated invokers only; reduce **`roles/editor`** on the default compute SA; enable GitHub **secret scanning** (requires Advanced Security on this private repo).
+
 ### Backend — Spring (`atxfinance-backend-prod`)
 
 | Setting | Value | Notes |
