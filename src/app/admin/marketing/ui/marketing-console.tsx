@@ -36,12 +36,22 @@ type MarketingSchedule = {
   _id: string;
   name: string;
   enabled: boolean;
+  systemWide: boolean;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  tenantSlug?: string | null;
   scheduleCron?: string;
   scheduleRRule?: string;
   scheduleDescription?: string;
   nextRunAt?: string;
   lastRunAt?: string;
   config: MarketingTaskConfig;
+};
+
+type TenantOption = {
+  tenantId: string;
+  slug: string;
+  name: string;
 };
 
 type MarketingHistoryRow = {
@@ -68,6 +78,8 @@ type EditDraft = {
   id?: string;
   name: string;
   enabled: boolean;
+  systemWide: boolean;
+  tenantId: string;
   schedulePreset: SchedulePreset;
   scheduleCron: string;
   scheduleRRule: string;
@@ -112,6 +124,8 @@ function detectPresetFromCron(cron: string): SchedulePreset {
 const DEFAULT_DRAFT: EditDraft = {
   name: "",
   enabled: true,
+  systemWide: true,
+  tenantId: "",
   schedulePreset: "daily",
   scheduleCron: SCHEDULE_PRESET_OPTIONS.daily.cron,
   scheduleRRule: "",
@@ -139,6 +153,15 @@ const DEFAULT_DRAFT: EditDraft = {
   utmContent: "",
   utmTerm: ""
 };
+
+function formatScheduleScope(item: MarketingSchedule): string {
+  if (item.systemWide || !item.tenantId) {
+    return "System-wide";
+  }
+  const name = item.tenantName?.trim() || item.tenantSlug?.trim() || item.tenantId;
+  const slug = item.tenantSlug?.trim();
+  return slug && slug !== name ? `${name} (${slug})` : name;
+}
 
 type TabKey = "overview" | "schedules" | "templates" | "history" | "test-x" | "x-ads";
 
@@ -169,6 +192,7 @@ function buildConfigFromDraft(draft: EditDraft): MarketingTaskConfig {
 export function MarketingConsole() {
   const [templates, setTemplates] = useState<MarketingTemplate[]>([]);
   const [schedules, setSchedules] = useState<MarketingSchedule[]>([]);
+  const [tenants, setTenants] = useState<TenantOption[]>([]);
   const [history, setHistory] = useState<MarketingHistoryRow[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [status, setStatus] = useState("Ready");
@@ -204,14 +228,20 @@ export function MarketingConsole() {
   const refreshAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [templatesPayload, schedulesPayload, historyPayload] = await Promise.all([
+      const [templatesPayload, schedulesPayload, historyPayload, tenantsPayload] = await Promise.all([
         parseJson<{ data: MarketingTemplate[] }>(await fetch("/api/admin/marketing/templates", { cache: "no-store" })),
         parseJson<{ data: MarketingSchedule[] }>(await fetch("/api/admin/marketing/schedules", { cache: "no-store" })),
-        parseJson<{ data: MarketingHistoryRow[] }>(await fetch("/api/admin/marketing/history?limit=200", { cache: "no-store" }))
+        parseJson<{ data: MarketingHistoryRow[] }>(await fetch("/api/admin/marketing/history?limit=200", { cache: "no-store" })),
+        parseJson<{ data: TenantOption[] }>(await fetch("/api/admin/tenants", { cache: "no-store" }))
       ]);
       setTemplates(templatesPayload.data);
       setSchedules(schedulesPayload.data);
       setHistory(historyPayload.data);
+      setTenants(
+        [...tenantsPayload.data].sort((a, b) =>
+          (a.name || a.slug).localeCompare(b.name || b.slug, undefined, { sensitivity: "base" })
+        )
+      );
       setStatus("Synced");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Refresh failed");
@@ -260,9 +290,14 @@ export function MarketingConsole() {
     setLoading(true);
     setStatus(editingId ? "Saving schedule..." : "Creating schedule...");
     try {
+      if (!draft.systemWide && !draft.tenantId.trim()) {
+        throw new Error("Choose a tenant, or enable System-wide");
+      }
       const payload = {
         name: draft.name.trim(),
         enabled: draft.enabled,
+        systemWide: draft.systemWide,
+        tenantId: draft.systemWide ? undefined : draft.tenantId.trim(),
         scheduleCron: draft.scheduleCron.trim() || undefined,
         scheduleRRule: draft.scheduleRRule.trim() || undefined,
         scheduleDescription: draft.scheduleDescription.trim() || undefined,
@@ -480,6 +515,8 @@ export function MarketingConsole() {
       id: schedule._id,
       name: schedule.name,
       enabled: schedule.enabled,
+      systemWide: schedule.systemWide !== false && !schedule.tenantId,
+      tenantId: schedule.tenantId ?? "",
       schedulePreset: detectPresetFromCron(cron),
       scheduleCron: cron,
       scheduleRRule: schedule.scheduleRRule ?? "",
@@ -699,6 +736,44 @@ export function MarketingConsole() {
               value={draft.name}
               onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
             />
+            <div className="tool-row" style={{ gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+              <label className="status-text" style={{ display: "inline-flex", gap: "0.4rem", alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={draft.systemWide}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      systemWide: event.target.checked,
+                      tenantId: event.target.checked ? "" : current.tenantId
+                    }))
+                  }
+                />
+                System-wide (all tenants)
+              </label>
+              {!draft.systemWide ? (
+                <select
+                  className="crud-input text-sm max-w-md"
+                  value={draft.tenantId}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, tenantId: event.target.value, systemWide: false }))
+                  }
+                  required
+                >
+                  <option value="">Select tenant…</option>
+                  {tenants.map((tenant) => (
+                    <option key={tenant.tenantId} value={tenant.tenantId}>
+                      {tenant.name} ({tenant.slug})
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+            {!draft.systemWide ? (
+              <p className="status-text">
+                Tenant-scoped schedules run only for the selected workspace. System-wide posts fan out across every tenant on execute.
+              </p>
+            ) : null}
             <div className="tool-row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
               <label className="status-text">Template</label>
               <select
@@ -923,6 +998,7 @@ export function MarketingConsole() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Scope</th>
                 <th>Platforms</th>
                 <th>Frequency</th>
                 <th>Next run</th>
@@ -934,6 +1010,7 @@ export function MarketingConsole() {
               {schedules.map((item) => (
                 <tr key={item._id}>
                   <td>{item.name}</td>
+                  <td>{formatScheduleScope(item)}</td>
                   <td>{item.config.platforms.join(", ")}</td>
                   <td>{item.scheduleDescription ?? item.scheduleRRule ?? item.scheduleCron ?? "—"}</td>
                   <td>{formatTs(item.nextRunAt)}</td>

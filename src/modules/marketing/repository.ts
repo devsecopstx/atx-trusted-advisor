@@ -1,13 +1,14 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Filter } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import { parseTenantObjectId } from "@/lib/mongo-tenant-scope";
+import {
+    computeNextRunAtFromSchedule,
+    resolveScheduleDescription
+} from "@/lib/scheduled-task-schedule";
 import {
     createScheduledTask,
-    deleteScheduledTask,
-    getScheduledTaskById,
-    listScheduledTasks,
-    listTaskRuns,
-    updateScheduledTask
+    listTaskRuns
 } from "@/modules/core-admin/repository";
 import type { ScheduledTask, TaskRun } from "@/modules/core-admin/types";
 import {
@@ -17,6 +18,18 @@ import {
 } from "@/modules/marketing/types";
 
 const MARKETING_TEMPLATES_COLLECTION = "marketing_post_templates";
+const SCHEDULED_TASKS_COLLECTION = "admin_scheduled_tasks";
+
+function marketingScheduleIdFilter(taskId: string): Filter<ScheduledTask> | null {
+  if (!ObjectId.isValid(taskId)) {
+    return null;
+  }
+  return {
+    _id: new ObjectId(taskId),
+    category: "marketing_post",
+    $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
+  };
+}
 
 const DEFAULT_MARKETING_TEMPLATES: Array<
   Omit<MarketingPostTemplate, "_id" | "createdAt" | "updatedAt">
@@ -226,23 +239,44 @@ export async function deleteMarketingTemplate(id: string): Promise<boolean> {
   return result.deletedCount === 1;
 }
 
-export async function listMarketingSchedules(tenantIdHex: string): Promise<ScheduledTask[]> {
-  const all = await listScheduledTasks({ tenantId: tenantIdHex, systemWideOnly: true, limit: 500 });
-  return all.filter((task) => task.category === "marketing_post");
+/**
+ * All marketing schedules (system-wide and per-tenant). Bypass the singleton
+ * system-wide list path so Admin → Marketing can show many posts.
+ */
+export async function listMarketingSchedules(): Promise<ScheduledTask[]> {
+  const db = await getDb();
+  return db
+    .collection<ScheduledTask>(SCHEDULED_TASKS_COLLECTION)
+    .find({
+      category: "marketing_post",
+      $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
+    } as Filter<ScheduledTask>)
+    .sort({ name: 1 })
+    .limit(500)
+    .toArray();
 }
 
 export async function createMarketingSchedule(input: {
   name: string;
   enabled: boolean;
+  /** When true (default), omit tenantId — fan-out on execute. When false, `tenantId` is required. */
+  systemWide?: boolean;
+  tenantId?: string;
   scheduleCron?: string;
   scheduleRRule?: string;
   scheduleDescription?: string;
   config: MarketingTaskConfig;
 }): Promise<ScheduledTask> {
+  const systemWide = input.systemWide !== false;
+  const tenantId = systemWide ? undefined : input.tenantId?.trim();
+  if (!systemWide && !tenantId) {
+    throw new Error("tenantId is required when systemWide is false");
+  }
   return createScheduledTask({
     name: input.name,
     category: "marketing_post",
     enabled: input.enabled,
+    tenantId,
     scheduleCron: input.scheduleCron,
     scheduleRRule: input.scheduleRRule,
     scheduleDescription: input.scheduleDescription,
@@ -252,10 +286,11 @@ export async function createMarketingSchedule(input: {
 
 export async function updateMarketingSchedule(
   taskId: string,
-  tenantIdHex: string,
   patch: {
     name?: string;
     enabled?: boolean;
+    systemWide?: boolean;
+    tenantId?: string;
     scheduleCron?: string;
     scheduleRRule?: string | null;
     scheduleDescription?: string;
@@ -263,29 +298,108 @@ export async function updateMarketingSchedule(
     nextRunAt?: Date | null;
   }
 ): Promise<ScheduledTask | null> {
-  const existing = await getScheduledTaskById(taskId, { tenantId: tenantIdHex });
-  if (!existing || existing.category !== "marketing_post" || existing.portfolioId) {
+  const existing = await getMarketingScheduleById(taskId);
+  if (!existing?._id) {
     return null;
   }
-  return updateScheduledTask({
-    taskId,
-    tenantId: tenantIdHex,
-    name: patch.name,
-    enabled: patch.enabled,
-    scheduleCron: patch.scheduleCron,
-    scheduleRRule: patch.scheduleRRule,
-    scheduleDescription: patch.scheduleDescription,
-    config: patch.config,
-    nextRunAt: patch.nextRunAt
-  });
+  const filter = marketingScheduleIdFilter(taskId);
+  if (!filter) {
+    return null;
+  }
+
+  const $set: Record<string, unknown> = {};
+  const $unset: Record<string, unknown> = {};
+
+  if (patch.systemWide !== undefined || patch.tenantId !== undefined) {
+    const nextSystemWide =
+      patch.systemWide !== undefined ? patch.systemWide : !existing.tenantId;
+    const nextTenantHex = nextSystemWide
+      ? undefined
+      : (patch.tenantId?.trim() || existing.tenantId?.toHexString());
+    if (!nextSystemWide && !nextTenantHex) {
+      throw new Error("tenantId is required when systemWide is false");
+    }
+    if (nextSystemWide) {
+      $unset.tenantId = "";
+    } else {
+      const tenantOid = parseTenantObjectId(nextTenantHex);
+      if (!tenantOid) {
+        throw new Error("Invalid tenantId");
+      }
+      $set.tenantId = tenantOid;
+    }
+  }
+
+  if (patch.name !== undefined) {
+    $set.name = patch.name.trim().slice(0, 200);
+  }
+  if (patch.enabled !== undefined) {
+    $set.enabled = patch.enabled;
+  }
+  const nextScheduleCron =
+    patch.scheduleCron !== undefined ? patch.scheduleCron.trim() : existing.scheduleCron;
+  const nextScheduleRRule =
+    patch.scheduleRRule !== undefined
+      ? patch.scheduleRRule === null
+        ? undefined
+        : patch.scheduleRRule.trim()
+      : existing.scheduleRRule;
+  if (patch.scheduleCron !== undefined) {
+    $set.scheduleCron = nextScheduleCron;
+  }
+  if (patch.scheduleRRule !== undefined) {
+    if (patch.scheduleRRule === null) {
+      $unset.scheduleRRule = "";
+    } else {
+      $set.scheduleRRule = nextScheduleRRule;
+    }
+  }
+  if (patch.scheduleDescription !== undefined) {
+    $set.scheduleDescription = patch.scheduleDescription.trim().slice(0, 280);
+  } else if (patch.scheduleCron !== undefined || patch.scheduleRRule !== undefined) {
+    $set.scheduleDescription = resolveScheduleDescription({
+      scheduleCron: nextScheduleCron,
+      scheduleRRule: nextScheduleRRule
+    });
+  }
+  if (patch.nextRunAt !== undefined) {
+    $set.nextRunAt =
+      patch.nextRunAt ??
+      computeNextRunAtFromSchedule(
+        { scheduleCron: nextScheduleCron, scheduleRRule: nextScheduleRRule },
+        new Date()
+      ) ??
+      null;
+  }
+  if (patch.config !== undefined) {
+    $set.config = patch.config;
+  }
+
+  if (Object.keys($set).length === 0 && Object.keys($unset).length === 0) {
+    return existing;
+  }
+
+  const updateDoc: Record<string, unknown> = {};
+  if (Object.keys($set).length > 0) {
+    updateDoc.$set = $set;
+  }
+  if (Object.keys($unset).length > 0) {
+    updateDoc.$unset = $unset;
+  }
+
+  const db = await getDb();
+  await db.collection<ScheduledTask>(SCHEDULED_TASKS_COLLECTION).updateOne(filter, updateDoc);
+  return getMarketingScheduleById(taskId);
 }
 
-export async function getMarketingScheduleById(taskId: string, tenantIdHex: string): Promise<ScheduledTask | null> {
-  const task = await getScheduledTaskById(taskId, { tenantId: tenantIdHex });
-  if (!task || task.category !== "marketing_post" || task.portfolioId) {
+/** Admin marketing lookup — not limited to the session tenant (cross-tenant schedule edit). */
+export async function getMarketingScheduleById(taskId: string): Promise<ScheduledTask | null> {
+  const filter = marketingScheduleIdFilter(taskId);
+  if (!filter) {
     return null;
   }
-  return task;
+  const db = await getDb();
+  return db.collection<ScheduledTask>(SCHEDULED_TASKS_COLLECTION).findOne(filter);
 }
 
 export async function listMarketingHistory(tenantIdHex: string, limit = 200): Promise<MarketingPostHistoryRow[]> {
@@ -295,10 +409,12 @@ export async function listMarketingHistory(tenantIdHex: string, limit = 200): Pr
     .map(toHistoryRow);
 }
 
-export async function deleteMarketingSchedule(taskId: string, tenantIdHex: string): Promise<boolean> {
-  const existing = await getMarketingScheduleById(taskId, tenantIdHex);
-  if (!existing) {
+export async function deleteMarketingSchedule(taskId: string): Promise<boolean> {
+  const filter = marketingScheduleIdFilter(taskId);
+  if (!filter) {
     return false;
   }
-  return deleteScheduledTask({ taskId, tenantId: tenantIdHex });
+  const db = await getDb();
+  const res = await db.collection<ScheduledTask>(SCHEDULED_TASKS_COLLECTION).deleteOne(filter);
+  return (res.deletedCount ?? 0) === 1;
 }

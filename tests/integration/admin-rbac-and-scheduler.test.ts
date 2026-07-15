@@ -141,6 +141,40 @@ describe("admin RBAC and scheduler semantics", () => {
     expect(repositoryMocks.createScheduledTask).not.toHaveBeenCalled();
   });
 
+  it("allows multiple system-wide marketing_post jobs", async () => {
+    repositoryMocks.findSystemWideScheduledTaskByCategory.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439099"),
+      name: "marketing-post-job",
+      category: "marketing_post",
+      scheduleCron: "0 13 * * 1-5",
+      enabled: true
+    });
+    repositoryMocks.createScheduledTask.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd79943909a"),
+      name: "Friday Wrap",
+      category: "marketing_post",
+      scheduleCron: "0 13 * * 5",
+      enabled: true
+    });
+
+    const response = await postTasks(
+      new Request("http://localhost/api/admin/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Friday Wrap",
+          category: "marketing_post",
+          scheduleCron: "0 13 * * 5",
+          enabled: true
+        })
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.findSystemWideScheduledTaskByCategory).not.toHaveBeenCalled();
+    expect(repositoryMocks.createScheduledTask).toHaveBeenCalledTimes(1);
+  });
+
   it("runs due tasks for tenant and tags scheduler trigger", async () => {
     const dueTasks = [
       {

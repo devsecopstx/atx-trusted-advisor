@@ -44,7 +44,9 @@ import { pruneDuplicateSystemWideScheduledTasks } from "@/modules/core-admin/rep
 /** Categories omitted from automatic upsert (operators create rows manually). */
 const SCHEDULED_TASK_CATEGORIES_EXCLUDED_FROM_SPEC_SYNC: ReadonlySet<ScheduledTaskCategory> = new Set([
   "xchat_spend_alert",
-  "tenant_export_worker"
+  "tenant_export_worker",
+  /** Many named posts via Admin → Marketing — not a single seeded platform job. */
+  "marketing_post"
 ]);
 
 import { resolveMongoUri } from "../lib/resolve-mongo-uri.mjs";

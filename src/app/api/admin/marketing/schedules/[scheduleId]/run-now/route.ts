@@ -17,7 +17,7 @@ export async function POST(_request: Request, context: RouteContext) {
   }
 
   const { scheduleId } = await context.params;
-  const schedule = await getMarketingScheduleById(scheduleId, tenantIdHex);
+  const schedule = await getMarketingScheduleById(scheduleId);
   if (!schedule) {
     return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
   }

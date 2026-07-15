@@ -18,13 +18,14 @@
 | Surface | Route / entry | Component |
 |--------|----------------|-----------|
 | **Tenant tasks** | **`/admin/tasks`** (hero: **Scheduled jobs**) | **`src/app/admin/tasks/ui/tasks-console.tsx`** (`TasksConsole`) |
+| **Marketing Scheduler** | **`/admin/marketing`** | **`marketing-console.tsx`** — many **`marketing_post`** schedules; **System-wide** toggle or required **tenant** (name/slug); templates, preview, run-now, history |
 | **Delivery channels** | **`/admin/delivery-channels`** | **`admin-delivery-channels-console.tsx`** — **Channels** CRUD + developer tabs (**xOptions API test**, **xChat API test**, **Test post to X**); legacy **`/admin/xoptions`**, **`/admin/xchat-api-test`**, **`/admin/test-post-x`** redirect here |
 
 **UI behavior (tenant console):**
 
 - Tabs: **Jobs** (edit/run existing rows), **Add job** (create schedule), **Task runs** (history). Delivery-channel configuration is linked to **`/admin/delivery-channels`** (not a tab on this page).
 - Polls **`GET /api/admin/tasks`** and **`GET /api/admin/task-runs`** on an interval and on refresh.
-- **`GET /api/admin/tasks`** prunes duplicate **system-wide** rows that share the same **`category`** (keeps canonical **`name`** from **`scheduled-task-category-catalog`** / sync spec — see **`src/lib/system-wide-scheduled-task-dedupe.ts`**). **`POST`** returns **409** when a system-wide job for that category already exists.
+- **`GET /api/admin/tasks`** prunes duplicate **system-wide** rows that share the same **`category`** (keeps canonical **`name`** from **`scheduled-task-category-catalog`** / sync spec — see **`src/lib/system-wide-scheduled-task-dedupe.ts`**). **Exception:** **`marketing_post`** is a **multi-instance** category (Admin → Marketing may create many named posts); it is **not** collapsed or pruned, and **`POST /api/admin/tasks`** does **not** 409 when another `marketing_post` already exists. **`POST`** still returns **409** for other singleton system-wide categories.
 - **Create task:** `name`, `category`, `scheduleCron` (cron string), POST **`/api/admin/tasks`** with `enabled: true`.
 - **Edit row:** inline name, category, cron, enabled; per-row **Save** → **`PATCH /api/admin/tasks/{id}`** (or bulk **Save changes**).
 - **Run now:** **`POST /api/admin/tasks/{id}/run`** → shows status and refreshes runs. **Next.js:** manual Run passes **`bypassMarketWindow: true`** through **`executeScheduledTask`** so **price**, **options**, **options expiration roll**, and **watchlist price** scanners execute **on demand** even **outside** the US regular-session desk window. **`POST /api/admin/scheduler/tick`** does **not** bypass — due tasks still respect market hours on Next.

@@ -6,6 +6,10 @@ const authMocks = vi.hoisted(() => ({
   requireAdminTenantIdHex: vi.fn()
 }));
 
+const identityMocks = vi.hoisted(() => ({
+  getTenantByHexId: vi.fn()
+}));
+
 const marketingRepoMocks = vi.hoisted(() => ({
   listMarketingTemplates: vi.fn(),
   listMarketingSchedules: vi.fn(),
@@ -38,6 +42,14 @@ vi.mock("@/lib/api-auth", async (importOriginal) => {
   };
 });
 
+vi.mock("@/modules/identity/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/identity/repository")>();
+  return {
+    ...actual,
+    getTenantByHexId: identityMocks.getTenantByHexId
+  };
+});
+
 vi.mock("@/modules/marketing/repository", () => marketingRepoMocks);
 vi.mock("@/modules/core-admin/task-runner", () => taskRunnerMocks);
 vi.mock("@/modules/marketing/xchat-markdown", () => marketingXchatMocks);
@@ -66,6 +78,11 @@ describe("admin marketing routes", () => {
       roles: ["global_admin"]
     });
     authMocks.requireAdminTenantIdHex.mockResolvedValue("507f1f77bcf86cd799439022");
+    identityMocks.getTenantByHexId.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439022" },
+      slug: "atx",
+      name: "aTx Finance"
+    });
     marketingRepoMocks.listMarketingTemplates.mockResolvedValue([]);
     marketingRepoMocks.listMarketingSchedules.mockResolvedValue([]);
     marketingRepoMocks.createMarketingSchedule.mockResolvedValue({
@@ -152,6 +169,7 @@ describe("admin marketing routes", () => {
         body: JSON.stringify({
           name: "Monday Pulse",
           enabled: true,
+          systemWide: true,
           scheduleCron: "0 13 * * 1-5",
           config: {
             templateId: "507f1f77bcf86cd799439050",
@@ -164,7 +182,79 @@ describe("admin marketing routes", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(marketingRepoMocks.createMarketingSchedule).toHaveBeenCalledTimes(1);
+    expect(marketingRepoMocks.createMarketingSchedule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Monday Pulse",
+        systemWide: true,
+        tenantId: undefined
+      })
+    );
+  });
+
+  it("rejects tenant-scoped schedule without tenantId", async () => {
+    const response = await postMarketingSchedule(
+      new Request("http://localhost/api/admin/marketing/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Tenant Pulse",
+          enabled: true,
+          systemWide: false,
+          scheduleCron: "0 13 * * 1-5",
+          config: {
+            templateId: "507f1f77bcf86cd799439050",
+            platforms: ["x"],
+            destinationUrl: "https://fintech-advisor.ai",
+            utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
+          }
+        })
+      })
+    );
+    expect(response.status).toBe(400);
+    expect(marketingRepoMocks.createMarketingSchedule).not.toHaveBeenCalled();
+  });
+
+  it("creates a tenant-scoped marketing schedule when tenantId is valid", async () => {
+    marketingRepoMocks.createMarketingSchedule.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439091" },
+      name: "Tenant Pulse",
+      category: "marketing_post",
+      enabled: true,
+      tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
+      scheduleCron: "0 13 * * 1",
+      config: {
+        platforms: ["x"],
+        destinationUrl: "https://fintech-advisor.ai",
+        utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
+      }
+    });
+    const response = await postMarketingSchedule(
+      new Request("http://localhost/api/admin/marketing/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Tenant Pulse",
+          enabled: true,
+          systemWide: false,
+          tenantId: "507f1f77bcf86cd799439022",
+          scheduleCron: "0 13 * * 1",
+          config: {
+            templateId: "507f1f77bcf86cd799439050",
+            platforms: ["x"],
+            destinationUrl: "https://fintech-advisor.ai",
+            utmParams: { utm_source: "x", utm_campaign: "weekly-pulse" }
+          }
+        })
+      })
+    );
+    expect(response.status).toBe(201);
+    expect(identityMocks.getTenantByHexId).toHaveBeenCalledWith("507f1f77bcf86cd799439022");
+    expect(marketingRepoMocks.createMarketingSchedule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemWide: false,
+        tenantId: "507f1f77bcf86cd799439022"
+      })
+    );
   });
 
   it("run-now tags scheduler trigger as marketing-scheduler", async () => {

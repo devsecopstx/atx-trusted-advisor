@@ -4,6 +4,18 @@ import { SCHEDULED_TASK_CATEGORY_CATALOG } from "@/lib/scheduled-task-category-c
 import type { ScheduledTaskCategory } from "@/lib/scheduled-task-category-schema";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 
+/**
+ * System-wide categories that intentionally allow many rows (Marketing Scheduler posts, etc.).
+ * Default platform jobs stay one-per-category; these are excluded from collapse/prune.
+ */
+export const SYSTEM_WIDE_MULTI_INSTANCE_CATEGORIES: ReadonlySet<ScheduledTaskCategory> = new Set([
+  "marketing_post"
+]);
+
+export function isSystemWideMultiInstanceCategory(category: string): boolean {
+  return SYSTEM_WIDE_MULTI_INSTANCE_CATEGORIES.has(category as ScheduledTaskCategory);
+}
+
 /** Mongo filter for tenant-level system jobs (no tenantId, no portfolioId). */
 export function systemWideScheduledTaskCategoryFilter(category: string) {
   return {
@@ -45,7 +57,8 @@ export function pickCanonicalSystemWideScheduledTask(rows: ScheduledTask[]): Sch
 }
 
 /**
- * Collapse to at most one system-wide row per `category` (stable order by name).
+ * Collapse to at most one system-wide row per singleton `category` (stable order by name).
+ * Multi-instance categories (e.g. `marketing_post`) keep every row.
  * Use after `listScheduledTasks({ systemWideOnly: true })` or before returning admin UI data.
  */
 export function dedupeSystemWideScheduledTasksByCategory(rows: ScheduledTask[]): ScheduledTask[] {
@@ -62,6 +75,14 @@ export function dedupeSystemWideScheduledTasksByCategory(rows: ScheduledTask[]):
   const out: ScheduledTask[] = [];
   for (const key of [...byCategory.keys()].sort()) {
     const bucket = byCategory.get(key)!;
+    if (isSystemWideMultiInstanceCategory(key)) {
+      out.push(
+        ...[...bucket].sort((a, b) =>
+          (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
+        )
+      );
+      continue;
+    }
     out.push(pickCanonicalSystemWideScheduledTask(bucket));
   }
   return out.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }));

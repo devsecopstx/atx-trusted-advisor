@@ -22,6 +22,7 @@ import {
     scheduledTaskScheduleObjectSchema
 } from "@/lib/scheduled-task-request-payload";
 import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
+import { isSystemWideMultiInstanceCategory } from "@/lib/system-wide-scheduled-task-dedupe";
 import {
     createScheduledTask,
     findSystemWideScheduledTaskByCategory,
@@ -141,14 +142,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const existingSystemWide = await findSystemWideScheduledTaskByCategory(parsed.data.category);
-  if (existingSystemWide?._id) {
-    return NextResponse.json(
-      {
-        error: `A system-wide job already exists for category "${parsed.data.category}". Edit the existing row or delete it first.`
-      },
-      { status: 409 }
-    );
+  if (!isSystemWideMultiInstanceCategory(parsed.data.category)) {
+    const existingSystemWide = await findSystemWideScheduledTaskByCategory(parsed.data.category);
+    if (existingSystemWide?._id) {
+      return NextResponse.json(
+        {
+          error: `A system-wide job already exists for category "${parsed.data.category}". Edit the existing row or delete it first.`
+        },
+        { status: 409 }
+      );
+    }
   }
 
   let deliveryChannelTarget;

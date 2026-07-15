@@ -108,7 +108,7 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     displayName: "Marketing post scheduler (weekdays 13:00 UTC)",
     defaultJobName: "marketing-post-job",
     description:
-      "Publishes templated or custom marketing posts with required disclaimer + UTM tagging to enabled social platforms."
+      "Publishes templated or custom marketing posts with required disclaimer + UTM tagging to enabled social platforms. Multiple system-wide schedules are allowed (create/manage from Admin → Marketing)."
   },
   user_alert_manager: {
     displayName: "User price alert manager (hourly Mon–Fri 14–21 UTC)",
