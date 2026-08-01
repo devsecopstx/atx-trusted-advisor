@@ -975,7 +975,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "reasoningEffort none is only valid when routing to grok-4.3 (non-multi-agent personas).",
+          "reasoningEffort none is only valid when routing to grok-4.5 / grok-4.3 (non-multi-agent personas).",
         code: "invalid_reasoning_effort"
       },
       { status: 400 }
@@ -3168,7 +3168,7 @@ function resolveParallelAgentConfig(input: {
     return {
       ok: false,
       error:
-        "reasoningEffort none is only valid when routing to grok-4.3 (non-multi-agent personas).",
+        "reasoningEffort none is only valid when routing to grok-4.5 / grok-4.3 (non-multi-agent personas).",
       code: "invalid_reasoning_effort"
     };
   }

@@ -46,7 +46,7 @@ const BATCH_ITEMS_COLLECTION = "xchat_batch_items";
 const MAX_ITEMS_PER_BATCH = 500;
 const POLL_INTERVAL_MS = 15_000;
 const MAX_POLL_ATTEMPTS = 200;
-/** Admin xChat batch default — aligned with Expert depth (`grok-4.3` + reasoning); persona `model` overrides. */
+/** Admin xChat batch default — aligned with Expert depth (`grok-4.5` + reasoning); persona `model` overrides. */
 const DEFAULT_XCHAT_BATCH_MODEL = XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID;
 
 export type BatchWorkloadItem = {

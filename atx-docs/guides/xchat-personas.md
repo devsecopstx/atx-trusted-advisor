@@ -60,7 +60,7 @@ Tool cache is implemented in `src/modules/xchat/tool-cache.ts`.
 ## Collection and RAG notes
 
 - Canonical **Finance** xAI collection (`XAI_FINANCE_COLLECTION_ID`) is the shared KB for all tenants; ask/batch runtime resolves **only** that id via **`resolveXchatPersonaDeclaredCollectionIds`** (legacy per-env xpersonas bucket ids on persona rows are ignored at runtime). Refresh via **`POST /api/admin/rag/refresh-finance`** or **`npm run seed:finance-xai-collection`** (uploads **`options-strategy-core`**, **`options-strategy-advanced`**, **`atx-response-guidelines`**, **`finance-core`** when present); one-time Mongo repair: **`npm run ops:migrate:xchat-personas-finance-collection -- --execute`**
-- Admin persona editor model presets include **`grok-4.3`** via **`XAI_PERSONA_CHAT_MODEL_OPTIONS`** / **`PersonaModelSelect`**
+- Admin persona editor model presets include **`grok-4.5`** / **`grok-4.5-latest`** (plus legacy **`grok-4.3`**) via **`XAI_PERSONA_CHAT_MODEL_OPTIONS`** / **`PersonaModelSelect`**. Seeded disk personas (advisor, finance-advisor, exam-coach, legal, tax) default to **`grok-4.5`**; **quant-trader** stays **`grok-4.20-multi-agent`**. Composer **Expert** / **Heavy** depth routes to **`grok-4.5`**.
 - Long-term xAI memory: **`PUT /api/xchat/preferences`** with **`enableLongTermXaiMemory`** (requires keep-last-10); ask includes capped thread history in the Responses tool loop when enabled
 - Collection inventory endpoints: `GET /api/personas/collections` and `GET /api/personas/collections/:collectionId`
 - Collection stats may include `documentCount`, `chunkCount`, `fileCount`, `indexStatus`

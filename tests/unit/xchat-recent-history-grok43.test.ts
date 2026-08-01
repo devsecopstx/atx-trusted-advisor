@@ -8,7 +8,9 @@ import {
 } from "@/modules/xchat/xchat-recent-history-prompt";
 
 describe("isGrok43FamilyModelId", () => {
-  it("matches grok-4.3 variants", () => {
+  it("matches grok-4.5 and grok-4.3 variants", () => {
+    expect(isGrok43FamilyModelId("grok-4.5")).toBe(true);
+    expect(isGrok43FamilyModelId("grok-4.5-latest")).toBe(true);
     expect(isGrok43FamilyModelId("grok-4.3")).toBe(true);
     expect(isGrok43FamilyModelId("GROK-4.3-extra")).toBe(true);
     expect(isGrok43FamilyModelId("grok-4-1-fast")).toBe(false);

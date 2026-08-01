@@ -16,7 +16,7 @@ type XaiChatResult = {
 type XaiToolChoice = "auto" | "required" | "none";
 type XaiReasoningEffort = "low" | "medium" | "high";
 
-/** `grok-4.3` on `/v1/responses`: reasoning depth without `agent_count` (see xAI reasoning guide). */
+/** `grok-4.5` / `grok-4.3` on `/v1/responses`: reasoning depth without `agent_count` (see xAI reasoning guide). */
 export type XaiResponsesReasoningOnly = {
   effort: "none" | XaiReasoningEffort;
 };
@@ -897,7 +897,7 @@ export async function respondWithXaiToolLoop(input: {
   maxTurns?: number;
   executor: ToolExecutor;
   parallelism?: XaiParallelismConfig;
-  /** For `grok-4.3`: send `reasoning.effort` without `agent_count` (mutually exclusive with `parallelism` on each request). */
+  /** For `grok-4.5` / `grok-4.3`: send `reasoning.effort` without `agent_count` (mutually exclusive with `parallelism` on each request). */
   responsesReasoning?: XaiResponsesReasoningOnly;
   previousResponseId?: string;
   storeMessages?: boolean;

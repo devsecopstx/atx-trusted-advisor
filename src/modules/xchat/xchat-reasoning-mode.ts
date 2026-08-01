@@ -1,6 +1,6 @@
 /**
  * Grok-style composer presets → `POST /api/xchat/ask` routing.
- * Depth uses **`grok-4.3`** with xAI Responses **`reasoning.effort`** (same semantics as vendor `reasoning_effort` on grok-4.3).
+ * Depth uses **`grok-4.5`** with xAI Responses **`reasoning.effort`** (same semantics as vendor `reasoning_effort`).
  * @see https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter
  */
 export type XchatReasoningMode = "fast" | "expert" | "heavy";
@@ -8,8 +8,8 @@ export type XchatReasoningMode = "fast" | "expert" | "heavy";
 /** Depth toggle **Fast** — latency-first single-pass model (overrides persona `model` for that turn). */
 export const XCHAT_DEPTH_FAST_MODEL_ID = "grok-4-1-fast" as const;
 
-/** Depth toggles **Expert** / **Heavy** — `grok-4.3` + `reasoning.effort` on `/v1/responses` (no multi-agent parallelism). */
-export const XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID = "grok-4.3" as const;
+/** Depth toggles **Expert** / **Heavy** — `grok-4.5` + `reasoning.effort` on `/v1/responses` (no multi-agent parallelism). */
+export const XCHAT_DEPTH_EXPERT_HEAVY_MODEL_ID = "grok-4.5" as const;
 
 export const XCHAT_REASONING_MODE_STORAGE_KEY = "xf_xchat_reasoning_mode";
 
@@ -53,8 +53,8 @@ export function isQuantTraderPersona(
 
 export const XCHAT_DEPTH_ROUTING_MODEL_LABELS: Record<XchatReasoningMode, string> = {
   fast: "Grok 4.1 Fast",
-  expert: "Grok 4.3",
-  heavy: "Grok 4.3"
+  expert: "Grok 4.5",
+  heavy: "Grok 4.5"
 };
 
 const XCHAT_DEPTH_PRESET_LABELS: Record<XchatReasoningMode, string> = {
@@ -79,9 +79,9 @@ export function xchatDepthRoutingModelLabel(mode: XchatReasoningMode): string {
 }
 
 export const XCHAT_DEPTH_MODE_GROUP_HINT =
-  "Fast = Grok 4.1 Fast · Expert = Grok 4.3 medium reasoning · Heavy = Grok 4.3 high reasoning";
+  "Fast = Grok 4.1 Fast · Expert = Grok 4.5 medium reasoning · Heavy = Grok 4.5 high reasoning";
 
-/** Legacy body control; includes **`none`** for grok-4.3 (disables reasoning per xAI docs). */
+/** Legacy body control; includes **`none`** for grok-4.5 / grok-4.3 (disables reasoning per xAI docs). */
 export type RequestedReasoningEffortInput = "none" | "low" | "medium" | "high" | "xhigh";
 
 /**
@@ -106,12 +106,18 @@ export function resolveReasoningEffortFromAskPayload(input: {
 
 export type XchatResponsesReasoningEffort = "none" | "low" | "medium" | "high";
 
-/** Expert-depth `reasoning.effort` for scheduled/options batch paths using **`grok-4.3`** (matches xChat Expert preset). */
+/** Expert-depth `reasoning.effort` for scheduled/options batch paths using **`grok-4.5`** / **`grok-4.3`** (matches xChat Expert preset). */
 export function expertResponsesReasoningForModelId(
   model: string
 ): { effort: XchatResponsesReasoningEffort } | undefined {
   const m = model.trim().toLowerCase();
-  if (m === "grok-4.3" || m.includes("grok-4.3")) {
+  if (
+    m === "grok-4.5" ||
+    m.includes("grok-4.5") ||
+    m.includes("grok-build") ||
+    m === "grok-4.3" ||
+    m.includes("grok-4.3")
+  ) {
     return { effort: "medium" };
   }
   return undefined;

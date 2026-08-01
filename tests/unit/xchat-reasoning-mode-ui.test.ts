@@ -11,7 +11,7 @@ describe("xchat reasoning depth UI helpers", () => {
 
   it("composer caption combines preset and routed model label", () => {
     expect(xchatDepthComposerCaption("fast")).toBe("Fast · Grok 4.1 Fast");
-    expect(xchatDepthComposerCaption("expert")).toBe("Expert · Grok 4.3");
-    expect(xchatDepthComposerCaption("heavy")).toBe("Heavy · Grok 4.3");
+    expect(xchatDepthComposerCaption("expert")).toBe("Expert · Grok 4.5");
+    expect(xchatDepthComposerCaption("heavy")).toBe("Heavy · Grok 4.5");
   });
 });

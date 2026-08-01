@@ -1,6 +1,6 @@
 /**
  * Curated xChat persona models with token pricing from
- * https://docs.x.ai/docs/models (snapshot Mar 2026). Image/video models omitted.
+ * https://docs.x.ai/docs/models (snapshot Jul 2026). Image/video models omitted.
  * Aliases may bill per console routing — notes call that out.
  */
 export const XAI_DOCS_MODELS_URL = "https://docs.x.ai/docs/models";
@@ -16,6 +16,16 @@ export type XaiPersonaChatModelOption = {
 };
 
 const OPTIONS: XaiPersonaChatModelOption[] = [
+  {
+    id: "grok-4.5",
+    label: "Grok 4.5 (reasoning, tools) — current flagship",
+    pricingPerMillionUsd: "$2.00 ($0.30) / $6.00 in·out (<200k prompt)"
+  },
+  {
+    id: "grok-4.5-latest",
+    label: "grok-4.5-latest (alias)",
+    pricingPerMillionUsd: "Tracks current Grok 4.5 release — see console"
+  },
   {
     id: "grok-4-1-fast-reasoning",
     label: "Grok 4.1 fast (reasoning, tools)",

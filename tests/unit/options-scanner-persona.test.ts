@@ -104,7 +104,7 @@ describe("resolveOptionsScannerPersonaContext", () => {
     expect(ctx!.maxTurns).toBe(4);
   });
 
-  it("defaults model to grok-4.3 with expert reasoning when persona omits model", async () => {
+  it("defaults model to grok-4.5 with expert reasoning when persona omits model", async () => {
     getPersonaMock.mockResolvedValue({
       _id: "x",
       systemPrompt: "You are a test advisor.",
@@ -119,7 +119,7 @@ describe("resolveOptionsScannerPersonaContext", () => {
     });
     const ctx = await resolveOptionsScannerPersonaContext();
     expect(ctx).not.toBeNull();
-    expect(ctx!.model).toBe("grok-4.3");
+    expect(ctx!.model).toBe("grok-4.5");
     expect(ctx!.responsesReasoning).toEqual({ effort: "medium" });
   });
 });

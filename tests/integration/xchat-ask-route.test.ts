@@ -1612,7 +1612,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(identityMocks.getCoreUserById).not.toHaveBeenCalled();
   });
 
-  it("routes legacy reasoningEffort on non-multi-agent persona to grok-4.3 reasoning (global_admin)", async () => {
+  it("routes legacy reasoningEffort on non-multi-agent persona to grok-4.5 reasoning (global_admin)", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         model: "grok-4-1-fast-reasoning"
@@ -1632,7 +1632,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "grok-4.3",
+        model: "grok-4.5",
         parallelism: undefined,
         responsesReasoning: { effort: "low" }
       })
@@ -1640,7 +1640,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
   });
 
-  it("routes legacy reasoningEffort none on non-multi-agent persona to grok-4.3 with reasoning disabled", async () => {
+  it("routes legacy reasoningEffort none on non-multi-agent persona to grok-4.5 with reasoning disabled", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         model: "grok-4-1-fast-reasoning"
@@ -1660,7 +1660,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "grok-4.3",
+        model: "grok-4.5",
         parallelism: undefined,
         responsesReasoning: { effort: "none" }
       })
@@ -1706,7 +1706,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
   });
 
-  it("uses grok-4.3 medium reasoning when reasoningMode expert (premium_plus viewer)", async () => {
+  it("uses grok-4.5 medium reasoning when reasoningMode expert (premium_plus viewer)", async () => {
     identityMocks.getCoreUserById.mockResolvedValueOnce({
       subscriptionPlan: "premium_plus",
       billing: {
@@ -1740,14 +1740,14 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "grok-4.3",
+        model: "grok-4.5",
         parallelism: undefined,
         responsesReasoning: { effort: "medium" }
       })
     );
   });
 
-  it("uses grok-4.3 with medium reasoning when basic tier uses reasoningMode expert", async () => {
+  it("uses grok-4.5 with medium reasoning when basic tier uses reasoningMode expert", async () => {
     identityMocks.getCoreUserById.mockResolvedValueOnce({
       subscriptionPlan: "basic",
       billing: {
@@ -1781,7 +1781,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "grok-4.3",
+        model: "grok-4.5",
         parallelism: undefined,
         responsesReasoning: { effort: "medium" }
       })

@@ -14,8 +14,8 @@ describe("resolveReasoningEffortFromAskPayload", () => {
 
   it("maps depth presets to user-visible routing model labels", () => {
     expect(xchatDepthRoutingModelLabel("fast")).toBe("Grok 4.1 Fast");
-    expect(xchatDepthRoutingModelLabel("expert")).toBe("Grok 4.3");
-    expect(xchatDepthRoutingModelLabel("heavy")).toBe("Grok 4.3");
+    expect(xchatDepthRoutingModelLabel("expert")).toBe("Grok 4.5");
+    expect(xchatDepthRoutingModelLabel("heavy")).toBe("Grok 4.5");
   });
 
   it("passes through reasoningEffort when reasoningMode is absent", () => {

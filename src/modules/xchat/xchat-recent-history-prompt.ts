@@ -46,10 +46,13 @@ export type XchatRecentThreadMessage = {
   content: string;
 };
 
-/** `/v1/responses` turns routed to Grok 4.3 (persona or Expert/Heavy depth). */
+/**
+ * `/v1/responses` turns on flagship reasoning models (persona or Expert/Heavy depth).
+ * Includes **grok-4.5** (current Expert/Heavy) and legacy **grok-4.3**.
+ */
 export function isGrok43FamilyModelId(model: string | undefined | null): boolean {
   const m = typeof model === "string" ? model.trim().toLowerCase() : "";
-  return m.includes("grok-4.3");
+  return m.includes("grok-4.5") || m.includes("grok-build") || m.includes("grok-4.3");
 }
 
 /** Platform override from `xchat_platform_settings.xchatGrok43MaxPriorThreadMessages` (clamped 4–8). */

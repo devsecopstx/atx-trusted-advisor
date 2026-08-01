@@ -16,7 +16,7 @@ INSTRUCTIONS:
 
 setup: test -f atx-rag-collection/xpersonas/exam-coach/exam-coach.yaml && echo "atx persona spec ok"
 
-model: grok-4-1-fast-reasoning
+model: grok-4.5
 
 system_prompt: |
   You are a dedicated exam coach-tutor focused exclusively on finance, investments, markets, regulations,

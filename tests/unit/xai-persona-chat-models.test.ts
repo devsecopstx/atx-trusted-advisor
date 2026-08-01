@@ -16,9 +16,12 @@ describe("xai-persona-chat-models", () => {
     expect(isKnownPersonaChatModelId(XAI_PERSONA_CHAT_MODEL_FALLBACK_ID)).toBe(true);
   });
 
-  it("includes grok-4.3 for persona editor presets", () => {
+  it("includes grok-4.5 and grok-4.5-latest for persona editor presets", () => {
+    expect(isKnownPersonaChatModelId("grok-4.5")).toBe(true);
+    expect(isKnownPersonaChatModelId("grok-4.5-latest")).toBe(true);
     expect(isKnownPersonaChatModelId("grok-4.3")).toBe(true);
-    expect(XAI_PERSONA_CHAT_MODEL_OPTIONS.some((option) => option.id === "grok-4.3")).toBe(true);
+    expect(XAI_PERSONA_CHAT_MODEL_OPTIONS.some((option) => option.id === "grok-4.5")).toBe(true);
+    expect(XAI_PERSONA_CHAT_MODEL_OPTIONS.some((option) => option.id === "grok-4.5-latest")).toBe(true);
   });
 
   it("detects unknown ids", () => {

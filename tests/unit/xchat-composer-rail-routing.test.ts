@@ -9,14 +9,14 @@ describe("xchat-composer-rail-routing", () => {
   it("maps ask payload fields for the composer rail", () => {
     expect(
       xchatAskDataToComposerRailLastTurn({
-        model: "grok-4.3",
+        model: "grok-4.5",
         modelSelectionSource: "persona",
         contextSource: "xai_collection",
         contextCount: 4,
         collectionSearchStatus: "ready"
       })
     ).toEqual({
-      executionModel: "grok-4.3",
+      executionModel: "grok-4.5",
       modelSelectionSource: "persona",
       contextSource: "xai_collection",
       contextCount: 4,

@@ -21,7 +21,7 @@ const RATE_FAST: TokenRatesPerMillionUsd = { inputPerMillion: 0.2, outputPerMill
 /** grok-4.3 flagship row from docs (approximate — verify in console). */
 const RATE_GROK_43: TokenRatesPerMillionUsd = { inputPerMillion: 1.25, outputPerMillion: 2.5 };
 
-/** grok-4.20* and multi-agent rows from docs: $2 in / $6 out (per 1M). */
+/** grok-4.5 / grok-4.20* / multi-agent from docs: $2 in / $6 out (per 1M; cached $0.30 on 4.5). */
 const RATE_420: TokenRatesPerMillionUsd = { inputPerMillion: 2, outputPerMillion: 6, cachedInputPerMillion: 0.2 };
 
 export function resolveXaiModelTokenRates(model: string): TokenRatesPerMillionUsd | null {
@@ -34,6 +34,9 @@ export function resolveXaiModelTokenRates(model: string): TokenRatesPerMillionUs
   }
   if (m.includes("grok-4.20") || m.includes("grok-4-20") || m.includes("grok-4_20")) {
     return RATE_420;
+  }
+  if (m.includes("grok-4.5") || m.includes("grok-build")) {
+    return { ...RATE_420, cachedInputPerMillion: 0.3 };
   }
   if (m.includes("grok-4.3")) {
     return RATE_GROK_43;
@@ -61,14 +64,17 @@ export function estimateUsdFromTokenUsage(input: {
   if (!rates) {
     return null;
   }
+  const m = input.model.trim().toLowerCase();
   const key =
-    rates === RATE_420
-      ? "grok-4.20-class"
-      : rates === RATE_GROK_43
-        ? "grok-4.3-class"
-        : rates === RATE_FAST
-          ? "grok-4-1-fast-class"
-          : "custom";
+    m.includes("grok-4.5") || m.includes("grok-build")
+      ? "grok-4.5-class"
+      : rates === RATE_420
+        ? "grok-4.20-class"
+        : rates === RATE_GROK_43
+          ? "grok-4.3-class"
+          : rates === RATE_FAST
+            ? "grok-4-1-fast-class"
+            : "custom";
   const inCost = (input.inputTokens / 1_000_000) * rates.inputPerMillion;
   const outBillable = input.outputTokens + input.reasoningTokens;
   const outCost = (outBillable / 1_000_000) * rates.outputPerMillion;

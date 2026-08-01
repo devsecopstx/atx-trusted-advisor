@@ -16,7 +16,7 @@ INSTRUCTIONS:
 
 setup: test -f atx-rag-collection/xpersonas/finance-advisor/finance-advisor.yaml && echo "atx persona spec ok"
 
-model: grok-4-1-fast-reasoning
+model: grok-4.5
 
 system_prompt: |
   You are atxfinance — options-trading specialist for aTx Finance users.

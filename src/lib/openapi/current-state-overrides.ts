@@ -1694,7 +1694,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     type: "object",
     required: [],
     description:
-      "Either **message** (trimmed length ≥ 2) or at least one pasted image (**`imageAttachment`** legacy single, and/or **`imageAttachments`** array, max **4** rows; **PNG or JPEG** only) is required. **Depth routing** overrides persona **`model`** for that turn: **`reasoningMode` omitted / fast** → **`grok-4-1-fast`**; **expert** / **heavy** → **`grok-4.3`** with **`reasoning.effort`** **medium** / **high** per [xAI reasoning](https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter) (no multi-agent `agent_count`). Legacy **`reasoningEffort`** without **`reasoningMode`** maps non–multi-agent personas to **`grok-4.3`** + **`reasoning.effort`** (**`none`** disables reasoning on grok-4.3 only); **multi-agent** personas keep **`grok-4.20-multi-agent`** + plan **`multiAgentParallelMaxAgents`**. Optional **`XAI_VISION_MODEL`** overrides the resolved model **only for image turns** (and drops **`reasoning`** tuning). Multi-agent models fall back to the default chat model for image turns when **`XAI_VISION_MODEL`** is unset. **`visionUseWorkspace`** (with a scoped **`portfolioId`**) forces eager workspace preload on image turns so **`atx_function`** can see holdings/watchlist.",
+      "Either **message** (trimmed length ≥ 2) or at least one pasted image (**`imageAttachment`** legacy single, and/or **`imageAttachments`** array, max **4** rows; **PNG or JPEG** only) is required. **Depth routing** overrides persona **`model`** for that turn: **`reasoningMode` omitted / fast** → **`grok-4-1-fast`**; **expert** / **heavy** → **`grok-4.5`** with **`reasoning.effort`** **medium** / **high** per [xAI reasoning](https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter) (no multi-agent `agent_count`). Legacy **`reasoningEffort`** without **`reasoningMode`** maps non–multi-agent personas to **`grok-4.5`** + **`reasoning.effort`** (**`none`** disables reasoning on grok-4.5 / grok-4.3); **multi-agent** personas keep **`grok-4.20-multi-agent`** + plan **`multiAgentParallelMaxAgents`**. Optional **`XAI_VISION_MODEL`** overrides the resolved model **only for image turns** (and drops **`reasoning`** tuning). Multi-agent models fall back to the default chat model for image turns when **`XAI_VISION_MODEL`** is unset. **`visionUseWorkspace`** (with a scoped **`portfolioId`**) forces eager workspace preload on image turns so **`atx_function`** can see holdings/watchlist.",
     properties: {
       message: { type: "string", minLength: 0, maxLength: 8000 },
       imageAttachment: {
@@ -1761,13 +1761,13 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "string",
         enum: ["none", "low", "medium", "high", "xhigh"],
         description:
-          "Mutually exclusive with **`reasoningMode`**. When the persona **`model`** is **not** a multi-agent id, the server uses **`grok-4.3`** with matching Responses API **`reasoning.effort`** for this turn (**`none`** disables reasoning on grok-4.3). Not allowed when the persona model is multi-agent. **Multi-agent** personas keep **`grok-4.20-multi-agent`** for **`low`**/**`medium`**/**`high`**/**`xhigh`**; plan **`multiAgentParallelMaxAgents`** clamps **`agent_count`**."
+          "Mutually exclusive with **`reasoningMode`**. When the persona **`model`** is **not** a multi-agent id, the server uses **`grok-4.5`** with matching Responses API **`reasoning.effort`** for this turn (**`none`** disables reasoning on grok-4.5 / grok-4.3). Not allowed when the persona model is multi-agent. **Multi-agent** personas keep **`grok-4.20-multi-agent`** for **`low`**/**`medium`**/**`high`**/**`xhigh`**; plan **`multiAgentParallelMaxAgents`** clamps **`agent_count`**."
       },
       reasoningMode: {
         type: "string",
         enum: ["fast", "expert", "heavy"],
         description:
-          "Grok-style preset (mutually exclusive with **`reasoningEffort`**): **fast** — **`grok-4-1-fast`** for this turn (latency-first); **expert** — **`grok-4.3`** + **`reasoning.effort`: medium**; **heavy** — **`grok-4.3`** + **`reasoning.effort`: high** ([effort levels](https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter)). Omitting **`reasoningMode`** matches **fast** when **`reasoningEffort`** is also omitted (UI default)."
+          "Grok-style preset (mutually exclusive with **`reasoningEffort`**): **fast** — **`grok-4-1-fast`** for this turn (latency-first); **expert** — **`grok-4.5`** + **`reasoning.effort`: medium**; **heavy** — **`grok-4.5`** + **`reasoning.effort`: high** ([effort levels](https://docs.x.ai/developers/model-capabilities/text/reasoning#the-reasoning_effort-parameter)). Omitting **`reasoningMode`** matches **fast** when **`reasoningEffort`** is also omitted (UI default)."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 },
@@ -1886,7 +1886,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           "reasoning_effort"
         ],
         description:
-          "`reasoning_mode` — Depth preset routing (**Fast** → **`grok-4-1-fast`**, **Expert**/**Heavy** → **`grok-4.3`** + reasoning); `reasoning_effort` — legacy body **`reasoningEffort`** routed to **`grok-4.3`** (non–multi-agent personas); `vision_env` — **`XAI_VISION_MODEL`** image override; `persona` / `default` — persona vs server default when no depth controls apply (rare in current product paths); `reasoning_mode_fallback` — reserved (prior tier clamp path; may be absent on newer servers)."
+          "`reasoning_mode` — Depth preset routing (**Fast** → **`grok-4-1-fast`**, **Expert**/**Heavy** → **`grok-4.5`** + reasoning); `reasoning_effort` — legacy body **`reasoningEffort`** routed to **`grok-4.5`** (non–multi-agent personas); `vision_env` — **`XAI_VISION_MODEL`** image override; `persona` / `default` — persona vs server default when no depth controls apply (rare in current product paths); `reasoning_mode_fallback` — reserved (prior tier clamp path; may be absent on newer servers)."
       },
       contextCount: { type: "integer", minimum: 0 },
       contextSource: { type: "string", enum: ["none", "xai_collection"] },
