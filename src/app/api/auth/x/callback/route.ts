@@ -11,11 +11,7 @@ import {
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import { resolveSessionLandingPath } from "@/lib/default-landing-path";
-import {
-  resolveGuestTrialAuthContext,
-  tryProvisionGuestTrialFromIntent
-} from "@/lib/marketing/guest-trial-auth";
-import { readGuestTrialIntentFromRequest } from "@/modules/identity/guest-trial-constants";
+import { provisionOpenSignupTrialAccess } from "@/lib/marketing/guest-trial-auth";
 import {
     getAtxfinanceBackendOrigin, getEnv,
     getXOauthClientId,
@@ -327,13 +323,10 @@ export async function GET(request: Request) {
     });
   }
 
-  const trialCtx = resolveGuestTrialAuthContext({
-    trialCookie: readGuestTrialIntentFromRequest(request)
-  });
   if (user?._id) {
-    user = await tryProvisionGuestTrialFromIntent({
+    user = await provisionOpenSignupTrialAccess({
       user,
-      ctx: { ...trialCtx, emailFromProvider: emailFromProvider }
+      emailFromProvider: emailFromProvider
     });
   }
 

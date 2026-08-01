@@ -45,7 +45,7 @@ describe("app-user-billing-state guest trial", () => {
     expect(isAppUserProductAccessAllowedState(state)).toBe(true);
   });
 
-  it("trial_expired blocks product access until subscribe", () => {
+  it("trial_expired still allows product access (billing optional)", () => {
     const past = new Date(Date.now() - 86_400_000);
     const state = resolveAppUserBillingAccessState({
       roles: operatorRoles,
@@ -53,7 +53,7 @@ describe("app-user-billing-state guest trial", () => {
       trialEndsAt: past
     });
     expect(state).toBe("trial_expired");
-    expect(isAppUserProductAccessAllowedState(state)).toBe(false);
+    expect(isAppUserProductAccessAllowedState(state)).toBe(true);
   });
 
   it("guestTrialDaysRemaining rounds up partial days", () => {

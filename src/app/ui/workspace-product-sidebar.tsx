@@ -37,6 +37,7 @@ import {
 } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
+import { TrialBillingNoticeModal } from "@/app/ui/trial-billing-notice-modal";
 import { useTenantUxNavVisibility } from "@/app/ui/use-tenant-ux-nav-visibility";
 import {
     useWorkspaceMobileDrawerClose,
@@ -1100,6 +1101,7 @@ export function WorkspaceProductSidebar({
 
   return (
     <WorkspaceProductRailProvider value={railContextValue}>
+      <TrialBillingNoticeModal />
       <WorkspaceMobileDrawerNavProvider closeDrawer={mobileDrawerClose}>
         {belowLg ? (
           <WorkspaceTopChromeBar

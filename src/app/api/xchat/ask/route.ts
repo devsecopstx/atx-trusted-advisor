@@ -433,7 +433,8 @@ export async function POST(request: Request) {
       : null;
   const billingState = resolveAppUserBillingAccessState({
     roles: session.roles,
-    billing: coreUser?.billing
+    billing: coreUser?.billing,
+    trialEndsAt: coreUser?.trialEndsAt
   });
   if (!isAdminSession && !isAppUserProductAccessAllowedState(billingState)) {
     return NextResponse.json(

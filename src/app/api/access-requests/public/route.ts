@@ -10,15 +10,10 @@ import {
     extractClientRateLimitKey,
     getBffRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
-import { buildAccessRequestNotification, sendSlackNotification } from "@/lib/slack";
-import { createAuditEvent } from "@/modules/audit/repository";
-import {
-    AccessRequestDuplicatePendingError,
-    createAccessRequest,
-    getPendingAccessRequestByUserAndRole
-} from "@/modules/core-admin/repository";
+import { provisionOpenSignupTrialAccess } from "@/lib/marketing/guest-trial-auth";
+import { canUserLogin } from "@/modules/identity/authorization";
 import { setInitialPasswordFromPublicSignup } from "@/modules/identity/email-credentials-repository";
-import { ensureCoreUserByEmail, updateCoreUserAccountStatus } from "@/modules/identity/repository";
+import { ensureCoreUserByEmail } from "@/modules/identity/repository";
 
 /** Exported for unit tests (`tests/unit/access-requests-public-body-schema.test.ts`). */
 export const guestAccessRequestSchema = z.object({
@@ -33,7 +28,7 @@ export const guestAccessRequestSchema = z.object({
   requestedPlan: z.string().trim().optional(),
   /** ISO 3166-1 alpha-2 country code (case-insensitive). Defaults to `US` server-side when omitted or unknown. */
   country: z.string().trim().min(2).max(8).optional(),
-  /** Enables email/password login after access approval without a separate invite token. */
+  /** Enables email/password login after open-signup trial provision (no admin approval wait). */
   password: z.string().min(12).max(128)
 });
 
@@ -181,86 +176,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to save credentials for this account." }, { status: 500 });
   }
 
-  const userId = user._id.toHexString();
-
-  const existingPending = await getPendingAccessRequestByUserAndRole({
-    userId,
-    requestedRole,
-    tenantId: undefined
+  user = await provisionOpenSignupTrialAccess({
+    user,
+    emailFromProvider: email
   });
-  if (existingPending) {
+
+  if (!canUserLogin(user.roles)) {
     return NextResponse.json(
       {
-        ok: true,
-        data: {
-          requestedRole: existingPending.requestedRole,
-          requestedPlan: existingPending.requestedPlan,
-          status: existingPending.status,
-          requestedAt: existingPending.requestedAt.toISOString(),
-          existing: true
-        }
+        error:
+          "Unable to activate trial access for this account. Contact support or try signing in with X or Google.",
+        code: "open_signup_provision_failed"
       },
-      { status: 200 }
+      { status: 503 }
     );
   }
 
-  await updateCoreUserAccountStatus({
-    userId: user._id,
-    accountStatus: "pending_approval"
-  });
-
-  let created;
-  try {
-    created = await createAccessRequest({
-      userId,
-      contactEmail: email,
-      requestedRole,
-      requestedPlan,
-      reason: `Guest xChat registration from ${name}`,
-      status: "pending"
-    });
-  } catch (error) {
-    if (error instanceof AccessRequestDuplicatePendingError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
-    }
-    throw error;
-  }
-
-  if (created._id) {
-    await createAuditEvent({
-      entityType: "access_request",
-      entityId: created._id.toHexString(),
-      action: "guest_self_requested",
-      actor: {
-        userId,
-        email
-      },
-      details: {
-        requestedRole: created.requestedRole,
-        requestedPlan: created.requestedPlan,
-        reason: created.reason,
-        source: "xchat_guest_register",
-        displayName: name
-      }
-    });
-  }
-
-  void sendSlackNotification(
-    buildAccessRequestNotification({
-      email,
-      requestedRole,
-      reason: `Guest xChat registration from ${name} (${requestedPlan})`
-    })
-  );
-
+  const nowIso = new Date().toISOString();
   return NextResponse.json(
     {
       ok: true,
       data: {
-        requestedRole: created.requestedRole,
-        requestedPlan: created.requestedPlan,
-        status: created.status,
-        requestedAt: created.requestedAt.toISOString()
+        requestedRole,
+        requestedPlan,
+        status: "approved",
+        requestedAt: nowIso,
+        trialProvisioned: true
       }
     },
     { status: 201 }

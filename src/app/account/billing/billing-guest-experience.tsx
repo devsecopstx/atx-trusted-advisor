@@ -147,9 +147,7 @@ export function BillingGuestExperience({
       }
 
       setRegisterSuccess(
-        payload.data?.existing
-          ? `You already have a pending ${submittedPlanLabel} request. We will review it soon.`
-          : `Request submitted for ${submittedPlanLabel}. An admin will review your access.`
+        `Account ready for ${submittedPlanLabel}. Sign in to start your guest trial — billing can be completed anytime.`
       );
       setRegisterName("");
       setRegisterEmail("");

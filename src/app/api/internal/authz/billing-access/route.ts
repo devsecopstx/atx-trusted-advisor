@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import {
+    guestTrialDaysRemaining,
     isAppUserProductAccessAllowedState,
     isBillingEntitledAccessState,
     resolveAppUserBillingAccessState
@@ -34,7 +35,8 @@ export async function GET() {
           subscriptionActive,
           productAccessAllowed: cached.productAccessAllowed,
           requiresBilling: cached.requiresBilling,
-          redirectPath: cached.redirectPath
+          redirectPath: cached.redirectPath,
+          trialDaysRemaining: null
         }
       });
     }
@@ -54,6 +56,10 @@ export async function GET() {
   const productAccessAllowed = isAppUserProductAccessAllowedState(billingState);
   const requiresBilling = hasAppLoginRole && !adminSession && !productAccessAllowed;
   const redirectPath = "/account/billing";
+  const trialDaysRemaining =
+    billingState === "trial_active" && coreUser?.trialEndsAt instanceof Date
+      ? guestTrialDaysRemaining(coreUser.trialEndsAt)
+      : null;
 
   if (ObjectId.isValid(session.userId) && hasAppLoginRole && !adminSession) {
     await writeBillingAccessDecisionCached(session.userId, {
@@ -72,7 +78,8 @@ export async function GET() {
       subscriptionActive,
       productAccessAllowed,
       requiresBilling,
-      redirectPath
+      redirectPath,
+      trialDaysRemaining
     }
   });
 }

@@ -176,7 +176,7 @@ export function XchatGuestPanel({
         if (response.status === 409) {
           setRegisterError(
             payload.error ??
-              "A pending access request already exists for this account. Sign in with the same email after an admin approves you."
+              "This email already has a password or an existing account. Sign in instead or use forgot password."
           );
           return;
         }
@@ -184,9 +184,7 @@ export function XchatGuestPanel({
         return;
       }
       setRegisterSuccess(
-        payload.data?.existing
-          ? `You already have a pending ${submittedPlanLabel} request. We will review it soon.`
-          : `Request submitted for ${submittedPlanLabel}. An admin will review your access.`
+        `Account ready for ${submittedPlanLabel}. Sign in to start your guest trial — billing can be completed anytime.`
       );
       setAccessOpen(true);
       setRegisterName("");

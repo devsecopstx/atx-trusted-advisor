@@ -24,18 +24,15 @@ export function resolveGuestTrialAuthContext(input: {
 }
 
 /**
- * When the user started from the guest trial CTA, grant operator + basic + 30d trial before access gates run.
+ * Open signup: always grant operator + basic + 30d trial before access gates run.
  * Server-only — import from API routes / OAuth callbacks only.
  */
-export async function tryProvisionGuestTrialFromIntent(input: {
+export async function provisionOpenSignupTrialAccess(input: {
   user: CoreUser;
-  ctx: GuestTrialAuthContext;
+  emailFromProvider?: string;
 }): Promise<CoreUser> {
-  if (!input.ctx.trialIntent) {
-    return input.user;
-  }
   const hasRealEmail =
-    Boolean(input.ctx.emailFromProvider?.trim()) && !isXIdentityPlaceholderEmail(input.user.email);
+    Boolean(input.emailFromProvider?.trim()) && !isXIdentityPlaceholderEmail(input.user.email);
   const result = await provisionGuestTrialOperatorAccess({
     user: input.user,
     markEmailVerified: hasRealEmail
@@ -47,4 +44,22 @@ export async function tryProvisionGuestTrialFromIntent(input: {
     return result.user;
   }
   return input.user;
+}
+
+/**
+ * When the user started from the guest trial CTA, grant operator + basic + 30d trial before access gates run.
+ * Prefer {@link provisionOpenSignupTrialAccess} for unconditional open signup.
+ * Server-only — import from API routes / OAuth callbacks only.
+ */
+export async function tryProvisionGuestTrialFromIntent(input: {
+  user: CoreUser;
+  ctx: GuestTrialAuthContext;
+}): Promise<CoreUser> {
+  if (!input.ctx.trialIntent) {
+    return input.user;
+  }
+  return provisionOpenSignupTrialAccess({
+    user: input.user,
+    emailFromProvider: input.ctx.emailFromProvider
+  });
 }

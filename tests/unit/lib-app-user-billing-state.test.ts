@@ -38,7 +38,7 @@ describe("app-user billing access state", () => {
     expect(isAppUserProductAccessAllowedState(state)).toBe(true);
   });
 
-  it("returns past_due for past due status", () => {
+  it("returns past_due for past due status but still allows product access", () => {
     const state = resolveAppUserBillingAccessState({
       roles: ["operator"],
       billing: {
@@ -47,10 +47,10 @@ describe("app-user billing access state", () => {
     });
     expect(state).toBe("past_due");
     expect(isBillingEntitledAccessState(state)).toBe(false);
-    expect(isAppUserProductAccessAllowedState(state)).toBe(false);
+    expect(isAppUserProductAccessAllowedState(state)).toBe(true);
   });
 
-  it("returns canceled for canceled status", () => {
+  it("returns canceled for canceled status but still allows product access", () => {
     const state = resolveAppUserBillingAccessState({
       roles: ["operator"],
       billing: {
@@ -59,6 +59,7 @@ describe("app-user billing access state", () => {
     });
     expect(state).toBe("canceled");
     expect(isBillingEntitledAccessState(state)).toBe(false);
+    expect(isAppUserProductAccessAllowedState(state)).toBe(true);
   });
 
   it("returns override_active while override is enabled and unexpired", () => {

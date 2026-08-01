@@ -86,11 +86,12 @@ export function isBillingEntitledAccessState(state: AppUserBillingAccessState): 
 }
 
 /**
- * App surfaces (xChat, xOptions, portfolio APIs behind billing proxy): allow approved users who have
- * not started Stripe yet, until they subscribe — then state moves to `active` and the unpaid banner goes away.
+ * App surfaces (xChat, xOptions, portfolio APIs behind billing proxy): never hard-block on Stripe/trial
+ * status for login-eligible users. Only `pending` (no login role) is denied. Billing completion is
+ * encouraged via banners/modals, not a product gate.
  */
 export function isAppUserProductAccessAllowedState(state: AppUserBillingAccessState): boolean {
-  return isBillingEntitledAccessState(state) || state === "approved_unpaid";
+  return state !== "pending";
 }
 
 export function isGuestTrialBillingState(state: AppUserBillingAccessState): boolean {

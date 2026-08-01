@@ -4,6 +4,7 @@ import { z } from "zod";
 import { consumePendingXLinkCookie, createSession } from "@/lib/auth";
 import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import { getEnv } from "@/lib/env";
+import { provisionOpenSignupTrialAccess } from "@/lib/marketing/guest-trial-auth";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
@@ -30,6 +31,7 @@ import {
     unlinkXAccountFromUser,
     updateCoreUserEmail
 } from "@/modules/identity/repository";
+import type { CoreUser } from "@/modules/identity/types";
 
 const linkSchema = z.object({
   email: z.string().email()
@@ -137,7 +139,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const linkedUser =
+  let linkedUser: CoreUser =
     user.xAccount?.xUserId === pending.xUserId &&
     user.xAccount?.username === pending.username
       ? user
@@ -148,6 +150,13 @@ export async function POST(request: Request) {
           displayName: pending.displayName,
           avatarUrl: pending.avatarUrl
         });
+
+  if (linkedUser._id) {
+    linkedUser = await provisionOpenSignupTrialAccess({
+      user: linkedUser,
+      emailFromProvider: requestedEmail
+    });
+  }
 
   const linkedUserId = linkedUser._id;
   if (!linkedUserId) {

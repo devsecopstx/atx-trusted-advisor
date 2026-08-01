@@ -18,10 +18,7 @@ import {
 } from "@/lib/env";
 import { googleLinkedId } from "@/lib/google-oauth-identity";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
-import {
-  resolveGuestTrialAuthContext,
-  tryProvisionGuestTrialFromIntent
-} from "@/lib/marketing/guest-trial-auth";
+import { provisionOpenSignupTrialAccess } from "@/lib/marketing/guest-trial-auth";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
@@ -42,7 +39,6 @@ import {
     linkGoogleAccountToUser,
     unlinkGoogleIdentityFromUser
 } from "@/modules/identity/repository";
-import { readGuestTrialIntentFromRequest } from "@/modules/identity/guest-trial-constants";
 import type { CoreUser } from "@/modules/identity/types";
 
 type GoogleTokenResponse = {
@@ -315,12 +311,9 @@ export async function GET(request: Request) {
     return redirectWithLoginAudit("access_request_pending", { email: emailNormalized });
   }
 
-  const trialCtx = resolveGuestTrialAuthContext({
-    trialCookie: readGuestTrialIntentFromRequest(request)
-  });
-  user = await tryProvisionGuestTrialFromIntent({
+  user = await provisionOpenSignupTrialAccess({
     user,
-    ctx: { ...trialCtx, emailFromProvider: emailNormalized }
+    emailFromProvider: emailNormalized
   });
 
   if (!user._id) {

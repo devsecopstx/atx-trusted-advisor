@@ -87,9 +87,7 @@ export function SignupForm() {
       }
       setState({
         kind: "success",
-        message: data.data?.existing
-          ? `You already have a pending ${accessRequestPlanLabel(plan)} request. We will review it soon.`
-          : `Request submitted for ${accessRequestPlanLabel(plan)}. An admin will review your access.`
+        message: `Account ready for ${accessRequestPlanLabel(plan)}. Sign in with your username or email — you're on a guest trial until billing is completed.`
       });
     } catch {
       setState({ kind: "error", message: "Network error. Retry in a moment." });
@@ -102,8 +100,8 @@ export function SignupForm() {
         <h2 className="text-sm font-semibold text-[var(--xf-text-200)]">Welcome to aTx Trusted Advisor</h2>
         <p className="text-2xl font-bold tracking-tight text-[var(--xf-text-100)]">Let&apos;s get started</p>
         <p className="text-xs leading-relaxed text-[var(--xf-text-muted)]">
-          Pick a country, email, username, and password. After an admin approves your access, sign in with your
-          username or email.
+          Pick a country, email, username, and password. You get immediate trial access; complete billing anytime
+          from Account → Billing.
         </p>
       </div>
 

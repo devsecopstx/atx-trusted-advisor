@@ -28,7 +28,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 ## Access requests and feedback
 
 - `POST /api/access-requests`
-- `POST /api/access-requests/public` — **no session**; JSON **`name`** (username, alphanumeric 2–120), **`email`**, **`password`** (required, **≥12** chars, max 128), optional **`requestedPlan`** (retail tier / aliases). Upserts **`core_users`** by email, stores initial **`passwordHash`** when none exists, then creates or recognizes a **pending** **`operator`** access request (**429** rate limit; **409** duplicate pending from repository layer or **409** email already has password). Used by **`/account/billing`** guest signup and **`/xchat`** guest register UI.
+- `POST /api/access-requests/public` — **no session**; JSON **`name`** (username, alphanumeric 2–120), **`email`**, **`password`** (required, **≥12** chars, max 128), optional **`requestedPlan`** (retail tier / aliases). Upserts **`core_users`** by email, stores initial **`passwordHash`** when none exists, then **open-signup provisions** guest trial (**`operator`** + **`basic`** + **`trialEndsAt`**) and returns **`status: "approved"`** / **`trialProvisioned: true`** (no blocking pending AR). **429** rate limit; **409** email already has password. Used by **`/signup`**, **`/account/billing`** guest signup, and **`/xchat`** guest register UI.
 - `POST /api/user-feedback`
 
 ## Reports (options action scan)
