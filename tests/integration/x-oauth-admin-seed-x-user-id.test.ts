@@ -23,7 +23,12 @@ const authMocks = vi.hoisted(() => ({
   createSession: vi.fn(),
   setPendingXLinkCookie: vi.fn(),
   consumeOAuthReturnPathCookie: vi.fn(),
+  consumeCapNativeOAuthCookie: vi.fn().mockResolvedValue(false),
   isSafeOAuthReturnPath: vi.fn()
+}));
+
+const guestTrialMocks = vi.hoisted(() => ({
+  provisionOpenSignupTrialAccess: vi.fn(async ({ user }: { user: unknown }) => user)
 }));
 
 const coreAdminMocks = vi.hoisted(() => ({
@@ -78,6 +83,10 @@ vi.mock("@/modules/core-admin/tenant-user-bootstrap", () => tenantUserBootstrapM
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/lib/env", () => envMocks);
+vi.mock("@/lib/marketing/guest-trial-auth", () => guestTrialMocks);
+vi.mock("@/modules/identity/login-audit", () => ({
+  appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
+}));
 vi.mock("@/modules/identity/email-credentials-repository", () => emailCredentialMocks);
 vi.mock("@/lib/send-email-credential-messages", () => sendCredentialEmailMocks);
 
@@ -109,9 +118,11 @@ describe("X OAuth without email + ADMIN_SEED_X_USER_ID", () => {
     authMocks.createSession.mockResolvedValue(undefined);
     authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);
     authMocks.consumeOAuthReturnPathCookie.mockResolvedValue(null);
+    authMocks.consumeCapNativeOAuthCookie.mockResolvedValue(false);
     authMocks.isSafeOAuthReturnPath.mockImplementation(
       (path: string) => path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
     );
+    guestTrialMocks.provisionOpenSignupTrialAccess.mockImplementation(async ({ user }) => user);
 
     coreAdminMocks.getPendingAccessRequestByUserAndRole.mockResolvedValue(null);
     coreAdminMocks.createAccessRequest.mockResolvedValue(undefined);

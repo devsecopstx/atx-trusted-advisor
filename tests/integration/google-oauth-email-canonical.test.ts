@@ -4,8 +4,14 @@ const authMocks = vi.hoisted(() => ({
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
+  createSession: vi.fn(),
   consumeOAuthReturnPathCookie: vi.fn(),
+  consumeCapNativeOAuthCookie: vi.fn().mockResolvedValue(false),
   isSafeOAuthReturnPath: vi.fn()
+}));
+
+const guestTrialMocks = vi.hoisted(() => ({
+  provisionOpenSignupTrialAccess: vi.fn()
 }));
 
 const envMocks = vi.hoisted(() => ({
@@ -34,17 +40,24 @@ const identityMocks = vi.hoisted(() => ({
   getDefaultTenantMembershipForUser: vi.fn().mockResolvedValue(null),
   linkGoogleAccountToUser: vi.fn(),
   recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined),
-  resolveAuthContext: vi.fn().mockResolvedValue({
+  resolveAuthContext: vi.fn().mockImplementation(async ({ user }: { user: { email?: string; roles?: string[] } }) => ({
     userId: { toHexString: () => "507f1f77bcf86cd799439011" },
-    email: "u@test.com",
-    roles: ["viewer"],
+    email: user.email ?? "u@test.com",
+    roles: user.roles?.length ? [...user.roles] : ["viewer"],
     tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
     tenantRole: "member" as const,
     xUserId: "x",
     username: "u"
-  }),
+  })),
   unlinkGoogleIdentityFromUser: vi.fn(),
   upsertTenantMembership: vi.fn()
+}));
+
+const tenantUserBootstrapMocks = vi.hoisted(() => ({
+  ensureTenantBootstrapForUser: vi.fn().mockResolvedValue({
+    didProvision: false,
+    platformRole: "operator"
+  })
 }));
 
 const emailCredentialMocks = vi.hoisted(() => ({
@@ -57,7 +70,9 @@ const emailMessageMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/env", () => envMocks);
+vi.mock("@/lib/marketing/guest-trial-auth", () => guestTrialMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
+vi.mock("@/modules/core-admin/tenant-user-bootstrap", () => tenantUserBootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/identity/login-audit", () => ({
   appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
@@ -79,7 +94,28 @@ describe("Google OAuth canonical email user", () => {
     authMocks.clearOAuthFlowCookies.mockResolvedValue(undefined);
     authMocks.getSessionUser.mockResolvedValue(null);
     authMocks.consumeOAuthReturnPathCookie.mockResolvedValue(null);
+    authMocks.consumeCapNativeOAuthCookie.mockResolvedValue(false);
+    authMocks.createSession.mockResolvedValue(undefined);
     authMocks.isSafeOAuthReturnPath.mockReturnValue(true);
+
+    guestTrialMocks.provisionOpenSignupTrialAccess.mockImplementation(async ({ user }) => {
+      const roles = Array.isArray(user.roles) ? [...user.roles] : [];
+      if (
+        roles.includes("global_admin") ||
+        roles.includes("admin") ||
+        roles.includes("operator") ||
+        roles.includes("advisor") ||
+        roles.includes("viewer")
+      ) {
+        return { ...user, roles };
+      }
+      return {
+        ...user,
+        roles: ["operator"],
+        accountStatus: "approved",
+        emailVerifiedAt: user.emailVerifiedAt ?? new Date("2026-03-16T00:00:00.000Z")
+      };
+    });
 
     envMocks.isGoogleOAuthConfigured.mockReturnValue(true);
     envMocks.getGoogleClientId.mockReturnValue("google-client-id");
@@ -166,7 +202,9 @@ describe("Google OAuth canonical email user", () => {
         sub: "google-sub-1"
       })
     );
-    expect(response.headers.get("location")).toContain("access_request_pending");
+    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("/xchat");
+    expect(response.headers.get("location")).not.toContain("access_request_pending");
   });
 
   it("redirects to /xchat when PKCE cookies are missing but a session exists (stale tab / double callback)", async () => {

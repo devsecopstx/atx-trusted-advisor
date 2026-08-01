@@ -18,7 +18,12 @@ const tenantUserBootstrapMocks = vi.hoisted(() => ({
 
 const authMocks = vi.hoisted(() => ({
   consumePendingXLinkCookie: vi.fn(),
-  createSession: vi.fn()
+  createSession: vi.fn(),
+  consumeCapNativeOAuthCookie: vi.fn().mockResolvedValue(false)
+}));
+
+const guestTrialMocks = vi.hoisted(() => ({
+  provisionOpenSignupTrialAccess: vi.fn()
 }));
 
 const envMocks = vi.hoisted(() => ({
@@ -65,6 +70,7 @@ const emailMessageMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/env", () => envMocks);
+vi.mock("@/lib/marketing/guest-trial-auth", () => guestTrialMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/core-admin/tenant-user-bootstrap", () => tenantUserBootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
@@ -153,9 +159,23 @@ describe("auth link-email route", () => {
       xUserId: "x-user-1",
       username: "new_user"
     }));
+
+    guestTrialMocks.provisionOpenSignupTrialAccess.mockImplementation(async ({ user }) => {
+      const roles = Array.isArray(user.roles) ? [...user.roles] : [];
+      if (roles.includes("global_admin") || roles.includes("admin") || roles.includes("operator") || roles.includes("advisor") || roles.includes("viewer")) {
+        return { ...user, roles, accountStatus: user.accountStatus ?? "approved" };
+      }
+      state.userRoles = ["operator"];
+      return {
+        ...user,
+        roles: ["operator"],
+        accountStatus: "approved",
+        emailVerifiedAt: user.emailVerifiedAt ?? new Date("2026-03-16T00:00:00.000Z")
+      };
+    });
   });
 
-  it("keeps pending flow when user is unapproved and flag is disabled", async () => {
+  it("open-signup provisions operator trial when user has no platform role", async () => {
     const response = await linkEmailPost(
       new Request("http://127.0.0.1:3000/api/auth/link-email", {
         method: "POST",
@@ -166,12 +186,13 @@ describe("auth link-email route", () => {
 
     const payload = (await response.json()) as { redirectTo: string };
     expect(response.status).toBe(200);
-    expect(payload.redirectTo).toBe("/xchat?error=access_request_pending");
-    expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
-    expect(authMocks.createSession).not.toHaveBeenCalled();
+    expect(payload.redirectTo).toBe("/xchat");
+    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
+    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
+    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
   });
 
-  it("still requires approval when flag is enabled but user has no platform role", async () => {
+  it("open-signup still provisions when ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
     envMocks.isAllowAnyXUserLoginEnabled.mockReturnValue(true);
 
     const response = await linkEmailPost(
@@ -184,10 +205,10 @@ describe("auth link-email route", () => {
 
     const payload = (await response.json()) as { redirectTo: string };
     expect(response.status).toBe(200);
-    expect(payload.redirectTo).toBe("/xchat?error=access_request_pending");
-    expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
-    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).not.toHaveBeenCalled();
-    expect(authMocks.createSession).not.toHaveBeenCalled();
+    expect(payload.redirectTo).toBe("/xchat");
+    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
+    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
+    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
   });
 
   it("redirects admins to /admin", async () => {

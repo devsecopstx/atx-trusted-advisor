@@ -22,7 +22,12 @@ const authMocks = vi.hoisted(() => ({
   createSession: vi.fn(),
   setPendingXLinkCookie: vi.fn(),
   consumeOAuthReturnPathCookie: vi.fn(),
+  consumeCapNativeOAuthCookie: vi.fn().mockResolvedValue(false),
   isSafeOAuthReturnPath: vi.fn()
+}));
+
+const guestTrialMocks = vi.hoisted(() => ({
+  provisionOpenSignupTrialAccess: vi.fn()
 }));
 
 const tenantUserBootstrapMocks = vi.hoisted(() => ({
@@ -117,6 +122,7 @@ vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/lib/env", () => envMocks);
+vi.mock("@/lib/marketing/guest-trial-auth", () => guestTrialMocks);
 vi.mock("@/modules/identity/login-audit", () => ({
   appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
 }));
@@ -162,9 +168,30 @@ describe("access request approval login flow", () => {
     authMocks.createSession.mockResolvedValue(undefined);
     authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);
     authMocks.consumeOAuthReturnPathCookie.mockResolvedValue(null);
+    authMocks.consumeCapNativeOAuthCookie.mockResolvedValue(false);
     authMocks.isSafeOAuthReturnPath.mockImplementation(
       (path: string) => path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
     );
+
+    guestTrialMocks.provisionOpenSignupTrialAccess.mockImplementation(async ({ user }) => {
+      const roles = Array.isArray(user.roles) ? [...user.roles] : [];
+      if (
+        roles.includes("global_admin") ||
+        roles.includes("admin") ||
+        roles.includes("operator") ||
+        roles.includes("advisor") ||
+        roles.includes("viewer")
+      ) {
+        return { ...user, roles };
+      }
+      state.userRoles = ["operator"];
+      return {
+        ...user,
+        roles: ["operator"],
+        accountStatus: "approved",
+        emailVerifiedAt: user.emailVerifiedAt ?? new Date("2026-03-16T00:00:00.000Z")
+      };
+    });
 
     state.accessRequest.requestedRole = "viewer";
     state.accessRequest.requestedPlan = "basic";
@@ -262,10 +289,8 @@ describe("access request approval login flow", () => {
           updatedAt: new Date()
         };
       }
-      if (
-        state.accessRequestStatus === "approved" &&
-        state.userRoles.some((r) => ["viewer", "operator", "advisor"].includes(r))
-      ) {
+      // Open signup / approved AR: login-eligible roles get a default tenant membership.
+      if (state.userRoles.some((r) => ["viewer", "operator", "advisor"].includes(r))) {
         return {
           _id: { toHexString: () => "507f1f77bcf86cd7994390dd" },
           userId: { toHexString: () => state.userId },
@@ -356,14 +381,16 @@ describe("access request approval login flow", () => {
       }) as typeof fetch;
   });
 
-  it("blocks login before approval and allows login after approval", async () => {
-    const beforeApprovalResponse = await oauthCallback(
+  it("open-signup provisions operator trial without waiting for access-request approval", async () => {
+    const openSignupResponse = await oauthCallback(
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
-    expect(beforeApprovalResponse.headers.get("location")).toContain(
-      "/xchat?error=access_request_pending"
-    );
-    expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
+    expect(openSignupResponse.headers.get("location")).toContain("/xchat");
+    expect(openSignupResponse.headers.get("location")).not.toContain("access_request_pending");
+    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
+    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
+    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+    expect(state.userRoles).toContain("operator");
 
     const approvalResponse = await patchAccessRequest(
       new Request("http://127.0.0.1:3000/api/admin/access-requests/507f1f77bcf86cd799439022", {
@@ -386,39 +413,10 @@ describe("access request approval login flow", () => {
     );
     expect(approvalResponse.status).toBe(200);
     expect(state.userRoles).toContain("viewer");
-    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).not.toHaveBeenCalled();
     expect(bootstrapMocks.enqueueAccessRequestBootstrap).toHaveBeenCalledTimes(1);
-
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          access_token: "access-token",
-          token_type: "bearer"
-        })
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: {
-            id: "x-user-1",
-            username: "approved_user",
-            email: "approved.user@atxfinance.ai"
-          }
-        })
-      }) as typeof fetch;
-
-    const afterApprovalResponse = await oauthCallback(
-      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
-    );
-    expect(afterApprovalResponse.headers.get("location")).toContain("/xchat");
-    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
-    expect(tenantUserBootstrapMocks.ensureTenantBootstrapForUser).toHaveBeenCalledTimes(1);
-    expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
   });
 
-  it("does not grant session without platform role even when ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
+  it("open-signup provisions operator even when ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
     envMocks.getEnv.mockReturnValue({
       X_OAUTH_CLIENT_SECRET: "test-secret",
       X_OAUTH_TOKEN_URL: "https://x.test/token",
@@ -453,9 +451,10 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(response.headers.get("location")).toContain("access_request_pending");
-    expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
-    expect(authMocks.createSession).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("/xchat");
+    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
+    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
+    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
   });
 
   it("blocks session when admin allowlist strips global_admin and no app_user role remains", async () => {
@@ -533,7 +532,7 @@ describe("access request approval login flow", () => {
     );
   });
 
-  it("relinks X to the registration email user even before that user has a login-eligible role", async () => {
+  it("relinks X to the registration email user and open-signup provisions trial access", async () => {
     const staleUserId = "507f1f77bcf86cd7994390bb";
     const staleUser = {
       _id: {
@@ -549,7 +548,8 @@ describe("access request approval login flow", () => {
       },
       email: "approved.user@atxfinance.ai",
       roles: [] as string[],
-      status: "active" as const
+      status: "active" as const,
+      emailVerifiedAt: new Date("2026-03-16T00:00:00.000Z")
     };
 
     identityMocks.getCoreUserByXIdentity.mockResolvedValueOnce(staleUser);
@@ -595,7 +595,9 @@ describe("access request approval login flow", () => {
         username: "approved_user"
       })
     );
-    expect(response.headers.get("location")).toContain("/xchat?error=access_request_pending");
+    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("/xchat");
+    expect(response.headers.get("location")).not.toContain("access_request_pending");
   });
 
   it("relinks stale X identity to approved email user and redirects to admin", async () => {
