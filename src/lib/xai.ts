@@ -921,11 +921,14 @@ export async function respondWithXaiToolLoop(input: {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const model = input.model ?? defaultModel;
   const maxTurns = input.maxTurns ?? 5;
-  /** Let xAI run built-in tools (web_search, x_search, file_search) server-side inside one HTTP call; `1` broke live search for Super-Agent when mixed with local tools. */
-  const perRequestMaxTurns = Math.min(Math.max(maxTurns, 1), 16);
+  /** Hosted tools per HTTP hop — keep small so host-loop × max_turns cannot explode cost. */
+  const perRequestMaxTurns = Math.min(Math.max(maxTurns, 1), 4);
   const toolCalls: ToolCallLog[] = [];
   const tools = toXaiRequestTools(input.tools, { forXaiResponsesApi: true });
-  const signal = input.signal;
+  const turnTimeoutMs = 45_000;
+  const signal = input.signal
+    ? AbortSignal.any([input.signal, AbortSignal.timeout(turnTimeoutMs)])
+    : AbortSignal.timeout(turnTimeoutMs);
 
   if (input.useXaiBatch === true) {
     throw new Error(

@@ -33,8 +33,7 @@ import {
     ensureSeededGlobalAdmin,
     getCoreUserByEmail,
     getCoreUserByXOAuthIdentity,
-    linkXAccountToUser,
-    unlinkXAccountFromUser
+    linkXAccountToUser
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
 
@@ -258,10 +257,11 @@ export async function GET(request: Request) {
     const userByEmail = seededAdmin?.user ?? (await getCoreUserByEmail(emailFromProvider));
     const emailUserId = userByEmail?._id;
     if (emailUserId !== undefined && !isSameUserId(user._id, emailUserId)) {
-      await unlinkXAccountFromUser({ userId: user._id });
-      user = await linkXAccountToUser({
-        userId: emailUserId,
-        ...xIdentity
+      return redirectWithLoginAudit("email_belongs_to_other_account", {
+        userId: user._id.toHexString(),
+        xUserId: xIdentity.xUserId,
+        username: xIdentity.username,
+        email: emailFromProvider
       });
     }
   }

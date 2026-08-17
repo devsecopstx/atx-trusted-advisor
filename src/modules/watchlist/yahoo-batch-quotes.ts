@@ -96,14 +96,15 @@ export async function getYahooBatchQuotes(
     const fromPerSymbolCache: MarketQuoteSnapshot[] = [];
     const symbolsNeedingNetwork: string[] = [];
     if (allowNetwork) {
-      for (const sym of uniqueSymbols) {
-        const cachedRow = await tryGetRedisMarketQuote(sym);
+      const cachedRows = await Promise.all(uniqueSymbols.map((sym) => tryGetRedisMarketQuote(sym)));
+      uniqueSymbols.forEach((sym, i) => {
+        const cachedRow = cachedRows[i];
         if (cachedRow && marketQuoteHasLivePrice(cachedRow)) {
           fromPerSymbolCache.push(cachedRow);
         } else {
           symbolsNeedingNetwork.push(sym);
         }
-      }
+      });
     }
 
     if (!allowNetwork) {
@@ -210,13 +211,14 @@ export async function fetchYahooQuoteRowsChunked(
   if (unique.length <= YAHOO_BATCH_QUOTE_CHUNK_SIZE) {
     return fetchYahooQuoteRowsForSymbols(unique, logLabel);
   }
-  const rows: MarketQuoteSnapshot[] = [];
+  const chunks: string[][] = [];
   for (let i = 0; i < unique.length; i += YAHOO_BATCH_QUOTE_CHUNK_SIZE) {
-    const chunk = unique.slice(i, i + YAHOO_BATCH_QUOTE_CHUNK_SIZE);
-    const chunkRows = await fetchYahooQuoteRowsForSymbols(chunk, `${logLabel} chunk`);
-    rows.push(...chunkRows);
+    chunks.push(unique.slice(i, i + YAHOO_BATCH_QUOTE_CHUNK_SIZE));
   }
-  return rows;
+  const chunkResults = await Promise.all(
+    chunks.map((chunk, idx) => fetchYahooQuoteRowsForSymbols(chunk, `${logLabel} chunk ${idx + 1}`))
+  );
+  return chunkResults.flat();
 }
 
 function resolveYahooQuoteLastPrice(raw: Record<string, unknown>): number | undefined {

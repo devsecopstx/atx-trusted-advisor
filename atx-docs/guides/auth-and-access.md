@@ -21,6 +21,14 @@ Session payload distinguishes:
 
 `app_user` in docs means signed-in product users with platform roles `advisor`, `operator`, or `viewer`; it is not a stored role string.
 
+## Link-email + pending X cookie
+
+`xf_x_pending_link` is **HMAC-signed** (same secret as the session cookie) with an expiry. Unsigned or forged values are ignored.
+
+`POST /api/auth/link-email` will **not** attach an X identity to an existing email user, will **not** call `ensureSeededGlobalAdmin`, and will **not** treat a typed email as provider-verified. Use **`ADMIN_SEED_X_USER_ID`** on the X callback for seed-admin bind. Conflict code: **`email_belongs_to_other_account`**.
+
+Privileged APIs (`requireGlobalAdminSession`, `requireApprovedAppUserSession`, `requirePlatformOpsSession`) **re-read `core_users` roles/status** per request (fail-closed on Mongo errors).
+
 ## Edge session grounding (`SESSION_EDGE_GROUNDING`)
 
 **Shipped:** **≥3.17.x** — For requests that match **`src/proxy.ts`** `config.matcher` and carry **`xf_core_session`**, the proxy **`fetch`**es **`GET /api/internal/authz/session-grounding`** with forwarded **Cookie** (short TTL in-memory cache per cookie value).
@@ -53,10 +61,10 @@ Reference: `src/modules/surface-policy.ts` and `src/proxy.ts`.
 
 ## Open signup + guest trial (X / Google / email)
 
-1. **Any signup** (X OAuth, Google OAuth, **`POST /api/access-requests/public`**, or email-link completion after X-without-email) calls **`provisionOpenSignupTrialAccess`** → **`provisionGuestTrialOperatorAccess`**: platform role **`operator`**, **`accountStatus: approved`**, plan **`basic`**, and a **30-day `trialEndsAt`**. No trial-cookie / marketing intent is required. Do **not** use **`ALLOW_ANY_X_USER_LOGIN`** for this (keep prod **`false`**).
+1. **New signup only** (X OAuth, Google OAuth, **`POST /api/access-requests/public`**, or email-link on a **new** X placeholder) calls **`provisionOpenSignupTrialAccess`** → **`provisionGuestTrialOperatorAccess`**: platform role **`operator`**, **`accountStatus: approved`**, plan **`basic`**, and a **30-day `trialEndsAt`**. Existing login-capable or already-**`approved`** users are **not** upgraded. Typed link-email is **not** treated as provider-verified. Do **not** use **`ALLOW_ANY_X_USER_LOGIN`** for this (keep prod **`false`**).
 2. **Public email register** (`/signup`, `/xchat` guest, `/account/billing` guest): upserts **`core_users`**, sets initial **`passwordHash`**, provisions trial access, and returns **`status: "approved"`** with **`trialProvisioned: true`**. It does **not** create a blocking pending access request. **Admin → Access requests** remains for role upgrades / manual onboarding.
 3. **Billing is optional for product access.** `isAppUserProductAccessAllowedState` allows **`trial_active`**, **`trial_expired`**, **`approved_unpaid`**, **`past_due`**, and **`canceled`** (only **`pending`** / no login role is denied). Proxy and **`POST /api/xchat/ask`** share that helper. A dismissible **trial-until-billing** modal (`TrialBillingNoticeModal` on the workspace product rail) + banner copy encourage completing **`/account/billing`**; dismiss uses **`sessionStorage`**.
-4. OAuth still prefers the **`core_users`** row whose **`email`** matches the verified provider email and **moves** `xAccount` / `googleAccount` onto that row when needed. Session creation remains gated by **`core_users.emailVerifiedAt`** where applicable (`error=email_unverified`). Placeholder X identities without a real email stay on **`email_link_required`** until link-email, which then open-provisions trial access.
+4. If X OAuth finds an identity user **and** a **different** email user, it **does not** auto-merge (`error=email_belongs_to_other_account`). Session creation remains gated by **`core_users.emailVerifiedAt`** (`error=email_unverified`). Placeholder X identities without a real email stay on **`email_link_required`** until link-email (same X placeholder row only).
 
 **Google email:** The Google callback requires a **verified** `email` + `email_verified` from Google userinfo; without that it redirects with `google_email_required`.
 
@@ -129,6 +137,7 @@ Keep these aligned to avoid missing cookie context and callback failures:
 - `email_link_required`: no email claim from X, and OAuth identity did not match `ADMIN_SEED_X_USER_ID` (numeric id), `ADMIN_SEED_X_USERNAME` (handle), or a login-eligible role yet
 - `access_request_pending`: account exists but lacks login-allowed role
 - `email_unverified`: account has login role but `core_users.emailVerifiedAt` is missing; verification token/email was (best-effort) issued and OAuth session is denied until verify-email completes
+- `email_belongs_to_other_account`: typed or provider email is already on a different `core_users` row — X is **not** attached; sign in with the original method
 - `bootstrap_failed`: post-auth bootstrap failed (membership/session persistence path)
 - `session_not_grounded`: edge proxy rejected the session after **`GET /api/internal/authz/session-grounding`** returned **401** (stale cookie, suspended/rejected/unapproved user, missing membership) or another **non-2xx** response that is **not** in the proxy’s fail-open set (see § Edge session grounding)
 

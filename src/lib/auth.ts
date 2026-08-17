@@ -59,6 +59,8 @@ export type PendingXLink = {
   avatarUrl?: string;
 };
 
+type PendingXLinkPayload = PendingXLink & { exp: number };
+
 type SessionPayload = SessionUser & {
   exp: number;
 };
@@ -267,9 +269,56 @@ export async function consumeOAuthReturnPathCookie(): Promise<string | null> {
   return isSafeOAuthReturnPath(trimmed) ? trimmed : null;
 }
 
+export function signPendingXLinkValue(value: PendingXLink, nowMs: number = Date.now()): string {
+  const payload: PendingXLinkPayload = {
+    ...value,
+    exp: nowMs + OAUTH_FLOW_TTL_SECONDS * 1000
+  };
+  const encodedPayload = toBase64Url(JSON.stringify(payload));
+  return `${encodedPayload}.${sign(encodedPayload)}`;
+}
+
+export function parsePendingXLinkCookieValue(
+  raw: string,
+  nowMs: number = Date.now()
+): PendingXLink | null {
+  const [encodedPayload, signature] = raw.split(".");
+  if (!encodedPayload || !signature) {
+    return null;
+  }
+  const expectedSignature = sign(encodedPayload);
+  const signatureBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expectedSignature);
+  if (
+    signatureBuf.length !== expectedBuf.length ||
+    !timingSafeEqual(signatureBuf, expectedBuf)
+  ) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(fromBase64Url(encodedPayload)) as PendingXLinkPayload;
+    if (typeof payload.exp !== "number" || nowMs > payload.exp) {
+      return null;
+    }
+    const xUserId = typeof payload.xUserId === "string" ? payload.xUserId.trim() : "";
+    const username = typeof payload.username === "string" ? payload.username.trim() : "";
+    if (!xUserId || !username) {
+      return null;
+    }
+    return {
+      xUserId,
+      username,
+      ...(typeof payload.displayName === "string" ? { displayName: payload.displayName } : {}),
+      ...(typeof payload.avatarUrl === "string" ? { avatarUrl: payload.avatarUrl } : {})
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function setPendingXLinkCookie(value: PendingXLink): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.set(PENDING_LINK_COOKIE_NAME, toBase64Url(JSON.stringify(value)), {
+  cookieStore.set(PENDING_LINK_COOKIE_NAME, signPendingXLinkValue(value), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -284,11 +333,7 @@ export async function readPendingXLinkCookie(): Promise<PendingXLink | null> {
   if (!raw) {
     return null;
   }
-  try {
-    return JSON.parse(fromBase64Url(raw)) as PendingXLink;
-  } catch {
-    return null;
-  }
+  return parsePendingXLinkCookieValue(raw);
 }
 
 export async function consumePendingXLinkCookie(): Promise<PendingXLink | null> {

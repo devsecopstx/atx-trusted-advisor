@@ -10,6 +10,7 @@ import {
 } from "@/modules/core-admin/repository";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 import { fetchYahooOptionChainForExpiration } from "@/modules/strategy-options/options-chain";
+import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { getPlanLimits } from "@/modules/xchat/plan-limits";
 
@@ -538,8 +539,23 @@ export async function buildOptionsActionReport(
   }
 
   const quoteCache = new Map<string, number | null>();
+  const uniqueQuoteSymbols = [
+    ...new Set(
+      positions
+        .map((p) => (typeof p.symbol === "string" ? p.symbol.trim().toUpperCase() : ""))
+        .filter(Boolean)
+    )
+  ].slice(0, 20);
+  if (uniqueQuoteSymbols.length > 0) {
+    const batch = await lookupSymbols(uniqueQuoteSymbols).catch(() => new Map());
+    for (const [sym, row] of batch) {
+      const price = row && typeof row.price === "number" && Number.isFinite(row.price) ? row.price : null;
+      quoteCache.set(sym.toUpperCase(), price);
+    }
+  }
   const holdingRows: Array<Omit<OptionsActionReportRow, "rowId" | "applyToWatchlist">> = [];
-  for (const position of positions) {
+  const positionsToScan = positions.slice(0, 20);
+  for (const position of positionsToScan) {
     const holding = normalizeOptionHolding({
       symbol: position.symbol,
       optionType: position.optionType,

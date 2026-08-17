@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser, type SessionUser } from "@/lib/auth";
+import { attachLiveRolesFromCoreUser } from "@/lib/session-live-user";
 import {
     canCreateStrategyJobFromApp,
     canUserLogin,
@@ -8,12 +9,24 @@ import {
 } from "@/modules/identity/authorization";
 import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
 
+async function requireLiveSessionUser(): Promise<SessionUser | NextResponse> {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+  const live = await attachLiveRolesFromCoreUser(session);
+  if (!live.ok) {
+    return NextResponse.json({ error: live.error }, { status: live.status });
+  }
+  return live.session;
+}
+
 /**
  * Requires a session whose **platform roles** include `global_admin` (admin console only).
- * Tenant membership role never substitutes for this check.
+ * Tenant membership role never substitutes for this check. Roles come from Mongo, not the cookie.
  */
 export async function requireGlobalAdminSession(): Promise<SessionUser | NextResponse> {
-  const session = await requireSessionUser();
+  const session = await requireLiveSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }
@@ -34,7 +47,7 @@ export async function requireAdminSession(): Promise<SessionUser | NextResponse>
  * Platform ops summary / batch ops dashboard: `global_admin`, `advisor`, or `operator` (viewer excluded).
  */
 export async function requirePlatformOpsSession(): Promise<SessionUser | NextResponse> {
-  const session = await requireSessionUser();
+  const session = await requireLiveSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }
@@ -66,7 +79,7 @@ export async function requireAdminTenantIdHex(
 
 /** App-user product session: signed in with viewer+ platform role (not admin-console exclusive). */
 export async function requireApprovedAppUserSession(): Promise<SessionUser | NextResponse> {
-  const session = await requireSessionUser();
+  const session = await requireLiveSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }

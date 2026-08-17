@@ -175,7 +175,7 @@ describe("auth link-email route", () => {
     });
   });
 
-  it("open-signup provisions operator trial when user has no platform role", async () => {
+  it("refuses to attach X to an existing email account", async () => {
     const response = await linkEmailPost(
       new Request("http://127.0.0.1:3000/api/auth/link-email", {
         method: "POST",
@@ -186,10 +186,10 @@ describe("auth link-email route", () => {
 
     const payload = (await response.json()) as { redirectTo: string };
     expect(response.status).toBe(200);
-    expect(payload.redirectTo).toBe("/xchat");
-    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
-    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
-    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+    expect(payload.redirectTo).toContain("email_belongs_to_other_account");
+    expect(identityMocks.linkXAccountToUser).not.toHaveBeenCalled();
+    expect(identityMocks.ensureSeededGlobalAdmin).not.toHaveBeenCalled();
+    expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
   it("open-signup still provisions when ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
@@ -205,13 +205,12 @@ describe("auth link-email route", () => {
 
     const payload = (await response.json()) as { redirectTo: string };
     expect(response.status).toBe(200);
-    expect(payload.redirectTo).toBe("/xchat");
-    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
-    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
-    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+    expect(payload.redirectTo).toContain("email_belongs_to_other_account");
+    expect(identityMocks.ensureSeededGlobalAdmin).not.toHaveBeenCalled();
+    expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("redirects admins to /admin", async () => {
+  it("refuses typed-email bind even when the existing row is global_admin", async () => {
     state.userRoles = ["global_admin"];
 
     const response = await linkEmailPost(
@@ -224,15 +223,28 @@ describe("auth link-email route", () => {
 
     const payload = (await response.json()) as { redirectTo: string };
     expect(response.status).toBe(200);
-    expect(payload.redirectTo).toBe("/admin");
-    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
+    expect(payload.redirectTo).toContain("email_belongs_to_other_account");
+    expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("returns email_unverified redirect and does not create session", async () => {
+  it("sends verification instead of session when updating the same X placeholder email", async () => {
+    identityMocks.getCoreUserByEmail.mockResolvedValueOnce(null);
+    identityMocks.getCoreUserByXIdentity.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439011" },
+      email: "xlogin-x-user-1@x.oauth.local",
+      roles: ["operator"],
+      status: "active"
+    });
+    identityMocks.updateCoreUserEmail.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439011" },
+      email: "new@atxfinance.ai",
+      roles: ["operator"],
+      status: "active"
+    });
     identityMocks.linkXAccountToUser.mockResolvedValueOnce({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "user@atxfinance.ai",
-      roles: ["viewer"],
+      email: "new@atxfinance.ai",
+      roles: ["operator"],
       status: "active"
     });
 
@@ -240,7 +252,7 @@ describe("auth link-email route", () => {
       new Request("http://127.0.0.1:3000/api/auth/link-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "user@atxfinance.ai" })
+        body: JSON.stringify({ email: "new@atxfinance.ai" })
       })
     );
 
@@ -251,7 +263,7 @@ describe("auth link-email route", () => {
     expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("auto-seeds configured admin email and redirects to /admin", async () => {
+  it("does not auto-seed admin from a typed email", async () => {
     identityMocks.linkXAccountToUser.mockResolvedValueOnce({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
       email: "atxbogart@gmail.com",
@@ -284,13 +296,11 @@ describe("auth link-email route", () => {
 
     const payload = (await response.json()) as { redirectTo: string };
     expect(response.status).toBe(200);
-    expect(payload.redirectTo).toBe("/admin");
-    expect(identityMocks.ensureSeededGlobalAdmin).toHaveBeenCalledWith(
-      "atxbogart@gmail.com"
-    );
+    expect(payload.redirectTo).toContain("email_belongs_to_other_account");
+    expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("relinks stale X identity to existing approved admin email user", async () => {
+  it("refuses to relink a stale X identity onto an existing admin email", async () => {
     const staleUserId = "507f1f77bcf86cd7994390aa";
     const approvedAdminId = "507f1f77bcf86cd7994390bb";
 
@@ -338,15 +348,8 @@ describe("auth link-email route", () => {
 
     const payload = (await response.json()) as { redirectTo: string };
     expect(response.status).toBe(200);
-    expect(payload.redirectTo).toBe("/admin");
-    expect(identityMocks.unlinkXAccountFromUser).toHaveBeenCalledWith({
-      userId: expect.objectContaining({ toHexString: expect.any(Function) })
-    });
-    expect(identityMocks.linkXAccountToUser).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: expect.objectContaining({ toHexString: expect.any(Function) }),
-        xUserId: "x-user-1"
-      })
-    );
+    expect(payload.redirectTo).toContain("email_belongs_to_other_account");
+    expect(identityMocks.linkXAccountToUser).not.toHaveBeenCalled();
+    expect(authMocks.createSession).not.toHaveBeenCalled();
   });
 });

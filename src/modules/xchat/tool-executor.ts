@@ -950,7 +950,8 @@ function buildOperations(
         userId: ctx.userId,
         portfolioId,
         accountIds,
-        tenantId: ctx.tenantId
+        tenantId: ctx.tenantId,
+        limit: MAX_POSITIONS_RETURNED
       });
 
       const totalAvailable = allPositions.length;

@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
+export const maxDuration = 120;
+
 import { requireSessionUser } from "@/lib/auth";
 import {
     proxyPortfolioRequestToBackend,
