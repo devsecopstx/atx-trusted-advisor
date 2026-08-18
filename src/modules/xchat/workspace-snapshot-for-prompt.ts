@@ -337,7 +337,8 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
           userId: ctx.userId,
           portfolioId,
           accountIds,
-          tenantId: ctx.tenantId
+          tenantId: ctx.tenantId,
+          limit: 200
         })
       : [];
   const counts = positionCountsByAccountId(positions);
@@ -361,7 +362,10 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
   let bookTailRisk: BookTailRiskSummaryJson | null = null;
   const equityRows = positions.filter((p) => isEquitySymbolForTailRisk(p.symbol));
   const equityNotional = equityRows.reduce((sum, p) => sum + Math.abs(p.qty * p.avgCost), 0);
-  if (equityNotional > 1e-6 && equityRows.length > 0) {
+  const snapshotTailRiskOn =
+    process.env.WORKSPACE_SNAPSHOT_TAIL_RISK === "1" ||
+    process.env.WORKSPACE_SNAPSHOT_TAIL_RISK === "true";
+  if (snapshotTailRiskOn && equityNotional > 1e-6 && equityRows.length > 0) {
     const wlRisk =
       watchlist && !("error" in watchlist) ? (watchlist.riskProfile ?? null) : null;
     const tier = mapWatchlistRiskProfileToMcTier(wlRisk);
@@ -370,10 +374,10 @@ export async function buildWorkspaceSnapshotPreloadFromPortfolio(
       weight: Math.abs(p.qty * p.avgCost) / equityNotional
     }));
     try {
-      const rawPaths = Number.parseInt(process.env.WORKSPACE_TAIL_RISK_PATHS ?? "12000", 10);
+      const rawPaths = Number.parseInt(process.env.WORKSPACE_TAIL_RISK_PATHS ?? "2000", 10);
       const pathCount = Number.isFinite(rawPaths)
-        ? Math.min(50_000, Math.max(5000, rawPaths))
-        : 12_000;
+        ? Math.min(8_000, Math.max(500, rawPaths))
+        : 2_000;
       bookTailRisk = await computeBookTailRiskMonteCarlo({
         tier,
         holdings,
@@ -696,9 +700,11 @@ function getPromptSlimSnapshotJson(
   };
 
   if (!includeHeavyAnalytics) {
-    // Conditional tail/outlook: omit from prompt block (model gets via tools or quant-specific full block)
-    (base as any).bookTailRisk = undefined;
-    (base as any).investmentOutlook = undefined;
+    return {
+      ...base,
+      bookTailRisk: undefined,
+      investmentOutlook: undefined
+    };
   }
 
   return base;

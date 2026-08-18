@@ -182,7 +182,8 @@ export async function loadUserWorkspaceSummaryForPrompt(
   const capped = rows.filter((p) => p._id).slice(0, MAX_PORTFOLIOS);
   const portfolios: UserWorkspaceSummaryPortfolioRow[] = [];
 
-  for (const p of capped) {
+  const bookRows = await Promise.all(
+    capped.map(async (p) => {
     const portfolioId = p._id!.toHexString();
     const isActiveBook = portfolioId === activeId;
     const accounts = await listPortfolioAccounts({
@@ -191,38 +192,32 @@ export async function loadUserWorkspaceSummaryForPrompt(
       tenantId: ctx.tenantId
     });
     const accountIds = accounts.map((a) => a._id).filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
-    let positions =
+    const positions =
       accountIds.length > 0
         ? await listPortfolioPositionsByAccount({
             userId: ctx.userId,
             portfolioId,
             accountIds,
-            tenantId: ctx.tenantId
+            tenantId: ctx.tenantId,
+            limit: isActiveBook ? 80 : 30
           })
         : [];
-    // For non-active books in the multi-portfolio summary, feed capped positions to the formatter.
-    // This reduces the serialized holdings string size in the prompt block (prompt token win)
-    // while the active book gets full detail. Query cost unchanged (future: add limit to repo for non-active).
-    if (!isActiveBook && positions.length > 30) {
-      // Sort by notional desc for "top" before cap (formatter re-sorts but this gives representative)
-      positions = [...positions].sort(
-        (a, b) => Math.abs(b.qty * b.avgCost) - Math.abs(a.qty * a.avgCost)
-      ).slice(0, 30);
-    }
     const acctRows = accounts.map((a) => ({
       name: a.name?.trim() || "Account",
       cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
       isDefault: Boolean(a.isDefault),
       riskProfile: a.riskProfile
     }));
-    portfolios.push({
+    return {
       name: p.name?.trim() || "Portfolio",
       id: portfolioId,
       holdings: formatHoldingsSummaryFromPositions(positions),
       cash: formatCashAcrossAccounts(acctRows),
       riskLevel: mapRiskLevelFromAccounts(acctRows)
-    });
-  }
+    };
+    })
+  );
+  portfolios.push(...bookRows);
 
   const nlPriceAlerts: UserWorkspaceNlPriceAlertsSummary | undefined =
     activeId.length > 0

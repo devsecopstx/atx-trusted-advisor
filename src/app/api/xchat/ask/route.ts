@@ -228,6 +228,8 @@ import {
 } from "@/modules/xchat/xchat-vision-hnwi";
 import { resolveWorkspaceSnapshotQuoteNetwork } from "@/modules/xchat/xchat-workspace-quote-policy";
 
+export const maxDuration = 120;
+
 const xchatPasteImageAttachmentSchema = z.object({
   mediaType: z.enum(["image/png", "image/jpeg"]),
   dataBase64: z.string().min(8).max(6_000_000)
@@ -2716,7 +2718,7 @@ export async function POST(request: Request) {
     previousResponseId,
     storeMessages: useRemoteConversationHistory,
     promptCacheKey,
-    signal: request.signal
+    signal: AbortSignal.any([request.signal, AbortSignal.timeout(110_000)])
   };
 
   const handleToolLoopFailure = (error: unknown): NextResponse => {

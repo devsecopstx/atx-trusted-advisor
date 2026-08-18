@@ -97,6 +97,10 @@ const bootstrapMocks = vi.hoisted(() => ({
   })
 }));
 
+const liveUserMocks = vi.hoisted(() => ({
+  getCoreUserByIdCached: vi.fn()
+}));
+
 const envMocks = vi.hoisted(() => ({
   getEnv: vi.fn(),
   getXOauthClientId: vi.fn(),
@@ -115,6 +119,7 @@ const sendCredentialEmailMocks = vi.hoisted(() => ({
   sendEmailVerificationEmail: vi.fn().mockResolvedValue(true)
 }));
 
+vi.mock("@/lib/server-request-cache", () => liveUserMocks);
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/core-admin/tenant-user-bootstrap", () => tenantUserBootstrapMocks);
@@ -153,6 +158,12 @@ describe("access request approval login flow", () => {
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439099",
       roles: ["global_admin"]
+    });
+    liveUserMocks.getCoreUserByIdCached.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      email: "admin@atxfinance.ai",
+      roles: ["global_admin"],
+      status: "active"
     });
     authMocks.readOAuthFlowCookies.mockResolvedValue({
       state: "state-token",
@@ -585,19 +596,8 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(identityMocks.unlinkXAccountFromUser).toHaveBeenCalledWith({
-      userId: staleUser._id
-    });
-    expect(identityMocks.linkXAccountToUser).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: registeredPendingUser._id,
-        xUserId: "x-user-1",
-        username: "approved_user"
-      })
-    );
-    expect(guestTrialMocks.provisionOpenSignupTrialAccess).toHaveBeenCalled();
-    expect(response.headers.get("location")).toContain("/xchat");
-    expect(response.headers.get("location")).not.toContain("access_request_pending");
+    expect(identityMocks.unlinkXAccountFromUser).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("email_belongs_to_other_account");
   });
 
   it("relinks stale X identity to approved email user and redirects to admin", async () => {
@@ -652,10 +652,8 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(identityMocks.unlinkXAccountFromUser).toHaveBeenCalledWith({
-      userId: staleUser._id
-    });
-    expect(response.headers.get("location")).toContain("/admin");
+    expect(identityMocks.unlinkXAccountFromUser).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("email_belongs_to_other_account");
   });
 
   it("allows non-admin authentication but denies admin API access", async () => {
@@ -663,6 +661,12 @@ describe("access request approval login flow", () => {
     authMocks.requireSessionUser.mockResolvedValue({
       userId: state.userId,
       roles: ["viewer"]
+    });
+    liveUserMocks.getCoreUserByIdCached.mockResolvedValue({
+      _id: { toHexString: () => state.userId },
+      email: "approved.user@atxfinance.ai",
+      roles: ["viewer"],
+      status: "active"
     });
 
     const adminApiResponse = await getAccessRequests(

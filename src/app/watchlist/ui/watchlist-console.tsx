@@ -1258,8 +1258,6 @@ export function WatchlistConsole({
   const watchlistFetchQuery = useMemo(() => {
     const params = new URLSearchParams();
     params.set("quotes", "1");
-    params.set("chainGlance", "1");
-    params.set("technicals", "1");
     const selectedId = selectedWatchlistId.trim();
     if (selectedId) {
       params.set("watchlistId", selectedId);

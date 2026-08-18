@@ -4,7 +4,7 @@ import {
   GUEST_TRIAL_DURATION_MS,
   isGuestTrialActive
 } from "@/modules/identity/guest-trial-constants";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
   addRoleToCoreUser,
   ensureDefaultTenant,
@@ -21,7 +21,7 @@ const CORE_USERS = "core_users";
 
 export type ProvisionGuestTrialResult =
   | { ok: true; user: CoreUser; newlyProvisioned: boolean }
-  | { ok: false; reason: "skip_admin" | "missing_user_id" };
+  | { ok: false; reason: "skip_admin" | "skip_existing" | "missing_user_id" };
 
 /**
  * First sign-in from guest trial CTA: operator + basic plan + 30-day trial window + default tenant membership.
@@ -39,6 +39,10 @@ export async function provisionGuestTrialOperatorAccess(input: {
   }
   if (isGlobalAdmin(user.roles)) {
     return { ok: false, reason: "skip_admin" };
+  }
+  // Do not upgrade an existing login-capable or already-approved account.
+  if (canUserLogin(user.roles) || user.accountStatus === "approved") {
+    return { ok: false, reason: "skip_existing" };
   }
 
   const userId = user._id;

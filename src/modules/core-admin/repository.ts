@@ -2217,6 +2217,8 @@ export async function listPortfolioPositionsByAccount(input: {
   portfolioId: string;
   accountIds: ObjectId[];
   tenantId?: string;
+  /** Cap rows at Mongo (xChat snapshot / tools). Omit for full book mutations. */
+  limit?: number;
 }): Promise<Position[]> {
   await ensurePortfolioIndexes();
   if (!ObjectId.isValid(input.portfolioId) || input.accountIds.length === 0) {
@@ -2224,7 +2226,7 @@ export async function listPortfolioPositionsByAccount(input: {
   }
 
   const db = await getDb();
-  return db
+  const cursor = db
     .collection<Position>(collections.positions)
     .find(
       withTenantScope(
@@ -2236,8 +2238,15 @@ export async function listPortfolioPositionsByAccount(input: {
         input.tenantId
       )
     )
-    .sort({ createdAt: 1 })
-    .toArray();
+    .sort({ createdAt: 1 });
+  const limit =
+    typeof input.limit === "number" && Number.isFinite(input.limit) && input.limit > 0
+      ? Math.min(500, Math.floor(input.limit))
+      : undefined;
+  if (limit) {
+    cursor.limit(limit);
+  }
+  return cursor.toArray();
 }
 
 // Recommendations

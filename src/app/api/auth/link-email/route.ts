@@ -3,9 +3,7 @@ import { z } from "zod";
 
 import { consumePendingXLinkCookie, createSession } from "@/lib/auth";
 import { extractClientLoginMeta } from "@/lib/client-request-meta";
-import { getEnv } from "@/lib/env";
 import { provisionOpenSignupTrialAccess } from "@/lib/marketing/guest-trial-auth";
-import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { sendEmailVerificationEmail } from "@/lib/send-email-credential-messages";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
@@ -20,15 +18,12 @@ import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     dedupeDefaultTenantMembershipsForUser,
     ensureCoreUserByEmail,
-    ensureSeededGlobalAdmin,
     getCoreUserByEmail,
     getCoreUserByXIdentity,
     getDefaultTenantMembershipForUser,
     linkXAccountToUser,
-    mergePlaceholderXUserIntoEmailUser,
     recordUserSuccessfulLogin,
     resolveAuthContext,
-    unlinkXAccountFromUser,
     updateCoreUserEmail
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
@@ -38,7 +33,6 @@ const linkSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const env = getEnv();
   const loginMeta = extractClientLoginMeta(request);
   const body = await request.json();
   const parsed = linkSchema.safeParse(body);
@@ -71,44 +65,56 @@ export async function POST(request: Request) {
   }
 
   const requestedEmail = parsed.data.email.trim().toLowerCase();
-  const seededAdmin =
-    isSeedAdminEmail(requestedEmail, env.ADMIN_SEED_EMAIL)
-      ? await ensureSeededGlobalAdmin(requestedEmail)
-      : null;
-  let user = seededAdmin?.user ?? (await getCoreUserByEmail(requestedEmail));
+  // Never bind X onto an existing email row from a self-typed address (account takeover).
+  // Seed-admin promotion belongs on the X callback via ADMIN_SEED_X_USER_ID, not this path.
+  const existingByEmail = await getCoreUserByEmail(requestedEmail);
   const existingByXIdentity = await getCoreUserByXIdentity(pending.xUserId);
-  const emailUserId = user?._id;
+  const emailUserId = existingByEmail?._id;
   const xIdentityUserId = existingByXIdentity?._id;
 
-  if (user && xIdentityUserId && emailUserId && !isSameUserId(xIdentityUserId, emailUserId)) {
-    // If the requested email already belongs to an approved admin, re-link X identity to that account.
-    if (isGlobalAdmin(user.roles)) {
-      await unlinkXAccountFromUser({ userId: xIdentityUserId });
-      user = await linkXAccountToUser({
-        userId: emailUserId,
-        xUserId: pending.xUserId,
-        username: pending.username,
-        displayName: pending.displayName,
-        avatarUrl: pending.avatarUrl
-      });
-    } else if (existingByXIdentity && isXIdentityPlaceholderEmail(existingByXIdentity.email)) {
-      // X (no email) created a placeholder row; the same person later signed in with Google on that email.
-      user = await mergePlaceholderXUserIntoEmailUser({
-        canonicalUserId: emailUserId,
-        placeholderUser: existingByXIdentity,
-        xIdentity: {
-          xUserId: pending.xUserId,
-          username: pending.username,
-          displayName: pending.displayName,
-          avatarUrl: pending.avatarUrl
-        }
-      });
-    }
-  } else if (
+  if (emailUserId && xIdentityUserId && !isSameUserId(xIdentityUserId, emailUserId)) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "email_belongs_to_other_account",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      email: requestedEmail,
+      xUserId: pending.xUserId,
+      username: pending.username
+    });
+    return NextResponse.json({
+      ok: true,
+      redirectTo: "/xchat?error=email_belongs_to_other_account"
+    });
+  }
+
+  if (emailUserId && !xIdentityUserId) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "email_belongs_to_other_account",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      email: requestedEmail,
+      xUserId: pending.xUserId,
+      username: pending.username
+    });
+    return NextResponse.json({
+      ok: true,
+      redirectTo: "/xchat?error=email_belongs_to_other_account"
+    });
+  }
+
+  let user = existingByEmail ?? existingByXIdentity ?? null;
+
+  if (
     xIdentityUserId &&
     existingByXIdentity &&
     isXIdentityPlaceholderEmail(existingByXIdentity.email) &&
-    (!user?._id || isSameUserId(xIdentityUserId, user._id))
+    (!emailUserId || isSameUserId(xIdentityUserId, emailUserId))
   ) {
     user = await updateCoreUserEmail({
       userId: xIdentityUserId,
@@ -152,9 +158,9 @@ export async function POST(request: Request) {
         });
 
   if (linkedUser._id) {
+    // Typed email is not provider-proven — never stamp emailVerifiedAt from this path.
     linkedUser = await provisionOpenSignupTrialAccess({
-      user: linkedUser,
-      emailFromProvider: requestedEmail
+      user: linkedUser
     });
   }
 
