@@ -66,6 +66,12 @@
         "validateXchat": "npm run test -- --testPathPattern=xchat",
         "ciGate": "npm run ci:gate"
       }
+    },
+    {
+      "name": "marketing",
+      "branch": "main",
+      "description": "GTM / marketing — after setup: use gtm-client-acquisition + marketing / lead-scout agents. Draft-only unless publishing via /admin/marketing.",
+      "setup": "echo 'ROLE=marketing' > .cursor/marketing.md && test -f .cursor/agents/marketing.md && npm install"
     }
   ]
 }

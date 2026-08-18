@@ -6,7 +6,7 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
 **Cursor personas & skills:** see **DEVELOPMENT.md** → *Cursor agents & skills (repo-local)* and **`.cursor/agents/README.md`**.
 
-**Grok skills (project-local):** `.grok/skills/` — see [`.grok/skills/README.md`](.grok/skills/README.md). Focused on the HNWI xChat / finance-advisor surface and the `atx-docs/rag-collection/` sources that power it for your Investment Advisor users.
+**Grok skills (project-local):** `.grok/skills/` — see [`.grok/skills/README.md`](.grok/skills/README.md). xChat / finance-advisor RAG skills plus **`gtm-client-acquisition`** for founder GTM when you have few or zero clients.
 
 ## Standard Local Flow
 
@@ -193,7 +193,9 @@ from injected secrets.
   - `finance-rag-kb-curation` — RAG source maintenance, AIP-160 pre-search filters, `refresh-finance` / seeding, frontmatter standards.
   - `xchat-persona-and-rag-ops` — YAML authoring, `always_include`, governance (publish/archive/rollback), collection attachment, post-seed verification.
   - `xchat-hnwi-desk-reports` — Desk Report v2.1 templates, prompt packaging, the server add-on Markdown contract (Executive + Ideas table + Risk), composer quick actions.
-- These complement (do not duplicate) the Cursor skills. When you ask Grok to work on xChat ask flows, persona changes, new strategy support, or Desk Report features, explicitly invoke the relevant Grok skill(s) for grounded output.
+  - `gtm-client-acquisition` — founder GTM when there are few or zero clients (IA leads, outreach drafts, daily `/loop`).
+  - `weekly-gtm-newsletter` — weekly Slack brief to `#xfinance-tasks` (`C0B584AH6ER`). Never email contacts.
+- These complement (do not duplicate) the Cursor skills. When you ask Grok to work on xChat ask flows, persona changes, new strategy support, Desk Report features, or client acquisition, explicitly invoke the relevant Grok skill(s) for grounded output.
 - No separate lint script yet (unlike `npm run skills:lint` for Cursor). Follow the same frontmatter + "no hardcoded app version" discipline.
 - Future: a `xai-skill-packer` Grok skill may be added to synthesize reusable xAI "skill" bundles (prompt + recommended tools + filter examples) directly from the atx-docs for potential platform attachment.
 

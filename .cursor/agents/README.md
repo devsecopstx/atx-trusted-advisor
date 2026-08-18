@@ -14,7 +14,8 @@ Subagent files under **`.cursor/agents/*.md`** follow [Cursor Subagents](https:/
 | [`sre.md`](sre.md) | SRE / ops persona | Infra, deploy, secrets hygiene, runbooks |
 | [`xchat.md`](xchat.md) | xChat + xAI (personas, RAG collections, prompt assembly, tool routing, multi-turn) | `/xchat`, `POST /api/xchat/ask`, persona CRUD, RAG file management, `skill-xchat-validation-checklist` |
 | [`branding.md`](branding.md) | Full-stack feature + branding (Next, tokens, OAuth CTAs, APIs when needed for UI) | Cross-cutting product + UI work |
-| [`marketing.md`](marketing.md) | GTM / X copy, threads, HNWI–RIA messaging | Marketing and waitlist copy only |
+| [`marketing.md`](marketing.md) | GTM operator — IA/HNWI acquisition + X/LinkedIn copy | No clients / leads / trial copy / threads (`is_background`) |
+| [`lead-scout.md`](lead-scout.md) | Named IA / HNWI lead research | Prospect lists, first-line outreach (`is_background`) |
 
 ## Parallel worktrees (`.cursor/worktrees.json`)
 

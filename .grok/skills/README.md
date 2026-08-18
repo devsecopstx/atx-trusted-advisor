@@ -17,6 +17,8 @@ Project-local **Grok skills** under **`.grok/skills/`** (parallel to `.cursor/sk
 | `finance-rag-kb-curation` | Adding/updating RAG sources in `atx-docs/rag-collection/`, refresh-finance, pre-search filter work |
 | `xchat-persona-and-rag-ops` | Persona YAML changes, collection linking, seeding, `always_include` contracts |
 | `xchat-hnwi-desk-reports` | HNWI Desk Report v2.1 templates, prompt-templates-v21, xchat-hnwi-v21-desk-report flows |
+| `gtm-client-acquisition` | Zero-client founder GTM, IA outreach, daily marketing loop |
+| `weekly-gtm-newsletter` | Weekly Slack newsletter to `#xfinance-tasks` (`C0B584AH6ER`) — never email contacts |
 
 ## xChat / HNWI Finance Focus Areas
 

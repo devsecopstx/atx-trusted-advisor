@@ -149,6 +149,7 @@ Many folders include **`CHECKLIST.md`** aligned with **`## Core setup`**, **`## 
 |-------|---|
 | [design-branding](design-branding/SKILL.md) | Brand review |
 | [brand-generator](brand-generator/SKILL.md) | Brand asset prompts |
+| [gtm-client-acquisition](gtm-client-acquisition/SKILL.md) | Founder GTM — IA/HNWI leads, outreach, daily draft loop |
 | [design-ops](design-ops/SKILL.md) | Design ops |
 | [sre-docs-ops](sre-docs-ops/SKILL.md) | Docs ops |
 | [runbook-navigator](runbook-navigator/SKILL.md) | Runbook navigation |
