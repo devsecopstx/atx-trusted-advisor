@@ -18,7 +18,7 @@
 | Surface | Route / entry | Component |
 |--------|----------------|-----------|
 | **Tenant tasks** | **`/admin/tasks`** (hero: **Scheduled jobs**) | **`src/app/admin/tasks/ui/tasks-console.tsx`** (`TasksConsole`) |
-| **Marketing Scheduler** | **`/admin/marketing`** | **`marketing-console.tsx`** — many **`marketing_post`** schedules; **System-wide** toggle or required **tenant** (name/slug); templates, preview, run-now, history |
+| **Marketing Scheduler** | **`/admin/marketing`** | **`marketing-console.tsx`** — many **`marketing_post`** schedules; default frequency **Weekdays M–F** (`0 13 * * 1-5` UTC ≈ 8 AM CT); **System-wide** posts **once** to X (no per-tenant fan-out); cron/RRULE edits refresh **`nextRunAt`**; templates, preview, run-now, history |
 | **Delivery channels** | **`/admin/delivery-channels`** | **`admin-delivery-channels-console.tsx`** — **Channels** CRUD + developer tabs (**xOptions API test**, **xChat API test**, **Test post to X**); legacy **`/admin/xoptions`**, **`/admin/xchat-api-test`**, **`/admin/test-post-x`** redirect here |
 
 **UI behavior (tenant console):**

@@ -259,7 +259,7 @@ export async function listMarketingSchedules(): Promise<ScheduledTask[]> {
 export async function createMarketingSchedule(input: {
   name: string;
   enabled: boolean;
-  /** When true (default), omit tenantId — fan-out on execute. When false, `tenantId` is required. */
+  /** When true (default), omit tenantId. Marketing posts still run once (no per-tenant X fan-out). */
   systemWide?: boolean;
   tenantId?: string;
   scheduleCron?: string;
@@ -362,6 +362,9 @@ export async function updateMarketingSchedule(
       scheduleRRule: nextScheduleRRule
     });
   }
+
+  const scheduleChanged =
+    patch.scheduleCron !== undefined || patch.scheduleRRule !== undefined;
   if (patch.nextRunAt !== undefined) {
     $set.nextRunAt =
       patch.nextRunAt ??
@@ -370,6 +373,12 @@ export async function updateMarketingSchedule(
         new Date()
       ) ??
       null;
+  } else if (scheduleChanged) {
+    $set.nextRunAt =
+      computeNextRunAtFromSchedule(
+        { scheduleCron: nextScheduleCron, scheduleRRule: nextScheduleRRule },
+        new Date()
+      ) ?? null;
   }
   if (patch.config !== undefined) {
     $set.config = patch.config;

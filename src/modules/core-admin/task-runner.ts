@@ -104,7 +104,9 @@ export async function executeScheduledTask(
     throw new Error("Cannot execute task without _id");
   }
 
-  if (!task.tenantId) {
+  // Scanners fan out once per tenant. Marketing posts to a single X/LinkedIn account —
+  // system-wide rows must run once or they spam identical tweets.
+  if (!task.tenantId && task.category !== "marketing_post") {
     return executeSystemWideScheduledTask(task, triggeredBy, auditActor, executionOptions);
   }
 

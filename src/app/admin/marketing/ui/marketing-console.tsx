@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
+import {
+    detectMarketingSchedulePreset,
+    MARKETING_SCHEDULE_PRESET_OPTIONS,
+    type MarketingSchedulePreset
+} from "@/lib/marketing/schedule-presets";
 import { FINTECH_ADVISOR_PROD_ORIGIN } from "@/lib/xfinance-brand";
 import type { MarketingPlatform, MarketingTaskConfig } from "@/modules/marketing/types";
 
@@ -80,7 +85,7 @@ type EditDraft = {
   enabled: boolean;
   systemWide: boolean;
   tenantId: string;
-  schedulePreset: SchedulePreset;
+  schedulePreset: MarketingSchedulePreset;
   scheduleCron: string;
   scheduleRRule: string;
   scheduleDescription: string;
@@ -96,40 +101,15 @@ type EditDraft = {
   utmTerm: string;
 };
 
-type SchedulePreset = "daily" | "monday" | "friday" | "custom";
-
-const SCHEDULE_PRESET_OPTIONS: Record<
-  Exclude<SchedulePreset, "custom">,
-  { cron: string; scheduleDescription: string }
-> = {
-  daily: { cron: "0 13 * * *", scheduleDescription: "Daily at 13:00 UTC" },
-  monday: { cron: "0 13 * * 1", scheduleDescription: "Every Monday at 13:00 UTC" },
-  friday: { cron: "0 13 * * 5", scheduleDescription: "Every Friday at 13:00 UTC" }
-};
-
-function detectPresetFromCron(cron: string): SchedulePreset {
-  const c = cron.trim();
-  if (c === SCHEDULE_PRESET_OPTIONS.daily.cron) {
-    return "daily";
-  }
-  if (c === SCHEDULE_PRESET_OPTIONS.monday.cron) {
-    return "monday";
-  }
-  if (c === SCHEDULE_PRESET_OPTIONS.friday.cron) {
-    return "friday";
-  }
-  return "custom";
-}
-
 const DEFAULT_DRAFT: EditDraft = {
   name: "",
   enabled: true,
   systemWide: true,
   tenantId: "",
-  schedulePreset: "daily",
-  scheduleCron: SCHEDULE_PRESET_OPTIONS.daily.cron,
+  schedulePreset: "weekdays",
+  scheduleCron: MARKETING_SCHEDULE_PRESET_OPTIONS.weekdays.cron,
   scheduleRRule: "",
-  scheduleDescription: SCHEDULE_PRESET_OPTIONS.daily.scheduleDescription,
+  scheduleDescription: MARKETING_SCHEDULE_PRESET_OPTIONS.weekdays.scheduleDescription,
   templateId: "",
   customContent: "",
   generationPrompt: [
@@ -148,7 +128,7 @@ const DEFAULT_DRAFT: EditDraft = {
   destinationUrl: FINTECH_ADVISOR_PROD_ORIGIN,
   platforms: ["x"],
   utmSource: "x",
-  utmCampaign: "weekly-pulse",
+  utmCampaign: "weekday-pulse",
   utmMedium: "owned-social",
   utmContent: "",
   utmTerm: ""
@@ -299,7 +279,8 @@ export function MarketingConsole() {
         systemWide: draft.systemWide,
         tenantId: draft.systemWide ? undefined : draft.tenantId.trim(),
         scheduleCron: draft.scheduleCron.trim() || undefined,
-        scheduleRRule: draft.scheduleRRule.trim() || undefined,
+        // Empty RRULE must clear a stored RRULE (RRULE wins over cron when both exist).
+        scheduleRRule: draft.scheduleRRule.trim() ? draft.scheduleRRule.trim() : editingId ? null : undefined,
         scheduleDescription: draft.scheduleDescription.trim() || undefined,
         config: buildConfigFromDraft(draft)
       };
@@ -517,7 +498,7 @@ export function MarketingConsole() {
       enabled: schedule.enabled,
       systemWide: schedule.systemWide !== false && !schedule.tenantId,
       tenantId: schedule.tenantId ?? "",
-      schedulePreset: detectPresetFromCron(cron),
+      schedulePreset: detectMarketingSchedulePreset(cron),
       scheduleCron: cron,
       scheduleRRule: schedule.scheduleRRule ?? "",
       scheduleDescription: schedule.scheduleDescription ?? "",
@@ -749,7 +730,7 @@ export function MarketingConsole() {
                     }))
                   }
                 />
-                System-wide (all tenants)
+                System-wide (one X/LinkedIn post)
               </label>
               {!draft.systemWide ? (
                 <select
@@ -771,9 +752,15 @@ export function MarketingConsole() {
             </div>
             {!draft.systemWide ? (
               <p className="status-text">
-                Tenant-scoped schedules run only for the selected workspace. System-wide posts fan out across every tenant on execute.
+                Tenant-scoped schedules bind the job to one workspace for audit. Marketing still posts once to the
+                connected X account (no per-tenant tweet fan-out).
               </p>
-            ) : null}
+            ) : (
+              <p className="status-text">
+                System-wide marketing posts once to the connected X account — unlike scanners, they do not fan out
+                per tenant.
+              </p>
+            )}
             <div className="tool-row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
               <label className="status-text">Template</label>
               <select
@@ -855,25 +842,31 @@ export function MarketingConsole() {
                 className="crud-input text-sm max-w-xs"
                 value={draft.schedulePreset}
                 onChange={(event) => {
-                  const next = event.target.value as SchedulePreset;
+                  const next = event.target.value as MarketingSchedulePreset;
                   if (next === "custom") {
                     setDraft((current) => ({ ...current, schedulePreset: "custom" }));
                     return;
                   }
-                  const preset = SCHEDULE_PRESET_OPTIONS[next];
+                  const preset = MARKETING_SCHEDULE_PRESET_OPTIONS[next];
                   setDraft((current) => ({
                     ...current,
                     schedulePreset: next,
                     scheduleCron: preset.cron,
-                    scheduleDescription: preset.scheduleDescription
+                    scheduleDescription: preset.scheduleDescription,
+                    // Preset cron must win — clear any leftover RRULE.
+                    scheduleRRule: ""
                   }));
                 }}
               >
-                <option value="daily">Daily (13:00 UTC)</option>
-                <option value="monday">Every Monday (13:00 UTC)</option>
-                <option value="friday">Every Friday (13:00 UTC)</option>
+                <option value="weekdays">{MARKETING_SCHEDULE_PRESET_OPTIONS.weekdays.label}</option>
+                <option value="daily">{MARKETING_SCHEDULE_PRESET_OPTIONS.daily.label}</option>
+                <option value="monday">{MARKETING_SCHEDULE_PRESET_OPTIONS.monday.label}</option>
+                <option value="friday">{MARKETING_SCHEDULE_PRESET_OPTIONS.friday.label}</option>
                 <option value="custom">Custom cron…</option>
               </select>
+              <span className="status-text text-xs">
+                Times in Schedules use America/Chicago. Cron is UTC.
+              </span>
             </div>
             <div className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
               <input
