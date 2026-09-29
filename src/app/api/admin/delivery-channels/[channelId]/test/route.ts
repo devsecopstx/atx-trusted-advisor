@@ -61,7 +61,7 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json(
         {
           error:
-            "SMTP send failed — set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM on the app (see deploy-and-ops.md)"
+            "SMTP send failed — set SMTP_USER (Gmail), SMTP_PASS (Gmail app password), and DESK_EMAIL_FROM (see deploy-and-ops.md)"
         },
         { status: 502 }
       );

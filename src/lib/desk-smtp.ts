@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { caughtErrorMessage } from "@/lib/caught-error";
 
+/** Personal Gmail SMTP. Custom SMTP hosts are not used. */
+export const GMAIL_SMTP_HOST = "smtp.gmail.com";
+export const GMAIL_SMTP_PORT = 587;
+
 export type DeskSmtpConfig = {
   host: string;
   port: number;
@@ -66,15 +70,11 @@ export function resolveDeskFromEnvelopeAddress(fromRaw: string | undefined, fall
  * When {@link getDeskSmtpConfig} is null, explains why (for admin UI / logs). No secrets.
  */
 export function explainDeskSmtpConfigBlock(): string {
-  const host = trimEnv("SMTP_HOST");
   const user = trimEnv("SMTP_USER");
   const pass = trimEnv("SMTP_PASS");
   const fromRaw = trimEnv("DESK_EMAIL_FROM");
-  if (!host) {
-    return "SMTP_HOST is missing or empty.";
-  }
   if (!user) {
-    return "SMTP_USER is missing or empty.";
+    return "SMTP_USER is missing or empty (use your Gmail address).";
   }
   if (!pass) {
     return "SMTP_PASS is missing or empty.";
@@ -98,16 +98,14 @@ export function explainDeskSmtpConfigBlock(): string {
  * When any required piece is missing, portfolio `email` delivery channels are skipped (same as pre-SMTP behavior).
  *
  * Expected env (stage/prod: mount via GCP Secret Manager — see `scripts/ops/sync-desk-smtp-secrets-from-env.sh`):
- * - SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM
- * - SMTP_PORT (default 587)
- * - SMTP_SECURE: `true` / `1` for SMTPS (e.g. port 465); default false (STARTTLS on 587)
+ * - SMTP_USER (Gmail address), SMTP_PASS (Gmail app password), DESK_EMAIL_FROM
+ * Transport is always `smtp.gmail.com:587` STARTTLS. `SMTP_HOST` is ignored.
  */
 export function getDeskSmtpConfig(): DeskSmtpConfig | null {
-  const host = trimEnv("SMTP_HOST");
   const user = trimEnv("SMTP_USER");
   const pass = trimEnv("SMTP_PASS");
   const fromRaw = trimEnv("DESK_EMAIL_FROM");
-  if (!host || !user || !pass) {
+  if (!user || !pass) {
     return null;
   }
 
@@ -116,19 +114,14 @@ export function getDeskSmtpConfig(): DeskSmtpConfig | null {
     return null;
   }
 
-  const portRaw = trimEnv("SMTP_PORT") ?? "587";
-  const port = Number.parseInt(portRaw, 10);
-  if (!Number.isFinite(port) || port < 1 || port > 65535) {
-    return null;
-  }
-
-  const secureRaw = trimEnv("SMTP_SECURE");
-  const secure =
-    secureRaw === "1" ||
-    secureRaw?.toLowerCase() === "true" ||
-    secureRaw?.toLowerCase() === "yes";
-
-  return { host, port, secure, user, pass, from };
+  return {
+    host: GMAIL_SMTP_HOST,
+    port: GMAIL_SMTP_PORT,
+    secure: false,
+    user,
+    pass,
+    from
+  };
 }
 
 export async function sendDeskHtmlEmail(input: {

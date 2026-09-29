@@ -277,6 +277,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/app-user/onboarding/progress",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xchat"
+  },
+  {
     path: "/api/app-user/xchat/prompt-usage",
     operations: [{ method: "GET", auth: "session" }],
     tag: "xchat"

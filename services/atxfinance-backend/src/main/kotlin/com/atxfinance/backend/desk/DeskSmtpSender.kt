@@ -10,32 +10,25 @@ import jakarta.mail.internet.MimeMessage
 import java.util.Properties
 
 /**
- * Optional SMTP for admin delivery-channel tests and parity with Next.js `desk-smtp`.
- * Reads the same env vars as the Next app: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM, SMTP_SECURE.
+ * Personal Gmail SMTP (parity with Next.js `desk-smtp`).
+ * SMTP_USER = Gmail address, SMTP_PASS = app password. SMTP_HOST is ignored.
  */
 object DeskSmtpSender {
+    private const val GMAIL_HOST = "smtp.gmail.com"
+    private const val GMAIL_PORT = "587"
+
     fun sendPlain(to: String, subject: String, body: String): Boolean {
-        val host = System.getenv("SMTP_HOST")?.trim().orEmpty()
-        if (host.isEmpty()) return false
         val user = System.getenv("SMTP_USER")?.trim().orEmpty()
         val pass = System.getenv("SMTP_PASS")?.trim().orEmpty()
         val fromEnv = System.getenv("DESK_EMAIL_FROM")?.trim().orEmpty()
         val from = fromEnv.ifEmpty { user }
         if (user.isEmpty() || pass.isEmpty() || from.isEmpty()) return false
 
-        val port = System.getenv("SMTP_PORT")?.trim()?.toIntOrNull()?.takeIf { it in 1..65535 } ?: 587
-        val secureRaw = System.getenv("SMTP_SECURE")?.trim()?.lowercase().orEmpty()
-        val secure = secureRaw == "1" || secureRaw == "true" || secureRaw == "yes"
-
         val props = Properties()
-        props["mail.smtp.host"] = host
-        props["mail.smtp.port"] = port.toString()
+        props["mail.smtp.host"] = GMAIL_HOST
+        props["mail.smtp.port"] = GMAIL_PORT
         props["mail.smtp.auth"] = "true"
-        if (secure) {
-            props["mail.smtp.ssl.enable"] = "true"
-        } else {
-            props["mail.smtp.starttls.enable"] = "true"
-        }
+        props["mail.smtp.starttls.enable"] = "true"
 
         return try {
             val session =

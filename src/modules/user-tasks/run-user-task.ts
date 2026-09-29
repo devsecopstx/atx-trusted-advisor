@@ -139,7 +139,7 @@ async function deliverEmailIfNeeded(task: UserTask, subject: string, body: strin
   }
   if (!getDeskSmtpConfig()) {
     console.warn(
-      "[user_tasks/email] skip: desk SMTP not configured (set SMTP_HOST, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM)"
+      "[user_tasks/email] skip: Gmail SMTP not configured (set SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM)"
     );
     return;
   }

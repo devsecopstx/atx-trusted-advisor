@@ -19,8 +19,11 @@ import {
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
 import { AtxFinanceMark } from "@/app/ui/atxfinance-logo";
-import { WorkspaceTenantRailBrand } from "@/app/ui/workspace-tenant-rail-brand";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
+import {
+    FirstSessionProgressCard,
+    FirstSessionProgressProvider
+} from "@/app/ui/first-session-progress-card";
 import {
     LucideBookOpenIcon,
     LucideChevronLeftIcon,
@@ -46,6 +49,7 @@ import {
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { WorkspaceProductRailProvider } from "@/app/ui/workspace-product-rail-context";
 import { WorkspaceProfileFooterMenu } from "@/app/ui/workspace-profile-footer-menu";
+import { WorkspaceTenantRailBrand } from "@/app/ui/workspace-tenant-rail-brand";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
@@ -1101,21 +1105,25 @@ export function WorkspaceProductSidebar({
 
   return (
     <WorkspaceProductRailProvider value={railContextValue}>
+      <FirstSessionProgressProvider>
       <TrialBillingNoticeModal />
       <WorkspaceMobileDrawerNavProvider closeDrawer={mobileDrawerClose}>
         {belowLg ? (
-          <WorkspaceTopChromeBar
-            accountDetails={accountDetails}
-            drawerOpen={drawerOpen}
-            isAccountTasksVisible={isAccountTasksVisible}
-            isGlobalAdmin={isGlobalAdmin}
-            isPathVisible={isPathVisible}
-            showQuickPills={belowMd}
-            watchlistHref={watchlistHref}
-            workspaceBook={workspaceBook}
-            workspaceBrandHref={workspaceBrandHref}
-            onToggleDrawer={() => persistExpanded(!expanded)}
-          />
+          <>
+            <WorkspaceTopChromeBar
+              accountDetails={accountDetails}
+              drawerOpen={drawerOpen}
+              isAccountTasksVisible={isAccountTasksVisible}
+              isGlobalAdmin={isGlobalAdmin}
+              isPathVisible={isPathVisible}
+              showQuickPills={belowMd}
+              watchlistHref={watchlistHref}
+              workspaceBook={workspaceBook}
+              workspaceBrandHref={workspaceBrandHref}
+              onToggleDrawer={() => persistExpanded(!expanded)}
+            />
+            <FirstSessionProgressCard variant="banner" />
+          </>
         ) : null}
 
         {drawerOpen ? (
@@ -1141,6 +1149,7 @@ export function WorkspaceProductSidebar({
                 Workspace navigation
               </span>
               {sidebarHeader}
+              <FirstSessionProgressCard />
               <div
                 className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-0 py-1"
                 id="workspace-product-sidebar-scroll"
@@ -1160,6 +1169,7 @@ export function WorkspaceProductSidebar({
             transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
           >
             {sidebarHeader}
+            {expanded ? <FirstSessionProgressCard /> : null}
             <div
               className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-0 py-1"
               id="workspace-product-sidebar-scroll"
@@ -1192,6 +1202,7 @@ export function WorkspaceProductSidebar({
           </motion.div>
         ) : null}
       </WorkspaceMobileDrawerNavProvider>
+      </FirstSessionProgressProvider>
     </WorkspaceProductRailProvider>
   );
 }
