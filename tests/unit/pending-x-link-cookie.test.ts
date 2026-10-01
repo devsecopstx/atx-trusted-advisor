@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/env", () => ({
-  getEnv: () => ({ AUTH_SECRET: "unit-test-auth-secret-16" })
+  getEnv: () => ({ AUTH_SECRET: "unit-test-auth-secret-32chars-xx" })
 }));
 
 import { parsePendingXLinkCookieValue, signPendingXLinkValue } from "@/lib/auth";
